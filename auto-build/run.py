@@ -39,11 +39,14 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
-# Load .env file from auto-build directory
+# Load .env file - check both auto-build/ and dev/auto-build/ locations
 from dotenv import load_dotenv
 env_file = SCRIPT_DIR / ".env"
+dev_env_file = SCRIPT_DIR.parent / "dev" / "auto-build" / ".env"
 if env_file.exists():
     load_dotenv(env_file)
+elif dev_env_file.exists():
+    load_dotenv(dev_env_file)
 
 from agent import run_autonomous_agent
 from coordinator import SwarmCoordinator

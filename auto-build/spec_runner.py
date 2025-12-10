@@ -48,11 +48,14 @@ from typing import Optional
 # Add auto-build to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Load .env file from auto-build directory
+# Load .env file - check both auto-build/ and dev/auto-build/ locations
 from dotenv import load_dotenv
 env_file = Path(__file__).parent / ".env"
+dev_env_file = Path(__file__).parent.parent / "dev" / "auto-build" / ".env"
 if env_file.exists():
     load_dotenv(env_file)
+elif dev_env_file.exists():
+    load_dotenv(dev_env_file)
 
 from client import create_client
 from validate_spec import SpecValidator, auto_fix_plan
