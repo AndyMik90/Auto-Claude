@@ -479,7 +479,8 @@ def select_menu(
 
     def render():
         # Clear screen area (move up and clear)
-        lines_to_clear = len(options) + 6 + (1 if subtitle else 0)
+        # Account for: options + description for selected + title block (2) + nav block (2) + box borders (2) + subtitle block (2 if present)
+        lines_to_clear = len(options) + 7 + (2 if subtitle else 0)
         sys.stdout.write(f"\033[{lines_to_clear}A\033[J")
 
         # Build content
@@ -516,7 +517,7 @@ def select_menu(
         print(box(content, style="light", width=70))
 
     # Initial render (add blank lines first)
-    lines_needed = len(options) + 6 + (1 if subtitle else 0)
+    lines_needed = len(options) + 7 + (2 if subtitle else 0)
     print("\n" * lines_needed)
     render()
 

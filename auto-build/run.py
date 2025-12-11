@@ -816,6 +816,23 @@ def main() -> None:
                 print()
                 print_status("No instructions provided.", "info")
 
+            # If 'skip' was selected, actually resume the build
+            if choice == 'skip':
+                print()
+                print_status("Resuming build...", "info")
+                status_manager.update(state=BuildState.RUNNING)
+                asyncio.run(
+                    run_autonomous_agent(
+                        project_dir=working_dir,
+                        spec_dir=spec_dir,
+                        model=args.model,
+                        max_iterations=args.max_iterations,
+                        verbose=args.verbose,
+                    )
+                )
+                # Build completed or was interrupted again - exit
+                sys.exit(0)
+
         except KeyboardInterrupt:
             # User pressed Ctrl+C again during input prompt - exit immediately
             print()
@@ -827,7 +844,7 @@ def main() -> None:
             # stdin closed
             pass
 
-        # Resume instructions
+        # Resume instructions (shown when user provided instructions or chose file/type/paste)
         print()
         content = [
             bold(f"{icon(Icons.PLAY)} TO RESUME"),
