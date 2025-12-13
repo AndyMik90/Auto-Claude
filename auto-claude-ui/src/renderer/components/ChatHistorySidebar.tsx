@@ -123,7 +123,7 @@ export function ChatHistorySidebar({
       </div>
 
       {/* Session list */}
-      <ScrollArea className="flex-1 [&>div>div]:!overflow-x-hidden">
+      <ScrollArea className="flex-1">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -247,48 +247,52 @@ function SessionItem({
   return (
     <div
       className={cn(
-        'group flex cursor-pointer items-center gap-2 px-2 py-2 transition-colors hover:bg-muted',
+        'group relative cursor-pointer px-2 py-2 transition-colors hover:bg-muted',
         isActive && 'bg-primary/10 hover:bg-primary/15'
       )}
       onClick={onSelect}
     >
-      <MessageSquare
-        className={cn(
-          'h-4 w-4 shrink-0',
-          isActive ? 'text-primary' : 'text-muted-foreground'
-        )}
-      />
-      <div className="flex-1 min-w-0">
-        <p
+      {/* Content with reserved space for the menu button */}
+      <div className="flex items-center gap-1.5 pr-7">
+        <MessageSquare
           className={cn(
-            'truncate text-sm',
-            isActive ? 'font-medium text-foreground' : 'text-foreground/80'
+            'h-4 w-4 flex-shrink-0',
+            isActive ? 'text-primary' : 'text-muted-foreground'
           )}
-        >
-          {session.title}
-        </p>
-        <p className="text-[11px] text-muted-foreground">
-          {session.messageCount} message{session.messageCount !== 1 ? 's' : ''}
-        </p>
+        />
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              'line-clamp-2 text-sm leading-tight break-words',
+              isActive ? 'font-medium text-foreground' : 'text-foreground/80'
+            )}
+          >
+            {session.title}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {session.messageCount} message{session.messageCount !== 1 ? 's' : ''}
+          </p>
+        </div>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+
+      {/* Absolutely positioned menu button - always visible */}
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0 opacity-70 hover:opacity-100"
-            onClick={(e) => e.stopPropagation()}
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-muted-foreground/20 transition-opacity"
           >
             <MoreVertical className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-36">
-          <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); onStartEdit(); }}>
+        <DropdownMenuContent align="end" sideOffset={5} className="w-36 z-[100]">
+          <DropdownMenuItem onSelect={onStartEdit}>
             <Pencil className="mr-2 h-3.5 w-3.5" />
             Rename
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }}
+            onSelect={onDelete}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="mr-2 h-3.5 w-3.5" />
