@@ -401,44 +401,11 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
                   {isCheckingVersion ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Loader2 className="h-3 w-3 animate-spin" />
-                      Checking for updates...
+                      Checking status...
                     </div>
                   ) : versionInfo && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Version:</span>
-                        <span className="font-mono">{versionInfo.currentVersion || 'Unknown'}</span>
-                      </div>
-                      {versionInfo.updateAvailable && (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <RefreshCw className="h-4 w-4 text-info" />
-                            <span className="text-sm text-info">
-                              Update available: {versionInfo.sourceVersion}
-                            </span>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleUpdate}
-                            disabled={isUpdating}
-                          >
-                            {isUpdating ? (
-                              <>
-                                <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-                                Updating...
-                              </>
-                            ) : (
-                              'Update'
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                      {versionInfo.hasCustomEnv && (
-                        <p className="text-xs text-muted-foreground">
-                          Custom .env file detected (will be preserved on update)
-                        </p>
-                      )}
+                    <div className="text-xs text-muted-foreground">
+                      {versionInfo.isInitialized ? 'Initialized' : 'Not initialized'}
                     </div>
                   )}
                 </div>

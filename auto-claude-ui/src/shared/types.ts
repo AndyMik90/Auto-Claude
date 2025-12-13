@@ -381,18 +381,12 @@ export interface AppSettings {
 // Auto Claude Initialization Types
 export interface AutoBuildVersionInfo {
   isInitialized: boolean;
-  currentVersion?: string;
-  sourceVersion?: string;
-  updateAvailable: boolean;
-  sourcePath?: string;
-  hasCustomEnv?: boolean;
+  updateAvailable: boolean; // Always false - .auto-claude only contains data, no code to update
 }
 
 export interface InitializationResult {
   success: boolean;
   error?: string;
-  version?: string;
-  wasUpdate?: boolean;
 }
 
 // Terminal Types

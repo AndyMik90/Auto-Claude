@@ -55,9 +55,7 @@ import { AgentManager } from './agent-manager';
 import { TerminalManager } from './terminal-manager';
 import {
   initializeProject,
-  updateProject,
-  checkVersion,
-  hasCustomEnv,
+  isInitialized,
   getAutoBuildPath,
   hasLocalSource
 } from './project-initializer';
@@ -199,15 +197,7 @@ export function setupIpcHandlers(
           return { success: false, error: 'Project not found' };
         }
 
-        const sourcePath = getAutoBuildSourcePath();
-        if (!sourcePath) {
-          return {
-            success: false,
-            error: 'Auto-build source path not configured. Please set it in App Settings.'
-          };
-        }
-
-        const result = initializeProject(project.path, sourcePath);
+        const result = initializeProject(project.path);
 
         if (result.success) {
           // Update project's autoBuildPath
@@ -224,6 +214,8 @@ export function setupIpcHandlers(
     }
   );
 
+  // PROJECT_UPDATE_AUTOBUILD is deprecated - .auto-claude only contains data, no code to update
+  // Kept for API compatibility, returns success immediately
   ipcMain.handle(
     IPC_CHANNELS.PROJECT_UPDATE_AUTOBUILD,
     async (_, projectId: string): Promise<IPCResult<InitializationResult>> => {
@@ -233,25 +225,9 @@ export function setupIpcHandlers(
           return { success: false, error: 'Project not found' };
         }
 
-        const sourcePath = getAutoBuildSourcePath();
-        if (!sourcePath) {
-          return {
-            success: false,
-            error: 'Auto-build source path not configured. Please set it in App Settings.'
-          };
-        }
-
-        const result = updateProject(project.path, sourcePath);
-
-        if (result.success) {
-          // Refresh autoBuildPath in case it changed
-          const newPath = getAutoBuildPath(project.path);
-          if (newPath) {
-            projectStore.updateAutoBuildPath(projectId, newPath);
-          }
-        }
-
-        return { success: result.success, data: result, error: result.error };
+        // Nothing to update - .auto-claude only contains data directories
+        // The framework runs from the source repo
+        return { success: true, data: { success: true } };
       } catch (error) {
         return {
           success: false,
@@ -261,6 +237,8 @@ export function setupIpcHandlers(
     }
   );
 
+  // PROJECT_CHECK_VERSION now just checks if project is initialized
+  // Version tracking for .auto-claude is removed since it only contains data
   ipcMain.handle(
     IPC_CHANNELS.PROJECT_CHECK_VERSION,
     async (_, projectId: string): Promise<IPCResult<AutoBuildVersionInfo>> => {
@@ -270,28 +248,13 @@ export function setupIpcHandlers(
           return { success: false, error: 'Project not found' };
         }
 
-        const sourcePath = getAutoBuildSourcePath();
-        if (!sourcePath) {
-          // Return basic info without update check if no source configured
-          const autoBuildPath = getAutoBuildPath(project.path);
-          return {
-            success: true,
-            data: {
-              isInitialized: !!autoBuildPath,
-              updateAvailable: false
-            }
-          };
-        }
-
-        const versionInfo = checkVersion(project.path, sourcePath);
-
-        // Add custom env check if initialized
-        if (versionInfo.isInitialized && project.autoBuildPath) {
-          const autoBuildFullPath = path.join(project.path, project.autoBuildPath);
-          (versionInfo as AutoBuildVersionInfo).hasCustomEnv = hasCustomEnv(autoBuildFullPath);
-        }
-
-        return { success: true, data: versionInfo as AutoBuildVersionInfo };
+        return {
+          success: true,
+          data: {
+            isInitialized: isInitialized(project.path),
+            updateAvailable: false // No updates for .auto-claude - it's just data
+          }
+        };
       } catch (error) {
         return {
           success: false,

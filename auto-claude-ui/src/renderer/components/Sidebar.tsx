@@ -466,66 +466,21 @@ export function Sidebar({
         </DialogContent>
       </Dialog>
 
-      {/* Update Auto Claude Dialog */}
+      {/* Update Auto Claude Dialog - Deprecated, updateAvailable is always false now */}
       <Dialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
-              Update Available
+              Auto Claude
             </DialogTitle>
             <DialogDescription>
-              A newer version of Auto Claude is available for this project.
+              Project is initialized.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
-              {versionInfo?.currentVersion && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current version:</span>
-                  <span className="font-mono">{versionInfo.currentVersion}</span>
-                </div>
-              )}
-              {versionInfo?.sourceVersion && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Available version:</span>
-                  <span className="font-mono text-success">{versionInfo.sourceVersion}</span>
-                </div>
-              )}
-            </div>
-            {versionInfo?.hasCustomEnv && (
-              <div className="mt-4 rounded-lg border border-warning/50 bg-warning/10 p-4 text-sm">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-medium text-warning">Custom .env detected</p>
-                    <p className="text-muted-foreground mt-1">
-                      Your .env file has been customized. It will be preserved during the update.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            <p className="mt-4 text-xs text-muted-foreground">
-              Your specs and .env file will be preserved during the update.
-            </p>
-          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleSkipUpdate} disabled={isInitializing}>
-              Skip
-            </Button>
-            <Button onClick={handleUpdate} disabled={isInitializing}>
-              {isInitializing ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Update Now
-                </>
-              )}
+            <Button variant="outline" onClick={() => setShowUpdateDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
