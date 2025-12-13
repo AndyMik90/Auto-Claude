@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useTaskStore } from '../stores/task-store';
 import { useRoadmapStore } from '../stores/roadmap-store';
-import type { ImplementationPlan, TaskStatus, RoadmapGenerationStatus, Roadmap, ExecutionProgress } from '../../shared/types';
+import { useRateLimitStore } from '../stores/rate-limit-store';
+import type { ImplementationPlan, TaskStatus, RoadmapGenerationStatus, Roadmap, ExecutionProgress, RateLimitInfo } from '../../shared/types';
 
 /**
  * Hook to set up IPC event listeners for task updates
@@ -78,6 +79,20 @@ export function useIpcListeners(): void {
       }
     );
 
+    // Rate limit listener
+    const showRateLimitModal = useRateLimitStore.getState().showRateLimitModal;
+    const cleanupRateLimit = window.electronAPI.onTerminalRateLimit(
+      (info: RateLimitInfo) => {
+        // Convert detectedAt string to Date if needed
+        showRateLimitModal({
+          ...info,
+          detectedAt: typeof info.detectedAt === 'string'
+            ? new Date(info.detectedAt)
+            : info.detectedAt
+        });
+      }
+    );
+
     // Cleanup on unmount
     return () => {
       cleanupProgress();
@@ -88,6 +103,7 @@ export function useIpcListeners(): void {
       cleanupRoadmapProgress();
       cleanupRoadmapComplete();
       cleanupRoadmapError();
+      cleanupRateLimit();
     };
   }, [updateTaskFromPlan, updateTaskStatus, updateExecutionProgress, appendLog, setError]);
 }

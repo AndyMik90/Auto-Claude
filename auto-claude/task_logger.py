@@ -51,6 +51,10 @@ class LogEntry:
     tool_input: Optional[str] = None
     chunk_id: Optional[str] = None
     session: Optional[int] = None
+    # New fields for expandable detail view
+    detail: Optional[str] = None  # Full content that can be expanded (e.g., file contents, command output)
+    subphase: Optional[str] = None  # Subphase grouping (e.g., "PROJECT DISCOVERY", "CONTEXT GATHERING")
+    collapsed: Optional[bool] = None  # Whether to show collapsed by default in UI
 
     def to_dict(self) -> dict:
         """Convert to dictionary, excluding None values."""
@@ -345,6 +349,89 @@ class TaskLogger:
         """Log an info message."""
         self.log(content, LogEntryType.INFO, phase)
 
+    def log_with_detail(
+        self,
+        content: str,
+        detail: str,
+        entry_type: LogEntryType = LogEntryType.TEXT,
+        phase: Optional[LogPhase] = None,
+        subphase: Optional[str] = None,
+        collapsed: bool = True,
+        print_to_console: bool = True
+    ):
+        """
+        Log a message with expandable detail content.
+
+        Args:
+            content: Brief summary shown by default
+            detail: Full content shown when expanded (e.g., file contents, command output)
+            entry_type: Type of entry (text, error, success, info)
+            phase: Optional phase override
+            subphase: Optional subphase grouping (e.g., "PROJECT DISCOVERY")
+            collapsed: Whether detail should be collapsed by default (default True)
+            print_to_console: Whether to print summary to stdout (default True)
+        """
+        phase_key = (phase or self.current_phase or LogPhase.CODING).value
+
+        entry = LogEntry(
+            timestamp=self._timestamp(),
+            type=entry_type.value,
+            content=content,
+            phase=phase_key,
+            chunk_id=self.current_chunk,
+            session=self.current_session,
+            detail=detail,
+            subphase=subphase,
+            collapsed=collapsed
+        )
+        self._add_entry(entry)
+
+        # Emit streaming marker with detail indicator
+        self._emit("TEXT", {
+            "content": content,
+            "phase": phase_key,
+            "type": entry_type.value,
+            "chunk_id": self.current_chunk,
+            "timestamp": self._timestamp(),
+            "has_detail": True,
+            "subphase": subphase
+        })
+
+        if print_to_console:
+            print(content, flush=True)
+
+    def start_subphase(self, subphase: str, phase: Optional[LogPhase] = None, print_to_console: bool = True):
+        """
+        Mark the start of a subphase within the current phase.
+
+        Args:
+            subphase: Name of the subphase (e.g., "PROJECT DISCOVERY", "CONTEXT GATHERING")
+            phase: Optional phase override
+            print_to_console: Whether to print to stdout
+        """
+        phase_key = (phase or self.current_phase or LogPhase.CODING).value
+
+        entry = LogEntry(
+            timestamp=self._timestamp(),
+            type=LogEntryType.INFO.value,
+            content=f"Starting {subphase}",
+            phase=phase_key,
+            chunk_id=self.current_chunk,
+            session=self.current_session,
+            subphase=subphase
+        )
+        self._add_entry(entry)
+
+        # Emit streaming marker
+        self._emit("SUBPHASE_START", {
+            "subphase": subphase,
+            "phase": phase_key,
+            "timestamp": self._timestamp()
+        })
+
+        if print_to_console:
+            print(f"\n--- {subphase} ---", flush=True)
+
     def tool_start(self, tool_name: str, tool_input: Optional[str] = None, phase: Optional[LogPhase] = None, print_to_console: bool = True):
         """
         Log the start of a tool execution.
@@ -384,20 +471,29 @@ class TaskLogger:
         if print_to_console:
             print(f"\n[Tool: {tool_name}]", flush=True)
 
-    def tool_end(self, tool_name: str, success: bool = True, result: Optional[str] = None, phase: Optional[LogPhase] = None, print_to_console: bool = False):
+    def tool_end(
+        self,
+        tool_name: str,
+        success: bool = True,
+        result: Optional[str] = None,
+        detail: Optional[str] = None,
+        phase: Optional[LogPhase] = None,
+        print_to_console: bool = False
+    ):
         """
         Log the end of a tool execution.
 
         Args:
             tool_name: Name of the tool
             success: Whether the tool succeeded
-            result: Optional brief result description
+            result: Optional brief result description (shown in summary)
+            detail: Optional full result content (expandable in UI, e.g., file contents, command output)
             phase: Optional phase override
             print_to_console: Whether to also print to stdout (default False for tool_end)
         """
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
 
-        # Truncate long results
+        # Truncate long results for display
         display_result = result
         if display_result and len(display_result) > 100:
             display_result = display_result[:97] + "..."
@@ -407,6 +503,11 @@ class TaskLogger:
         if display_result:
             content += f": {display_result}"
 
+        # Truncate detail for storage (max 10KB to avoid bloating JSON)
+        stored_detail = detail
+        if stored_detail and len(stored_detail) > 10240:
+            stored_detail = stored_detail[:10240] + "\n\n... [truncated - full output was {} chars]".format(len(detail))
+
         entry = LogEntry(
             timestamp=self._timestamp(),
             type=LogEntryType.TOOL_END.value,
@@ -414,7 +515,9 @@ class TaskLogger:
             phase=phase_key,
             tool_name=tool_name,
             chunk_id=self.current_chunk,
-            session=self.current_session
+            session=self.current_session,
+            detail=stored_detail,
+            collapsed=True
         )
         self._add_entry(entry)
 
@@ -422,13 +525,15 @@ class TaskLogger:
         self._emit("TOOL_END", {
             "name": tool_name,
             "success": success,
-            "phase": phase_key
+            "phase": phase_key,
+            "has_detail": detail is not None
         })
 
-        if result:
-            print(f"   [{status}] {display_result}", flush=True)
-        else:
-            print(f"   [{status}]", flush=True)
+        if print_to_console:
+            if result:
+                print(f"   [{status}] {display_result}", flush=True)
+            else:
+                print(f"   [{status}]", flush=True)
 
     def get_logs(self) -> dict:
         """Get all logs."""
@@ -584,19 +689,20 @@ class StreamingLogCapture:
         self.current_tool = tool_name
         self.logger.tool_start(tool_name, tool_input, phase=self.phase)
 
-    def process_tool_end(self, tool_name: str, success: bool = True, result: Optional[str] = None):
+    def process_tool_end(self, tool_name: str, success: bool = True, result: Optional[str] = None, detail: Optional[str] = None):
         """Process tool end."""
-        self.logger.tool_end(tool_name, success, result, phase=self.phase)
+        self.logger.tool_end(tool_name, success, result, detail=detail, phase=self.phase)
         if self.current_tool == tool_name:
             self.current_tool = None
 
-    def process_message(self, msg, verbose: bool = False):
+    def process_message(self, msg, verbose: bool = False, capture_detail: bool = True):
         """
         Process a message from the Claude SDK stream.
 
         Args:
             msg: Message from client.receive_response()
             verbose: Whether to show detailed tool results
+            capture_detail: Whether to capture full tool output for expandable detail view
         """
         msg_type = type(msg).__name__
 
@@ -641,4 +747,12 @@ class StreamingLogCapture:
                         result_str = None
                         if verbose and result_content:
                             result_str = str(result_content)[:100]
-                        self.process_tool_end(self.current_tool, success=not is_error, result=result_str)
+
+                        # Capture full detail for expandable view
+                        detail_content = None
+                        if capture_detail and self.current_tool in ("Read", "Grep", "Bash", "Edit", "Write"):
+                            full_result = str(result_content)
+                            if len(full_result) < 50000:  # 50KB max
+                                detail_content = full_result
+
+                        self.process_tool_end(self.current_tool, success=not is_error, result=result_str, detail=detail_content)

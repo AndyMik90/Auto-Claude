@@ -1,15 +1,26 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   PanelGroup,
   Panel,
   PanelResizeHandle,
 } from 'react-resizable-panels';
-import { Plus, Sparkles, Grid2X2 } from 'lucide-react';
+import {
+  DndContext,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core';
+import { Plus, Sparkles, Grid2X2, FolderTree, File, Folder } from 'lucide-react';
 import { Terminal } from './Terminal';
 import { Button } from './ui/button';
+import { FileExplorerPanel } from './FileExplorerPanel';
 import { cn } from '../lib/utils';
 import { useTerminalStore } from '../stores/terminal-store';
 import { useTaskStore } from '../stores/task-store';
+import { useFileExplorerStore } from '../stores/file-explorer-store';
 
 interface TerminalGridProps {
   projectPath?: string;
@@ -26,6 +37,26 @@ export function TerminalGrid({ projectPath }: TerminalGridProps) {
 
   // Get tasks from task store for task selection dropdown in terminals
   const tasks = useTaskStore((state) => state.tasks);
+
+  // File explorer state
+  const fileExplorerOpen = useFileExplorerStore((state) => state.isOpen);
+  const toggleFileExplorer = useFileExplorerStore((state) => state.toggle);
+
+  // Setup drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  );
+
+  // Track dragging state for overlay
+  const [activeDragData, setActiveDragData] = React.useState<{
+    path: string;
+    name: string;
+    isDirectory: boolean;
+  } | null>(null);
 
   // Handle keyboard shortcut for new terminal
   useEffect(() => {
@@ -67,6 +98,47 @@ export function TerminalGrid({ projectPath }: TerminalGridProps) {
       }
     });
   }, [terminals, setClaudeMode, projectPath]);
+
+  // Handle drag start - store dragged item data
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const data = event.active.data.current as {
+      type: string;
+      path: string;
+      name: string;
+      isDirectory: boolean;
+    } | undefined;
+
+    if (data?.type === 'file') {
+      setActiveDragData({
+        path: data.path,
+        name: data.name,
+        isDirectory: data.isDirectory
+      });
+    }
+  }, []);
+
+  // Handle drag end - insert file path into terminal
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+
+    setActiveDragData(null);
+
+    if (!over) return;
+
+    // Check if dropped on a terminal
+    const overId = over.id.toString();
+    if (overId.startsWith('terminal-')) {
+      const terminalId = overId.replace('terminal-', '');
+      const data = active.data.current as { path?: string } | undefined;
+
+      if (data?.path) {
+        // Quote the path if it contains spaces
+        const quotedPath = data.path.includes(' ') ? `"${data.path}"` : data.path;
+        // Insert the file path into the terminal with a trailing space
+        window.electronAPI.sendTerminalInput(terminalId, quotedPath + ' ');
+      }
+    }
+  }, []);
 
   // Calculate grid layout based on number of terminals
   const gridLayout = useMemo(() => {
@@ -117,78 +189,113 @@ export function TerminalGrid({ projectPath }: TerminalGridProps) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Toolbar */}
-      <div className="flex h-10 items-center justify-between border-b border-border bg-card/30 px-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">
-            {terminals.length} / 12 terminals
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {terminals.some((t) => t.status === 'running' && !t.isClaudeMode) && (
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex h-full flex-col relative">
+        {/* Toolbar */}
+        <div className="flex h-10 items-center justify-between border-b border-border bg-card/30 px-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              {terminals.length} / 12 terminals
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {terminals.some((t) => t.status === 'running' && !t.isClaudeMode) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={handleInvokeClaudeAll}
+              >
+                <Sparkles className="h-3 w-3" />
+                Invoke Claude All
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
               className="h-7 text-xs gap-1.5"
-              onClick={handleInvokeClaudeAll}
+              onClick={handleAddTerminal}
+              disabled={!canAddTerminal()}
             >
-              <Sparkles className="h-3 w-3" />
-              Invoke Claude All
+              <Plus className="h-3 w-3" />
+              New Terminal
+              <kbd className="ml-1 text-[10px] text-muted-foreground">
+                {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+T
+              </kbd>
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs gap-1.5"
-            onClick={handleAddTerminal}
-            disabled={!canAddTerminal()}
-          >
-            <Plus className="h-3 w-3" />
-            New Terminal
-            <kbd className="ml-1 text-[10px] text-muted-foreground">
-              {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+T
-            </kbd>
-          </Button>
+            {/* File explorer toggle button */}
+            {projectPath && (
+              <Button
+                variant={fileExplorerOpen ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={toggleFileExplorer}
+              >
+                <FolderTree className="h-3 w-3" />
+                Files
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Terminal grid using resizable panels */}
-      <div className="flex-1 overflow-hidden p-2">
-        <PanelGroup direction="vertical" className="h-full">
-          {terminalRows.map((row, rowIndex) => (
-            <div key={rowIndex} className="contents">
-              <Panel id={`row-${rowIndex}`} order={rowIndex} defaultSize={100 / terminalRows.length} minSize={15}>
-                <PanelGroup direction="horizontal" className="h-full">
-                  {row.map((terminal, colIndex) => (
-                    <div key={terminal.id} className="contents">
-                      <Panel id={terminal.id} order={colIndex} defaultSize={100 / row.length} minSize={20}>
-                        <div className="h-full p-1">
-                          <Terminal
-                            id={terminal.id}
-                            cwd={terminal.cwd || projectPath}
-                            projectPath={projectPath}
-                            isActive={terminal.id === activeTerminalId}
-                            onClose={() => handleCloseTerminal(terminal.id)}
-                            onActivate={() => setActiveTerminal(terminal.id)}
-                            tasks={tasks}
-                          />
-                        </div>
-                      </Panel>
-                      {colIndex < row.length - 1 && (
-                        <PanelResizeHandle className="w-1 hover:bg-primary/30 transition-colors" />
-                      )}
-                    </div>
-                  ))}
-                </PanelGroup>
-              </Panel>
-              {rowIndex < terminalRows.length - 1 && (
-                <PanelResizeHandle className="h-1 hover:bg-primary/30 transition-colors" />
+        {/* Terminal grid using resizable panels */}
+        <div className="flex-1 overflow-hidden p-2">
+          <PanelGroup direction="vertical" className="h-full">
+            {terminalRows.map((row, rowIndex) => (
+              <div key={rowIndex} className="contents">
+                <Panel id={`row-${rowIndex}`} order={rowIndex} defaultSize={100 / terminalRows.length} minSize={15}>
+                  <PanelGroup direction="horizontal" className="h-full">
+                    {row.map((terminal, colIndex) => (
+                      <div key={terminal.id} className="contents">
+                        <Panel id={terminal.id} order={colIndex} defaultSize={100 / row.length} minSize={20}>
+                          <div className="h-full p-1">
+                            <Terminal
+                              id={terminal.id}
+                              cwd={terminal.cwd || projectPath}
+                              projectPath={projectPath}
+                              isActive={terminal.id === activeTerminalId}
+                              onClose={() => handleCloseTerminal(terminal.id)}
+                              onActivate={() => setActiveTerminal(terminal.id)}
+                              tasks={tasks}
+                            />
+                          </div>
+                        </Panel>
+                        {colIndex < row.length - 1 && (
+                          <PanelResizeHandle className="w-1 hover:bg-primary/30 transition-colors" />
+                        )}
+                      </div>
+                    ))}
+                  </PanelGroup>
+                </Panel>
+                {rowIndex < terminalRows.length - 1 && (
+                  <PanelResizeHandle className="h-1 hover:bg-primary/30 transition-colors" />
+                )}
+              </div>
+            ))}
+          </PanelGroup>
+        </div>
+
+        {/* File explorer panel (slides from right) */}
+        {projectPath && <FileExplorerPanel projectPath={projectPath} />}
+
+        {/* Drag overlay - shows what's being dragged */}
+        <DragOverlay>
+          {activeDragData && (
+            <div className="flex items-center gap-2 bg-card border border-border rounded-md px-3 py-2 shadow-lg">
+              {activeDragData.isDirectory ? (
+                <Folder className="h-4 w-4 text-warning" />
+              ) : (
+                <File className="h-4 w-4 text-muted-foreground" />
               )}
+              <span className="text-sm">{activeDragData.name}</span>
             </div>
-          ))}
-        </PanelGroup>
+          )}
+        </DragOverlay>
       </div>
-    </div>
+    </DndContext>
   );
 }

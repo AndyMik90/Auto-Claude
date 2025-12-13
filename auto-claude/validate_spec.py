@@ -49,8 +49,8 @@ IMPLEMENTATION_PLAN_SCHEMA = {
     },
     "verification_schema": {
         "required_fields": ["type"],
-        "optional_fields": ["run", "url", "method", "expect_status", "expect_contains", "scenario"],
-        "verification_types": ["command", "api", "browser", "component", "manual", "none"],
+        "optional_fields": ["run", "url", "method", "expect_status", "expect_contains", "scenario", "steps"],
+        "verification_types": ["command", "api", "browser", "component", "manual", "none", "e2e"],
     },
 }
 

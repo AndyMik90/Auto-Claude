@@ -634,37 +634,29 @@ git commit -m "auto-claude: Add progress tracking"
 
 ---
 
-## PHASE 8: OPTIONAL - BEGIN PHASE 1
-
-If you have context remaining:
-
-1. Run `init.sh`
-2. Pick first chunk in Phase 1
-3. Follow patterns from context.json
-4. Implement the chunk
-5. Run verification
-6. Mark chunk as "completed" if verified
-7. Commit with clear message
-8. Move to next chunk
-
-**Critical**: Only work on chunks where dependencies are satisfied!
-
----
-
 ## ENDING THIS SESSION
 
-Before your context fills up:
+**IMPORTANT: Your job is PLANNING ONLY - do NOT implement any code!**
 
-1. **Commit all work**
-2. **Ensure implementation_plan.json is complete**
-3. **Leave clean state** - no broken code
+Your session ends after:
+1. **Creating implementation_plan.json** - the complete chunk-based plan
+2. **Creating/updating context files** - project_index.json, context.json
+3. **Creating init.sh** - the setup script
+4. **Creating build-progress.txt** - progress tracking document
+5. **Committing all planning files**
+
+**STOP HERE. Do NOT:**
+- Start implementing any chunks
+- Run init.sh to start services
+- Modify any source code files
+- Update chunk statuses to "in_progress" or "completed"
 
 **NOTE**: Do NOT push to remote. All work stays local until user reviews and approves.
 
-The next agent will:
+A SEPARATE coder agent will:
 1. Read `implementation_plan.json` for chunk list
 2. Find next pending chunk (respecting dependencies)
-3. Continue from where you left off
+3. Implement the actual code changes
 
 ---
 
@@ -732,6 +724,12 @@ If you skipped investigation, your plan will:
 
 ## BEGIN
 
+**Your scope: PLANNING ONLY. Do NOT implement any code.**
+
 1. First, complete PHASE 0 (Deep Codebase Investigation)
 2. Then, read/create the context files in PHASE 1
-3. Finally, create implementation_plan.json based on your findings
+3. Create implementation_plan.json based on your findings
+4. Create init.sh and build-progress.txt
+5. Commit planning files and **STOP**
+
+The coder agent will handle implementation in a separate session.

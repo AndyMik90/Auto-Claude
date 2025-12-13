@@ -28,7 +28,9 @@ import { Ideation } from './components/Ideation';
 import { Insights } from './components/Insights';
 import { GitHubIssues } from './components/GitHubIssues';
 import { Changelog } from './components/Changelog';
+import { Worktrees } from './components/Worktrees';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { RateLimitModal } from './components/RateLimitModal';
 import { useProjectStore, loadProjects, addProject, initializeProject } from './stores/project-store';
 import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings } from './stores/settings-store';
@@ -264,6 +266,9 @@ export function App() {
                 {activeView === 'changelog' && selectedProjectId && (
                   <Changelog />
                 )}
+                {activeView === 'worktrees' && selectedProjectId && (
+                  <Worktrees projectId={selectedProjectId} />
+                )}
                 {activeView === 'agent-tools' && (
                   <div className="flex h-full items-center justify-center">
                     <div className="text-center">
@@ -371,6 +376,9 @@ export function App() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Rate Limit Modal - shows when Claude Code hits usage limits */}
+        <RateLimitModal />
       </div>
     </TooltipProvider>
   );

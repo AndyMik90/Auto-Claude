@@ -817,13 +817,14 @@ async def run_agent_session(
                         if "blocked" in str(result_content).lower():
                             print(f"   [BLOCKED] {result_content}", flush=True)
                             if task_logger and current_tool:
-                                task_logger.tool_end(current_tool, success=False, result="BLOCKED", phase=phase)
+                                task_logger.tool_end(current_tool, success=False, result="BLOCKED", detail=str(result_content), phase=phase)
                         elif is_error:
                             # Show errors (truncated)
                             error_str = str(result_content)[:500]
                             print(f"   [Error] {error_str}", flush=True)
                             if task_logger and current_tool:
-                                task_logger.tool_end(current_tool, success=False, result=error_str[:100], phase=phase)
+                                # Store full error in detail for expandable view
+                                task_logger.tool_end(current_tool, success=False, result=error_str[:100], detail=str(result_content), phase=phase)
                         else:
                             # Tool succeeded
                             if verbose:
@@ -832,7 +833,15 @@ async def run_agent_session(
                             else:
                                 print("   [Done]", flush=True)
                             if task_logger and current_tool:
-                                task_logger.tool_end(current_tool, success=True, phase=phase)
+                                # Store full result in detail for expandable view (only for certain tools)
+                                # Skip storing for very large outputs like Glob results
+                                detail_content = None
+                                if current_tool in ("Read", "Grep", "Bash", "Edit", "Write"):
+                                    result_str = str(result_content)
+                                    # Only store if not too large (detail truncation happens in logger)
+                                    if len(result_str) < 50000:  # 50KB max before truncation
+                                        detail_content = result_str
+                                task_logger.tool_end(current_tool, success=True, detail=detail_content, phase=phase)
 
                         current_tool = None
 

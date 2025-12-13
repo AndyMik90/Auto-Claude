@@ -70,7 +70,7 @@ import { insightsService } from './insights-service';
 import { taskLogService } from './task-log-service';
 import { titleGenerator } from './title-generator';
 import { PythonEnvManager, PythonEnvStatus } from './python-env-manager';
-import type { AutoBuildSourceUpdateProgress, InsightsSession, InsightsSessionSummary, InsightsChatStatus, InsightsStreamChunk, TaskLogs, TaskLogStreamChunk } from '../shared/types';
+import type { AutoBuildSourceUpdateProgress, InsightsSession, InsightsSessionSummary, InsightsChatStatus, InsightsStreamChunk, TaskLogs, TaskLogStreamChunk, FileNode } from '../shared/types';
 
 /**
  * Setup all IPC handlers
@@ -6091,6 +6091,56 @@ ${idea.rationale}
         return { success: true };
       }
       return { success: false, error: 'Failed to rename session' };
+    }
+  );
+
+  // ============================================
+  // File Explorer Operations
+  // ============================================
+
+  // Directories to ignore when listing
+  const IGNORED_DIRS = new Set([
+    'node_modules', '.git', '__pycache__', 'dist', 'build',
+    '.next', '.nuxt', 'coverage', '.cache', '.venv', 'venv',
+    '.idea', '.vscode', 'out', '.turbo', '.auto-claude',
+    '.worktrees', 'vendor', 'target', '.gradle', '.maven'
+  ]);
+
+  ipcMain.handle(
+    IPC_CHANNELS.FILE_EXPLORER_LIST,
+    async (_, dirPath: string): Promise<IPCResult<FileNode[]>> => {
+      try {
+        const entries = readdirSync(dirPath, { withFileTypes: true });
+
+        // Filter and map entries
+        const nodes: FileNode[] = [];
+        for (const entry of entries) {
+          // Skip hidden files (except .env which is often useful)
+          if (entry.name.startsWith('.') && entry.name !== '.env') continue;
+          // Skip ignored directories
+          if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
+
+          nodes.push({
+            path: path.join(dirPath, entry.name),
+            name: entry.name,
+            isDirectory: entry.isDirectory()
+          });
+        }
+
+        // Sort: directories first, then alphabetically
+        nodes.sort((a, b) => {
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        });
+
+        return { success: true, data: nodes };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to read directory'
+        };
+      }
     }
   );
 

@@ -95,6 +95,10 @@ export interface TaskLogEntry {
   tool_input?: string;
   chunk_id?: string;
   session?: number;
+  // Fields for expandable detail view
+  detail?: string;  // Full content that can be expanded (e.g., file contents, command output)
+  subphase?: string;  // Subphase grouping (e.g., "PROJECT DISCOVERY", "CONTEXT GATHERING")
+  collapsed?: boolean;  // Whether to show collapsed by default in UI
 }
 
 export interface TaskPhaseLog {
@@ -431,6 +435,15 @@ export interface TerminalRestoreResult {
   terminalId: string;
   outputBuffer?: string;  // For replay in UI
   error?: string;
+}
+
+/**
+ * Rate limit information when Claude Code hits subscription limits
+ */
+export interface RateLimitInfo {
+  terminalId: string;
+  resetTime: string;  // e.g., "Dec 17 at 6am (Europe/Oslo)"
+  detectedAt: Date;
 }
 
 // ============================================
@@ -1258,6 +1271,16 @@ export interface AutoBuildSourceUpdateProgress {
   message: string;
 }
 
+// ============================================
+// File Explorer Types
+// ============================================
+
+export interface FileNode {
+  path: string;
+  name: string;
+  isDirectory: boolean;
+}
+
 // Electron API exposed via contextBridge
 export interface ElectronAPI {
   // Project operations
@@ -1318,6 +1341,7 @@ export interface ElectronAPI {
   onTerminalExit: (callback: (id: string, exitCode: number) => void) => () => void;
   onTerminalTitleChange: (callback: (id: string, title: string) => void) => () => void;
   onTerminalClaudeSession: (callback: (id: string, sessionId: string) => void) => () => void;
+  onTerminalRateLimit: (callback: (info: RateLimitInfo) => void) => () => void;
 
   // App settings
   getSettings: () => Promise<IPCResult<AppSettings>>;
@@ -1519,6 +1543,9 @@ export interface ElectronAPI {
   onTaskLogsStream: (
     callback: (specId: string, chunk: TaskLogStreamChunk) => void
   ) => () => void;
+
+  // File explorer operations
+  listDirectory: (dirPath: string) => Promise<IPCResult<FileNode[]>>;
 }
 
 declare global {

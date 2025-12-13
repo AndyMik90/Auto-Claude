@@ -2,8 +2,9 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { useDroppable } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
-import { X, Sparkles, TerminalSquare, ListTodo } from 'lucide-react';
+import { X, Sparkles, TerminalSquare, ListTodo, FileDown } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import { useTerminalStore, type TerminalStatus } from '../stores/terminal-store';
@@ -50,7 +51,6 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
   const terminal = useTerminalStore((state) => state.terminals.find((t) => t.id === id));
   const setTerminalStatus = useTerminalStore((state) => state.setTerminalStatus);
   const setClaudeMode = useTerminalStore((state) => state.setClaudeMode);
-  const setClaudeSessionId = useTerminalStore((state) => state.setClaudeSessionId);
   const updateTerminal = useTerminalStore((state) => state.updateTerminal);
   const setAssociatedTask = useTerminalStore((state) => state.setAssociatedTask);
 
@@ -61,8 +61,12 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
   const associatedTask = terminal?.associatedTaskId
     ? tasks.find((t) => t.id === terminal.associatedTaskId)
     : undefined;
-  const appendOutput = useTerminalStore((state) => state.appendOutput);
-  const clearOutputBuffer = useTerminalStore((state) => state.clearOutputBuffer);
+
+  // Setup drop zone for file drag-and-drop
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `terminal-${id}`,
+    data: { type: 'terminal', terminalId: id }
+  });
 
   // Initialize xterm.js UI (separate from PTY creation)
   useEffect(() => {
@@ -228,11 +232,14 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
   }, [id, cwd, projectPath, setTerminalStatus, updateTerminal]);
 
   // Handle terminal output from main process
+  // Note: We intentionally exclude appendOutput from deps - store actions are stable
+  // and including them can cause listener accumulation during rapid state updates
   useEffect(() => {
     const cleanup = window.electronAPI.onTerminalOutput((terminalId, data) => {
       if (terminalId === id) {
         // Store output in buffer for replay on remount
-        appendOutput(id, data);
+        // Use getState() to avoid stale closure issues
+        useTerminalStore.getState().appendOutput(id, data);
         // Write to xterm if available
         if (xtermRef.current) {
           xtermRef.current.write(data);
@@ -241,14 +248,14 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
     });
 
     return cleanup;
-  }, [id, appendOutput]);
+  }, [id]);
 
   // Handle terminal exit
   useEffect(() => {
     const cleanup = window.electronAPI.onTerminalExit((terminalId, exitCode) => {
       if (terminalId === id) {
         isCreatedRef.current = false;
-        setTerminalStatus(id, 'exited');
+        useTerminalStore.getState().setTerminalStatus(id, 'exited');
         if (xtermRef.current) {
           xtermRef.current.writeln(`\r\n\x1b[90mProcess exited with code ${exitCode}\x1b[0m`);
         }
@@ -256,30 +263,30 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
     });
 
     return cleanup;
-  }, [id, setTerminalStatus]);
+  }, [id]);
 
   // Handle terminal title change
   useEffect(() => {
     const cleanup = window.electronAPI.onTerminalTitleChange((terminalId, title) => {
       if (terminalId === id) {
-        updateTerminal(id, { title });
+        useTerminalStore.getState().updateTerminal(id, { title });
       }
     });
 
     return cleanup;
-  }, [id, updateTerminal]);
+  }, [id]);
 
   // Handle Claude session ID capture
   useEffect(() => {
     const cleanup = window.electronAPI.onTerminalClaudeSession((terminalId, sessionId) => {
       if (terminalId === id) {
-        setClaudeSessionId(id, sessionId);
+        useTerminalStore.getState().setClaudeSessionId(id, sessionId);
         console.log('[Terminal] Captured Claude session ID:', sessionId);
       }
     });
 
     return cleanup;
-  }, [id, setClaudeSessionId]);
+  }, [id]);
 
   // Handle resize on container resize
   useEffect(() => {
@@ -365,12 +372,23 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
 
   return (
     <div
+      ref={setDropRef}
       className={cn(
-        'flex h-full flex-col rounded-lg border bg-[#0B0B0F] overflow-hidden transition-all',
-        isActive ? 'border-primary ring-1 ring-primary/20' : 'border-border'
+        'flex h-full flex-col rounded-lg border bg-[#0B0B0F] overflow-hidden transition-all relative',
+        isActive ? 'border-primary ring-1 ring-primary/20' : 'border-border',
+        isOver && 'ring-2 ring-info border-info'
       )}
       onClick={handleClick}
     >
+      {/* Drop zone overlay indicator */}
+      {isOver && (
+        <div className="absolute inset-0 bg-info/10 z-10 flex items-center justify-center pointer-events-none">
+          <div className="flex items-center gap-2 bg-info/90 text-info-foreground px-3 py-2 rounded-md">
+            <FileDown className="h-4 w-4" />
+            <span className="text-sm font-medium">Drop to insert path</span>
+          </div>
+        </div>
+      )}
       {/* Terminal header */}
       <div className="electron-no-drag flex h-9 items-center justify-between border-b border-border/50 bg-card/30 px-2">
         <div className="flex items-center gap-2">

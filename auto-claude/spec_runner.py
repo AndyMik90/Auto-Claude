@@ -681,8 +681,15 @@ class SpecOrchestrator:
                             block_type = type(block).__name__
                             if block_type == "ToolResultBlock":
                                 is_error = getattr(block, "is_error", False)
+                                result_content = getattr(block, "content", "")
                                 if task_logger and current_tool:
-                                    task_logger.tool_end(current_tool, success=not is_error, phase=LogPhase.PLANNING)
+                                    # Store full result in detail for expandable view
+                                    detail_content = None
+                                    if current_tool in ("Read", "Grep", "Bash", "Edit", "Write"):
+                                        result_str = str(result_content)
+                                        if len(result_str) < 50000:
+                                            detail_content = result_str
+                                    task_logger.tool_end(current_tool, success=not is_error, detail=detail_content, phase=LogPhase.PLANNING)
                                 current_tool = None
 
                 print()

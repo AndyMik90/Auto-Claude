@@ -16,7 +16,8 @@ import {
   RefreshCw,
   Github,
   FileText,
-  Sparkles
+  Sparkles,
+  GitBranch
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -54,7 +55,7 @@ import {
 import { useSettingsStore, saveSettings } from '../stores/settings-store';
 import type { Project, AutoBuildVersionInfo } from '../../shared/types';
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights';
+export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees';
 
 interface SidebarProps {
   onSettingsClick: () => void;
@@ -81,7 +82,8 @@ const projectNavItems: NavItem[] = [
 ];
 
 const toolsNavItems: NavItem[] = [
-  { id: 'github-issues', label: 'GitHub Issues', icon: Github, shortcut: 'G' }
+  { id: 'github-issues', label: 'GitHub Issues', icon: Github, shortcut: 'G' },
+  { id: 'worktrees', label: 'Worktrees', icon: GitBranch, shortcut: 'W' }
 ];
 
 export function Sidebar({

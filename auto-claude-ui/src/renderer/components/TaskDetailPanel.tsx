@@ -1510,12 +1510,15 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle }: PhaseLogSect
   );
 }
 
-// Log Entry Component
+// Log Entry Component with expandable detail support
 interface LogEntryProps {
   entry: TaskLogEntry;
 }
 
 function LogEntry({ entry }: LogEntryProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hasDetail = Boolean(entry.detail);
+
   const getToolInfo = (toolName: string) => {
     switch (toolName) {
       case 'Read':
@@ -1545,17 +1548,67 @@ function LogEntry({ entry }: LogEntryProps) {
     }
   };
 
+  // Expandable detail section component
+  const DetailSection = () => {
+    if (!hasDetail) return null;
+    return (
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <CollapsibleTrigger asChild>
+          <button
+            className={cn(
+              'ml-auto flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded',
+              'text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors',
+              isExpanded && 'bg-secondary/50'
+            )}
+          >
+            {isExpanded ? (
+              <>
+                <ChevronDown className="h-2.5 w-2.5" />
+                <span>Hide details</span>
+              </>
+            ) : (
+              <>
+                <ChevronRight className="h-2.5 w-2.5" />
+                <span>Show details</span>
+              </>
+            )}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-1.5 p-2 bg-secondary/30 rounded-md border border-border/50 overflow-x-auto">
+            <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap break-words font-mono max-h-[300px] overflow-y-auto">
+              {entry.detail}
+            </pre>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
+  // Subphase indicator badge
+  const SubphaseBadge = () => {
+    if (!entry.subphase) return null;
+    return (
+      <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1 text-muted-foreground border-muted-foreground/30">
+        {entry.subphase}
+      </Badge>
+    );
+  };
+
   if (entry.type === 'tool_start' && entry.tool_name) {
     const { icon: Icon, label, color } = getToolInfo(entry.tool_name);
     return (
-      <div className={cn('inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs', color)}>
-        <Icon className="h-3 w-3 animate-pulse" />
-        <span className="font-medium">{label}</span>
-        {entry.tool_input && (
-          <span className="text-muted-foreground truncate max-w-[200px]" title={entry.tool_input}>
-            {entry.tool_input}
-          </span>
-        )}
+      <div className="flex flex-col">
+        <div className={cn('inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs', color)}>
+          <Icon className="h-3 w-3 animate-pulse" />
+          <span className="font-medium">{label}</span>
+          {entry.tool_input && (
+            <span className="text-muted-foreground truncate max-w-[200px]" title={entry.tool_input}>
+              {entry.tool_input}
+            </span>
+          )}
+          <SubphaseBadge />
+        </div>
       </div>
     );
   }
@@ -1563,48 +1616,135 @@ function LogEntry({ entry }: LogEntryProps) {
   if (entry.type === 'tool_end' && entry.tool_name) {
     const { icon: Icon, color } = getToolInfo(entry.tool_name);
     return (
-      <div className={cn('inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs', color, 'opacity-60')}>
-        <Icon className="h-3 w-3" />
-        <CheckCircle2 className="h-3 w-3 text-success" />
-        <span className="text-muted-foreground">Done</span>
+      <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <div className={cn('inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs', color, 'opacity-60')}>
+            <Icon className="h-3 w-3" />
+            <CheckCircle2 className="h-3 w-3 text-success" />
+            <span className="text-muted-foreground">Done</span>
+          </div>
+          {hasDetail && (
+            <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+              <CollapsibleTrigger asChild>
+                <button
+                  className={cn(
+                    'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded',
+                    'text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors',
+                    isExpanded && 'bg-secondary/50'
+                  )}
+                >
+                  {isExpanded ? (
+                    <>
+                      <ChevronDown className="h-2.5 w-2.5" />
+                      <span>Hide output</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronRight className="h-2.5 w-2.5" />
+                      <span>Show output</span>
+                    </>
+                  )}
+                </button>
+              </CollapsibleTrigger>
+            </Collapsible>
+          )}
+        </div>
+        {hasDetail && isExpanded && (
+          <div className="mt-1.5 ml-4 p-2 bg-secondary/30 rounded-md border border-border/50 overflow-x-auto">
+            <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap break-words font-mono max-h-[300px] overflow-y-auto">
+              {entry.detail}
+            </pre>
+          </div>
+        )}
       </div>
     );
   }
 
   if (entry.type === 'error') {
     return (
-      <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 rounded-md px-2 py-1">
-        <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
-        <span className="break-words">{entry.content}</span>
+      <div className="flex flex-col">
+        <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 rounded-md px-2 py-1">
+          <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
+          <span className="break-words flex-1">{entry.content}</span>
+          <SubphaseBadge />
+          {hasDetail && <DetailSection />}
+        </div>
+        {hasDetail && isExpanded && (
+          <div className="mt-1.5 ml-4 p-2 bg-destructive/5 rounded-md border border-destructive/20 overflow-x-auto">
+            <pre className="text-[10px] text-destructive/80 whitespace-pre-wrap break-words font-mono max-h-[300px] overflow-y-auto">
+              {entry.detail}
+            </pre>
+          </div>
+        )}
       </div>
     );
   }
 
   if (entry.type === 'success') {
     return (
-      <div className="flex items-start gap-2 text-xs text-success bg-success/10 rounded-md px-2 py-1">
-        <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0" />
-        <span className="break-words">{entry.content}</span>
+      <div className="flex flex-col">
+        <div className="flex items-start gap-2 text-xs text-success bg-success/10 rounded-md px-2 py-1">
+          <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0" />
+          <span className="break-words flex-1">{entry.content}</span>
+          <SubphaseBadge />
+        </div>
+        {hasDetail && <DetailSection />}
       </div>
     );
   }
 
   if (entry.type === 'info') {
     return (
-      <div className="flex items-start gap-2 text-xs text-info bg-info/10 rounded-md px-2 py-1">
-        <Info className="h-3 w-3 mt-0.5 shrink-0" />
-        <span className="break-words">{entry.content}</span>
+      <div className="flex flex-col">
+        <div className="flex items-start gap-2 text-xs text-info bg-info/10 rounded-md px-2 py-1">
+          <Info className="h-3 w-3 mt-0.5 shrink-0" />
+          <span className="break-words flex-1">{entry.content}</span>
+          <SubphaseBadge />
+        </div>
+        {hasDetail && <DetailSection />}
       </div>
     );
   }
 
-  // Default text entry
+  // Default text entry with expandable detail
   return (
-    <div className="flex items-start gap-2 text-xs text-muted-foreground py-0.5">
-      <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">
-        {formatTime(entry.timestamp)}
-      </span>
-      <span className="break-words whitespace-pre-wrap">{entry.content}</span>
+    <div className="flex flex-col">
+      <div className="flex items-start gap-2 text-xs text-muted-foreground py-0.5">
+        <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">
+          {formatTime(entry.timestamp)}
+        </span>
+        <span className="break-words whitespace-pre-wrap flex-1">{entry.content}</span>
+        <SubphaseBadge />
+        {hasDetail && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className={cn(
+              'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded shrink-0',
+              'text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors',
+              isExpanded && 'bg-secondary/50'
+            )}
+          >
+            {isExpanded ? (
+              <>
+                <ChevronDown className="h-2.5 w-2.5" />
+                <span>Less</span>
+              </>
+            ) : (
+              <>
+                <ChevronRight className="h-2.5 w-2.5" />
+                <span>More</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+      {hasDetail && isExpanded && (
+        <div className="mt-1.5 ml-12 p-2 bg-secondary/30 rounded-md border border-border/50 overflow-x-auto">
+          <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap break-words font-mono max-h-[300px] overflow-y-auto">
+            {entry.detail}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }

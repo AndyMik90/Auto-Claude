@@ -183,6 +183,7 @@ export const IPC_CHANNELS = {
   TERMINAL_EXIT: 'terminal:exit',
   TERMINAL_TITLE_CHANGE: 'terminal:titleChange',
   TERMINAL_CLAUDE_SESSION: 'terminal:claudeSession',  // Claude session ID captured
+  TERMINAL_RATE_LIMIT: 'terminal:rateLimit',  // Claude Code rate limit detected
 
   // Settings
   SETTINGS_GET: 'settings:get',
@@ -294,7 +295,10 @@ export const IPC_CHANNELS = {
   // Insights events (main -> renderer)
   INSIGHTS_STREAM_CHUNK: 'insights:streamChunk',
   INSIGHTS_STATUS: 'insights:status',
-  INSIGHTS_ERROR: 'insights:error'
+  INSIGHTS_ERROR: 'insights:error',
+
+  // File explorer operations
+  FILE_EXPLORER_LIST: 'fileExplorer:list'
 } as const;
 
 // File paths relative to project

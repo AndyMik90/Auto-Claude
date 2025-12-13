@@ -3,13 +3,101 @@ import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/constants';
 import type { TerminalCreateOptions } from '../shared/types';
 import * as os from 'os';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
 import { getTerminalSessionStore, type TerminalSession } from './terminal-session-store';
+
+/**
+ * Get the Claude project slug from a project path.
+ * Claude uses a hash-based slug for project directories.
+ */
+function getClaudeProjectSlug(projectPath: string): string {
+  // Claude uses the absolute path to create a slug
+  // Format: {basename}-{hash of full path}
+  const basename = path.basename(projectPath);
+  const hash = crypto.createHash('sha256').update(projectPath).digest('hex').slice(0, 8);
+  return `${basename}-${hash}`;
+}
+
+/**
+ * Find the most recent Claude session file for a project.
+ * Returns the session ID (filename without .jsonl extension) or null if not found.
+ */
+function findMostRecentClaudeSession(projectPath: string): string | null {
+  const slug = getClaudeProjectSlug(projectPath);
+  const claudeProjectDir = path.join(os.homedir(), '.claude', 'projects', slug);
+
+  try {
+    if (!fs.existsSync(claudeProjectDir)) {
+      console.log('[TerminalManager] Claude project directory not found:', claudeProjectDir);
+      return null;
+    }
+
+    const files = fs.readdirSync(claudeProjectDir)
+      .filter(f => f.endsWith('.jsonl'))
+      .map(f => ({
+        name: f,
+        path: path.join(claudeProjectDir, f),
+        mtime: fs.statSync(path.join(claudeProjectDir, f)).mtime.getTime()
+      }))
+      .sort((a, b) => b.mtime - a.mtime);  // Most recent first
+
+    if (files.length === 0) {
+      console.log('[TerminalManager] No Claude session files found in:', claudeProjectDir);
+      return null;
+    }
+
+    // Return session ID (filename without .jsonl)
+    const sessionId = files[0].name.replace('.jsonl', '');
+    console.log('[TerminalManager] Found most recent Claude session:', sessionId);
+    return sessionId;
+  } catch (error) {
+    console.error('[TerminalManager] Error finding Claude session:', error);
+    return null;
+  }
+}
+
+/**
+ * Find a Claude session that was created/modified after a given timestamp.
+ * This helps us find the session that was just started.
+ */
+function findClaudeSessionAfter(projectPath: string, afterTimestamp: number): string | null {
+  const slug = getClaudeProjectSlug(projectPath);
+  const claudeProjectDir = path.join(os.homedir(), '.claude', 'projects', slug);
+
+  try {
+    if (!fs.existsSync(claudeProjectDir)) {
+      return null;
+    }
+
+    const files = fs.readdirSync(claudeProjectDir)
+      .filter(f => f.endsWith('.jsonl'))
+      .map(f => ({
+        name: f,
+        path: path.join(claudeProjectDir, f),
+        mtime: fs.statSync(path.join(claudeProjectDir, f)).mtime.getTime()
+      }))
+      .filter(f => f.mtime > afterTimestamp)
+      .sort((a, b) => b.mtime - a.mtime);
+
+    if (files.length === 0) {
+      return null;
+    }
+
+    return files[0].name.replace('.jsonl', '');
+  } catch (error) {
+    console.error('[TerminalManager] Error finding Claude session:', error);
+    return null;
+  }
+}
 
 interface TerminalProcess {
   id: string;
   pty: pty.IPty;
   isClaudeMode: boolean;
   projectPath?: string;
+  cwd: string;  // Working directory for the terminal
   claudeSessionId?: string;
   outputBuffer: string;  // Track output for session persistence
   title: string;
@@ -28,10 +116,16 @@ const CLAUDE_SESSION_PATTERNS = [
   /conversation[_-]?id["\s:=]+([a-zA-Z0-9_-]+)/i,
 ];
 
+// Regex pattern to detect Claude Code rate limit messages
+// Matches: "Limit reached · resets Dec 17 at 6am (Europe/Oslo)"
+const RATE_LIMIT_PATTERN = /Limit reached\s*[·•]\s*resets\s+(.+?)$/m;
+
 export class TerminalManager {
   private terminals: Map<string, TerminalProcess> = new Map();
   private getWindow: () => BrowserWindow | null;
   private saveTimer: NodeJS.Timeout | null = null;
+  // Track rate limit notifications per terminal to avoid spamming (reset after 60 seconds)
+  private rateLimitNotifiedAt: Map<string, number> = new Map();
 
   constructor(getWindow: () => BrowserWindow | null) {
     this.getWindow = getWindow;
@@ -53,7 +147,7 @@ export class TerminalManager {
         const session: TerminalSession = {
           id: terminal.id,
           title: terminal.title,
-          cwd: '', // Will be set from options
+          cwd: terminal.cwd,  // Use the terminal's working directory
           projectPath: terminal.projectPath,
           isClaudeMode: terminal.isClaudeMode,
           claudeSessionId: terminal.claudeSessionId,
@@ -120,12 +214,14 @@ export class TerminalManager {
 
       console.log('[TerminalManager] PTY process spawned, pid:', ptyProcess.pid);
 
-      // Store the terminal
+      // Store the terminal with its working directory
+      const terminalCwd = cwd || os.homedir();
       const terminal: TerminalProcess = {
         id,
         pty: ptyProcess,
         isClaudeMode: false,
         projectPath,
+        cwd: terminalCwd,
         outputBuffer: '',
         title: `Terminal ${this.terminals.size + 1}`
       };
@@ -153,6 +249,31 @@ export class TerminalManager {
             const win = this.getWindow();
             if (win) {
               win.webContents.send(IPC_CHANNELS.TERMINAL_CLAUDE_SESSION, id, sessionId);
+            }
+          }
+        }
+
+        // Check for rate limit messages
+        if (terminal.isClaudeMode) {
+          const rateLimitMatch = data.match(RATE_LIMIT_PATTERN);
+          if (rateLimitMatch) {
+            const resetTime = rateLimitMatch[1].trim();
+            const now = Date.now();
+            const lastNotified = this.rateLimitNotifiedAt.get(id) || 0;
+
+            // Only notify once per 60 seconds to avoid spamming
+            if (now - lastNotified > 60000) {
+              this.rateLimitNotifiedAt.set(id, now);
+              console.log('[TerminalManager] Rate limit detected, reset:', resetTime);
+
+              const win = this.getWindow();
+              if (win) {
+                win.webContents.send(IPC_CHANNELS.TERMINAL_RATE_LIMIT, {
+                  terminalId: id,
+                  resetTime,
+                  detectedAt: new Date().toISOString()
+                });
+              }
             }
           }
         }
@@ -235,22 +356,29 @@ export class TerminalManager {
 
     // If it was a Claude session, try to resume
     if (session.isClaudeMode) {
-      // Wait a bit for shell to initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for shell to fully initialize (shell frameworks like oh-my-zsh need time)
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       terminal.isClaudeMode = true;
       terminal.claudeSessionId = session.claudeSessionId;
 
-      // Build the resume command
+      // Build the resume command - always cd to the project directory first
+      // because Claude sessions are stored per-project in ~/.claude/projects/{project-slug}/
+      const projectDir = session.cwd || session.projectPath;
+      const startTime = Date.now();
       let resumeCommand: string;
+
       if (session.claudeSessionId) {
-        // Resume specific session
-        resumeCommand = `claude --resume "${session.claudeSessionId}"`;
-        console.log('[TerminalManager] Resuming Claude with session ID:', session.claudeSessionId);
+        // Resume specific session with explicit directory
+        // Clear screen first to avoid mixing old output replay with new session
+        resumeCommand = `clear && cd "${projectDir}" && claude --resume "${session.claudeSessionId}"`;
+        console.log('[TerminalManager] Resuming Claude with session ID:', session.claudeSessionId, 'in', projectDir);
       } else {
-        // Continue most recent session in that directory
-        resumeCommand = 'claude --continue';
-        console.log('[TerminalManager] Continuing most recent Claude session');
+        // No specific session ID - use --resume to show session picker
+        // This lets user choose which session to resume for this terminal
+        // (Using --continue would resume the same session in all terminals)
+        resumeCommand = `clear && cd "${projectDir}" && claude --resume`;
+        console.log('[TerminalManager] Opening Claude session picker in', projectDir);
       }
 
       terminal.pty.write(`${resumeCommand}\r`);
@@ -259,6 +387,11 @@ export class TerminalManager {
       const win = this.getWindow();
       if (win) {
         win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, session.id, 'Claude');
+      }
+
+      // If we don't have a session ID, try to capture it after user selects from picker
+      if (!session.claudeSessionId && projectDir) {
+        this.captureClaudeSessionId(session.id, projectDir, startTime);
       }
     }
 
@@ -322,7 +455,11 @@ export class TerminalManager {
     const terminal = this.terminals.get(id);
     if (terminal) {
       terminal.isClaudeMode = true;
-      terminal.claudeSessionId = undefined;  // Will be captured from output
+      terminal.claudeSessionId = undefined;
+
+      // Record timestamp before starting Claude
+      const startTime = Date.now();
+      const projectPath = cwd || terminal.projectPath || terminal.cwd;
 
       // Clear the terminal and invoke claude
       const cwdCommand = cwd ? `cd "${cwd}" && ` : '';
@@ -346,7 +483,67 @@ export class TerminalManager {
           });
         }
       }
+
+      // Capture Claude session ID after a delay (give Claude time to create the session file)
+      if (projectPath) {
+        this.captureClaudeSessionId(id, projectPath, startTime);
+      }
     }
+  }
+
+  /**
+   * Attempt to capture Claude session ID by scanning the session directory.
+   * Polls periodically until a new session is found or timeout.
+   */
+  private captureClaudeSessionId(terminalId: string, projectPath: string, startTime: number): void {
+    const terminal = this.terminals.get(terminalId);
+    if (!terminal) return;
+
+    let attempts = 0;
+    const maxAttempts = 10;  // Try for up to 10 seconds
+
+    const checkForSession = () => {
+      attempts++;
+
+      // Check if terminal still exists and is in Claude mode
+      const currentTerminal = this.terminals.get(terminalId);
+      if (!currentTerminal || !currentTerminal.isClaudeMode) {
+        return;  // Terminal closed or Claude exited
+      }
+
+      // Already have a session ID (maybe captured from output)
+      if (currentTerminal.claudeSessionId) {
+        return;
+      }
+
+      // Look for a session file created after we started Claude
+      const sessionId = findClaudeSessionAfter(projectPath, startTime);
+
+      if (sessionId) {
+        currentTerminal.claudeSessionId = sessionId;
+        console.log('[TerminalManager] Captured Claude session ID from directory:', sessionId);
+
+        // Save to persistent store
+        if (currentTerminal.projectPath) {
+          const store = getTerminalSessionStore();
+          store.updateClaudeSessionId(currentTerminal.projectPath, terminalId, sessionId);
+        }
+
+        // Notify renderer
+        const win = this.getWindow();
+        if (win) {
+          win.webContents.send(IPC_CHANNELS.TERMINAL_CLAUDE_SESSION, terminalId, sessionId);
+        }
+      } else if (attempts < maxAttempts) {
+        // Try again in 1 second
+        setTimeout(checkForSession, 1000);
+      } else {
+        console.log('[TerminalManager] Could not capture Claude session ID after', maxAttempts, 'attempts');
+      }
+    };
+
+    // First check after 2 seconds (give Claude time to start)
+    setTimeout(checkForSession, 2000);
   }
 
   /**

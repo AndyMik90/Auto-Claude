@@ -58,7 +58,8 @@ import type {
   InsightsStreamChunk,
   TaskMetadata,
   TaskLogs,
-  TaskLogStreamChunk
+  TaskLogStreamChunk,
+  RateLimitInfo
 } from '../shared/types';
 
 // Expose a secure API to the renderer process
@@ -399,6 +400,21 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on(IPC_CHANNELS.TERMINAL_CLAUDE_SESSION, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.TERMINAL_CLAUDE_SESSION, handler);
+    };
+  },
+
+  onTerminalRateLimit: (
+    callback: (info: RateLimitInfo) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      info: RateLimitInfo
+    ): void => {
+      callback(info);
+    };
+    ipcRenderer.on(IPC_CHANNELS.TERMINAL_RATE_LIMIT, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.TERMINAL_RATE_LIMIT, handler);
     };
   },
 
@@ -967,7 +983,14 @@ const electronAPI: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.INSIGHTS_ERROR, handler);
     };
-  }
+  },
+
+  // ============================================
+  // File Explorer Operations
+  // ============================================
+
+  listDirectory: (dirPath: string): Promise<import('../shared/types').IPCResult<import('../shared/types').FileNode[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILE_EXPLORER_LIST, dirPath)
 };
 
 // Expose to renderer via contextBridge
