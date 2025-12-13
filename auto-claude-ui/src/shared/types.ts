@@ -23,6 +23,10 @@ export interface ProjectSettings {
   notifications: NotificationSettings;
   /** Dev mode: use dev/auto-claude/specs/ for framework development */
   devMode: boolean;
+  /** Enable Graphiti MCP server for agent-accessible knowledge graph */
+  graphitiMcpEnabled: boolean;
+  /** Graphiti MCP server URL (default: http://localhost:8000/mcp/) */
+  graphitiMcpUrl?: string;
 }
 
 export interface NotificationSettings {
@@ -204,6 +208,10 @@ export interface TaskMetadata {
 
   // Review settings
   requireReviewBeforeCoding?: boolean;  // Require human review of spec/plan before coding starts
+
+  // Archive status
+  archivedAt?: string;  // ISO date when task was archived
+  archivedInVersion?: string;  // Version in which task was archived (from changelog)
 }
 
 export interface Task {
@@ -1201,6 +1209,10 @@ export interface ElectronAPI {
   discardWorktree: (taskId: string) => Promise<IPCResult<WorktreeDiscardResult>>;
   listWorktrees: (projectId: string) => Promise<IPCResult<WorktreeListResult>>;
 
+  // Task archive operations
+  archiveTasks: (projectId: string, taskIds: string[], version?: string) => Promise<IPCResult<boolean>>;
+  unarchiveTasks: (projectId: string, taskIds: string[]) => Promise<IPCResult<boolean>>;
+
   // Event listeners
   onTaskProgress: (callback: (taskId: string, plan: ImplementationPlan) => void) => () => void;
   onTaskError: (callback: (taskId: string, error: string) => void) => () => void;
@@ -1282,6 +1294,12 @@ export interface ElectronAPI {
   checkGitHubConnection: (projectId: string) => Promise<IPCResult<GitHubSyncStatus>>;
   investigateGitHubIssue: (projectId: string, issueNumber: number) => void;
   importGitHubIssues: (projectId: string, issueNumbers: number[]) => Promise<IPCResult<GitHubImportResult>>;
+  createGitHubRelease: (
+    projectId: string,
+    version: string,
+    releaseNotes: string,
+    options?: { draft?: boolean; prerelease?: boolean }
+  ) => Promise<IPCResult<{ url: string }>>;
 
   // GitHub event listeners
   onGitHubInvestigationProgress: (
@@ -1343,6 +1361,10 @@ export interface ElectronAPI {
   generateChangelog: (request: ChangelogGenerationRequest) => void; // Async with progress events
   saveChangelog: (request: ChangelogSaveRequest) => Promise<IPCResult<ChangelogSaveResult>>;
   readExistingChangelog: (projectId: string) => Promise<IPCResult<ExistingChangelog>>;
+  suggestChangelogVersion: (
+    projectId: string,
+    taskIds: string[]
+  ) => Promise<IPCResult<{ version: string; reason: string }>>;
 
   // Changelog event listeners
   onChangelogGenerationProgress: (

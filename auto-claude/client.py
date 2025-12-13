@@ -21,6 +21,21 @@ from auto_claude_tools import (
 )
 
 
+def is_graphiti_mcp_enabled() -> bool:
+    """
+    Check if Graphiti MCP server integration is enabled.
+
+    Requires GRAPHITI_MCP_URL to be set (e.g., http://localhost:8000/mcp/)
+    This is separate from GRAPHITI_ENABLED which controls the Python library integration.
+    """
+    return bool(os.environ.get("GRAPHITI_MCP_URL"))
+
+
+def get_graphiti_mcp_url() -> str:
+    """Get the Graphiti MCP server URL."""
+    return os.environ.get("GRAPHITI_MCP_URL", "http://localhost:8000/mcp/")
+
+
 # Puppeteer MCP tools for browser automation
 PUPPETEER_TOOLS = [
     "mcp__puppeteer__puppeteer_connect_active_tab",
@@ -57,6 +72,16 @@ LINEAR_TOOLS = [
 CONTEXT7_TOOLS = [
     "mcp__context7__resolve-library-id",
     "mcp__context7__get-library-docs",
+]
+
+# Graphiti MCP tools for knowledge graph memory (when GRAPHITI_MCP_ENABLED is set)
+# See: https://docs.falkordb.com/agentic-memory/graphiti-mcp-server.html
+GRAPHITI_MCP_TOOLS = [
+    "mcp__graphiti-memory__search_nodes",      # Search entity summaries
+    "mcp__graphiti-memory__search_facts",      # Search relationships between entities
+    "mcp__graphiti-memory__add_episode",       # Add data to knowledge graph
+    "mcp__graphiti-memory__get_episodes",      # Retrieve recent episodes
+    "mcp__graphiti-memory__get_entity_edge",   # Get specific entity/relationship
 ]
 
 # Built-in tools
@@ -117,11 +142,16 @@ def create_client(
     else:
         allowed_tools_list = [*BUILTIN_TOOLS]
 
+    # Check if Graphiti MCP is enabled
+    graphiti_mcp_enabled = is_graphiti_mcp_enabled()
+
     # Add external MCP tools
     allowed_tools_list.extend(PUPPETEER_TOOLS)
     allowed_tools_list.extend(CONTEXT7_TOOLS)
     if linear_enabled:
         allowed_tools_list.extend(LINEAR_TOOLS)
+    if graphiti_mcp_enabled:
+        allowed_tools_list.extend(GRAPHITI_MCP_TOOLS)
 
     # Create comprehensive security settings
     # Note: Using relative paths ("./**") restricts access to project directory
@@ -146,6 +176,8 @@ def create_client(
                 *CONTEXT7_TOOLS,
                 # Allow Linear MCP tools for project management (if enabled)
                 *(LINEAR_TOOLS if linear_enabled else []),
+                # Allow Graphiti MCP tools for knowledge graph memory (if enabled)
+                *(GRAPHITI_MCP_TOOLS if graphiti_mcp_enabled else []),
             ],
         },
     }
@@ -163,6 +195,8 @@ def create_client(
     mcp_servers_list = ["puppeteer (browser automation)", "context7 (documentation)"]
     if linear_enabled:
         mcp_servers_list.append("linear (project management)")
+    if graphiti_mcp_enabled:
+        mcp_servers_list.append("graphiti-memory (knowledge graph)")
     if auto_claude_tools_enabled:
         mcp_servers_list.append(f"auto-claude ({agent_type} tools)")
     print(f"   - MCP servers: {', '.join(mcp_servers_list)}")
@@ -180,6 +214,14 @@ def create_client(
             "type": "http",
             "url": "https://mcp.linear.app/mcp",
             "headers": {"Authorization": f"Bearer {linear_api_key}"}
+        }
+
+    # Add Graphiti MCP server if enabled
+    # Requires running: docker run -d -p 8000:8000 falkordb/graphiti-knowledge-graph-mcp
+    if graphiti_mcp_enabled:
+        mcp_servers["graphiti-memory"] = {
+            "type": "http",
+            "url": get_graphiti_mcp_url(),
         }
 
     # Add custom auto-claude MCP server if available

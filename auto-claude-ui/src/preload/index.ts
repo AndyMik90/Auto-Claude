@@ -178,6 +178,12 @@ const electronAPI: ElectronAPI = {
   listWorktrees: (projectId: string): Promise<IPCResult<import('../shared/types').WorktreeListResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_LIST_WORKTREES, projectId),
 
+  archiveTasks: (projectId: string, taskIds: string[], version?: string): Promise<IPCResult<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_ARCHIVE, projectId, taskIds, version),
+
+  unarchiveTasks: (projectId: string, taskIds: string[]): Promise<IPCResult<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_UNARCHIVE, projectId, taskIds),
+
   // ============================================
   // Event Listeners (main → renderer)
   // ============================================
@@ -557,6 +563,14 @@ const electronAPI: ElectronAPI = {
   importGitHubIssues: (projectId: string, issueNumbers: number[]): Promise<IPCResult<GitHubImportResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.GITHUB_IMPORT_ISSUES, projectId, issueNumbers),
 
+  createGitHubRelease: (
+    projectId: string,
+    version: string,
+    releaseNotes: string,
+    options?: { draft?: boolean; prerelease?: boolean }
+  ): Promise<IPCResult<{ url: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GITHUB_CREATE_RELEASE, projectId, version, releaseNotes, options),
+
   // ============================================
   // GitHub Event Listeners
   // ============================================
@@ -791,6 +805,12 @@ const electronAPI: ElectronAPI = {
 
   readExistingChangelog: (projectId: string): Promise<IPCResult<ExistingChangelog>> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHANGELOG_READ_EXISTING, projectId),
+
+  suggestChangelogVersion: (
+    projectId: string,
+    taskIds: string[]
+  ): Promise<IPCResult<{ version: string; reason: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHANGELOG_SUGGEST_VERSION, projectId, taskIds),
 
   // ============================================
   // Changelog Event Listeners

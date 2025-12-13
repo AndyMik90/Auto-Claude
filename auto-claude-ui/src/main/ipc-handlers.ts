@@ -1914,6 +1914,40 @@ export function setupIpcHandlers(
   );
 
   // ============================================
+  // Task Archive Operations
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_ARCHIVE,
+    async (_, projectId: string, taskIds: string[], version?: string): Promise<IPCResult<boolean>> => {
+      try {
+        const success = projectStore.archiveTasks(projectId, taskIds, version);
+        return { success, data: success };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to archive tasks'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_UNARCHIVE,
+    async (_, projectId: string, taskIds: string[]): Promise<IPCResult<boolean>> => {
+      try {
+        const success = projectStore.unarchiveTasks(projectId, taskIds);
+        return { success, data: success };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to unarchive tasks'
+        };
+      }
+    }
+  );
+
+  // ============================================
   // Task Phase Logs (collapsible by phase)
   // ============================================
 
@@ -4422,6 +4456,77 @@ ${issue.body || 'No description provided.'}
     }
   );
 
+  /**
+   * Create a GitHub release using the gh CLI
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_CREATE_RELEASE,
+    async (
+      _,
+      projectId: string,
+      version: string,
+      releaseNotes: string,
+      options?: { draft?: boolean; prerelease?: boolean }
+    ): Promise<IPCResult<{ url: string }>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        // Check if gh CLI is available
+        try {
+          execSync('which gh', { encoding: 'utf-8' });
+        } catch {
+          return {
+            success: false,
+            error: 'GitHub CLI (gh) not found. Please install it: https://cli.github.com/'
+          };
+        }
+
+        // Check if user is authenticated
+        try {
+          execSync('gh auth status', { cwd: project.path, encoding: 'utf-8', stdio: 'pipe' });
+        } catch {
+          return {
+            success: false,
+            error: 'Not authenticated with GitHub. Run "gh auth login" in terminal first.'
+          };
+        }
+
+        // Prepare tag name (ensure v prefix)
+        const tag = version.startsWith('v') ? version : `v${version}`;
+
+        // Build gh release command
+        const args = ['release', 'create', tag, '--title', tag, '--notes', releaseNotes];
+        if (options?.draft) args.push('--draft');
+        if (options?.prerelease) args.push('--prerelease');
+
+        // Create the release
+        const output = execSync(`gh ${args.map(a => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`, {
+          cwd: project.path,
+          encoding: 'utf-8',
+          stdio: 'pipe'
+        }).trim();
+
+        // Output is typically the release URL
+        const releaseUrl = output || `https://github.com/releases/tag/${tag}`;
+
+        return {
+          success: true,
+          data: { url: releaseUrl }
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Failed to create release';
+        // Try to extract more useful error message from stderr
+        if (error && typeof error === 'object' && 'stderr' in error) {
+          return { success: false, error: String(error.stderr) || errorMsg };
+        }
+        return { success: false, error: errorMsg };
+      }
+    }
+  );
+
   // ============================================
   // Auto Claude Source Update Operations
   // ============================================
@@ -5373,6 +5478,53 @@ ${idea.rationale}
 
       const result = changelogService.readExistingChangelog(project.path);
       return { success: true, data: result };
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CHANGELOG_SUGGEST_VERSION,
+    async (_, projectId: string, taskIds: string[]): Promise<IPCResult<{ version: string; reason: string }>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        // Get current version from existing changelog
+        const existing = changelogService.readExistingChangelog(project.path);
+        const currentVersion = existing.lastVersion;
+
+        // Load specs for selected tasks to analyze change types
+        const tasks = projectStore.getTasks(projectId);
+        const devMode = project.settings.devMode ?? false;
+        const specsBaseDir = getSpecsDir(project.autoBuildPath, devMode);
+        const specs = await changelogService.loadTaskSpecs(project.path, taskIds, tasks, specsBaseDir);
+
+        // Analyze specs and suggest version
+        const suggestedVersion = changelogService.suggestVersion(specs, currentVersion);
+
+        // Determine reason for the suggestion
+        let reason = 'patch';
+        if (currentVersion) {
+          const [oldMajor, oldMinor] = currentVersion.split('.').map(Number);
+          const [newMajor, newMinor] = suggestedVersion.split('.').map(Number);
+          if (newMajor > oldMajor) {
+            reason = 'breaking';
+          } else if (newMinor > oldMinor) {
+            reason = 'feature';
+          }
+        }
+
+        return {
+          success: true,
+          data: { version: suggestedVersion, reason }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to suggest version'
+        };
+      }
     }
   );
 

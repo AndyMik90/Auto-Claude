@@ -113,7 +113,10 @@ export const DEFAULT_PROJECT_SETTINGS = {
     onReviewNeeded: true,
     sound: false
   },
-  devMode: false
+  devMode: false,
+  // Graphiti MCP server for agent-accessible knowledge graph (enabled by default)
+  graphitiMcpEnabled: true,
+  graphitiMcpUrl: 'http://localhost:8000/mcp/'
 };
 
 // IPC Channel names
@@ -146,6 +149,8 @@ export const IPC_CHANNELS = {
   TASK_WORKTREE_MERGE: 'task:worktreeMerge',
   TASK_WORKTREE_DISCARD: 'task:worktreeDiscard',
   TASK_LIST_WORKTREES: 'task:listWorktrees',
+  TASK_ARCHIVE: 'task:archive',
+  TASK_UNARCHIVE: 'task:unarchive',
 
   // Task events (main -> renderer)
   TASK_PROGRESS: 'task:progress',
@@ -238,6 +243,7 @@ export const IPC_CHANNELS = {
   GITHUB_CHECK_CONNECTION: 'github:checkConnection',
   GITHUB_INVESTIGATE_ISSUE: 'github:investigateIssue',
   GITHUB_IMPORT_ISSUES: 'github:importIssues',
+  GITHUB_CREATE_RELEASE: 'github:createRelease',
 
   // GitHub events (main -> renderer)
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',
@@ -261,6 +267,7 @@ export const IPC_CHANNELS = {
   CHANGELOG_GENERATE: 'changelog:generate',
   CHANGELOG_SAVE: 'changelog:save',
   CHANGELOG_READ_EXISTING: 'changelog:readExisting',
+  CHANGELOG_SUGGEST_VERSION: 'changelog:suggestVersion',
 
   // Changelog events (main -> renderer)
   CHANGELOG_GENERATION_PROGRESS: 'changelog:generationProgress',

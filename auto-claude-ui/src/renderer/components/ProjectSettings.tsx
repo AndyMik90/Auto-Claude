@@ -961,6 +961,44 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
                             </p>
                           </div>
 
+                          {/* Graphiti MCP Server Toggle */}
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label className="font-normal text-foreground">Enable Agent Memory Access</Label>
+                              <p className="text-xs text-muted-foreground">
+                                Allow agents to search and add to the knowledge graph via MCP
+                              </p>
+                            </div>
+                            <Switch
+                              checked={settings.graphitiMcpEnabled}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, graphitiMcpEnabled: checked })
+                              }
+                            />
+                          </div>
+
+                          {settings.graphitiMcpEnabled && (
+                            <div className="space-y-2 ml-6">
+                              <Label className="text-sm font-medium text-foreground">Graphiti MCP Server URL</Label>
+                              <p className="text-xs text-muted-foreground">
+                                URL of the Graphiti MCP server (requires Docker container)
+                              </p>
+                              <Input
+                                placeholder="http://localhost:8000/mcp/"
+                                value={settings.graphitiMcpUrl || ''}
+                                onChange={(e) => setSettings({ ...settings, graphitiMcpUrl: e.target.value || undefined })}
+                              />
+                              <div className="rounded-lg border border-info/30 bg-info/5 p-3">
+                                <p className="text-xs text-info">
+                                  Start the MCP server with:{' '}
+                                  <code className="px-1 bg-info/10 rounded">docker run -d -p 8000:8000 falkordb/graphiti-knowledge-graph-mcp</code>
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          <Separator />
+
                           {/* LLM Provider Selection - V2 Multi-provider support */}
                           <div className="space-y-2">
                             <Label className="text-sm font-medium text-foreground">LLM Provider</Label>

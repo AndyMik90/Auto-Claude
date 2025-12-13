@@ -177,7 +177,7 @@ export class ChangelogService extends EventEmitter {
     const specsDir = path.join(projectPath, specsBaseDir || AUTO_BUILD_PATHS.SPECS_DIR);
 
     return tasks
-      .filter(task => task.status === 'done')
+      .filter(task => task.status === 'done' && !task.metadata?.archivedAt)
       .map(task => {
         const specDir = path.join(specsDir, task.specId);
         const hasSpecs = existsSync(specDir) && existsSync(path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE));
@@ -548,7 +548,7 @@ ${taskSummaries}
 
 ${request.customInstructions ? `Note: ${request.customInstructions}` : ''}
 
-Generate the changelog now. Output ONLY the formatted changelog, no preamble.`;
+CRITICAL: Output ONLY the raw changelog content. Do NOT include ANY introductory text, analysis, or explanation. Start directly with the changelog heading (## or #). No "Here's the changelog" or similar phrases.`;
   }
 
   /**
@@ -567,37 +567,23 @@ Generate the changelog now. Output ONLY the formatted changelog, no preamble.`;
     return `
 import subprocess
 import sys
-import os
-
-print("SCRIPT_START", file=sys.stderr, flush=True)
-print(f"HOME={os.environ.get('HOME')}", file=sys.stderr, flush=True)
-print(f"Claude path: ${escapedClaudePath}", file=sys.stderr, flush=True)
 
 prompt = """${escapedPrompt}"""
 
-print(f"Prompt length: {len(prompt)}", file=sys.stderr, flush=True)
-print("Starting subprocess.run...", file=sys.stderr, flush=True)
-
 # Use Claude Code CLI to generate
-# --max-turns 1: Single response (no back-and-forth needed)
-# --model haiku: Faster model for simple text generation
-try:
-    result = subprocess.run(
-        ['${escapedClaudePath}', '-p', prompt, '--output-format', 'text', '--max-turns', '1', '--model', 'haiku'],
-        capture_output=True,
-        text=True,
-        timeout=180
-    )
-    print(f"subprocess.run completed with code {result.returncode}", file=sys.stderr, flush=True)
+# stdin=DEVNULL prevents hanging when claude checks for interactive input
+result = subprocess.run(
+    ['${escapedClaudePath}', '-p', prompt, '--output-format', 'text', '--model', 'haiku'],
+    capture_output=True,
+    text=True,
+    stdin=subprocess.DEVNULL,
+    timeout=300
+)
 
-    if result.returncode == 0:
-        print(result.stdout)
-    else:
-        print(f"STDERR from claude: {result.stderr}", file=sys.stderr, flush=True)
-        print(result.stderr, file=sys.stderr)
-        sys.exit(1)
-except Exception as e:
-    print(f"Exception: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+if result.returncode == 0:
+    print(result.stdout)
+else:
+    print(result.stderr, file=sys.stderr)
     sys.exit(1)
 `;
   }
@@ -610,11 +596,34 @@ except Exception as e:
     // Clean up any potential wrapper text
     let changelog = output.trim();
 
-    // Remove any "Here's the changelog:" or similar prefixes
+    // Find where the actual changelog starts (look for markdown heading)
+    // This handles cases where AI includes preamble like "I'll analyze..." or "Here's the changelog:"
+    const changelogStartPatterns = [
+      /^(##\s*\[[\d.]+\])/m,           // Keep-a-changelog: ## [1.0.0]
+      /^(##\s*What['']?s\s+New)/im,    // GitHub release: ## What's New
+      /^(#\s*Release\s+v?[\d.]+)/im,   // Simple: # Release v1.0.0
+      /^(#\s*Changelog)/im,             // # Changelog
+      /^(##\s*v?[\d.]+)/m               // ## v1.0.0 or ## 1.0.0
+    ];
+
+    for (const pattern of changelogStartPatterns) {
+      const match = changelog.match(pattern);
+      if (match && match.index !== undefined) {
+        // Found a changelog heading - extract from there
+        changelog = changelog.substring(match.index);
+        break;
+      }
+    }
+
+    // Additional cleanup - remove common AI preambles if they somehow remain
     const prefixes = [
+      /^I['']ll\s+analyze[^#]*(?=#)/is,
+      /^I['']ll\s+generate[^#]*(?=#)/is,
       /^Here['']s the changelog[:\s]*/i,
       /^The changelog[:\s]*/i,
-      /^Changelog[:\s]*/i
+      /^Changelog[:\s]*/i,
+      /^Based on[^#]*(?=#)/is,
+      /^Let me[^#]*(?=#)/is
     ];
 
     for (const prefix of prefixes) {

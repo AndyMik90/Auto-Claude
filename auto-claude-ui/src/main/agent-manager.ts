@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { app } from 'electron';
+import { projectStore } from './project-store';
 
 interface AgentProcess {
   taskId: string;
@@ -80,6 +81,27 @@ export class AgentManager extends EventEmitter {
   }
 
   /**
+   * Get project-specific environment variables based on project settings
+   */
+  private getProjectEnvVars(projectPath: string): Record<string, string> {
+    const env: Record<string, string> = {};
+
+    // Find project by path
+    const projects = projectStore.getProjects();
+    const project = projects.find((p) => p.path === projectPath);
+
+    if (project?.settings) {
+      // Graphiti MCP integration
+      if (project.settings.graphitiMcpEnabled) {
+        const graphitiUrl = project.settings.graphitiMcpUrl || 'http://localhost:8000/mcp/';
+        env['GRAPHITI_MCP_URL'] = graphitiUrl;
+      }
+    }
+
+    return env;
+  }
+
+  /**
    * Load environment variables from auto-claude .env file
    */
   private loadAutoBuildEnv(): Record<string, string> {
@@ -154,8 +176,10 @@ export class AgentManager extends EventEmitter {
       return;
     }
 
-    // Load environment variables from auto-claude .env file
+    // Load environment variables from auto-claude .env file and project settings
     const autoBuildEnv = this.loadAutoBuildEnv();
+    const projectEnv = this.getProjectEnvVars(projectPath);
+    const combinedEnv = { ...autoBuildEnv, ...projectEnv };
 
     // spec_runner.py will auto-start run.py after spec creation completes
     const args = [specRunnerPath, '--task', taskDescription, '--project-dir', projectPath];
@@ -181,7 +205,7 @@ export class AgentManager extends EventEmitter {
 
     // Note: This is spec-creation but it chains to task-execution via run.py
     // So we treat the whole thing as task-execution for status purposes
-    this.spawnProcess(taskId, autoBuildSource, args, autoBuildEnv, 'task-execution');
+    this.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
   }
 
   /**
@@ -212,8 +236,10 @@ export class AgentManager extends EventEmitter {
       return;
     }
 
-    // Load environment variables from auto-claude .env file
+    // Load environment variables from auto-claude .env file and project settings
     const autoBuildEnv = this.loadAutoBuildEnv();
+    const projectEnv = this.getProjectEnvVars(projectPath);
+    const combinedEnv = { ...autoBuildEnv, ...projectEnv };
 
     const args = [runPath, '--spec', specId, '--project-dir', projectPath];
 
@@ -235,7 +261,7 @@ export class AgentManager extends EventEmitter {
     }
 
     console.log('[AgentManager] Spawning process with args:', args);
-    this.spawnProcess(taskId, autoBuildSource, args, autoBuildEnv, 'task-execution');
+    this.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
   }
 
   /**
@@ -262,8 +288,10 @@ export class AgentManager extends EventEmitter {
       return;
     }
 
-    // Load environment variables from auto-claude .env file
+    // Load environment variables from auto-claude .env file and project settings
     const autoBuildEnv = this.loadAutoBuildEnv();
+    const projectEnv = this.getProjectEnvVars(projectPath);
+    const combinedEnv = { ...autoBuildEnv, ...projectEnv };
 
     const args = [runPath, '--spec', specId, '--project-dir', projectPath, '--qa'];
 
@@ -272,7 +300,7 @@ export class AgentManager extends EventEmitter {
       args.push('--dev');
     }
 
-    this.spawnProcess(taskId, autoBuildSource, args, autoBuildEnv, 'qa-process');
+    this.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'qa-process');
   }
 
   /**
@@ -386,14 +414,16 @@ export class AgentManager extends EventEmitter {
     const autoBuildSource = this.getAutoBuildSourcePath();
     const cwd = autoBuildSource || process.cwd();
 
-    // Load environment variables from auto-claude .env file
+    // Load environment variables from auto-claude .env file and project settings
     const autoBuildEnv = this.loadAutoBuildEnv();
+    const projectEnv = this.getProjectEnvVars(projectPath);
+    const combinedEnv = { ...autoBuildEnv, ...projectEnv };
 
     const childProcess = spawn(this.pythonPath, args, {
       cwd,
       env: {
         ...process.env,
-        ...autoBuildEnv, // Include auto-claude .env variables (like CLAUDE_CODE_OAUTH_TOKEN)
+        ...combinedEnv, // Include auto-claude .env variables and project-specific env vars
         PYTHONUNBUFFERED: '1'
       }
     });
@@ -558,7 +588,7 @@ export class AgentManager extends EventEmitter {
    */
   private spawnRoadmapProcess(
     projectId: string,
-    _projectPath: string,
+    projectPath: string,
     args: string[]
   ): void {
     // Kill existing process for this project if any
@@ -568,14 +598,16 @@ export class AgentManager extends EventEmitter {
     const autoBuildSource = this.getAutoBuildSourcePath();
     const cwd = autoBuildSource || process.cwd();
 
-    // Load environment variables from auto-claude .env file
+    // Load environment variables from auto-claude .env file and project settings
     const autoBuildEnv = this.loadAutoBuildEnv();
+    const projectEnv = this.getProjectEnvVars(projectPath);
+    const combinedEnv = { ...autoBuildEnv, ...projectEnv };
 
     const childProcess = spawn(this.pythonPath, args, {
       cwd,
       env: {
         ...process.env,
-        ...autoBuildEnv, // Include auto-claude .env variables (like CLAUDE_CODE_OAUTH_TOKEN)
+        ...combinedEnv, // Include auto-claude .env variables and project-specific env vars
         PYTHONUNBUFFERED: '1'
       }
     });

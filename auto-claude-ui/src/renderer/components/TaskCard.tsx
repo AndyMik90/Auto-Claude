@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, Square, Clock, Zap, Target, Shield, Gauge, Palette, FileCode, Bug, Wrench, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Play, Square, Clock, Zap, Target, Shield, Gauge, Palette, FileCode, Bug, Wrench, Loader2, AlertTriangle, RotateCcw, Archive } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
@@ -133,12 +133,15 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
   const reviewReasonInfo = task.status === 'human_review' ? getReviewReasonLabel(task.reviewReason) : null;
 
+  const isArchived = !!task.metadata?.archivedAt;
+
   return (
     <Card
       className={cn(
         'card-surface task-card-enhanced cursor-pointer',
         isRunning && !isStuck && 'ring-2 ring-primary border-primary task-running-pulse',
-        isStuck && 'ring-2 ring-warning border-warning task-stuck-pulse'
+        isStuck && 'ring-2 ring-warning border-warning task-stuck-pulse',
+        isArchived && 'opacity-60 hover:opacity-80'
       )}
       onClick={onClick}
     >
@@ -170,6 +173,16 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               >
                 <AlertTriangle className="h-2.5 w-2.5" />
                 Incomplete
+              </Badge>
+            )}
+            {/* Archived indicator - task has been released */}
+            {task.metadata?.archivedAt && (
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-muted text-muted-foreground border-border"
+              >
+                <Archive className="h-2.5 w-2.5" />
+                Archived
               </Badge>
             )}
             {/* Execution phase badge - shown when actively running */}

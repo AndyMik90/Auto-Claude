@@ -366,6 +366,79 @@ export class ProjectStore {
 
     return { status: calculatedStatus, reviewReason: calculatedStatus === 'human_review' ? reviewReason : undefined };
   }
+
+  /**
+   * Archive tasks by writing archivedAt to their metadata
+   * @param projectId - Project ID
+   * @param taskIds - IDs of tasks to archive
+   * @param version - Version they were archived in (optional)
+   */
+  archiveTasks(projectId: string, taskIds: string[], version?: string): boolean {
+    const project = this.getProject(projectId);
+    if (!project) return false;
+
+    const devMode = project.settings.devMode ?? false;
+    const specsBaseDir = getSpecsDir(project.autoBuildPath, devMode);
+    const specsDir = path.join(project.path, specsBaseDir);
+
+    const archivedAt = new Date().toISOString();
+
+    for (const taskId of taskIds) {
+      const specPath = path.join(specsDir, taskId);
+      const metadataPath = path.join(specPath, 'task_metadata.json');
+
+      try {
+        let metadata: TaskMetadata = {};
+        if (existsSync(metadataPath)) {
+          metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
+        }
+
+        // Add archive info
+        metadata.archivedAt = archivedAt;
+        if (version) {
+          metadata.archivedInVersion = version;
+        }
+
+        writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+      } catch {
+        // Continue with other tasks even if one fails
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Unarchive tasks by removing archivedAt from their metadata
+   * @param projectId - Project ID
+   * @param taskIds - IDs of tasks to unarchive
+   */
+  unarchiveTasks(projectId: string, taskIds: string[]): boolean {
+    const project = this.getProject(projectId);
+    if (!project) return false;
+
+    const devMode = project.settings.devMode ?? false;
+    const specsBaseDir = getSpecsDir(project.autoBuildPath, devMode);
+    const specsDir = path.join(project.path, specsBaseDir);
+
+    for (const taskId of taskIds) {
+      const specPath = path.join(specsDir, taskId);
+      const metadataPath = path.join(specPath, 'task_metadata.json');
+
+      try {
+        if (existsSync(metadataPath)) {
+          const metadata: TaskMetadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
+          delete metadata.archivedAt;
+          delete metadata.archivedInVersion;
+          writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+        }
+      } catch {
+        // Continue with other tasks even if one fails
+      }
+    }
+
+    return true;
+  }
 }
 
 // Singleton instance
