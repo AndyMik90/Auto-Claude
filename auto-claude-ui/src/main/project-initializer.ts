@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, statSync, copyFileSync, readFileSync, writeFileSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
@@ -17,25 +17,6 @@ function debug(message: string, data?: Record<string, unknown>): void {
   }
 }
 
-/**
- * Files and directories to exclude when copying auto-claude
- */
-const EXCLUDE_PATTERNS = [
-  '__pycache__',
-  '.DS_Store',
-  '*.pyc',
-  '.env',
-  'specs',
-  '.git'
-];
-
-/**
- * Files to preserve during updates (never overwrite)
- */
-const PRESERVE_ON_UPDATE = [
-  'specs',
-  '.env'
-];
 
 /**
  * Directories that contain data (not code) - these are NEVER symlinked
@@ -82,29 +63,6 @@ export interface VersionCheckResult {
 }
 
 /**
- * Check if a file/directory matches exclusion patterns
- */
-function shouldExclude(name: string): boolean {
-  for (const pattern of EXCLUDE_PATTERNS) {
-    if (pattern.startsWith('*')) {
-      // Wildcard pattern (e.g., *.pyc)
-      const ext = pattern.slice(1);
-      if (name.endsWith(ext)) return true;
-    } else if (name === pattern) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Check if a file/directory should be preserved during updates
- */
-function shouldPreserve(name: string): boolean {
-  return PRESERVE_ON_UPDATE.includes(name);
-}
-
-/**
  * Check if the project has a local auto-claude source directory
  * This indicates it's the auto-claude development project itself
  */
@@ -126,47 +84,21 @@ export function getLocalSourcePath(projectPath: string): string | null {
 }
 
 /**
- * Recursively copy directory with exclusions
+ * Items to exclude from hash calculation
  */
-function copyDirectoryRecursive(
-  src: string,
-  dest: string,
-  isUpdate: boolean = false
-): void {
-  // Create destination directory if it doesn't exist
-  if (!existsSync(dest)) {
-    mkdirSync(dest, { recursive: true });
-  }
-
-  const entries = readdirSync(src, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-
-    // Skip excluded files/directories
-    if (shouldExclude(entry.name)) {
-      continue;
-    }
-
-    // During updates, skip preserved files/directories if they exist
-    if (isUpdate && shouldPreserve(entry.name) && existsSync(destPath)) {
-      continue;
-    }
-
-    if (entry.isDirectory()) {
-      copyDirectoryRecursive(srcPath, destPath, isUpdate);
-    } else {
-      copyFileSync(srcPath, destPath);
-    }
-  }
-}
+const HASH_EXCLUDE = ['__pycache__', '.DS_Store', '.pyc', '.env', 'specs', '.git', 'node_modules'];
 
 /**
  * Calculate hash of directory contents for version comparison
  */
 function calculateDirectoryHash(dirPath: string): string {
   const hash = crypto.createHash('sha256');
+
+  function shouldExcludeFromHash(name: string): boolean {
+    if (HASH_EXCLUDE.includes(name)) return true;
+    if (name.endsWith('.pyc')) return true;
+    return false;
+  }
 
   function processDirectory(currentPath: string): void {
     if (!existsSync(currentPath)) return;
@@ -179,7 +111,7 @@ function calculateDirectoryHash(dirPath: string): string {
       const fullPath = path.join(currentPath, entry.name);
 
       // Skip excluded items for hash calculation
-      if (shouldExclude(entry.name)) {
+      if (shouldExcludeFromHash(entry.name)) {
         continue;
       }
 
@@ -395,43 +327,23 @@ export function initializeProject(
   }
 
   try {
-    debug('Copying files to .auto-claude', { from: sourcePath, to: dotAutoBuildPath });
-    // Copy files to .auto-claude
-    copyDirectoryRecursive(sourcePath, dotAutoBuildPath, false);
+    debug('Creating .auto-claude data directory', { dotAutoBuildPath });
 
-    // Create specs directory
-    const specsDir = path.join(dotAutoBuildPath, 'specs');
-    if (!existsSync(specsDir)) {
-      debug('Creating specs directory', { specsDir });
-      mkdirSync(specsDir, { recursive: true });
-    }
-    writeFileSync(path.join(specsDir, '.gitkeep'), '');
+    // Create the .auto-claude directory (data only - no code)
+    // The framework code runs from the source repo, not from here
+    mkdirSync(dotAutoBuildPath, { recursive: true });
 
-    // Create roadmap directory
-    const roadmapDir = path.join(dotAutoBuildPath, 'roadmap');
-    if (!existsSync(roadmapDir)) {
-      debug('Creating roadmap directory', { roadmapDir });
-      mkdirSync(roadmapDir, { recursive: true });
-    }
-    writeFileSync(path.join(roadmapDir, '.gitkeep'), '');
-
-    // Create ideation directory
-    const ideationDir = path.join(dotAutoBuildPath, 'ideation');
-    if (!existsSync(ideationDir)) {
-      debug('Creating ideation directory', { ideationDir });
-      mkdirSync(ideationDir, { recursive: true });
-    }
-    writeFileSync(path.join(ideationDir, '.gitkeep'), '');
-
-    // Copy .env.example to .env if .env doesn't exist
-    const envExamplePath = path.join(dotAutoBuildPath, '.env.example');
-    const envPath = path.join(dotAutoBuildPath, '.env');
-    if (existsSync(envExamplePath) && !existsSync(envPath)) {
-      debug('Copying .env.example to .env');
-      copyFileSync(envExamplePath, envPath);
+    // Create data directories for specs, roadmap, ideation, insights
+    for (const dataDir of DATA_DIRECTORIES) {
+      const dirPath = path.join(dotAutoBuildPath, dataDir);
+      if (!existsSync(dirPath)) {
+        debug('Creating data directory', { dataDir, dirPath });
+        mkdirSync(dirPath, { recursive: true });
+      }
+      writeFileSync(path.join(dirPath, '.gitkeep'), '');
     }
 
-    // Write version metadata
+    // Write version metadata (tracks which source version this was created with)
     const version = readSourceVersion(sourcePath);
     const sourceHash = calculateDirectoryHash(sourcePath);
     const now = new Date().toISOString();
@@ -462,7 +374,11 @@ export function initializeProject(
 }
 
 /**
- * Update auto-claude in a project
+ * Update auto-claude version metadata in a project.
+ *
+ * Since .auto-claude only contains data directories (specs, roadmap, etc.)
+ * and the framework runs from the source repo, "update" just refreshes
+ * the version metadata to track which source version the project is using.
  */
 export function updateProject(
   projectPath: string,
@@ -490,20 +406,26 @@ export function updateProject(
     };
   }
 
-  const targetPath = dotAutoBuildPath;
-  debug('Updating .auto-claude folder', { targetPath });
+  debug('Updating .auto-claude version metadata', { dotAutoBuildPath });
 
   try {
-    // Copy files with preservation of specs/ and .env
-    copyDirectoryRecursive(sourcePath, targetPath, true);
+    // Ensure all data directories exist (in case new ones were added)
+    for (const dataDir of DATA_DIRECTORIES) {
+      const dirPath = path.join(dotAutoBuildPath, dataDir);
+      if (!existsSync(dirPath)) {
+        debug('Creating missing data directory', { dataDir, dirPath });
+        mkdirSync(dirPath, { recursive: true });
+        writeFileSync(path.join(dirPath, '.gitkeep'), '');
+      }
+    }
 
     // Update version metadata
     const version = readSourceVersion(sourcePath);
     const sourceHash = calculateDirectoryHash(sourcePath);
-    const existingMetadata = readVersionMetadata(targetPath);
+    const existingMetadata = readVersionMetadata(dotAutoBuildPath);
     const now = new Date().toISOString();
 
-    writeVersionMetadata(targetPath, {
+    writeVersionMetadata(dotAutoBuildPath, {
       version,
       sourceHash,
       sourcePath,
@@ -511,15 +433,18 @@ export function updateProject(
       updatedAt: now
     });
 
+    debug('Version metadata updated', { version });
     return {
       success: true,
       version,
       wasUpdate: true
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during update';
+    debug('Update failed', { error: errorMessage });
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error during update'
+      error: errorMessage
     };
   }
 }

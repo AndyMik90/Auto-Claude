@@ -52,8 +52,17 @@ from linear_updater import (
     linear_build_complete,
     linear_task_stuck,
 )
-from graphiti_config import is_graphiti_enabled
+from graphiti_config import is_graphiti_enabled, get_graphiti_status
 from memory import save_session_insights as save_file_based_memory
+from debug import (
+    debug,
+    debug_detailed,
+    debug_success,
+    debug_error,
+    debug_warning,
+    debug_section,
+    is_debug_enabled,
+)
 from ui import (
     Icons,
     icon,
@@ -91,6 +100,45 @@ HUMAN_INTERVENTION_FILE = "PAUSE"
 # Graphiti Memory Integration
 # =============================================================================
 
+def debug_memory_system_status() -> None:
+    """
+    Print memory system status for debugging.
+    
+    Called at startup when DEBUG=true to show memory configuration.
+    """
+    if not is_debug_enabled():
+        return
+
+    debug_section("memory", "Memory System Status")
+    
+    # Get Graphiti status
+    graphiti_status = get_graphiti_status()
+    
+    debug("memory", "Memory system configuration",
+          primary_system="Graphiti" if graphiti_status.get("available") else "File-based (fallback)",
+          graphiti_enabled=graphiti_status.get("enabled"),
+          graphiti_available=graphiti_status.get("available"))
+    
+    if graphiti_status.get("enabled"):
+        debug_detailed("memory", "Graphiti configuration",
+                       host=graphiti_status.get("host"),
+                       port=graphiti_status.get("port"),
+                       database=graphiti_status.get("database"),
+                       llm_provider=graphiti_status.get("llm_provider"),
+                       embedder_provider=graphiti_status.get("embedder_provider"))
+        
+        if not graphiti_status.get("available"):
+            debug_warning("memory", "Graphiti not available",
+                          reason=graphiti_status.get("reason"),
+                          errors=graphiti_status.get("errors"))
+            debug("memory", "Will use file-based memory as fallback")
+        else:
+            debug_success("memory", "Graphiti ready as PRIMARY memory system")
+    else:
+        debug("memory", "Graphiti disabled, using file-based memory only",
+              note="Set GRAPHITI_ENABLED=true to enable Graphiti")
+
+
 async def get_graphiti_context(
     spec_dir: Path,
     project_dir: Path,
@@ -110,7 +158,14 @@ async def get_graphiti_context(
     Returns:
         Formatted context string or None if unavailable
     """
+    if is_debug_enabled():
+        debug("memory", "Retrieving Graphiti context for chunk",
+              chunk_id=chunk.get("id", "unknown"),
+              chunk_desc=chunk.get("description", "")[:100])
+
     if not is_graphiti_enabled():
+        if is_debug_enabled():
+            debug("memory", "Graphiti not enabled, skipping context retrieval")
         return None
 
     try:
@@ -120,6 +175,8 @@ async def get_graphiti_context(
         memory = GraphitiMemory(spec_dir, project_dir)
 
         if not memory.is_enabled:
+            if is_debug_enabled():
+                debug_warning("memory", "GraphitiMemory.is_enabled=False")
             return None
 
         # Build search query from chunk description
@@ -129,7 +186,14 @@ async def get_graphiti_context(
 
         if not query:
             await memory.close()
+            if is_debug_enabled():
+                debug_warning("memory", "Empty query, skipping context retrieval")
             return None
+
+        if is_debug_enabled():
+            debug_detailed("memory", "Searching Graphiti knowledge graph",
+                          query=query[:200],
+                          num_results=5)
 
         # Get relevant context
         context_items = await memory.get_relevant_context(query, num_results=5)
@@ -139,7 +203,14 @@ async def get_graphiti_context(
 
         await memory.close()
 
+        if is_debug_enabled():
+            debug("memory", "Graphiti context retrieval complete",
+                  context_items_found=len(context_items) if context_items else 0,
+                  session_history_found=len(session_history) if session_history else 0)
+
         if not context_items and not session_history:
+            if is_debug_enabled():
+                debug("memory", "No relevant context found in Graphiti")
             return None
 
         # Format the context
@@ -164,10 +235,16 @@ async def get_graphiti_context(
                         sections.append(f"- {rec}")
                     sections.append("")
 
+        if is_debug_enabled():
+            debug_success("memory", "Graphiti context formatted",
+                          total_sections=len(sections))
+
         return "\n".join(sections)
 
     except ImportError:
         logger.debug("Graphiti packages not installed")
+        if is_debug_enabled():
+            debug_warning("memory", "Graphiti packages not installed")
         return None
     except Exception as e:
         logger.warning(f"Failed to get Graphiti context: {e}")
@@ -204,6 +281,16 @@ async def save_session_memory(
     Returns:
         Tuple of (success, storage_type) where storage_type is "graphiti" or "file"
     """
+    # Debug: Log memory save start
+    if is_debug_enabled():
+        debug_section("memory", f"Saving Session {session_num} Memory")
+        debug("memory", "Memory save initiated",
+              chunk_id=chunk_id,
+              session_num=session_num,
+              success=success,
+              chunks_completed=chunks_completed,
+              spec_dir=str(spec_dir))
+
     # Build insights structure (same format for both storage systems)
     insights = {
         "chunks_completed": chunks_completed,
@@ -217,37 +304,97 @@ async def save_session_memory(
         "recommendations_for_next_session": [],
     }
 
+    if is_debug_enabled():
+        debug_detailed("memory", "Insights structure built", insights=insights)
+
+    # Check Graphiti status for debugging
+    graphiti_enabled = is_graphiti_enabled()
+    if is_debug_enabled():
+        graphiti_status = get_graphiti_status()
+        debug("memory", "Graphiti status check",
+              enabled=graphiti_status.get("enabled"),
+              available=graphiti_status.get("available"),
+              host=graphiti_status.get("host"),
+              port=graphiti_status.get("port"),
+              database=graphiti_status.get("database"),
+              llm_provider=graphiti_status.get("llm_provider"),
+              embedder_provider=graphiti_status.get("embedder_provider"),
+              reason=graphiti_status.get("reason") or "OK")
+
     # PRIMARY: Try Graphiti if enabled
-    if is_graphiti_enabled():
+    if graphiti_enabled:
+        if is_debug_enabled():
+            debug("memory", "Attempting PRIMARY storage: Graphiti")
+
         try:
             from graphiti_memory import GraphitiMemory
 
             memory = GraphitiMemory(spec_dir, project_dir)
 
+            if is_debug_enabled():
+                debug_detailed("memory", "GraphitiMemory instance created",
+                               is_enabled=memory.is_enabled,
+                               group_id=getattr(memory, 'group_id', 'unknown'))
+
             if memory.is_enabled:
+                if is_debug_enabled():
+                    debug("memory", "Saving to Graphiti...")
+
                 result = await memory.save_session_insights(session_num, insights)
                 await memory.close()
 
                 if result:
                     logger.info(f"Session {session_num} insights saved to Graphiti (primary)")
+                    if is_debug_enabled():
+                        debug_success("memory", f"Session {session_num} saved to Graphiti (PRIMARY)",
+                                      storage_type="graphiti",
+                                      chunks_saved=len(chunks_completed))
                     return True, "graphiti"
                 else:
                     logger.warning("Graphiti save returned False, falling back to file-based")
+                    if is_debug_enabled():
+                        debug_warning("memory", "Graphiti save returned False, using FALLBACK")
             else:
                 logger.warning("Graphiti memory not enabled, falling back to file-based")
+                if is_debug_enabled():
+                    debug_warning("memory", "GraphitiMemory.is_enabled=False, using FALLBACK")
 
-        except ImportError:
+        except ImportError as e:
             logger.debug("Graphiti packages not installed, falling back to file-based")
+            if is_debug_enabled():
+                debug_warning("memory", "Graphiti packages not installed", error=str(e))
         except Exception as e:
             logger.warning(f"Graphiti save failed: {e}, falling back to file-based")
+            if is_debug_enabled():
+                debug_error("memory", "Graphiti save failed", error=str(e))
+    else:
+        if is_debug_enabled():
+            debug("memory", "Graphiti not enabled, skipping to FALLBACK")
 
     # FALLBACK: File-based memory (when Graphiti is disabled or fails)
+    if is_debug_enabled():
+        debug("memory", "Attempting FALLBACK storage: File-based")
+
     try:
+        memory_dir = spec_dir / "memory" / "session_insights"
+        if is_debug_enabled():
+            debug_detailed("memory", "File-based memory path",
+                           memory_dir=str(memory_dir),
+                           session_file=f"session_{session_num:03d}.json")
+
         save_file_based_memory(spec_dir, session_num, insights)
         logger.info(f"Session {session_num} insights saved to file-based memory (fallback)")
+
+        if is_debug_enabled():
+            debug_success("memory", f"Session {session_num} saved to file-based (FALLBACK)",
+                          storage_type="file",
+                          file_path=str(memory_dir / f"session_{session_num:03d}.json"),
+                          chunks_saved=len(chunks_completed))
         return True, "file"
     except Exception as e:
         logger.error(f"File-based memory save also failed: {e}")
+        if is_debug_enabled():
+            debug_error("memory", "File-based memory save FAILED", error=str(e))
         return False, "none"
 
 
@@ -732,6 +879,9 @@ async def run_autonomous_agent(
 
     # Initialize task logger for persistent logging
     task_logger = get_task_logger(spec_dir)
+
+    # Debug: Print memory system status at startup
+    debug_memory_system_status()
 
     # Update initial chunk counts
     chunks = count_chunks_detailed(spec_dir)
