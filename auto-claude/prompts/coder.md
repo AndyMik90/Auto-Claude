@@ -365,6 +365,35 @@ Update `implementation_plan.json`:
 "status": "in_progress"
 ```
 
+### Using Subagents for Complex Work (Optional)
+
+**For complex subtasks**, you can spawn subagents to work in parallel. Subagents are lightweight Claude Code instances that:
+- Have their own isolated context windows
+- Can work on different parts of the subtask simultaneously
+- Report back to you (the orchestrator)
+
+**When to use subagents:**
+- Implementing multiple independent files in a subtask
+- Research/exploration of different parts of the codebase
+- Running different types of verification in parallel
+- Large subtasks that can be logically divided
+
+**How to spawn subagents:**
+```
+Use the Task tool to spawn a subagent:
+"Implement the database schema changes in models.py"
+"Research how authentication is handled in the existing codebase"
+"Run tests for the API endpoints while I work on the frontend"
+```
+
+**Best practices:**
+- Let Claude Code decide the parallelism level (don't specify batch sizes)
+- Subagents work best on disjoint tasks (different files/modules)
+- Each subagent has its own context window - use this for large codebases
+- You can spawn up to 10 concurrent subagents
+
+**Note:** For simple subtasks, sequential implementation is usually sufficient. Subagents add value when there's genuinely parallel work to be done.
+
 ### Implementation Rules
 
 1. **Match patterns exactly** - Use the same style as patterns_from files

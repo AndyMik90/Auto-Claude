@@ -22,9 +22,12 @@ from workspace import (
     get_current_branch,
     get_existing_build_worktree,
     setup_workspace,
-    STAGING_WORKTREE_NAME,
 )
 from worktree import WorktreeManager
+
+# Test constant - in the new per-spec architecture, each spec has its own worktree
+# named after the spec itself. This constant is used for test assertions.
+TEST_SPEC_NAME = "test-spec"
 
 
 class TestWorkspaceMode:
@@ -121,11 +124,11 @@ class TestGetExistingBuildWorktree:
 
     def test_existing_worktree(self, temp_git_repo: Path):
         """Returns path when worktree exists."""
-        # Create the worktree directory structure
-        worktree_path = temp_git_repo / ".worktrees" / STAGING_WORKTREE_NAME
+        # Create the worktree directory structure (per-spec architecture)
+        worktree_path = temp_git_repo / ".worktrees" / TEST_SPEC_NAME
         worktree_path.mkdir(parents=True)
 
-        result = get_existing_build_worktree(temp_git_repo, "test-spec")
+        result = get_existing_build_worktree(temp_git_repo, TEST_SPEC_NAME)
         assert result == worktree_path
 
 
@@ -147,14 +150,15 @@ class TestSetupWorkspace:
         """Isolated mode creates worktree and returns manager."""
         working_dir, manager = setup_workspace(
             temp_git_repo,
-            "test-spec",
+            TEST_SPEC_NAME,
             WorkspaceMode.ISOLATED,
         )
 
         assert working_dir != temp_git_repo
         assert manager is not None
         assert working_dir.exists()
-        assert working_dir.name == STAGING_WORKTREE_NAME
+        # Per-spec architecture: worktree is named after the spec
+        assert working_dir.name == TEST_SPEC_NAME
 
     def test_setup_isolated_creates_worktrees_dir(self, temp_git_repo: Path):
         """Isolated mode creates .worktrees directory."""
@@ -170,11 +174,18 @@ class TestSetupWorkspace:
 class TestWorkspaceUtilities:
     """Tests for workspace utility functions."""
 
-    def test_staging_worktree_name_constant(self):
-        """STAGING_WORKTREE_NAME is defined."""
-        from workspace import STAGING_WORKTREE_NAME
-        assert STAGING_WORKTREE_NAME is not None
-        assert len(STAGING_WORKTREE_NAME) > 0
+    def test_per_spec_worktree_naming(self, temp_git_repo: Path):
+        """Per-spec architecture uses spec name for worktree directory."""
+        spec_name = "my-spec-001"
+        working_dir, manager = setup_workspace(
+            temp_git_repo,
+            spec_name,
+            WorkspaceMode.ISOLATED,
+        )
+
+        # Worktree should be named after the spec
+        assert working_dir.name == spec_name
+        assert working_dir.parent.name == ".worktrees"
 
 
 class TestWorkspaceIntegration:
@@ -325,23 +336,42 @@ class TestWorkspaceErrors:
             )
 
 
-class TestStagingWorktreeName:
-    """Tests for staging worktree naming."""
+class TestPerSpecWorktreeName:
+    """Tests for per-spec worktree naming (new architecture)."""
 
-    def test_staging_name_consistent(self, temp_git_repo: Path):
-        """Staging worktree name is consistent across setups."""
-        from workspace import STAGING_WORKTREE_NAME
+    def test_worktree_named_after_spec(self, temp_git_repo: Path):
+        """Worktree is named after the spec."""
+        spec_name = "spec-1"
+        working_dir, _ = setup_workspace(
+            temp_git_repo,
+            spec_name,
+            WorkspaceMode.ISOLATED,
+        )
 
+        # Per-spec architecture: worktree directory matches spec name
+        assert working_dir.name == spec_name
+
+    def test_different_specs_get_different_worktrees(self, temp_git_repo: Path):
+        """Different specs create separate worktrees."""
         working_dir1, _ = setup_workspace(
             temp_git_repo,
             "spec-1",
             WorkspaceMode.ISOLATED,
         )
 
-        assert working_dir1.name == STAGING_WORKTREE_NAME
+        working_dir2, _ = setup_workspace(
+            temp_git_repo,
+            "spec-2",
+            WorkspaceMode.ISOLATED,
+        )
 
-    def test_staging_path_in_worktrees_dir(self, temp_git_repo: Path):
-        """Staging worktree is created in .worktrees directory."""
+        # Each spec has its own worktree
+        assert working_dir1.name == "spec-1"
+        assert working_dir2.name == "spec-2"
+        assert working_dir1 != working_dir2
+
+    def test_worktree_path_in_worktrees_dir(self, temp_git_repo: Path):
+        """Worktree is created in .worktrees directory."""
         working_dir, _ = setup_workspace(
             temp_git_repo,
             "test-spec",

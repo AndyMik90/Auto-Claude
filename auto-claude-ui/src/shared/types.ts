@@ -690,7 +690,7 @@ export interface GraphitiMemoryState {
 
 export interface MemoryEpisode {
   id: string;
-  type: 'session_insight' | 'codebase_discovery' | 'pattern' | 'gotcha';
+  type: 'session_insight' | 'codebase_discovery' | 'codebase_map' | 'pattern' | 'gotcha';
   timestamp: string;
   content: string;
   session_number?: number;

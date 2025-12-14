@@ -1,10 +1,10 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { useDroppable } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
-import { X, Sparkles, TerminalSquare, ListTodo, FileDown, ChevronDown, Circle, Loader2, CheckCircle2, AlertCircle, Clock, Code2, Search, Wrench } from 'lucide-react';
+import { X, Sparkles, TerminalSquare, ListTodo, FileDown, ChevronDown, Circle, Loader2, CheckCircle2, AlertCircle, Clock, Code2, Search, Wrench, Pencil } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import { useTerminalStore, type TerminalStatus } from '../stores/terminal-store';
@@ -65,6 +65,11 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
   const isCreatingRef = useRef(false);
   const isCreatedRef = useRef(false);
   const isMountedRef = useRef(true);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Title editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
 
   const terminal = useTerminalStore((state) => state.terminals.find((t) => t.id === id));
   const setTerminalStatus = useTerminalStore((state) => state.setTerminalStatus);
@@ -368,6 +373,7 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
   }, [onActivate]);
 
   // Handle task selection from dropdown
+  /* eslint-disable react-hooks/preserve-manual-memoization -- Complex callback with mutable tasks array */
   const handleTaskSelect = useCallback((taskId: string) => {
     const selectedTask = tasks.find((t) => t.id === taskId);
     if (!selectedTask) return;
@@ -387,6 +393,7 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     // Send the context message to the terminal
     window.electronAPI.sendTerminalInput(id, contextMessage + '\r');
   }, [id, tasks, setAssociatedTask, updateTerminal]);
+  /* eslint-enable react-hooks/preserve-manual-memoization */
 
   // Handle clearing the associated task
   const handleClearTask = useCallback(() => {
@@ -398,6 +405,40 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
   const executionPhase = associatedTask?.executionProgress?.phase || 'idle';
   const phaseConfig = PHASE_CONFIG[executionPhase];
   const PhaseIcon = phaseConfig.icon;
+
+  // Title editing handlers
+  const handleStartEditTitle = useCallback(() => {
+    setEditedTitle(terminal?.title || 'Terminal');
+    setIsEditingTitle(true);
+    // Focus the input after state update
+    setTimeout(() => {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }, 0);
+  }, [terminal?.title]);
+
+  const handleSaveTitle = useCallback(() => {
+    const trimmedTitle = editedTitle.trim();
+    if (trimmedTitle && trimmedTitle !== terminal?.title) {
+      updateTerminal(id, { title: trimmedTitle });
+    }
+    setIsEditingTitle(false);
+  }, [editedTitle, terminal?.title, updateTerminal, id]);
+
+  const handleCancelEditTitle = useCallback(() => {
+    setIsEditingTitle(false);
+    setEditedTitle('');
+  }, []);
+
+  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancelEditTitle();
+    }
+  }, [handleSaveTitle, handleCancelEditTitle]);
 
   return (
     <div
@@ -424,24 +465,58 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
           <div className={cn('h-2 w-2 rounded-full', STATUS_COLORS[terminal?.status || 'idle'])} />
           <div className="flex items-center gap-1.5">
             <TerminalSquare className="h-3.5 w-3.5 text-muted-foreground" />
-            {/* Terminal title with optional tooltip showing task description */}
-            {associatedTask ? (
+            {/* Terminal title - editable on double-click */}
+            {isEditingTitle ? (
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onKeyDown={handleTitleKeyDown}
+                onBlur={handleSaveTitle}
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs font-medium text-foreground bg-transparent border border-primary/50 rounded px-1 py-0.5 outline-none focus:border-primary max-w-32"
+                style={{ width: `${Math.max(editedTitle.length * 6 + 16, 60)}px` }}
+              />
+            ) : associatedTask ? (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="text-xs font-medium text-foreground truncate max-w-32 cursor-help">
+                    <span
+                      className="text-xs font-medium text-foreground truncate max-w-32 cursor-text hover:text-primary/80 transition-colors"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEditTitle();
+                      }}
+                    >
                       {terminal?.title || 'Terminal'}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs">
                     <p className="text-sm">{associatedTask.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Double-click to rename</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             ) : (
-              <span className="text-xs font-medium text-foreground truncate max-w-32">
-                {terminal?.title || 'Terminal'}
-              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className="text-xs font-medium text-foreground truncate max-w-32 cursor-text hover:text-primary/80 transition-colors"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEditTitle();
+                      }}
+                    >
+                      {terminal?.title || 'Terminal'}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="text-xs">Double-click to rename</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
           {terminal?.isClaudeMode && (

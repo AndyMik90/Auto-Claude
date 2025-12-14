@@ -2991,27 +2991,58 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join('\n'
             .slice(0, 10); // Last 10 specs
 
           for (const specDir of recentSpecDirs) {
-            // Look for session memory files
             const memoryDir = path.join(specsDir, specDir, 'memory');
             if (existsSync(memoryDir)) {
-              const memoryFiles = readdirSync(memoryDir)
-                .filter((f: string) => f.endsWith('.json'))
-                .sort()
-                .reverse();
+              // Load session insights from session_insights subdirectory
+              const sessionInsightsDir = path.join(memoryDir, 'session_insights');
+              if (existsSync(sessionInsightsDir)) {
+                const sessionFiles = readdirSync(sessionInsightsDir)
+                  .filter((f: string) => f.startsWith('session_') && f.endsWith('.json'))
+                  .sort()
+                  .reverse();
 
-              for (const memFile of memoryFiles.slice(0, 3)) {
+                for (const sessionFile of sessionFiles.slice(0, 3)) {
+                  try {
+                    const sessionPath = path.join(sessionInsightsDir, sessionFile);
+                    const sessionContent = readFileSync(sessionPath, 'utf-8');
+                    const sessionData = JSON.parse(sessionContent);
+
+                    // Session files have: session_number, timestamp, subtasks_completed,
+                    // discoveries, what_worked, what_failed, recommendations_for_next_session
+                    if (sessionData.session_number !== undefined) {
+                      recentMemories.push({
+                        id: `${specDir}-${sessionFile}`,
+                        type: 'session_insight',
+                        timestamp: sessionData.timestamp || new Date().toISOString(),
+                        content: JSON.stringify({
+                          discoveries: sessionData.discoveries,
+                          what_worked: sessionData.what_worked,
+                          what_failed: sessionData.what_failed,
+                          recommendations: sessionData.recommendations_for_next_session,
+                          subtasks_completed: sessionData.subtasks_completed
+                        }, null, 2),
+                        session_number: sessionData.session_number
+                      });
+                    }
+                  } catch {
+                    // Skip invalid files
+                  }
+                }
+              }
+
+              // Also load codebase_map.json as a memory item
+              const codebaseMapPath = path.join(memoryDir, 'codebase_map.json');
+              if (existsSync(codebaseMapPath)) {
                 try {
-                  const memPath = path.join(memoryDir, memFile);
-                  const memContent = readFileSync(memPath, 'utf-8');
-                  const memData = JSON.parse(memContent);
-
-                  if (memData.insights) {
+                  const mapContent = readFileSync(codebaseMapPath, 'utf-8');
+                  const mapData = JSON.parse(mapContent);
+                  if (mapData.discovered_files && Object.keys(mapData.discovered_files).length > 0) {
                     recentMemories.push({
-                      id: `${specDir}-${memFile}`,
-                      type: 'session_insight',
-                      timestamp: memData.timestamp || new Date().toISOString(),
-                      content: JSON.stringify(memData.insights, null, 2),
-                      session_number: memData.session_number
+                      id: `${specDir}-codebase_map`,
+                      type: 'codebase_map',
+                      timestamp: mapData.last_updated || new Date().toISOString(),
+                      content: JSON.stringify(mapData.discovered_files, null, 2),
+                      session_number: undefined
                     });
                   }
                 } catch {

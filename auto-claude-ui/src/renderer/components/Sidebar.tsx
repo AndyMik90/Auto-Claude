@@ -17,7 +17,8 @@ import {
   Github,
   FileText,
   Sparkles,
-  GitBranch
+  GitBranch,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -281,14 +282,6 @@ export function Sidebar({
               </TooltipTrigger>
               <TooltipContent>Toggle theme</TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onSettingsClick}>
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Settings</TooltipContent>
-            </Tooltip>
           </div>
         </div>
 
@@ -385,8 +378,39 @@ export function Sidebar({
 
         <Separator />
 
-        {/* New Task button */}
-        <div className="p-4">
+        {/* Bottom section with Settings, Help, and New Task */}
+        <div className="p-4 space-y-3">
+          {/* Settings and Help row */}
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 justify-start gap-2"
+                  onClick={onSettingsClick}
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Application Settings</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => window.open('https://github.com/anthropics/claude-code/issues', '_blank')}
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Help & Feedback</TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* New Task button */}
           <Button
             className="w-full"
             onClick={onNewTaskClick}

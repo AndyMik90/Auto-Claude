@@ -33,9 +33,6 @@ python auto-claude/spec_runner.py --task "Fix button" --complexity simple
 # Run autonomous build
 python auto-claude/run.py --spec 001
 
-# Run with parallel workers
-python auto-claude/run.py --spec 001 --parallel 2
-
 # List all specs
 python auto-claude/run.py --list
 ```
@@ -92,7 +89,7 @@ python auto-claude/validate_spec.py --spec-dir auto-claude/specs/001-feature --c
 
 **Implementation (run.py → agent.py)** - Multi-session build:
 1. Planner Agent creates subtask-based implementation plan
-2. Coder Agent implements subtasks (sequential or parallel via Task tool)
+2. Coder Agent implements subtasks (can spawn subagents for parallel work)
 3. QA Reviewer validates acceptance criteria
 4. QA Fixer resolves issues in a loop
 
@@ -101,7 +98,6 @@ python auto-claude/validate_spec.py --spec-dir auto-claude/specs/001-feature --c
 - **client.py** - Claude SDK client with security hooks and tool permissions
 - **security.py** + **project_analyzer.py** - Dynamic command allowlisting based on detected project stack
 - **worktree.py** - Git worktree isolation for safe feature development
-- **task_tool.py** - Parallel subtask execution using Claude Code's Task tool
 - **memory.py** - File-based session memory (primary, always-available storage)
 - **graphiti_memory.py** - Optional graph-based cross-session memory with semantic search
 - **graphiti_providers.py** - Multi-provider factory for Graphiti (OpenAI, Anthropic, Azure, Ollama)
@@ -144,14 +140,14 @@ main (user's branch)
 
 **Key principles:**
 - ONE branch per spec (`auto-claude/{spec-name}`)
-- Parallel execution uses Claude Code's Task tool (not separate branches)
+- Parallel work uses subagents (agent decides when to spawn)
 - NO automatic pushes to GitHub - user controls when to push
 - User reviews in spec worktree (`.worktrees/{spec-name}/`)
 - Final merge: spec branch → main (after user approval)
 
 **Workflow:**
 1. Build runs in isolated worktree on spec branch
-2. Parallel subtasks execute via Task tool (same branch)
+2. Agent implements subtasks (can spawn subagents for parallel work)
 3. User tests feature in `.worktrees/{spec-name}/`
 4. User runs `--merge` to add to their project
 5. User pushes to remote when ready

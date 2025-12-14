@@ -801,3 +801,39 @@ body {
   background: #1A1A1F;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
+
+/* ============================================
+   Full Screen Dialog Animations
+   ============================================ */
+
+/* Zoom in/out animations for full-screen dialogs */
+@keyframes zoom-in-98 {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes zoom-out-98 {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* Apply animations via data attributes (Radix UI pattern) */
+[data-state="open"].animate-in.zoom-in-98 {
+  animation: zoom-in-98 0.2s ease-out;
+}
+
+[data-state="closed"].animate-out.zoom-out-98 {
+  animation: zoom-out-98 0.2s ease-in;
+}

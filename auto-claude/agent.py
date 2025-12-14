@@ -86,7 +86,6 @@ from task_logger import (
     get_task_logger,
     clear_task_logger,
 )
-from task_tool import TaskToolCoordinator
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -868,10 +867,12 @@ async def run_autonomous_agent(
     max_iterations: Optional[int] = None,
     verbose: bool = False,
     source_spec_dir: Optional[Path] = None,
-    max_parallel_subtasks: int = 1,
 ) -> None:
     """
     Run the autonomous agent loop with automatic memory management.
+
+    The agent can use subagents (via Task tool) for parallel execution if needed.
+    This is decided by the agent itself based on the task complexity.
 
     Args:
         project_dir: Root directory for the project
@@ -880,7 +881,6 @@ async def run_autonomous_agent(
         max_iterations: Maximum number of iterations (None for unlimited)
         verbose: Whether to show detailed output
         source_spec_dir: Original spec directory in main project (for syncing from worktree)
-        max_parallel_subtasks: Maximum parallel subtasks (1=sequential, 2-10=parallel)
     """
     # Initialize recovery manager (handles memory persistence)
     recovery_manager = RecoveryManager(spec_dir, project_dir)
@@ -1052,44 +1052,6 @@ async def run_autonomous_agent(
                 if task_logger:
                     task_logger.end_phase(LogPhase.PLANNING, success=True, message="Implementation plan created")
                     task_logger.start_phase(LogPhase.CODING, "Starting implementation...")
-
-                # Check if parallel execution is requested
-                if max_parallel_subtasks > 1:
-                    print_status(f"Parallel mode: Using TaskToolCoordinator with {max_parallel_subtasks} workers", "info")
-
-                    coordinator = TaskToolCoordinator(
-                        spec_dir=spec_dir,
-                        project_dir=project_dir,
-                        model=model,
-                        max_parallel=max_parallel_subtasks,
-                    )
-
-                    # Run parallel build loop
-                    while True:
-                        completed, failed = await coordinator.run_next_batch()
-
-                        if completed == 0 and failed == 0:
-                            # No more pending subtasks
-                            break
-
-                        print(f"Batch complete: {completed} succeeded, {failed} failed")
-
-                        # Check if build is complete
-                        if is_build_complete(spec_dir):
-                            print_build_complete_banner(spec_dir)
-                            status_manager.update(state=BuildState.COMPLETE)
-                            return
-
-                        await asyncio.sleep(2)
-
-                    # After parallel loop completes, check final status
-                    if is_build_complete(spec_dir):
-                        print_build_complete_banner(spec_dir)
-                        status_manager.update(state=BuildState.COMPLETE)
-                    else:
-                        print_status("Parallel build incomplete - some subtasks may need retry", "warning")
-                        status_manager.update(state=BuildState.PAUSED)
-                    return
 
             if not next_subtask:
                 print("No pending subtasks found - build may be complete!")

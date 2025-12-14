@@ -69,6 +69,7 @@ const serviceTypeColors: Record<string, string> = {
 const memoryTypeIcons: Record<string, React.ElementType> = {
   session_insight: Lightbulb,
   codebase_discovery: FolderTree,
+  codebase_map: FolderTree,
   pattern: Code,
   gotcha: AlertTriangle
 };

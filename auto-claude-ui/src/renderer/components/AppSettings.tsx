@@ -14,16 +14,22 @@ import {
   Key,
   Eye,
   EyeOff,
-  Info
+  Info,
+  Palette,
+  Bot,
+  FolderOpen,
+  Bell,
+  Package
 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from './ui/dialog';
+  FullScreenDialog,
+  FullScreenDialogContent,
+  FullScreenDialogHeader,
+  FullScreenDialogBody,
+  FullScreenDialogFooter,
+  FullScreenDialogTitle,
+  FullScreenDialogDescription
+} from './ui/full-screen-dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -37,6 +43,7 @@ import {
   SelectValue
 } from './ui/select';
 import { Separator } from './ui/separator';
+import { cn } from '../lib/utils';
 import { useSettingsStore, saveSettings, loadSettings } from '../stores/settings-store';
 import { AVAILABLE_MODELS } from '../../shared/constants';
 import type {
@@ -51,12 +58,31 @@ interface AppSettingsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+type SettingsSection = 'appearance' | 'agent' | 'paths' | 'api-keys' | 'framework' | 'notifications';
+
+interface NavItem {
+  id: SettingsSection;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+}
+
+const navItems: NavItem[] = [
+  { id: 'appearance', label: 'Appearance', icon: Palette, description: 'Theme and visual preferences' },
+  { id: 'agent', label: 'Agent Settings', icon: Bot, description: 'Default model and parallelism' },
+  { id: 'paths', label: 'Paths', icon: FolderOpen, description: 'Python and framework paths' },
+  { id: 'api-keys', label: 'API Keys', icon: Key, description: 'Global API credentials' },
+  { id: 'framework', label: 'Framework', icon: Package, description: 'Auto Claude updates' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Alert preferences' }
+];
+
 export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps) {
   const currentSettings = useSettingsStore((state) => state.settings);
   const [settings, setSettings] = useState<AppSettingsType>(currentSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string>('');
+  const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
 
   // Auto Claude source update state
   const [sourceUpdateCheck, setSourceUpdateCheck] = useState<AutoBuildSourceUpdateCheck | null>(null);
@@ -164,82 +190,59 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-foreground">
-            <Settings className="h-5 w-5" />
-            Application Settings
-          </DialogTitle>
-          <DialogDescription>
-            Configure global application settings
-          </DialogDescription>
-        </DialogHeader>
-
-        <ScrollArea className="flex-1 -mx-6 px-6 min-h-0">
-          <div className="py-4 space-y-6">
-            {/* Appearance */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Appearance</h3>
-              <div className="space-y-2">
-                <Label htmlFor="theme" className="text-sm font-medium text-foreground">Theme</Label>
-                <Select
-                  value={settings.theme}
-                  onValueChange={(value: 'light' | 'dark' | 'system') =>
-                    setSettings({ ...settings, theme: value })
-                  }
-                >
-                  <SelectTrigger id="theme">
-                    <SelectValue>
-                      <span className="flex items-center gap-2">
-                        {getThemeIcon(settings.theme)}
-                        {settings.theme === 'system'
-                          ? 'System'
-                          : settings.theme === 'dark'
-                          ? 'Dark'
-                          : 'Light'}
-                      </span>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="system">
-                      <span className="flex items-center gap-2">
-                        <Monitor className="h-4 w-4" />
-                        System
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="light">
-                      <span className="flex items-center gap-2">
-                        <Sun className="h-4 w-4" />
-                        Light
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="dark">
-                      <span className="flex items-center gap-2">
-                        <Moon className="h-4 w-4" />
-                        Dark
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </section>
-
+  const renderSection = () => {
+    switch (activeSection) {
+      case 'appearance':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Appearance</h3>
+              <p className="text-sm text-muted-foreground">Customize how Auto Claude looks</p>
+            </div>
             <Separator />
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <Label htmlFor="theme" className="text-sm font-medium text-foreground">Theme</Label>
+                <p className="text-sm text-muted-foreground">Choose your preferred color scheme</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {(['system', 'light', 'dark'] as const).map((theme) => (
+                    <button
+                      key={theme}
+                      onClick={() => setSettings({ ...settings, theme })}
+                      className={cn(
+                        'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
+                        settings.theme === theme
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50 hover:bg-accent/50'
+                      )}
+                    >
+                      {getThemeIcon(theme)}
+                      <span className="text-sm font-medium capitalize">{theme}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
 
-            {/* Default Agent Settings */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Default Agent Settings</h3>
-              <div className="space-y-2">
+      case 'agent':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Default Agent Settings</h3>
+              <p className="text-sm text-muted-foreground">Configure defaults for new projects</p>
+            </div>
+            <Separator />
+            <div className="space-y-6">
+              <div className="space-y-3">
                 <Label htmlFor="defaultModel" className="text-sm font-medium text-foreground">Default Model</Label>
+                <p className="text-sm text-muted-foreground">The AI model used for agent tasks</p>
                 <Select
                   value={settings.defaultModel}
-                  onValueChange={(value) =>
-                    setSettings({ ...settings, defaultModel: value })
-                  }
+                  onValueChange={(value) => setSettings({ ...settings, defaultModel: value })}
                 >
-                  <SelectTrigger id="defaultModel">
+                  <SelectTrigger id="defaultModel" className="w-full max-w-md">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -251,13 +254,15 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="defaultParallelism" className="text-sm font-medium text-foreground">Default Parallelism</Label>
+                <p className="text-sm text-muted-foreground">Number of concurrent agent workers (1-8)</p>
                 <Input
                   id="defaultParallelism"
                   type="number"
                   min={1}
                   max={8}
+                  className="w-full max-w-md"
                   value={settings.defaultParallelism}
                   onChange={(e) =>
                     setSettings({
@@ -267,64 +272,70 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
                   }
                 />
               </div>
-            </section>
+            </div>
+          </div>
+        );
 
+      case 'paths':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Paths</h3>
+              <p className="text-sm text-muted-foreground">Configure executable and framework paths</p>
+            </div>
             <Separator />
-
-            {/* Paths */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Paths</h3>
-              <div className="space-y-2">
+            <div className="space-y-6">
+              <div className="space-y-3">
                 <Label htmlFor="pythonPath" className="text-sm font-medium text-foreground">Python Path</Label>
+                <p className="text-sm text-muted-foreground">Path to Python executable (leave empty for default)</p>
                 <Input
                   id="pythonPath"
                   placeholder="python3 (default)"
+                  className="w-full max-w-lg"
                   value={settings.pythonPath || ''}
-                  onChange={(e) =>
-                    setSettings({ ...settings, pythonPath: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, pythonPath: e.target.value })}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Path to Python executable (leave empty for default)
-                </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="autoBuildPath" className="text-sm font-medium text-foreground">Auto Claude Path</Label>
+                <p className="text-sm text-muted-foreground">Relative path to auto-claude directory in projects</p>
                 <Input
                   id="autoBuildPath"
                   placeholder="auto-claude (default)"
+                  className="w-full max-w-lg"
                   value={settings.autoBuildPath || ''}
-                  onChange={(e) =>
-                    setSettings({ ...settings, autoBuildPath: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, autoBuildPath: e.target.value })}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Relative path to auto-claude directory in projects
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'api-keys':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Global API Keys</h3>
+              <p className="text-sm text-muted-foreground">Set API keys to use across all projects</p>
+            </div>
+            <Separator />
+            <div className="rounded-lg bg-info/10 border border-info/30 p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">
+                  Keys set here will be used as defaults. Individual projects can override these in their settings.
                 </p>
               </div>
-            </section>
-
-            <Separator />
-
-            {/* Global API Keys */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Key className="h-4 w-4" />
-                <h3 className="text-sm font-semibold text-foreground">Global API Keys</h3>
-              </div>
-              <div className="rounded-lg bg-info/10 border border-info/30 p-3">
-                <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-info flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-muted-foreground">
-                    Set API keys here to use them across all projects. Individual projects can override these in their settings.
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2">
+            </div>
+            <div className="space-y-6">
+              <div className="space-y-3">
                 <Label htmlFor="globalClaudeToken" className="text-sm font-medium text-foreground">
                   Claude OAuth Token
                 </Label>
-                <div className="relative">
+                <p className="text-sm text-muted-foreground">
+                  Get your token by running <code className="px-1.5 py-0.5 bg-muted rounded font-mono text-xs">claude setup-token</code>
+                </p>
+                <div className="relative max-w-lg">
                   <Input
                     id="globalClaudeToken"
                     type={showGlobalClaudeToken ? 'text' : 'password'}
@@ -343,15 +354,15 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
                     {showGlobalClaudeToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Get your token by running <code className="px-1 py-0.5 bg-muted rounded font-mono">claude setup-token</code>
-                </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="globalOpenAIKey" className="text-sm font-medium text-foreground">
                   OpenAI API Key
                 </Label>
-                <div className="relative">
+                <p className="text-sm text-muted-foreground">
+                  Required for Graphiti memory backend (embeddings)
+                </p>
+                <div className="relative max-w-lg">
                   <Input
                     id="globalOpenAIKey"
                     type={showGlobalOpenAIKey ? 'text' : 'password'}
@@ -370,57 +381,60 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
                     {showGlobalOpenAIKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Required for Graphiti memory backend (embeddings)
-                </p>
               </div>
-            </section>
+            </div>
+          </div>
+        );
 
+      case 'framework':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Auto Claude Framework</h3>
+              <p className="text-sm text-muted-foreground">Manage framework updates and settings</p>
+            </div>
             <Separator />
-
-            {/* Auto Claude Framework Updates */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Auto Claude Framework</h3>
-              <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
+            <div className="space-y-6">
+              <div className="rounded-lg border border-border bg-muted/50 p-5 space-y-4">
                 {isCheckingSourceUpdate ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
                     Checking for updates...
                   </div>
                 ) : sourceUpdateCheck ? (
                   <>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-foreground">
-                          Current Version: {sourceUpdateCheck.currentVersion}
+                        <p className="text-base font-medium text-foreground">
+                          Version {sourceUpdateCheck.currentVersion}
                         </p>
                         {sourceUpdateCheck.latestVersion && sourceUpdateCheck.updateAvailable && (
-                          <p className="text-xs text-info">
+                          <p className="text-sm text-info mt-1">
                             New version available: {sourceUpdateCheck.latestVersion}
                           </p>
                         )}
                       </div>
                       {sourceUpdateCheck.updateAvailable ? (
-                        <AlertCircle className="h-5 w-5 text-info" />
+                        <AlertCircle className="h-6 w-6 text-info" />
                       ) : (
-                        <CheckCircle2 className="h-5 w-5 text-success" />
+                        <CheckCircle2 className="h-6 w-6 text-success" />
                       )}
                     </div>
 
                     {sourceUpdateCheck.error && (
-                      <p className="text-xs text-destructive">{sourceUpdateCheck.error}</p>
+                      <p className="text-sm text-destructive">{sourceUpdateCheck.error}</p>
                     )}
 
                     {!sourceUpdateCheck.updateAvailable && !sourceUpdateCheck.error && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         You're running the latest version of the Auto Claude framework.
                       </p>
                     )}
 
                     {sourceUpdateCheck.updateAvailable && (
-                      <div className="space-y-3">
+                      <div className="space-y-4 pt-2">
                         {sourceUpdateCheck.releaseNotes && (
-                          <div className="text-xs text-muted-foreground bg-background rounded p-2 max-h-24 overflow-y-auto">
+                          <div className="text-sm text-muted-foreground bg-background rounded-lg p-3 max-h-32 overflow-y-auto">
                             <pre className="whitespace-pre-wrap font-sans">
                               {sourceUpdateCheck.releaseNotes}
                             </pre>
@@ -428,8 +442,8 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
                         )}
 
                         {isDownloadingUpdate ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3 text-sm">
                               <RefreshCw className="h-4 w-4 animate-spin" />
                               <span>{downloadProgress?.message || 'Downloading...'}</span>
                             </div>
@@ -438,20 +452,17 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
                             )}
                           </div>
                         ) : downloadProgress?.stage === 'complete' ? (
-                          <div className="flex items-center gap-2 text-sm text-success">
-                            <CheckCircle2 className="h-4 w-4" />
+                          <div className="flex items-center gap-3 text-sm text-success">
+                            <CheckCircle2 className="h-5 w-5" />
                             <span>{downloadProgress.message}</span>
                           </div>
                         ) : downloadProgress?.stage === 'error' ? (
-                          <div className="flex items-center gap-2 text-sm text-destructive">
-                            <AlertCircle className="h-4 w-4" />
+                          <div className="flex items-center gap-3 text-sm text-destructive">
+                            <AlertCircle className="h-5 w-5" />
                             <span>{downloadProgress.message}</span>
                           </div>
                         ) : (
-                          <Button
-                            size="sm"
-                            onClick={handleDownloadSourceUpdate}
-                          >
+                          <Button onClick={handleDownloadSourceUpdate}>
                             <CloudDownload className="mr-2 h-4 w-4" />
                             Download Update
                           </Button>
@@ -460,33 +471,29 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
                     )}
                   </>
                 ) : (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <AlertCircle className="h-4 w-4" />
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <AlertCircle className="h-5 w-5" />
                     Unable to check for updates
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="pt-2">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={checkForSourceUpdates}
                     disabled={isCheckingSourceUpdate}
                   >
-                    <RefreshCw className={`mr-2 h-3 w-3 ${isCheckingSourceUpdate ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={cn('mr-2 h-4 w-4', isCheckingSourceUpdate && 'animate-spin')} />
                     Check for Updates
                   </Button>
                 </div>
-
-                <p className="text-xs text-muted-foreground">
-                  Updates the bundled Auto Claude framework from GitHub. Individual projects can then be updated from Project Settings.
-                </p>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="font-normal text-foreground">Auto-Update Projects</Label>
-                  <p className="text-xs text-muted-foreground">
+              <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                <div className="space-y-1">
+                  <Label className="font-medium text-foreground">Auto-Update Projects</Label>
+                  <p className="text-sm text-muted-foreground">
                     Automatically update Auto Claude in projects when a new version is available
                   </p>
                 </div>
@@ -497,94 +504,120 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
                   }
                 />
               </div>
-            </section>
-
-            <Separator />
-
-            {/* Notifications */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Default Notifications</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="font-normal text-foreground">On Task Complete</Label>
-                  <Switch
-                    checked={settings.notifications.onTaskComplete}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        notifications: {
-                          ...settings.notifications,
-                          onTaskComplete: checked
-                        }
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="font-normal text-foreground">On Task Failed</Label>
-                  <Switch
-                    checked={settings.notifications.onTaskFailed}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        notifications: {
-                          ...settings.notifications,
-                          onTaskFailed: checked
-                        }
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="font-normal text-foreground">On Review Needed</Label>
-                  <Switch
-                    checked={settings.notifications.onReviewNeeded}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        notifications: {
-                          ...settings.notifications,
-                          onReviewNeeded: checked
-                        }
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="font-normal text-foreground">Sound</Label>
-                  <Switch
-                    checked={settings.notifications.sound}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        notifications: {
-                          ...settings.notifications,
-                          sound: checked
-                        }
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Error */}
-            {error && (
-              <div className="rounded-lg bg-[var(--error-light)] border border-[var(--error)]/30 p-3 text-sm text-[var(--error)]">
-                {error}
-              </div>
-            )}
-
-            {/* Version */}
-            {version && (
-              <div className="text-xs text-muted-foreground text-center pt-2">
-                Version {version}
-              </div>
-            )}
+            </div>
           </div>
-        </ScrollArea>
+        );
 
-        <DialogFooter className="flex-shrink-0">
+      case 'notifications':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Notifications</h3>
+              <p className="text-sm text-muted-foreground">Configure default notification preferences</p>
+            </div>
+            <Separator />
+            <div className="space-y-4">
+              {[
+                { key: 'onTaskComplete', label: 'On Task Complete', description: 'Notify when a task finishes successfully' },
+                { key: 'onTaskFailed', label: 'On Task Failed', description: 'Notify when a task encounters an error' },
+                { key: 'onReviewNeeded', label: 'On Review Needed', description: 'Notify when QA requires your review' },
+                { key: 'sound', label: 'Sound', description: 'Play sound with notifications' }
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div className="space-y-1">
+                    <Label className="font-medium text-foreground">{item.label}</Label>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                  </div>
+                  <Switch
+                    checked={settings.notifications[item.key as keyof typeof settings.notifications]}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        notifications: {
+                          ...settings.notifications,
+                          [item.key]: checked
+                        }
+                      })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <FullScreenDialog open={open} onOpenChange={onOpenChange}>
+      <FullScreenDialogContent>
+        <FullScreenDialogHeader>
+          <FullScreenDialogTitle className="flex items-center gap-3">
+            <Settings className="h-6 w-6" />
+            Settings
+          </FullScreenDialogTitle>
+          <FullScreenDialogDescription>
+            Configure application-wide settings and preferences
+          </FullScreenDialogDescription>
+        </FullScreenDialogHeader>
+
+        <FullScreenDialogBody>
+          <div className="flex h-full">
+            {/* Navigation sidebar */}
+            <nav className="w-64 border-r border-border bg-muted/30 p-4">
+              <ScrollArea className="h-full">
+                <div className="space-y-1">
+                  {navItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSection(item.id)}
+                        className={cn(
+                          'w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all',
+                          activeSection === item.id
+                            ? 'bg-accent text-accent-foreground'
+                            : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        <Icon className="h-5 w-5 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm">{item.label}</div>
+                          <div className="text-xs text-muted-foreground truncate">{item.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Version at bottom */}
+                {version && (
+                  <div className="mt-8 pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground text-center">
+                      Version {version}
+                    </p>
+                  </div>
+                )}
+              </ScrollArea>
+            </nav>
+
+            {/* Main content */}
+            <div className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="p-8 max-w-2xl">
+                  {renderSection()}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        </FullScreenDialogBody>
+
+        <FullScreenDialogFooter>
+          {error && (
+            <div className="flex-1 rounded-lg bg-destructive/10 border border-destructive/30 px-4 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -601,8 +634,8 @@ export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps
               </>
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </FullScreenDialogFooter>
+      </FullScreenDialogContent>
+    </FullScreenDialog>
   );
 }

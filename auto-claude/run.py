@@ -465,7 +465,6 @@ Examples:
   python auto-claude/run.py --spec 001 --discard   # Delete build (with confirmation)
 
   # Advanced options
-  python auto-claude/run.py --spec 001 --parallel 2   # Use 2 parallel workers
   python auto-claude/run.py --spec 001 --direct       # Skip workspace isolation
   python auto-claude/run.py --spec 001 --isolated     # Force workspace isolation
 
@@ -522,13 +521,6 @@ Environment Variables:
         "--verbose",
         action="store_true",
         help="Enable verbose output",
-    )
-
-    parser.add_argument(
-        "--parallel",
-        type=int,
-        default=1,
-        help="Number of parallel workers (default: 1 = sequential). Use 2-3 for parallelism.",
     )
 
     # Workspace options
@@ -1000,11 +992,6 @@ def main() -> None:
     print(f"Spec: {spec_dir.name}")
     print(f"Model: {args.model}")
 
-    if args.parallel > 1:
-        print(f"Parallel mode: {args.parallel} workers")
-    else:
-        print("Sequential mode: 1 worker")
-
     if args.max_iterations:
         print(f"Max iterations: {args.max_iterations}")
     else:
@@ -1072,46 +1059,36 @@ def main() -> None:
     worktree_manager = None
     source_spec_dir = None  # Track original spec dir for syncing back from worktree
 
-    if args.parallel > 1:
-        # Parallel mode always uses worktrees (managed by coordinator)
-        workspace_mode = WorkspaceMode.ISOLATED
-        print("Parallel mode uses isolated workspaces automatically.")
-    else:
-        # Sequential mode - let user choose (or auto-select if --auto-continue)
-        workspace_mode = choose_workspace(
-            project_dir,
-            spec_dir.name,
-            force_isolated=args.isolated,
-            force_direct=args.direct,
-            auto_continue=args.auto_continue,
+    # Let user choose workspace mode (or auto-select if --auto-continue)
+    workspace_mode = choose_workspace(
+        project_dir,
+        spec_dir.name,
+        force_isolated=args.isolated,
+        force_direct=args.direct,
+        auto_continue=args.auto_continue,
+    )
+
+    if workspace_mode == WorkspaceMode.ISOLATED:
+        # Keep reference to original spec directory for syncing progress back
+        source_spec_dir = spec_dir
+
+        working_dir, worktree_manager, localized_spec_dir = setup_workspace(
+            project_dir, spec_dir.name, workspace_mode, source_spec_dir=spec_dir
         )
+        # Use the localized spec directory (inside worktree) for AI access
+        if localized_spec_dir:
+            spec_dir = localized_spec_dir
 
-        if workspace_mode == WorkspaceMode.ISOLATED:
-            # Keep reference to original spec directory for syncing progress back
-            source_spec_dir = spec_dir
-            
-            working_dir, worktree_manager, localized_spec_dir = setup_workspace(
-                project_dir, spec_dir.name, workspace_mode, source_spec_dir=spec_dir
-            )
-            # Use the localized spec directory (inside worktree) for AI access
-            if localized_spec_dir:
-                spec_dir = localized_spec_dir
-
-    # Run the autonomous agent (sequential or parallel)
+    # Run the autonomous agent
     debug_section("run.py", "Starting Build Execution")
     debug("run.py", "Build configuration",
-          parallel=args.parallel,
           model=args.model,
           workspace_mode=str(workspace_mode),
           working_dir=str(working_dir),
           spec_dir=str(spec_dir))
 
     try:
-        # Both sequential and parallel modes now use run_autonomous_agent
-        # with max_parallel_subtasks parameter
-        execution_mode = "parallel" if args.parallel > 1 else "sequential"
-        debug("run.py", f"Starting {execution_mode} execution",
-              max_parallel_subtasks=args.parallel)
+        debug("run.py", "Starting agent execution")
 
         asyncio.run(
             run_autonomous_agent(
@@ -1121,10 +1098,9 @@ def main() -> None:
                 max_iterations=args.max_iterations,
                 verbose=args.verbose,
                 source_spec_dir=source_spec_dir,  # For syncing progress back to main project
-                max_parallel_subtasks=args.parallel,  # Pass parallel count
             )
         )
-        debug_success("run.py", f"{execution_mode.capitalize()} execution completed")
+        debug_success("run.py", "Agent execution completed")
 
         # Run QA validation BEFORE finalization (while worktree still exists)
         # QA must sign off before the build is considered complete
