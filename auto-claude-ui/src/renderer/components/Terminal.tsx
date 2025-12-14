@@ -4,11 +4,11 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { useDroppable } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
-import { X, Sparkles, TerminalSquare, ListTodo, FileDown } from 'lucide-react';
+import { X, Sparkles, TerminalSquare, ListTodo, FileDown, ChevronDown, Circle, Loader2, CheckCircle2, AlertCircle, Clock, Code2, Search, Wrench } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import { useTerminalStore, type TerminalStatus } from '../stores/terminal-store';
-import type { Task } from '../../shared/types';
+import type { Task, ExecutionPhase } from '../../shared/types';
 import {
   Select,
   SelectContent,
@@ -16,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -38,6 +45,17 @@ const STATUS_COLORS: Record<TerminalStatus, string> = {
   running: 'bg-success',
   'claude-active': 'bg-primary',
   exited: 'bg-destructive',
+};
+
+// Execution phase display configuration
+const PHASE_CONFIG: Record<ExecutionPhase, { label: string; color: string; icon: React.ElementType }> = {
+  idle: { label: 'Ready', color: 'bg-muted text-muted-foreground', icon: Circle },
+  planning: { label: 'Planning', color: 'bg-info/20 text-info', icon: Search },
+  coding: { label: 'Coding', color: 'bg-primary/20 text-primary', icon: Code2 },
+  qa_review: { label: 'QA Review', color: 'bg-warning/20 text-warning', icon: Search },
+  qa_fixing: { label: 'Fixing', color: 'bg-warning/20 text-warning', icon: Wrench },
+  complete: { label: 'Complete', color: 'bg-success/20 text-success', icon: CheckCircle2 },
+  failed: { label: 'Failed', color: 'bg-destructive/20 text-destructive', icon: AlertCircle },
 };
 
 export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, tasks = [] }: TerminalProps) {
@@ -370,6 +388,17 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     window.electronAPI.sendTerminalInput(id, contextMessage + '\r');
   }, [id, tasks, setAssociatedTask, updateTerminal]);
 
+  // Handle clearing the associated task
+  const handleClearTask = useCallback(() => {
+    setAssociatedTask(id, undefined);
+    updateTerminal(id, { title: 'Claude' });
+  }, [id, setAssociatedTask, updateTerminal]);
+
+  // Get execution phase from associated task
+  const executionPhase = associatedTask?.executionProgress?.phase || 'idle';
+  const phaseConfig = PHASE_CONFIG[executionPhase];
+  const PhaseIcon = phaseConfig.icon;
+
   return (
     <div
       ref={setDropRef}
@@ -421,27 +450,95 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
               Claude
             </span>
           )}
-          {/* Task selection dropdown - only show when Claude is active and there are backlog tasks */}
-          {terminal?.isClaudeMode && backlogTasks.length > 0 && (
-            <Select
-              value={terminal?.associatedTaskId || ''}
-              onValueChange={handleTaskSelect}
-            >
-              <SelectTrigger
-                className="h-6 w-auto min-w-[120px] max-w-[160px] text-[10px] px-2 py-0 border-border/50 bg-card/50"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ListTodo className="h-3 w-3 mr-1 text-muted-foreground" />
-                <SelectValue placeholder="Select task..." />
-              </SelectTrigger>
-              <SelectContent>
-                {backlogTasks.map((task) => (
-                  <SelectItem key={task.id} value={task.id} className="text-xs">
-                    <span className="truncate max-w-[200px]">{task.title}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Task selection/status - only show when Claude is active */}
+          {terminal?.isClaudeMode && (
+            <>
+              {/* Show status pill when task is selected */}
+              {associatedTask ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={cn(
+                        'flex items-center gap-1.5 h-6 px-2 rounded text-[10px] font-medium transition-colors',
+                        phaseConfig.color,
+                        'hover:opacity-80 cursor-pointer'
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {executionPhase === 'planning' || executionPhase === 'coding' || executionPhase === 'qa_review' || executionPhase === 'qa_fixing' ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <PhaseIcon className="h-3 w-3" />
+                      )}
+                      <span>{phaseConfig.label}</span>
+                      <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      Current task
+                    </div>
+                    <div className="px-2 py-1 text-sm font-medium truncate">
+                      {associatedTask.title}
+                    </div>
+                    {associatedTask.executionProgress?.message && (
+                      <div className="px-2 py-1 text-xs text-muted-foreground truncate">
+                        {associatedTask.executionProgress.message}
+                      </div>
+                    )}
+                    <DropdownMenuSeparator />
+                    {backlogTasks.length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                          Switch to...
+                        </div>
+                        {backlogTasks.filter(t => t.id !== associatedTask.id).slice(0, 5).map((task) => (
+                          <DropdownMenuItem
+                            key={task.id}
+                            onClick={() => handleTaskSelect(task.id)}
+                            className="text-xs"
+                          >
+                            <ListTodo className="h-3 w-3 mr-2 text-muted-foreground" />
+                            <span className="truncate">{task.title}</span>
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <DropdownMenuItem
+                      onClick={handleClearTask}
+                      className="text-xs text-muted-foreground"
+                    >
+                      <X className="h-3 w-3 mr-2" />
+                      Clear task
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                /* Show task selector when no task is selected */
+                backlogTasks.length > 0 && (
+                  <Select
+                    value=""
+                    onValueChange={handleTaskSelect}
+                  >
+                    <SelectTrigger
+                      className="h-6 w-auto min-w-[120px] max-w-[160px] text-[10px] px-2 py-0 border-border/50 bg-card/50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ListTodo className="h-3 w-3 mr-1 text-muted-foreground" />
+                      <SelectValue placeholder="Select task..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {backlogTasks.map((task) => (
+                        <SelectItem key={task.id} value={task.id} className="text-xs">
+                          <span className="truncate max-w-[200px]">{task.title}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
+              )}
+            </>
           )}
         </div>
         <div className="flex items-center gap-1">
