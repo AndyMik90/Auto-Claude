@@ -589,6 +589,52 @@ export class TerminalManager {
   }
 
   /**
+   * Get available session dates for a project
+   */
+  getAvailableSessionDates(projectPath?: string): import('./terminal-session-store').SessionDateInfo[] {
+    const store = getTerminalSessionStore();
+    return store.getAvailableDates(projectPath);
+  }
+
+  /**
+   * Get sessions for a specific date and project
+   */
+  getSessionsForDate(date: string, projectPath: string): TerminalSession[] {
+    const store = getTerminalSessionStore();
+    return store.getSessionsForDate(date, projectPath);
+  }
+
+  /**
+   * Restore all sessions from a specific date for a project
+   */
+  async restoreSessionsFromDate(
+    date: string,
+    projectPath: string,
+    cols = 80,
+    rows = 24
+  ): Promise<{ restored: number; failed: number; sessions: Array<{ id: string; success: boolean; error?: string }> }> {
+    const store = getTerminalSessionStore();
+    const sessions = store.getSessionsForDate(date, projectPath);
+
+    const results: Array<{ id: string; success: boolean; error?: string }> = [];
+
+    for (const session of sessions) {
+      const result = await this.restore(session, cols, rows);
+      results.push({
+        id: session.id,
+        success: result.success,
+        error: result.error
+      });
+    }
+
+    return {
+      restored: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      sessions: results
+    };
+  }
+
+  /**
    * Kill all terminal processes
    */
   async killAll(): Promise<void> {

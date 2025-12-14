@@ -2193,6 +2193,59 @@ export function setupIpcHandlers(
     }
   );
 
+  // Get available session dates for a project
+  ipcMain.handle(
+    IPC_CHANNELS.TERMINAL_GET_SESSION_DATES,
+    async (_, projectPath?: string) => {
+      try {
+        const dates = terminalManager.getAvailableSessionDates(projectPath);
+        return { success: true, data: dates };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get session dates'
+        };
+      }
+    }
+  );
+
+  // Get sessions for a specific date and project
+  ipcMain.handle(
+    IPC_CHANNELS.TERMINAL_GET_SESSIONS_FOR_DATE,
+    async (_, date: string, projectPath: string) => {
+      try {
+        const sessions = terminalManager.getSessionsForDate(date, projectPath);
+        return { success: true, data: sessions };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get sessions for date'
+        };
+      }
+    }
+  );
+
+  // Restore all sessions from a specific date
+  ipcMain.handle(
+    IPC_CHANNELS.TERMINAL_RESTORE_FROM_DATE,
+    async (_, date: string, projectPath: string, cols?: number, rows?: number) => {
+      try {
+        const result = await terminalManager.restoreSessionsFromDate(
+          date,
+          projectPath,
+          cols || 80,
+          rows || 24
+        );
+        return { success: true, data: result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to restore sessions from date'
+        };
+      }
+    }
+  );
+
   // ============================================
   // Agent Manager Events → Renderer
   // ============================================

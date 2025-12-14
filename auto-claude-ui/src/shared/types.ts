@@ -438,6 +438,29 @@ export interface TerminalRestoreResult {
 }
 
 /**
+ * Session date information for dropdown display
+ */
+export interface SessionDateInfo {
+  date: string;  // YYYY-MM-DD format
+  label: string;  // Human readable: "Today", "Yesterday", "Dec 10"
+  sessionCount: number;  // Total sessions across all projects
+  projectCount: number;  // Number of projects with sessions
+}
+
+/**
+ * Result of restoring sessions from a specific date
+ */
+export interface SessionDateRestoreResult {
+  restored: number;
+  failed: number;
+  sessions: Array<{
+    id: string;
+    success: boolean;
+    error?: string;
+  }>;
+}
+
+/**
  * Rate limit information when Claude Code hits subscription limits
  */
 export interface RateLimitInfo {
@@ -1335,6 +1358,9 @@ export interface ElectronAPI {
   restoreTerminalSession: (session: TerminalSession, cols?: number, rows?: number) => Promise<IPCResult<TerminalRestoreResult>>;
   clearTerminalSessions: (projectPath: string) => Promise<IPCResult>;
   resumeClaudeInTerminal: (id: string, sessionId?: string) => void;
+  getTerminalSessionDates: (projectPath?: string) => Promise<IPCResult<SessionDateInfo[]>>;
+  getTerminalSessionsForDate: (date: string, projectPath: string) => Promise<IPCResult<TerminalSession[]>>;
+  restoreTerminalSessionsFromDate: (date: string, projectPath: string, cols?: number, rows?: number) => Promise<IPCResult<SessionDateRestoreResult>>;
 
   // Terminal event listeners
   onTerminalOutput: (callback: (id: string, data: string) => void) => () => void;

@@ -177,6 +177,9 @@ export const IPC_CHANNELS = {
   TERMINAL_RESTORE_SESSION: 'terminal:restoreSession',
   TERMINAL_CLEAR_SESSIONS: 'terminal:clearSessions',
   TERMINAL_RESUME_CLAUDE: 'terminal:resumeClaude',
+  TERMINAL_GET_SESSION_DATES: 'terminal:getSessionDates',
+  TERMINAL_GET_SESSIONS_FOR_DATE: 'terminal:getSessionsForDate',
+  TERMINAL_RESTORE_FROM_DATE: 'terminal:restoreFromDate',
 
   // Terminal events (main -> renderer)
   TERMINAL_OUTPUT: 'terminal:output',

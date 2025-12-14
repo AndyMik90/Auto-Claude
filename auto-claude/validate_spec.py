@@ -31,11 +31,13 @@ from typing import Optional
 # JSON Schemas for validation
 IMPLEMENTATION_PLAN_SCHEMA = {
     "required_fields": ["feature", "workflow_type", "phases"],
-    "optional_fields": ["services_involved", "final_acceptance", "created_at", "updated_at", "spec_file", "qa_acceptance", "qa_signoff", "summary"],
+    "optional_fields": ["services_involved", "final_acceptance", "created_at", "updated_at", "spec_file", "qa_acceptance", "qa_signoff", "summary", "description", "workflow_rationale", "status"],
     "workflow_types": ["feature", "refactor", "investigation", "migration", "simple"],
     "phase_schema": {
-        "required_fields": ["phase", "name", "chunks"],
-        "optional_fields": ["type", "depends_on", "parallel_safe"],
+        # Support both old format ("phase" number) and new format ("id" string)
+        "required_fields_either": [["phase", "id"]],  # At least one of these
+        "required_fields": ["name", "chunks"],
+        "optional_fields": ["type", "depends_on", "parallel_safe", "description", "phase", "id"],
         "phase_types": ["setup", "implementation", "investigation", "integration", "cleanup"],
     },
     "chunk_schema": {
@@ -310,13 +312,22 @@ class SpecValidator:
         )
 
     def _validate_phase(self, phase: dict, index: int) -> list[str]:
-        """Validate a single phase."""
+        """Validate a single phase.
+
+        Supports both legacy format (using 'phase' number) and new format (using 'id' string).
+        """
         errors = []
         schema = IMPLEMENTATION_PLAN_SCHEMA["phase_schema"]
 
+        # Check required fields
         for field in schema["required_fields"]:
             if field not in phase:
                 errors.append(f"Phase {index + 1}: missing required field '{field}'")
+
+        # Check either-or required fields (must have at least one from each group)
+        for field_group in schema.get("required_fields_either", []):
+            if not any(f in phase for f in field_group):
+                errors.append(f"Phase {index + 1}: missing required field (need one of: {', '.join(field_group)})")
 
         if "type" in phase and phase["type"] not in schema["phase_types"]:
             errors.append(f"Phase {index + 1}: invalid type '{phase['type']}'")
@@ -354,19 +365,33 @@ class SpecValidator:
         return errors
 
     def _validate_dependencies(self, phases: list[dict]) -> list[str]:
-        """Check for circular dependencies."""
-        errors = []
-        phase_nums = {p.get("phase", i + 1) for i, p in enumerate(phases)}
+        """Check for circular dependencies.
 
-        for phase in phases:
-            phase_num = phase.get("phase", 0)
+        Supports both legacy numeric phase IDs and new string-based phase IDs.
+        """
+        errors = []
+
+        # Build a map of phase identifiers (supports both "id" and "phase" fields)
+        # and track their position/order for cycle detection
+        phase_ids = set()
+        phase_order = {}  # Maps phase id -> position index
+
+        for i, p in enumerate(phases):
+            # Support both "id" field (new format) and "phase" field (legacy format)
+            phase_id = p.get("id") or p.get("phase", i + 1)
+            phase_ids.add(phase_id)
+            phase_order[phase_id] = i
+
+        for i, phase in enumerate(phases):
+            phase_id = phase.get("id") or phase.get("phase", i + 1)
             depends_on = phase.get("depends_on", [])
 
             for dep in depends_on:
-                if dep not in phase_nums:
-                    errors.append(f"Phase {phase_num}: depends on non-existent phase {dep}")
-                if dep >= phase_num:
-                    errors.append(f"Phase {phase_num}: cannot depend on phase {dep} (would create cycle)")
+                if dep not in phase_ids:
+                    errors.append(f"Phase {phase_id}: depends on non-existent phase {dep}")
+                # Check for forward references (cycles) by comparing positions
+                elif phase_order.get(dep, -1) >= i:
+                    errors.append(f"Phase {phase_id}: cannot depend on phase {dep} (would create cycle)")
 
         return errors
 

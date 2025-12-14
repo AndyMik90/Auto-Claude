@@ -58,7 +58,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
-import { cn, calculateProgress, formatRelativeTime } from '../lib/utils';
+import { cn, calculateProgress, formatRelativeTime, sanitizeMarkdownForDisplay } from '../lib/utils';
 import { useProjectStore } from '../stores/project-store';
 import {
   TASK_STATUS_LABELS,
@@ -706,14 +706,16 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 </div>
               )}
 
-              {/* Description */}
+              {/* Description - sanitized to handle markdown content */}
               {task.description && (
                 <div>
                   <div className="section-divider mb-3">
                     <FileCode className="h-3 w-3" />
                     Description
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{task.description}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {sanitizeMarkdownForDisplay(task.description, 500)}
+                  </p>
                 </div>
               )}
 
@@ -1128,6 +1130,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                       phaseLog={phaseLogs.phases[phase]}
                       isExpanded={expandedPhases.has(phase)}
                       onToggle={() => togglePhase(phase)}
+                      isTaskStuck={isStuck}
                     />
                   ))}
                   <div ref={logsEndRef} />
@@ -1408,6 +1411,7 @@ interface PhaseLogSectionProps {
   phaseLog: TaskPhaseLog | null;
   isExpanded: boolean;
   onToggle: () => void;
+  isTaskStuck?: boolean; // Task is marked as running but no process is active
 }
 
 const PHASE_LABELS: Record<TaskLogPhase, string> = {
@@ -1428,7 +1432,7 @@ const PHASE_COLORS: Record<TaskLogPhase, string> = {
   validation: 'text-purple-500 bg-purple-500/10 border-purple-500/30'
 };
 
-function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle }: PhaseLogSectionProps) {
+function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck }: PhaseLogSectionProps) {
   const Icon = PHASE_ICONS[phase];
   const status = phaseLog?.status || 'pending';
   const hasEntries = (phaseLog?.entries.length || 0) > 0;
@@ -1436,6 +1440,15 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle }: PhaseLogSect
   const getStatusBadge = () => {
     switch (status) {
       case 'active':
+        // If task is stuck but phase shows "active", it means the phase was interrupted/crashed
+        if (isTaskStuck) {
+          return (
+            <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Interrupted
+            </Badge>
+          );
+        }
         return (
           <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30 flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -1465,6 +1478,9 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle }: PhaseLogSect
     }
   };
 
+  // Determine the effective visual status (interrupted if stuck and active)
+  const isInterrupted = isTaskStuck && status === 'active';
+
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
@@ -1472,7 +1488,8 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle }: PhaseLogSect
           className={cn(
             'w-full flex items-center justify-between p-3 rounded-lg border transition-colors',
             'hover:bg-secondary/50',
-            status === 'active' && PHASE_COLORS[phase],
+            status === 'active' && !isInterrupted && PHASE_COLORS[phase],
+            isInterrupted && 'border-warning/30 bg-warning/5', // Interrupted state
             status === 'completed' && 'border-success/30 bg-success/5',
             status === 'failed' && 'border-destructive/30 bg-destructive/5',
             status === 'pending' && 'border-border bg-secondary/30'
@@ -1484,7 +1501,7 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle }: PhaseLogSect
             ) : (
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             )}
-            <Icon className={cn('h-4 w-4', status === 'active' ? PHASE_COLORS[phase].split(' ')[0] : 'text-muted-foreground')} />
+            <Icon className={cn('h-4 w-4', isInterrupted ? 'text-warning' : status === 'active' ? PHASE_COLORS[phase].split(' ')[0] : 'text-muted-foreground')} />
             <span className="font-medium text-sm">{PHASE_LABELS[phase]}</span>
             {hasEntries && (
               <span className="text-xs text-muted-foreground">

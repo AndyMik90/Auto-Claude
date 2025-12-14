@@ -3,10 +3,10 @@
 Implementation Plan Manager
 ============================
 
-Core data structures and utilities for chunk-based implementation plans.
+Core data structures and utilities for subtask-based implementation plans.
 Replaces the test-centric feature_list.json with implementation_plan.json.
 
-The key insight: Tests verify outcomes, but CHUNKS define implementation steps.
+The key insight: Tests verify outcomes, but SUBTASKS define implementation steps.
 For complex multi-service features, implementation order matters.
 
 Workflow Types:
@@ -45,8 +45,8 @@ class PhaseType(str, Enum):
     CLEANUP = "cleanup"           # Removing old code, polish
 
 
-class ChunkStatus(str, Enum):
-    """Status of a chunk."""
+class SubtaskStatus(str, Enum):
+    """Status of a subtask."""
     PENDING = "pending"           # Not started
     IN_PROGRESS = "in_progress"   # Currently being worked on
     COMPLETED = "completed"       # Completed successfully (matches JSON format)
@@ -55,7 +55,7 @@ class ChunkStatus(str, Enum):
 
 
 class VerificationType(str, Enum):
-    """How to verify a chunk is complete."""
+    """How to verify a subtask is complete."""
     COMMAND = "command"           # Run a shell command
     API = "api"                   # Make an API request
     BROWSER = "browser"           # Browser automation check

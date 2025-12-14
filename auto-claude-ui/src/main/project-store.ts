@@ -306,7 +306,9 @@ export class ProjectStore {
     if (plan?.status) {
       const statusMap: Record<string, TaskStatus> = {
         'pending': 'backlog',
+        'planning': 'in_progress', // Task is in planning phase (spec creation running)
         'in_progress': 'in_progress',
+        'coding': 'in_progress', // Task is in coding phase
         'review': 'ai_review',
         'completed': 'done',
         'done': 'done',
@@ -323,9 +325,14 @@ export class ProjectStore {
 
       // For other stored statuses, validate against calculated status
       if (storedStatus) {
+        // Planning/coding status from the backend should be respected even if chunks aren't in progress yet
+        // This happens when a task is in planning phase (creating spec) but no chunks have been started
+        const isActiveProcessStatus = plan.status === 'planning' || plan.status === 'coding';
+
         const isStoredStatusValid =
           (storedStatus === calculatedStatus) || // Matches calculated
-          (storedStatus === 'human_review' && calculatedStatus === 'ai_review'); // Human review is more advanced than ai_review
+          (storedStatus === 'human_review' && calculatedStatus === 'ai_review') || // Human review is more advanced than ai_review
+          (isActiveProcessStatus && storedStatus === 'in_progress'); // Planning/coding phases should show as in_progress
 
         if (isStoredStatusValid) {
           // Preserve reviewReason for human_review status

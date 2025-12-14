@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { Play, Square, Clock, Zap, Target, Shield, Gauge, Palette, FileCode, Bug, Wrench, Loader2, AlertTriangle, RotateCcw, Archive } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
 import { Button } from './ui/button';
-import { cn, calculateProgress, formatRelativeTime } from '../lib/utils';
+import { cn, formatRelativeTime, sanitizeMarkdownForDisplay } from '../lib/utils';
+import { PhaseProgressIndicator } from './PhaseProgressIndicator';
 import {
-  CHUNK_STATUS_COLORS,
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_COLORS,
   TASK_COMPLEXITY_COLORS,
@@ -44,7 +43,6 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
   const [isRecovering, setIsRecovering] = useState(false);
   const [hasCheckedRunning, setHasCheckedRunning] = useState(false);
 
-  const progress = calculateProgress(task.chunks);
   const isRunning = task.status === 'in_progress';
   const executionPhase = task.executionProgress?.phase;
   const hasActiveExecution = executionPhase && executionPhase !== 'idle' && executionPhase !== 'complete' && executionPhase !== 'failed';
@@ -216,10 +214,10 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           </div>
         </div>
 
-        {/* Description */}
+        {/* Description - sanitized to handle markdown content */}
         {task.description && (
           <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-            {task.description}
+            {sanitizeMarkdownForDisplay(task.description, 150)}
           </p>
         )}
 
@@ -280,48 +278,15 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           </div>
         )}
 
-        {/* Progress section */}
-        {(task.chunks.length > 0 || hasActiveExecution) && (
+        {/* Progress section - Phase-aware with animations */}
+        {(task.chunks.length > 0 || hasActiveExecution || isRunning || isStuck) && (
           <div className="mt-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-muted-foreground">
-                {hasActiveExecution && task.executionProgress?.message
-                  ? task.executionProgress.message
-                  : 'Progress'}
-              </span>
-              <span className="text-xs font-medium text-foreground">
-                {hasActiveExecution
-                  ? `${task.executionProgress?.overallProgress || 0}%`
-                  : `${progress}%`}
-              </span>
-            </div>
-            <Progress
-              value={hasActiveExecution ? (task.executionProgress?.overallProgress || 0) : progress}
-              className="h-1.5"
-              animated={isRunning || task.status === 'ai_review'}
+            <PhaseProgressIndicator
+              phase={executionPhase}
+              chunks={task.chunks}
+              isStuck={isStuck}
+              isRunning={isRunning}
             />
-
-            {/* Chunk indicators - enhanced with tooltips and animation */}
-            {task.chunks.length > 0 && (
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {task.chunks.slice(0, 10).map((chunk) => (
-                  <div
-                    key={chunk.id}
-                    className={cn(
-                      'h-2 w-2 rounded-full chunk-dot',
-                      CHUNK_STATUS_COLORS[chunk.status],
-                      chunk.status === 'in_progress' && 'chunk-dot-active'
-                    )}
-                    title={`${chunk.title || chunk.id}: ${chunk.status}`}
-                  />
-                ))}
-                {task.chunks.length > 10 && (
-                  <span className="text-[10px] text-muted-foreground font-medium ml-0.5">
-                    +{task.chunks.length - 10}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
         )}
 

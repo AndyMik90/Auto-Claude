@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   PanelGroup,
   Panel,
@@ -13,14 +13,22 @@ import {
   useSensor,
   useSensors
 } from '@dnd-kit/core';
-import { Plus, Sparkles, Grid2X2, FolderTree, File, Folder } from 'lucide-react';
+import { Plus, Sparkles, Grid2X2, FolderTree, File, Folder, History, ChevronDown, Loader2 } from 'lucide-react';
 import { Terminal } from './Terminal';
 import { Button } from './ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from './ui/dropdown-menu';
 import { FileExplorerPanel } from './FileExplorerPanel';
 import { cn } from '../lib/utils';
 import { useTerminalStore } from '../stores/terminal-store';
 import { useTaskStore } from '../stores/task-store';
 import { useFileExplorerStore } from '../stores/file-explorer-store';
+import type { SessionDateInfo } from '../../shared/types';
 
 interface TerminalGridProps {
   projectPath?: string;
@@ -41,6 +49,75 @@ export function TerminalGrid({ projectPath }: TerminalGridProps) {
   // File explorer state
   const fileExplorerOpen = useFileExplorerStore((state) => state.isOpen);
   const toggleFileExplorer = useFileExplorerStore((state) => state.toggle);
+
+  // Session history state
+  const [sessionDates, setSessionDates] = useState<SessionDateInfo[]>([]);
+  const [isLoadingDates, setIsLoadingDates] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  // Fetch available session dates when project changes
+  useEffect(() => {
+    if (!projectPath) {
+      setSessionDates([]);
+      return;
+    }
+
+    const fetchSessionDates = async () => {
+      setIsLoadingDates(true);
+      try {
+        const result = await window.electronAPI.getTerminalSessionDates(projectPath);
+        if (result.success && result.data) {
+          setSessionDates(result.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch session dates:', error);
+      } finally {
+        setIsLoadingDates(false);
+      }
+    };
+
+    fetchSessionDates();
+  }, [projectPath]);
+
+  // Handle restoring sessions from a specific date
+  const handleRestoreFromDate = useCallback(async (date: string) => {
+    if (!projectPath || isRestoring) return;
+
+    setIsRestoring(true);
+    try {
+      // First close all existing terminals
+      for (const terminal of terminals) {
+        await window.electronAPI.destroyTerminal(terminal.id);
+        removeTerminal(terminal.id);
+      }
+
+      // Small delay to ensure cleanup
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Restore sessions from the selected date
+      const result = await window.electronAPI.restoreTerminalSessionsFromDate(
+        date,
+        projectPath,
+        80,
+        24
+      );
+
+      if (result.success && result.data) {
+        console.log(`Restored ${result.data.restored} sessions from ${date}`);
+        // The terminal-store's restoreTerminalSessions will be called by App.tsx
+        // Or we can manually add the restored terminals
+        // Refresh session dates to update counts
+        const datesResult = await window.electronAPI.getTerminalSessionDates(projectPath);
+        if (datesResult.success && datesResult.data) {
+          setSessionDates(datesResult.data);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to restore sessions:', error);
+    } finally {
+      setIsRestoring(false);
+    }
+  }, [projectPath, terminals, removeTerminal, isRestoring]);
 
   // Setup drag sensors
   const sensors = useSensors(
@@ -203,6 +280,45 @@ export function TerminalGrid({ projectPath }: TerminalGridProps) {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Session history dropdown */}
+            {projectPath && sessionDates.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    disabled={isRestoring || isLoadingDates}
+                  >
+                    {isRestoring ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <History className="h-3 w-3" />
+                    )}
+                    History
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    Restore sessions from...
+                  </div>
+                  <DropdownMenuSeparator />
+                  {sessionDates.map((dateInfo) => (
+                    <DropdownMenuItem
+                      key={dateInfo.date}
+                      onClick={() => handleRestoreFromDate(dateInfo.date)}
+                      className="flex items-center justify-between"
+                    >
+                      <span>{dateInfo.label}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {dateInfo.sessionCount} session{dateInfo.sessionCount !== 1 ? 's' : ''}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {terminals.some((t) => t.status === 'running' && !t.isClaudeMode) && (
               <Button
                 variant="outline"
