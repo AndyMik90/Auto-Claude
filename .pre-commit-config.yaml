@@ -1,0 +1,36 @@
+repos:
+  # Python linting (auto-claude/)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.3
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^auto-claude/
+      - id: ruff-format
+        files: ^auto-claude/
+
+  # Frontend linting (auto-claude-ui/)
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: bash -c 'cd auto-claude-ui && pnpm lint'
+        language: system
+        files: ^auto-claude-ui/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+
+      - id: typecheck
+        name: TypeScript Check
+        entry: bash -c 'cd auto-claude-ui && pnpm typecheck'
+        language: system
+        files: ^auto-claude-ui/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # General checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files

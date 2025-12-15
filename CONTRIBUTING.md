@@ -8,8 +8,10 @@ Thank you for your interest in contributing to Auto Claude! This document provid
 - [Development Setup](#development-setup)
   - [Python Backend](#python-backend)
   - [Electron Frontend](#electron-frontend)
+- [Pre-commit Hooks](#pre-commit-hooks)
 - [Code Style](#code-style)
 - [Testing](#testing)
+- [Continuous Integration](#continuous-integration)
 - [Git Workflow](#git-workflow)
   - [Branch Naming](#branch-naming)
   - [Commit Messages](#commit-messages)
@@ -77,6 +79,54 @@ pnpm build
 # Package for distribution
 pnpm package
 ```
+
+## Pre-commit Hooks
+
+We use [pre-commit](https://pre-commit.com/) to run linting and formatting checks before each commit. This ensures code quality and consistency across the project.
+
+### Setup
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install the git hooks (run once after cloning)
+pre-commit install
+```
+
+### What Runs on Commit
+
+When you commit, the following checks run automatically:
+
+| Check | Scope | Description |
+|-------|-------|-------------|
+| **ruff** | `auto-claude/` | Python linter with auto-fix |
+| **ruff-format** | `auto-claude/` | Python code formatter |
+| **eslint** | `auto-claude-ui/` | TypeScript/React linter |
+| **typecheck** | `auto-claude-ui/` | TypeScript type checking |
+| **trailing-whitespace** | All files | Removes trailing whitespace |
+| **end-of-file-fixer** | All files | Ensures files end with newline |
+| **check-yaml** | All files | Validates YAML syntax |
+| **check-added-large-files** | All files | Prevents large file commits |
+
+### Running Manually
+
+```bash
+# Run all checks on all files
+pre-commit run --all-files
+
+# Run a specific hook
+pre-commit run ruff --all-files
+
+# Skip hooks temporarily (not recommended)
+git commit --no-verify -m "message"
+```
+
+### If a Check Fails
+
+1. **Ruff auto-fixes**: Some issues are fixed automatically. Stage the changes and commit again.
+2. **ESLint errors**: Fix the reported issues in your code.
+3. **Type errors**: Resolve TypeScript type issues before committing.
 
 ## Code Style
 
@@ -191,6 +241,43 @@ Before submitting a PR:
 2. **New features should include tests**
 3. **Bug fixes should include a regression test**
 4. **Test coverage should not decrease significantly**
+
+## Continuous Integration
+
+All pull requests and pushes to `main` trigger automated CI checks via GitHub Actions.
+
+### Workflows
+
+| Workflow | Trigger | What it checks |
+|----------|---------|----------------|
+| **CI** | Push to `main`, PRs | Python tests (3.11 & 3.12), Frontend tests |
+| **Lint** | Push to `main`, PRs | Ruff (Python), ESLint + TypeScript (Frontend) |
+| **Test on Tag** | Version tags (`v*`) | Full test suite before release |
+
+### PR Requirements
+
+Before a PR can be merged:
+
+1. All CI checks must pass (green checkmarks)
+2. Python tests pass on both Python 3.11 and 3.12
+3. Frontend tests pass
+4. Linting passes (no ruff or eslint errors)
+5. TypeScript type checking passes
+
+### Running CI Checks Locally
+
+```bash
+# Python tests
+cd auto-claude
+source .venv/bin/activate
+pytest ../tests/ -v
+
+# Frontend tests
+cd auto-claude-ui
+pnpm test
+pnpm lint
+pnpm typecheck
+```
 
 ## Git Workflow
 
