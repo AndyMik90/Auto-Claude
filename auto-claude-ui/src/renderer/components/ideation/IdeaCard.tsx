@@ -1,4 +1,4 @@
-import { Play, X } from 'lucide-react';
+import { ExternalLink, Play, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
@@ -42,7 +42,7 @@ interface IdeaCardProps {
   onDismiss: (idea: Idea) => void;
 }
 
-export function IdeaCard({ idea, onClick, onConvert, onDismiss }: IdeaCardProps) {
+export function IdeaCard({ idea, onClick, onConvert, onGoToTask, onDismiss }: IdeaCardProps) {
   const isDismissed = idea.status === 'dismissed';
   const isConverted = idea.status === 'converted';
 
@@ -134,6 +134,26 @@ export function IdeaCard({ idea, onClick, onConvert, onDismiss }: IdeaCardProps)
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Dismiss</TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+        {isConverted && idea.taskId && onGoToTask && (
+          <div className="flex items-center gap-1 ml-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGoToTask(idea.taskId!);
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Go to Task</TooltipContent>
             </Tooltip>
           </div>
         )}
