@@ -27,6 +27,7 @@ interface IdeaDetailPanelProps {
   idea: Idea;
   onClose: () => void;
   onConvert: (idea: Idea) => void;
+  onGoToTask?: (taskId: string) => void;
   onDismiss: (idea: Idea) => void;
 }
 
