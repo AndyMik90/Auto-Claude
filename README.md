@@ -1,32 +1,33 @@
-# Auto Claude
+# Auto Claude 🤖
 
 A production-ready framework for autonomous multi-session AI coding. Build complete applications or add features to existing projects through coordinated AI agent sessions.
 
 ![Auto Claude Kanban Board](.github/assets/Auto-Claude-Kanban.png)
 
-## What It Does
+## What It Does ✨
 
-Auto Claude uses a **multi-agent pattern** to build software autonomously:
+**Auto Claude runs AI coding agents in parallel while you work on other things.** Whether you're a vibe coder just getting started or an experienced developer, Auto Claude meets you where you are. Describe what you want to build, and Auto Claude handles the rest — from understanding your codebase, to writing the code, to validating it actually works.
 
-### Spec Creation Pipeline (3-8 phases based on complexity)
-1. **Discovery** - Analyzes project structure
-2. **Requirements Gatherer** - Collects user requirements interactively
-3. **Research Agent** - Validates external integrations against documentation
-4. **Context Discovery** - Finds relevant files in codebase
-5. **Spec Writer** - Creates comprehensive spec.md
-6. **Spec Critic** - Uses ultrathink to find and fix issues before implementation
-7. **Planner** - Creates subtask-based implementation plan
-8. **Validation** - Ensures all outputs are valid
+Think of it as having a team of AI developers that:
+- **Work autonomously** — no babysitting required
+- **Run in parallel** — multiple features built simultaneously
+- **Self-validate** — QA agents check their own work before you see it
+- **Stay safe** — isolated workspaces mean your code is never touched until you approve
 
-### Implementation Pipeline
-1. **Planner Agent** (Session 1) - Analyzes spec, creates subtask-based implementation plan
-2. **Coder Agent** (Sessions 2+) - Implements subtasks one-by-one with verification
-3. **QA Reviewer Agent** - Validates all acceptance criteria before sign-off
-4. **QA Fixer Agent** - Fixes issues found by QA in a self-validating loop
+**The result?** 10x your output while maintaining code quality.
 
-Each session runs with a fresh context window. Progress is tracked via `implementation_plan.json` and Git commits.
+## Key Features
 
-## Quick Start (Desktop UI)
+- **Parallel Agents**: Run multiple builds simultaneously while you focus on other work
+- **Context Engineering**: Agents understand your codebase structure before writing code
+- **Self-Validating**: Built-in QA loop catches issues before you review
+- **Isolated Workspaces**: All work happens in git worktrees — your code stays safe
+- **Memory Layer**: Agents remember insights across sessions for smarter decisions
+- **Cross-Platform**: Desktop app runs on Mac, Windows, and Linux
+- **Any Project Type**: Build web apps, APIs, CLIs — works with any software project
+- **Human Control**: Pause, guide, or stop agents at any time
+
+## 🚀 Quick Start (Desktop UI)
 
 The Desktop UI is the recommended way to use Auto Claude. It provides visual task management, real-time progress tracking, and a Kanban board interface.
 
@@ -34,81 +35,34 @@ The Desktop UI is the recommended way to use Auto Claude. It provides visual tas
 
 1. **Node.js 18+** - [Download Node.js](https://nodejs.org/)
 2. **Python 3.9+** - [Download Python](https://www.python.org/downloads/)
-3. **Docker Desktop** - Required for the Auto Claude Memory Layer (see [Installing Docker Desktop](#installing-docker-desktop) below)
+3. **Docker Desktop** - Required for the Memory Layer
 4. **Claude Code CLI** - `npm install -g @anthropic-ai/claude-code`
+5. **Claude Subscription** - Requires [Claude Pro or Max](https://claude.ai/upgrade) for Claude Code access
 
 ---
 
 ### Installing Docker Desktop
 
-> **What is Docker?** Docker is like a "container" that runs the memory database Auto Claude needs. You don't need to understand how it works - just install it and keep it running in the background.
-
-#### Step 1: Download Docker Desktop
+Docker runs the FalkorDB database that powers Auto Claude's cross-session memory.
 
 | Operating System | Download Link |
 |------------------|---------------|
-| **Mac (Apple Silicon M1/M2/M3)** | [Download for Mac - Apple Chip](https://desktop.docker.com/mac/main/arm64/Docker.dmg) |
-| **Mac (Intel)** | [Download for Mac - Intel Chip](https://desktop.docker.com/mac/main/amd64/Docker.dmg) |
+| **Mac (Apple Silicon M1/M2/M3/M4)** | [Download for Apple Chip](https://desktop.docker.com/mac/main/arm64/Docker.dmg) |
+| **Mac (Intel)** | [Download for Intel Chip](https://desktop.docker.com/mac/main/amd64/Docker.dmg) |
 | **Windows** | [Download for Windows](https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe) |
 | **Linux** | [Installation Guide](https://docs.docker.com/desktop/install/linux-install/) |
 
-> **Not sure which Mac you have?** Click the Apple logo () in the top-left corner → "About This Mac". If it says "Apple M1/M2/M3", use the Apple Chip version. If it says "Intel", use the Intel version.
+> **Not sure which Mac?** Click the Apple menu (🍎) → "About This Mac". Look for "Chip" - M1/M2/M3/M4 = Apple Silicon, otherwise Intel.
 
-#### Step 2: Install Docker Desktop
+**After installing:** Open Docker Desktop and wait for the whale icon (🐳) to appear in your menu bar/system tray.
 
-**On Mac:**
-1. Open the downloaded `.dmg` file
-2. Drag the Docker icon to your Applications folder
-3. Open Docker from your Applications folder
-4. Click "Open" if you see a security warning
-5. Wait for Docker to start (you'll see a whale icon in your menu bar)
+> **Using the Desktop UI?** It automatically detects Docker status and offers one-click FalkorDB setup. No terminal commands needed!
 
-**On Windows:**
-1. Run the downloaded installer
-2. Follow the installation wizard (keep default settings)
-3. Restart your computer if prompted
-4. Open Docker Desktop from the Start menu
-5. Wait for Docker to start (you'll see a whale icon in your system tray)
-
-#### Step 3: Verify Docker is Running
-
-Open your terminal (Terminal on Mac, Command Prompt or PowerShell on Windows) and run:
-
-```bash
-docker --version
-```
-
-You should see something like: `Docker version 24.0.0, build abc123`
-
-If you see an error, make sure Docker Desktop is open and running (look for the whale icon).
-
-#### Troubleshooting Docker
-
-| Problem | Solution |
-|---------|----------|
-| "Docker command not found" | Make sure Docker Desktop is installed and running |
-| "Cannot connect to Docker daemon" | Open Docker Desktop and wait for it to fully start |
-| Docker Desktop won't start | Restart your computer and try again |
-| Mac: "Docker Desktop requires macOS 12 or later" | Update your macOS in System Preferences → Software Update |
-| Windows: "WSL 2 installation incomplete" | Follow the [WSL 2 setup guide](https://docs.microsoft.com/en-us/windows/wsl/install) |
+📚 **For detailed installation steps, troubleshooting, and advanced configuration, see [docs/DOCKER-SETUP.md](docs/DOCKER-SETUP.md)**
 
 ---
 
-### Step 1: Install the Desktop UI
-
-```bash
-cd auto-claude-ui
-
-# Install dependencies (pnpm recommended, npm works too)
-pnpm install
-# or: npm install
-
-# Build and start the application
-pnpm run build && pnpm run start
-# or: npm run build && npm run start
-```
-
-### Step 2: Set Up the Python Backend
+### Step 1: Set Up the Python Backend
 
 The Desktop UI runs Python scripts behind the scenes. Set up the Python environment:
 
@@ -122,20 +76,7 @@ uv venv && uv pip install -r requirements.txt
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 ```
 
-### Step 3: Configure Claude Authentication
-
-```bash
-# Get your OAuth token
-claude setup-token
-
-# Create your .env file
-cp auto-claude/.env.example auto-claude/.env
-
-# Add your token to auto-claude/.env
-# CLAUDE_CODE_OAUTH_TOKEN=your-token-here
-```
-
-### Step 4: Start the Memory Layer
+### Step 2: Start the Memory Layer
 
 The Auto Claude Memory Layer provides cross-session context retention using a graph database:
 
@@ -144,44 +85,72 @@ The Auto Claude Memory Layer provides cross-session context retention using a gr
 docker-compose up -d falkordb
 ```
 
-### Step 5: Configure Memory Provider
-
-Add your LLM provider credentials to `auto-claude/.env`:
-
-```bash
-# Enable memory integration
-GRAPHITI_ENABLED=true
-
-# Option A: OpenAI (simplest setup)
-GRAPHITI_LLM_PROVIDER=openai
-GRAPHITI_EMBEDDER_PROVIDER=openai
-OPENAI_API_KEY=sk-your-openai-key
-
-# Option B: Anthropic + Voyage (high quality)
-# GRAPHITI_LLM_PROVIDER=anthropic
-# GRAPHITI_EMBEDDER_PROVIDER=voyage
-# ANTHROPIC_API_KEY=sk-ant-xxx
-# VOYAGE_API_KEY=pa-xxx
-
-# Option C: Ollama (fully offline, no API keys)
-# GRAPHITI_LLM_PROVIDER=ollama
-# GRAPHITI_EMBEDDER_PROVIDER=ollama
-# OLLAMA_LLM_MODEL=deepseek-r1:7b
-# OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-# OLLAMA_EMBEDDING_DIM=768
-```
-
-### Step 6: Launch and Use
+### Step 3: Install and Launch the Desktop UI
 
 ```bash
 cd auto-claude-ui
-pnpm run start  # or: npm run start
+
+# Install dependencies (pnpm recommended, npm works too)
+pnpm install
+# or: npm install
+
+# Build and start the application
+pnpm run build && pnpm run start
+# or: npm run build && npm run start
 ```
+
+### Step 4: Start Building
 
 1. Add your project in the UI
 2. Create a new task describing what you want to build
 3. Watch as Auto Claude creates a spec, plans, and implements your feature
 4. Review changes and merge when satisfied
+
+---
+
+## 🎯 Features
+
+### Kanban Board
+
+Plan tasks and let AI handle the planning, coding, and validation — all in a visual interface. Track progress from "Planning" to "Done" while agents work autonomously.
+
+### Agent Terminals
+
+Spawn up to 12 AI-powered terminals for hands-on coding. Inject task context with a click, reference files from your project, and work rapidly across multiple sessions.
+
+**Power users:** Connect multiple Claude Code subscriptions to run even more agents in parallel — perfect for teams or heavy workloads.
+
+![Auto Claude Agent Terminals](.github/assets/Auto-Claude-Agents-terminals.png)
+
+### Insights
+
+Have a conversation about your project in a ChatGPT-style interface. Ask questions, get explanations, and explore your codebase through natural dialogue.
+
+### Roadmap
+
+Based on your target audience, AI anticipates and plans the most impactful features you should focus on. Prioritize what matters most to your users.
+
+![Auto Claude Roadmap](.github/assets/Auto-Claude-roadmap.png)
+
+### Ideation
+
+Let AI help you create a project that shines. Rapidly understand your codebase and discover:
+- Code improvements and refactoring opportunities
+- Performance bottlenecks
+- Security vulnerabilities
+- Documentation gaps
+- UI/UX enhancements
+- Overall code quality issues
+
+### Changelog
+
+Write professional changelogs effortlessly. Generate release notes from completed Auto Claude tasks or integrate with GitHub to create masterclass changelogs automatically.
+
+### Context
+
+See exactly what Auto Claude understands about your project — the tech stack, file structure, patterns, and insights it uses to write better code.
+
+---
 
 ## CLI Usage (Terminal-Only)
 
@@ -208,31 +177,42 @@ The Memory Layer enables context retention across coding sessions using a graph 
 
 See `auto-claude/.env.example` for complete configuration options.
 
-### Verifying Memory Layer
+## ⚙️ How It Works
 
-```bash
-cd auto-claude
-source .venv/bin/activate
-python test_graphiti_memory.py
-```
+Auto Claude focuses on three core principles: **context engineering** (understanding your codebase before writing code), **good coding standards** (following best practices and patterns), and **validation logic** (ensuring code works before you see it).
 
-## Key Features
+### The Agent Pipeline
 
-- **Domain Agnostic**: Works for any software project (web apps, APIs, CLIs, etc.)
-- **Multi-Session**: Unlimited sessions, each with fresh context
-- **Research-First Specs**: External integrations validated against documentation before implementation
-- **Self-Critique**: Specs are critiqued using ultrathink to find issues before coding begins
-- **Isolated Worktrees**: Build in a separate workspace - your current work is never touched
-- **Self-Verifying**: Agents test their work with browser automation before marking complete
-- **QA Validation Loop**: Automated QA agent validates all acceptance criteria before sign-off
-- **Self-Healing**: QA finds issues → Fixer agent resolves → QA re-validates (up to 50 iterations)
-- **Adaptive Spec Pipeline**: 3-8 phases based on task complexity
-- **Fix Bugs Immediately**: Agents fix discovered bugs in the same session, not later
-- **Defense-in-Depth Security**: OS sandbox, filesystem restrictions, command allowlist
-- **Secret Scanning**: Automatic pre-commit scanning blocks secrets with actionable fix instructions
-- **Human Intervention**: Pause, add instructions, or stop at any time
-- **Multiple Specs**: Track and run multiple specifications independently
-- **Memory Layer**: Persistent knowledge graph for cross-session context retention
+**Phase 1: Spec Creation** (3-8 phases based on complexity)
+
+Before any code is written, agents gather context and create a detailed specification:
+
+1. **Discovery** — Analyzes your project structure and tech stack
+2. **Requirements** — Gathers what you want to build through interactive conversation
+3. **Research** — Validates external integrations against real documentation
+4. **Context Discovery** — Finds relevant files in your codebase
+5. **Spec Writer** — Creates a comprehensive specification document
+6. **Spec Critic** — Self-critiques using extended thinking to find issues early
+7. **Planner** — Breaks work into subtasks with dependencies
+8. **Validation** — Ensures all outputs are valid before proceeding
+
+**Phase 2: Implementation**
+
+With a validated spec, coding agents execute the plan:
+
+1. **Planner Agent** — Creates subtask-based implementation plan
+2. **Coder Agent** — Implements subtasks one-by-one with verification
+3. **QA Reviewer** — Validates all acceptance criteria
+4. **QA Fixer** — Fixes issues in a self-healing loop (up to 50 iterations)
+
+Each session runs with a fresh context window. Progress is tracked via `implementation_plan.json` and Git commits.
+
+### 🔒 Security Model
+
+Three-layer defense keeps your code safe:
+- **OS Sandbox** — Bash commands run in isolation
+- **Filesystem Restrictions** — Operations limited to project directory
+- **Command Allowlist** — Only approved commands based on your project's stack
 
 ## Project Structure
 
@@ -254,7 +234,9 @@ your-project/
 └── docker-compose.yml        # FalkorDB for Memory Layer
 ```
 
-## Environment Variables
+## Environment Variables (CLI Only)
+
+> **Desktop UI users:** These are configured through the app settings — no manual setup needed.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -268,6 +250,18 @@ your-project/
 | `VOYAGE_API_KEY` | For Voyage | Required for Voyage embeddings |
 
 See `auto-claude/.env.example` for complete configuration options.
+
+## 💬 Community
+
+Join our Discord to get help, share what you're building, and connect with other Auto Claude users:
+
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/maj9EWmY)
+
+## 🤝 Contributing
+
+We welcome contributions! Whether it's bug fixes, new features, or documentation improvements.
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines on how to get started.
 
 ## Acknowledgments
 

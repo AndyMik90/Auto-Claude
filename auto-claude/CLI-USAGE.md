@@ -163,3 +163,11 @@ python validate_spec.py --spec-dir specs/001-feature --checkpoint all
 ## Auto Claude Memory Layer (Optional)
 
 For cross-session context retention, see the main README for Memory Layer setup instructions.
+
+### Verifying Memory Layer
+
+```bash
+cd auto-claude
+source .venv/bin/activate
+python test_graphiti_memory.py
+```
