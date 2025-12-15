@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeft, FileText, GitCommit, Sparkles, RefreshCw, AlertCircle, ChevronUp, ChevronDown, Copy, Save, CheckCircle, PartyPopper, Github, Archive, ExternalLink, Check } from 'lucide-react';
+import { useState, useCallback, useRef, type DragEvent, type ClipboardEvent } from 'react';
+import { ArrowLeft, FileText, GitCommit, Sparkles, RefreshCw, AlertCircle, ChevronUp, ChevronDown, Copy, Save, CheckCircle, PartyPopper, Github, Archive, ExternalLink, Check, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
@@ -14,11 +14,17 @@ import {
   CHANGELOG_FORMAT_DESCRIPTIONS,
   CHANGELOG_AUDIENCE_LABELS,
   CHANGELOG_AUDIENCE_DESCRIPTIONS,
-  CHANGELOG_STAGE_LABELS
+  CHANGELOG_EMOJI_LEVEL_LABELS,
+  CHANGELOG_EMOJI_LEVEL_DESCRIPTIONS,
+  CHANGELOG_STAGE_LABELS,
+  ALLOWED_IMAGE_TYPES_DISPLAY
 } from '../../../shared/constants';
+import { blobToBase64, isValidImageMimeType, resolveFilename } from '../ImageUpload';
+import { useProjectStore } from '../../stores/project-store';
 import type {
   ChangelogFormat,
   ChangelogAudience,
+  ChangelogEmojiLevel,
   ChangelogTask,
   ChangelogSourceMode,
   GitCommit as GitCommitType
@@ -35,6 +41,7 @@ interface Step2ConfigureGenerateProps {
   date: string;
   format: ChangelogFormat;
   audience: ChangelogAudience;
+  emojiLevel: ChangelogEmojiLevel;
   customInstructions: string;
   generationProgress: { stage: string; progress: number; message?: string; error?: string } | null;
   generatedChangelog: string;
@@ -50,6 +57,7 @@ interface Step2ConfigureGenerateProps {
   onDateChange: (d: string) => void;
   onFormatChange: (f: ChangelogFormat) => void;
   onAudienceChange: (a: ChangelogAudience) => void;
+  onEmojiLevelChange: (l: ChangelogEmojiLevel) => void;
   onCustomInstructionsChange: (i: string) => void;
   onShowAdvancedChange: (show: boolean) => void;
   onGenerate: () => void;
@@ -69,6 +77,7 @@ export function Step2ConfigureGenerate({
   date,
   format,
   audience,
+  emojiLevel,
   customInstructions,
   generationProgress,
   generatedChangelog,
@@ -84,6 +93,7 @@ export function Step2ConfigureGenerate({
   onDateChange,
   onFormatChange,
   onAudienceChange,
+  onEmojiLevelChange,
   onCustomInstructionsChange,
   onShowAdvancedChange,
   onGenerate,
@@ -92,6 +102,142 @@ export function Step2ConfigureGenerate({
   onChangelogEdit
 }: Step2ConfigureGenerateProps) {
   const selectedTasks = doneTasks.filter((t) => selectedTaskIds.includes(t.id));
+  const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handle image paste
+  const handlePaste = useCallback(async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!selectedProjectId) return;
+
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter((item) => item.type.startsWith('image/'));
+
+    if (imageItems.length === 0) return;
+
+    e.preventDefault();
+    setImageError(null);
+
+    for (const item of imageItems) {
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      if (!isValidImageMimeType(file.type)) {
+        setImageError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+        continue;
+      }
+
+      try {
+        const dataUrl = await blobToBase64(file);
+        const extension = file.type.split('/')[1] || 'png';
+        const timestamp = Date.now();
+        const baseFilename = `changelog-${timestamp}.${extension}`;
+        const filename = resolveFilename(baseFilename, []);
+
+        const result = await window.electronAPI.saveChangelogImage(
+          selectedProjectId,
+          dataUrl,
+          filename
+        );
+
+        if (result.success && result.data) {
+          // Insert markdown image at cursor position
+          const textarea = textareaRef.current;
+          if (textarea) {
+            const cursorPos = textarea.selectionStart;
+            const textBefore = generatedChangelog.substring(0, cursorPos);
+            const textAfter = generatedChangelog.substring(cursorPos);
+            const imageMarkdown = `\n![${filename}](${result.data.relativePath})\n`;
+            onChangelogEdit(textBefore + imageMarkdown + textAfter);
+            
+            // Set cursor position after inserted image
+            setTimeout(() => {
+              const newPos = cursorPos + imageMarkdown.length;
+              textarea.setSelectionRange(newPos, newPos);
+              textarea.focus();
+            }, 0);
+          }
+        } else {
+          setImageError(result.error || 'Failed to save image');
+        }
+      } catch (err) {
+        setImageError('Failed to process pasted image');
+      }
+    }
+  }, [selectedProjectId, generatedChangelog, onChangelogEdit]);
+
+  // Handle drag and drop
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (!selectedProjectId) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) return;
+
+    setImageError(null);
+
+    for (const file of imageFiles) {
+      if (!isValidImageMimeType(file.type)) {
+        setImageError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+        continue;
+      }
+
+      try {
+        const dataUrl = await blobToBase64(file);
+        const extension = file.name.split('.').pop() || file.type.split('/')[1] || 'png';
+        const timestamp = Date.now();
+        const baseFilename = `changelog-${timestamp}.${extension}`;
+        const filename = resolveFilename(baseFilename, []);
+
+        const result = await window.electronAPI.saveChangelogImage(
+          selectedProjectId,
+          dataUrl,
+          filename
+        );
+
+        if (result.success && result.data) {
+          // Insert markdown image at cursor position or end
+          const textarea = textareaRef.current;
+          if (textarea) {
+            const cursorPos = textarea.selectionStart;
+            const textBefore = generatedChangelog.substring(0, cursorPos);
+            const textAfter = generatedChangelog.substring(cursorPos);
+            const imageMarkdown = `\n![${filename}](${result.data.relativePath})\n`;
+            onChangelogEdit(textBefore + imageMarkdown + textAfter);
+            
+            // Set cursor position after inserted image
+            setTimeout(() => {
+              const newPos = cursorPos + imageMarkdown.length;
+              textarea.setSelectionRange(newPos, newPos);
+              textarea.focus();
+            }, 0);
+          }
+        } else {
+          setImageError(result.error || 'Failed to save image');
+        }
+      } catch (err) {
+        setImageError('Failed to process dropped image');
+      }
+    }
+  }, [selectedProjectId, generatedChangelog, onChangelogEdit]);
 
   // Get summary info based on source mode
   const getSummaryInfo = () => {
@@ -240,6 +386,30 @@ export function Step2ConfigureGenerate({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label>Emojis</Label>
+                <Select
+                  value={emojiLevel}
+                  onValueChange={(value) => onEmojiLevelChange(value as ChangelogEmojiLevel)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CHANGELOG_EMOJI_LEVEL_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        <div>
+                          <div>{label}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {CHANGELOG_EMOJI_LEVEL_DESCRIPTIONS[value]}
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
 
@@ -367,20 +537,43 @@ export function Step2ConfigureGenerate({
         </div>
 
         {/* Preview Content */}
-        <div className="flex-1 overflow-hidden p-6">
+        <div 
+          className={`flex-1 overflow-hidden p-6 ${isDragOver ? 'bg-muted/50' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           {generatedChangelog ? (
-            <Textarea
-              className="h-full w-full resize-none font-mono text-sm"
-              value={generatedChangelog}
-              onChange={(e) => onChangelogEdit(e.target.value)}
-              placeholder="Generated changelog will appear here..."
-            />
+            <>
+              {isDragOver && (
+                <div className="mb-4 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 p-4 text-center">
+                  <ImageIcon className="mx-auto h-8 w-8 text-primary/50" />
+                  <p className="mt-2 text-sm text-primary/70">Drop images here to add to changelog</p>
+                </div>
+              )}
+              {imageError && (
+                <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                  {imageError}
+                </div>
+              )}
+              <Textarea
+                ref={textareaRef}
+                className="h-full w-full resize-none font-mono text-sm"
+                value={generatedChangelog}
+                onChange={(e) => onChangelogEdit(e.target.value)}
+                onPaste={handlePaste}
+                placeholder="Generated changelog will appear here... (Drag & drop or paste images to add)"
+              />
+            </>
           ) : (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
                 <FileText className="mx-auto h-12 w-12 text-muted-foreground/30" />
                 <p className="mt-4 text-sm text-muted-foreground">
                   Click "Generate Changelog" to create release notes.
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  You can drag & drop or paste images (Ctrl+V / Cmd+V) after generating
                 </p>
               </div>
             </div>

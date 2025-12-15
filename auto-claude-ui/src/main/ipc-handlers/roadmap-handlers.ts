@@ -324,8 +324,8 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join('\n'
         };
         writeFileSync(path.join(specDir, 'task_metadata.json'), JSON.stringify(metadata, null, 2));
 
-        // Start spec creation with the existing spec directory
-        agentManager.startSpecCreation(specId, project.path, taskDescription, specDir, metadata);
+        // NOTE: We do NOT auto-start spec creation here - user should explicitly start the task
+        // from the kanban board when they're ready
 
         // Update feature with linked spec
         feature.status = 'planned';

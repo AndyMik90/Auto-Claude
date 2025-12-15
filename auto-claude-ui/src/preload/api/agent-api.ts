@@ -121,6 +121,11 @@ export interface AgentAPI {
     options: GitHistoryOptions | BranchDiffOptions,
     mode: 'git-history' | 'branch-diff'
   ) => Promise<IPCResult<GitCommit[]>>;
+  saveChangelogImage: (
+    projectId: string,
+    imageData: string,
+    filename: string
+  ) => Promise<IPCResult<{ relativePath: string; url: string }>>;
 
   // Changelog Event Listeners
   onChangelogGenerationProgress: (callback: (projectId: string, progress: ChangelogGenerationProgress) => void) => () => void;
@@ -490,6 +495,13 @@ export const createAgentAPI = (): AgentAPI => ({
     mode: 'git-history' | 'branch-diff'
   ): Promise<IPCResult<GitCommit[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHANGELOG_GET_COMMITS_PREVIEW, projectId, options, mode),
+
+  saveChangelogImage: (
+    projectId: string,
+    imageData: string,
+    filename: string
+  ): Promise<IPCResult<{ relativePath: string; url: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHANGELOG_SAVE_IMAGE, projectId, imageData, filename),
 
   // Changelog Event Listeners
   onChangelogGenerationProgress: (

@@ -53,6 +53,43 @@ const AUDIENCE_INSTRUCTIONS = {
 };
 
 /**
+ * Get emoji usage instructions based on level
+ */
+function getEmojiInstructions(emojiLevel?: string): string {
+  if (!emojiLevel || emojiLevel === 'none') {
+    return '';
+  }
+
+  const instructions: Record<string, string> = {
+    'little': `Add emojis ONLY to section headings. Each heading should have one contextual emoji at the start.
+Examples:
+- "### ✨ New Features" or "### 🚀 New Features"
+- "### 🐛 Bug Fixes"
+- "### 🔧 Improvements" or "### ⚡ Improvements"
+- "### 📚 Documentation"
+Do NOT add emojis to individual line items.`,
+    'medium': `Add emojis to section headings AND to notable/important items only.
+Section headings should have one emoji (e.g., "### ✨ New Features", "### 🐛 Bug Fixes").
+Add emojis to 2-3 highlighted items per section that are particularly significant.
+Examples of highlighted items:
+- "- 🎉 **Major Feature**: Description"
+- "- 🔒 **Security Fix**: Description"
+Most regular line items should NOT have emojis.`,
+    'high': `Add emojis to section headings AND every line item for maximum visual appeal.
+Section headings: "### ✨ New Features", "### 🐛 Bug Fixes", "### ⚡ Improvements"
+Every line item should start with a contextual emoji:
+- "- ✨ Added new feature..."
+- "- 🐛 Fixed bug where..."
+- "- 🔧 Improved performance of..."
+- "- 📝 Updated documentation for..."
+- "- 🎨 Refined UI styling..."
+Use diverse, contextually appropriate emojis for each item.`
+  };
+
+  return instructions[emojiLevel] || '';
+}
+
+/**
  * Build changelog prompt from task specs
  */
 export function buildChangelogPrompt(
@@ -61,6 +98,7 @@ export function buildChangelogPrompt(
 ): string {
   const audienceInstruction = AUDIENCE_INSTRUCTIONS[request.audience];
   const formatInstruction = FORMAT_TEMPLATES[request.format](request.version, request.date);
+  const emojiInstruction = getEmojiInstructions(request.emojiLevel);
 
   // Build CONCISE task summaries (key to avoiding timeout)
   const taskSummaries = specs.map(spec => {
@@ -86,6 +124,7 @@ export function buildChangelogPrompt(
 
 Format:
 ${formatInstruction}
+${emojiInstruction ? `\nEmoji Usage:\n${emojiInstruction}` : ''}
 
 Completed tasks:
 ${taskSummaries}
@@ -104,6 +143,7 @@ export function buildGitPrompt(
 ): string {
   const audienceInstruction = AUDIENCE_INSTRUCTIONS[request.audience];
   const formatInstruction = FORMAT_TEMPLATES[request.format](request.version, request.date);
+  const emojiInstruction = getEmojiInstructions(request.emojiLevel);
 
   // Format commits for the prompt
   // Group by conventional commit type if detected
@@ -155,6 +195,7 @@ Conventional commit types to recognize:
 
 Format:
 ${formatInstruction}
+${emojiInstruction ? `\nEmoji Usage:\n${emojiInstruction}` : ''}
 
 Git commits (${commits.length} total):
 ${commitLines}

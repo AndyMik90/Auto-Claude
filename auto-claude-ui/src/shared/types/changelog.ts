@@ -10,6 +10,7 @@ import type { ImplementationPlan } from './task';
 
 export type ChangelogFormat = 'keep-a-changelog' | 'simple-list' | 'github-release';
 export type ChangelogAudience = 'technical' | 'user-facing' | 'marketing';
+export type ChangelogEmojiLevel = 'none' | 'little' | 'medium' | 'high';
 
 export interface ChangelogTask {
   id: string;
@@ -95,6 +96,7 @@ export interface ChangelogGenerationRequest {
   date: string; // ISO format
   format: ChangelogFormat;
   audience: ChangelogAudience;
+  emojiLevel?: ChangelogEmojiLevel; // Optional emoji usage level
   customInstructions?: string;
 }
 

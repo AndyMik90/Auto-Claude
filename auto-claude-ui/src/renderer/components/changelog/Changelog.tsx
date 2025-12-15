@@ -34,6 +34,7 @@ export function Changelog() {
     date,
     format,
     audience,
+    emojiLevel,
     customInstructions,
     generationProgress,
     generatedChangelog,
@@ -65,6 +66,7 @@ export function Changelog() {
     setDate,
     setFormat,
     setAudience,
+    setEmojiLevel,
     setCustomInstructions,
     updateGeneratedChangelog,
     setShowAdvanced,
@@ -156,6 +158,7 @@ export function Changelog() {
             date={date}
             format={format}
             audience={audience}
+            emojiLevel={emojiLevel}
             customInstructions={customInstructions}
             generationProgress={generationProgress}
             generatedChangelog={generatedChangelog}
@@ -171,6 +174,7 @@ export function Changelog() {
             onDateChange={setDate}
             onFormatChange={setFormat}
             onAudienceChange={setAudience}
+            onEmojiLevelChange={setEmojiLevel}
             onCustomInstructionsChange={setCustomInstructions}
             onShowAdvancedChange={setShowAdvanced}
             onGenerate={handleGenerate}

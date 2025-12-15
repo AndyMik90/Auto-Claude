@@ -285,7 +285,7 @@ export function App() {
                   />
                 </div>
                 {activeView === 'roadmap' && selectedProjectId && (
-                  <Roadmap projectId={selectedProjectId} />
+                  <Roadmap projectId={selectedProjectId} onGoToTask={handleGoToTask} />
                 )}
                 {activeView === 'context' && selectedProjectId && (
                   <Context projectId={selectedProjectId} />

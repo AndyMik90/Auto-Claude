@@ -15,6 +15,7 @@ interface RoadmapState {
   setRoadmap: (roadmap: Roadmap | null) => void;
   setGenerationStatus: (status: RoadmapGenerationStatus) => void;
   updateFeatureStatus: (featureId: string, status: RoadmapFeatureStatus) => void;
+  updateFeatureLinkedSpec: (featureId: string, specId: string) => void;
   clearRoadmap: () => void;
 }
 
@@ -40,6 +41,25 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
 
       const updatedFeatures = state.roadmap.features.map((feature) =>
         feature.id === featureId ? { ...feature, status } : feature
+      );
+
+      return {
+        roadmap: {
+          ...state.roadmap,
+          features: updatedFeatures,
+          updatedAt: new Date()
+        }
+      };
+    }),
+
+  updateFeatureLinkedSpec: (featureId, specId) =>
+    set((state) => {
+      if (!state.roadmap) return state;
+
+      const updatedFeatures = state.roadmap.features.map((feature) =>
+        feature.id === featureId
+          ? { ...feature, linkedSpecId: specId, status: 'planned' as RoadmapFeatureStatus }
+          : feature
       );
 
       return {

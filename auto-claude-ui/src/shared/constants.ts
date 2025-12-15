@@ -318,6 +318,7 @@ export const IPC_CHANNELS = {
   CHANGELOG_GET_BRANCHES: 'changelog:getBranches',
   CHANGELOG_GET_TAGS: 'changelog:getTags',
   CHANGELOG_GET_COMMITS_PREVIEW: 'changelog:getCommitsPreview',
+  CHANGELOG_SAVE_IMAGE: 'changelog:saveImage',
 
   // Changelog events (main -> renderer)
   CHANGELOG_GENERATION_PROGRESS: 'changelog:generationProgress',
@@ -685,7 +686,7 @@ export const CHANGELOG_FORMAT_LABELS: Record<string, string> = {
 export const CHANGELOG_FORMAT_DESCRIPTIONS: Record<string, string> = {
   'keep-a-changelog': 'Structured format with Added/Changed/Fixed/Removed sections',
   'simple-list': 'Clean bulleted list with categories',
-  'github-release': 'GitHub-style release notes with emojis'
+  'github-release': 'GitHub-style release notes'
 };
 
 // Changelog audience labels and descriptions
@@ -699,6 +700,21 @@ export const CHANGELOG_AUDIENCE_DESCRIPTIONS: Record<string, string> = {
   'technical': 'Detailed technical changes for developers',
   'user-facing': 'Clear, non-technical descriptions for end users',
   'marketing': 'Value-focused copy emphasizing benefits'
+};
+
+// Changelog emoji level labels and descriptions
+export const CHANGELOG_EMOJI_LEVEL_LABELS: Record<string, string> = {
+  'none': 'None',
+  'little': 'Headings Only',
+  'medium': 'Headings + Highlights',
+  'high': 'Everything'
+};
+
+export const CHANGELOG_EMOJI_LEVEL_DESCRIPTIONS: Record<string, string> = {
+  'none': 'No emojis',
+  'little': 'Emojis on section headings only',
+  'medium': 'Emojis on headings and key items',
+  'high': 'Emojis on headings and every line'
 };
 
 // Changelog generation stage labels

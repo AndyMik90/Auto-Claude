@@ -52,6 +52,7 @@ export function useChangelog() {
   const date = useChangelogStore((state) => state.date);
   const format = useChangelogStore((state) => state.format);
   const audience = useChangelogStore((state) => state.audience);
+  const emojiLevel = useChangelogStore((state) => state.emojiLevel);
   const customInstructions = useChangelogStore((state) => state.customInstructions);
   const generationProgress = useChangelogStore((state) => state.generationProgress);
   const generatedChangelog = useChangelogStore((state) => state.generatedChangelog);
@@ -84,6 +85,7 @@ export function useChangelog() {
   const setDate = useChangelogStore((state) => state.setDate);
   const setFormat = useChangelogStore((state) => state.setFormat);
   const setAudience = useChangelogStore((state) => state.setAudience);
+  const setEmojiLevel = useChangelogStore((state) => state.setEmojiLevel);
   const setCustomInstructions = useChangelogStore((state) => state.setCustomInstructions);
   const updateGeneratedChangelog = useChangelogStore((state) => state.updateGeneratedChangelog);
   const setError = useChangelogStore((state) => state.setError);
@@ -275,6 +277,7 @@ export function useChangelog() {
     date,
     format,
     audience,
+    emojiLevel,
     customInstructions,
     generationProgress,
     generatedChangelog,
@@ -306,6 +309,7 @@ export function useChangelog() {
     setDate,
     setFormat,
     setAudience,
+    setEmojiLevel,
     setCustomInstructions,
     updateGeneratedChangelog,
     setShowAdvanced,

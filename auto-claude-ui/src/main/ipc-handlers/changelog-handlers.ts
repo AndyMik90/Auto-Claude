@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import path from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { IPC_CHANNELS, getSpecsDir } from '../../shared/constants';
 import type {
@@ -287,6 +287,48 @@ export function registerChangelogHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get commits preview'
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Changelog Image Operations
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.CHANGELOG_SAVE_IMAGE,
+    async (_, projectId: string, imageData: string, filename: string): Promise<IPCResult<{ relativePath: string; url: string }>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        // Create .github/assets directory if it doesn't exist
+        const assetsDir = path.join(project.path, '.github', 'assets');
+        if (!existsSync(assetsDir)) {
+          mkdirSync(assetsDir, { recursive: true });
+        }
+
+        // Decode base64 image data
+        const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // Save image file
+        const imagePath = path.join(assetsDir, filename);
+        writeFileSync(imagePath, buffer);
+
+        // Return relative path for use in markdown
+        const relativePath = `.github/assets/${filename}`;
+        // For GitHub releases, we'll use the relative path which will work when the release is created
+        const url = relativePath;
+
+        return { success: true, data: { relativePath, url } };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to save image'
         };
       }
     }

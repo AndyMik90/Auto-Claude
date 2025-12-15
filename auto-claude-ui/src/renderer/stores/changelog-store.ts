@@ -4,6 +4,7 @@ import type {
   TaskSpecContent,
   ChangelogFormat,
   ChangelogAudience,
+  ChangelogEmojiLevel,
   ChangelogGenerationProgress,
   ChangelogGenerationResult,
   ExistingChangelog,
@@ -54,6 +55,7 @@ interface ChangelogState {
   date: string;
   format: ChangelogFormat;
   audience: ChangelogAudience;
+  emojiLevel: ChangelogEmojiLevel;
   customInstructions: string;
 
   // Generation state
@@ -101,6 +103,7 @@ interface ChangelogState {
   setDate: (date: string) => void;
   setFormat: (format: ChangelogFormat) => void;
   setAudience: (audience: ChangelogAudience) => void;
+  setEmojiLevel: (level: ChangelogEmojiLevel) => void;
   setCustomInstructions: (instructions: string) => void;
 
   // Generation actions
@@ -154,6 +157,7 @@ const initialState = {
   date: getDefaultDate(),
   format: 'keep-a-changelog' as ChangelogFormat,
   audience: 'user-facing' as ChangelogAudience,
+  emojiLevel: 'none' as ChangelogEmojiLevel,
   customInstructions: '',
 
   generationProgress: null as ChangelogGenerationProgress | null,
@@ -237,6 +241,7 @@ export const useChangelogStore = create<ChangelogState>((set, get) => ({
   setDate: (date) => set({ date }),
   setFormat: (format) => set({ format }),
   setAudience: (audience) => set({ audience }),
+  setEmojiLevel: (level) => set({ emojiLevel: level }),
   setCustomInstructions: (instructions) => set({ customInstructions: instructions }),
 
   // Generation actions
@@ -444,6 +449,7 @@ export function generateChangelog(projectId: string): void {
     date: store.date,
     format: store.format,
     audience: store.audience,
+    emojiLevel: store.emojiLevel !== 'none' ? store.emojiLevel : undefined,
     customInstructions: store.customInstructions || undefined
   };
 

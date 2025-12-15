@@ -1,3 +1,21 @@
+## What's New in 2.0.1
+
+### 🚀 New Features
+- **Update Check with Release URLs**: Enhanced update checking functionality to include release URLs, allowing users to easily access release information
+- **Markdown Renderer for Release Notes**: Added markdown renderer in advanced settings to properly display formatted release notes
+- **Terminal Name Generator**: New feature for generating terminal names
+
+### 🔧 Improvements
+- **LLM Provider Naming**: Updated project settings to reflect new LLM provider name
+- **IPC Handlers**: Improved IPC handlers for external link management
+- **UI Simplification**: Refactored App component to simplify project selection display by removing unnecessary wrapper elements
+- **Docker Infrastructure**: Updated FalkorDB service container naming in docker-compose configuration
+- **Documentation**: Improved README with dedicated CLI documentation and infrastructure status information
+
+### 📚 Documentation
+- Enhanced README with comprehensive CLI documentation and setup instructions
+- Added Docker infrastructure status documentation
+
 ## What's New in v2.0.0
 
 ### New Features

@@ -14,7 +14,8 @@ import {
   BarChart3,
   Clock,
   AlertCircle,
-  Play
+  Play,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -44,11 +45,13 @@ import type { RoadmapFeature, RoadmapPhase } from '../../shared/types';
 
 interface RoadmapProps {
   projectId: string;
+  onGoToTask?: (taskId: string) => void;
 }
 
-export function Roadmap({ projectId }: RoadmapProps) {
+export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
   const roadmap = useRoadmapStore((state) => state.roadmap);
   const generationStatus = useRoadmapStore((state) => state.generationStatus);
+  const updateFeatureLinkedSpec = useRoadmapStore((state) => state.updateFeatureLinkedSpec);
   const [selectedFeature, setSelectedFeature] = useState<RoadmapFeature | null>(null);
   const [activeTab, setActiveTab] = useState('phases');
 
@@ -67,8 +70,23 @@ export function Roadmap({ projectId }: RoadmapProps) {
 
   const handleConvertToSpec = async (feature: RoadmapFeature) => {
     const result = await window.electronAPI.convertFeatureToSpec(projectId, feature.id);
-    if (result.success) {
-      // Feature converted to spec - could show notification
+    if (result.success && result.data) {
+      // Update the store with the linked spec
+      updateFeatureLinkedSpec(feature.id, result.data.specId);
+      // Update the selected feature if it's the one that was converted
+      if (selectedFeature?.id === feature.id) {
+        setSelectedFeature({
+          ...feature,
+          linkedSpecId: result.data.specId,
+          status: 'planned'
+        });
+      }
+    }
+  };
+
+  const handleGoToTask = (specId: string) => {
+    if (onGoToTask) {
+      onGoToTask(specId);
     }
   };
 
@@ -203,6 +221,7 @@ export function Roadmap({ projectId }: RoadmapProps) {
                   isFirst={index === 0}
                   onFeatureSelect={setSelectedFeature}
                   onConvertToSpec={handleConvertToSpec}
+                  onGoToTask={handleGoToTask}
                 />
               ))}
             </div>
@@ -217,6 +236,7 @@ export function Roadmap({ projectId }: RoadmapProps) {
                   feature={feature}
                   onClick={() => setSelectedFeature(feature)}
                   onConvertToSpec={handleConvertToSpec}
+                  onGoToTask={handleGoToTask}
                 />
               ))}
             </div>
@@ -273,6 +293,7 @@ export function Roadmap({ projectId }: RoadmapProps) {
           feature={selectedFeature}
           onClose={() => setSelectedFeature(null)}
           onConvertToSpec={handleConvertToSpec}
+          onGoToTask={handleGoToTask}
         />
       )}
     </div>
@@ -286,9 +307,10 @@ interface PhaseCardProps {
   isFirst: boolean;
   onFeatureSelect: (feature: RoadmapFeature) => void;
   onConvertToSpec: (feature: RoadmapFeature) => void;
+  onGoToTask: (specId: string) => void;
 }
 
-function PhaseCard({ phase, features, isFirst, onFeatureSelect, onConvertToSpec }: PhaseCardProps) {
+function PhaseCard({ phase, features, isFirst, onFeatureSelect, onConvertToSpec, onGoToTask }: PhaseCardProps) {
   const completedCount = features.filter((f) => f.status === 'done').length;
   const progress = features.length > 0 ? (completedCount / features.length) * 100 : 0;
 
@@ -378,7 +400,18 @@ function PhaseCard({ phase, features, isFirst, onFeatureSelect, onConvertToSpec 
               {feature.status === 'done' ? (
                 <CheckCircle2 className="h-4 w-4 text-success" />
               ) : feature.linkedSpecId ? (
-                <Badge variant="outline" className="text-xs">In Progress</Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGoToTask(feature.linkedSpecId!);
+                  }}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  View Task
+                </Button>
               ) : (
                 <Button
                   variant="ghost"
@@ -411,9 +444,10 @@ interface FeatureCardProps {
   feature: RoadmapFeature;
   onClick: () => void;
   onConvertToSpec: (feature: RoadmapFeature) => void;
+  onGoToTask: (specId: string) => void;
 }
 
-function FeatureCard({ feature, onClick, onConvertToSpec }: FeatureCardProps) {
+function FeatureCard({ feature, onClick, onConvertToSpec, onGoToTask }: FeatureCardProps) {
   return (
     <Card
       className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
@@ -438,7 +472,19 @@ function FeatureCard({ feature, onClick, onConvertToSpec }: FeatureCardProps) {
           <h3 className="font-medium">{feature.title}</h3>
           <p className="text-sm text-muted-foreground line-clamp-2">{feature.description}</p>
         </div>
-        {!feature.linkedSpecId && feature.status !== 'done' && (
+        {feature.linkedSpecId ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onGoToTask(feature.linkedSpecId!);
+            }}
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            Go to Task
+          </Button>
+        ) : feature.status !== 'done' && (
           <Button
             variant="outline"
             size="sm"
@@ -461,9 +507,10 @@ interface FeatureDetailPanelProps {
   feature: RoadmapFeature;
   onClose: () => void;
   onConvertToSpec: (feature: RoadmapFeature) => void;
+  onGoToTask: (specId: string) => void;
 }
 
-function FeatureDetailPanel({ feature, onClose, onConvertToSpec }: FeatureDetailPanelProps) {
+function FeatureDetailPanel({ feature, onClose, onConvertToSpec, onGoToTask }: FeatureDetailPanelProps) {
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-card border-l border-border shadow-lg flex flex-col z-50">
       {/* Header */}
@@ -580,7 +627,14 @@ function FeatureDetailPanel({ feature, onClose, onConvertToSpec }: FeatureDetail
       </div>
 
       {/* Actions */}
-      {!feature.linkedSpecId && feature.status !== 'done' && (
+      {feature.linkedSpecId ? (
+        <div className="flex-shrink-0 p-4 border-t border-border">
+          <Button className="w-full" onClick={() => onGoToTask(feature.linkedSpecId!)}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Go to Task
+          </Button>
+        </div>
+      ) : feature.status !== 'done' && (
         <div className="flex-shrink-0 p-4 border-t border-border">
           <Button className="w-full" onClick={() => onConvertToSpec(feature)}>
             <Zap className="h-4 w-4 mr-2" />

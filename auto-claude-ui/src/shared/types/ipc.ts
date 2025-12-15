@@ -377,6 +377,11 @@ export interface ElectronAPI {
     options: GitHistoryOptions | BranchDiffOptions,
     mode: 'git-history' | 'branch-diff'
   ) => Promise<IPCResult<GitCommit[]>>;
+  saveChangelogImage: (
+    projectId: string,
+    imageData: string,
+    filename: string
+  ) => Promise<IPCResult<{ relativePath: string; url: string }>>;
 
   // Changelog event listeners
   onChangelogGenerationProgress: (
