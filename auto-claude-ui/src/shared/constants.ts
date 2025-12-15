@@ -90,6 +90,7 @@ export const DEFAULT_APP_SETTINGS = {
   autoBuildPath: undefined as string | undefined,
   autoUpdateAutoBuild: true,
   autoNameTerminals: true,
+  onboardingCompleted: false,
   notifications: {
     onTaskComplete: true,
     onTaskFailed: true,
