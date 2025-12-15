@@ -13,7 +13,7 @@
 services:
   falkordb:
     image: falkordb/falkordb:latest
-    container_name: auto-build-falkordb
+    container_name: auto-claude-falkordb
     ports:
       - "${GRAPHITI_FALKORDB_PORT:-6380}:6379"
     volumes:
