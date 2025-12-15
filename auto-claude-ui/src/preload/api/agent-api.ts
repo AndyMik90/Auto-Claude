@@ -158,6 +158,9 @@ export interface AgentAPI {
   downloadAutoBuildSourceUpdate: () => void;
   getAutoBuildSourceVersion: () => Promise<IPCResult<string>>;
   onAutoBuildSourceUpdateProgress: (callback: (progress: AutoBuildSourceUpdateProgress) => void) => () => void;
+  
+  // Shell Operations
+  openExternal: (url: string) => Promise<void>;
 }
 
 export const createAgentAPI = (): AgentAPI => ({
@@ -652,5 +655,9 @@ export const createAgentAPI = (): AgentAPI => ({
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.AUTOBUILD_SOURCE_PROGRESS, handler);
     };
-  }
+  },
+  
+  // Shell Operations
+  openExternal: (url: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SHELL_OPEN_EXTERNAL, url)
 });

@@ -41,6 +41,7 @@ export interface AutoBuildSourceUpdateCheck {
   currentVersion: string;
   latestVersion?: string;
   releaseNotes?: string;
+  releaseUrl?: string;
   error?: string;
 }
 

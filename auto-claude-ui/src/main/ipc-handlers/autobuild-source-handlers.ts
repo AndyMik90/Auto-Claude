@@ -20,7 +20,7 @@ export function registerAutobuildSourceHandlers(
 
   ipcMain.handle(
     IPC_CHANNELS.AUTOBUILD_SOURCE_CHECK,
-    async (): Promise<IPCResult<{ updateAvailable: boolean; currentVersion: string; latestVersion?: string; releaseNotes?: string; error?: string }>> => {
+    async (): Promise<IPCResult<{ updateAvailable: boolean; currentVersion: string; latestVersion?: string; releaseNotes?: string; releaseUrl?: string; error?: string }>> => {
       try {
         const result = await checkSourceUpdates();
         return { success: true, data: result };

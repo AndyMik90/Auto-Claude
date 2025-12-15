@@ -985,7 +985,7 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
                                 <SelectValue placeholder="Select LLM provider" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="openai">OpenAI (GPT-4o)</SelectItem>
+                                <SelectItem value="openai">OpenAI (GPT-5-mini)</SelectItem>
                                 <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
                                 <SelectItem value="google">Google (Gemini)</SelectItem>
                                 <SelectItem value="groq">Groq (Llama)</SelectItem>

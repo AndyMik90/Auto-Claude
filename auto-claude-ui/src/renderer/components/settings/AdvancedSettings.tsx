@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
   CloudDownload,
-  Loader2
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -13,6 +14,43 @@ import { Progress } from '../ui/progress';
 import { cn } from '../../lib/utils';
 import { SettingsSection } from './SettingsSection';
 import type { AppSettings, AutoBuildSourceUpdateCheck, AutoBuildSourceUpdateProgress } from '../../../shared/types';
+
+/**
+ * Simple markdown renderer for release notes
+ * Handles: headers, bold, lists, line breaks
+ */
+function ReleaseNotesRenderer({ markdown }: { markdown: string }) {
+  const html = useMemo(() => {
+    let result = markdown
+      // Escape HTML
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // Headers (### Header -> <h3>)
+      .replace(/^### (.+)$/gm, '<h4 class="text-sm font-semibold text-foreground mt-3 mb-1.5 first:mt-0">$1</h4>')
+      .replace(/^## (.+)$/gm, '<h3 class="text-sm font-semibold text-foreground mt-3 mb-1.5 first:mt-0">$1</h3>')
+      // Bold (**text** -> <strong>)
+      .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-foreground font-medium">$1</strong>')
+      // Inline code (`code` -> <code>)
+      .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-muted rounded text-xs">$1</code>')
+      // List items (- item -> <li>)
+      .replace(/^- (.+)$/gm, '<li class="ml-4 text-muted-foreground before:content-[\'•\'] before:mr-2 before:text-muted-foreground/60">$1</li>')
+      // Wrap consecutive list items
+      .replace(/(<li[^>]*>.*?<\/li>\n?)+/g, '<ul class="space-y-1 my-2">$&</ul>')
+      // Line breaks for remaining lines
+      .replace(/\n\n/g, '<div class="h-2"></div>')
+      .replace(/\n/g, '<br/>');
+    
+    return result;
+  }, [markdown]);
+
+  return (
+    <div 
+      className="text-sm text-muted-foreground leading-relaxed"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
 
 interface AdvancedSettingsProps {
   settings: AppSettings;
@@ -124,11 +162,19 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
                 {sourceUpdateCheck.updateAvailable && (
                   <div className="space-y-4 pt-2">
                     {sourceUpdateCheck.releaseNotes && (
-                      <div className="text-sm text-muted-foreground bg-background rounded-lg p-3 max-h-32 overflow-y-auto">
-                        <pre className="whitespace-pre-wrap font-sans">
-                          {sourceUpdateCheck.releaseNotes}
-                        </pre>
+                      <div className="bg-background rounded-lg p-4 max-h-48 overflow-y-auto border border-border/50">
+                        <ReleaseNotesRenderer markdown={sourceUpdateCheck.releaseNotes} />
                       </div>
+                    )}
+                    
+                    {sourceUpdateCheck.releaseUrl && (
+                      <button
+                        onClick={() => window.electronAPI.openExternal(sourceUpdateCheck.releaseUrl!)}
+                        className="inline-flex items-center gap-1.5 text-sm text-info hover:text-info/80 hover:underline transition-colors"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        View full release on GitHub
+                      </button>
                     )}
 
                     {isDownloadingUpdate ? (

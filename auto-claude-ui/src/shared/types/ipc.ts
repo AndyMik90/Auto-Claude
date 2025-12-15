@@ -342,6 +342,9 @@ export interface ElectronAPI {
     callback: (progress: AutoBuildSourceUpdateProgress) => void
   ) => () => void;
 
+  // Shell operations
+  openExternal: (url: string) => Promise<void>;
+
   // Auto Claude source environment operations
   getSourceEnv: () => Promise<IPCResult<SourceEnvConfig>>;
   updateSourceEnv: (config: { claudeOAuthToken?: string }) => Promise<IPCResult>;

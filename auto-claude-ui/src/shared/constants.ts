@@ -221,6 +221,9 @@ export const IPC_CHANNELS = {
 
   // App info
   APP_VERSION: 'app:version',
+  
+  // Shell operations
+  SHELL_OPEN_EXTERNAL: 'shell:openExternal',
 
   // Roadmap operations
   ROADMAP_GET: 'roadmap:get',

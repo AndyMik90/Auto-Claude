@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app } from 'electron';
+import { ipcMain, dialog, app, shell } from 'electron';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
@@ -218,4 +218,15 @@ export function registerSettingsHandlers(
   ipcMain.handle(IPC_CHANNELS.APP_VERSION, async (): Promise<string> => {
     return app.getVersion();
   });
+
+  // ============================================
+  // Shell Operations
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.SHELL_OPEN_EXTERNAL,
+    async (_, url: string): Promise<void> => {
+      await shell.openExternal(url);
+    }
+  );
 }

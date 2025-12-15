@@ -652,6 +652,12 @@ const browserMockAPI: ElectronAPI = {
   }),
 
   onAutoBuildSourceUpdateProgress: () => () => {},
+  
+  // Shell Operations (browser mock)
+  openExternal: async (url: string) => {
+    console.log('[Browser Mock] openExternal:', url);
+    window.open(url, '_blank');
+  },
 
   // Auto-Build Source Environment Operations (browser mock)
   getSourceEnv: async () => ({

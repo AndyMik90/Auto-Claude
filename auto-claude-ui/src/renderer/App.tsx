@@ -58,6 +58,7 @@ export function App() {
   const [showInitDialog, setShowInitDialog] = useState(false);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [skippedInitProjectId, setSkippedInitProjectId] = useState<string | null>(null);
 
   // Get selected project
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -70,12 +71,12 @@ export function App() {
 
   // Check if selected project needs initialization (e.g., .auto-claude folder was deleted)
   useEffect(() => {
-    if (selectedProject && !selectedProject.autoBuildPath && !showInitDialog) {
+    if (selectedProject && !selectedProject.autoBuildPath && !showInitDialog && skippedInitProjectId !== selectedProject.id) {
       // Project exists but isn't initialized - show init dialog
       setPendingProject(selectedProject);
       setShowInitDialog(true);
     }
-  }, [selectedProject, showInitDialog]);
+  }, [selectedProject, showInitDialog, skippedInitProjectId]);
 
   // Load tasks when project changes
   useEffect(() => {
@@ -188,6 +189,9 @@ export function App() {
   };
 
   const handleSkipInit = () => {
+    if (pendingProject) {
+      setSkippedInitProjectId(pendingProject.id);
+    }
     setShowInitDialog(false);
     setPendingProject(null);
   };
@@ -325,7 +329,13 @@ export function App() {
         />
 
         {/* Initialize Auto Claude Dialog */}
-        <Dialog open={showInitDialog} onOpenChange={setShowInitDialog}>
+        <Dialog open={showInitDialog} onOpenChange={(open) => {
+          if (!open) {
+            handleSkipInit();
+          } else {
+            setShowInitDialog(true);
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">

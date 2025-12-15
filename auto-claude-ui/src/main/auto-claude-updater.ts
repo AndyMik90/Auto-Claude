@@ -43,6 +43,7 @@ interface GitHubRelease {
   tag_name: string;
   name: string;
   body: string;
+  html_url: string;
   tarball_url: string;
   published_at: string;
   prerelease: boolean;
@@ -60,6 +61,7 @@ export interface AutoBuildUpdateCheck {
   currentVersion: string;
   latestVersion?: string;
   releaseNotes?: string;
+  releaseUrl?: string;
   error?: string;
 }
 
@@ -204,7 +206,8 @@ export async function checkForUpdates(): Promise<AutoBuildUpdateCheck> {
       updateAvailable,
       currentVersion,
       latestVersion,
-      releaseNotes: release.body || undefined
+      releaseNotes: release.body || undefined,
+      releaseUrl: release.html_url || undefined
     };
   } catch (error) {
     // Clear cache on error
