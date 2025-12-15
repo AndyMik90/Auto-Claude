@@ -513,17 +513,17 @@
     }
   },
   "qa_signoff": {
-    "status": "fixes_applied",
-    "timestamp": "2025-12-15T17:55:00Z",
-    "qa_session": 1,
-    "fix_session": 1,
+    "status": "approved",
+    "timestamp": "2025-12-15T17:58:00Z",
+    "qa_session": 2,
     "report_file": "qa_report.md",
     "tests_passed": {
-      "unit": "125/156 (31 pre-existing failures)",
+      "unit": "126/156 (30 pre-existing failures, no regressions)",
       "integration": "N/A",
       "e2e": "N/A"
     },
-    "issues_found": [
+    "issues_found": [],
+    "issues_resolved": [
       {
         "type": "critical",
         "title": "Missing onRerunWizard prop in App.tsx",
@@ -533,10 +533,9 @@
         "fix_commit": "6b5b714"
       }
     ],
-    "fix_request_file": "QA_FIX_REQUEST.md",
-    "ready_for_qa_revalidation": true
+    "verified_by": "qa_agent"
   },
-  "last_updated": "2025-12-15T17:55:00Z",
+  "last_updated": "2025-12-15T17:58:00Z",
   "qa_iteration_history": [
     {
       "iteration": 1,
@@ -551,14 +550,21 @@
         }
       ],
       "duration_seconds": 294.96
+    },
+    {
+      "iteration": 2,
+      "status": "approved",
+      "timestamp": "2025-12-15T17:58:00Z",
+      "issues": [],
+      "notes": "Previous critical issue fixed. All acceptance criteria verified. No regressions."
     }
   ],
   "qa_stats": {
-    "total_iterations": 1,
-    "last_iteration": 1,
-    "last_status": "rejected",
+    "total_iterations": 2,
+    "last_iteration": 2,
+    "last_status": "approved",
     "issues_by_type": {
-      "critical": 1
+      "critical": 0
     }
   }
 }
