@@ -13,7 +13,6 @@ import { WizardProgress, WizardStep } from './WizardProgress';
 import { WelcomeStep } from './WelcomeStep';
 import { OAuthStep } from './OAuthStep';
 import { GraphitiStep } from './GraphitiStep';
-import { FirstSpecStep } from './FirstSpecStep';
 import { CompletionStep } from './CompletionStep';
 import { useSettingsStore } from '../../stores/settings-store';
 
@@ -25,14 +24,13 @@ interface OnboardingWizardProps {
 }
 
 // Wizard step identifiers
-type WizardStepId = 'welcome' | 'oauth' | 'graphiti' | 'first-spec' | 'completion';
+type WizardStepId = 'welcome' | 'oauth' | 'graphiti' | 'completion';
 
 // Step configuration
 const WIZARD_STEPS: { id: WizardStepId; label: string }[] = [
   { id: 'welcome', label: 'Welcome' },
   { id: 'oauth', label: 'Auth' },
   { id: 'graphiti', label: 'Memory' },
-  { id: 'first-spec', label: 'First Task' },
   { id: 'completion', label: 'Done' }
 ];
 
@@ -145,15 +143,6 @@ export function OnboardingWizard({
             onNext={goToNextStep}
             onBack={goToPreviousStep}
             onSkip={skipWizard}
-          />
-        );
-      case 'first-spec':
-        return (
-          <FirstSpecStep
-            onNext={goToNextStep}
-            onBack={goToPreviousStep}
-            onSkip={skipWizard}
-            onOpenTaskCreator={handleOpenTaskCreator}
           />
         );
       case 'completion':

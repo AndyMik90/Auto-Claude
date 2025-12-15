@@ -178,7 +178,8 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
       if (result?.success) {
         // Update local settings store
         updateSettings({ globalOpenAIApiKey: config.openAiApiKey.trim() });
-        setSuccess(true);
+        // Proceed to next step immediately after successful save
+        onNext();
       } else {
         setError(result?.error || 'Failed to save Graphiti configuration');
       }
