@@ -219,12 +219,7 @@ export function App() {
           <header className="electron-drag flex h-14 items-center justify-between border-b border-border bg-card/50 backdrop-blur-sm px-6">
             <div className="electron-no-drag">
               {selectedProject ? (
-                <div>
-                  <h1 className="font-semibold text-foreground">{selectedProject.name}</h1>
-                  <p className="text-xs text-muted-foreground truncate max-w-md">
-                    {selectedProject.path}
-                  </p>
-                </div>
+                <h1 className="font-semibold text-foreground">{selectedProject.name}</h1>
               ) : (
                 <div className="text-muted-foreground">
                   Select a project to get started
