@@ -15,6 +15,7 @@ export interface TerminalAPI {
   sendTerminalInput: (id: string, data: string) => void;
   resizeTerminal: (id: string, cols: number, rows: number) => void;
   invokeClaudeInTerminal: (id: string, cwd?: string) => void;
+  generateTerminalName: (command: string, cwd?: string) => Promise<IPCResult<string>>;
 
   // Terminal Session Management
   getTerminalSessions: (projectPath: string) => Promise<IPCResult<import('../../shared/types').TerminalSession[]>>;
@@ -80,6 +81,9 @@ export const createTerminalAPI = (): TerminalAPI => ({
 
   invokeClaudeInTerminal: (id: string, cwd?: string): void =>
     ipcRenderer.send(IPC_CHANNELS.TERMINAL_INVOKE_CLAUDE, id, cwd),
+
+  generateTerminalName: (command: string, cwd?: string): Promise<IPCResult<string>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TERMINAL_GENERATE_NAME, command, cwd),
 
   // Terminal Session Management
   getTerminalSessions: (projectPath: string): Promise<IPCResult<import('../../shared/types').TerminalSession[]>> =>

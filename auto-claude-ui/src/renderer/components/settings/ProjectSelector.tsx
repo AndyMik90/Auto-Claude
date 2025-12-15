@@ -49,21 +49,23 @@ export function ProjectSelector({
 
   return (
     <>
-      <div className="space-y-2">
+      <div className="space-y-2 w-full overflow-hidden">
         <Select
           value={selectedProjectId || ''}
           onValueChange={handleValueChange}
           open={open}
           onOpenChange={setOpen}
         >
-          <SelectTrigger className="w-full [&_span]:truncate">
+          <SelectTrigger className="w-full max-w-full overflow-hidden">
             <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
               <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <SelectValue placeholder="Select a project..." className="truncate min-w-0 flex-1" />
+              <span className="truncate min-w-0 flex-1 text-left">
+                {selectedProject?.name || 'Select a project...'}
+              </span>
             </div>
           </SelectTrigger>
-          <SelectContent 
-            className="min-w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]"
+          <SelectContent
+            className="w-[var(--radix-select-trigger-width)] max-w-[280px]"
             position="popper"
             sideOffset={4}
           >
@@ -73,18 +75,18 @@ export function ProjectSelector({
               </div>
             ) : (
               projects.map((project) => (
-                <SelectItem 
-                  key={project.id} 
+                <SelectItem
+                  key={project.id}
                   value={project.id}
-                  className="pr-8"
+                  className="pr-2"
                 >
-                  <div className="flex items-center justify-between w-full min-w-0">
-                    <span className="truncate flex-1" title={`${project.name} - ${project.path}`}>
+                  <div className="flex items-center gap-2 w-full min-w-0 max-w-full">
+                    <span className="truncate flex-1 min-w-0" title={`${project.name} - ${project.path}`}>
                       {project.name}
                     </span>
                     <button
                       type="button"
-                      className="ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-destructive/10 transition-colors"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-destructive/10 transition-colors"
                       onPointerDown={(e) => {
                         e.stopPropagation();
                       }}
@@ -93,7 +95,7 @@ export function ProjectSelector({
                       }}
                       onClick={(e) => handleRemoveProject(project.id, e)}
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      <Trash2 className="h-3 w-3 text-destructive" />
                     </button>
                   </div>
                 </SelectItem>
@@ -111,8 +113,8 @@ export function ProjectSelector({
 
         {/* Project path - shown when project is selected */}
         {selectedProject && (
-          <p 
-            className="text-xs text-muted-foreground px-1 break-words leading-relaxed" 
+          <p
+            className="text-xs text-muted-foreground px-1 truncate"
             title={selectedProject.path}
           >
             {selectedProject.path}

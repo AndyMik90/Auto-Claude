@@ -8,6 +8,7 @@ import { X, Sparkles, TerminalSquare, ListTodo, FileDown, ChevronDown, Circle, L
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import { useTerminalStore, type TerminalStatus } from '../stores/terminal-store';
+import { useSettingsStore } from '../stores/settings-store';
 import type { Task, ExecutionPhase } from '../../shared/types';
 import {
   Select,
@@ -67,6 +68,9 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
   const isCreatedRef = useRef(false);
   const isMountedRef = useRef(true);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const commandBufferRef = useRef<string>('');
+  const lastCommandRef = useRef<string>('');
+  const autoNameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Title editing state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -77,6 +81,7 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
   const setClaudeMode = useTerminalStore((state) => state.setClaudeMode);
   const updateTerminal = useTerminalStore((state) => state.updateTerminal);
   const setAssociatedTask = useTerminalStore((state) => state.setAssociatedTask);
+  const autoNameTerminals = useSettingsStore((state) => state.settings.autoNameTerminals);
 
   // Filter tasks to only show backlog (Planning) status tasks for dropdown
   const backlogTasks = tasks.filter((t) => t.status === 'backlog');
@@ -91,6 +96,30 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
     id: `terminal-${id}`,
     data: { type: 'terminal', terminalId: id }
   });
+
+  // Auto-naming function - generates terminal name based on commands
+  const triggerAutoNaming = useCallback(async () => {
+    // Only auto-name if setting is enabled, not in Claude mode, and we have a command
+    if (!autoNameTerminals || terminal?.isClaudeMode || !lastCommandRef.current.trim()) {
+      return;
+    }
+
+    const command = lastCommandRef.current.trim();
+    // Skip very short or common commands
+    if (command.length < 2 || ['ls', 'cd', 'll', 'pwd', 'exit', 'clear'].includes(command)) {
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.generateTerminalName(command, terminal?.cwd || cwd);
+      if (result.success && result.data) {
+        updateTerminal(id, { title: result.data });
+      }
+    } catch (error) {
+      // Silently fail - auto-naming is not critical
+      console.debug('[Terminal] Auto-naming failed:', error);
+    }
+  }, [autoNameTerminals, terminal?.isClaudeMode, terminal?.cwd, cwd, id, updateTerminal]);
 
   // Initialize xterm.js UI (separate from PTY creation)
   useEffect(() => {
@@ -167,6 +196,32 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
     // Handle terminal input - send to main process
     xterm.onData((data) => {
       window.electronAPI.sendTerminalInput(id, data);
+
+      // Track commands for auto-naming
+      if (data === '\r' || data === '\n') {
+        // Enter pressed - save the command and schedule auto-naming
+        lastCommandRef.current = commandBufferRef.current;
+        commandBufferRef.current = '';
+
+        // Clear any pending auto-naming
+        if (autoNameTimeoutRef.current) {
+          clearTimeout(autoNameTimeoutRef.current);
+        }
+
+        // Trigger auto-naming after a delay (wait for command to execute and produce output)
+        autoNameTimeoutRef.current = setTimeout(() => {
+          triggerAutoNaming();
+        }, 1500); // 1.5 second delay
+      } else if (data === '\x7f' || data === '\b') {
+        // Backspace - remove last char from buffer
+        commandBufferRef.current = commandBufferRef.current.slice(0, -1);
+      } else if (data === '\x03') {
+        // Ctrl+C - clear buffer
+        commandBufferRef.current = '';
+      } else if (data.charCodeAt(0) >= 32 && data.charCodeAt(0) < 127) {
+        // Printable character - add to buffer
+        commandBufferRef.current += data;
+      }
     });
 
     // Handle resize
@@ -345,6 +400,12 @@ export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, 
 
     return () => {
       isMountedRef.current = false;
+
+      // Clear auto-naming timeout
+      if (autoNameTimeoutRef.current) {
+        clearTimeout(autoNameTimeoutRef.current);
+        autoNameTimeoutRef.current = null;
+      }
 
       // Delay cleanup to skip StrictMode's immediate remount
       setTimeout(() => {

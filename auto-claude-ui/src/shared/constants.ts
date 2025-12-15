@@ -89,6 +89,7 @@ export const DEFAULT_APP_SETTINGS = {
   pythonPath: undefined as string | undefined,
   autoBuildPath: undefined as string | undefined,
   autoUpdateAutoBuild: true,
+  autoNameTerminals: true,
   notifications: {
     onTaskComplete: true,
     onTaskFailed: true,
@@ -171,6 +172,7 @@ export const IPC_CHANNELS = {
   TERMINAL_INPUT: 'terminal:input',
   TERMINAL_RESIZE: 'terminal:resize',
   TERMINAL_INVOKE_CLAUDE: 'terminal:invokeClaude',
+  TERMINAL_GENERATE_NAME: 'terminal:generateName',
 
   // Terminal session management
   TERMINAL_GET_SESSIONS: 'terminal:getSessions',

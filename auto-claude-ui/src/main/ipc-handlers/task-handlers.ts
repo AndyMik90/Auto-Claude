@@ -260,7 +260,7 @@ export function registerTaskHandlers(
     async (
       _,
       taskId: string,
-      updates: { title?: string; description?: string }
+      updates: { title?: string; description?: string; metadata?: Partial<TaskMetadata> }
     ): Promise<IPCResult<Task>> => {
       try {
         // Find task and project
@@ -363,11 +363,80 @@ export function registerTaskHandlers(
           }
         }
 
+        // Update metadata if provided
+        let updatedMetadata = task.metadata;
+        if (updates.metadata) {
+          updatedMetadata = { ...task.metadata, ...updates.metadata };
+
+          // Process and save attached images if provided
+          if (updates.metadata.attachedImages && updates.metadata.attachedImages.length > 0) {
+            const attachmentsDir = path.join(specDir, 'attachments');
+            mkdirSync(attachmentsDir, { recursive: true });
+
+            const savedImages: typeof updates.metadata.attachedImages = [];
+
+            for (const image of updates.metadata.attachedImages) {
+              // If image has data (new image), save it
+              if (image.data) {
+                try {
+                  const buffer = Buffer.from(image.data, 'base64');
+                  const imagePath = path.join(attachmentsDir, image.filename);
+                  writeFileSync(imagePath, buffer);
+
+                  savedImages.push({
+                    id: image.id,
+                    filename: image.filename,
+                    mimeType: image.mimeType,
+                    size: image.size,
+                    path: `attachments/${image.filename}`
+                  });
+                } catch (err) {
+                  console.error(`Failed to save image ${image.filename}:`, err);
+                }
+              } else if (image.path) {
+                // Existing image, keep it
+                savedImages.push(image);
+              }
+            }
+
+            updatedMetadata.attachedImages = savedImages;
+          }
+
+          // Update task_metadata.json
+          const metadataPath = path.join(specDir, 'task_metadata.json');
+          try {
+            writeFileSync(metadataPath, JSON.stringify(updatedMetadata, null, 2));
+          } catch (err) {
+            console.error('Failed to update task_metadata.json:', err);
+          }
+
+          // Update requirements.json if it exists
+          const requirementsPath = path.join(specDir, 'requirements.json');
+          if (existsSync(requirementsPath)) {
+            try {
+              const requirementsContent = readFileSync(requirementsPath, 'utf-8');
+              const requirements = JSON.parse(requirementsContent);
+
+              if (updates.description !== undefined) {
+                requirements.task_description = updates.description;
+              }
+              if (updates.metadata.category) {
+                requirements.workflow_type = updates.metadata.category;
+              }
+
+              writeFileSync(requirementsPath, JSON.stringify(requirements, null, 2));
+            } catch (err) {
+              console.error('Failed to update requirements.json:', err);
+            }
+          }
+        }
+
         // Build the updated task object
         const updatedTask: Task = {
           ...task,
           title: finalTitle ?? task.title,
           description: updates.description ?? task.description,
+          metadata: updatedMetadata,
           updatedAt: new Date()
         };
 

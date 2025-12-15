@@ -1,6 +1,7 @@
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Switch } from '../ui/switch';
 import { SettingsSection } from './SettingsSection';
 import { AVAILABLE_MODELS } from '../../../shared/constants';
 import type { AppSettings } from '../../../shared/types';
@@ -55,6 +56,23 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                 <SelectItem value="auto-claude">Auto Claude</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between max-w-md">
+              <div className="space-y-1">
+                <Label htmlFor="autoNameTerminals" className="text-sm font-medium text-foreground">
+                  AI Terminal Naming
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically name terminals based on commands (uses Haiku)
+                </p>
+              </div>
+              <Switch
+                id="autoNameTerminals"
+                checked={settings.autoNameTerminals}
+                onCheckedChange={(checked) => onSettingsChange({ ...settings, autoNameTerminals: checked })}
+              />
+            </div>
           </div>
         </div>
       </SettingsSection>

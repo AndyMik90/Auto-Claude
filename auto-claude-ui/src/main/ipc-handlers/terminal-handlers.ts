@@ -5,6 +5,7 @@ import type { IPCResult, TerminalCreateOptions, ClaudeProfile, ClaudeProfileSett
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { TerminalManager } from '../terminal-manager';
 import { projectStore } from '../project-store';
+import { terminalNameGenerator } from '../terminal-name-generator';
 
 
 /**
@@ -50,6 +51,25 @@ export function registerTerminalHandlers(
     IPC_CHANNELS.TERMINAL_INVOKE_CLAUDE,
     (_, id: string, cwd?: string) => {
       terminalManager.invokeClaude(id, cwd);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TERMINAL_GENERATE_NAME,
+    async (_, command: string, cwd?: string): Promise<IPCResult<string>> => {
+      try {
+        const name = await terminalNameGenerator.generateName(command, cwd);
+        if (name) {
+          return { success: true, data: name };
+        } else {
+          return { success: false, error: 'Failed to generate terminal name' };
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to generate terminal name'
+        };
+      }
     }
   );
 

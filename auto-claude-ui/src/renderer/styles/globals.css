@@ -37,6 +37,9 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
 
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
   /* Semantic colors */
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -115,6 +118,9 @@
   --sidebar: #FFFFFF;
   --sidebar-foreground: #0B0B0F;
 
+  --popover: #FFFFFF;
+  --popover-foreground: #0B0B0F;
+
   /* Semantic colors */
   --success: #4EBE96;
   --success-foreground: #FFFFFF;
@@ -172,6 +178,9 @@
 
   --sidebar: #0E0E12;
   --sidebar-foreground: #E6E6E6;
+
+  --popover: #1A1A1F;
+  --popover-foreground: #E6E6E6;
 
   /* Semantic colors - muted for dark mode */
   --success: #4EBE96;

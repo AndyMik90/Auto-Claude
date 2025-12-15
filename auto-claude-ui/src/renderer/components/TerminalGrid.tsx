@@ -80,13 +80,28 @@ export function TerminalGrid({ projectPath, onNewTaskClick }: TerminalGridProps)
     fetchSessionDates();
   }, [projectPath]);
 
+  // Get addRestoredTerminal from store
+  const addRestoredTerminal = useTerminalStore((state) => state.addRestoredTerminal);
+
   // Handle restoring sessions from a specific date
   const handleRestoreFromDate = useCallback(async (date: string) => {
     if (!projectPath || isRestoring) return;
 
     setIsRestoring(true);
     try {
-      // First close all existing terminals
+      // First get the session data for this date (we need it after restore)
+      const sessionsResult = await window.electronAPI.getTerminalSessionsForDate(date, projectPath);
+      const sessionsToRestore = sessionsResult.success ? sessionsResult.data || [] : [];
+
+      console.log(`[TerminalGrid] Found ${sessionsToRestore.length} sessions to restore from ${date}`);
+
+      if (sessionsToRestore.length === 0) {
+        console.log('[TerminalGrid] No sessions found for this date');
+        setIsRestoring(false);
+        return;
+      }
+
+      // Close all existing terminals
       for (const terminal of terminals) {
         await window.electronAPI.destroyTerminal(terminal.id);
         removeTerminal(terminal.id);
@@ -95,7 +110,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick }: TerminalGridProps)
       // Small delay to ensure cleanup
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Restore sessions from the selected date
+      // Restore sessions from the selected date (creates PTYs in main process)
       const result = await window.electronAPI.restoreTerminalSessionsFromDate(
         date,
         projectPath,
@@ -104,9 +119,20 @@ export function TerminalGrid({ projectPath, onNewTaskClick }: TerminalGridProps)
       );
 
       if (result.success && result.data) {
-        console.log(`Restored ${result.data.restored} sessions from ${date}`);
-        // The terminal-store's restoreTerminalSessions will be called by App.tsx
-        // Or we can manually add the restored terminals
+        console.log(`[TerminalGrid] Main process restored ${result.data.restored} sessions from ${date}`);
+
+        // Add each successfully restored session to the renderer's terminal store
+        for (const sessionResult of result.data.sessions) {
+          if (sessionResult.success) {
+            // Find the full session data
+            const fullSession = sessionsToRestore.find(s => s.id === sessionResult.id);
+            if (fullSession) {
+              console.log(`[TerminalGrid] Adding restored terminal to store: ${fullSession.id}`);
+              addRestoredTerminal(fullSession);
+            }
+          }
+        }
+
         // Refresh session dates to update counts
         const datesResult = await window.electronAPI.getTerminalSessionDates(projectPath);
         if (datesResult.success && datesResult.data) {
@@ -118,7 +144,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick }: TerminalGridProps)
     } finally {
       setIsRestoring(false);
     }
-  }, [projectPath, terminals, removeTerminal, isRestoring]);
+  }, [projectPath, terminals, removeTerminal, addRestoredTerminal, isRestoring]);
 
   // Setup drag sensors
   const sensors = useSensors(

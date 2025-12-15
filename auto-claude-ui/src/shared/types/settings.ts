@@ -11,6 +11,7 @@ export interface AppSettings {
   pythonPath?: string;
   autoBuildPath?: string;
   autoUpdateAutoBuild: boolean;
+  autoNameTerminals: boolean;
   notifications: NotificationSettings;
   // Global API keys (used as defaults for all projects)
   globalClaudeOAuthToken?: string;

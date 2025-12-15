@@ -272,11 +272,11 @@ export async function persistTaskStatus(
 }
 
 /**
- * Update task title/description and persist to file
+ * Update task title/description/metadata and persist to file
  */
 export async function persistUpdateTask(
   taskId: string,
-  updates: { title?: string; description?: string }
+  updates: { title?: string; description?: string; metadata?: Partial<TaskMetadata> }
 ): Promise<boolean> {
   const store = useTaskStore.getState();
 
@@ -289,6 +289,7 @@ export async function persistUpdateTask(
       store.updateTask(taskId, {
         title: result.data.title,
         description: result.data.description,
+        metadata: result.data.metadata,
         updatedAt: new Date()
       });
       return true;
