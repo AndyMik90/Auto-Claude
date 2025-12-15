@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useTaskStore, persistUpdateTask } from '../stores/task-store';
-import type { Task, TaskStatus } from '../../shared/types';
+import type { Task, TaskStatus, ElectronAPI } from '../../shared/types';
 
 // Helper to create test tasks
 function createTestTask(overrides: Partial<Task> = {}): Task {
@@ -23,15 +23,11 @@ function createTestTask(overrides: Partial<Task> = {}): Task {
   };
 }
 
-// Mock the window.electronAPI
-const mockUpdateTask = vi.fn();
+// Import browser mock to get full ElectronAPI structure
+import '../lib/browser-mock';
 
-// We need to mock at module level before imports
-vi.mock('../../preload/index', () => ({
-  electronAPI: {
-    updateTask: mockUpdateTask
-  }
-}));
+// Mock the window.electronAPI.updateTask specifically
+const mockUpdateTask = vi.fn();
 
 // Override window.electronAPI for these tests
 const originalWindow = global.window;
@@ -46,13 +42,10 @@ describe('TaskEditDialog Logic', () => {
       error: null
     });
 
-    // Setup mock window.electronAPI
-    (global as typeof globalThis & { window: { electronAPI: { updateTask: typeof mockUpdateTask } } }).window = {
-      ...originalWindow,
-      electronAPI: {
-        updateTask: mockUpdateTask
-      }
-    } as typeof window;
+    // Override just the updateTask method on the existing electronAPI
+    if (window.electronAPI) {
+      window.electronAPI.updateTask = mockUpdateTask;
+    }
 
     // Clear mock calls
     mockUpdateTask.mockReset();

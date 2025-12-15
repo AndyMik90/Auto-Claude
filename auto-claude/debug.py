@@ -182,6 +182,21 @@ def debug_success(module: str, message: str, **kwargs) -> None:
     _write_log(log_line)
 
 
+def debug_info(module: str, message: str, **kwargs) -> None:
+    """Log an info debug message."""
+    if not _get_debug_enabled():
+        return
+
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    log_line = f"{Colors.TIMESTAMP}[{timestamp}]{Colors.RESET} {Colors.DEBUG}[INFO]{Colors.RESET} {Colors.MODULE}[{module}]{Colors.RESET} {message}"
+
+    if kwargs:
+        for key, value in kwargs.items():
+            log_line += f"\n  {Colors.KEY}{key}{Colors.RESET}: {Colors.VALUE}{_format_value(value)}{Colors.RESET}"
+
+    _write_log(log_line)
+
+
 def debug_error(module: str, message: str, **kwargs) -> None:
     """Log an error debug message (always shown if debug enabled)."""
     if not _get_debug_enabled():

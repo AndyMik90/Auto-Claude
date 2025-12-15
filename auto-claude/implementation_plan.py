@@ -365,6 +365,9 @@ class ImplementationPlan:
         This syncs the task status with the UI's expected values:
         - status: backlog, in_progress, ai_review, human_review, done
         - planStatus: pending, in_progress, review, completed
+
+        Note: Preserves human_review/review status when it represents plan approval stage
+        (all subtasks pending but user needs to approve the plan before coding starts).
         """
         all_subtasks = [s for p in self.phases for s in p.subtasks]
 
@@ -400,9 +403,15 @@ class ImplementationPlan:
             self.status = "in_progress"
             self.planStatus = "in_progress"
         else:
-            # All subtasks pending - backlog
-            self.status = "backlog"
-            self.planStatus = "pending"
+            # All subtasks pending
+            # Preserve human_review/review status if it's for plan approval stage
+            # (spec is complete, waiting for user to approve before coding starts)
+            if self.status == "human_review" and self.planStatus == "review":
+                # Keep the plan approval status - don't reset to backlog
+                pass
+            else:
+                self.status = "backlog"
+                self.planStatus = "pending"
 
     @classmethod
     def load(cls, path: Path) -> "ImplementationPlan":

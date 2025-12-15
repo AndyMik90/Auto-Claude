@@ -17,7 +17,19 @@ import {
   GitBranch,
   Clock,
   Lightbulb,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  Key,
+  Route,
+  Shield,
+  Zap,
+  FileText,
+  Activity,
+  Lock,
+  Mail,
+  CreditCard,
+  HardDrive
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -30,6 +42,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from './ui/tooltip';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from './ui/collapsible';
 import { cn } from '../lib/utils';
 import {
   useContextStore,
@@ -441,6 +458,11 @@ export function Context({ projectId }: ContextProps) {
 function ServiceCard({ name, service }: { name: string; service: ServiceInfo }) {
   const Icon = serviceTypeIcons[service.type || 'unknown'];
   const colorClass = serviceTypeColors[service.type || 'unknown'];
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -478,6 +500,11 @@ function ServiceCard({ name, service }: { name: string; service: ServiceInfo }) 
               {service.package_manager}
             </Badge>
           )}
+          {service.build_tool && (
+            <Badge variant="outline" className="text-xs">
+              {service.build_tool}
+            </Badge>
+          )}
         </div>
 
         {/* Additional Info */}
@@ -506,7 +533,237 @@ function ServiceCard({ name, service }: { name: string; service: ServiceInfo }) 
               <span>Port: {service.default_port}</span>
             </div>
           )}
+          {service.styling && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Code className="h-3 w-3 shrink-0" />
+              <span>Styling: {service.styling}</span>
+            </div>
+          )}
+          {service.state_management && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Package className="h-3 w-3 shrink-0" />
+              <span>State: {service.state_management}</span>
+            </div>
+          )}
         </div>
+
+        {/* Environment Variables */}
+        {service.environment && service.environment.detected_count > 0 && (
+          <Collapsible
+            open={expandedSections['env']}
+            onOpenChange={() => toggleSection('env')}
+            className="border-t border-border pt-3"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium hover:text-foreground">
+              <div className="flex items-center gap-2">
+                <Key className="h-3 w-3" />
+                Environment Variables ({service.environment.detected_count})
+              </div>
+              {expandedSections['env'] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 space-y-1.5">
+              {Object.entries(service.environment.variables).slice(0, 10).map(([key, envVar]) => (
+                <div key={key} className="flex items-start gap-2 text-xs">
+                  <Badge variant={envVar.sensitive ? "destructive" : "outline"} className="text-xs shrink-0">
+                    {envVar.type}
+                  </Badge>
+                  <code className="flex-1 font-mono text-muted-foreground truncate">{key}</code>
+                  {envVar.required && <span className="text-orange-500 shrink-0">*</span>}
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* API Routes */}
+        {service.api && service.api.total_routes > 0 && (
+          <Collapsible
+            open={expandedSections['api']}
+            onOpenChange={() => toggleSection('api')}
+            className="border-t border-border pt-3"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium hover:text-foreground">
+              <div className="flex items-center gap-2">
+                <Route className="h-3 w-3" />
+                API Routes ({service.api.total_routes})
+              </div>
+              {expandedSections['api'] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 space-y-1.5">
+              {service.api.routes.slice(0, 10).map((route, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-xs">
+                  <div className="flex gap-1 shrink-0">
+                    {route.methods.map(method => (
+                      <Badge key={method} variant="secondary" className="text-xs">
+                        {method}
+                      </Badge>
+                    ))}
+                  </div>
+                  <code className="flex-1 font-mono text-muted-foreground truncate">{route.path}</code>
+                  {route.requires_auth && <Lock className="h-3 w-3 text-orange-500 shrink-0" />}
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Database Models */}
+        {service.database && service.database.total_models > 0 && (
+          <Collapsible
+            open={expandedSections['db']}
+            onOpenChange={() => toggleSection('db')}
+            className="border-t border-border pt-3"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium hover:text-foreground">
+              <div className="flex items-center gap-2">
+                <Database className="h-3 w-3" />
+                Database Models ({service.database.total_models})
+              </div>
+              {expandedSections['db'] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 space-y-1.5">
+              {service.database.model_names.slice(0, 10).map(modelName => {
+                const model = service.database!.models[modelName];
+                return (
+                  <div key={modelName} className="flex items-start gap-2 text-xs">
+                    <Badge variant="outline" className="text-xs shrink-0">{model.orm}</Badge>
+                    <code className="flex-1 font-mono text-muted-foreground truncate">{modelName}</code>
+                    <span className="text-muted-foreground shrink-0 text-xs">
+                      {Object.keys(model.fields).length} fields
+                    </span>
+                  </div>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* External Services */}
+        {service.services && Object.values(service.services).some(arr => arr && arr.length > 0) && (
+          <Collapsible
+            open={expandedSections['services']}
+            onOpenChange={() => toggleSection('services')}
+            className="border-t border-border pt-3"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium hover:text-foreground">
+              <div className="flex items-center gap-2">
+                <Server className="h-3 w-3" />
+                External Services
+              </div>
+              {expandedSections['services'] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 space-y-2">
+              {service.services.databases && service.services.databases.length > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Databases</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {service.services.databases.map((db, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        <HardDrive className="h-3 w-3 mr-1" />
+                        {db.type || db.client}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {service.services.email && service.services.email.length > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Email</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {service.services.email.map((email, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        <Mail className="h-3 w-3 mr-1" />
+                        {email.provider || email.client}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {service.services.payments && service.services.payments.length > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Payments</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {service.services.payments.map((payment, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        <CreditCard className="h-3 w-3 mr-1" />
+                        {payment.provider || payment.client}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {service.services.cache && service.services.cache.length > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Cache</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {service.services.cache.map((cache, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        <Zap className="h-3 w-3 mr-1" />
+                        {cache.type || cache.client}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Monitoring */}
+        {service.monitoring && (
+          <Collapsible
+            open={expandedSections['monitoring']}
+            onOpenChange={() => toggleSection('monitoring')}
+            className="border-t border-border pt-3"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium hover:text-foreground">
+              <div className="flex items-center gap-2">
+                <Activity className="h-3 w-3" />
+                Monitoring
+              </div>
+              {expandedSections['monitoring'] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 space-y-2 text-xs text-muted-foreground">
+              {service.monitoring.metrics_endpoint && (
+                <div>Metrics: <code className="text-xs">{service.monitoring.metrics_endpoint}</code> ({service.monitoring.metrics_type})</div>
+              )}
+              {service.monitoring.health_checks && service.monitoring.health_checks.length > 0 && (
+                <div>Health: {service.monitoring.health_checks.join(', ')}</div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Dependencies */}
+        {service.dependencies && service.dependencies.length > 0 && (
+          <Collapsible
+            open={expandedSections['deps']}
+            onOpenChange={() => toggleSection('deps')}
+            className="border-t border-border pt-3"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium hover:text-foreground">
+              <div className="flex items-center gap-2">
+                <Package className="h-3 w-3" />
+                Dependencies ({service.dependencies.length})
+              </div>
+              {expandedSections['deps'] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <div className="flex flex-wrap gap-1">
+                {service.dependencies.slice(0, 20).map(dep => (
+                  <Badge key={dep} variant="outline" className="text-xs font-mono">
+                    {dep}
+                  </Badge>
+                ))}
+                {service.dependencies.length > 20 && (
+                  <Badge variant="secondary" className="text-xs">
+                    +{service.dependencies.length - 20} more
+                  </Badge>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
 
         {/* Key Directories */}
         {service.key_directories && Object.keys(service.key_directories).length > 0 && (

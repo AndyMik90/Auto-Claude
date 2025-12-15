@@ -20,7 +20,7 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
 import { TaskCreationWizard } from './components/TaskCreationWizard';
 import { AppSettingsDialog } from './components/AppSettings';
-import { ProjectSettings } from './components/ProjectSettings';
+import { ProjectSettings } from './components/project-settings';
 import { TerminalGrid } from './components/TerminalGrid';
 import { Roadmap } from './components/Roadmap';
 import { Context } from './components/Context';
@@ -69,6 +69,15 @@ export function App() {
     loadProjects();
     loadSettings();
   }, []);
+
+  // Check if selected project needs initialization (e.g., .auto-claude folder was deleted)
+  useEffect(() => {
+    if (selectedProject && !selectedProject.autoBuildPath && !showInitDialog) {
+      // Project exists but isn't initialized - show init dialog
+      setPendingProject(selectedProject);
+      setShowInitDialog(true);
+    }
+  }, [selectedProject, showInitDialog]);
 
   // Load tasks when project changes
   useEffect(() => {
@@ -247,7 +256,10 @@ export function App() {
                 )}
                 {/* TerminalGrid is always mounted but hidden when not active to preserve terminal state */}
                 <div className={activeView === 'terminals' ? 'h-full' : 'hidden'}>
-                  <TerminalGrid projectPath={selectedProject?.path} />
+                  <TerminalGrid
+                    projectPath={selectedProject?.path}
+                    onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
+                  />
                 </div>
                 {activeView === 'roadmap' && selectedProjectId && (
                   <Roadmap projectId={selectedProjectId} />

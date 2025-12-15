@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { useDroppable } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
-import { X, Sparkles, TerminalSquare, ListTodo, FileDown, ChevronDown, Circle, Loader2, CheckCircle2, AlertCircle, Clock, Code2, Search, Wrench, Pencil } from 'lucide-react';
+import { X, Sparkles, TerminalSquare, ListTodo, FileDown, ChevronDown, Circle, Loader2, CheckCircle2, AlertCircle, Clock, Code2, Search, Wrench, Pencil, Plus } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import { useTerminalStore, type TerminalStatus } from '../stores/terminal-store';
@@ -38,6 +38,7 @@ interface TerminalProps {
   onClose: () => void;
   onActivate: () => void;
   tasks?: Task[];  // Tasks for task selection dropdown
+  onNewTaskClick?: () => void;  // Callback to open task creation dialog
 }
 
 const STATUS_COLORS: Record<TerminalStatus, string> = {
@@ -58,7 +59,7 @@ const PHASE_CONFIG: Record<ExecutionPhase, { label: string; color: string; icon:
   failed: { label: 'Failed', color: 'bg-destructive/20 text-destructive', icon: AlertCircle },
 };
 
-export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, tasks = [] }: TerminalProps) {
+export function Terminal({ id, cwd, projectPath, isActive, onClose, onActivate, tasks = [], onNewTaskClick }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -592,28 +593,75 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                /* Show task selector when no task is selected */
-                backlogTasks.length > 0 && (
-                  <Select
-                    value=""
-                    onValueChange={handleTaskSelect}
-                  >
-                    <SelectTrigger
-                      className="h-6 w-auto min-w-[120px] max-w-[160px] text-[10px] px-2 py-0 border-border/50 bg-card/50"
+                /* Show task selector when no task is selected - always visible */
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="flex items-center gap-1.5 h-6 px-2 rounded text-[10px] font-medium transition-colors border border-border/50 bg-card/50 hover:bg-card hover:border-border text-muted-foreground hover:text-foreground"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <ListTodo className="h-3 w-3 mr-1 text-muted-foreground" />
-                      <SelectValue placeholder="Select task..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {backlogTasks.map((task) => (
-                        <SelectItem key={task.id} value={task.id} className="text-xs">
-                          <span className="truncate max-w-[200px]">{task.title}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )
+                      <ListTodo className="h-3 w-3" />
+                      <span>Select task...</span>
+                      <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    {backlogTasks.length > 0 ? (
+                      <>
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                          Available tasks
+                        </div>
+                        {backlogTasks.slice(0, 8).map((task) => (
+                          <DropdownMenuItem
+                            key={task.id}
+                            onClick={() => handleTaskSelect(task.id)}
+                            className="text-xs"
+                          >
+                            <ListTodo className="h-3 w-3 mr-2 text-muted-foreground" />
+                            <span className="truncate">{task.title}</span>
+                          </DropdownMenuItem>
+                        ))}
+                        {onNewTaskClick && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onNewTaskClick();
+                              }}
+                              className="text-xs text-primary"
+                            >
+                              <Plus className="h-3 w-3 mr-2" />
+                              Add new task
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                          No tasks available
+                        </div>
+                        {onNewTaskClick ? (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onNewTaskClick();
+                            }}
+                            className="text-xs text-primary"
+                          >
+                            <Plus className="h-3 w-3 mr-2" />
+                            Add new task
+                          </DropdownMenuItem>
+                        ) : (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                            Create tasks in the Kanban board
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </>
           )}

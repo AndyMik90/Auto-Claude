@@ -124,6 +124,8 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         return { label: 'Has Errors', variant: 'destructive' };
       case 'qa_rejected':
         return { label: 'QA Issues', variant: 'warning' };
+      case 'plan_review':
+        return { label: 'Approve Plan', variant: 'warning' };
       default:
         return null;
     }

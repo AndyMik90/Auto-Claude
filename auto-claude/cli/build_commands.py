@@ -1,0 +1,759 @@
+"""
+Build Commands
+==============
+
+CLI commands for building specs and handling follow-up tasks.
+"""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+from typing import Optional
+
+# Ensure parent directory is in path for imports (before other imports)
+_PARENT_DIR = Path(__file__).parent.parent
+if str(_PARENT_DIR) not in sys.path:
+    sys.path.insert(0, str(_PARENT_DIR))
+
+# Import only what we need at module level
+# Heavy imports are lazy-loaded in functions to avoid import errors
+from progress import count_subtasks, print_paused_banner, is_build_complete
+from review import ReviewState
+from ui import (
+    Icons,
+    icon,
+    box,
+    success,
+    error,
+    warning,
+    info,
+    muted,
+    highlight,
+    bold,
+    print_status,
+    select_menu,
+    MenuOption,
+    StatusManager,
+    BuildState,
+)
+from workspace import (
+    WorkspaceMode,
+    choose_workspace,
+    setup_workspace,
+    finalize_workspace,
+    handle_workspace_choice,
+    check_existing_build,
+    get_existing_build_worktree,
+)
+from worktree import WorktreeManager
+
+
+def collect_followup_task(spec_dir: Path, max_retries: int = 3) -> Optional[str]:
+    """
+    Collect a follow-up task description from the user.
+
+    Provides multiple input methods (type, paste, file) similar to the
+    HUMAN_INPUT.md pattern used during build interrupts. Includes retry
+    logic for empty input.
+
+    Args:
+        spec_dir: The spec directory where FOLLOWUP_REQUEST.md will be saved
+        max_retries: Maximum number of times to prompt on empty input (default: 3)
+
+    Returns:
+        The collected task description, or None if cancelled
+    """
+    retry_count = 0
+
+    while retry_count < max_retries:
+        # Present options menu
+        options = [
+            MenuOption(
+                key="type",
+                label="Type follow-up task",
+                icon=Icons.EDIT,
+                description="Enter a description of additional work needed",
+            ),
+            MenuOption(
+                key="paste",
+                label="Paste from clipboard",
+                icon=Icons.CLIPBOARD,
+                description="Paste text you've copied (Cmd+V / Ctrl+Shift+V)",
+            ),
+            MenuOption(
+                key="file",
+                label="Read from file",
+                icon=Icons.DOCUMENT,
+                description="Load task description from a text file",
+            ),
+            MenuOption(
+                key="quit",
+                label="Cancel",
+                icon=Icons.DOOR,
+                description="Exit without adding follow-up",
+            ),
+        ]
+
+        # Show retry message if this is a retry
+        subtitle = "Describe the additional work you want to add to this spec."
+        if retry_count > 0:
+            subtitle = warning(
+                f"Empty input received. Please try again. ({max_retries - retry_count} attempts remaining)"
+            )
+
+        choice = select_menu(
+            title="How would you like to provide your follow-up task?",
+            options=options,
+            subtitle=subtitle,
+            allow_quit=False,  # We have explicit quit option
+        )
+
+        if choice == "quit" or choice is None:
+            return None
+
+        followup_task = ""
+
+        if choice == "file":
+            # Read from file
+            print()
+            print(f"{icon(Icons.DOCUMENT)} Enter the path to your task description file:")
+            try:
+                file_path_str = input(f"  {icon(Icons.POINTER)} ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                print_status("Cancelled.", "warning")
+                return None
+
+            # Handle empty file path
+            if not file_path_str:
+                print()
+                print_status("No file path provided.", "warning")
+                retry_count += 1
+                continue
+
+            try:
+                # Expand ~ and resolve path
+                file_path = Path(file_path_str).expanduser().resolve()
+                if file_path.exists():
+                    followup_task = file_path.read_text().strip()
+                    if followup_task:
+                        print_status(
+                            f"Loaded {len(followup_task)} characters from file", "success"
+                        )
+                    else:
+                        print()
+                        print_status(
+                            "File is empty. Please provide a file with task description.", "error"
+                        )
+                        retry_count += 1
+                        continue
+                else:
+                    print_status(f"File not found: {file_path}", "error")
+                    print(muted(f"  Check that the path is correct and the file exists."))
+                    retry_count += 1
+                    continue
+            except PermissionError:
+                print_status(f"Permission denied: cannot read {file_path_str}", "error")
+                print(muted(f"  Check file permissions and try again."))
+                retry_count += 1
+                continue
+            except Exception as e:
+                print_status(f"Error reading file: {e}", "error")
+                retry_count += 1
+                continue
+
+        elif choice in ["type", "paste"]:
+            print()
+            content = [
+                "Enter/paste your follow-up task description below.",
+                "",
+                muted("Describe what additional work you want to add."),
+                muted("The planner will create new subtasks based on this."),
+                "",
+                muted("Press Enter on an empty line when done."),
+            ]
+            print(box(content, width=60, style="light"))
+            print()
+
+            lines = []
+            empty_count = 0
+            while True:
+                try:
+                    line = input()
+                    if line == "":
+                        empty_count += 1
+                        if empty_count >= 1:  # Stop on first empty line
+                            break
+                    else:
+                        empty_count = 0
+                        lines.append(line)
+                except KeyboardInterrupt:
+                    print()
+                    print_status("Cancelled.", "warning")
+                    return None
+                except EOFError:
+                    break
+
+            followup_task = "\n".join(lines).strip()
+
+        # Validate that we have content
+        if not followup_task:
+            print()
+            print_status("No task description provided.", "warning")
+            retry_count += 1
+            continue
+
+        # Save to FOLLOWUP_REQUEST.md
+        request_file = spec_dir / "FOLLOWUP_REQUEST.md"
+        request_file.write_text(followup_task)
+
+        # Show confirmation
+        content = [
+            success(f"{icon(Icons.SUCCESS)} FOLLOW-UP TASK SAVED"),
+            "",
+            f"Saved to: {highlight(str(request_file.name))}",
+            "",
+            muted("The planner will create new subtasks based on this task."),
+        ]
+        print()
+        print(box(content, width=70, style="heavy"))
+
+        return followup_task
+
+    # Max retries exceeded
+    print()
+    print_status("Maximum retry attempts reached. Follow-up cancelled.", "error")
+    return None
+
+
+def handle_followup_command(
+    project_dir: Path,
+    spec_dir: Path,
+    model: str,
+    verbose: bool = False,
+) -> None:
+    """
+    Handle the --followup command.
+
+    Args:
+        project_dir: Project root directory
+        spec_dir: Spec directory path
+        model: Model to use
+        verbose: Enable verbose output
+    """
+    # Lazy imports to avoid loading heavy modules
+    from agent import run_followup_planner
+    from .utils import print_banner, validate_environment
+
+    print_banner()
+    print(f"\nFollow-up request for: {spec_dir.name}")
+
+    # Check if implementation_plan.json exists
+    plan_file = spec_dir / "implementation_plan.json"
+    if not plan_file.exists():
+        print()
+        print(error(f"{icon(Icons.ERROR)} No implementation plan found."))
+        print()
+        content = [
+            "This spec has not been built yet.",
+            "",
+            "Follow-up tasks can only be added to specs that have been",
+            "built at least once. Run a regular build first:",
+            "",
+            highlight(f"  python auto-claude/run.py --spec {spec_dir.name}"),
+            "",
+            muted("After the build completes, you can add follow-up tasks."),
+        ]
+        print(box(content, width=70, style="light"))
+        sys.exit(1)
+
+    # Check if build is complete
+    if not is_build_complete(spec_dir):
+        completed, total = count_subtasks(spec_dir)
+        pending = total - completed
+        print()
+        print(error(f"{icon(Icons.ERROR)} Build not complete ({completed}/{total} subtasks)."))
+        print()
+        content = [
+            f"There are still {pending} pending subtask(s) to complete.",
+            "",
+            "Follow-up tasks can only be added after all current subtasks",
+            "are finished. Complete the current build first:",
+            "",
+            highlight(f"  python auto-claude/run.py --spec {spec_dir.name}"),
+            "",
+            muted("The build will continue from where it left off."),
+        ]
+        print(box(content, width=70, style="light"))
+        sys.exit(1)
+
+    # Check for prior follow-ups (for sequential follow-up context)
+    prior_followup_count = 0
+    try:
+        with open(plan_file, "r") as f:
+            plan_data = json.load(f)
+        phases = plan_data.get("phases", [])
+        # Count phases that look like follow-up phases (name contains "Follow" or high phase number)
+        for phase in phases:
+            phase_name = phase.get("name", "")
+            if "follow" in phase_name.lower() or "followup" in phase_name.lower():
+                prior_followup_count += 1
+    except (json.JSONDecodeError, KeyError):
+        pass  # If plan parsing fails, just continue without prior count
+
+    # Build is complete - proceed to follow-up workflow
+    print()
+    if prior_followup_count > 0:
+        print(
+            success(
+                f"{icon(Icons.SUCCESS)} Build is complete ({prior_followup_count} prior follow-up(s)). Ready for more follow-up tasks."
+            )
+        )
+    else:
+        print(success(f"{icon(Icons.SUCCESS)} Build is complete. Ready for follow-up tasks."))
+
+    # Collect follow-up task from user
+    followup_task = collect_followup_task(spec_dir)
+
+    if followup_task is None:
+        # User cancelled
+        print()
+        print_status("Follow-up cancelled.", "info")
+        return
+
+    # Successfully collected follow-up task
+    # The collect_followup_task() function already saved to FOLLOWUP_REQUEST.md
+    # Now run the follow-up planner to add new subtasks
+    print()
+
+    if not validate_environment(spec_dir):
+        sys.exit(1)
+
+    try:
+        success_result = asyncio.run(
+            run_followup_planner(
+                project_dir=project_dir,
+                spec_dir=spec_dir,
+                model=model,
+                verbose=verbose,
+            )
+        )
+
+        if success_result:
+            # Show next steps after successful planning
+            content = [
+                bold(f"{icon(Icons.SUCCESS)} FOLLOW-UP PLANNING COMPLETE"),
+                "",
+                "New subtasks have been added to your implementation plan.",
+                "",
+                highlight("To continue building:"),
+                f"  python auto-claude/run.py --spec {spec_dir.name}",
+            ]
+            print(box(content, width=70, style="heavy"))
+        else:
+            # Planning didn't fully succeed
+            content = [
+                bold(f"{icon(Icons.WARNING)} FOLLOW-UP PLANNING INCOMPLETE"),
+                "",
+                "Check the implementation plan manually.",
+                "",
+                muted("You may need to run the follow-up again."),
+            ]
+            print(box(content, width=70, style="light"))
+            sys.exit(1)
+
+    except KeyboardInterrupt:
+        print("\n\nFollow-up planning paused.")
+        print(f"To retry: python auto-claude/run.py --spec {spec_dir.name} --followup")
+        sys.exit(0)
+    except Exception as e:
+        print()
+        print(error(f"{icon(Icons.ERROR)} Follow-up planning error: {e}"))
+        if verbose:
+            import traceback
+
+            traceback.print_exc()
+        sys.exit(1)
+
+
+def handle_build_command(
+    project_dir: Path,
+    spec_dir: Path,
+    model: str,
+    max_iterations: Optional[int],
+    verbose: bool,
+    force_isolated: bool,
+    force_direct: bool,
+    auto_continue: bool,
+    skip_qa: bool,
+    force_bypass_approval: bool,
+) -> None:
+    """
+    Handle the main build command.
+
+    Args:
+        project_dir: Project root directory
+        spec_dir: Spec directory path
+        model: Model to use
+        max_iterations: Maximum number of iterations (None for unlimited)
+        verbose: Enable verbose output
+        force_isolated: Force isolated workspace mode
+        force_direct: Force direct workspace mode
+        auto_continue: Auto-continue mode (non-interactive)
+        skip_qa: Skip automatic QA validation
+        force_bypass_approval: Force bypass approval check
+    """
+    # Lazy imports to avoid loading heavy modules
+    from agent import run_autonomous_agent, sync_plan_to_source
+    from debug import (
+        debug,
+        debug_section,
+        debug_success,
+        debug_info,
+    )
+    from qa_loop import run_qa_validation_loop, should_run_qa
+    from .utils import print_banner, validate_environment
+
+    print_banner()
+    print(f"\nProject directory: {project_dir}")
+    print(f"Spec: {spec_dir.name}")
+    print(f"Model: {model}")
+
+    if max_iterations:
+        print(f"Max iterations: {max_iterations}")
+    else:
+        print("Max iterations: Unlimited (runs until all subtasks complete)")
+
+    print()
+
+    # Validate environment
+    if not validate_environment(spec_dir):
+        sys.exit(1)
+
+    # Check human review approval
+    review_state = ReviewState.load(spec_dir)
+    if not review_state.is_approval_valid(spec_dir):
+        if force_bypass_approval:
+            # User explicitly bypassed approval check
+            print()
+            print(warning(f"{icon(Icons.WARNING)} WARNING: Bypassing approval check with --force"))
+            print(muted("This spec has not been approved for building."))
+            print()
+        else:
+            print()
+            content = [
+                bold(f"{icon(Icons.WARNING)} BUILD BLOCKED - REVIEW REQUIRED"),
+                "",
+                "This spec requires human approval before building.",
+            ]
+
+            if review_state.approved and not review_state.is_approval_valid(spec_dir):
+                # Spec changed after approval
+                content.append("")
+                content.append(warning("The spec has been modified since approval."))
+                content.append("Please re-review and re-approve.")
+
+            content.extend(
+                [
+                    "",
+                    highlight("To review and approve:"),
+                    f"  python auto-claude/review.py --spec-dir {spec_dir}",
+                    "",
+                    muted("Or use --force to bypass this check (not recommended)."),
+                ]
+            )
+            print(box(content, width=70, style="heavy"))
+            print()
+            sys.exit(1)
+    else:
+        debug_success("run.py", "Review approval validated", approved_by=review_state.approved_by)
+
+    # Check for existing build
+    if get_existing_build_worktree(project_dir, spec_dir.name):
+        if auto_continue:
+            # Non-interactive mode: auto-continue with existing build
+            debug("run.py", "Auto-continue mode: continuing with existing build")
+            print("Auto-continue: Resuming existing build...")
+        else:
+            continue_existing = check_existing_build(project_dir, spec_dir.name)
+            if continue_existing:
+                # Continue with existing worktree
+                pass
+            else:
+                # User chose to start fresh or merged existing
+                pass
+
+    # Choose workspace (skip for parallel mode - it always uses worktrees)
+    working_dir = project_dir
+    worktree_manager = None
+    source_spec_dir = None  # Track original spec dir for syncing back from worktree
+
+    # Let user choose workspace mode (or auto-select if --auto-continue)
+    workspace_mode = choose_workspace(
+        project_dir,
+        spec_dir.name,
+        force_isolated=force_isolated,
+        force_direct=force_direct,
+        auto_continue=auto_continue,
+    )
+
+    if workspace_mode == WorkspaceMode.ISOLATED:
+        # Keep reference to original spec directory for syncing progress back
+        source_spec_dir = spec_dir
+
+        working_dir, worktree_manager, localized_spec_dir = setup_workspace(
+            project_dir, spec_dir.name, workspace_mode, source_spec_dir=spec_dir
+        )
+        # Use the localized spec directory (inside worktree) for AI access
+        if localized_spec_dir:
+            spec_dir = localized_spec_dir
+
+    # Run the autonomous agent
+    debug_section("run.py", "Starting Build Execution")
+    debug(
+        "run.py",
+        "Build configuration",
+        model=model,
+        workspace_mode=str(workspace_mode),
+        working_dir=str(working_dir),
+        spec_dir=str(spec_dir),
+    )
+
+    try:
+        debug("run.py", "Starting agent execution")
+
+        asyncio.run(
+            run_autonomous_agent(
+                project_dir=working_dir,  # Use worktree if isolated
+                spec_dir=spec_dir,
+                model=model,
+                max_iterations=max_iterations,
+                verbose=verbose,
+                source_spec_dir=source_spec_dir,  # For syncing progress back to main project
+            )
+        )
+        debug_success("run.py", "Agent execution completed")
+
+        # Run QA validation BEFORE finalization (while worktree still exists)
+        # QA must sign off before the build is considered complete
+        qa_approved = True  # Default to approved if QA is skipped
+        if not skip_qa and should_run_qa(spec_dir):
+            print("\n" + "=" * 70)
+            print("  SUBTASKS COMPLETE - STARTING QA VALIDATION")
+            print("=" * 70)
+            print("\nAll subtasks completed. Now running QA validation loop...")
+            print("This ensures production-quality output before sign-off.\n")
+
+            try:
+                qa_approved = asyncio.run(
+                    run_qa_validation_loop(
+                        project_dir=working_dir,
+                        spec_dir=spec_dir,
+                        model=model,
+                        verbose=verbose,
+                    )
+                )
+
+                if qa_approved:
+                    print("\n" + "=" * 70)
+                    print("  ✅ QA VALIDATION PASSED")
+                    print("=" * 70)
+                    print("\nAll acceptance criteria verified.")
+                    print("The implementation is production-ready.\n")
+                else:
+                    print("\n" + "=" * 70)
+                    print("  ⚠️  QA VALIDATION INCOMPLETE")
+                    print("=" * 70)
+                    print("\nSome issues require manual attention.")
+                    print(f"See: {spec_dir / 'qa_report.md'}")
+                    print(f"Or:  {spec_dir / 'QA_FIX_REQUEST.md'}")
+                    print(f"\nResume QA: python auto-claude/run.py --spec {spec_dir.name} --qa\n")
+
+                # Sync implementation plan to main project after QA
+                # This ensures the main project has the latest status (human_review)
+                if sync_plan_to_source(spec_dir, source_spec_dir):
+                    debug_info("run.py", "Implementation plan synced to main project after QA")
+            except KeyboardInterrupt:
+                print("\n\nQA validation paused.")
+                print(f"Resume: python auto-claude/run.py --spec {spec_dir.name} --qa")
+                qa_approved = False
+
+        # Post-build finalization (only for isolated sequential mode)
+        # This happens AFTER QA validation so the worktree still exists
+        if worktree_manager:
+            choice = finalize_workspace(
+                project_dir, spec_dir.name, worktree_manager, auto_continue=auto_continue
+            )
+            handle_workspace_choice(choice, project_dir, spec_dir.name, worktree_manager)
+
+    except KeyboardInterrupt:
+        # Print paused banner
+        print_paused_banner(spec_dir, spec_dir.name, has_worktree=bool(worktree_manager))
+
+        # Update status file
+        status_manager = StatusManager(project_dir)
+        status_manager.update(state=BuildState.PAUSED)
+
+        # Offer to add human input with enhanced menu
+        try:
+            options = [
+                MenuOption(
+                    key="type",
+                    label="Type instructions",
+                    icon=Icons.EDIT,
+                    description="Enter guidance for the agent's next session",
+                ),
+                MenuOption(
+                    key="paste",
+                    label="Paste from clipboard",
+                    icon=Icons.CLIPBOARD,
+                    description="Paste text you've copied (Cmd+V / Ctrl+Shift+V)",
+                ),
+                MenuOption(
+                    key="file",
+                    label="Read from file",
+                    icon=Icons.DOCUMENT,
+                    description="Load instructions from a text file",
+                ),
+                MenuOption(
+                    key="skip",
+                    label="Continue without instructions",
+                    icon=Icons.SKIP,
+                    description="Resume the build as-is",
+                ),
+                MenuOption(
+                    key="quit",
+                    label="Quit",
+                    icon=Icons.DOOR,
+                    description="Exit without resuming",
+                ),
+            ]
+
+            choice = select_menu(
+                title="What would you like to do?",
+                options=options,
+                subtitle="Progress saved. You can add instructions for the agent.",
+                allow_quit=False,  # We have explicit quit option
+            )
+
+            if choice == "quit" or choice is None:
+                print()
+                print_status("Exiting...", "info")
+                status_manager.set_inactive()
+                sys.exit(0)
+
+            human_input = ""
+
+            if choice == "file":
+                # Read from file
+                print()
+                print(f"{icon(Icons.DOCUMENT)} Enter the path to your instructions file:")
+                file_path_input = input(f"  {icon(Icons.POINTER)} ").strip()
+
+                if file_path_input:
+                    try:
+                        # Expand ~ and resolve path
+                        file_path = Path(file_path_input).expanduser().resolve()
+                        if file_path.exists():
+                            human_input = file_path.read_text().strip()
+                            print_status(f"Loaded {len(human_input)} characters from file", "success")
+                        else:
+                            print_status(f"File not found: {file_path}", "error")
+                    except Exception as e:
+                        print_status(f"Error reading file: {e}", "error")
+
+            elif choice in ["type", "paste"]:
+                print()
+                content = [
+                    "Enter/paste your instructions below.",
+                    muted("Press Enter on an empty line when done."),
+                ]
+                print(box(content, width=60, style="light"))
+                print()
+
+                lines = []
+                empty_count = 0
+                while True:
+                    try:
+                        line = input()
+                        if line == "":
+                            empty_count += 1
+                            if empty_count >= 1:  # Stop on first empty line
+                                break
+                        else:
+                            empty_count = 0
+                            lines.append(line)
+                    except KeyboardInterrupt:
+                        print()
+                        print_status("Exiting without saving instructions...", "warning")
+                        status_manager.set_inactive()
+                        sys.exit(0)
+
+                human_input = "\n".join(lines).strip()
+
+            if human_input:
+                # Save to HUMAN_INPUT.md
+                input_file = spec_dir / "HUMAN_INPUT.md"
+                input_file.write_text(human_input)
+
+                content = [
+                    success(f"{icon(Icons.SUCCESS)} INSTRUCTIONS SAVED"),
+                    "",
+                    f"Saved to: {highlight(str(input_file.name))}",
+                    "",
+                    muted("The agent will read and follow these instructions when you resume."),
+                ]
+                print()
+                print(box(content, width=70, style="heavy"))
+            elif choice != "skip":
+                print()
+                print_status("No instructions provided.", "info")
+
+            # If 'skip' was selected, actually resume the build
+            if choice == "skip":
+                print()
+                print_status("Resuming build...", "info")
+                status_manager.update(state=BuildState.RUNNING)
+                asyncio.run(
+                    run_autonomous_agent(
+                        project_dir=working_dir,
+                        spec_dir=spec_dir,
+                        model=model,
+                        max_iterations=max_iterations,
+                        verbose=verbose,
+                    )
+                )
+                # Build completed or was interrupted again - exit
+                sys.exit(0)
+
+        except KeyboardInterrupt:
+            # User pressed Ctrl+C again during input prompt - exit immediately
+            print()
+            print_status("Exiting...", "warning")
+            status_manager = StatusManager(project_dir)
+            status_manager.set_inactive()
+            sys.exit(0)
+        except EOFError:
+            # stdin closed
+            pass
+
+        # Resume instructions (shown when user provided instructions or chose file/type/paste)
+        print()
+        content = [
+            bold(f"{icon(Icons.PLAY)} TO RESUME"),
+            "",
+            f"Run: {highlight(f'python auto-claude/run.py --spec {spec_dir.name}')}",
+        ]
+        if worktree_manager:
+            content.append("")
+            content.append(muted("Your build is in a separate workspace and is safe."))
+        print(box(content, width=70, style="light"))
+        print()
+    except Exception as e:
+        print(f"\nFatal error: {e}")
+        if verbose:
+            import traceback
+
+            traceback.print_exc()
+        sys.exit(1)

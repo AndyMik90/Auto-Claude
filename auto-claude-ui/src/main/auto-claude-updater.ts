@@ -1,14 +1,20 @@
 /**
  * Auto Claude Source Updater
  *
- * Checks GitHub for updates to the auto-claude framework and downloads them.
- * This allows users to get new auto-claude features without requiring a full app update.
+ * Checks GitHub Releases for updates and downloads them.
+ * GitHub Releases are the single source of truth for versioning.
  *
  * Update flow:
- * 1. Check GitHub for latest VERSION file
- * 2. Compare with bundled source version
- * 3. If update available, download and replace bundled source
+ * 1. Check GitHub Releases API for the latest release
+ * 2. Compare release tag with current app version
+ * 3. If update available, download release tarball and apply
  * 4. Existing project update system handles pushing to individual projects
+ *
+ * Versioning:
+ * - Single source of truth: GitHub Releases
+ * - Current version: app.getVersion() (from package.json at build time)
+ * - Latest version: Fetched from GitHub Releases API
+ * - To release: Create a GitHub release with tag (e.g., v1.2.0)
  */
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, statSync, copyFileSync } from 'fs';
@@ -27,9 +33,24 @@ const execAsync = promisify(exec);
 const GITHUB_CONFIG = {
   owner: 'AndyMik90',
   repo: 'Auto-Claude',
-  branch: 'main',
-  autoBuildPath: 'auto-claude' // Path within repo
+  autoBuildPath: 'auto-claude' // Path within repo where auto-claude lives
 };
+
+/**
+ * GitHub Release API response (partial)
+ */
+interface GitHubRelease {
+  tag_name: string;
+  name: string;
+  body: string;
+  tarball_url: string;
+  published_at: string;
+  prerelease: boolean;
+  draft: boolean;
+}
+
+// Cache for the latest release info (used by download)
+let cachedLatestRelease: GitHubRelease | null = null;
 
 /**
  * Result of checking for updates
@@ -96,35 +117,31 @@ function getUpdateCachePath(): string {
 }
 
 /**
- * Read the current bundled version
+ * Get the current app/framework version
+ * 
+ * Uses app.getVersion() (from package.json) as the single source of truth.
+ * Both the Electron app and auto-claude framework share the same version.
  */
 export function getBundledVersion(): string {
-  const sourcePath = getBundledSourcePath();
-  const versionFile = path.join(sourcePath, 'VERSION');
-
-  if (existsSync(versionFile)) {
-    return readFileSync(versionFile, 'utf-8').trim();
-  }
-
-  return '0.0.0';
+  return app.getVersion();
 }
 
 /**
- * Fetch content from a URL using https
+ * Fetch JSON from a URL using https
  */
-function fetchUrl(url: string): Promise<string> {
+function fetchJson<T>(url: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const request = https.get(url, {
       headers: {
         'User-Agent': 'Auto-Claude-UI',
-        'Accept': 'application/vnd.github.v3.raw'
+        'Accept': 'application/vnd.github.v3+json'
       }
     }, (response) => {
       // Handle redirects
       if (response.statusCode === 301 || response.statusCode === 302) {
         const redirectUrl = response.headers.location;
         if (redirectUrl) {
-          fetchUrl(redirectUrl).then(resolve).catch(reject);
+          fetchJson<T>(redirectUrl).then(resolve).catch(reject);
           return;
         }
       }
@@ -136,7 +153,13 @@ function fetchUrl(url: string): Promise<string> {
 
       let data = '';
       response.on('data', chunk => data += chunk);
-      response.on('end', () => resolve(data));
+      response.on('end', () => {
+        try {
+          resolve(JSON.parse(data) as T);
+        } catch (e) {
+          reject(new Error('Failed to parse JSON response'));
+        }
+      });
       response.on('error', reject);
     });
 
@@ -149,37 +172,44 @@ function fetchUrl(url: string): Promise<string> {
 }
 
 /**
- * Check GitHub for the latest version
+ * Parse version from GitHub release tag
+ * Handles tags like "v1.2.0", "1.2.0", "v1.2.0-beta"
+ */
+function parseVersionFromTag(tag: string): string {
+  // Remove leading 'v' if present
+  return tag.replace(/^v/, '');
+}
+
+/**
+ * Check GitHub Releases for the latest version
  */
 export async function checkForUpdates(): Promise<AutoBuildUpdateCheck> {
   const currentVersion = getBundledVersion();
 
   try {
-    // Fetch VERSION file from GitHub
-    const versionUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.autoBuildPath}/VERSION`;
-    const latestVersion = (await fetchUrl(versionUrl)).trim();
+    // Fetch latest release from GitHub Releases API
+    const releaseUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/releases/latest`;
+    const release = await fetchJson<GitHubRelease>(releaseUrl);
+
+    // Cache for download function
+    cachedLatestRelease = release;
+
+    // Parse version from tag (e.g., "v1.2.0" -> "1.2.0")
+    const latestVersion = parseVersionFromTag(release.tag_name);
 
     // Compare versions
     const updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
-
-    // If update available, try to fetch release notes
-    let releaseNotes: string | undefined;
-    if (updateAvailable) {
-      try {
-        const changelogUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.autoBuildPath}/CHANGELOG.md`;
-        releaseNotes = await fetchUrl(changelogUrl);
-      } catch {
-        // Changelog is optional
-      }
-    }
 
     return {
       updateAvailable,
       currentVersion,
       latestVersion,
-      releaseNotes
+      releaseNotes: release.body || undefined
     };
   } catch (error) {
+    // Clear cache on error
+    cachedLatestRelease = null;
+    
     return {
       updateAvailable: false,
       currentVersion,
@@ -276,7 +306,7 @@ function downloadFile(
 }
 
 /**
- * Download and apply the latest auto-claude update
+ * Download and apply the latest auto-claude update from GitHub Releases
  *
  * Note: In production, this updates the bundled source in userData.
  * For packaged apps, we can't modify resourcesPath directly,
@@ -290,7 +320,7 @@ export async function downloadAndApplyUpdate(
   try {
     onProgress?.({
       stage: 'checking',
-      message: 'Checking for updates...'
+      message: 'Fetching release info...'
     });
 
     // Ensure cache directory exists
@@ -298,8 +328,17 @@ export async function downloadAndApplyUpdate(
       mkdirSync(cachePath, { recursive: true });
     }
 
-    // Get download URL for the tarball
-    const tarballUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/tarball/${GITHUB_CONFIG.branch}`;
+    // Get release info (use cache or fetch fresh)
+    let release = cachedLatestRelease;
+    if (!release) {
+      const releaseUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/releases/latest`;
+      release = await fetchJson<GitHubRelease>(releaseUrl);
+      cachedLatestRelease = release;
+    }
+
+    // Use the release tarball URL
+    const tarballUrl = release.tarball_url;
+    const releaseVersion = parseVersionFromTag(release.tag_name);
 
     const tarballPath = path.join(cachePath, 'auto-claude-update.tar.gz');
     const extractPath = path.join(cachePath, 'extracted');
@@ -405,20 +444,21 @@ export async function downloadAndApplyUpdate(
       copyDirectoryRecursive(autoBuildSource, targetPath, false);
     }
 
-    // Read the new version
-    const versionFile = path.join(targetPath, 'VERSION');
-    const newVersion = existsSync(versionFile)
-      ? readFileSync(versionFile, 'utf-8').trim()
-      : 'unknown';
+    // Use the release version we already have
+    const newVersion = releaseVersion;
 
     // Write update metadata
     const metadataPath = path.join(targetPath, '.update-metadata.json');
     writeFileSync(metadataPath, JSON.stringify({
       version: newVersion,
       updatedAt: new Date().toISOString(),
-      source: 'github',
-      branch: GITHUB_CONFIG.branch
+      source: 'github-release',
+      releaseTag: release.tag_name,
+      releaseName: release.name
     }, null, 2));
+
+    // Clear the cache after successful update
+    cachedLatestRelease = null;
 
     // Cleanup
     rmSync(tarballPath, { force: true });

@@ -6,6 +6,10 @@ out/
 dist/
 build/
 
+# Compiled TypeScript (source files are .ts)
+src/**/*.js
+src/**/*.js.map
+
 # electron-vite
 .vite/
 

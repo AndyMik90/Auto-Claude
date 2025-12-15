@@ -1,8 +1,8 @@
 import { app, BrowserWindow, shell, nativeImage } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { setupIpcHandlers } from './ipc-handlers';
-import { AgentManager } from './agent-manager';
+import { setupIpcHandlers } from './ipc-setup';
+import { AgentManager } from './agent';
 import { TerminalManager } from './terminal-manager';
 import { pythonEnvManager } from './python-env-manager';
 

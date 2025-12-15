@@ -32,9 +32,10 @@ import type { SessionDateInfo } from '../../shared/types';
 
 interface TerminalGridProps {
   projectPath?: string;
+  onNewTaskClick?: () => void;
 }
 
-export function TerminalGrid({ projectPath }: TerminalGridProps) {
+export function TerminalGrid({ projectPath, onNewTaskClick }: TerminalGridProps) {
   const terminals = useTerminalStore((state) => state.terminals);
   const activeTerminalId = useTerminalStore((state) => state.activeTerminalId);
   const addTerminal = useTerminalStore((state) => state.addTerminal);
@@ -382,6 +383,7 @@ export function TerminalGrid({ projectPath }: TerminalGridProps) {
                                 onClose={() => handleCloseTerminal(terminal.id)}
                                 onActivate={() => setActiveTerminal(terminal.id)}
                                 tasks={tasks}
+                                onNewTaskClick={onNewTaskClick}
                               />
                             </div>
                           </Panel>

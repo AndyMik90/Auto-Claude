@@ -977,6 +977,7 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
                                 graphitiProviderConfig: {
                                   ...envConfig.graphitiProviderConfig,
                                   llmProvider: value as 'openai' | 'anthropic' | 'google' | 'groq',
+                                  embeddingProvider: envConfig.graphitiProviderConfig?.embeddingProvider || 'openai',
                                 }
                               })}
                             >
@@ -1003,6 +1004,7 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
                               onValueChange={(value) => updateEnvConfig({
                                 graphitiProviderConfig: {
                                   ...envConfig.graphitiProviderConfig,
+                                  llmProvider: envConfig.graphitiProviderConfig?.llmProvider || 'openai',
                                   embeddingProvider: value as 'openai' | 'voyage' | 'google' | 'huggingface',
                                 }
                               })}

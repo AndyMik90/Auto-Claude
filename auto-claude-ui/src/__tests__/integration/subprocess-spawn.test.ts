@@ -72,7 +72,7 @@ describe('Subprocess Spawn Integration', () => {
   describe('AgentManager', () => {
     it('should spawn Python process for spec creation', async () => {
       const { spawn } = await import('child_process');
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test task description');
@@ -95,7 +95,7 @@ describe('Subprocess Spawn Integration', () => {
 
     it('should spawn Python process for task execution', async () => {
       const { spawn } = await import('child_process');
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.startTaskExecution('task-1', TEST_PROJECT_PATH, 'spec-001');
@@ -111,7 +111,7 @@ describe('Subprocess Spawn Integration', () => {
 
     it('should spawn Python process for QA process', async () => {
       const { spawn } = await import('child_process');
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.startQAProcess('task-1', TEST_PROJECT_PATH, 'spec-001');
@@ -132,7 +132,7 @@ describe('Subprocess Spawn Integration', () => {
 
     it('should include parallel options when specified', async () => {
       const { spawn } = await import('child_process');
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.startTaskExecution('task-1', TEST_PROJECT_PATH, 'spec-001', {
@@ -148,7 +148,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should emit log events from stdout', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       const logHandler = vi.fn();
@@ -163,7 +163,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should emit log events from stderr', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       const logHandler = vi.fn();
@@ -178,7 +178,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should emit exit event when process exits', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       const exitHandler = vi.fn();
@@ -193,7 +193,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should emit error event when process errors', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       const errorHandler = vi.fn();
@@ -208,7 +208,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should kill task and remove from tracking', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
@@ -223,7 +223,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should return false when killing non-existent task', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       const result = manager.killTask('nonexistent');
@@ -232,7 +232,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should track running tasks', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       expect(manager.getRunningTasks()).toHaveLength(0);
@@ -246,7 +246,7 @@ describe('Subprocess Spawn Integration', () => {
 
     it('should use configured Python path', async () => {
       const { spawn } = await import('child_process');
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.configure('/custom/python3');
@@ -261,7 +261,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should kill all running tasks', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
@@ -273,7 +273,7 @@ describe('Subprocess Spawn Integration', () => {
     });
 
     it('should kill existing process when starting new one for same task', async () => {
-      const { AgentManager } = await import('../../main/agent-manager');
+      const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');

@@ -776,7 +776,7 @@ export class ClaudeProfileManager {
    */
   isProfileAuthenticated(profile: ClaudeProfile): boolean {
     const configDir = profile.configDir;
-    if (!existsSync(configDir)) {
+    if (!configDir || !existsSync(configDir)) {
       return false;
     }
 
@@ -830,6 +830,11 @@ export class ClaudeProfileManager {
 
     // Only set CLAUDE_CONFIG_DIR if not using default
     if (profile.isDefault) {
+      return {};
+    }
+
+    // Only set CLAUDE_CONFIG_DIR if configDir is defined
+    if (!profile.configDir) {
       return {};
     }
 

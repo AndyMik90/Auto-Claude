@@ -2,9 +2,9 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason } from '../shared/types';
+import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask } from '../shared/types';
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir } from '../shared/constants';
-import { getAutoBuildPath } from './project-initializer';
+import { getAutoBuildPath, isInitialized } from './project-initializer';
 
 interface StoreData {
   projects: Project[];
@@ -127,6 +127,47 @@ export class ProjectStore {
   }
 
   /**
+   * Validate all projects to ensure their .auto-claude folders still exist.
+   * If a project has autoBuildPath set but the folder was deleted,
+   * reset autoBuildPath to empty string so the UI prompts for reinitialization.
+   *
+   * @returns Array of project IDs that were reset due to missing .auto-claude folder
+   */
+  validateProjects(): string[] {
+    const resetProjectIds: string[] = [];
+    let hasChanges = false;
+
+    for (const project of this.data.projects) {
+      // Skip projects that aren't initialized (autoBuildPath is empty)
+      if (!project.autoBuildPath) {
+        continue;
+      }
+
+      // Check if the project path still exists
+      if (!existsSync(project.path)) {
+        console.log(`[ProjectStore] Project path no longer exists: ${project.path}`);
+        continue; // Don't reset - let user handle this case
+      }
+
+      // Check if .auto-claude folder still exists
+      if (!isInitialized(project.path)) {
+        console.log(`[ProjectStore] .auto-claude folder missing for project "${project.name}" at ${project.path}`);
+        project.autoBuildPath = '';
+        project.updatedAt = new Date();
+        resetProjectIds.push(project.id);
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      this.save();
+      console.log(`[ProjectStore] Reset ${resetProjectIds.length} project(s) due to missing .auto-claude folder`);
+    }
+
+    return resetProjectIds;
+  }
+
+  /**
    * Get a project by ID
    */
   getProject(projectId: string): Project | undefined {
@@ -153,23 +194,35 @@ export class ProjectStore {
    * Get tasks for a project by scanning specs directory
    */
   getTasks(projectId: string): Task[] {
+    console.log('[ProjectStore] getTasks called with projectId:', projectId);
     const project = this.getProject(projectId);
-    if (!project) return [];
+    if (!project) {
+      console.log('[ProjectStore] Project not found for id:', projectId);
+      return [];
+    }
+    console.log('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath);
 
     // Get specs directory path
     const specsBaseDir = getSpecsDir(project.autoBuildPath);
     const specsDir = path.join(project.path, specsBaseDir);
+    console.log('[ProjectStore] specsDir:', specsDir, 'exists:', existsSync(specsDir));
     if (!existsSync(specsDir)) return [];
 
     const tasks: Task[] = [];
+    let specDirs: ReturnType<typeof readdirSync> = [];
 
     try {
-      const specDirs = readdirSync(specsDir, { withFileTypes: true });
+      specDirs = readdirSync(specsDir, { withFileTypes: true });
+    } catch (error) {
+      console.error('[ProjectStore] Error reading specs directory:', error);
+      return [];
+    }
 
-      for (const dir of specDirs) {
-        if (!dir.isDirectory()) continue;
-        if (dir.name === '.gitkeep') continue;
+    for (const dir of specDirs) {
+      if (!dir.isDirectory()) continue;
+      if (dir.name === '.gitkeep') continue;
 
+      try {
         const specPath = path.join(specsDir, dir.name);
         const planPath = path.join(specPath, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
         const specFilePath = path.join(specPath, AUTO_BUILD_PATHS.SPEC_FILE);
@@ -220,16 +273,17 @@ export class ProjectStore {
         // Determine task status and review reason from plan
         const { status, reviewReason } = this.determineTaskStatusAndReason(plan, specPath, metadata);
 
-        // Extract subtasks from plan
-        const subtasks = plan?.phases.flatMap((phase) =>
-          phase.subtasks.map((subtask) => ({
+        // Extract subtasks from plan (handle both 'subtasks' and 'chunks' naming)
+        const subtasks = plan?.phases?.flatMap((phase) => {
+          const items = phase.subtasks || (phase as { chunks?: PlanSubtask[] }).chunks || [];
+          return items.map((subtask) => ({
             id: subtask.id,
             title: subtask.description,
             description: subtask.description,
             status: subtask.status,
             files: []
-          }))
-        ) || [];
+          }));
+        }) || [];
 
         tasks.push({
           id: dir.name, // Use spec directory name as ID
@@ -245,11 +299,13 @@ export class ProjectStore {
           createdAt: new Date(plan?.created_at || Date.now()),
           updatedAt: new Date(plan?.updated_at || Date.now())
         });
+      } catch (error) {
+        // Log error but continue processing other specs
+        console.error(`[ProjectStore] Error loading spec ${dir.name}:`, error);
       }
-    } catch {
-      // Return empty array on error
     }
 
+    console.log('[ProjectStore] Returning', tasks.length, 'tasks out of', specDirs.filter(d => d.isDirectory() && d.name !== '.gitkeep').length, 'spec directories');
     return tasks;
   }
 
@@ -269,7 +325,8 @@ export class ProjectStore {
     specPath: string,
     metadata?: TaskMetadata
   ): { status: TaskStatus; reviewReason?: ReviewReason } {
-    const allSubtasks = plan?.phases?.flatMap((p) => p.subtasks) || [];
+    // Handle both 'subtasks' and 'chunks' naming conventions, filter out undefined
+    const allSubtasks = plan?.phases?.flatMap((p) => p.subtasks || (p as { chunks?: PlanSubtask[] }).chunks || []).filter(Boolean) || [];
 
     let calculatedStatus: TaskStatus = 'backlog';
     let reviewReason: ReviewReason | undefined;
@@ -327,23 +384,30 @@ export class ProjectStore {
       if (storedStatus) {
         // Planning/coding status from the backend should be respected even if subtasks aren't in progress yet
         // This happens when a task is in planning phase (creating spec) but no subtasks have been started
-        const isActiveProcessStatus = plan.status === 'planning' || plan.status === 'coding';
+        const isActiveProcessStatus = (plan.status as string) === 'planning' || (plan.status as string) === 'coding';
+
+        // Check if this is a plan review (spec approval stage before coding starts)
+        // planStatus: "review" indicates spec creation is complete and awaiting user approval
+        const isPlanReviewStage = (plan as unknown as { planStatus?: string })?.planStatus === 'review';
 
         const isStoredStatusValid =
           (storedStatus === calculatedStatus) || // Matches calculated
           (storedStatus === 'human_review' && calculatedStatus === 'ai_review') || // Human review is more advanced than ai_review
+          (storedStatus === 'human_review' && isPlanReviewStage) || // Plan review stage (awaiting spec approval)
           (isActiveProcessStatus && storedStatus === 'in_progress'); // Planning/coding phases should show as in_progress
 
         if (isStoredStatusValid) {
           // Preserve reviewReason for human_review status
           if (storedStatus === 'human_review' && !reviewReason) {
-            // Infer reason from subtask states
+            // Infer reason from subtask states or plan review stage
             const hasFailedSubtasks = allSubtasks.some((s) => s.status === 'failed');
             const allCompleted = allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed');
             if (hasFailedSubtasks) {
               reviewReason = 'errors';
             } else if (allCompleted) {
               reviewReason = 'completed';
+            } else if (isPlanReviewStage) {
+              reviewReason = 'plan_review';
             }
           }
           return { status: storedStatus, reviewReason: storedStatus === 'human_review' ? reviewReason : undefined };

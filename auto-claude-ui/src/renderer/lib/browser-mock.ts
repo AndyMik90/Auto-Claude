@@ -194,6 +194,24 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
+  deleteTask: async () => ({ success: true }),
+
+  updateTask: async (_taskId: string, updates: { title?: string; description?: string }) => ({
+    success: true,
+    data: {
+      id: _taskId,
+      projectId: 'mock-project-1',
+      specId: '001-updated',
+      title: updates.title || 'Updated Task',
+      description: updates.description || 'Updated description',
+      status: 'backlog' as const,
+      subtasks: [],
+      logs: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  }),
+
   startTask: () => {
     console.log('[Browser Mock] startTask called');
   },
@@ -203,6 +221,49 @@ const browserMockAPI: ElectronAPI = {
   },
 
   submitReview: async () => ({ success: true }),
+
+  // Workspace management
+  getWorktreeStatus: async () => ({
+    success: true,
+    data: {
+      exists: false
+    }
+  }),
+
+  getWorktreeDiff: async () => ({
+    success: true,
+    data: {
+      files: [],
+      summary: 'No changes'
+    }
+  }),
+
+  mergeWorktree: async () => ({
+    success: true,
+    data: {
+      success: true,
+      message: 'Merge completed successfully'
+    }
+  }),
+
+  discardWorktree: async () => ({
+    success: true,
+    data: {
+      success: true,
+      message: 'Worktree discarded successfully'
+    }
+  }),
+
+  listWorktrees: async () => ({
+    success: true,
+    data: {
+      worktrees: []
+    }
+  }),
+
+  // Task archive operations
+  archiveTasks: async () => ({ success: true, data: true }),
+  unarchiveTasks: async () => ({ success: true, data: true }),
 
   // Event Listeners (no-op in browser)
   onTaskProgress: () => () => {},
@@ -233,10 +294,102 @@ const browserMockAPI: ElectronAPI = {
     console.log('[Browser Mock] invokeClaudeInTerminal called');
   },
 
+  // Terminal session management
+  getTerminalSessions: async () => ({
+    success: true,
+    data: []
+  }),
+
+  restoreTerminalSession: async () => ({
+    success: true,
+    data: {
+      success: true,
+      terminalId: 'restored-terminal'
+    }
+  }),
+
+  clearTerminalSessions: async () => ({ success: true }),
+
+  resumeClaudeInTerminal: () => {
+    console.log('[Browser Mock] resumeClaudeInTerminal called');
+  },
+
+  getTerminalSessionDates: async () => ({
+    success: true,
+    data: []
+  }),
+
+  getTerminalSessionsForDate: async () => ({
+    success: true,
+    data: []
+  }),
+
+  restoreTerminalSessionsFromDate: async () => ({
+    success: true,
+    data: {
+      restored: 0,
+      failed: 0,
+      sessions: []
+    }
+  }),
+
   // Terminal Event Listeners (no-op in browser)
   onTerminalOutput: () => () => {},
   onTerminalExit: () => () => {},
   onTerminalTitleChange: () => () => {},
+  onTerminalClaudeSession: () => () => {},
+  onTerminalRateLimit: () => () => {},
+  onTerminalOAuthToken: () => () => {},
+
+  // Claude profile management
+  getClaudeProfiles: async () => ({
+    success: true,
+    data: {
+      profiles: [],
+      activeProfileId: 'default'
+    }
+  }),
+
+  saveClaudeProfile: async (profile) => ({
+    success: true,
+    data: profile
+  }),
+
+  deleteClaudeProfile: async () => ({ success: true }),
+
+  renameClaudeProfile: async () => ({ success: true }),
+
+  setActiveClaudeProfile: async () => ({ success: true }),
+
+  switchClaudeProfile: async () => ({ success: true }),
+
+  initializeClaudeProfile: async () => ({ success: true }),
+
+  setClaudeProfileToken: async () => ({ success: true }),
+
+  getAutoSwitchSettings: async () => ({
+    success: true,
+    data: {
+      enabled: false,
+      sessionThreshold: 80,
+      weeklyThreshold: 90,
+      autoSwitchOnRateLimit: false,
+      usageCheckInterval: 0
+    }
+  }),
+
+  updateAutoSwitchSettings: async () => ({ success: true }),
+
+  fetchClaudeUsage: async () => ({ success: true }),
+
+  getBestAvailableProfile: async () => ({
+    success: true,
+    data: null
+  }),
+
+  onSDKRateLimit: () => () => {},
+
+  retryWithProfile: async () => ({ success: true }),
 
   // Settings
   getSettings: async () => ({
@@ -250,6 +403,17 @@ const browserMockAPI: ElectronAPI = {
   selectDirectory: async () => {
     return prompt('Enter project path (browser mock):', '/Users/demo/projects/new-project');
   },
+
+  createProjectFolder: async (_location: string, name: string, initGit: boolean) => ({
+    success: true,
+    data: {
+      path: `/Users/demo/projects/${name}`,
+      name,
+      gitInitialized: initGit
+    }
+  }),
+
+  getDefaultProjectLocation: async () => '/Users/demo/projects',
 
   // App Info
   getAppVersion: async () => '0.1.0-browser',
@@ -423,6 +587,13 @@ const browserMockAPI: ElectronAPI = {
     error: 'Not available in browser mock'
   }),
 
+  createGitHubRelease: async () => ({
+    success: true,
+    data: {
+      url: 'https://github.com/example/repo/releases/tag/v1.0.0'
+    }
+  }),
+
   onGitHubInvestigationProgress: () => () => {},
   onGitHubInvestigationComplete: () => () => {},
   onGitHubInvestigationError: () => () => {},
@@ -441,6 +612,8 @@ const browserMockAPI: ElectronAPI = {
     console.log('[Browser Mock] refreshIdeation called');
   },
 
+  stopIdeation: async () => ({ success: true }),
+
   updateIdeaStatus: async () => ({ success: true }),
 
   convertIdeaToTask: async () => ({
@@ -450,10 +623,13 @@ const browserMockAPI: ElectronAPI = {
 
   dismissIdea: async () => ({ success: true }),
 
+  dismissAllIdeas: async () => ({ success: true }),
+
   onIdeationProgress: () => () => {},
   onIdeationLog: () => () => {},
   onIdeationComplete: () => () => {},
   onIdeationError: () => () => {},
+  onIdeationStopped: () => () => {},
 
   // Auto-Build Source Update Operations (browser mock)
   checkAutoBuildSourceUpdate: async () => ({
@@ -536,6 +712,29 @@ const browserMockAPI: ElectronAPI = {
     data: {
       exists: false
     }
+  }),
+
+  suggestChangelogVersion: async () => ({
+    success: true,
+    data: {
+      version: '1.0.0',
+      reason: 'Initial release'
+    }
+  }),
+
+  getChangelogBranches: async () => ({
+    success: true,
+    data: []
+  }),
+
+  getChangelogTags: async () => ({
+    success: true,
+    data: []
+  }),
+
+  getChangelogCommitsPreview: async () => ({
+    success: true,
+    data: []
   }),
 
   onChangelogGenerationProgress: () => () => {},
@@ -691,12 +890,12 @@ const browserMockAPI: ElectronAPI = {
 
   // Task Status Operations (browser mock)
   updateTaskStatus: async () => ({ success: true }),
-  recoverStuckTask: async (taskId: string, targetStatus = 'backlog') => ({
+  recoverStuckTask: async (taskId: string, options?: import('../../shared/types').TaskRecoveryOptions) => ({
     success: true,
     data: {
       taskId,
       recovered: true,
-      newStatus: targetStatus as 'backlog',
+      newStatus: options?.targetStatus || 'backlog',
       message: '[Browser Mock] Task recovered successfully'
     }
   }),
@@ -705,7 +904,27 @@ const browserMockAPI: ElectronAPI = {
 
   // Ideation Event Listeners (browser mock)
   onIdeationTypeComplete: () => () => {},
-  onIdeationTypeFailed: () => () => {}
+  onIdeationTypeFailed: () => () => {},
+
+  // Task logs operations
+  getTaskLogs: async () => ({
+    success: true,
+    data: null
+  }),
+
+  watchTaskLogs: async () => ({ success: true }),
+
+  unwatchTaskLogs: async () => ({ success: true }),
+
+  // Task logs event listeners
+  onTaskLogsChanged: () => () => {},
+  onTaskLogsStream: () => () => {},
+
+  // File explorer operations
+  listDirectory: async () => ({
+    success: true,
+    data: []
+  })
 };
 
 /**

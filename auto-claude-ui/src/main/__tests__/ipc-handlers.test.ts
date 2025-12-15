@@ -91,6 +91,11 @@ describe('IPC Handlers', () => {
     invokeClaude: ReturnType<typeof vi.fn>;
     killAll: ReturnType<typeof vi.fn>;
   };
+  let mockPythonEnvManager: {
+    on: ReturnType<typeof vi.fn>;
+    initialize: ReturnType<typeof vi.fn>;
+    getStatus: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     cleanupTestDirs();
@@ -125,6 +130,12 @@ describe('IPC Handlers', () => {
       killAll: vi.fn(() => Promise.resolve())
     };
 
+    mockPythonEnvManager = {
+      on: vi.fn(),
+      initialize: vi.fn(() => Promise.resolve({ ready: true, pythonPath: '/usr/bin/python3', venvExists: true, depsInstalled: true })),
+      getStatus: vi.fn(() => Promise.resolve({ ready: true, pythonPath: '/usr/bin/python3', venvExists: true, depsInstalled: true }))
+    };
+
     // Need to reset modules to re-register handlers
     vi.resetModules();
   });
@@ -137,7 +148,7 @@ describe('IPC Handlers', () => {
   describe('project:add handler', () => {
     it('should return error for non-existent path', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler('project:add', {}, '/nonexistent/path');
 
@@ -149,7 +160,7 @@ describe('IPC Handlers', () => {
 
     it('should successfully add an existing project', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
 
@@ -162,7 +173,7 @@ describe('IPC Handlers', () => {
 
     it('should return existing project if already added', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       // Add project twice
       const result1 = await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
@@ -177,7 +188,7 @@ describe('IPC Handlers', () => {
   describe('project:list handler', () => {
     it('should return empty array when no projects', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler('project:list', {});
 
@@ -189,7 +200,7 @@ describe('IPC Handlers', () => {
 
     it('should return all added projects', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       // Add a project
       await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
@@ -205,7 +216,7 @@ describe('IPC Handlers', () => {
   describe('project:remove handler', () => {
     it('should return false for non-existent project', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler('project:remove', {}, 'nonexistent-id');
 
@@ -214,7 +225,7 @@ describe('IPC Handlers', () => {
 
     it('should successfully remove an existing project', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       // Add a project first
       const addResult = await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
@@ -235,7 +246,7 @@ describe('IPC Handlers', () => {
   describe('project:updateSettings handler', () => {
     it('should return error for non-existent project', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler(
         'project:updateSettings',
@@ -252,7 +263,7 @@ describe('IPC Handlers', () => {
 
     it('should successfully update project settings', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       // Add a project first
       const addResult = await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
@@ -273,7 +284,7 @@ describe('IPC Handlers', () => {
   describe('task:list handler', () => {
     it('should return empty array for project with no specs', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       // Add a project first
       const addResult = await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
@@ -289,7 +300,7 @@ describe('IPC Handlers', () => {
 
     it('should return tasks when specs exist', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       // Add a project first
       const addResult = await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
@@ -325,7 +336,7 @@ describe('IPC Handlers', () => {
   describe('task:create handler', () => {
     it('should return error for non-existent project', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler(
         'task:create',
@@ -343,7 +354,7 @@ describe('IPC Handlers', () => {
 
     it('should create task and start spec creation', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       // Add a project first
       const addResult = await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
@@ -365,7 +376,7 @@ describe('IPC Handlers', () => {
   describe('settings:get handler', () => {
     it('should return default settings when no settings file exists', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler('settings:get', {});
 
@@ -378,7 +389,7 @@ describe('IPC Handlers', () => {
   describe('settings:save handler', () => {
     it('should save settings successfully', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler(
         'settings:save',
@@ -397,7 +408,7 @@ describe('IPC Handlers', () => {
 
     it('should configure agent manager when paths change', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       await ipcMain.invokeHandler(
         'settings:save',
@@ -412,7 +423,7 @@ describe('IPC Handlers', () => {
   describe('app:version handler', () => {
     it('should return app version', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       const result = await ipcMain.invokeHandler('app:version', {});
 
@@ -423,7 +434,7 @@ describe('IPC Handlers', () => {
   describe('Agent Manager event forwarding', () => {
     it('should forward log events to renderer', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       mockAgentManager.emit('log', 'task-1', 'Test log message');
 
@@ -436,7 +447,7 @@ describe('IPC Handlers', () => {
 
     it('should forward error events to renderer', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       mockAgentManager.emit('error', 'task-1', 'Test error message');
 
@@ -449,7 +460,7 @@ describe('IPC Handlers', () => {
 
     it('should forward exit events with status change', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
-      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never);
+      setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
 
       mockAgentManager.emit('exit', 'task-1', 0);
 
