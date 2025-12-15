@@ -362,6 +362,14 @@ export function App() {
             }
           }}
           initialSection={settingsInitialSection}
+          onRerunWizard={() => {
+            // Reset onboarding state to trigger wizard
+            useSettingsStore.getState().updateSettings({ onboardingCompleted: false });
+            // Close settings dialog
+            setIsSettingsDialogOpen(false);
+            // Open onboarding wizard
+            setIsOnboardingWizardOpen(true);
+          }}
         />
 
         {/* Initialize Auto Claude Dialog */}

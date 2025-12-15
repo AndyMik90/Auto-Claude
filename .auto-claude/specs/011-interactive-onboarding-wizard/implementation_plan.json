@@ -532,5 +532,29 @@
     ],
     "fix_request_file": "QA_FIX_REQUEST.md"
   },
-  "last_updated": "2025-12-15T17:47:00Z"
+  "last_updated": "2025-12-15T17:47:00Z",
+  "qa_iteration_history": [
+    {
+      "iteration": 1,
+      "status": "rejected",
+      "timestamp": "2025-12-15T16:51:14.595690+00:00",
+      "issues": [
+        {
+          "type": "critical",
+          "title": "Missing onRerunWizard prop in App.tsx",
+          "location": "src/renderer/App.tsx:355-365",
+          "fix_required": "Add onRerunWizard callback prop to AppSettingsDialog that resets onboardingCompleted to false, closes settings, and opens onboarding wizard"
+        }
+      ],
+      "duration_seconds": 294.96
+    }
+  ],
+  "qa_stats": {
+    "total_iterations": 1,
+    "last_iteration": 1,
+    "last_status": "rejected",
+    "issues_by_type": {
+      "critical": 1
+    }
+  }
 }
