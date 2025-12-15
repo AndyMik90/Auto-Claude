@@ -12,7 +12,8 @@ import type {
   ContextSearchResult,
   MemoryEpisode,
   ProjectEnvConfig,
-  ClaudeAuthResult
+  ClaudeAuthResult,
+  InfrastructureStatus
 } from '../../shared/types';
 
 export interface ProjectAPI {
@@ -49,6 +50,13 @@ export interface ProjectAPI {
     initGit: boolean
   ) => Promise<IPCResult<import('../../shared/types').CreateProjectFolderResult>>;
   getDefaultProjectLocation: () => Promise<string | null>;
+
+  // Docker & Infrastructure Operations (for Graphiti/FalkorDB)
+  getInfrastructureStatus: (port?: number) => Promise<IPCResult<InfrastructureStatus>>;
+  startFalkorDB: (port?: number) => Promise<IPCResult<{ success: boolean; error?: string }>>;
+  stopFalkorDB: () => Promise<IPCResult<{ success: boolean; error?: string }>>;
+  openDockerDesktop: () => Promise<IPCResult<{ success: boolean; error?: string }>>;
+  getDockerDownloadUrl: () => Promise<string>;
 }
 
 export const createProjectAPI = (): ProjectAPI => ({
@@ -118,5 +126,21 @@ export const createProjectAPI = (): ProjectAPI => ({
     ipcRenderer.invoke(IPC_CHANNELS.DIALOG_CREATE_PROJECT_FOLDER, location, name, initGit),
 
   getDefaultProjectLocation: (): Promise<string | null> =>
-    ipcRenderer.invoke(IPC_CHANNELS.DIALOG_GET_DEFAULT_PROJECT_LOCATION)
+    ipcRenderer.invoke(IPC_CHANNELS.DIALOG_GET_DEFAULT_PROJECT_LOCATION),
+
+  // Docker & Infrastructure Operations
+  getInfrastructureStatus: (port?: number): Promise<IPCResult<InfrastructureStatus>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_STATUS, port),
+
+  startFalkorDB: (port?: number): Promise<IPCResult<{ success: boolean; error?: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_START_FALKORDB, port),
+
+  stopFalkorDB: (): Promise<IPCResult<{ success: boolean; error?: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_STOP_FALKORDB),
+
+  openDockerDesktop: (): Promise<IPCResult<{ success: boolean; error?: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_OPEN_DESKTOP),
+
+  getDockerDownloadUrl: (): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_GET_DOWNLOAD_URL)
 });

@@ -6,7 +6,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import {
@@ -130,38 +129,6 @@ export function GeneralSettings({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="font-normal text-foreground">Parallel Execution</Label>
-                <p className="text-xs text-muted-foreground">
-                  Run multiple subtasks simultaneously
-                </p>
-              </div>
-              <Switch
-                checked={settings.parallelEnabled}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, parallelEnabled: checked })
-                }
-              />
-            </div>
-            {settings.parallelEnabled && (
-              <div className="space-y-2">
-                <Label htmlFor="workers" className="text-sm font-medium text-foreground">Max Workers</Label>
-                <Input
-                  id="workers"
-                  type="number"
-                  min={1}
-                  max={8}
-                  value={settings.maxWorkers}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      maxWorkers: parseInt(e.target.value) || 1
-                    })
-                  }
-                />
-              </div>
-            )}
           </section>
 
           <Separator />

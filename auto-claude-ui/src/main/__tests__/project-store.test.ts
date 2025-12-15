@@ -208,7 +208,7 @@ describe('ProjectStore', () => {
       const { ProjectStore } = await import('../project-store');
       const store = new ProjectStore();
 
-      const result = store.updateProjectSettings('nonexistent-id', { parallelEnabled: true });
+      const result = store.updateProjectSettings('nonexistent-id', { model: 'sonnet' });
 
       expect(result).toBeUndefined();
     });
@@ -219,13 +219,13 @@ describe('ProjectStore', () => {
 
       const project = store.addProject(TEST_PROJECT_PATH);
       const updated = store.updateProjectSettings(project.id, {
-        parallelEnabled: true,
-        maxWorkers: 4
+        model: 'sonnet',
+        linearSync: true
       });
 
       expect(updated).toBeDefined();
-      expect(updated?.settings.parallelEnabled).toBe(true);
-      expect(updated?.settings.maxWorkers).toBe(4);
+      expect(updated?.settings.model).toBe('sonnet');
+      expect(updated?.settings.linearSync).toBe(true);
     });
 
     it('should update updatedAt timestamp', async () => {
@@ -238,7 +238,7 @@ describe('ProjectStore', () => {
       // Small delay to ensure timestamp difference
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      const updated = store.updateProjectSettings(project.id, { parallelEnabled: true });
+      const updated = store.updateProjectSettings(project.id, { model: 'haiku' });
 
       expect(updated?.updatedAt.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
     });
@@ -248,12 +248,12 @@ describe('ProjectStore', () => {
       const store = new ProjectStore();
 
       const project = store.addProject(TEST_PROJECT_PATH);
-      store.updateProjectSettings(project.id, { maxWorkers: 8 });
+      store.updateProjectSettings(project.id, { model: 'sonnet' });
 
       // Read directly from file
       const storePath = path.join(USER_DATA_PATH, 'store', 'projects.json');
       const content = JSON.parse(readFileSync(storePath, 'utf-8'));
-      expect(content.projects[0].settings.maxWorkers).toBe(8);
+      expect(content.projects[0].settings.model).toBe('sonnet');
     });
   });
 
@@ -501,8 +501,6 @@ describe('ProjectStore', () => {
             path: '/test/path',
             autoBuildPath: '',
             settings: {
-              parallelEnabled: false,
-              maxWorkers: 2,
               model: 'sonnet',
               memoryBackend: 'file',
               linearSync: false,
@@ -511,7 +509,9 @@ describe('ProjectStore', () => {
                 onTaskFailed: true,
                 onReviewNeeded: true,
                 sound: false
-              }
+              },
+              graphitiMcpEnabled: true,
+              graphitiMcpUrl: 'http://localhost:8000/mcp/'
             },
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z'

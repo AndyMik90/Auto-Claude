@@ -3,7 +3,7 @@
  * Provides clean import paths for settings components
  */
 
-export { AppSettingsDialog } from './AppSettings';
+export { AppSettingsDialog, type AppSection } from './AppSettings';
 export { ThemeSettings } from './ThemeSettings';
 export { GeneralSettings } from './GeneralSettings';
 export { IntegrationSettings } from './IntegrationSettings';

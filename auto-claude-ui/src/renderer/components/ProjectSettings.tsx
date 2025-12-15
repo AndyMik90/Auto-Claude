@@ -54,7 +54,8 @@ import type {
   AutoBuildVersionInfo,
   ProjectEnvConfig,
   LinearSyncStatus,
-  GitHubSyncStatus
+  GitHubSyncStatus,
+  InfrastructureStatus
 } from '../../shared/types';
 
 interface ProjectSettingsProps {
@@ -99,6 +100,12 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
   // Claude auth state
   const [isCheckingClaudeAuth, setIsCheckingClaudeAuth] = useState(false);
   const [claudeAuthStatus, setClaudeAuthStatus] = useState<'checking' | 'authenticated' | 'not_authenticated' | 'error'>('checking');
+
+  // Docker/FalkorDB infrastructure status
+  const [infrastructureStatus, setInfrastructureStatus] = useState<InfrastructureStatus | null>(null);
+  const [isCheckingInfrastructure, setIsCheckingInfrastructure] = useState(false);
+  const [isStartingFalkorDB, setIsStartingFalkorDB] = useState(false);
+  const [isOpeningDocker, setIsOpeningDocker] = useState(false);
 
   // Linear import state
   const [showLinearImportModal, setShowLinearImportModal] = useState(false);
@@ -220,6 +227,84 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
       checkGitHubConnection();
     }
   }, [envConfig?.githubEnabled, envConfig?.githubToken, envConfig?.githubRepo, project.id]);
+
+  // Check Docker/FalkorDB infrastructure status when Graphiti is enabled
+  useEffect(() => {
+    const checkInfrastructure = async () => {
+      if (!envConfig?.graphitiEnabled) {
+        setInfrastructureStatus(null);
+        return;
+      }
+
+      setIsCheckingInfrastructure(true);
+      try {
+        const port = envConfig.graphitiFalkorDbPort || 6380;
+        const result = await window.electronAPI.getInfrastructureStatus(port);
+        if (result.success && result.data) {
+          setInfrastructureStatus(result.data);
+        }
+      } catch {
+        // Silently fail - infrastructure check is optional
+      } finally {
+        setIsCheckingInfrastructure(false);
+      }
+    };
+
+    checkInfrastructure();
+    // Refresh every 10 seconds while Graphiti is enabled
+    let interval: NodeJS.Timeout | undefined;
+    if (envConfig?.graphitiEnabled && open) {
+      interval = setInterval(checkInfrastructure, 10000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [envConfig?.graphitiEnabled, envConfig?.graphitiFalkorDbPort, open]);
+
+  // Handler to start FalkorDB
+  const handleStartFalkorDB = async () => {
+    setIsStartingFalkorDB(true);
+    try {
+      const port = envConfig?.graphitiFalkorDbPort || 6380;
+      const result = await window.electronAPI.startFalkorDB(port);
+      if (result.success && result.data?.success) {
+        // Refresh status after starting
+        const statusResult = await window.electronAPI.getInfrastructureStatus(port);
+        if (statusResult.success && statusResult.data) {
+          setInfrastructureStatus(statusResult.data);
+        }
+      }
+    } catch {
+      // Error handling is implicit in the status check
+    } finally {
+      setIsStartingFalkorDB(false);
+    }
+  };
+
+  // Handler to open Docker Desktop
+  const handleOpenDockerDesktop = async () => {
+    setIsOpeningDocker(true);
+    try {
+      await window.electronAPI.openDockerDesktop();
+      // Wait a bit then refresh status
+      setTimeout(async () => {
+        const port = envConfig?.graphitiFalkorDbPort || 6380;
+        const result = await window.electronAPI.getInfrastructureStatus(port);
+        if (result.success && result.data) {
+          setInfrastructureStatus(result.data);
+        }
+        setIsOpeningDocker(false);
+      }, 3000);
+    } catch {
+      setIsOpeningDocker(false);
+    }
+  };
+
+  // Handler to open Docker download page
+  const handleDownloadDocker = async () => {
+    const url = await window.electronAPI.getDockerDownloadUrl();
+    window.electronAPI.openExternal(url);
+  };
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -920,11 +1005,115 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
 
                       {envConfig.graphitiEnabled && (
                         <>
-                          <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
-                            <p className="text-xs text-warning">
-                              Requires FalkorDB running. Start with:{' '}
-                              <code className="px-1 bg-warning/10 rounded">docker-compose up -d falkordb</code>
-                            </p>
+                          {/* Infrastructure Status - Dynamic Docker/FalkorDB check */}
+                          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-foreground">Infrastructure Status</span>
+                              {isCheckingInfrastructure && (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              )}
+                            </div>
+
+                            {/* Docker Status */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {infrastructureStatus?.docker.running ? (
+                                  <CheckCircle2 className="h-4 w-4 text-success" />
+                                ) : infrastructureStatus?.docker.installed ? (
+                                  <AlertCircle className="h-4 w-4 text-warning" />
+                                ) : (
+                                  <AlertCircle className="h-4 w-4 text-destructive" />
+                                )}
+                                <span className="text-xs text-foreground">Docker</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {infrastructureStatus?.docker.running ? (
+                                  <span className="text-xs text-success">Running</span>
+                                ) : infrastructureStatus?.docker.installed ? (
+                                  <>
+                                    <span className="text-xs text-warning">Not Running</span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={handleOpenDockerDesktop}
+                                      disabled={isOpeningDocker}
+                                      className="h-6 text-xs"
+                                    >
+                                      {isOpeningDocker ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      ) : null}
+                                      Start Docker
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-xs text-destructive">Not Installed</span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={handleDownloadDocker}
+                                      className="h-6 text-xs"
+                                    >
+                                      <Download className="h-3 w-3 mr-1" />
+                                      Install
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* FalkorDB Status */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {infrastructureStatus?.falkordb.healthy ? (
+                                  <CheckCircle2 className="h-4 w-4 text-success" />
+                                ) : infrastructureStatus?.falkordb.containerRunning ? (
+                                  <Loader2 className="h-4 w-4 animate-spin text-warning" />
+                                ) : (
+                                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <span className="text-xs text-foreground">FalkorDB</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {infrastructureStatus?.falkordb.healthy ? (
+                                  <span className="text-xs text-success">Ready</span>
+                                ) : infrastructureStatus?.falkordb.containerRunning ? (
+                                  <span className="text-xs text-warning">Starting...</span>
+                                ) : infrastructureStatus?.docker.running ? (
+                                  <>
+                                    <span className="text-xs text-muted-foreground">Not Running</span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={handleStartFalkorDB}
+                                      disabled={isStartingFalkorDB}
+                                      className="h-6 text-xs"
+                                    >
+                                      {isStartingFalkorDB ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      ) : (
+                                        <Zap className="h-3 w-3 mr-1" />
+                                      )}
+                                      Start
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Requires Docker</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Overall Status Message */}
+                            {infrastructureStatus?.ready ? (
+                              <div className="text-xs text-success flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Graph memory is ready to use
+                              </div>
+                            ) : infrastructureStatus && !infrastructureStatus.docker.installed && (
+                              <p className="text-xs text-muted-foreground">
+                                Docker Desktop is required for graph-based memory.
+                              </p>
+                            )}
                           </div>
 
                           {/* Graphiti MCP Server Toggle */}
@@ -1141,39 +1330,6 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="font-normal text-foreground">Parallel Execution</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Run multiple subtasks simultaneously
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.parallelEnabled}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, parallelEnabled: checked })
-                  }
-                />
-              </div>
-              {settings.parallelEnabled && (
-                <div className="space-y-2">
-                  <Label htmlFor="workers" className="text-sm font-medium text-foreground">Max Workers</Label>
-                  <Input
-                    id="workers"
-                    type="number"
-                    min={1}
-                    max={8}
-                    value={settings.maxWorkers}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        maxWorkers: parseInt(e.target.value) || 1
-                      })
-                    }
-                  />
-                </div>
-              )}
-
             </section>
 
             <Separator />

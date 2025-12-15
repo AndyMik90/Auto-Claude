@@ -39,10 +39,11 @@ import type { UseProjectSettingsReturn } from '../project-settings/hooks/useProj
 interface AppSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialSection?: AppSection;
 }
 
 // App-level settings sections
-type AppSection = 'appearance' | 'agent' | 'paths' | 'integrations' | 'updates' | 'notifications';
+export type AppSection = 'appearance' | 'agent' | 'paths' | 'integrations' | 'updates' | 'notifications';
 
 interface NavItem<T extends string> {
   id: T;
@@ -72,14 +73,22 @@ const projectNavItems: NavItem<ProjectSettingsSection>[] = [
  * Main application settings dialog container
  * Coordinates app and project settings sections
  */
-export function AppSettingsDialog({ open, onOpenChange }: AppSettingsDialogProps) {
+export function AppSettingsDialog({ open, onOpenChange, initialSection }: AppSettingsDialogProps) {
   const { settings, setSettings, isSaving, error, saveSettings } = useSettings();
   const [version, setVersion] = useState<string>('');
 
   // Track which top-level section is active
   const [activeTopLevel, setActiveTopLevel] = useState<'app' | 'project'>('app');
-  const [appSection, setAppSection] = useState<AppSection>('appearance');
+  const [appSection, setAppSection] = useState<AppSection>(initialSection || 'appearance');
   const [projectSection, setProjectSection] = useState<ProjectSettingsSection>('general');
+
+  // Navigate to initial section when dialog opens with a specific section
+  useEffect(() => {
+    if (open && initialSection) {
+      setActiveTopLevel('app');
+      setAppSection(initialSection);
+    }
+  }, [open, initialSection]);
 
   // Project state
   const projects = useProjectStore((state) => state.projects);

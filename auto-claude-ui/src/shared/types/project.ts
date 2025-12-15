@@ -13,8 +13,6 @@ export interface Project {
 }
 
 export interface ProjectSettings {
-  parallelEnabled: boolean;
-  maxWorkers: number;
   model: string;
   memoryBackend: 'graphiti' | 'file';
   linearSync: boolean;
@@ -143,6 +141,29 @@ export interface GraphitiMemoryStatus {
   port?: number;
   database?: string;
   reason?: string;
+}
+
+// Docker & Infrastructure Types
+export interface DockerStatus {
+  installed: boolean;
+  running: boolean;
+  version?: string;
+  error?: string;
+}
+
+export interface FalkorDBStatus {
+  containerExists: boolean;
+  containerRunning: boolean;
+  containerName: string;
+  port: number;
+  healthy: boolean;
+  error?: string;
+}
+
+export interface InfrastructureStatus {
+  docker: DockerStatus;
+  falkordb: FalkorDBStatus;
+  ready: boolean; // True if both Docker is running and FalkorDB is healthy
 }
 
 // Graphiti Provider Types (Memory System V2)

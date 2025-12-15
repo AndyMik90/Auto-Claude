@@ -85,12 +85,12 @@ describe('IPC Bridge Integration', () => {
           id: string,
           settings: object
         ) => Promise<unknown>;
-        await updateProjectSettings('project-id', { parallelEnabled: true });
+        await updateProjectSettings('project-id', { model: 'sonnet' });
 
         expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
           'project:updateSettings',
           'project-id',
-          { parallelEnabled: true }
+          { model: 'sonnet' }
         );
       });
     });

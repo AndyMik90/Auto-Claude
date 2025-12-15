@@ -538,29 +538,16 @@ export function registerTaskHandlers(
         );
       } else {
         // Task has subtasks, start normal execution
-        // Only enable parallel if there are multiple subtasks AND user has parallel enabled
-        const hasMultipleSubtasks = task.subtasks.length > 1;
-        const pendingSubtasks = task.subtasks.filter(s => s.status === 'pending' || s.status === 'in_progress').length;
-        const parallelEnabled = options?.parallel ?? project.settings.parallelEnabled;
-        const useParallel = parallelEnabled && hasMultipleSubtasks && pendingSubtasks > 1;
-        const workers = useParallel ? (options?.workers ?? project.settings.maxWorkers) : 1;
-
+        // Note: Parallel execution is handled internally by the agent, not via CLI flags
         console.log('[TASK_START] Starting task execution (has subtasks) for:', task.specId);
-        console.log('[TASK_START] Parallel decision:', {
-          hasMultipleSubtasks,
-          pendingSubtasks,
-          parallelEnabled,
-          useParallel,
-          workers
-        });
 
         agentManager.startTaskExecution(
           taskId,
           project.path,
           task.specId,
           {
-            parallel: useParallel,
-            workers
+            parallel: false,
+            workers: 1
           }
         );
       }
@@ -774,20 +761,15 @@ export function registerTaskHandlers(
             );
           } else {
             // Task has subtasks, start normal execution
-            const hasMultipleSubtasks = task.subtasks.length > 1;
-            const pendingSubtasks = task.subtasks.filter(s => s.status === 'pending' || s.status === 'in_progress').length;
-            const parallelEnabled = project.settings.parallelEnabled;
-            const useParallel = parallelEnabled && hasMultipleSubtasks && pendingSubtasks > 1;
-            const workers = useParallel ? project.settings.maxWorkers : 1;
-
+            // Note: Parallel execution is handled internally by the agent
             console.log('[TASK_UPDATE_STATUS] Starting task execution (has subtasks) for:', task.specId);
             agentManager.startTaskExecution(
               taskId,
               project.path,
               task.specId,
               {
-                parallel: useParallel,
-                workers
+                parallel: false,
+                workers: 1
               }
             );
           }
@@ -977,26 +959,19 @@ export function registerTaskHandlers(
             }
 
             // Start the task execution
-
-            // Check if we should use parallel mode
-            const hasMultipleSubtasks = task.subtasks.length > 1;
-            const pendingSubtasks = task.subtasks.filter(s => s.status === 'pending').length;
-            const parallelEnabled = project.settings.parallelEnabled;
-            const useParallel = parallelEnabled && hasMultipleSubtasks && pendingSubtasks > 1;
-            const workers = useParallel ? project.settings.maxWorkers : 1;
-
             // Start file watcher for this task
             const specsBaseDir = getSpecsDir(project.autoBuildPath);
             const specDirForWatcher = path.join(project.path, specsBaseDir, task.specId);
             fileWatcher.watch(taskId, specDirForWatcher);
             
+            // Note: Parallel execution is handled internally by the agent
             agentManager.startTaskExecution(
               taskId,
               project.path,
               task.specId,
               {
-                parallel: useParallel,
-                workers
+                parallel: false,
+                workers: 1
               }
             );
 

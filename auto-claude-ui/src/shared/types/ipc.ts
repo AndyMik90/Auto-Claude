@@ -15,7 +15,8 @@ import type {
   GraphitiMemoryStatus,
   ContextSearchResult,
   MemoryEpisode,
-  ProjectEnvConfig
+  ProjectEnvConfig,
+  InfrastructureStatus
 } from './project';
 import type {
   Task,
@@ -250,6 +251,13 @@ export interface ElectronAPI {
   updateProjectEnv: (projectId: string, config: Partial<ProjectEnvConfig>) => Promise<IPCResult>;
   checkClaudeAuth: (projectId: string) => Promise<IPCResult<ClaudeAuthResult>>;
   invokeClaudeSetup: (projectId: string) => Promise<IPCResult<ClaudeAuthResult>>;
+
+  // Docker & Infrastructure operations (for Graphiti/FalkorDB)
+  getInfrastructureStatus: (port?: number) => Promise<IPCResult<InfrastructureStatus>>;
+  startFalkorDB: (port?: number) => Promise<IPCResult<{ success: boolean; error?: string }>>;
+  stopFalkorDB: () => Promise<IPCResult<{ success: boolean; error?: string }>>;
+  openDockerDesktop: () => Promise<IPCResult<{ success: boolean; error?: string }>>;
+  getDockerDownloadUrl: () => Promise<string>;
 
   // Linear integration operations
   getLinearTeams: (projectId: string) => Promise<IPCResult<LinearTeam[]>>;

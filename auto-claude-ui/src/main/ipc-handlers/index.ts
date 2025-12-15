@@ -26,6 +26,8 @@ import { registerAutobuildSourceHandlers } from './autobuild-source-handlers';
 import { registerIdeationHandlers } from './ideation-handlers';
 import { registerChangelogHandlers } from './changelog-handlers';
 import { registerInsightsHandlers } from './insights-handlers';
+import { registerDockerHandlers } from './docker-handlers';
+import { notificationService } from '../notification-service';
 
 /**
  * Setup all IPC handlers across all domains
@@ -41,6 +43,9 @@ export function setupIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
   pythonEnvManager: PythonEnvManager
 ): void {
+  // Initialize notification service
+  notificationService.initialize(getMainWindow);
+
   // Project handlers (including Python environment setup)
   registerProjectHandlers(pythonEnvManager, agentManager, getMainWindow);
 
@@ -86,6 +91,9 @@ export function setupIpcHandlers(
   // Insights handlers
   registerInsightsHandlers(getMainWindow);
 
+  // Docker & infrastructure handlers (for Graphiti/FalkorDB)
+  registerDockerHandlers();
+
   console.log('[IPC] All handler modules registered successfully');
 }
 
@@ -105,5 +113,6 @@ export {
   registerAutobuildSourceHandlers,
   registerIdeationHandlers,
   registerChangelogHandlers,
-  registerInsightsHandlers
+  registerInsightsHandlers,
+  registerDockerHandlers
 };

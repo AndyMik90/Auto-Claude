@@ -19,7 +19,7 @@ import { Sidebar, type SidebarView } from './components/Sidebar';
 import { KanbanBoard } from './components/KanbanBoard';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
 import { TaskCreationWizard } from './components/TaskCreationWizard';
-import { AppSettingsDialog } from './components/AppSettings';
+import { AppSettingsDialog, type AppSection } from './components/settings/AppSettings';
 import { TerminalGrid } from './components/TerminalGrid';
 import { Roadmap } from './components/Roadmap';
 import { Context } from './components/Context';
@@ -52,6 +52,7 @@ export function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [settingsInitialSection, setSettingsInitialSection] = useState<AppSection | undefined>(undefined);
   const [activeView, setActiveView] = useState<SidebarView>('kanban');
 
   // Initialize dialog state
@@ -67,6 +68,23 @@ export function App() {
   useEffect(() => {
     loadProjects();
     loadSettings();
+  }, []);
+
+  // Listen for open-app-settings events (e.g., from project settings)
+  useEffect(() => {
+    const handleOpenAppSettings = (event: Event) => {
+      const customEvent = event as CustomEvent<AppSection>;
+      const section = customEvent.detail;
+      if (section) {
+        setSettingsInitialSection(section);
+      }
+      setIsSettingsDialogOpen(true);
+    };
+
+    window.addEventListener('open-app-settings', handleOpenAppSettings);
+    return () => {
+      window.removeEventListener('open-app-settings', handleOpenAppSettings);
+    };
   }, []);
 
   // Check if selected project needs initialization (e.g., .auto-claude folder was deleted)
@@ -325,7 +343,14 @@ export function App() {
 
         <AppSettingsDialog
           open={isSettingsDialogOpen}
-          onOpenChange={setIsSettingsDialogOpen}
+          onOpenChange={(open) => {
+            setIsSettingsDialogOpen(open);
+            if (!open) {
+              // Reset initial section when dialog closes
+              setSettingsInitialSection(undefined);
+            }
+          }}
+          initialSection={settingsInitialSection}
         />
 
         {/* Initialize Auto Claude Dialog */}

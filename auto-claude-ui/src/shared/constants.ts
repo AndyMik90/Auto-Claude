@@ -103,8 +103,6 @@ export const DEFAULT_APP_SETTINGS = {
 
 // Default project settings
 export const DEFAULT_PROJECT_SETTINGS = {
-  parallelEnabled: false,
-  maxWorkers: 2,
   model: 'opus',
   memoryBackend: 'file' as const,
   linearSync: false,
@@ -289,6 +287,13 @@ export const IPC_CHANNELS = {
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',
   GITHUB_INVESTIGATION_COMPLETE: 'github:investigationComplete',
   GITHUB_INVESTIGATION_ERROR: 'github:investigationError',
+
+  // Docker & Infrastructure status
+  DOCKER_STATUS: 'docker:status',
+  DOCKER_START_FALKORDB: 'docker:startFalkordb',
+  DOCKER_STOP_FALKORDB: 'docker:stopFalkordb',
+  DOCKER_OPEN_DESKTOP: 'docker:openDesktop',
+  DOCKER_GET_DOWNLOAD_URL: 'docker:getDownloadUrl',
 
   // Auto Claude source updates
   AUTOBUILD_SOURCE_CHECK: 'autobuild:source:check',

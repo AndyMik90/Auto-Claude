@@ -17,6 +17,7 @@ import type { ProcessType, ExecutionProgressData } from '../agent';
 import { titleGenerator } from '../title-generator';
 import { fileWatcher } from '../file-watcher';
 import { projectStore } from '../project-store';
+import { notificationService } from '../notification-service';
 
 
 /**
@@ -88,12 +89,12 @@ export function registerAgenteventsHandlers(
         newStatus = 'human_review';
       }
 
-      // Persist status to disk so it survives hot reload
-      // This is a backup in case the Python backend didn't sync properly
+      // Find task and project for status persistence and notifications
+      let task: Task | undefined;
+      let project: Project | undefined;
+
       try {
         const projects = projectStore.getProjects();
-        let task: Task | undefined;
-        let project: Project | undefined;
 
         for (const p of projects) {
           const tasks = projectStore.getTasks(p.id);
@@ -104,6 +105,8 @@ export function registerAgenteventsHandlers(
           }
         }
 
+        // Persist status to disk so it survives hot reload
+        // This is a backup in case the Python backend didn't sync properly
         if (task && project) {
           const specsBaseDir = getSpecsDir(project.autoBuildPath);
           const specDir = path.join(project.path, specsBaseDir, task.specId);
@@ -133,6 +136,19 @@ export function registerAgenteventsHandlers(
         }
       } catch (persistError) {
         console.error(`[Task ${taskId}] Failed to persist status:`, persistError);
+      }
+
+      // Send notifications based on task completion status
+      if (task && project) {
+        const taskTitle = task.title || task.specId;
+        
+        if (code === 0) {
+          // Task completed successfully - ready for review
+          notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
+        } else {
+          // Task failed
+          notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
+        }
       }
 
       mainWindow.webContents.send(

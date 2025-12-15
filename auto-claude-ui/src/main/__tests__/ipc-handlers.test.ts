@@ -252,7 +252,7 @@ describe('IPC Handlers', () => {
         'project:updateSettings',
         {},
         'nonexistent-id',
-        { parallelEnabled: true }
+        { model: 'sonnet' }
       );
 
       expect(result).toEqual({
@@ -274,7 +274,7 @@ describe('IPC Handlers', () => {
         'project:updateSettings',
         {},
         projectId,
-        { parallelEnabled: true, maxWorkers: 4 }
+        { model: 'sonnet', linearSync: true }
       );
 
       expect(result).toEqual({ success: true });
