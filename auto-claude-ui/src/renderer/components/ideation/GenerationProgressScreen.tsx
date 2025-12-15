@@ -72,7 +72,7 @@ export function GenerationProgressScreen({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-border p-4 bg-card/50">
+      <div className="shrink-0 border-b border-border p-4 bg-card/50">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -140,7 +140,7 @@ export function GenerationProgressScreen({
 
       {/* Logs Panel (collapsible) */}
       {showLogs && logs.length > 0 && (
-        <div className="flex-shrink-0 border-b border-border p-4 bg-muted/20">
+        <div className="shrink-0 border-b border-border p-4 bg-muted/20">
           <ScrollArea className="h-32 rounded-md border border-border bg-muted/30">
             <div className="p-3 space-y-1 font-mono text-xs">
               {logs.map((log, index) => (

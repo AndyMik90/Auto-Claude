@@ -11,7 +11,7 @@ interface IdeationFiltersProps {
 export function IdeationFilters({ activeTab, onTabChange, children }: IdeationFiltersProps) {
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="h-full flex flex-col">
-      <TabsList className="flex-shrink-0 mx-4 mt-4 flex-wrap h-auto gap-1">
+      <TabsList className="shrink-0 mx-4 mt-4 flex-wrap h-auto gap-1">
         <TabsTrigger value="all">All</TabsTrigger>
         <TabsTrigger value="code_improvements">
           <Zap className="h-3 w-3 mr-1" />

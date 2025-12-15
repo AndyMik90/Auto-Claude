@@ -84,7 +84,7 @@ export function CodeImprovementDetails({ idea }: CodeImprovementDetailsProps) {
           <ul className="space-y-1">
             {idea.existingPatterns.map((pattern, i) => (
               <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                <Circle className="h-3 w-3 mt-1.5 flex-shrink-0" />
+                <Circle className="h-3 w-3 mt-1.5 shrink-0" />
                 {pattern}
               </li>
             ))}

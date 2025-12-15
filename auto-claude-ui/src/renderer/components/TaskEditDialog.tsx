@@ -515,7 +515,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
           {/* Error */}
           {error && (
             <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
-              <X className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <X className="h-4 w-4 mt-0.5 shrink-0" />
               <span>{error}</span>
             </div>
           )}

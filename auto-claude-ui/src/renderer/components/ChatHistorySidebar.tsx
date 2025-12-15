@@ -256,7 +256,7 @@ function SessionItem({
       <div className="flex items-center gap-1.5 pr-7">
         <MessageSquare
           className={cn(
-            'h-4 w-4 flex-shrink-0',
+            'h-4 w-4 shrink-0',
             isActive ? 'text-primary' : 'text-muted-foreground'
           )}
         />

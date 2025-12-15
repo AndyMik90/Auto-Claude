@@ -427,7 +427,7 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Settings2 className="h-5 w-5" />
             Project Settings
@@ -1410,7 +1410,7 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
           </div>
         </div>
 
-        <DialogFooter className="flex-shrink-0">
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

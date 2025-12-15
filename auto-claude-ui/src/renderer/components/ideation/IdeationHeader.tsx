@@ -32,7 +32,7 @@ export function IdeationHeader({
   canAddMore
 }: IdeationHeaderProps) {
   return (
-    <div className="flex-shrink-0 border-b border-border p-4 bg-card/50">
+    <div className="shrink-0 border-b border-border p-4 bg-card/50">
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">

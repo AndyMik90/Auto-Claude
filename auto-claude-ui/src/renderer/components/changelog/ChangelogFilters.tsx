@@ -82,7 +82,7 @@ export function ChangelogFilters({
   const localBranches = branches.filter((b) => !b.isRemote);
 
   return (
-    <div className="w-80 flex-shrink-0 border-r border-border overflow-y-auto">
+    <div className="w-80 shrink-0 border-r border-border overflow-y-auto">
       <div className="p-6 space-y-6">
         {/* Source Mode Selection */}
         <div className="space-y-3">

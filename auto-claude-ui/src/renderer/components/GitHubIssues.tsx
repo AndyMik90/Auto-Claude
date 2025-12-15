@@ -183,7 +183,7 @@ export function GitHubIssues({ onOpenSettings }: GitHubIssuesProps) {
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-border">
+      <div className="shrink-0 p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-muted">

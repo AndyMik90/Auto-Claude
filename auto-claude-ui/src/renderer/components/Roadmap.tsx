@@ -136,7 +136,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-border p-4 bg-card/50">
+      <div className="shrink-0 border-b border-border p-4 bg-card/50">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -204,7 +204,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="flex-shrink-0 mx-4 mt-4">
+          <TabsList className="shrink-0 mx-4 mt-4">
             <TabsTrigger value="phases">Phases</TabsTrigger>
             <TabsTrigger value="features">All Features</TabsTrigger>
             <TabsTrigger value="priorities">By Priority</TabsTrigger>
@@ -514,7 +514,7 @@ function FeatureDetailPanel({ feature, onClose, onConvertToSpec, onGoToTask }: F
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-card border-l border-border shadow-lg flex flex-col z-50">
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-border">
+      <div className="shrink-0 p-4 border-b border-border">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
@@ -600,7 +600,7 @@ function FeatureDetailPanel({ feature, onClose, onConvertToSpec, onGoToTask }: F
             <ul className="space-y-1">
               {feature.acceptanceCriteria.map((criterion, i) => (
                 <li key={i} className="text-sm flex items-start gap-2">
-                  <Circle className="h-3 w-3 mt-1.5 flex-shrink-0" />
+                  <Circle className="h-3 w-3 mt-1.5 shrink-0" />
                   <span>{criterion}</span>
                 </li>
               ))}
@@ -628,14 +628,14 @@ function FeatureDetailPanel({ feature, onClose, onConvertToSpec, onGoToTask }: F
 
       {/* Actions */}
       {feature.linkedSpecId ? (
-        <div className="flex-shrink-0 p-4 border-t border-border">
+        <div className="shrink-0 p-4 border-t border-border">
           <Button className="w-full" onClick={() => onGoToTask(feature.linkedSpecId!)}>
             <ExternalLink className="h-4 w-4 mr-2" />
             Go to Task
           </Button>
         </div>
       ) : feature.status !== 'done' && (
-        <div className="flex-shrink-0 p-4 border-t border-border">
+        <div className="shrink-0 p-4 border-t border-border">
           <Button className="w-full" onClick={() => onConvertToSpec(feature)}>
             <Zap className="h-4 w-4 mr-2" />
             Convert to Auto-Build Task

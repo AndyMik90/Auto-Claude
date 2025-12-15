@@ -287,7 +287,7 @@ export function LinearTaskImportModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Download className="h-5 w-5" />
             Import Linear Tasks
@@ -300,7 +300,7 @@ export function LinearTaskImportModal({
         {/* Import Success Banner */}
         {importResult?.success && (
           <div className="rounded-lg bg-success/10 border border-success/30 p-4 flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0" />
+            <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-success">
                 Successfully imported {importResult.imported} task{importResult.imported !== 1 ? 's' : ''}
@@ -322,7 +322,7 @@ export function LinearTaskImportModal({
         {/* Error Banner */}
         {error && (
           <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
             <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
@@ -330,7 +330,7 @@ export function LinearTaskImportModal({
         {!importResult?.success && (
           <>
             {/* Team and Project Selection */}
-            <div className="flex gap-4 flex-shrink-0">
+            <div className="flex gap-4 shrink-0">
               <div className="flex-1 space-y-2">
                 <Label className="text-sm font-medium text-foreground">Team</Label>
                 <Select
@@ -374,7 +374,7 @@ export function LinearTaskImportModal({
             </div>
 
             {/* Search and Filter Bar */}
-            <div className="flex gap-3 items-center flex-shrink-0">
+            <div className="flex gap-3 items-center shrink-0">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -403,7 +403,7 @@ export function LinearTaskImportModal({
 
             {/* Selection Controls */}
             {issues.length > 0 && (
-              <div className="flex items-center justify-between py-2 border-b border-border flex-shrink-0">
+              <div className="flex items-center justify-between py-2 border-b border-border shrink-0">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={isAllSelected ? deselectAll : selectAll}
@@ -582,7 +582,7 @@ export function LinearTaskImportModal({
           </>
         )}
 
-        <DialogFooter className="flex-shrink-0">
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             {importResult?.success ? 'Done' : 'Cancel'}
           </Button>

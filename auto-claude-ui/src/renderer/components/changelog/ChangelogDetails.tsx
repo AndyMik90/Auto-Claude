@@ -267,7 +267,7 @@ export function Step2ConfigureGenerate({
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* Left Panel - Configuration */}
-      <div className="w-80 flex-shrink-0 border-r border-border overflow-y-auto">
+      <div className="w-80 shrink-0 border-r border-border overflow-y-auto">
         <div className="p-6 space-y-6">
           {/* Back button and task summary */}
           <div className="space-y-4">

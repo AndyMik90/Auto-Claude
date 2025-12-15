@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Run lint-staged in auto-claude-ui if there are staged files there
+if git diff --cached --name-only | grep -q "^auto-claude-ui/"; then
+  cd auto-claude-ui && pnpm exec lint-staged
+fi

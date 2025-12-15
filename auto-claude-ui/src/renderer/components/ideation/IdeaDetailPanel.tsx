@@ -38,7 +38,7 @@ export function IdeaDetailPanel({ idea, onClose, onConvert, onGoToTask, onDismis
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-card border-l border-border shadow-lg flex flex-col z-50">
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-border">
+      <div className="shrink-0 p-4 border-b border-border">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
@@ -88,7 +88,7 @@ export function IdeaDetailPanel({ idea, onClose, onConvert, onGoToTask, onDismis
 
       {/* Actions */}
       {!isDismissed && !isConverted && (
-        <div className="flex-shrink-0 p-4 border-t border-border space-y-2">
+        <div className="shrink-0 p-4 border-t border-border space-y-2">
           <Button className="w-full" onClick={() => onConvert(idea)}>
             <Play className="h-4 w-4 mr-2" />
             Convert to Auto-Build Task
@@ -104,7 +104,7 @@ export function IdeaDetailPanel({ idea, onClose, onConvert, onGoToTask, onDismis
         </div>
       )}
       {isConverted && idea.taskId && onGoToTask && (
-        <div className="flex-shrink-0 p-4 border-t border-border">
+        <div className="shrink-0 p-4 border-t border-border">
           <Button className="w-full" onClick={() => onGoToTask(idea.taskId!)}>
             <ExternalLink className="h-4 w-4 mr-2" />
             Go to Task

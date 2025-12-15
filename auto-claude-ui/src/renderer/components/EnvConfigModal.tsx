@@ -158,7 +158,7 @@ export function EnvConfigModal({
         {!isChecking && success && (
           <div className="py-4">
             <div className="rounded-lg bg-success/10 border border-success/30 p-4 flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0" />
+              <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-success">
                   Token configured successfully
@@ -177,7 +177,7 @@ export function EnvConfigModal({
             {/* Error banner */}
             {error && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                 <p className="text-sm text-destructive">{error}</p>
               </div>
             )}
@@ -185,7 +185,7 @@ export function EnvConfigModal({
             {/* Info about getting a token */}
             <div className="rounded-lg bg-info/10 border border-info/30 p-4">
               <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
+                <Info className="h-5 w-5 text-info shrink-0 mt-0.5" />
                 <div className="flex-1 space-y-2">
                   <p className="text-sm text-foreground font-medium">
                     How to get a Claude Code OAuth token:

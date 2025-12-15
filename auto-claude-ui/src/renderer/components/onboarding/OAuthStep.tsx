@@ -146,7 +146,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
             <Card className="border border-success/30 bg-success/10">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <CheckCircle2 className="h-6 w-6 text-success flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 className="h-6 w-6 text-success shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <h3 className="text-lg font-medium text-success">
                       {hasExistingToken && !token
@@ -182,7 +182,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
               <Card className="border border-destructive/30 bg-destructive/10">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                     <p className="text-sm text-destructive">{error}</p>
                   </div>
                 </CardContent>
@@ -193,7 +193,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
             <Card className="border border-info/30 bg-info/10">
               <CardContent className="p-5">
                 <div className="flex items-start gap-4">
-                  <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
+                  <Info className="h-5 w-5 text-info shrink-0 mt-0.5" />
                   <div className="flex-1 space-y-3">
                     <p className="text-sm font-medium text-foreground">
                       How to get a Claude Code OAuth token:
