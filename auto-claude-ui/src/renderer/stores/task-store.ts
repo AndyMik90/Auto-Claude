@@ -165,23 +165,18 @@ export const useTaskStore = create<TaskState>((set, get) => ({
  * Load tasks for a project
  */
 export async function loadTasks(projectId: string): Promise<void> {
-  console.log('[task-store] loadTasks called with projectId:', projectId);
   const store = useTaskStore.getState();
   store.setLoading(true);
   store.setError(null);
 
   try {
     const result = await window.electronAPI.getTasks(projectId);
-    console.log('[task-store] getTasks result:', result.success, 'data length:', result.data?.length);
     if (result.success && result.data) {
       store.setTasks(result.data);
-      console.log('[task-store] Tasks set, store now has:', store.tasks.length, 'tasks');
     } else {
-      console.error('[task-store] Failed to load tasks:', result.error);
       store.setError(result.error || 'Failed to load tasks');
     }
   } catch (error) {
-    console.error('[task-store] Error loading tasks:', error);
     store.setError(error instanceof Error ? error.message : 'Unknown error');
   } finally {
     store.setLoading(false);

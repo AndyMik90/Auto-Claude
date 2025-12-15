@@ -20,7 +20,6 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
 import { TaskCreationWizard } from './components/TaskCreationWizard';
 import { AppSettingsDialog } from './components/AppSettings';
-import { ProjectSettings } from './components/project-settings';
 import { TerminalGrid } from './components/TerminalGrid';
 import { Roadmap } from './components/Roadmap';
 import { Context } from './components/Context';
@@ -53,7 +52,6 @@ export function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
-  const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const [activeView, setActiveView] = useState<SidebarView>('kanban');
 
   // Initialize dialog state
@@ -99,9 +97,7 @@ export function App() {
 
     // Try to restore saved sessions for the new project
     if (selectedProject?.path) {
-      restoreTerminalSessions(selectedProject.path).then(() => {
-        console.log('[App] Session restoration complete for project:', selectedProject.name);
-      }).catch((err) => {
+      restoreTerminalSessions(selectedProject.path).catch((err) => {
         console.error('[App] Failed to restore sessions:', err);
       });
     }
@@ -232,12 +228,12 @@ export function App() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setIsProjectSettingsOpen(true)}
+                      onClick={() => setIsSettingsDialogOpen(true)}
                     >
                       <Settings2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Project Settings</TooltipContent>
+                  <TooltipContent>Settings</TooltipContent>
                 </Tooltip>
               </div>
             )}
@@ -274,7 +270,7 @@ export function App() {
                   <Insights projectId={selectedProjectId} />
                 )}
                 {activeView === 'github-issues' && selectedProjectId && (
-                  <GitHubIssues onOpenSettings={() => setIsProjectSettingsOpen(true)} />
+                  <GitHubIssues onOpenSettings={() => setIsSettingsDialogOpen(true)} />
                 )}
                 {activeView === 'changelog' && selectedProjectId && (
                   <Changelog />
@@ -322,14 +318,6 @@ export function App() {
           open={isSettingsDialogOpen}
           onOpenChange={setIsSettingsDialogOpen}
         />
-
-        {selectedProject && (
-          <ProjectSettings
-            project={selectedProject}
-            open={isProjectSettingsOpen}
-            onOpenChange={setIsProjectSettingsOpen}
-          />
-        )}
 
         {/* Initialize Auto Claude Dialog */}
         <Dialog open={showInitDialog} onOpenChange={setShowInitDialog}>

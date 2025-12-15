@@ -233,11 +233,8 @@ export async function restoreTerminalSessions(projectPath: string): Promise<void
   try {
     const result = await window.electronAPI.getTerminalSessions(projectPath);
     if (!result.success || !result.data || result.data.length === 0) {
-      console.log('[TerminalStore] No saved sessions to restore');
       return;
     }
-
-    console.log('[TerminalStore] Found', result.data.length, 'saved sessions to restore');
 
     // Add terminals to the store (they'll be created in the TerminalGrid component)
     for (const session of result.data) {

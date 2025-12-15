@@ -338,6 +338,10 @@ export class AgentQueueManager {
     // Get Python path from process manager (uses venv if configured)
     const pythonPath = this.processManager.getPythonPath();
 
+    console.log('[Roadmap] Starting roadmap process with args:', args);
+    console.log('[Roadmap] CWD:', cwd);
+    console.log('[Roadmap] Python path:', pythonPath);
+
     const childProcess = spawn(pythonPath, args, {
       cwd,
       env: {
@@ -352,6 +356,7 @@ export class AgentQueueManager {
       taskId: projectId,
       process: childProcess,
       startedAt: new Date(),
+      projectPath, // Store project path for loading roadmap on completion
       spawnId
     });
 
@@ -361,11 +366,26 @@ export class AgentQueueManager {
     // Collect output for rate limit detection
     let allRoadmapOutput = '';
 
+    // Helper to emit logs - split multi-line output into individual log lines
+    const emitLogs = (log: string) => {
+      const lines = log.split('\n').filter(line => line.trim().length > 0);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.length > 0) {
+          console.log('[Roadmap]', trimmed);
+          this.emitter.emit('roadmap-log', projectId, trimmed);
+        }
+      }
+    };
+
     // Handle stdout
     childProcess.stdout?.on('data', (data: Buffer) => {
       const log = data.toString();
       // Collect output for rate limit detection (keep last 10KB)
       allRoadmapOutput = (allRoadmapOutput + log).slice(-10000);
+
+      // Emit all log lines for debugging
+      emitLogs(log);
 
       // Parse progress using AgentEvents
       const progressUpdate = this.events.parseRoadmapProgress(log, progressPhase, progressPercent);
@@ -385,6 +405,8 @@ export class AgentQueueManager {
       const log = data.toString();
       // Collect stderr for rate limit detection too
       allRoadmapOutput = (allRoadmapOutput + log).slice(-10000);
+      console.error('[Roadmap STDERR]', log);
+      emitLogs(log);
       this.emitter.emit('roadmap-progress', projectId, {
         phase: progressPhase,
         progress: progressPercent,
@@ -394,6 +416,11 @@ export class AgentQueueManager {
 
     // Handle process exit
     childProcess.on('exit', (code: number | null) => {
+      console.log('[Roadmap] Process exited with code:', code);
+
+      // Get the stored project path before deleting from map
+      const processInfo = this.state.getProcess(projectId);
+      const storedProjectPath = processInfo?.projectPath;
       this.state.deleteProcess(projectId);
 
       // Check for rate limit if process failed
@@ -408,18 +435,43 @@ export class AgentQueueManager {
       }
 
       if (code === 0) {
+        console.log('[Roadmap] Roadmap generation completed successfully');
         this.emitter.emit('roadmap-progress', projectId, {
           phase: 'complete',
           progress: 100,
           message: 'Roadmap generation complete'
         });
+
+        // Load and emit the complete roadmap
+        if (storedProjectPath) {
+          try {
+            const roadmapFilePath = path.join(
+              storedProjectPath,
+              '.auto-claude',
+              'roadmap',
+              'roadmap.json'
+            );
+            if (existsSync(roadmapFilePath)) {
+              const content = readFileSync(roadmapFilePath, 'utf-8');
+              const roadmap = JSON.parse(content);
+              console.log('[Roadmap] Emitting roadmap-complete with roadmap data');
+              this.emitter.emit('roadmap-complete', projectId, roadmap);
+            } else {
+              console.warn('[Roadmap] roadmap.json not found at:', roadmapFilePath);
+            }
+          } catch (err) {
+            console.error('[Roadmap] Failed to load roadmap:', err);
+          }
+        }
       } else {
+        console.error('[Roadmap] Roadmap generation failed with exit code:', code);
         this.emitter.emit('roadmap-error', projectId, `Roadmap generation failed with exit code ${code}`);
       }
     });
 
     // Handle process error
     childProcess.on('error', (err: Error) => {
+      console.error('[Roadmap] Process error:', err.message);
       this.state.deleteProcess(projectId);
       this.emitter.emit('roadmap-error', projectId, err.message);
     });
