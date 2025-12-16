@@ -19,13 +19,14 @@ import importlib.util
 import sys
 from pathlib import Path
 
-# Import merge_existing_build from workspace.py (which coexists with this package)
+# Import merge functions from workspace.py (which coexists with this package)
 # We use importlib to explicitly load workspace.py since Python prefers the package
 _workspace_file = Path(__file__).parent.parent / "workspace.py"
 _spec = importlib.util.spec_from_file_location("workspace_module", _workspace_file)
 _workspace_module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_workspace_module)
 merge_existing_build = _workspace_module.merge_existing_build
+_run_parallel_merges = _workspace_module._run_parallel_merges
 
 # Models and Enums
 from .models import (
@@ -46,11 +47,13 @@ from .git_utils import (
     get_changed_files_from_branch,
     is_process_running,
     is_binary_file,
+    is_lock_file,
     validate_merged_syntax,
     create_conflict_file_with_git,
     # Export private names for backward compatibility
     _is_process_running,
     _is_binary_file,
+    _is_lock_file,
     _validate_merged_syntax,
     _get_file_content_from_ref,
     _get_changed_files_from_branch,
@@ -59,6 +62,7 @@ from .git_utils import (
     MAX_FILE_LINES_FOR_AI,
     MAX_PARALLEL_AI_MERGES,
     BINARY_EXTENSIONS,
+    LOCK_FILES,
     MERGE_LOCK_TIMEOUT,
 )
 

@@ -82,11 +82,13 @@ from workspace.git_utils import (
     get_changed_files_from_branch as _get_changed_files_from_branch,
     is_process_running as _is_process_running,
     is_binary_file as _is_binary_file,
+    is_lock_file as _is_lock_file,
     validate_merged_syntax as _validate_merged_syntax,
     create_conflict_file_with_git as _create_conflict_file_with_git,
     MAX_FILE_LINES_FOR_AI,
     MAX_PARALLEL_AI_MERGES,
     BINARY_EXTENSIONS,
+    LOCK_FILES,
     MERGE_LOCK_TIMEOUT,
 )
 
@@ -664,15 +666,22 @@ def _resolve_git_conflicts_with_ai(
                 simple_merges.append((file_path, None))  # None = delete
                 debug(MODULE, f"  {file_path}: deleted (no AI needed)")
             else:
-                # File exists in both - needs AI merge
-                files_needing_ai_merge.append(ParallelMergeTask(
-                    file_path=file_path,
-                    main_content=main_content,
-                    worktree_content=worktree_content,
-                    base_content=base_content,
-                    spec_name=spec_name,
-                ))
-                debug(MODULE, f"  {file_path}: needs AI merge")
+                # File exists in both - check if it's a lock file
+                if _is_lock_file(file_path):
+                    # Lock files should never go through AI - just take worktree version
+                    # User can run package manager install to regenerate if needed
+                    simple_merges.append((file_path, worktree_content))
+                    debug(MODULE, f"  {file_path}: lock file (taking worktree version)")
+                else:
+                    # Regular file - needs AI merge
+                    files_needing_ai_merge.append(ParallelMergeTask(
+                        file_path=file_path,
+                        main_content=main_content,
+                        worktree_content=worktree_content,
+                        base_content=base_content,
+                        spec_name=spec_name,
+                    ))
+                    debug(MODULE, f"  {file_path}: needs AI merge")
 
         except Exception as e:
             print(error(f"    ✗ Failed to categorize {file_path}: {e}"))
@@ -693,7 +702,11 @@ def _resolve_git_conflicts_with_ai(
                     target_path.write_text(merged_content, encoding="utf-8")
                     subprocess.run(["git", "add", file_path], cwd=project_dir, capture_output=True)
                     resolved_files.append(file_path)
-                    print(success(f"    ✓ {file_path} (new file)"))
+                    # Determine the type for display
+                    if _is_lock_file(file_path):
+                        print(success(f"    ✓ {file_path} (lock file - took worktree version)"))
+                    else:
+                        print(success(f"    ✓ {file_path} (new file)"))
                 else:
                     # Delete the file
                     target_path = project_dir / file_path
@@ -758,14 +771,8 @@ def _resolve_git_conflicts_with_ai(
         if remaining_conflicts:
             print(muted(f"    Failed: {len(remaining_conflicts)}"))
 
-    if remaining_conflicts:
-        return {
-            "success": False,
-            "resolved_files": resolved_files,
-            "remaining_conflicts": remaining_conflicts,
-        }
-
-    # All conflicts resolved - now merge remaining non-conflicting files
+    # ALWAYS process non-conflicting files, even if some conflicts failed
+    # This ensures we get as much of the build as possible
     # (New files were already copied at the start)
     print(muted("  Merging remaining files..."))
 
@@ -799,17 +806,30 @@ def _resolve_git_conflicts_with_ai(
     if resolved_files:
         _record_merge_completion(project_dir, spec_name, resolved_files)
 
-    return {
-        "success": True,
+    # Build result - partial success if some files failed but we got others
+    result = {
+        "success": len(remaining_conflicts) == 0,
         "resolved_files": resolved_files,
         "stats": {
             "files_merged": len(resolved_files),
-            "conflicts_resolved": len(conflicting_files),
+            "conflicts_resolved": len(conflicting_files) - len(remaining_conflicts),
             "ai_assisted": ai_merged_count,
             "auto_merged": auto_merged_count,
             "parallel_ai_merges": len(files_needing_ai_merge),
         },
     }
+
+    # Add remaining conflicts if any (for UI to show what needs manual attention)
+    if remaining_conflicts:
+        result["remaining_conflicts"] = remaining_conflicts
+        result["partial_success"] = len(resolved_files) > 0
+        print()
+        print(warning(f"  ⚠ {len(remaining_conflicts)} file(s) could not be auto-merged:"))
+        for conflict in remaining_conflicts:
+            print(muted(f"    - {conflict['file']}: {conflict['reason']}"))
+        print(muted("  These files may need manual review."))
+
+    return result
 
 
 def _get_file_content_from_ref(project_dir: Path, ref: str, file_path: str) -> Optional[str]:

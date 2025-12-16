@@ -15,6 +15,22 @@ from typing import Optional
 MAX_FILE_LINES_FOR_AI = 5000  # Skip AI for files larger than this
 MAX_PARALLEL_AI_MERGES = 5  # Limit concurrent AI merge operations
 
+# Lock files that should NEVER go through AI merge
+# These are auto-generated and should just take the worktree version
+# then regenerate via package manager install
+LOCK_FILES = {
+    'package-lock.json',
+    'pnpm-lock.yaml',
+    'yarn.lock',
+    'bun.lockb',
+    'Pipfile.lock',
+    'poetry.lock',
+    'Cargo.lock',
+    'Gemfile.lock',
+    'composer.lock',
+    'go.sum',
+}
+
 BINARY_EXTENSIONS = {
     '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.bmp', '.svg',
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
@@ -118,6 +134,16 @@ def is_process_running(pid: int) -> bool:
 def is_binary_file(file_path: str) -> bool:
     """Check if a file is binary based on extension."""
     return Path(file_path).suffix.lower() in BINARY_EXTENSIONS
+
+
+def is_lock_file(file_path: str) -> bool:
+    """
+    Check if a file is a package manager lock file.
+
+    Lock files should never go through AI merge - they're auto-generated
+    and should just take the worktree version, then regenerate via install.
+    """
+    return Path(file_path).name in LOCK_FILES
 
 
 def validate_merged_syntax(file_path: str, content: str, project_dir: Path) -> tuple[bool, str]:
@@ -277,6 +303,7 @@ def create_conflict_file_with_git(
 # Export the _is_process_running function for backward compatibility
 _is_process_running = is_process_running
 _is_binary_file = is_binary_file
+_is_lock_file = is_lock_file
 _validate_merged_syntax = validate_merged_syntax
 _get_file_content_from_ref = get_file_content_from_ref
 _get_changed_files_from_branch = get_changed_files_from_branch
