@@ -182,6 +182,25 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     });
   }, []);
 
+  // Restore merge preview from sessionStorage on mount (survives HMR reloads)
+  useEffect(() => {
+    const storageKey = `mergePreview-${task.id}`;
+    const stored = sessionStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        const previewData = JSON.parse(stored);
+        console.log('%c[useTaskDetail] Restored merge preview from sessionStorage:', 'color: magenta;', previewData);
+        setMergePreview(previewData);
+        if (previewData.conflicts?.length > 0) {
+          setShowConflictDialog(true);
+        }
+      } catch (e) {
+        console.warn('[useTaskDetail] Failed to parse stored merge preview');
+        sessionStorage.removeItem(storageKey);
+      }
+    }
+  }, [task.id]);
+
   // Load merge preview (conflict detection)
   const loadMergePreview = useCallback(async () => {
     console.log('%c[useTaskDetail] loadMergePreview called for task:', 'color: cyan; font-weight: bold;', task.id);
@@ -197,6 +216,8 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
         console.log('  - conflicts:', previewData.conflicts);
         console.log('  - summary:', previewData.summary);
         setMergePreview(previewData);
+        // Persist to sessionStorage to survive HMR reloads
+        sessionStorage.setItem(`mergePreview-${task.id}`, JSON.stringify(previewData));
         // Show conflict dialog if there are conflicts that need attention
         if (previewData.conflicts.length > 0) {
           setShowConflictDialog(true);

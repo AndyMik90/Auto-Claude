@@ -44,8 +44,18 @@ export default defineConfig({
     },
     server: {
       watch: {
-        // Ignore worktrees directory to prevent HMR conflicts during merge operations
-        ignored: ['**/.worktrees/**', '**/node_modules/**', '**/.git/**']
+        // Ignore directories to prevent HMR conflicts during merge operations
+        // Using absolute paths and broader patterns
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.worktrees/**',
+          '**/.auto-claude/**',
+          '**/out/**',
+          // Ignore the parent autonomous-coding directory's worktrees
+          resolve(__dirname, '../.worktrees/**'),
+          resolve(__dirname, '../.auto-claude/**'),
+        ]
       }
     }
   }
