@@ -21,11 +21,13 @@ Terminology mapping (technical -> user-friendly):
 - working directory -> "your project"
 """
 
+import json
 import shutil
 import subprocess
 import sys
 from enum import Enum
 from pathlib import Path
+from typing import Optional
 
 from ui import (
     Icons,
@@ -43,6 +45,13 @@ from ui import (
     warning,
 )
 from worktree import WorktreeInfo, WorktreeManager
+
+# Import merge system
+from merge import (
+    MergeOrchestrator,
+    MergeDecision,
+    ConflictSeverity,
+)
 
 
 class WorkspaceMode(Enum):
@@ -554,17 +563,28 @@ def handle_workspace_choice(
 
 
 def merge_existing_build(
-    project_dir: Path, spec_name: str, no_commit: bool = False
+    project_dir: Path,
+    spec_name: str,
+    no_commit: bool = False,
+    use_smart_merge: bool = True,
 ) -> bool:
     """
-    Merge an existing build into the project.
+    Merge an existing build into the project using intent-aware merge.
 
     Called when user runs: python auto-claude/run.py --spec X --merge
+
+    This uses the MergeOrchestrator to:
+    1. Analyze semantic changes from the task
+    2. Detect potential conflicts with main branch
+    3. Auto-merge compatible changes
+    4. Use AI for ambiguous conflicts (if enabled)
+    5. Fall back to git merge for remaining changes
 
     Args:
         project_dir: The project directory
         spec_name: Name of the spec
         no_commit: If True, merge changes but don't commit (stage only for review in IDE)
+        use_smart_merge: If True, use intent-aware merge (default True)
 
     Returns:
         True if merge succeeded
@@ -594,10 +614,33 @@ def merge_existing_build(
     print(box(content, width=60, style="heavy"))
 
     manager = WorktreeManager(project_dir)
-
     show_build_summary(manager, spec_name)
     print()
 
+    # Try smart merge first if enabled
+    if use_smart_merge:
+        smart_result = _try_smart_merge(
+            project_dir, spec_name, worktree_path, manager
+        )
+
+        if smart_result is not None:
+            # Smart merge handled it (success or identified conflicts)
+            if smart_result.get("success"):
+                # Smart merge succeeded, now do git merge
+                success_result = manager.merge_worktree(
+                    spec_name, delete_after=True, no_commit=no_commit
+                )
+                if success_result:
+                    _print_merge_success(no_commit, smart_result.get("stats"))
+                    return True
+            elif smart_result.get("conflicts"):
+                # Has conflicts that need resolution
+                _print_conflict_info(smart_result)
+                print()
+                print(muted("Attempting git merge anyway..."))
+                print()
+
+    # Fall back to standard git merge
     success_result = manager.merge_worktree(
         spec_name, delete_after=True, no_commit=no_commit
     )
@@ -620,6 +663,120 @@ def merge_existing_build(
         print_status("There was a conflict merging the changes.", "error")
         print(muted("You may need to merge manually."))
         return False
+
+
+def _try_smart_merge(
+    project_dir: Path,
+    spec_name: str,
+    worktree_path: Path,
+    manager: WorktreeManager,
+) -> Optional[dict]:
+    """
+    Try to use the intent-aware merge system.
+
+    Returns:
+        Dict with results, or None if smart merge not applicable
+    """
+    try:
+        print(muted("  Analyzing changes with intent-aware merge..."))
+
+        # Initialize the orchestrator
+        orchestrator = MergeOrchestrator(
+            project_dir,
+            enable_ai=True,  # Enable AI for ambiguous conflicts
+            dry_run=False,
+        )
+
+        # Refresh evolution data from the worktree
+        orchestrator.evolution_tracker.refresh_from_git(spec_name, worktree_path)
+
+        # Preview what merge would look like
+        preview = orchestrator.preview_merge([spec_name])
+
+        files_to_merge = len(preview.get("files_to_merge", []))
+        conflicts = preview.get("conflicts", [])
+        auto_mergeable = preview.get("summary", {}).get("auto_mergeable", 0)
+
+        print(muted(f"  Found {files_to_merge} files to merge"))
+
+        if conflicts:
+            print(muted(f"  Detected {len(conflicts)} potential conflict(s)"))
+            print(muted(f"  Auto-mergeable: {auto_mergeable}/{len(conflicts)}"))
+
+            # Check if any conflicts need human review
+            needs_human = [
+                c for c in conflicts
+                if not c.get("can_auto_merge")
+            ]
+
+            if needs_human:
+                return {
+                    "success": False,
+                    "conflicts": needs_human,
+                    "preview": preview,
+                }
+
+        # All conflicts can be auto-merged or no conflicts
+        print(muted("  All changes compatible, proceeding with merge..."))
+        return {
+            "success": True,
+            "stats": {
+                "files_merged": files_to_merge,
+                "auto_resolved": auto_mergeable,
+            },
+        }
+
+    except Exception as e:
+        # If smart merge fails, fall back to git
+        print(muted(f"  Smart merge unavailable: {e}"))
+        return None
+
+
+def _print_merge_success(no_commit: bool, stats: Optional[dict] = None) -> None:
+    """Print success message after merge."""
+    print()
+    if stats:
+        print(muted(f"  Files merged: {stats.get('files_merged', 0)}"))
+        if stats.get('auto_resolved'):
+            print(muted(f"  Conflicts auto-resolved: {stats.get('auto_resolved', 0)}"))
+    print()
+
+    if no_commit:
+        print_status("Changes are staged in your working directory.", "success")
+        print()
+        print("Review the changes in your IDE, then commit:")
+        print(highlight("  git commit -m 'your commit message'"))
+        print()
+        print("Or discard if not satisfied:")
+        print(muted("  git reset --hard HEAD"))
+    else:
+        print_status("Your feature has been added to your project.", "success")
+
+
+def _print_conflict_info(result: dict) -> None:
+    """Print information about detected conflicts."""
+    conflicts = result.get("conflicts", [])
+
+    print()
+    print_status(f"Detected {len(conflicts)} conflict(s) that need attention:", "warning")
+    print()
+
+    for i, conflict in enumerate(conflicts[:5], 1):  # Show first 5
+        file_path = conflict.get("file", "unknown")
+        location = conflict.get("location", "")
+        reason = conflict.get("reason", "")
+        severity = conflict.get("severity", "unknown")
+
+        print(f"  {i}. {highlight(file_path)}")
+        if location:
+            print(f"     Location: {muted(location)}")
+        if reason:
+            print(f"     Reason: {muted(reason)}")
+        print(f"     Severity: {severity}")
+        print()
+
+    if len(conflicts) > 5:
+        print(muted(f"  ... and {len(conflicts) - 5} more"))
 
 
 def review_existing_build(project_dir: Path, spec_name: str) -> bool:

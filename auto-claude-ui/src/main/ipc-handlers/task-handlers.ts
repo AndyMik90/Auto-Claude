@@ -1248,7 +1248,16 @@ export function registerTaskHandlers(
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_MERGE,
     async (_, taskId: string, options?: { noCommit?: boolean }): Promise<IPCResult<import('../../shared/types').WorktreeMergeResult>> => {
+      // Always log merge operations for debugging
+      const DEBUG_MERGE = true; // TODO: Change back to: process.env.DEBUG_MERGE === 'true' || process.env.DEBUG === 'true';
+      const debug = (...args: unknown[]) => {
+        if (DEBUG_MERGE) console.log('[MERGE DEBUG]', ...args);
+      };
+
       try {
+        console.log('[MERGE] Handler called with taskId:', taskId, 'options:', options);
+        debug('Starting merge for taskId:', taskId, 'options:', options);
+
         // Ensure Python environment is ready
         if (!pythonEnvManager.isEnvReady()) {
           const autoBuildSource = getEffectiveSourcePath();
@@ -1264,8 +1273,11 @@ export function registerTaskHandlers(
 
         const { task, project } = findTaskAndProject(taskId);
         if (!task || !project) {
+          debug('Task or project not found');
           return { success: false, error: 'Task not found' };
         }
+
+        debug('Found task:', task.specId, 'project:', project.path);
 
         // Use run.py --merge to handle the merge
         const sourcePath = getEffectiveSourcePath();
@@ -1277,7 +1289,24 @@ export function registerTaskHandlers(
         const specDir = path.join(project.path, project.autoBuildPath || '.auto-claude', 'specs', task.specId);
 
         if (!existsSync(specDir)) {
+          debug('Spec directory not found:', specDir);
           return { success: false, error: 'Spec directory not found' };
+        }
+
+        // Check worktree exists before merge
+        const worktreePath = path.join(project.path, '.worktrees', task.specId);
+        debug('Worktree path:', worktreePath, 'exists:', existsSync(worktreePath));
+
+        // Get git status before merge
+        if (DEBUG_MERGE) {
+          try {
+            const gitStatusBefore = execSync('git status --short', { cwd: project.path, encoding: 'utf-8' });
+            debug('Git status BEFORE merge in main project:\n', gitStatusBefore || '(clean)');
+            const gitBranch = execSync('git branch --show-current', { cwd: project.path, encoding: 'utf-8' }).trim();
+            debug('Current branch:', gitBranch);
+          } catch (e) {
+            debug('Failed to get git status before:', e);
+          }
         }
 
         const args = [
@@ -1292,8 +1321,11 @@ export function registerTaskHandlers(
           args.push('--no-commit');
         }
 
+        const pythonPath = pythonEnvManager.getPythonPath() || 'python3';
+        debug('Running command:', pythonPath, args.join(' '));
+        debug('Working directory:', sourcePath);
+
         return new Promise((resolve) => {
-          const pythonPath = pythonEnvManager.getPythonPath() || 'python3';
           const mergeProcess = spawn(pythonPath, args, {
             cwd: sourcePath,
             env: {
@@ -1306,24 +1338,57 @@ export function registerTaskHandlers(
           let stderr = '';
 
           mergeProcess.stdout.on('data', (data: Buffer) => {
-            stdout += data.toString();
+            const chunk = data.toString();
+            stdout += chunk;
+            debug('STDOUT:', chunk);
           });
 
           mergeProcess.stderr.on('data', (data: Buffer) => {
-            stderr += data.toString();
+            const chunk = data.toString();
+            stderr += chunk;
+            debug('STDERR:', chunk);
           });
 
           mergeProcess.on('close', (code: number) => {
+            debug('Process exited with code:', code);
+            debug('Full stdout:', stdout);
+            debug('Full stderr:', stderr);
+
+            // Get git status after merge
+            if (DEBUG_MERGE) {
+              try {
+                const gitStatusAfter = execSync('git status --short', { cwd: project.path, encoding: 'utf-8' });
+                debug('Git status AFTER merge in main project:\n', gitStatusAfter || '(clean)');
+                const gitDiffStaged = execSync('git diff --staged --stat', { cwd: project.path, encoding: 'utf-8' });
+                debug('Staged changes:\n', gitDiffStaged || '(none)');
+              } catch (e) {
+                debug('Failed to get git status after:', e);
+              }
+            }
+
             if (code === 0) {
+              const isStageOnly = options?.noCommit === true;
+
+              // For stage-only: keep in human_review so user commits manually
+              // For full merge: mark as done
+              const newStatus = isStageOnly ? 'human_review' : 'done';
+              const planStatus = isStageOnly ? 'review' : 'completed';
+
+              debug('Merge successful. isStageOnly:', isStageOnly, 'newStatus:', newStatus);
+
               // Persist the status change to implementation_plan.json
               const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
               try {
                 if (existsSync(planPath)) {
                   const planContent = readFileSync(planPath, 'utf-8');
                   const plan = JSON.parse(planContent);
-                  plan.status = 'done';
-                  plan.planStatus = 'completed';
+                  plan.status = newStatus;
+                  plan.planStatus = planStatus;
                   plan.updated_at = new Date().toISOString();
+                  if (isStageOnly) {
+                    plan.stagedAt = new Date().toISOString();
+                    plan.stagedInMainProject = true;
+                  }
                   writeFileSync(planPath, JSON.stringify(plan, null, 2));
                 }
               } catch (persistError) {
@@ -1332,19 +1397,26 @@ export function registerTaskHandlers(
 
               const mainWindow = getMainWindow();
               if (mainWindow) {
-                mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'done');
+                mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, newStatus as TaskStatus);
               }
+
+              const message = isStageOnly
+                ? 'Changes staged in main project. Review with git status and commit when ready.'
+                : 'Changes merged successfully';
 
               resolve({
                 success: true,
                 data: {
                   success: true,
-                  message: 'Changes merged successfully'
+                  message,
+                  staged: isStageOnly,
+                  projectPath: isStageOnly ? project.path : undefined
                 }
               });
             } else {
               // Check if there were conflicts
               const hasConflicts = stdout.includes('conflict') || stderr.includes('conflict');
+              debug('Merge failed. hasConflicts:', hasConflicts);
 
               resolve({
                 success: true,
@@ -1358,6 +1430,7 @@ export function registerTaskHandlers(
           });
 
           mergeProcess.on('error', (err: Error) => {
+            console.error('[MERGE] Process spawn error:', err);
             resolve({
               success: false,
               error: `Failed to run merge: ${err.message}`
@@ -1365,7 +1438,7 @@ export function registerTaskHandlers(
           });
         });
       } catch (error) {
-        console.error('Failed to merge worktree:', error);
+        console.error('[MERGE] Exception in merge handler:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to merge worktree'
@@ -1643,6 +1716,138 @@ export function registerTaskHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to stop watching'
+        };
+      }
+    }
+  );
+
+  /**
+   * Preview merge conflicts before actually merging
+   * Uses the smart merge system to analyze potential conflicts
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_WORKTREE_MERGE_PREVIEW,
+    async (_, taskId: string): Promise<IPCResult<import('../../shared/types').WorktreeMergeResult>> => {
+      console.log('[IPC] TASK_WORKTREE_MERGE_PREVIEW called with taskId:', taskId);
+      try {
+        // Ensure Python environment is ready
+        if (!pythonEnvManager.isEnvReady()) {
+          console.log('[IPC] Python environment not ready, initializing...');
+          const autoBuildSource = getEffectiveSourcePath();
+          if (autoBuildSource) {
+            const status = await pythonEnvManager.initialize(autoBuildSource);
+            if (!status.ready) {
+              console.error('[IPC] Python environment failed to initialize:', status.error);
+              return { success: false, error: `Python environment not ready: ${status.error || 'Unknown error'}` };
+            }
+          } else {
+            console.error('[IPC] Auto Claude source not found');
+            return { success: false, error: 'Python environment not ready and Auto Claude source not found' };
+          }
+        }
+
+        const { task, project } = findTaskAndProject(taskId);
+        if (!task || !project) {
+          console.error('[IPC] Task not found:', taskId);
+          return { success: false, error: 'Task not found' };
+        }
+        console.log('[IPC] Found task:', task.specId, 'project:', project.name);
+
+        const sourcePath = getEffectiveSourcePath();
+        if (!sourcePath) {
+          console.error('[IPC] Auto Claude source not found');
+          return { success: false, error: 'Auto Claude source not found' };
+        }
+
+        const runScript = path.join(sourcePath, 'run.py');
+        const args = [
+          runScript,
+          '--spec', task.specId,
+          '--project-dir', project.path,
+          '--merge-preview'
+        ];
+
+        const pythonPath = pythonEnvManager.getPythonPath() || 'python3';
+        console.log('[IPC] Running merge preview:', pythonPath, args.join(' '));
+
+        return new Promise((resolve) => {
+          const previewProcess = spawn(pythonPath, args, {
+            cwd: sourcePath,
+            env: { ...process.env, PYTHONUNBUFFERED: '1', DEBUG: 'true' }
+          });
+
+          let stdout = '';
+          let stderr = '';
+
+          previewProcess.stdout.on('data', (data: Buffer) => {
+            const chunk = data.toString();
+            stdout += chunk;
+            console.log('[IPC] merge-preview stdout:', chunk);
+          });
+
+          previewProcess.stderr.on('data', (data: Buffer) => {
+            const chunk = data.toString();
+            stderr += chunk;
+            console.log('[IPC] merge-preview stderr:', chunk);
+          });
+
+          previewProcess.on('close', (code: number) => {
+            console.log('[IPC] merge-preview process exited with code:', code);
+            if (code === 0) {
+              try {
+                // Parse JSON output from Python
+                const result = JSON.parse(stdout.trim());
+                console.log('[IPC] merge-preview result:', JSON.stringify(result, null, 2));
+                resolve({
+                  success: true,
+                  data: {
+                    success: result.success,
+                    message: result.error || 'Preview completed',
+                    preview: {
+                      files: result.files || [],
+                      conflicts: result.conflicts || [],
+                      summary: result.summary || {
+                        totalFiles: 0,
+                        conflictFiles: 0,
+                        totalConflicts: 0,
+                        autoMergeable: 0
+                      }
+                    }
+                  }
+                });
+              } catch (parseError) {
+                console.error('[IPC] Failed to parse preview result:', parseError);
+                console.error('[IPC] stdout:', stdout);
+                console.error('[IPC] stderr:', stderr);
+                resolve({
+                  success: false,
+                  error: `Failed to parse preview result: ${stderr || stdout}`
+                });
+              }
+            } else {
+              console.error('[IPC] Preview failed with exit code:', code);
+              console.error('[IPC] stderr:', stderr);
+              console.error('[IPC] stdout:', stdout);
+              resolve({
+                success: false,
+                error: `Preview failed: ${stderr || stdout}`
+              });
+            }
+          });
+
+          previewProcess.on('error', (err: Error) => {
+            console.error('[IPC] merge-preview spawn error:', err);
+            resolve({
+              success: false,
+              error: `Failed to run preview: ${err.message}`
+            });
+          });
+        });
+      } catch (error) {
+        console.error('[IPC] TASK_WORKTREE_MERGE_PREVIEW error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to preview merge'
         };
       }
     }

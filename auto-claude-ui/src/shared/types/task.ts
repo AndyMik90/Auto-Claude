@@ -271,10 +271,45 @@ export interface WorktreeDiffFile {
   deletions: number;
 }
 
+// Conflict severity levels from merge system
+export type ConflictSeverity = 'none' | 'low' | 'medium' | 'high' | 'critical';
+
+// Information about a detected conflict
+export interface MergeConflict {
+  file: string;
+  location: string;
+  tasks: string[];
+  severity: ConflictSeverity;
+  canAutoMerge: boolean;
+  strategy?: string;
+  reason: string;
+}
+
+// Summary statistics from merge preview/execution
+export interface MergeStats {
+  totalFiles: number;
+  conflictFiles: number;
+  totalConflicts: number;
+  autoMergeable: number;
+  aiResolved?: number;
+  humanRequired?: number;
+}
+
 export interface WorktreeMergeResult {
   success: boolean;
   message: string;
   conflictFiles?: string[];
+  staged?: boolean;
+  projectPath?: string;
+  // New conflict info from smart merge
+  conflicts?: MergeConflict[];
+  stats?: MergeStats;
+  // Preview mode results
+  preview?: {
+    files: string[];
+    conflicts: MergeConflict[];
+    summary: MergeStats;
+  };
 }
 
 export interface WorktreeDiscardResult {

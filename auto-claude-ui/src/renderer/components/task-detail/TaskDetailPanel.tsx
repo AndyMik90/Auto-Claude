@@ -72,7 +72,16 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
     state.setWorkspaceError(null);
     const result = await window.electronAPI.mergeWorktree(task.id, { noCommit: state.stageOnly });
     if (result.success && result.data?.success) {
-      onClose();
+      // For stage-only: don't close the panel, show success message
+      // For full merge: close the panel
+      if (state.stageOnly && result.data.staged) {
+        // Changes are staged in main project - show success but keep panel open
+        state.setWorkspaceError(null);
+        state.setStagedSuccess(result.data.message || 'Changes staged in main project');
+        state.setStagedProjectPath(result.data.projectPath);
+      } else {
+        onClose();
+      }
     } else {
       state.setWorkspaceError(result.data?.message || result.error || 'Failed to merge changes');
     }
@@ -172,6 +181,11 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                     showDiffDialog={state.showDiffDialog}
                     workspaceError={state.workspaceError}
                     stageOnly={state.stageOnly}
+                    stagedSuccess={state.stagedSuccess}
+                    stagedProjectPath={state.stagedProjectPath}
+                    mergePreview={state.mergePreview}
+                    isLoadingPreview={state.isLoadingPreview}
+                    showConflictDialog={state.showConflictDialog}
                     onFeedbackChange={state.setFeedback}
                     onReject={handleReject}
                     onMerge={handleMerge}
@@ -179,6 +193,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                     onShowDiscardDialog={state.setShowDiscardDialog}
                     onShowDiffDialog={state.setShowDiffDialog}
                     onStageOnlyChange={state.setStageOnly}
+                    onShowConflictDialog={state.setShowConflictDialog}
+                    onLoadMergePreview={state.loadMergePreview}
                   />
                 )}
               </div>

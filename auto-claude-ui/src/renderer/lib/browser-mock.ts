@@ -246,6 +246,34 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
+  mergeWorktreePreview: async () => ({
+    success: true,
+    data: {
+      success: true,
+      message: 'Preview generated',
+      preview: {
+        files: ['src/index.ts', 'src/utils.ts'],
+        conflicts: [
+          {
+            file: 'src/utils.ts',
+            location: 'lines 10-15',
+            tasks: ['task-001'],
+            severity: 'low' as const,
+            canAutoMerge: true,
+            strategy: 'append',
+            reason: 'Non-overlapping additions'
+          }
+        ],
+        summary: {
+          totalFiles: 2,
+          conflictFiles: 1,
+          totalConflicts: 1,
+          autoMergeable: 1
+        }
+      }
+    }
+  }),
+
   discardWorktree: async () => ({
     success: true,
     data: {

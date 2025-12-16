@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
 import { checkTaskRunning, isIncompleteHumanReview, getTaskProgress } from '../../../stores/task-store';
-import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff } from '../../../../shared/types';
+import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats } from '../../../../shared/types';
 
 export interface UseTaskDetailOptions {
   task: Task;
@@ -28,11 +28,22 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [showDiffDialog, setShowDiffDialog] = useState(false);
   const [stageOnly, setStageOnly] = useState(task.status === 'human_review');
+  const [stagedSuccess, setStagedSuccess] = useState<string | null>(null);
+  const [stagedProjectPath, setStagedProjectPath] = useState<string | undefined>(undefined);
   const [phaseLogs, setPhaseLogs] = useState<TaskLogs | null>(null);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [expandedPhases, setExpandedPhases] = useState<Set<TaskLogPhase>>(new Set());
   const logsEndRef = useRef<HTMLDivElement>(null);
   const logsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Merge preview state
+  const [mergePreview, setMergePreview] = useState<{
+    files: string[];
+    conflicts: MergeConflict[];
+    summary: MergeStats;
+  } | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
 
   const selectedProject = useProjectStore((state) => state.getSelectedProject());
   const isRunning = task.status === 'in_progress';
@@ -170,6 +181,39 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     });
   }, []);
 
+  // Load merge preview (conflict detection)
+  const loadMergePreview = useCallback(async () => {
+    console.log('%c[useTaskDetail] loadMergePreview called for task:', 'color: cyan; font-weight: bold;', task.id);
+    setIsLoadingPreview(true);
+    try {
+      console.log('[useTaskDetail] Calling mergeWorktreePreview...');
+      const result = await window.electronAPI.mergeWorktreePreview(task.id);
+      console.log('%c[useTaskDetail] mergeWorktreePreview result:', 'color: lime; font-weight: bold;', JSON.stringify(result, null, 2));
+      if (result.success && result.data?.preview) {
+        const previewData = result.data.preview;
+        console.log('%c[useTaskDetail] Setting merge preview:', 'color: lime; font-weight: bold;', previewData);
+        console.log('  - files:', previewData.files);
+        console.log('  - conflicts:', previewData.conflicts);
+        console.log('  - summary:', previewData.summary);
+        setMergePreview(previewData);
+        // Show conflict dialog if there are conflicts that need attention
+        if (previewData.conflicts.length > 0) {
+          setShowConflictDialog(true);
+        }
+      } else {
+        console.warn('%c[useTaskDetail] Preview not successful or no preview data:', 'color: orange;', result);
+        console.warn('  - success:', result.success);
+        console.warn('  - data:', result.data);
+        console.warn('  - error:', result.error);
+      }
+    } catch (err) {
+      console.error('%c[useTaskDetail] Failed to load merge preview:', 'color: red; font-weight: bold;', err);
+    } finally {
+      console.log('[useTaskDetail] Setting isLoadingPreview to false');
+      setIsLoadingPreview(false);
+    }
+  }, [task.id]);
+
   return {
     // State
     feedback,
@@ -192,6 +236,8 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     workspaceError,
     showDiffDialog,
     stageOnly,
+    stagedSuccess,
+    stagedProjectPath,
     phaseLogs,
     isLoadingLogs,
     expandedPhases,
@@ -204,6 +250,9 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     hasActiveExecution,
     isIncomplete,
     taskProgress,
+    mergePreview,
+    isLoadingPreview,
+    showConflictDialog,
 
     // Setters
     setFeedback,
@@ -226,12 +275,18 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     setWorkspaceError,
     setShowDiffDialog,
     setStageOnly,
+    setStagedSuccess,
+    setStagedProjectPath,
     setPhaseLogs,
     setIsLoadingLogs,
     setExpandedPhases,
+    setMergePreview,
+    setIsLoadingPreview,
+    setShowConflictDialog,
 
     // Handlers
     handleLogsScroll,
     togglePhase,
+    loadMergePreview,
   };
 }

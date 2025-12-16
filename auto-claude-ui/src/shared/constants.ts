@@ -146,6 +146,7 @@ export const IPC_CHANNELS = {
   TASK_WORKTREE_STATUS: 'task:worktreeStatus',
   TASK_WORKTREE_DIFF: 'task:worktreeDiff',
   TASK_WORKTREE_MERGE: 'task:worktreeMerge',
+  TASK_WORKTREE_MERGE_PREVIEW: 'task:worktreeMergePreview',  // Preview merge conflicts before merging
   TASK_WORKTREE_DISCARD: 'task:worktreeDiscard',
   TASK_LIST_WORKTREES: 'task:listWorktrees',
   TASK_ARCHIVE: 'task:archive',

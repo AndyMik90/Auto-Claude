@@ -47,11 +47,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   updateTaskStatus: (taskId, status) =>
     set((state) => ({
-      tasks: state.tasks.map((t) =>
-        t.id === taskId || t.specId === taskId
-          ? { ...t, status, updatedAt: new Date() }
-          : t
-      )
+      tasks: state.tasks.map((t) => {
+        if (t.id !== taskId && t.specId !== taskId) return t;
+
+        // When status goes to backlog, reset execution progress to idle
+        // This ensures the planning/coding animation stops when task is stopped
+        const executionProgress = status === 'backlog'
+          ? { phase: 'idle' as ExecutionPhase, phaseProgress: 0, overallProgress: 0 }
+          : t.executionProgress;
+
+        return { ...t, status, executionProgress, updatedAt: new Date() };
+      })
     })),
 
   updateTaskFromPlan: (taskId, plan) =>
