@@ -16,7 +16,9 @@ import {
   AlertCircle,
   Play,
   ExternalLink,
-  TrendingUp} from 'lucide-react';
+  TrendingUp,
+  Plus
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
@@ -42,6 +44,8 @@ import {
   ROADMAP_IMPACT_COLORS
 } from '../../shared/constants';
 import { CompetitorAnalysisDialog } from './CompetitorAnalysisDialog';
+import { RoadmapKanbanView } from './RoadmapKanbanView';
+import { AddFeatureDialog } from './AddFeatureDialog';
 import type { RoadmapFeature, RoadmapPhase, CompetitorAnalysis, CompetitorPainPoint } from '../../shared/types';
 
 interface RoadmapProps {
@@ -57,6 +61,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
   const [selectedFeature, setSelectedFeature] = useState<RoadmapFeature | null>(null);
   const [activeTab, setActiveTab] = useState('phases');
   const [showCompetitorDialog, setShowCompetitorDialog] = useState(false);
+  const [showAddFeatureDialog, setShowAddFeatureDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<'generate' | 'refresh' | null>(null);
 
   // Load roadmap on mount
@@ -76,18 +81,18 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
 
   const handleCompetitorDialogAccept = () => {
     if (pendingAction === 'generate') {
-      generateRoadmap(projectId, true);
+      generateRoadmap(projectId);
     } else if (pendingAction === 'refresh') {
-      refreshRoadmap(projectId, true);
+      refreshRoadmap(projectId);
     }
     setPendingAction(null);
   };
 
   const handleCompetitorDialogDecline = () => {
     if (pendingAction === 'generate') {
-      generateRoadmap(projectId, false);
+      generateRoadmap(projectId);
     } else if (pendingAction === 'refresh') {
-      refreshRoadmap(projectId, false);
+      refreshRoadmap(projectId);
     }
     setPendingAction(null);
   };
@@ -198,6 +203,15 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
           <div className="flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => setShowAddFeatureDialog(true)}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Feature
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add a new feature to the roadmap</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button variant="outline" size="icon" onClick={handleRefresh}>
                   <RefreshCw className="h-4 w-4" />
                 </Button>
@@ -257,6 +271,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
             <TabsTrigger value="phases">Phases</TabsTrigger>
             <TabsTrigger value="features">All Features</TabsTrigger>
             <TabsTrigger value="priorities">By Priority</TabsTrigger>
+            <TabsTrigger value="kanban">Kanban</TabsTrigger>
           </TabsList>
 
           {/* Phases View */}
@@ -341,6 +356,16 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
               })}
             </div>
           </TabsContent>
+
+          {/* Kanban View */}
+          <TabsContent value="kanban" className="flex-1 overflow-hidden">
+            <RoadmapKanbanView
+              roadmap={roadmap}
+              onFeatureClick={setSelectedFeature}
+              onConvertToSpec={handleConvertToSpec}
+              onGoToTask={handleGoToTask}
+            />
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -360,6 +385,13 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
         onOpenChange={setShowCompetitorDialog}
         onAccept={handleCompetitorDialogAccept}
         onDecline={handleCompetitorDialogDecline}
+      />
+
+      {/* Add Feature Dialog */}
+      <AddFeatureDialog
+        phases={roadmap.phases}
+        open={showAddFeatureDialog}
+        onOpenChange={setShowAddFeatureDialog}
       />
     </div>
   );

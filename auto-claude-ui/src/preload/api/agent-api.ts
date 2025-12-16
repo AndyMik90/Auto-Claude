@@ -47,6 +47,7 @@ import type {
 export interface AgentAPI {
   // Roadmap Operations
   getRoadmap: (projectId: string) => Promise<IPCResult<Roadmap | null>>;
+  saveRoadmap: (projectId: string, roadmap: Roadmap) => Promise<IPCResult>;
   generateRoadmap: (projectId: string) => void;
   refreshRoadmap: (projectId: string) => void;
   updateFeatureStatus: (
@@ -172,6 +173,9 @@ export const createAgentAPI = (): AgentAPI => ({
   // Roadmap Operations
   getRoadmap: (projectId: string): Promise<IPCResult<Roadmap | null>> =>
     ipcRenderer.invoke(IPC_CHANNELS.ROADMAP_GET, projectId),
+
+  saveRoadmap: (projectId: string, roadmap: Roadmap): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ROADMAP_SAVE, projectId, roadmap),
 
   generateRoadmap: (projectId: string): void =>
     ipcRenderer.send(IPC_CHANNELS.ROADMAP_GENERATE, projectId),

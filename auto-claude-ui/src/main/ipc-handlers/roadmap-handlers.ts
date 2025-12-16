@@ -224,6 +224,70 @@ export function registerRoadmapHandlers(
     }
   );
 
+  // ============================================
+  // Roadmap Save (full state persistence for drag-and-drop)
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROADMAP_SAVE,
+    async (
+      _,
+      projectId: string,
+      features: RoadmapFeature[]
+    ): Promise<IPCResult> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      const roadmapPath = path.join(
+        project.path,
+        AUTO_BUILD_PATHS.ROADMAP_DIR,
+        AUTO_BUILD_PATHS.ROADMAP_FILE
+      );
+
+      if (!existsSync(roadmapPath)) {
+        return { success: false, error: 'Roadmap not found' };
+      }
+
+      try {
+        const content = readFileSync(roadmapPath, 'utf-8');
+        const roadmap = JSON.parse(content);
+
+        // Transform camelCase features back to snake_case for JSON file
+        roadmap.features = features.map((feature) => ({
+          id: feature.id,
+          title: feature.title,
+          description: feature.description,
+          rationale: feature.rationale || '',
+          priority: feature.priority,
+          complexity: feature.complexity,
+          impact: feature.impact,
+          phase_id: feature.phaseId,
+          dependencies: feature.dependencies || [],
+          status: feature.status,
+          acceptance_criteria: feature.acceptanceCriteria || [],
+          user_stories: feature.userStories || [],
+          linked_spec_id: feature.linkedSpecId,
+          competitor_insight_ids: feature.competitorInsightIds
+        }));
+
+        // Update metadata timestamp
+        roadmap.metadata = roadmap.metadata || {};
+        roadmap.metadata.updated_at = new Date().toISOString();
+
+        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to save roadmap'
+        };
+      }
+    }
+  );
+
   ipcMain.handle(
     IPC_CHANNELS.ROADMAP_UPDATE_FEATURE,
     async (

@@ -20,6 +20,10 @@ interface RoadmapState {
   updateFeatureStatus: (featureId: string, status: RoadmapFeatureStatus) => void;
   updateFeatureLinkedSpec: (featureId: string, specId: string) => void;
   clearRoadmap: () => void;
+  // Drag-and-drop actions
+  reorderFeatures: (phaseId: string, featureIds: string[]) => void;
+  updateFeaturePhase: (featureId: string, newPhaseId: string) => void;
+  addFeature: (feature: Omit<RoadmapFeature, 'id'>) => string;
 }
 
 const initialGenerationStatus: RoadmapGenerationStatus = {
@@ -82,7 +86,75 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
       roadmap: null,
       competitorAnalysis: null,
       generationStatus: initialGenerationStatus
-    })
+    }),
+
+  // Reorder features within a phase
+  reorderFeatures: (phaseId, featureIds) =>
+    set((state) => {
+      if (!state.roadmap) return state;
+
+      // Get features for this phase in the new order
+      const phaseFeatures = featureIds
+        .map((id) => state.roadmap!.features.find((f) => f.id === id))
+        .filter((f): f is RoadmapFeature => f !== undefined);
+
+      // Get features from other phases (unchanged)
+      const otherFeatures = state.roadmap.features.filter(
+        (f) => f.phaseId !== phaseId
+      );
+
+      // Combine: other phases first, then reordered phase features
+      const updatedFeatures = [...otherFeatures, ...phaseFeatures];
+
+      return {
+        roadmap: {
+          ...state.roadmap,
+          features: updatedFeatures,
+          updatedAt: new Date()
+        }
+      };
+    }),
+
+  // Move a feature to a different phase
+  updateFeaturePhase: (featureId, newPhaseId) =>
+    set((state) => {
+      if (!state.roadmap) return state;
+
+      const updatedFeatures = state.roadmap.features.map((feature) =>
+        feature.id === featureId ? { ...feature, phaseId: newPhaseId } : feature
+      );
+
+      return {
+        roadmap: {
+          ...state.roadmap,
+          features: updatedFeatures,
+          updatedAt: new Date()
+        }
+      };
+    }),
+
+  // Add a new feature to the roadmap
+  addFeature: (featureData) => {
+    const newId = `feature-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newFeature: RoadmapFeature = {
+      ...featureData,
+      id: newId
+    };
+
+    set((state) => {
+      if (!state.roadmap) return state;
+
+      return {
+        roadmap: {
+          ...state.roadmap,
+          features: [...state.roadmap.features, newFeature],
+          updatedAt: new Date()
+        }
+      };
+    });
+
+    return newId;
+  }
 }));
 
 // Helper functions for loading roadmap
@@ -104,32 +176,22 @@ export async function loadRoadmap(projectId: string): Promise<void> {
   }
 }
 
-export function generateRoadmap(
-  projectId: string,
-  enableCompetitorAnalysis: boolean = false
-): void {
+export function generateRoadmap(projectId: string): void {
   useRoadmapStore.getState().setGenerationStatus({
     phase: 'analyzing',
     progress: 0,
-    message: enableCompetitorAnalysis
-      ? 'Starting roadmap generation with competitor analysis...'
-      : 'Starting roadmap generation...'
+    message: 'Starting roadmap generation...'
   });
-  window.electronAPI.generateRoadmap(projectId, enableCompetitorAnalysis);
+  window.electronAPI.generateRoadmap(projectId);
 }
 
-export function refreshRoadmap(
-  projectId: string,
-  enableCompetitorAnalysis: boolean = false
-): void {
+export function refreshRoadmap(projectId: string): void {
   useRoadmapStore.getState().setGenerationStatus({
     phase: 'analyzing',
     progress: 0,
-    message: enableCompetitorAnalysis
-      ? 'Refreshing roadmap with competitor analysis...'
-      : 'Refreshing roadmap...'
+    message: 'Refreshing roadmap...'
   });
-  window.electronAPI.refreshRoadmap(projectId, enableCompetitorAnalysis);
+  window.electronAPI.refreshRoadmap(projectId);
 }
 
 // Selectors

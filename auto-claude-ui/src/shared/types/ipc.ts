@@ -220,6 +220,7 @@ export interface ElectronAPI {
 
   // Roadmap operations
   getRoadmap: (projectId: string) => Promise<IPCResult<Roadmap | null>>;
+  saveRoadmap: (projectId: string, roadmap: Roadmap) => Promise<IPCResult>;
   generateRoadmap: (projectId: string) => void;
   refreshRoadmap: (projectId: string) => void;
   updateFeatureStatus: (

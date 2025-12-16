@@ -227,6 +227,7 @@ export const IPC_CHANNELS = {
 
   // Roadmap operations
   ROADMAP_GET: 'roadmap:get',
+  ROADMAP_SAVE: 'roadmap:save',
   ROADMAP_GENERATE: 'roadmap:generate',
   ROADMAP_GENERATE_WITH_COMPETITOR: 'roadmap:generateWithCompetitor',
   ROADMAP_REFRESH: 'roadmap:refresh',
