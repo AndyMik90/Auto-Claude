@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Literal
+from typing import Literal
 
 
 @dataclass
@@ -35,14 +35,14 @@ class MainBranchEvent:
 
     # Source of change
     source: Literal['human', 'merged_task']
-    merged_from_task: Optional[str] = None  # If source is 'merged_task'
+    merged_from_task: str | None = None  # If source is 'merged_task'
 
     # Intent/reason for change
     commit_message: str = ""
 
     # For richer context (optional)
-    author: Optional[str] = None
-    diff_summary: Optional[str] = None  # e.g., "+15 -3 lines"
+    author: str | None = None
+    diff_summary: str | None = None  # e.g., "+15 -3 lines"
 
     def to_dict(self) -> dict:
         return {
@@ -150,7 +150,7 @@ class TaskFileView:
     branch_point: BranchPoint
 
     # Current state in the task's worktree (None if not modified yet)
-    worktree_state: Optional[WorktreeState] = None
+    worktree_state: WorktreeState | None = None
 
     # What the task intends to do
     task_intent: TaskIntent = field(default_factory=lambda: TaskIntent("", ""))
@@ -160,7 +160,7 @@ class TaskFileView:
 
     # Lifecycle status
     status: Literal['active', 'merged', 'abandoned'] = 'active'
-    merged_at: Optional[datetime] = None
+    merged_at: datetime | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -197,10 +197,10 @@ class FileTimeline:
     file_path: str
 
     # Main branch evolution - the authoritative history
-    main_branch_history: List[MainBranchEvent] = field(default_factory=list)
+    main_branch_history: list[MainBranchEvent] = field(default_factory=list)
 
     # Each task's isolated view of this file
-    task_views: Dict[str, TaskFileView] = field(default_factory=dict)
+    task_views: dict[str, TaskFileView] = field(default_factory=dict)
 
     # Metadata
     created_at: datetime = field(default_factory=datetime.now)
@@ -221,15 +221,15 @@ class FileTimeline:
         self.task_views[task_view.task_id] = task_view
         self.last_updated = datetime.now()
 
-    def get_task_view(self, task_id: str) -> Optional[TaskFileView]:
+    def get_task_view(self, task_id: str) -> TaskFileView | None:
         """Get a task's view of this file."""
         return self.task_views.get(task_id)
 
-    def get_active_tasks(self) -> List[TaskFileView]:
+    def get_active_tasks(self) -> list[TaskFileView]:
         """Get all tasks that are still active (not merged/abandoned)."""
         return [tv for tv in self.task_views.values() if tv.status == 'active']
 
-    def get_events_since_commit(self, commit_hash: str) -> List[MainBranchEvent]:
+    def get_events_since_commit(self, commit_hash: str) -> list[MainBranchEvent]:
         """Get all main branch events since a given commit."""
         events = []
         found_commit = False
@@ -240,7 +240,7 @@ class FileTimeline:
                 found_commit = True
         return events
 
-    def get_current_main_state(self) -> Optional[MainBranchEvent]:
+    def get_current_main_state(self) -> MainBranchEvent | None:
         """Get the most recent main branch event."""
         if self.main_branch_history:
             return self.main_branch_history[-1]
@@ -289,7 +289,7 @@ class MergeContext:
     task_branch_point: BranchPoint
 
     # What happened in main since task branched (ordered from oldest to newest)
-    main_evolution: List[MainBranchEvent]
+    main_evolution: list[MainBranchEvent]
 
     # Task's changes
     task_worktree_content: str
@@ -299,7 +299,7 @@ class MergeContext:
     current_main_commit: str
 
     # Other tasks that also touch this file (for forward-compatibility)
-    other_pending_tasks: List[Dict]  # [{task_id, intent, branch_point, commits_behind}]
+    other_pending_tasks: list[dict]  # [{task_id, intent, branch_point, commits_behind}]
 
     # Metrics
     total_commits_behind: int

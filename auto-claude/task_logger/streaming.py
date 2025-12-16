@@ -3,7 +3,6 @@ Streaming marker functionality for real-time UI updates.
 """
 
 import json
-import sys
 
 
 def emit_marker(marker_type: str, data: dict, enabled: bool = True) -> None:

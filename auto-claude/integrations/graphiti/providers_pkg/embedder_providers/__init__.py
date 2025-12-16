@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from graphiti_config import GraphitiConfig
 
-from .openai_embedder import create_openai_embedder
-from .voyage_embedder import create_voyage_embedder
 from .azure_openai_embedder import create_azure_openai_embedder
 from .ollama_embedder import create_ollama_embedder
+from .openai_embedder import create_openai_embedder
+from .voyage_embedder import create_voyage_embedder
 
 __all__ = [
     "create_openai_embedder",

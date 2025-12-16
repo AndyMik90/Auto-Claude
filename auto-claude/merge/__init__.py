@@ -23,50 +23,50 @@ Usage:
     result = orchestrator.merge_task("task-001-feature")
 """
 
-from .types import (
-    ChangeType,
-    SemanticChange,
-    FileAnalysis,
-    ConflictRegion,
-    ConflictSeverity,
-    MergeStrategy,
-    MergeResult,
-    MergeDecision,
-    TaskSnapshot,
-    FileEvolution,
-)
-from .models import MergeStats, TaskMergeRequest, MergeReport
-from .semantic_analyzer import SemanticAnalyzer
-from .conflict_detector import ConflictDetector
-from .compatibility_rules import CompatibilityRule
-from .auto_merger import AutoMerger
-from .file_evolution import FileEvolutionTracker
 from .ai_resolver import AIResolver, create_claude_resolver
+from .auto_merger import AutoMerger
+from .compatibility_rules import CompatibilityRule
+from .conflict_detector import ConflictDetector
 from .conflict_resolver import ConflictResolver
-from .merge_pipeline import MergePipeline
-from .git_utils import find_worktree, get_file_from_branch
+from .file_evolution import FileEvolutionTracker
 from .file_merger import (
+    apply_ai_merge,
     apply_single_task_changes,
     combine_non_conflicting_changes,
-    find_import_end,
     extract_location_content,
-    apply_ai_merge,
+    find_import_end,
 )
-from .orchestrator import MergeOrchestrator
 from .file_timeline import (
-    FileTimelineTracker,
-    FileTimeline,
-    MainBranchEvent,
     BranchPoint,
-    WorktreeState,
-    TaskIntent,
-    TaskFileView,
+    FileTimeline,
+    FileTimelineTracker,
+    MainBranchEvent,
     MergeContext,
+    TaskFileView,
+    TaskIntent,
+    WorktreeState,
 )
+from .git_utils import find_worktree, get_file_from_branch
+from .merge_pipeline import MergePipeline
+from .models import MergeReport, MergeStats, TaskMergeRequest
+from .orchestrator import MergeOrchestrator
 from .prompts import (
-    build_timeline_merge_prompt,
     build_simple_merge_prompt,
+    build_timeline_merge_prompt,
     optimize_prompt_for_length,
+)
+from .semantic_analyzer import SemanticAnalyzer
+from .types import (
+    ChangeType,
+    ConflictRegion,
+    ConflictSeverity,
+    FileAnalysis,
+    FileEvolution,
+    MergeDecision,
+    MergeResult,
+    MergeStrategy,
+    SemanticChange,
+    TaskSnapshot,
 )
 
 __all__ = [

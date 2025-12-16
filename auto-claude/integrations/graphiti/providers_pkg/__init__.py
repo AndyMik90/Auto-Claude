@@ -23,27 +23,26 @@ Usage:
 """
 
 # Core exceptions
+# Cross-encoder / reranker
+from .cross_encoder import create_cross_encoder
 from .exceptions import ProviderError, ProviderNotInstalled
 
 # Factory functions
-from .factory import create_llm_client, create_embedder
-
-# Cross-encoder / reranker
-from .cross_encoder import create_cross_encoder
+from .factory import create_embedder, create_llm_client
 
 # Models and constants
 from .models import EMBEDDING_DIMENSIONS, get_expected_embedding_dim
 
+# Utilities
+from .utils import get_graph_hints, is_graphiti_enabled
+
 # Validators and health checks
 from .validators import (
-    validate_embedding_config,
-    test_llm_connection,
     test_embedder_connection,
+    test_llm_connection,
     test_ollama_connection,
+    validate_embedding_config,
 )
-
-# Utilities
-from .utils import is_graphiti_enabled, get_graph_hints
 
 __all__ = [
     # Exceptions

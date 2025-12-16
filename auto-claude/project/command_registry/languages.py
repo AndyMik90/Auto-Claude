@@ -6,13 +6,12 @@ Programming language-specific commands including interpreters,
 compilers, and language-specific tooling.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # LANGUAGE-SPECIFIC COMMANDS
 # =============================================================================
 
-LANGUAGE_COMMANDS: Dict[str, Set[str]] = {
+LANGUAGE_COMMANDS: dict[str, set[str]] = {
     "python": {
         "python",
         "python3",

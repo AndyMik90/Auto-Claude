@@ -12,7 +12,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .graphiti_helpers import is_graphiti_memory_enabled, run_async, save_to_graphiti_async
+from .graphiti_helpers import (
+    is_graphiti_memory_enabled,
+    run_async,
+    save_to_graphiti_async,
+)
 from .paths import get_session_insights_dir
 
 logger = logging.getLogger(__name__)

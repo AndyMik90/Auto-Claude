@@ -16,7 +16,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .timeline_models import FileTimeline
@@ -52,7 +52,7 @@ class TimelinePersistence:
         # Ensure storage directory exists
         self.timelines_dir.mkdir(parents=True, exist_ok=True)
 
-    def load_all_timelines(self) -> Dict[str, "FileTimeline"]:
+    def load_all_timelines(self) -> dict[str, FileTimeline]:
         """
         Load all timelines from disk on startup.
 
@@ -85,7 +85,7 @@ class TimelinePersistence:
 
         return timelines
 
-    def save_timeline(self, file_path: str, timeline: "FileTimeline") -> None:
+    def save_timeline(self, file_path: str, timeline: FileTimeline) -> None:
         """
         Save a single timeline to disk.
 

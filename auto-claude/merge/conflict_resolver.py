@@ -13,8 +13,10 @@ This module handles:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
+from .ai_resolver import AIResolver
+from .auto_merger import AutoMerger, MergeContext
+from .file_merger import apply_ai_merge, extract_location_content
 from .types import (
     ConflictRegion,
     ConflictSeverity,
@@ -22,9 +24,6 @@ from .types import (
     MergeResult,
     TaskSnapshot,
 )
-from .auto_merger import AutoMerger, MergeContext
-from .ai_resolver import AIResolver
-from .file_merger import apply_ai_merge, extract_location_content
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ class ConflictResolver:
     def __init__(
         self,
         auto_merger: AutoMerger,
-        ai_resolver: Optional[AIResolver] = None,
+        ai_resolver: AIResolver | None = None,
         enable_ai: bool = True,
     ):
         """

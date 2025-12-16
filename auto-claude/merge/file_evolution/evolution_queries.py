@@ -15,7 +15,6 @@ from __future__ import annotations
 import logging
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from ..types import FileEvolution, TaskSnapshot
 from .storage import EvolutionStorage
@@ -48,7 +47,7 @@ class EvolutionQueries:
         self,
         file_path: Path | str,
         evolutions: dict[str, FileEvolution],
-    ) -> Optional[FileEvolution]:
+    ) -> FileEvolution | None:
         """
         Get the complete evolution history for a file.
 
@@ -66,7 +65,7 @@ class EvolutionQueries:
         self,
         file_path: Path | str,
         evolutions: dict[str, FileEvolution],
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Get the baseline content for a file.
 
@@ -212,8 +211,8 @@ class EvolutionQueries:
         self,
         file_path: Path | str,
         evolutions: dict[str, FileEvolution],
-        task_ids: Optional[list[str]] = None,
-    ) -> Optional[dict]:
+        task_ids: list[str] | None = None,
+    ) -> dict | None:
         """
         Export evolution data for a file in a format suitable for merge.
 

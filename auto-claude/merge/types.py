@@ -11,12 +11,10 @@ enabling intelligent conflict detection and resolution.
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class ChangeType(Enum):
@@ -161,8 +159,8 @@ class SemanticChange:
     location: str
     line_start: int
     line_end: int
-    content_before: Optional[str] = None
-    content_after: Optional[str] = None
+    content_before: str | None = None
+    content_after: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -320,7 +318,7 @@ class ConflictRegion:
     change_types: list[ChangeType]
     severity: ConflictSeverity
     can_auto_merge: bool
-    merge_strategy: Optional[MergeStrategy] = None
+    merge_strategy: MergeStrategy | None = None
     reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -373,11 +371,11 @@ class TaskSnapshot:
     task_id: str
     task_intent: str
     started_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     content_hash_before: str = ""
     content_hash_after: str = ""
     semantic_changes: list[SemanticChange] = field(default_factory=list)
-    raw_diff: Optional[str] = None
+    raw_diff: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -454,7 +452,7 @@ class FileEvolution:
             task_snapshots=[TaskSnapshot.from_dict(ts) for ts in data.get("task_snapshots", [])],
         )
 
-    def get_task_snapshot(self, task_id: str) -> Optional[TaskSnapshot]:
+    def get_task_snapshot(self, task_id: str) -> TaskSnapshot | None:
         """Get a specific task's snapshot."""
         for snapshot in self.task_snapshots:
             if snapshot.task_id == task_id:
@@ -500,13 +498,13 @@ class MergeResult:
 
     decision: MergeDecision
     file_path: str
-    merged_content: Optional[str] = None
+    merged_content: str | None = None
     conflicts_resolved: list[ConflictRegion] = field(default_factory=list)
     conflicts_remaining: list[ConflictRegion] = field(default_factory=list)
     ai_calls_made: int = 0
     tokens_used: int = 0
     explanation: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""

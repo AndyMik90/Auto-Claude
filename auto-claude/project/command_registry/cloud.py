@@ -5,13 +5,12 @@ Cloud Provider Commands Module
 Commands for cloud provider CLIs and platform-specific tooling.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # CLOUD PROVIDER CLIs
 # =============================================================================
 
-CLOUD_COMMANDS: Dict[str, Set[str]] = {
+CLOUD_COMMANDS: dict[str, set[str]] = {
     "aws": {
         "aws",
         "sam",

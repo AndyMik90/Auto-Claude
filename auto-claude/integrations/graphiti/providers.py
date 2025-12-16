@@ -28,24 +28,24 @@ Usage:
 
 # Re-export all public APIs from the package
 from graphiti_providers import (
+    # Models
+    EMBEDDING_DIMENSIONS,
     # Exceptions
     ProviderError,
     ProviderNotInstalled,
+    create_cross_encoder,
+    create_embedder,
     # Factory functions
     create_llm_client,
-    create_embedder,
-    create_cross_encoder,
-    # Models
-    EMBEDDING_DIMENSIONS,
     get_expected_embedding_dim,
-    # Validators
-    validate_embedding_config,
-    test_llm_connection,
-    test_embedder_connection,
-    test_ollama_connection,
+    get_graph_hints,
     # Utilities
     is_graphiti_enabled,
-    get_graph_hints,
+    test_embedder_connection,
+    test_llm_connection,
+    test_ollama_connection,
+    # Validators
+    validate_embedding_config,
 )
 
 __all__ = [

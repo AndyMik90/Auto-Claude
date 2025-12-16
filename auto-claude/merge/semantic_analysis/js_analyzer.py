@@ -4,7 +4,7 @@ JavaScript/TypeScript-specific semantic analysis using tree-sitter.
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from .models import ExtractedElement
 
@@ -20,7 +20,7 @@ def extract_js_elements(
     get_text: Callable[[Node], str],
     get_line: Callable[[int], int],
     ext: str,
-    parent: Optional[str] = None,
+    parent: str | None = None,
 ) -> None:
     """
     Extract structural elements from JavaScript/TypeScript AST.

@@ -23,7 +23,6 @@ The actual logic is organized into specialized modules:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from .compatibility_rules import (
     CompatibilityRule,
@@ -31,7 +30,6 @@ from .compatibility_rules import (
     index_rules,
 )
 from .conflict_analysis import (
-    analyze_compatibility,
     detect_conflicts,
 )
 from .conflict_explanation import (
@@ -116,7 +114,7 @@ class ConflictDetector:
         auto_mergeable = sum(1 for c in conflicts if c.can_auto_merge)
         from .types import ConflictSeverity
         critical = sum(1 for c in conflicts if c.severity == ConflictSeverity.CRITICAL)
-        debug_success(MODULE, f"Conflict detection complete",
+        debug_success(MODULE, "Conflict detection complete",
                      total_conflicts=len(conflicts),
                      auto_mergeable=auto_mergeable,
                      critical=critical)
@@ -149,8 +147,8 @@ class ConflictDetector:
 def analyze_compatibility(
     change_a: SemanticChange,
     change_b: SemanticChange,
-    detector: Optional[ConflictDetector] = None,
-) -> tuple[bool, Optional[MergeStrategy], str]:
+    detector: ConflictDetector | None = None,
+) -> tuple[bool, MergeStrategy | None, str]:
     """
     Analyze compatibility between two specific changes.
 

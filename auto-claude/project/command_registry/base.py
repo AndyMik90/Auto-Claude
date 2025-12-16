@@ -6,13 +6,12 @@ Core shell commands that are always safe regardless of project type.
 These commands form the foundation of the security allowlist.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # BASE COMMANDS - Always safe regardless of project type
 # =============================================================================
 
-BASE_COMMANDS: Set[str] = {
+BASE_COMMANDS: set[str] = {
     # Core shell
     "echo",
     "printf",
@@ -153,7 +152,7 @@ BASE_COMMANDS: Set[str] = {
 # VALIDATED COMMANDS - Need extra validation even when allowed
 # =============================================================================
 
-VALIDATED_COMMANDS: Dict[str, str] = {
+VALIDATED_COMMANDS: dict[str, str] = {
     "rm": "validate_rm",
     "chmod": "validate_chmod",
     "pkill": "validate_pkill",

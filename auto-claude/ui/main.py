@@ -15,6 +15,8 @@ Provides:
 """
 
 # Capability detection
+# Box drawing
+from ui.boxes import box, divider
 from ui.capabilities import (
     COLOR,
     FANCY_UI,
@@ -24,9 +26,6 @@ from ui.capabilities import (
     supports_interactive,
     supports_unicode,
 )
-
-# Icons
-from ui.icons import Icons, icon
 
 # Colors and styling
 from ui.colors import (
@@ -41,18 +40,6 @@ from ui.colors import (
     warning,
 )
 
-# Box drawing
-from ui.boxes import box, divider
-
-# Progress indicators
-from ui.progress import progress_bar
-
-# Interactive menu
-from ui.menu import MenuOption, select_menu
-
-# Status management
-from ui.status import BuildState, BuildStatus, StatusManager
-
 # Formatted output helpers
 from ui.formatters import (
     print_header,
@@ -62,8 +49,20 @@ from ui.formatters import (
     print_status,
 )
 
+# Icons
+from ui.icons import Icons, icon
+
+# Interactive menu
+from ui.menu import MenuOption, select_menu
+
+# Progress indicators
+from ui.progress import progress_bar
+
 # Spinner
 from ui.spinner import Spinner
+
+# Status management
+from ui.status import BuildState, BuildStatus, StatusManager
 
 # For backward compatibility, expose private capability variables
 _FANCY_UI = FANCY_UI

@@ -6,8 +6,8 @@ Main class that executes individual phases of spec creation.
 Combines all phase implementation mixins.
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from .discovery_phases import DiscoveryPhaseMixin
 from .planning_phases import PlanningPhaseMixin

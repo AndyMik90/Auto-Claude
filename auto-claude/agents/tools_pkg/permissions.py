@@ -6,7 +6,6 @@ Manages which tools are allowed for each agent type to prevent context
 pollution and accidental misuse.
 """
 
-from typing import List
 
 from .models import (
     BASE_READ_TOOLS,
@@ -22,7 +21,7 @@ from .models import (
 )
 
 
-def get_allowed_tools(agent_type: str) -> List[str]:
+def get_allowed_tools(agent_type: str) -> list[str]:
     """
     Get the list of allowed tools for a specific agent type.
 

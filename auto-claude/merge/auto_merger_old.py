@@ -25,7 +25,6 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from .types import (
     ChangeType,
@@ -457,7 +456,7 @@ class AutoMerger:
             return line.startswith("import ") or line.startswith("export ")
         return False
 
-    def _extract_hook_call(self, change: SemanticChange) -> Optional[str]:
+    def _extract_hook_call(self, change: SemanticChange) -> str | None:
         """Extract the hook call from a change."""
         if change.content_after:
             # Look for useXxx() pattern
@@ -472,7 +471,7 @@ class AutoMerger:
 
         return None
 
-    def _extract_jsx_wrapper(self, change: SemanticChange) -> Optional[tuple[str, str]]:
+    def _extract_jsx_wrapper(self, change: SemanticChange) -> tuple[str, str] | None:
         """Extract JSX wrapper component and props."""
         if change.content_after:
             # Look for <ComponentName ...>
@@ -534,7 +533,7 @@ class AutoMerger:
 
         return content
 
-    def _find_function_insert_position(self, content: str, ext: str) -> Optional[int]:
+    def _find_function_insert_position(self, content: str, ext: str) -> int | None:
         """Find the best position to insert new functions."""
         lines = content.split("\n")
 
@@ -595,7 +594,7 @@ class AutoMerger:
     def _apply_content_change(
         self,
         content: str,
-        old: Optional[str],
+        old: str | None,
         new: str,
     ) -> str:
         """Apply a content change by replacing old with new."""

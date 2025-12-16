@@ -2,7 +2,6 @@
 Utility functions for implementation planner.
 """
 
-from pathlib import Path
 
 from implementation_plan import Verification, VerificationType
 

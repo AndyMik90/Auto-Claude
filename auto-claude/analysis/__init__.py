@@ -8,16 +8,18 @@ Code analysis and project scanning tools.
 # Import from analyzers subpackage (these are the modular analyzers)
 from .analyzers import (
     ProjectAnalyzer as ModularProjectAnalyzer,
+)
+from .analyzers import (
     ServiceAnalyzer,
     analyze_project,
     analyze_service,
 )
+from .ci_discovery import CIDiscovery
 
 # Import from analysis module root (these are other analysis tools)
 from .project_analyzer import ProjectAnalyzer
 from .risk_classifier import RiskClassifier
 from .security_scanner import SecurityScanner
-from .ci_discovery import CIDiscovery
 from .test_discovery import TestDiscovery
 
 # insight_extractor is a module with functions, not a class, so don't import it here

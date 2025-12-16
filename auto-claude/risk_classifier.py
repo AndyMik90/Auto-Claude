@@ -1,17 +1,17 @@
 """Backward compatibility shim - import from analysis.risk_classifier instead."""
 from analysis.risk_classifier import (
-    RiskClassifier,
-    RiskAssessment,
-    ValidationRecommendations,
+    AssessmentFlags,
     ComplexityAnalysis,
-    ScopeAnalysis,
-    IntegrationAnalysis,
     InfrastructureAnalysis,
+    IntegrationAnalysis,
     KnowledgeAnalysis,
     RiskAnalysis,
-    AssessmentFlags,
-    load_risk_assessment,
+    RiskAssessment,
+    RiskClassifier,
+    ScopeAnalysis,
+    ValidationRecommendations,
     get_validation_requirements,
+    load_risk_assessment,
 )
 
 __all__ = [

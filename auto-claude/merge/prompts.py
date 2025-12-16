@@ -7,13 +7,14 @@ using the FileTimelineTracker's complete file evolution data.
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .file_timeline import MergeContext, MainBranchEvent
+    from .file_timeline import MergeContext
 
 
-def build_timeline_merge_prompt(context: "MergeContext") -> str:
+def build_timeline_merge_prompt(context: MergeContext) -> str:
     """
     Build a complete merge prompt using FileTimelineTracker context.
 
@@ -94,7 +95,7 @@ YOUR TASK:
     return prompt
 
 
-def _build_main_evolution_section(context: "MergeContext") -> str:
+def _build_main_evolution_section(context: MergeContext) -> str:
     """Build the main branch evolution section of the prompt."""
     if not context.main_evolution:
         return f"""MAIN BRANCH EVOLUTION (0 commits since task branched)
@@ -124,7 +125,7 @@ No changes have been made to main branch since this task started.
     return "\n".join(lines)
 
 
-def _build_pending_tasks_section(context: "MergeContext") -> str:
+def _build_pending_tasks_section(context: MergeContext) -> str:
     """Build the other pending tasks section."""
     separator = "─" * 79
     if not context.other_pending_tasks:
@@ -150,7 +151,7 @@ No other tasks are pending for this file.
     return "\n".join(lines)
 
 
-def _build_compatibility_instructions(context: "MergeContext") -> str:
+def _build_compatibility_instructions(context: MergeContext) -> str:
     """Build compatibility instructions based on pending tasks."""
     if not context.other_pending_tasks:
         return "- No other tasks pending for this file"
@@ -309,10 +310,10 @@ For EACH conflict, output the resolved code in this exact format:
 resolved code here
 ```
 
-{f"--- CONFLICT_2 RESOLVED ---" if len(conflicts) > 1 else ""}
+{"--- CONFLICT_2 RESOLVED ---" if len(conflicts) > 1 else ""}
 {f"```{language}" if len(conflicts) > 1 else ""}
-{f"resolved code here" if len(conflicts) > 1 else ""}
-{f"```" if len(conflicts) > 1 else ""}
+{"resolved code here" if len(conflicts) > 1 else ""}
+{"```" if len(conflicts) > 1 else ""}
 
 (continue for each conflict)
 '''
@@ -478,10 +479,10 @@ def extract_conflict_resolutions(response: str, conflicts: list[dict], language:
 
 
 def optimize_prompt_for_length(
-    context: "MergeContext",
+    context: MergeContext,
     max_content_chars: int = 50000,
     max_evolution_events: int = 10,
-) -> "MergeContext":
+) -> MergeContext:
     """
     Optimize a MergeContext for prompt length by trimming large content.
 
@@ -504,6 +505,7 @@ def optimize_prompt_for_length(
 
         # Create a placeholder event for the middle
         from datetime import datetime
+
         from .file_timeline import MainBranchEvent
 
         omitted_count = len(context.main_evolution) - max_evolution_events

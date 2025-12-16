@@ -10,7 +10,6 @@ import shlex
 
 from .validation_models import ValidationResult
 
-
 # Safe chmod modes
 SAFE_CHMOD_MODES = {
     "+x",

@@ -8,7 +8,6 @@ Functions for finalizing workspaces and handling user choices after build comple
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 from ui import (
     Icons,
@@ -17,18 +16,18 @@ from ui import (
     box,
     highlight,
     icon,
+    info,
     muted,
     print_status,
     select_menu,
     success,
     warning,
-    info,
 )
 from worktree import WorktreeInfo, WorktreeManager
 
-from .models import WorkspaceChoice
-from .git_utils import get_existing_build_worktree
 from .display import show_build_summary, show_changed_files
+from .git_utils import get_existing_build_worktree
+from .models import WorkspaceChoice
 
 
 def finalize_workspace(

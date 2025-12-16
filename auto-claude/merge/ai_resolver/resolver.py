@@ -11,8 +11,7 @@ resolution of conflicts using AI with minimal context.
 from __future__ import annotations
 
 import logging
-import re
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from ..types import (
     ConflictRegion,
@@ -57,7 +56,7 @@ class AIResolver:
 
     def __init__(
         self,
-        ai_call_fn: Optional[AICallFunction] = None,
+        ai_call_fn: AICallFunction | None = None,
         max_context_tokens: int = MAX_CONTEXT_TOKENS,
     ):
         """

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .types import ChangeType, FileAnalysis
 
@@ -56,7 +56,7 @@ MODULE = "merge.semantic_analyzer"
 # Try to import tree-sitter - it's optional but recommended
 TREE_SITTER_AVAILABLE = False
 try:
-    import tree_sitter
+    import tree_sitter  # noqa: F401
     from tree_sitter import Language, Node, Parser, Tree
 
     TREE_SITTER_AVAILABLE = True
@@ -93,13 +93,13 @@ if TREE_SITTER_AVAILABLE:
         pass
 
 # Import our modular components
-from .semantic_analysis.models import ExtractedElement
 from .semantic_analysis.comparison import compare_elements
+from .semantic_analysis.models import ExtractedElement
 from .semantic_analysis.regex_analyzer import analyze_with_regex
 
 if TREE_SITTER_AVAILABLE:
-    from .semantic_analysis.python_analyzer import extract_python_elements
     from .semantic_analysis.js_analyzer import extract_js_elements
+    from .semantic_analysis.python_analyzer import extract_python_elements
 
 
 class SemanticAnalyzer:
@@ -145,7 +145,7 @@ class SemanticAnalyzer:
         file_path: str,
         before: str,
         after: str,
-        task_id: Optional[str] = None,
+        task_id: str | None = None,
     ) -> FileAnalysis:
         """
         Analyze the semantic differences between two versions of a file.

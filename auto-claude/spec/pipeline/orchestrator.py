@@ -6,8 +6,8 @@ Main orchestration logic for spec creation with dynamic complexity adaptation.
 """
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from review import run_review_checkpoint
 from task_logger import (
@@ -25,9 +25,9 @@ from ui import (
     print_section,
     print_status,
 )
-from ..validate_pkg.spec_validator import SpecValidator
 
 from .. import complexity, phases, requirements
+from ..validate_pkg.spec_validator import SpecValidator
 from .agent_runner import AgentRunner
 from .models import (
     PHASE_DISPLAY,

@@ -16,7 +16,6 @@ from ui import Icons, box, icon, muted, print_section, print_status
 from .competitor_analyzer import CompetitorAnalyzer
 from .executor import AgentExecutor, ScriptExecutor
 from .graph_integration import GraphHintsProvider
-from .models import RoadmapPhaseResult
 from .phases import DiscoveryPhase, FeaturesPhase, ProjectIndexPhase
 
 

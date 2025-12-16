@@ -9,10 +9,9 @@ import json
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict
 
 from init import init_auto_claude_dir
-from task_logger import get_task_logger, update_task_logger_path
+from task_logger import update_task_logger_path
 from ui import Icons, highlight, print_status
 
 
@@ -249,7 +248,7 @@ def rename_spec_dir_from_requirements(spec_dir: Path) -> bool:
 
 
 # Phase display configuration
-PHASE_DISPLAY: Dict[str, tuple[str, str]] = {
+PHASE_DISPLAY: dict[str, tuple[str, str]] = {
     "discovery": ("PROJECT DISCOVERY", Icons.FOLDER),
     "historical_context": ("HISTORICAL CONTEXT", Icons.SEARCH),
     "requirements": ("REQUIREMENTS GATHERING", Icons.FILE),

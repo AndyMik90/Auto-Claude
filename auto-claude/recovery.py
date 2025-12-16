@@ -1,8 +1,8 @@
 """Backward compatibility shim - import from services.recovery instead."""
 from services.recovery import (
-    RecoveryManager,
     FailureType,
     RecoveryAction,
+    RecoveryManager,
     check_and_recover,
     get_recovery_context,
 )

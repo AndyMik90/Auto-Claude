@@ -5,7 +5,6 @@ Planning and Validation Phase Implementations
 Phases for implementation planning and final validation.
 """
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from task_logger import LogEntryType, LogPhase
@@ -14,7 +13,7 @@ from .. import writer
 from .models import MAX_RETRIES, PhaseResult
 
 if TYPE_CHECKING:
-    from ..validator import SpecValidator
+    pass
 
 
 class PlanningPhaseMixin:

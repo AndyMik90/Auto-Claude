@@ -5,13 +5,12 @@ Infrastructure Commands Module
 Commands for containerization, orchestration, IaC, and DevOps tooling.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # INFRASTRUCTURE/DEVOPS COMMANDS
 # =============================================================================
 
-INFRASTRUCTURE_COMMANDS: Dict[str, Set[str]] = {
+INFRASTRUCTURE_COMMANDS: dict[str, set[str]] = {
     "docker": {
         "docker",
         "docker-compose",

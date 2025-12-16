@@ -8,8 +8,6 @@ Helper utilities for merge operations.
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import Optional
 
 from ..types import ChangeType, SemanticChange
 
@@ -43,7 +41,7 @@ class MergeHelpers:
         return False
 
     @staticmethod
-    def extract_hook_call(change: SemanticChange) -> Optional[str]:
+    def extract_hook_call(change: SemanticChange) -> str | None:
         """Extract the hook call from a change."""
         if change.content_after:
             # Look for useXxx() pattern
@@ -59,7 +57,7 @@ class MergeHelpers:
         return None
 
     @staticmethod
-    def extract_jsx_wrapper(change: SemanticChange) -> Optional[tuple[str, str]]:
+    def extract_jsx_wrapper(change: SemanticChange) -> tuple[str, str] | None:
         """Extract JSX wrapper component and props."""
         if change.content_after:
             # Look for <ComponentName ...>
@@ -122,7 +120,7 @@ class MergeHelpers:
         return content
 
     @staticmethod
-    def find_function_insert_position(content: str, ext: str) -> Optional[int]:
+    def find_function_insert_position(content: str, ext: str) -> int | None:
         """Find the best position to insert new functions."""
         lines = content.split("\n")
 
@@ -184,7 +182,7 @@ class MergeHelpers:
     @staticmethod
     def apply_content_change(
         content: str,
-        old: Optional[str],
+        old: str | None,
         new: str,
     ) -> str:
         """Apply a content change by replacing old with new."""

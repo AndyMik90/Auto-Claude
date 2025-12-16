@@ -12,7 +12,6 @@ Usage:
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -46,7 +45,7 @@ def cmd_notify_commit(args):
 
     print(f"[FileTimelineTracker] Processing commit: {commit_hash[:8]}")
     tracker.on_main_branch_commit(commit_hash)
-    print(f"[FileTimelineTracker] Commit processed successfully")
+    print("[FileTimelineTracker] Commit processed successfully")
 
 
 def cmd_show_timeline(args):

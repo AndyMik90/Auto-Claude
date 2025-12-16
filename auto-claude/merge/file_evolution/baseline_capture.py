@@ -14,7 +14,6 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from ..types import FileEvolution, TaskSnapshot, compute_content_hash
 from .storage import EvolutionStorage
@@ -52,7 +51,7 @@ class BaselineCapture:
     def __init__(
         self,
         storage: EvolutionStorage,
-        extensions: Optional[set[str]] = None,
+        extensions: set[str] | None = None,
     ):
         """
         Initialize baseline capture.
@@ -119,7 +118,7 @@ class BaselineCapture:
     def capture_baselines(
         self,
         task_id: str,
-        files: Optional[list[Path | str]],
+        files: list[Path | str] | None,
         intent: str,
         evolutions: dict[str, FileEvolution],
     ) -> dict[str, FileEvolution]:

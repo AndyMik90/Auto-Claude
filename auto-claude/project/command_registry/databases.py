@@ -5,13 +5,12 @@ Database Commands Module
 Commands for database clients, management tools, and ORMs.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # DATABASE COMMANDS
 # =============================================================================
 
-DATABASE_COMMANDS: Dict[str, Set[str]] = {
+DATABASE_COMMANDS: dict[str, set[str]] = {
     "postgresql": {
         "psql",
         "pg_dump",

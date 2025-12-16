@@ -14,7 +14,7 @@ from debug import (
     debug_success,
     debug_warning,
 )
-from ui import muted, print_status
+from ui import print_status
 
 from .models import RoadmapPhaseResult
 

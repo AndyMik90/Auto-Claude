@@ -5,13 +5,12 @@ Version Manager Commands Module
 Commands for runtime version management tools.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # VERSION MANAGER COMMANDS
 # =============================================================================
 
-VERSION_MANAGER_COMMANDS: Dict[str, Set[str]] = {
+VERSION_MANAGER_COMMANDS: dict[str, set[str]] = {
     "asdf": {"asdf"},
     "mise": {"mise"},
     "nvm": {"nvm"},

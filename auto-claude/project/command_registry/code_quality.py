@@ -5,13 +5,12 @@ Code Quality Commands Module
 Commands for linters, formatters, security scanners, and code analysis tools.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # CODE QUALITY COMMANDS
 # =============================================================================
 
-CODE_QUALITY_COMMANDS: Dict[str, Set[str]] = {
+CODE_QUALITY_COMMANDS: dict[str, set[str]] = {
     "shellcheck": {"shellcheck"},
     "hadolint": {"hadolint"},
     "actionlint": {"actionlint"},

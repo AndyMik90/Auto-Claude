@@ -13,6 +13,7 @@ This shim provides compatibility but will be removed in a future version.
 import sys
 from pathlib import Path
 
+
 # Lazy import to avoid circular dependencies
 def __getattr__(name):
     """Lazy import mechanism to avoid circular imports."""

@@ -16,7 +16,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .types import MergeResult
 
@@ -83,12 +83,12 @@ class MergeReport:
     """Complete report from a merge operation."""
 
     started_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     tasks_merged: list[str] = field(default_factory=list)
     file_results: dict[str, MergeResult] = field(default_factory=dict)
     stats: MergeStats = field(default_factory=MergeStats)
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""

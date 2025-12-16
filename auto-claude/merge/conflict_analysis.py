@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import Optional
 
 from .compatibility_rules import CompatibilityRule
 from .types import (
@@ -108,7 +107,7 @@ def analyze_location_conflict(
     location: str,
     task_changes: list[tuple[str, SemanticChange]],
     rule_index: dict[tuple[ChangeType, ChangeType], CompatibilityRule],
-) -> Optional[ConflictRegion]:
+) -> ConflictRegion | None:
     """
     Analyze changes at a specific location for conflicts.
 
@@ -134,7 +133,7 @@ def analyze_location_conflict(
 
     # Check pairwise compatibility
     all_compatible = True
-    final_strategy: Optional[MergeStrategy] = None
+    final_strategy: MergeStrategy | None = None
     reasons = []
 
     for i, (type_a, change_a) in enumerate(zip(change_types, changes)):
@@ -272,7 +271,7 @@ def analyze_compatibility(
     change_a: SemanticChange,
     change_b: SemanticChange,
     rule_index: dict[tuple[ChangeType, ChangeType], CompatibilityRule],
-) -> tuple[bool, Optional[MergeStrategy], str]:
+) -> tuple[bool, MergeStrategy | None, str]:
     """
     Analyze compatibility between two specific changes.
 

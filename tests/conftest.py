@@ -191,6 +191,9 @@ def temp_git_repo(temp_dir: Path) -> Generator[Path, None, None]:
         cwd=temp_dir, capture_output=True
     )
 
+    # Ensure branch is named 'main' (some git configs default to 'master')
+    subprocess.run(["git", "branch", "-M", "main"], cwd=temp_dir, capture_output=True)
+
     yield temp_dir
 
 

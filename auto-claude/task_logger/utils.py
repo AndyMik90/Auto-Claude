@@ -6,7 +6,6 @@ from pathlib import Path
 
 from .logger import TaskLogger
 
-
 # Global logger instance for easy access
 _current_logger: TaskLogger | None = None
 

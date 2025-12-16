@@ -189,6 +189,9 @@ def temp_project(tmp_path: Path) -> Path:
         cwd=tmp_path, capture_output=True
     )
 
+    # Ensure branch is named 'main' (some git configs default to 'master')
+    subprocess.run(["git", "branch", "-M", "main"], cwd=tmp_path, capture_output=True)
+
     return tmp_path
 
 

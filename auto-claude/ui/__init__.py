@@ -15,6 +15,7 @@ Terminal UI utilities organized into logical modules:
 """
 
 # Re-export everything from submodules
+from .boxes import box, divider
 from .capabilities import (
     COLOR,
     FANCY_UI,
@@ -24,7 +25,6 @@ from .capabilities import (
     supports_interactive,
     supports_unicode,
 )
-from .icons import Icons, icon
 from .colors import (
     Color,
     bold,
@@ -36,10 +36,6 @@ from .colors import (
     success,
     warning,
 )
-from .boxes import box, divider
-from .progress import progress_bar
-from .menu import MenuOption, select_menu
-from .status import BuildState, BuildStatus, StatusManager
 from .formatters import (
     print_header,
     print_key_value,
@@ -47,7 +43,11 @@ from .formatters import (
     print_section,
     print_status,
 )
+from .icons import Icons, icon
+from .menu import MenuOption, select_menu
+from .progress import progress_bar
 from .spinner import Spinner
+from .status import BuildState, BuildStatus, StatusManager
 
 # For backward compatibility
 _FANCY_UI = FANCY_UI

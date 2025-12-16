@@ -13,7 +13,6 @@ This module contains:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from .types import ChangeType, MergeStrategy
 
@@ -35,7 +34,7 @@ class CompatibilityRule:
     change_type_a: ChangeType
     change_type_b: ChangeType
     compatible: bool
-    strategy: Optional[MergeStrategy] = None
+    strategy: MergeStrategy | None = None
     reason: str = ""
     bidirectional: bool = True
 

@@ -5,7 +5,6 @@ Discovery and Context Phase Implementations
 Phases for project discovery and context gathering.
 """
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from task_logger import LogEntryType, LogPhase
@@ -14,7 +13,7 @@ from .. import context, discovery, requirements
 from .models import MAX_RETRIES, PhaseResult
 
 if TYPE_CHECKING:
-    from ..validator import SpecValidator
+    pass
 
 
 class DiscoveryPhaseMixin:

@@ -21,34 +21,35 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
+from .ai_resolver import AIResolver, create_claude_resolver
+from .auto_merger import AutoMerger
+from .conflict_detector import ConflictDetector
+from .conflict_resolver import ConflictResolver
+from .file_evolution import FileEvolutionTracker
+from .git_utils import find_worktree, get_file_from_branch
+from .merge_pipeline import MergePipeline
+
+# Re-export models for backwards compatibility
+from .models import MergeReport, MergeStats, TaskMergeRequest
+from .semantic_analyzer import SemanticAnalyzer
 from .types import (
     ConflictRegion,
     FileAnalysis,
     MergeDecision,
 )
-# Re-export models for backwards compatibility
-from .models import MergeReport, MergeStats, TaskMergeRequest
-from .semantic_analyzer import SemanticAnalyzer
-from .conflict_detector import ConflictDetector
-from .auto_merger import AutoMerger
-from .file_evolution import FileEvolutionTracker
-from .ai_resolver import AIResolver, create_claude_resolver
-from .conflict_resolver import ConflictResolver
-from .merge_pipeline import MergePipeline
-from .git_utils import find_worktree, get_file_from_branch
 
 # Import debug utilities
 try:
     from debug import (
         debug,
         debug_detailed,
-        debug_verbose,
-        debug_success,
         debug_error,
-        debug_warning,
         debug_section,
+        debug_success,
+        debug_verbose,
+        debug_warning,
         is_debug_enabled,
     )
 except ImportError:
@@ -114,9 +115,9 @@ class MergeOrchestrator:
     def __init__(
         self,
         project_dir: Path,
-        storage_dir: Optional[Path] = None,
+        storage_dir: Path | None = None,
         enable_ai: bool = True,
-        ai_resolver: Optional[AIResolver] = None,
+        ai_resolver: AIResolver | None = None,
         dry_run: bool = False,
     ):
         """
@@ -159,8 +160,8 @@ class MergeOrchestrator:
         self._ai_resolver_initialized = ai_resolver is not None
 
         # Initialize conflict resolver and merge pipeline
-        self._conflict_resolver: Optional[ConflictResolver] = None
-        self._merge_pipeline: Optional[MergePipeline] = None
+        self._conflict_resolver: ConflictResolver | None = None
+        self._merge_pipeline: MergePipeline | None = None
 
         # Merge output directory
         self.merge_output_dir = self.storage_dir / "merge_output"
@@ -205,7 +206,7 @@ class MergeOrchestrator:
     def merge_task(
         self,
         task_id: str,
-        worktree_path: Optional[Path] = None,
+        worktree_path: Path | None = None,
         target_branch: str = "main",
     ) -> MergeReport:
         """
@@ -563,7 +564,7 @@ class MergeOrchestrator:
     def write_merged_files(
         self,
         report: MergeReport,
-        output_dir: Optional[Path] = None,
+        output_dir: Path | None = None,
     ) -> list[Path]:
         """
         Write merged files to disk.

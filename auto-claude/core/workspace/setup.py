@@ -11,23 +11,22 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
+from merge import FileTimelineTracker
 from ui import (
     Icons,
     MenuOption,
     box,
     icon,
+    muted,
     print_status,
     select_menu,
     success,
-    muted,
 )
 from worktree import WorktreeManager
-from merge import FileTimelineTracker
 
-from .models import WorkspaceMode
 from .git_utils import has_uncommitted_changes
+from .models import WorkspaceMode
 
 # Import debug utilities
 try:

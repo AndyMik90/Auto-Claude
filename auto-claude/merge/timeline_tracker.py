@@ -15,18 +15,17 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
+from .timeline_git import TimelineGitHelper
 from .timeline_models import (
+    BranchPoint,
     FileTimeline,
     MainBranchEvent,
-    BranchPoint,
-    WorktreeState,
-    TaskIntent,
-    TaskFileView,
     MergeContext,
+    TaskFileView,
+    TaskIntent,
+    WorktreeState,
 )
-from .timeline_git import TimelineGitHelper
 from .timeline_persistence import TimelinePersistence
 
 logger = logging.getLogger(__name__)
@@ -49,7 +48,7 @@ class FileTimelineTracker:
     This service is the "brain" of the intent-aware merge system.
     """
 
-    def __init__(self, project_path: Path, storage_path: Optional[Path] = None):
+    def __init__(self, project_path: Path, storage_path: Path | None = None):
         """
         Initialize the file timeline tracker.
 
@@ -68,7 +67,7 @@ class FileTimelineTracker:
         self.persistence = TimelinePersistence(self.storage_path)
 
         # In-memory cache of timelines
-        self._timelines: Dict[str, FileTimeline] = {}
+        self._timelines: dict[str, FileTimeline] = {}
 
         # Load existing timelines
         self._timelines = self.persistence.load_all_timelines()
@@ -83,9 +82,9 @@ class FileTimelineTracker:
     def on_task_start(
         self,
         task_id: str,
-        files_to_modify: List[str],
-        files_to_create: Optional[List[str]] = None,
-        branch_point_commit: Optional[str] = None,
+        files_to_modify: list[str],
+        files_to_create: list[str] | None = None,
+        branch_point_commit: str | None = None,
         task_intent: str = "",
         task_title: str = "",
     ) -> None:
@@ -303,7 +302,7 @@ class FileTimelineTracker:
     # QUERY METHODS
     # =========================================================================
 
-    def get_merge_context(self, task_id: str, file_path: str) -> Optional[MergeContext]:
+    def get_merge_context(self, task_id: str, file_path: str) -> MergeContext | None:
         """
         Build complete merge context for AI resolver.
 
@@ -370,14 +369,14 @@ class FileTimelineTracker:
             total_pending_tasks=len(other_tasks),
         )
 
-        debug_success(MODULE, f"Built merge context",
+        debug_success(MODULE, "Built merge context",
                      commits_behind=task_view.commits_behind_main,
                      main_events=len(main_evolution),
                      other_tasks=len(other_tasks))
 
         return context
 
-    def get_files_for_task(self, task_id: str) -> List[str]:
+    def get_files_for_task(self, task_id: str) -> list[str]:
         """
         Return all files this task is tracking.
 
@@ -393,7 +392,7 @@ class FileTimelineTracker:
                 files.append(file_path)
         return files
 
-    def get_pending_tasks_for_file(self, file_path: str) -> List[TaskFileView]:
+    def get_pending_tasks_for_file(self, file_path: str) -> list[TaskFileView]:
         """
         Return all active tasks that modify this file.
 
@@ -408,7 +407,7 @@ class FileTimelineTracker:
             return []
         return timeline.get_active_tasks()
 
-    def get_task_drift(self, task_id: str) -> Dict[str, int]:
+    def get_task_drift(self, task_id: str) -> dict[str, int]:
         """
         Return commits-behind-main for each file in task.
 
@@ -437,7 +436,7 @@ class FileTimelineTracker:
         """
         return file_path in self._timelines
 
-    def get_timeline(self, file_path: str) -> Optional[FileTimeline]:
+    def get_timeline(self, file_path: str) -> FileTimeline | None:
         """
         Get the timeline for a file.
 
@@ -533,7 +532,7 @@ class FileTimelineTracker:
                         task_view.commits_behind_main = drift
                     self._persist_timeline(file_path)
 
-            debug_success(MODULE, f"Initialized from worktree",
+            debug_success(MODULE, "Initialized from worktree",
                          files=len(changed_files),
                          branch_point=branch_point[:8])
 

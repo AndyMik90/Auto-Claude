@@ -18,8 +18,6 @@ are re-exported from this module.
 """
 
 # Re-export validation models
-from .validation_models import ValidationResult, ValidatorFunction
-
 # Re-export all validators for backwards compatibility
 from .database_validators import (
     validate_dropdb_command,
@@ -41,6 +39,7 @@ from .process_validators import (
     validate_killall_command,
     validate_pkill_command,
 )
+from .validation_models import ValidationResult, ValidatorFunction
 from .validator_registry import VALIDATORS, get_validator
 
 # Define __all__ for explicit exports

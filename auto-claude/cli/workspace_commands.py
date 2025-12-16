@@ -13,6 +13,7 @@ _PARENT_DIR = Path(__file__).parent.parent
 if str(_PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(_PARENT_DIR))
 
+from debug import debug_warning
 from ui import (
     Icons,
     icon,
@@ -29,7 +30,15 @@ from .utils import print_banner
 
 # Import debug utilities
 try:
-    from debug import debug, debug_detailed, debug_verbose, debug_success, debug_error, debug_section, is_debug_enabled
+    from debug import (
+        debug,
+        debug_detailed,
+        debug_error,
+        debug_section,
+        debug_success,
+        debug_verbose,
+        is_debug_enabled,
+    )
 except ImportError:
     def debug(*args, **kwargs): pass
     def debug_detailed(*args, **kwargs): pass
@@ -311,11 +320,11 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
           project_dir=str(project_dir),
           spec_name=spec_name)
 
-    from workspace import get_existing_build_worktree
     from merge import MergeOrchestrator
+    from workspace import get_existing_build_worktree
 
     worktree_path = get_existing_build_worktree(project_dir, spec_name)
-    debug(MODULE, f"Worktree lookup result",
+    debug(MODULE, "Worktree lookup result",
           worktree_path=str(worktree_path) if worktree_path else None)
 
     if not worktree_path:
@@ -358,7 +367,7 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
         # Transform semantic conflicts to UI-friendly format
         conflicts = []
         for c in preview.get("conflicts", []):
-            debug_verbose(MODULE, f"Processing semantic conflict",
+            debug_verbose(MODULE, "Processing semantic conflict",
                          file=c.get("file", ""),
                          severity=c.get("severity", "unknown"))
             conflicts.append({
@@ -419,7 +428,7 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
         return result
 
     except Exception as e:
-        debug_error(MODULE, f"Merge preview failed", error=str(e))
+        debug_error(MODULE, "Merge preview failed", error=str(e))
         import traceback
         debug_verbose(MODULE, "Exception traceback", traceback=traceback.format_exc())
         return {

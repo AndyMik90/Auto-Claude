@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +60,7 @@ class TimelineGitHelper:
         except subprocess.CalledProcessError:
             return "unknown"
 
-    def get_file_content_at_commit(self, file_path: str, commit_hash: str) -> Optional[str]:
+    def get_file_content_at_commit(self, file_path: str, commit_hash: str) -> str | None:
         """
         Get file content at a specific commit.
 
@@ -85,7 +84,7 @@ class TimelineGitHelper:
         except Exception:
             return None
 
-    def get_files_changed_in_commit(self, commit_hash: str) -> List[str]:
+    def get_files_changed_in_commit(self, commit_hash: str) -> list[str]:
         """
         Get list of files changed in a commit.
 
@@ -173,7 +172,7 @@ class TimelineGitHelper:
             return worktree_path.read_text(encoding="utf-8")
         return ""
 
-    def get_changed_files_in_worktree(self, worktree_path: Path) -> List[str]:
+    def get_changed_files_in_worktree(self, worktree_path: Path) -> list[str]:
         """
         Get all changed files in a worktree vs main.
 
@@ -200,7 +199,7 @@ class TimelineGitHelper:
             logger.error(f"Failed to get changed files in worktree: {e}")
             return []
 
-    def get_branch_point(self, worktree_path: Path) -> Optional[str]:
+    def get_branch_point(self, worktree_path: Path) -> str | None:
         """
         Get the branch point (merge-base with main) for a worktree.
 

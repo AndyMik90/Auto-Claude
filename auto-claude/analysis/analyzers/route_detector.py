@@ -292,7 +292,8 @@ class RouteDetector(BaseAnalyzer):
         if pages_api.exists():
             api_files = [f for f in pages_api.glob("**/*.{ts,js,tsx,jsx}") if self._should_include_file(f)]
             for api_file in api_files:
-                if api_file.name.startswith('_'):                    continue
+                if api_file.name.startswith('_'):
+                    continue
 
                 # Convert file path to route
                 relative_path = api_file.relative_to(pages_api)

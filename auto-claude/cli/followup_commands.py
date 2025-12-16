@@ -9,7 +9,6 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Ensure parent directory is in path for imports (before other imports)
 _PARENT_DIR = Path(__file__).parent.parent
@@ -33,7 +32,7 @@ from ui import (
 )
 
 
-def collect_followup_task(spec_dir: Path, max_retries: int = 3) -> Optional[str]:
+def collect_followup_task(spec_dir: Path, max_retries: int = 3) -> str | None:
     """
     Collect a follow-up task description from the user.
 

@@ -6,13 +6,12 @@ Commands for web frameworks, testing frameworks, build tools,
 and other framework-specific tooling across all ecosystems.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # FRAMEWORK-SPECIFIC COMMANDS
 # =============================================================================
 
-FRAMEWORK_COMMANDS: Dict[str, Set[str]] = {
+FRAMEWORK_COMMANDS: dict[str, set[str]] = {
     # Python web frameworks
     "flask": {"flask", "gunicorn", "waitress", "gevent"},
     "django": {"django-admin", "gunicorn", "daphne", "uvicorn"},

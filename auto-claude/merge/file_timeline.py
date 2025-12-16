@@ -46,23 +46,23 @@ Architecture:
 
 from __future__ import annotations
 
+# Re-export helper classes (for advanced usage)
+from .timeline_git import TimelineGitHelper
+
 # Re-export all public models
 from .timeline_models import (
-    MainBranchEvent,
     BranchPoint,
-    WorktreeState,
-    TaskIntent,
-    TaskFileView,
     FileTimeline,
+    MainBranchEvent,
     MergeContext,
+    TaskFileView,
+    TaskIntent,
+    WorktreeState,
 )
+from .timeline_persistence import TimelinePersistence
 
 # Re-export the main tracker service
 from .timeline_tracker import FileTimelineTracker
-
-# Re-export helper classes (for advanced usage)
-from .timeline_git import TimelineGitHelper
-from .timeline_persistence import TimelinePersistence
 
 __all__ = [
     # Main service

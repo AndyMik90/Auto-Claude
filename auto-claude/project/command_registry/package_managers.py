@@ -5,13 +5,12 @@ Package Manager Commands Module
 Commands for various package managers across different ecosystems.
 """
 
-from typing import Dict, Set
 
 # =============================================================================
 # PACKAGE MANAGER COMMANDS
 # =============================================================================
 
-PACKAGE_MANAGER_COMMANDS: Dict[str, Set[str]] = {
+PACKAGE_MANAGER_COMMANDS: dict[str, set[str]] = {
     "npm": {"npm", "npx"},
     "yarn": {"yarn"},
     "pnpm": {"pnpm", "pnpx"},

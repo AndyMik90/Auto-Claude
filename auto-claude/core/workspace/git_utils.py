@@ -9,7 +9,6 @@ Utility functions for git operations used in workspace management.
 import json
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 # Constants for merge limits
 MAX_FILE_LINES_FOR_AI = 5000  # Skip AI for files larger than this
@@ -89,7 +88,7 @@ def get_existing_build_worktree(project_dir: Path, spec_name: str) -> Path | Non
     return None
 
 
-def get_file_content_from_ref(project_dir: Path, ref: str, file_path: str) -> Optional[str]:
+def get_file_content_from_ref(project_dir: Path, ref: str, file_path: str) -> str | None:
     """Get file content from a git ref (branch, commit, etc.)."""
     result = subprocess.run(
         ["git", "show", f"{ref}:{file_path}"],
@@ -265,9 +264,9 @@ def validate_merged_syntax(file_path: str, content: str, project_dir: Path) -> t
 def create_conflict_file_with_git(
     main_content: str,
     worktree_content: str,
-    base_content: Optional[str],
+    base_content: str | None,
     project_dir: Path,
-) -> tuple[Optional[str], bool]:
+) -> tuple[str | None, bool]:
     """
     Use git merge-file to create a file with conflict markers.
 

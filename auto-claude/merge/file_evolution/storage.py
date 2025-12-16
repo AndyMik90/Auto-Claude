@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from ..types import FileEvolution
 
@@ -125,7 +124,7 @@ class EvolutionStorage:
 
         return str(baseline_path.relative_to(self.storage_dir))
 
-    def read_baseline_content(self, baseline_snapshot_path: str) -> Optional[str]:
+    def read_baseline_content(self, baseline_snapshot_path: str) -> str | None:
         """
         Read baseline content from disk.
 
@@ -143,7 +142,7 @@ class EvolutionStorage:
                 logger.warning(f"Could not read baseline {baseline_snapshot_path}: {e}")
         return None
 
-    def read_file_content(self, file_path: Path | str) -> Optional[str]:
+    def read_file_content(self, file_path: Path | str) -> str | None:
         """
         Read file content from project directory.
 

@@ -14,8 +14,10 @@ This module handles the pipeline for merging a single file:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
+from .conflict_detector import ConflictDetector
+from .conflict_resolver import ConflictResolver
+from .file_merger import apply_single_task_changes, combine_non_conflicting_changes
 from .types import (
     ChangeType,
     FileAnalysis,
@@ -23,9 +25,6 @@ from .types import (
     MergeResult,
     TaskSnapshot,
 )
-from .conflict_detector import ConflictDetector
-from .conflict_resolver import ConflictResolver
-from .file_merger import apply_single_task_changes, combine_non_conflicting_changes
 
 logger = logging.getLogger(__name__)
 

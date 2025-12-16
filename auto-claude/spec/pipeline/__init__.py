@@ -11,6 +11,7 @@ Components:
 """
 
 from init import init_auto_claude_dir
+
 from .models import get_specs_dir
 from .orchestrator import SpecOrchestrator
 

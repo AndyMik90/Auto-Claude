@@ -14,7 +14,6 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from ..semantic_analyzer import SemanticAnalyzer
 from ..types import FileEvolution, TaskSnapshot, compute_content_hash
@@ -44,7 +43,7 @@ class ModificationTracker:
     def __init__(
         self,
         storage: EvolutionStorage,
-        semantic_analyzer: Optional[SemanticAnalyzer] = None,
+        semantic_analyzer: SemanticAnalyzer | None = None,
     ):
         """
         Initialize modification tracker.
@@ -63,8 +62,8 @@ class ModificationTracker:
         old_content: str,
         new_content: str,
         evolutions: dict[str, FileEvolution],
-        raw_diff: Optional[str] = None,
-    ) -> Optional[TaskSnapshot]:
+        raw_diff: str | None = None,
+    ) -> TaskSnapshot | None:
         """
         Record a file modification by a task.
 

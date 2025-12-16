@@ -10,7 +10,6 @@ import shlex
 
 from .validation_models import ValidationResult
 
-
 # =============================================================================
 # SQL PATTERNS AND UTILITIES
 # =============================================================================

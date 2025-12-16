@@ -11,18 +11,18 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from graphiti_config import GraphitiConfig
 
+from .embedder_providers import (
+    create_azure_openai_embedder,
+    create_ollama_embedder,
+    create_openai_embedder,
+    create_voyage_embedder,
+)
 from .exceptions import ProviderError
 from .llm_providers import (
     create_anthropic_llm_client,
     create_azure_openai_llm_client,
     create_ollama_llm_client,
     create_openai_llm_client,
-)
-from .embedder_providers import (
-    create_azure_openai_embedder,
-    create_ollama_embedder,
-    create_openai_embedder,
-    create_voyage_embedder,
 )
 
 logger = logging.getLogger(__name__)

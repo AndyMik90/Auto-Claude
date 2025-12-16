@@ -11,10 +11,9 @@ responses and validating that content looks like code.
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 
-def extract_code_block(response: str, language: str) -> Optional[str]:
+def extract_code_block(response: str, language: str) -> str | None:
     """
     Extract code block from AI response.
 
@@ -79,7 +78,7 @@ def extract_batch_code_blocks(
     response: str,
     location: str,
     language: str,
-) -> Optional[str]:
+) -> str | None:
     """
     Extract code block for a specific location from a batch response.
 

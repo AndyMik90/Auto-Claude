@@ -14,10 +14,9 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
-def find_worktree(project_dir: Path, task_id: str) -> Optional[Path]:
+def find_worktree(project_dir: Path, task_id: str) -> Path | None:
     """
     Find the worktree path for a task.
 
@@ -56,7 +55,7 @@ def find_worktree(project_dir: Path, task_id: str) -> Optional[Path]:
 
 def get_file_from_branch(
     project_dir: Path, file_path: str, branch: str
-) -> Optional[str]:
+) -> str | None:
     """
     Get file content from a specific git branch.
 

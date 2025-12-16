@@ -14,8 +14,8 @@ with heavy dependencies like claude_agent_sdk), we:
 This allows 'from worktree import X' to work without requiring all of core's dependencies.
 """
 
-import sys
 import importlib.util
+import sys
 from pathlib import Path
 from types import ModuleType
 

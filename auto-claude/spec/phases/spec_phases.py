@@ -6,14 +6,13 @@ Phases for spec document creation and quality assurance.
 """
 
 import json
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .. import validator, writer
 from .models import MAX_RETRIES, PhaseResult
 
 if TYPE_CHECKING:
-    from ..validator import SpecValidator
+    pass
 
 
 class SpecPhaseMixin:

@@ -1,11 +1,11 @@
 """Backward compatibility shim - import from services.orchestrator instead."""
 from services.orchestrator import (
-    ServiceConfig,
     OrchestrationResult,
-    ServiceOrchestrator,
+    ServiceConfig,
     ServiceContext,
-    is_multi_service_project,
+    ServiceOrchestrator,
     get_service_config,
+    is_multi_service_project,
 )
 
 __all__ = [

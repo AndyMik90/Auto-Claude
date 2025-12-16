@@ -26,7 +26,7 @@ Usage:
 from pathlib import Path
 
 # Public API exports
-from .models import PreImplementationChecklist, PredictedIssue
+from .models import PredictedIssue, PreImplementationChecklist
 from .predictor import BugPredictor
 
 __all__ = [

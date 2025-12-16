@@ -6,8 +6,6 @@ Workspace Display
 Functions for displaying workspace information and build summaries.
 """
 
-from pathlib import Path
-from typing import Optional
 
 from ui import (
     bold,
@@ -73,9 +71,9 @@ def show_changed_files(manager: WorktreeManager, spec_name: str) -> None:
             print(f"  {status} {filepath}")
 
 
-def print_merge_success(no_commit: bool, stats: Optional[dict] = None) -> None:
+def print_merge_success(no_commit: bool, stats: dict | None = None) -> None:
     """Print a success message after merge."""
-    from ui import box, icon, Icons, highlight
+    from ui import Icons, box, icon
 
     if no_commit:
         content = [
@@ -113,7 +111,7 @@ def print_merge_success(no_commit: bool, stats: Optional[dict] = None) -> None:
 
 def print_conflict_info(result: dict) -> None:
     """Print information about conflicts that occurred during merge."""
-    from ui import warning, highlight, muted
+    from ui import highlight, muted, warning
 
     conflicts = result.get("conflicts", [])
     if not conflicts:

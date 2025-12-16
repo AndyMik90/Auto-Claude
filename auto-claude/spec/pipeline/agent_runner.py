@@ -6,7 +6,6 @@ Handles the execution of AI agents for the spec creation pipeline.
 """
 
 from pathlib import Path
-from typing import Callable
 
 from client import create_client
 from task_logger import (

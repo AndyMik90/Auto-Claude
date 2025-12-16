@@ -13,11 +13,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from ..semantic_analyzer import SemanticAnalyzer
 from ..types import FileEvolution, TaskSnapshot
-from .baseline_capture import BaselineCapture, DEFAULT_EXTENSIONS
+from .baseline_capture import DEFAULT_EXTENSIONS, BaselineCapture
 from .evolution_queries import EvolutionQueries
 from .modification_tracker import ModificationTracker
 from .storage import EvolutionStorage
@@ -62,8 +61,8 @@ class FileEvolutionTracker:
     def __init__(
         self,
         project_dir: Path,
-        storage_dir: Optional[Path] = None,
-        semantic_analyzer: Optional[SemanticAnalyzer] = None,
+        storage_dir: Path | None = None,
+        semantic_analyzer: SemanticAnalyzer | None = None,
     ):
         """
         Initialize the file evolution tracker.
@@ -120,7 +119,7 @@ class FileEvolutionTracker:
     def capture_baselines(
         self,
         task_id: str,
-        files: Optional[list[Path | str]] = None,
+        files: list[Path | str] | None = None,
         intent: str = "",
     ) -> dict[str, FileEvolution]:
         """
@@ -152,8 +151,8 @@ class FileEvolutionTracker:
         file_path: Path | str,
         old_content: str,
         new_content: str,
-        raw_diff: Optional[str] = None,
-    ) -> Optional[TaskSnapshot]:
+        raw_diff: str | None = None,
+    ) -> TaskSnapshot | None:
         """
         Record a file modification by a task.
 
@@ -180,7 +179,7 @@ class FileEvolutionTracker:
         self._save_evolutions()
         return snapshot
 
-    def get_file_evolution(self, file_path: Path | str) -> Optional[FileEvolution]:
+    def get_file_evolution(self, file_path: Path | str) -> FileEvolution | None:
         """
         Get the complete evolution history for a file.
 
@@ -192,7 +191,7 @@ class FileEvolutionTracker:
         """
         return self.queries.get_file_evolution(file_path, self._evolutions)
 
-    def get_baseline_content(self, file_path: Path | str) -> Optional[str]:
+    def get_baseline_content(self, file_path: Path | str) -> str | None:
         """
         Get the baseline content for a file.
 
@@ -296,8 +295,8 @@ class FileEvolutionTracker:
     def export_for_merge(
         self,
         file_path: Path | str,
-        task_ids: Optional[list[str]] = None,
-    ) -> Optional[dict]:
+        task_ids: list[str] | None = None,
+    ) -> dict | None:
         """
         Export evolution data for a file in a format suitable for merge.
 

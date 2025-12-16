@@ -6,7 +6,6 @@ Handles serialization and deserialization of task context.
 """
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 
 from .models import TaskContext

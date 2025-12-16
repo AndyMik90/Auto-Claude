@@ -14,7 +14,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from ui import Icons, print_key_value, print_status
+from ui import print_key_value, print_status
 
 from .types import IdeationPhaseResult
 

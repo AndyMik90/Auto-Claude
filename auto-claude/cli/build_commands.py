@@ -8,7 +8,6 @@ CLI commands for building specs and handling the main build flow.
 import asyncio
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Ensure parent directory is in path for imports (before other imports)
 _PARENT_DIR = Path(__file__).parent.parent
@@ -26,7 +25,6 @@ from ui import (
     StatusManager,
     bold,
     box,
-    error,
     highlight,
     icon,
     muted,
@@ -45,14 +43,17 @@ from workspace import (
     setup_workspace,
 )
 
-from .input_handlers import collect_user_input_interactive, read_from_file, read_multiline_input
+from .input_handlers import (
+    read_from_file,
+    read_multiline_input,
+)
 
 
 def handle_build_command(
     project_dir: Path,
     spec_dir: Path,
     model: str,
-    max_iterations: Optional[int],
+    max_iterations: int | None,
     verbose: bool,
     force_isolated: bool,
     force_direct: bool,
@@ -299,7 +300,7 @@ def _handle_build_interrupt(
     worktree_manager,
     working_dir: Path,
     model: str,
-    max_iterations: Optional[int],
+    max_iterations: int | None,
     verbose: bool,
 ) -> None:
     """

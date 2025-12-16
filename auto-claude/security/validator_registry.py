@@ -5,7 +5,6 @@ Validator Registry
 Central registry mapping command names to their validation functions.
 """
 
-from typing import Dict
 
 from .database_validators import (
     validate_dropdb_command,
@@ -30,7 +29,7 @@ from .process_validators import (
 from .validation_models import ValidatorFunction
 
 # Map command names to their validation functions
-VALIDATORS: Dict[str, ValidatorFunction] = {
+VALIDATORS: dict[str, ValidatorFunction] = {
     # Process management
     "pkill": validate_pkill_command,
     "kill": validate_kill_command,

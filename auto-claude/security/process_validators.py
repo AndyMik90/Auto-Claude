@@ -9,7 +9,6 @@ import shlex
 
 from .validation_models import ValidationResult
 
-
 # Allowed development process names
 ALLOWED_PROCESS_NAMES = {
     # Node.js ecosystem

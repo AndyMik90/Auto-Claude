@@ -14,7 +14,6 @@ import stat
 import sys
 from pathlib import Path
 
-
 HOOK_SCRIPT = '''#!/bin/bash
 #
 # Git post-commit hook for FileTimelineTracker
@@ -145,7 +144,7 @@ def uninstall_hook(project_path: Path) -> bool:
     backup_path = git_dir / "hooks" / "post-commit.backup"
     if backup_path.exists():
         shutil.move(backup_path, hook_path)
-        print(f"Restored original hook from backup")
+        print("Restored original hook from backup")
     else:
         # Remove the hook entirely
         hook_path.unlink()

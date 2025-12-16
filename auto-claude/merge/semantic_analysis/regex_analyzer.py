@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import difflib
 import re
-from typing import Optional
 
 from ..types import ChangeType, FileAnalysis, SemanticChange
 
@@ -133,7 +132,7 @@ def analyze_with_regex(
     return analysis
 
 
-def get_import_pattern(ext: str) -> Optional[re.Pattern]:
+def get_import_pattern(ext: str) -> re.Pattern | None:
     """
     Get the import pattern for a file extension.
 
@@ -153,7 +152,7 @@ def get_import_pattern(ext: str) -> Optional[re.Pattern]:
     return patterns.get(ext)
 
 
-def get_function_pattern(ext: str) -> Optional[re.Pattern]:
+def get_function_pattern(ext: str) -> re.Pattern | None:
     """
     Get the function definition pattern for a file extension.
 

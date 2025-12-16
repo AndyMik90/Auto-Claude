@@ -12,8 +12,6 @@ This module provides functions to help users understand:
 
 from __future__ import annotations
 
-from typing import Optional
-
 from .compatibility_rules import CompatibilityRule
 from .types import ChangeType, ConflictRegion, MergeStrategy
 
@@ -51,7 +49,7 @@ def explain_conflict(conflict: ConflictRegion) -> str:
 
 def get_compatible_pairs(
     rules: list[CompatibilityRule],
-) -> list[tuple[ChangeType, ChangeType, Optional[MergeStrategy]]]:
+) -> list[tuple[ChangeType, ChangeType, MergeStrategy | None]]:
     """
     Get all compatible change type pairs and their strategies.
 

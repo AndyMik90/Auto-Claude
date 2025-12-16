@@ -12,7 +12,7 @@ Components:
 - tracker: Main FileEvolutionTracker class
 """
 
-from .baseline_capture import BaselineCapture, DEFAULT_EXTENSIONS
+from .baseline_capture import DEFAULT_EXTENSIONS, BaselineCapture
 from .evolution_queries import EvolutionQueries
 from .modification_tracker import ModificationTracker
 from .storage import EvolutionStorage

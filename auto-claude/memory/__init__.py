@@ -64,16 +64,12 @@ Public API:
 """
 
 # Graphiti integration
+# Codebase map
+from .codebase_map import load_codebase_map, update_codebase_map
 from .graphiti_helpers import is_graphiti_memory_enabled
 
 # Directory management
 from .paths import clear_memory, get_memory_dir, get_session_insights_dir
-
-# Session insights
-from .sessions import load_all_insights, save_session_insights
-
-# Codebase map
-from .codebase_map import load_codebase_map, update_codebase_map
 
 # Patterns and gotchas
 from .patterns import (
@@ -82,6 +78,9 @@ from .patterns import (
     load_gotchas,
     load_patterns,
 )
+
+# Session insights
+from .sessions import load_all_insights, save_session_insights
 
 # Summary utilities
 from .summary import get_memory_summary
