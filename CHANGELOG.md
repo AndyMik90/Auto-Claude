@@ -1,3 +1,140 @@
+## What's New
+
+### ✨ New Features
+
+- Added GitHub OAuth integration for seamless authentication
+
+- Implemented roadmap feature management with kanban board and drag-and-drop support
+
+- Added ability to select AI model during task creation with agent profiles
+
+- Introduced file explorer integration and referenced files section in task creation wizard
+
+- Added .gitignore entry management during project initialization
+
+- Created comprehensive onboarding wizard with OAuth configuration, Graphiti setup, and first spec guidance
+
+- Introduced Electron MCP for debugging and validation support
+
+- Added BMM workflow status tracking and project scan reporting
+
+### 🛠️ Improvements
+
+- Refactored IdeationHeader component and improved deleteSelected logic
+
+- Refactored backend for upcoming features with improved architecture
+
+- Enhanced RouteDetector to exclude specific directories from route detection
+
+- Improved merge conflict resolution with parallel processing and AI-assisted resolution
+
+- Optimized merge conflict resolution performance and context sending
+
+- Refactored AI resolver to use async context manager and Claude SDK patterns
+
+- Enhanced merge orchestrator logic and frontend UX for conflict handling
+
+- Refactored components for better maintainability and faster development
+
+- Refactored changelog formatter for GitHub Release compatibility
+
+- Enhanced onboarding wizard completion logic and step progression
+
+- Updated README to clarify Auto Claude's role as an AI coding companion
+
+### 🐛 Bug Fixes
+
+- Fixed GraphitiStep TypeScript compilation error
+
+- Added missing onRerunWizard prop to AppSettingsDialog
+
+- Improved merge lock file conflict handling
+
+### 🔧 Other Changes
+
+- Removed .auto-claude and _bmad-output from git tracking (already in .gitignore)
+
+- Updated Python versions in CI workflows
+
+- General linting improvements and code cleanup
+
+---
+
+## What's Changed
+
+- feat: New github oauth integration by @AndyMik90 in afeb54f
+- feat: Implement roadmap feature management kanban with drag-and-drop support by @AndyMik90 in 9403230
+- feat: Agent profiles, be able to select model on task creation by @AndyMik90 in d735c5c
+- feat: Add Referenced Files Section and File Explorer Integration in Task Creation Wizard by @AndyMik90 in 31e4e87
+- feat: Add functionality to manage .gitignore entries during project initialization by @AndyMik90 in 2ac00a9
+- feat: Introduce electron mcp for electron debugging/validation by @AndyMik90 in 3eb2ead
+- feat: Add BMM workflow status tracking and project scan report by @AndyMik90 in 7f6456f
+- refactor: Refactor IdeationHeader and update handleDeleteSelected logic by @AndyMik90 in 36338f3
+- refactor: Big backend refactor for upcoming features by @AndyMik90 in 11fcdf4
+- refactor: Refactoring for better codebase by @AndyMik90 in feb0d4e
+- refactor: Refactor Roadmap component to utilize RoadmapGenerationProgress for better status display by @AndyMik90 in d8e5784
+- refactor: refactoring components for better future maintence and more rapid coding by @AndyMik90 in 131ec4c
+- refactor: Enhance RouteDetector to exclude specific directories from route detection by @AndyMik90 in 08dc24c
+- refactor: Update AI resolver to use Claude Opus model and improve error logging by @AndyMik90 in 1d830ba
+- refactor: Use claude sdk pattern for ai resolver by @AndyMik90 in 4bba9d1
+- refactor: Refactor AI resolver to use async context manager for client connection by @AndyMik90 in 579ea40
+- refactor: Update changelog formatter for GitHub Release compatibility by @AndyMik90 in 3b832db
+- refactor: Enhance onboarding wizard completion logic by @AndyMik90 in 7c01638
+- refactor: Update GraphitiStep to proceed to the next step after successful configuration save by @AndyMik90 in a5a1eb1
+- fix: Add onRerunWizard prop to AppSettingsDialog (qa-requested) by @AndyMik90 in 6b5b714
+- fix: Add first-run detection to App.tsx by @AndyMik90 in 779e36f
+- fix: Add TypeScript compilation check - fix GraphitiStep type error by @AndyMik90 in f90fa80
+- improve: ideation improvements and linting by @AndyMik90 in 36a69fc
+- improve: improve merge conflicts for lock files by @AndyMik90 in a891225
+- improve: Roadmap competitor analysis by @AndyMik90 in ddf47ae
+- improve: parallell merge conflict resolution by @AndyMik90 in f00aa33
+- improve: improvement to speed of merge conflict resolution by @AndyMik90 in 56ff586
+- improve: improve context sending to merge agent by @AndyMik90 in e409ae8
+- improve: better conflict handling in the frontend app for merge contlicts (better UX) by @AndyMik90 in 65937e1
+- improve: resolve claude agent sdk by @AndyMik90 in 901e83a
+- improve: Getting ready for BMAD integration by @AndyMik90 in b94eb65
+- improve: Enhance AI resolver and debugging output by @AndyMik90 in bf787ad
+- improve: Integrate profile environment for OAuth token in task handlers by @AndyMik90 in 01e801a
+- chore: Remove .auto-claude from tracking (already in .gitignore) by @AndyMik90 in 87f353c
+- chore: Update Python versions in CI workflows by @AndyMik90 in 43a338c
+- chore: Linting gods pleased now? by @AndyMik90 in 6aea4bb
+- chore: Linting and test fixes by @AndyMik90 in 140f11f
+- chore: Remove _bmad-output from git tracking by @AndyMik90 in 4cd7500
+- chore: Add _bmad-output to .gitignore by @AndyMik90 in dbe27f0
+- chore: Linting gods are happy by @AndyMik90 in 3fc1592
+- chore: Getting ready for the lint gods by @AndyMik90 in 142cd67
+- chore: CLI testing/linting by @AndyMik90 in d8ad17d
+- chore: CLI and tests by @AndyMik90 in 9a59b7e
+- chore: Update implementation_plan.json - fixes applied by @AndyMik90 in 555a46f
+- chore: Update parallel merge conflict resolution metrics in workspace.py by @AndyMik90 in 2e151ac
+- chore: merge logic v0.3 by @AndyMik90 in c5d33cd
+- chore: merge orcehestrator logic by @AndyMik90 in e8b6669
+- chore: Merge-orchestrator by @AndyMik90 in d8ba532
+- chore: merge orcehstrator logic by @AndyMik90 in e8b6669
+- chore: Electron UI fix for merge orcehstrator by @AndyMik90 in e08ab62
+- chore: Frontend lints by @AndyMik90 in 488bbfa
+- docs: Revise README.md to enhance clarity and focus on Auto Claude's capabilities by @AndyMik90 in f9ef7ea
+- qa: Sign off - all verification passed by @AndyMik90 in b3f4803
+- qa: Rejected - fixes required by @AndyMik90 in 5e56890
+- qa: subtask-6-2 - Run existing tests to verify no regressions by @AndyMik90 in 5f989a4
+- qa: subtask-5-2 - Enhance OAuthStep to detect and display if token is already configured by @AndyMik90 in 50f22da
+- qa: subtask-5-1 - Add settings migration logic - set onboardingCompleted by @AndyMik90 in f57c28e
+- qa: subtask-4-1 - Add 'Re-run Wizard' button to AppSettings navigation by @AndyMik90 in 9144e7f
+- qa: subtask-3-1 - Add first-run detection to App.tsx by @AndyMik90 in 779e36f
+- qa: subtask-2-8 - Create index.ts barrel export for onboarding components by @AndyMik90 in b0af2dc
+- qa: subtask-2-7 - Create OnboardingWizard component by @AndyMik90 in 3de8928
+- qa: subtask-2-6 - Create CompletionStep component - success message by @AndyMik90 in aa0f608
+- qa: subtask-2-5 - Create FirstSpecStep component - guided first spec by @AndyMik90 in 32f17a1
+- qa: subtask-2-4 - Create GraphitiStep component - optional Graphiti/FalkorDB configuration by @AndyMik90 in 61184b0
+- qa: subtask-2-3 - Create OAuthStep component - Claude OAuth token configuration step by @AndyMik90 in 79d622e
+- qa: subtask-2-2 - Create WelcomeStep component by @AndyMik90 in a97f697
+- qa: subtask-2-1 - Create WizardProgress component - step progress indicator by @AndyMik90 in b6e604c
+- qa: subtask-1-2 - Add onboardingCompleted to DEFAULT_APP_SETTINGS by @AndyMik90 in c5a0331
+- qa: subtask-1-1 - Add onboardingCompleted to AppSettings type interface by @AndyMik90 in 7c24b48
+- chore: Version 2.0.1 by @AndyMik90 in 4b242c4
+- test: Merge-orchestrator by @AndyMik90 in d8ba532
+- test: test for ai merge AI by @AndyMik90 in 9d9cf16
+
 ## What's New in 2.0.1
 
 ### 🚀 New Features
