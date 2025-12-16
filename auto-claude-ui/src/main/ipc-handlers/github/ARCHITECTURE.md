@@ -59,6 +59,15 @@
 │  │ • Check authentication status                             │    │
 │  └───────────────────────────────────────────────────────────┘    │
 │                                                                     │
+│  ┌───────────────────────────────────────────────────────────┐    │
+│  │ oauth-handlers.ts (220 lines)                             │    │
+│  │ • Check gh CLI installation                               │    │
+│  │ • Check authentication status                             │    │
+│  │ • Start OAuth flow via gh CLI                             │    │
+│  │ • Retrieve OAuth tokens                                   │    │
+│  │ • Get authenticated user info                             │    │
+│  └───────────────────────────────────────────────────────────┘    │
+│                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
                              │
                              │ depends on
@@ -68,8 +77,9 @@
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────┐    │
-│  │ utils.ts (60 lines)                                       │    │
+│  │ utils.ts (85 lines)                                       │    │
 │  │ • getGitHubConfig() - Extract config from .env           │    │
+│  │ • getTokenFromGhCli() - Get token from gh CLI             │    │
 │  │ • githubFetch() - GitHub API wrapper                     │    │
 │  └───────────────────────────────────────────────────────────┘    │
 │                                                                     │

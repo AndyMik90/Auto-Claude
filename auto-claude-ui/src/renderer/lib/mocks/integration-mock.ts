@@ -131,5 +131,47 @@ export const integrationMock = {
 
   onGitHubInvestigationProgress: () => () => {},
   onGitHubInvestigationComplete: () => () => {},
-  onGitHubInvestigationError: () => () => {}
+  onGitHubInvestigationError: () => () => {},
+
+  // GitHub OAuth Operations (gh CLI)
+  checkGitHubCli: async () => ({
+    success: true,
+    data: {
+      installed: false,
+      version: undefined
+    }
+  }),
+
+  checkGitHubAuth: async () => ({
+    success: true,
+    data: {
+      authenticated: false,
+      username: undefined
+    }
+  }),
+
+  startGitHubAuth: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  getGitHubToken: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  getGitHubUser: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  listGitHubUserRepos: async () => ({
+    success: true,
+    data: {
+      repos: [
+        { fullName: 'user/example-repo', description: 'An example repository', isPrivate: false },
+        { fullName: 'user/private-repo', description: 'A private repository', isPrivate: true }
+      ]
+    }
+  })
 };

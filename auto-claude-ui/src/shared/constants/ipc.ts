@@ -171,6 +171,14 @@ export const IPC_CHANNELS = {
   GITHUB_IMPORT_ISSUES: 'github:importIssues',
   GITHUB_CREATE_RELEASE: 'github:createRelease',
 
+  // GitHub OAuth (gh CLI authentication)
+  GITHUB_CHECK_CLI: 'github:checkCli',
+  GITHUB_CHECK_AUTH: 'github:checkAuth',
+  GITHUB_START_AUTH: 'github:startAuth',
+  GITHUB_GET_TOKEN: 'github:getToken',
+  GITHUB_GET_USER: 'github:getUser',
+  GITHUB_LIST_USER_REPOS: 'github:listUserRepos',
+
   // GitHub events (main -> renderer)
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',
   GITHUB_INVESTIGATION_COMPLETE: 'github:investigationComplete',

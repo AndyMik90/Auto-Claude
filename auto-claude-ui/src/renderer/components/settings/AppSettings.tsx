@@ -41,6 +41,7 @@ interface AppSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialSection?: AppSection;
+  initialProjectSection?: ProjectSettingsSection;
   onRerunWizard?: () => void;
 }
 
@@ -75,7 +76,7 @@ const projectNavItems: NavItem<ProjectSettingsSection>[] = [
  * Main application settings dialog container
  * Coordinates app and project settings sections
  */
-export function AppSettingsDialog({ open, onOpenChange, initialSection, onRerunWizard }: AppSettingsDialogProps) {
+export function AppSettingsDialog({ open, onOpenChange, initialSection, initialProjectSection, onRerunWizard }: AppSettingsDialogProps) {
   const { settings, setSettings, isSaving, error, saveSettings } = useSettings();
   const [version, setVersion] = useState<string>('');
 
@@ -86,11 +87,16 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, onRerunW
 
   // Navigate to initial section when dialog opens with a specific section
   useEffect(() => {
-    if (open && initialSection) {
-      setActiveTopLevel('app');
-      setAppSection(initialSection);
+    if (open) {
+      if (initialProjectSection) {
+        setActiveTopLevel('project');
+        setProjectSection(initialProjectSection);
+      } else if (initialSection) {
+        setActiveTopLevel('app');
+        setAppSection(initialSection);
+      }
     }
-  }, [open, initialSection]);
+  }, [open, initialSection, initialProjectSection]);
 
   // Project state
   const projects = useProjectStore((state) => state.projects);

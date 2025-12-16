@@ -20,6 +20,7 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
 import { TaskCreationWizard } from './components/TaskCreationWizard';
 import { AppSettingsDialog, type AppSection } from './components/settings/AppSettings';
+import type { ProjectSettingsSection } from './components/settings/ProjectSettingsContent';
 import { TerminalGrid } from './components/TerminalGrid';
 import { Roadmap } from './components/Roadmap';
 import { Context } from './components/Context';
@@ -56,6 +57,7 @@ export function App() {
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<AppSection | undefined>(undefined);
+  const [settingsInitialProjectSection, setSettingsInitialProjectSection] = useState<ProjectSettingsSection | undefined>(undefined);
   const [activeView, setActiveView] = useState<SidebarView>('kanban');
   const [isOnboardingWizardOpen, setIsOnboardingWizardOpen] = useState(false);
 
@@ -319,7 +321,10 @@ export function App() {
                   <Insights projectId={selectedProjectId} />
                 )}
                 {activeView === 'github-issues' && selectedProjectId && (
-                  <GitHubIssues onOpenSettings={() => setIsSettingsDialogOpen(true)} />
+                  <GitHubIssues onOpenSettings={() => {
+                    setSettingsInitialProjectSection('github');
+                    setIsSettingsDialogOpen(true);
+                  }} />
                 )}
                 {activeView === 'changelog' && selectedProjectId && (
                   <Changelog />
@@ -371,11 +376,13 @@ export function App() {
           onOpenChange={(open) => {
             setIsSettingsDialogOpen(open);
             if (!open) {
-              // Reset initial section when dialog closes
+              // Reset initial sections when dialog closes
               setSettingsInitialSection(undefined);
+              setSettingsInitialProjectSection(undefined);
             }
           }}
           initialSection={settingsInitialSection}
+          initialProjectSection={settingsInitialProjectSection}
           onRerunWizard={() => {
             // Reset onboarding state to trigger wizard
             useSettingsStore.getState().updateSettings({ onboardingCompleted: false });

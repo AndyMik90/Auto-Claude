@@ -1,12 +1,15 @@
-import { Github, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Github, RefreshCw, KeyRound } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { StatusBadge } from './StatusBadge';
 import { PasswordInput } from './PasswordInput';
 import { ConnectionStatus } from './ConnectionStatus';
+import { GitHubOAuthFlow } from './GitHubOAuthFlow';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
+import { Button } from '../ui/button';
 import type { ProjectEnvConfig, GitHubSyncStatus } from '../../../shared/types';
 
 interface GitHubIntegrationSectionProps {
@@ -26,9 +29,16 @@ export function GitHubIntegrationSection({
   gitHubConnectionStatus,
   isCheckingGitHub,
 }: GitHubIntegrationSectionProps) {
+  const [showOAuthFlow, setShowOAuthFlow] = useState(false);
+
   const badge = envConfig.githubEnabled ? (
     <StatusBadge status="success" label="Enabled" />
   ) : null;
+
+  const handleOAuthSuccess = (token: string, _username?: string) => {
+    onUpdateConfig({ githubToken: token });
+    setShowOAuthFlow(false);
+  };
 
   return (
     <CollapsibleSection
@@ -53,25 +63,55 @@ export function GitHubIntegrationSection({
 
       {envConfig.githubEnabled && (
         <>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-foreground">Personal Access Token</Label>
-            <p className="text-xs text-muted-foreground">
-              Create a token with <code className="px-1 bg-muted rounded">repo</code> scope from{' '}
-              <a
-                href="https://github.com/settings/tokens/new?scopes=repo&description=Auto-Build-UI"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-info hover:underline"
-              >
-                GitHub Settings
-              </a>
-            </p>
-            <PasswordInput
-              value={envConfig.githubToken || ''}
-              onChange={(value) => onUpdateConfig({ githubToken: value })}
-              placeholder="ghp_xxxxxxxx or github_pat_xxxxxxxx"
-            />
-          </div>
+          {showOAuthFlow ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-foreground">GitHub Authentication</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowOAuthFlow(false)}
+                >
+                  Use Manual Token
+                </Button>
+              </div>
+              <GitHubOAuthFlow
+                onSuccess={handleOAuthSuccess}
+                onCancel={() => setShowOAuthFlow(false)}
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-foreground">Personal Access Token</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowOAuthFlow(true)}
+                  className="gap-2"
+                >
+                  <KeyRound className="h-3 w-3" />
+                  Use OAuth Instead
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Create a token with <code className="px-1 bg-muted rounded">repo</code> scope from{' '}
+                <a
+                  href="https://github.com/settings/tokens/new?scopes=repo&description=Auto-Build-UI"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-info hover:underline"
+                >
+                  GitHub Settings
+                </a>
+              </p>
+              <PasswordInput
+                value={envConfig.githubToken || ''}
+                onChange={(value) => onUpdateConfig({ githubToken: value })}
+                placeholder="ghp_xxxxxxxx or github_pat_xxxxxxxx"
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label className="text-sm font-medium text-foreground">Repository</Label>

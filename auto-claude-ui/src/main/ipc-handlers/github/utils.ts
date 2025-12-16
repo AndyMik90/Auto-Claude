@@ -3,13 +3,30 @@
  */
 
 import { existsSync, readFileSync } from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 import type { Project } from '../../../shared/types';
 import { parseEnvFile } from '../utils';
 import type { GitHubConfig } from './types';
 
 /**
+ * Get GitHub token from gh CLI if available
+ */
+function getTokenFromGhCli(): string | null {
+  try {
+    const token = execSync('gh auth token', {
+      encoding: 'utf-8',
+      stdio: 'pipe'
+    }).trim();
+    return token || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get GitHub configuration from project environment file
+ * Falls back to gh CLI token if GITHUB_TOKEN not in .env
  */
 export function getGitHubConfig(project: Project): GitHubConfig | null {
   if (!project.autoBuildPath) return null;
@@ -19,8 +36,16 @@ export function getGitHubConfig(project: Project): GitHubConfig | null {
   try {
     const content = readFileSync(envPath, 'utf-8');
     const vars = parseEnvFile(content);
-    const token = vars['GITHUB_TOKEN'];
+    let token: string | undefined = vars['GITHUB_TOKEN'];
     const repo = vars['GITHUB_REPO'];
+
+    // If no token in .env, try to get it from gh CLI
+    if (!token) {
+      const ghToken = getTokenFromGhCli();
+      if (ghToken) {
+        token = ghToken;
+      }
+    }
 
     if (!token || !repo) return null;
     return { token, repo };

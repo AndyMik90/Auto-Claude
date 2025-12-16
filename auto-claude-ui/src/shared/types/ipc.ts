@@ -292,6 +292,14 @@ export interface ElectronAPI {
     options?: { draft?: boolean; prerelease?: boolean }
   ) => Promise<IPCResult<{ url: string }>>;
 
+  // GitHub OAuth operations (gh CLI)
+  checkGitHubCli: () => Promise<IPCResult<{ installed: boolean; version?: string }>>;
+  checkGitHubAuth: () => Promise<IPCResult<{ authenticated: boolean; username?: string }>>;
+  startGitHubAuth: () => Promise<IPCResult<{ success: boolean; message?: string }>>;
+  getGitHubToken: () => Promise<IPCResult<{ token: string }>>;
+  getGitHubUser: () => Promise<IPCResult<{ username: string; name?: string }>>;
+  listGitHubUserRepos: () => Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>>;
+
   // GitHub event listeners
   onGitHubInvestigationProgress: (
     callback: (projectId: string, status: GitHubInvestigationStatus) => void

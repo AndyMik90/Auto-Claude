@@ -8,6 +8,7 @@
  * - investigation-handlers: AI-powered issue investigation
  * - import-handlers: Bulk issue import
  * - release-handlers: GitHub release creation
+ * - oauth-handlers: GitHub CLI OAuth authentication
  */
 
 import type { BrowserWindow } from 'electron';
@@ -17,6 +18,7 @@ import { registerIssueHandlers } from './issue-handlers';
 import { registerInvestigationHandlers } from './investigation-handlers';
 import { registerImportHandlers } from './import-handlers';
 import { registerReleaseHandlers } from './release-handlers';
+import { registerGithubOAuthHandlers } from './oauth-handlers';
 
 /**
  * Register all GitHub-related IPC handlers
@@ -30,6 +32,7 @@ export function registerGithubHandlers(
   registerInvestigationHandlers(agentManager, getMainWindow);
   registerImportHandlers(agentManager);
   registerReleaseHandlers();
+  registerGithubOAuthHandlers();
 }
 
 // Re-export utilities for potential external use

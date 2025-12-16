@@ -28,6 +28,14 @@ export interface GitHubAPI {
     options?: { draft?: boolean; prerelease?: boolean }
   ) => Promise<IPCResult<{ url: string }>>;
 
+  // OAuth operations (gh CLI)
+  checkGitHubCli: () => Promise<IPCResult<{ installed: boolean; version?: string }>>;
+  checkGitHubAuth: () => Promise<IPCResult<{ authenticated: boolean; username?: string }>>;
+  startGitHubAuth: () => Promise<IPCResult<{ success: boolean; message?: string }>>;
+  getGitHubToken: () => Promise<IPCResult<{ token: string }>>;
+  getGitHubUser: () => Promise<IPCResult<{ username: string; name?: string }>>;
+  listGitHubUserRepos: () => Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>>;
+
   // Event Listeners
   onGitHubInvestigationProgress: (
     callback: (projectId: string, status: GitHubInvestigationStatus) => void
@@ -70,6 +78,25 @@ export const createGitHubAPI = (): GitHubAPI => ({
     options?: { draft?: boolean; prerelease?: boolean }
   ): Promise<IPCResult<{ url: string }>> =>
     invokeIpc(IPC_CHANNELS.GITHUB_CREATE_RELEASE, projectId, version, releaseNotes, options),
+
+  // OAuth operations (gh CLI)
+  checkGitHubCli: (): Promise<IPCResult<{ installed: boolean; version?: string }>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_CHECK_CLI),
+
+  checkGitHubAuth: (): Promise<IPCResult<{ authenticated: boolean; username?: string }>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_CHECK_AUTH),
+
+  startGitHubAuth: (): Promise<IPCResult<{ success: boolean; message?: string }>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_START_AUTH),
+
+  getGitHubToken: (): Promise<IPCResult<{ token: string }>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_GET_TOKEN),
+
+  getGitHubUser: (): Promise<IPCResult<{ username: string; name?: string }>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_GET_USER),
+
+  listGitHubUserRepos: (): Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_LIST_USER_REPOS),
 
   // Event Listeners
   onGitHubInvestigationProgress: (

@@ -1,0 +1,311 @@
+/**
+ * GitHub OAuth handlers using GitHub CLI (gh)
+ * Provides a simpler OAuth flow than manual PAT creation
+ */
+
+import { ipcMain } from 'electron';
+import { execSync, spawn } from 'child_process';
+import { IPC_CHANNELS } from '../../../shared/constants';
+import type { IPCResult } from '../../../shared/types';
+
+// Debug logging helper
+const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+
+function debugLog(message: string, data?: unknown): void {
+  if (DEBUG) {
+    if (data !== undefined) {
+      console.log(`[GitHub OAuth] ${message}`, data);
+    } else {
+      console.log(`[GitHub OAuth] ${message}`);
+    }
+  }
+}
+
+/**
+ * Check if gh CLI is installed
+ */
+export function registerCheckGhCli(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_CHECK_CLI,
+    async (): Promise<IPCResult<{ installed: boolean; version?: string }>> => {
+      debugLog('checkGitHubCli handler called');
+      try {
+        const checkCmd = process.platform === 'win32' ? 'where gh' : 'which gh';
+        debugLog(`Running command: ${checkCmd}`);
+
+        const whichResult = execSync(checkCmd, { encoding: 'utf-8', stdio: 'pipe' });
+        debugLog('gh CLI found at:', whichResult.trim());
+
+        // Get version
+        debugLog('Getting gh version...');
+        const versionOutput = execSync('gh --version', { encoding: 'utf-8', stdio: 'pipe' });
+        const version = versionOutput.trim().split('\n')[0];
+        debugLog('gh version:', version);
+
+        return {
+          success: true,
+          data: { installed: true, version }
+        };
+      } catch (error) {
+        debugLog('gh CLI not found or error:', error instanceof Error ? error.message : error);
+        return {
+          success: true,
+          data: { installed: false }
+        };
+      }
+    }
+  );
+}
+
+/**
+ * Check if user is authenticated with gh CLI
+ */
+export function registerCheckGhAuth(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_CHECK_AUTH,
+    async (): Promise<IPCResult<{ authenticated: boolean; username?: string }>> => {
+      debugLog('checkGitHubAuth handler called');
+      try {
+        // Check auth status
+        debugLog('Running: gh auth status');
+        const authStatus = execSync('gh auth status', { encoding: 'utf-8', stdio: 'pipe' });
+        debugLog('Auth status output:', authStatus);
+
+        // Get username if authenticated
+        try {
+          debugLog('Getting username via: gh api user --jq .login');
+          const username = execSync('gh api user --jq .login', {
+            encoding: 'utf-8',
+            stdio: 'pipe'
+          }).trim();
+          debugLog('Username:', username);
+
+          return {
+            success: true,
+            data: { authenticated: true, username }
+          };
+        } catch (usernameError) {
+          debugLog('Could not get username:', usernameError instanceof Error ? usernameError.message : usernameError);
+          return {
+            success: true,
+            data: { authenticated: true }
+          };
+        }
+      } catch (error) {
+        debugLog('Auth check failed (not authenticated):', error instanceof Error ? error.message : error);
+        return {
+          success: true,
+          data: { authenticated: false }
+        };
+      }
+    }
+  );
+}
+
+/**
+ * Start GitHub OAuth flow using gh CLI
+ * This will open the browser for device flow authentication
+ */
+export function registerStartGhAuth(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_START_AUTH,
+    async (): Promise<IPCResult<{ success: boolean; message?: string }>> => {
+      debugLog('startGitHubAuth handler called');
+      return new Promise((resolve) => {
+        try {
+          // Use gh auth login with web flow and repo scope
+          const args = ['auth', 'login', '--web', '--scopes', 'repo'];
+          debugLog('Spawning: gh', args);
+
+          const ghProcess = spawn('gh', args, {
+            stdio: ['pipe', 'pipe', 'pipe']
+          });
+
+          let output = '';
+          let errorOutput = '';
+
+          ghProcess.stdout?.on('data', (data) => {
+            const chunk = data.toString();
+            output += chunk;
+            debugLog('gh stdout:', chunk);
+          });
+
+          ghProcess.stderr?.on('data', (data) => {
+            const chunk = data.toString();
+            errorOutput += chunk;
+            debugLog('gh stderr:', chunk);
+          });
+
+          ghProcess.on('close', (code) => {
+            debugLog('gh process exited with code:', code);
+            debugLog('Full stdout:', output);
+            debugLog('Full stderr:', errorOutput);
+
+            if (code === 0) {
+              resolve({
+                success: true,
+                data: {
+                  success: true,
+                  message: 'Successfully authenticated with GitHub'
+                }
+              });
+            } else {
+              resolve({
+                success: false,
+                error: errorOutput || `Authentication failed with exit code ${code}`
+              });
+            }
+          });
+
+          ghProcess.on('error', (error) => {
+            debugLog('gh process error:', error.message);
+            resolve({
+              success: false,
+              error: error.message
+            });
+          });
+        } catch (error) {
+          debugLog('Exception in startGitHubAuth:', error instanceof Error ? error.message : error);
+          resolve({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      });
+    }
+  );
+}
+
+/**
+ * Get the current GitHub auth token from gh CLI
+ */
+export function registerGetGhToken(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_GET_TOKEN,
+    async (): Promise<IPCResult<{ token: string }>> => {
+      debugLog('getGitHubToken handler called');
+      try {
+        debugLog('Running: gh auth token');
+        const token = execSync('gh auth token', {
+          encoding: 'utf-8',
+          stdio: 'pipe'
+        }).trim();
+
+        if (!token) {
+          debugLog('No token returned (empty string)');
+          return {
+            success: false,
+            error: 'No token found. Please authenticate first.'
+          };
+        }
+
+        debugLog('Token retrieved successfully, length:', token.length);
+        return {
+          success: true,
+          data: { token }
+        };
+      } catch (error) {
+        debugLog('Failed to get token:', error instanceof Error ? error.message : error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get token'
+        };
+      }
+    }
+  );
+}
+
+/**
+ * Get the authenticated GitHub user info
+ */
+export function registerGetGhUser(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_GET_USER,
+    async (): Promise<IPCResult<{ username: string; name?: string }>> => {
+      debugLog('getGitHubUser handler called');
+      try {
+        debugLog('Running: gh api user');
+        const userJson = execSync('gh api user', {
+          encoding: 'utf-8',
+          stdio: 'pipe'
+        });
+
+        debugLog('User API response received');
+        const user = JSON.parse(userJson);
+        debugLog('Parsed user:', { login: user.login, name: user.name });
+
+        return {
+          success: true,
+          data: {
+            username: user.login,
+            name: user.name
+          }
+        };
+      } catch (error) {
+        debugLog('Failed to get user info:', error instanceof Error ? error.message : error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get user info'
+        };
+      }
+    }
+  );
+}
+
+/**
+ * List repositories accessible to the authenticated user
+ */
+export function registerListUserRepos(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_LIST_USER_REPOS,
+    async (): Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>> => {
+      debugLog('listUserRepos handler called');
+      try {
+        // Use gh repo list to get user's repositories
+        // Format: owner/repo, description, visibility
+        debugLog('Running: gh repo list --limit 100 --json nameWithOwner,description,isPrivate');
+        const output = execSync(
+          'gh repo list --limit 100 --json nameWithOwner,description,isPrivate',
+          {
+            encoding: 'utf-8',
+            stdio: 'pipe'
+          }
+        );
+
+        const repos = JSON.parse(output);
+        debugLog('Found repos:', repos.length);
+
+        const formattedRepos = repos.map((repo: { nameWithOwner: string; description: string | null; isPrivate: boolean }) => ({
+          fullName: repo.nameWithOwner,
+          description: repo.description,
+          isPrivate: repo.isPrivate
+        }));
+
+        return {
+          success: true,
+          data: { repos: formattedRepos }
+        };
+      } catch (error) {
+        debugLog('Failed to list repos:', error instanceof Error ? error.message : error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to list repositories'
+        };
+      }
+    }
+  );
+}
+
+/**
+ * Register all GitHub OAuth handlers
+ */
+export function registerGithubOAuthHandlers(): void {
+  debugLog('Registering GitHub OAuth handlers');
+  registerCheckGhCli();
+  registerCheckGhAuth();
+  registerStartGhAuth();
+  registerGetGhToken();
+  registerGetGhUser();
+  registerListUserRepos();
+  debugLog('GitHub OAuth handlers registered');
+}
