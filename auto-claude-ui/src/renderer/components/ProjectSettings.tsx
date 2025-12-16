@@ -1,62 +1,28 @@
-import { useState, useEffect } from 'react';
-import {
-  Settings2,
-  Save,
-  Loader2,
-  RefreshCw,
-  Download,
-  CheckCircle2,
-  AlertCircle,
-  Key,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  Database,
-  Zap,
-  ChevronDown,
-  ChevronUp,
-  Import,
-  Radio,
-  Github,
-  Globe
-} from 'lucide-react';
+import { useState } from 'react';
+import { Settings2, Save, Loader2 } from 'lucide-react';
 import { LinearTaskImportModal } from './LinearTaskImportModal';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Switch } from './ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from './ui/select';
 import { Separator } from './ui/separator';
-import {
-  updateProjectSettings,
-  checkProjectVersion,
-  initializeProject,
-  updateProjectAutoBuild
-} from '../stores/project-store';
-import { AVAILABLE_MODELS, MEMORY_BACKENDS } from '../../shared/constants';
-import type {
-  Project,
-  ProjectSettings as ProjectSettingsType,
-  AutoBuildVersionInfo,
-  ProjectEnvConfig,
-  LinearSyncStatus,
-  GitHubSyncStatus,
-  InfrastructureStatus
-} from '../../shared/types';
+import { updateProjectSettings, initializeProject, updateProjectAutoBuild, checkProjectVersion } from '../stores/project-store';
+import type { Project } from '../../shared/types';
+
+// Import custom hooks
+import { useProjectSettings } from '../hooks/useProjectSettings';
+import { useEnvironmentConfig } from '../hooks/useEnvironmentConfig';
+import { useClaudeAuth } from '../hooks/useClaudeAuth';
+import { useLinearConnection } from '../hooks/useLinearConnection';
+import { useGitHubConnection } from '../hooks/useGitHubConnection';
+import { useInfrastructureStatus } from '../hooks/useInfrastructureStatus';
+
+// Import section components
+import { AutoBuildIntegration } from './project-settings/AutoBuildIntegration';
+import { ClaudeAuthSection } from './project-settings/ClaudeAuthSection';
+import { LinearIntegrationSection } from './project-settings/LinearIntegrationSection';
+import { GitHubIntegrationSection } from './project-settings/GitHubIntegrationSection';
+import { MemoryBackendSection } from './project-settings/MemoryBackendSection';
+import { AgentConfigSection } from './project-settings/AgentConfigSection';
+import { NotificationsSection } from './project-settings/NotificationsSection';
 
 interface ProjectSettingsProps {
   project: Project;
@@ -65,26 +31,12 @@ interface ProjectSettingsProps {
 }
 
 export function ProjectSettings({ project, open, onOpenChange }: ProjectSettingsProps) {
-  const [settings, setSettings] = useState<ProjectSettingsType>(project.settings);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [versionInfo, setVersionInfo] = useState<AutoBuildVersionInfo | null>(null);
-  const [isCheckingVersion, setIsCheckingVersion] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showLinearImportModal, setShowLinearImportModal] = useState(false);
 
-  // Environment configuration state
-  const [envConfig, setEnvConfig] = useState<ProjectEnvConfig | null>(null);
-  const [isLoadingEnv, setIsLoadingEnv] = useState(false);
-  const [envError, setEnvError] = useState<string | null>(null);
-  const [isSavingEnv, setIsSavingEnv] = useState(false);
-
-  // Password visibility toggles
-  const [showClaudeToken, setShowClaudeToken] = useState(false);
-  const [showLinearKey, setShowLinearKey] = useState(false);
-  const [showOpenAIKey, setShowOpenAIKey] = useState(false);
-  const [showFalkorPassword, setShowFalkorPassword] = useState(false);
-
-  // Collapsible sections
+  // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     claude: true,
     linear: false,
@@ -92,219 +44,51 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
     graphiti: false
   });
 
-  // GitHub state
-  const [showGitHubToken, setShowGitHubToken] = useState(false);
-  const [gitHubConnectionStatus, setGitHubConnectionStatus] = useState<GitHubSyncStatus | null>(null);
-  const [isCheckingGitHub, setIsCheckingGitHub] = useState(false);
+  // Custom hooks for state management
+  const { settings, setSettings, versionInfo, setVersionInfo, isCheckingVersion } = useProjectSettings(project, open);
 
-  // Claude auth state
-  const [isCheckingClaudeAuth, setIsCheckingClaudeAuth] = useState(false);
-  const [claudeAuthStatus, setClaudeAuthStatus] = useState<'checking' | 'authenticated' | 'not_authenticated' | 'error'>('checking');
+  const {
+    envConfig,
+    setEnvConfig,
+    updateEnvConfig,
+    isLoadingEnv,
+    envError,
+    setEnvError,
+    isSavingEnv,
+  } = useEnvironmentConfig(project.id, project.autoBuildPath, open);
 
-  // Docker/FalkorDB infrastructure status
-  const [infrastructureStatus, setInfrastructureStatus] = useState<InfrastructureStatus | null>(null);
-  const [isCheckingInfrastructure, setIsCheckingInfrastructure] = useState(false);
-  const [isStartingFalkorDB, setIsStartingFalkorDB] = useState(false);
-  const [isOpeningDocker, setIsOpeningDocker] = useState(false);
+  const { isCheckingClaudeAuth, claudeAuthStatus, handleClaudeSetup } = useClaudeAuth(
+    project.id,
+    project.autoBuildPath,
+    open
+  );
 
-  // Linear import state
-  const [showLinearImportModal, setShowLinearImportModal] = useState(false);
-  const [linearConnectionStatus, setLinearConnectionStatus] = useState<LinearSyncStatus | null>(null);
-  const [isCheckingLinear, setIsCheckingLinear] = useState(false);
+  const { linearConnectionStatus, isCheckingLinear } = useLinearConnection(
+    project.id,
+    envConfig?.linearEnabled,
+    envConfig?.linearApiKey
+  );
 
-  // Reset settings when project changes
-  useEffect(() => {
-    setSettings(project.settings);
-  }, [project]);
+  const { gitHubConnectionStatus, isCheckingGitHub } = useGitHubConnection(
+    project.id,
+    envConfig?.githubEnabled,
+    envConfig?.githubToken,
+    envConfig?.githubRepo
+  );
 
-  // Check version when dialog opens
-  useEffect(() => {
-    const checkVersion = async () => {
-      if (open && project.autoBuildPath) {
-        setIsCheckingVersion(true);
-        const info = await checkProjectVersion(project.id);
-        setVersionInfo(info);
-        setIsCheckingVersion(false);
-      }
-    };
-    checkVersion();
-  }, [open, project.id, project.autoBuildPath]);
-
-  // Load environment config when dialog opens
-  useEffect(() => {
-    const loadEnvConfig = async () => {
-      if (open && project.autoBuildPath) {
-        setIsLoadingEnv(true);
-        setEnvError(null);
-        try {
-          const result = await window.electronAPI.getProjectEnv(project.id);
-          if (result.success && result.data) {
-            setEnvConfig(result.data);
-          } else {
-            setEnvError(result.error || 'Failed to load environment config');
-          }
-        } catch (err) {
-          setEnvError(err instanceof Error ? err.message : 'Unknown error');
-        } finally {
-          setIsLoadingEnv(false);
-        }
-      }
-    };
-    loadEnvConfig();
-  }, [open, project.id, project.autoBuildPath]);
-
-  // Check Claude authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (open && project.autoBuildPath) {
-        setIsCheckingClaudeAuth(true);
-        try {
-          const result = await window.electronAPI.checkClaudeAuth(project.id);
-          if (result.success && result.data) {
-            setClaudeAuthStatus(result.data.authenticated ? 'authenticated' : 'not_authenticated');
-          } else {
-            setClaudeAuthStatus('error');
-          }
-        } catch {
-          setClaudeAuthStatus('error');
-        } finally {
-          setIsCheckingClaudeAuth(false);
-        }
-      }
-    };
-    checkAuth();
-  }, [open, project.id, project.autoBuildPath]);
-
-  // Check Linear connection when API key changes
-  useEffect(() => {
-    const checkLinearConnection = async () => {
-      if (!envConfig?.linearEnabled || !envConfig.linearApiKey) {
-        setLinearConnectionStatus(null);
-        return;
-      }
-
-      setIsCheckingLinear(true);
-      try {
-        const result = await window.electronAPI.checkLinearConnection(project.id);
-        if (result.success && result.data) {
-          setLinearConnectionStatus(result.data);
-        }
-      } catch {
-        setLinearConnectionStatus({ connected: false, error: 'Failed to check connection' });
-      } finally {
-        setIsCheckingLinear(false);
-      }
-    };
-
-    // Only check after env config is loaded and Linear is enabled with API key
-    if (envConfig?.linearEnabled && envConfig.linearApiKey) {
-      checkLinearConnection();
-    }
-  }, [envConfig?.linearEnabled, envConfig?.linearApiKey, project.id]);
-
-  // Check GitHub connection when token/repo changes
-  useEffect(() => {
-    const checkGitHubConnection = async () => {
-      if (!envConfig?.githubEnabled || !envConfig.githubToken || !envConfig.githubRepo) {
-        setGitHubConnectionStatus(null);
-        return;
-      }
-
-      setIsCheckingGitHub(true);
-      try {
-        const result = await window.electronAPI.checkGitHubConnection(project.id);
-        if (result.success && result.data) {
-          setGitHubConnectionStatus(result.data);
-        }
-      } catch {
-        setGitHubConnectionStatus({ connected: false, error: 'Failed to check connection' });
-      } finally {
-        setIsCheckingGitHub(false);
-      }
-    };
-
-    if (envConfig?.githubEnabled && envConfig.githubToken && envConfig.githubRepo) {
-      checkGitHubConnection();
-    }
-  }, [envConfig?.githubEnabled, envConfig?.githubToken, envConfig?.githubRepo, project.id]);
-
-  // Check Docker/FalkorDB infrastructure status when Graphiti is enabled
-  useEffect(() => {
-    const checkInfrastructure = async () => {
-      if (!envConfig?.graphitiEnabled) {
-        setInfrastructureStatus(null);
-        return;
-      }
-
-      setIsCheckingInfrastructure(true);
-      try {
-        const port = envConfig.graphitiFalkorDbPort || 6380;
-        const result = await window.electronAPI.getInfrastructureStatus(port);
-        if (result.success && result.data) {
-          setInfrastructureStatus(result.data);
-        }
-      } catch {
-        // Silently fail - infrastructure check is optional
-      } finally {
-        setIsCheckingInfrastructure(false);
-      }
-    };
-
-    checkInfrastructure();
-    // Refresh every 10 seconds while Graphiti is enabled
-    let interval: NodeJS.Timeout | undefined;
-    if (envConfig?.graphitiEnabled && open) {
-      interval = setInterval(checkInfrastructure, 10000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [envConfig?.graphitiEnabled, envConfig?.graphitiFalkorDbPort, open]);
-
-  // Handler to start FalkorDB
-  const handleStartFalkorDB = async () => {
-    setIsStartingFalkorDB(true);
-    try {
-      const port = envConfig?.graphitiFalkorDbPort || 6380;
-      const result = await window.electronAPI.startFalkorDB(port);
-      if (result.success && result.data?.success) {
-        // Refresh status after starting
-        const statusResult = await window.electronAPI.getInfrastructureStatus(port);
-        if (statusResult.success && statusResult.data) {
-          setInfrastructureStatus(statusResult.data);
-        }
-      }
-    } catch {
-      // Error handling is implicit in the status check
-    } finally {
-      setIsStartingFalkorDB(false);
-    }
-  };
-
-  // Handler to open Docker Desktop
-  const handleOpenDockerDesktop = async () => {
-    setIsOpeningDocker(true);
-    try {
-      await window.electronAPI.openDockerDesktop();
-      // Wait a bit then refresh status
-      setTimeout(async () => {
-        const port = envConfig?.graphitiFalkorDbPort || 6380;
-        const result = await window.electronAPI.getInfrastructureStatus(port);
-        if (result.success && result.data) {
-          setInfrastructureStatus(result.data);
-        }
-        setIsOpeningDocker(false);
-      }, 3000);
-    } catch {
-      setIsOpeningDocker(false);
-    }
-  };
-
-  // Handler to open Docker download page
-  const handleDownloadDocker = async () => {
-    const url = await window.electronAPI.getDockerDownloadUrl();
-    window.electronAPI.openExternal(url);
-  };
+  const {
+    infrastructureStatus,
+    isCheckingInfrastructure,
+    isStartingFalkorDB,
+    isOpeningDocker,
+    handleStartFalkorDB,
+    handleOpenDockerDesktop,
+    handleDownloadDocker,
+  } = useInfrastructureStatus(
+    envConfig?.graphitiEnabled,
+    envConfig?.graphitiFalkorDbPort,
+    open
+  );
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -353,42 +137,6 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
     }
   };
 
-  const handleSaveEnv = async () => {
-    if (!envConfig) return;
-
-    setIsSavingEnv(true);
-    setEnvError(null);
-    try {
-      const result = await window.electronAPI.updateProjectEnv(project.id, envConfig);
-      if (!result.success) {
-        setEnvError(result.error || 'Failed to save environment config');
-      }
-    } catch (err) {
-      setEnvError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsSavingEnv(false);
-    }
-  };
-
-  const handleClaudeSetup = async () => {
-    setIsCheckingClaudeAuth(true);
-    try {
-      const result = await window.electronAPI.invokeClaudeSetup(project.id);
-      if (result.success && result.data?.authenticated) {
-        setClaudeAuthStatus('authenticated');
-        // Refresh env config
-        const envResult = await window.electronAPI.getProjectEnv(project.id);
-        if (envResult.success && envResult.data) {
-          setEnvConfig(envResult.data);
-        }
-      }
-    } catch {
-      setClaudeAuthStatus('error');
-    } finally {
-      setIsCheckingClaudeAuth(false);
-    }
-  };
-
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
@@ -418,10 +166,10 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
     }
   };
 
-  const updateEnvConfig = (updates: Partial<ProjectEnvConfig>) => {
-    if (envConfig) {
-      setEnvConfig({ ...envConfig, ...updates });
-    }
+  const handleClaudeSetupWithCallback = () => {
+    handleClaudeSetup((newEnvConfig) => {
+      setEnvConfig(newEnvConfig);
+    });
   };
 
   return (
@@ -440,966 +188,94 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
         <div className="flex-1 min-h-0 -mx-6 overflow-y-auto">
           <div className="px-6 py-4 space-y-6">
             {/* Auto-Build Integration */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Auto-Build Integration</h3>
-              {!project.autoBuildPath ? (
-                <div className="rounded-lg border border-border bg-muted/50 p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-warning mt-0.5 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">Not Initialized</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Initialize Auto-Build to enable task creation and agent workflows.
-                      </p>
-                      <Button
-                        size="sm"
-                        className="mt-3"
-                        onClick={handleInitialize}
-                        disabled={isUpdating}
-                      >
-                        {isUpdating ? (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                            Initializing...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="mr-2 h-4 w-4" />
-                            Initialize Auto-Build
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                      <span className="text-sm font-medium text-foreground">Initialized</span>
-                    </div>
-                    <code className="text-xs bg-background px-2 py-1 rounded">
-                      {project.autoBuildPath}
-                    </code>
-                  </div>
-                  {isCheckingVersion ? (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Checking status...
-                    </div>
-                  ) : versionInfo && (
-                    <div className="text-xs text-muted-foreground">
-                      {versionInfo.isInitialized ? 'Initialized' : 'Not initialized'}
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
+            <AutoBuildIntegration
+              autoBuildPath={project.autoBuildPath}
+              versionInfo={versionInfo}
+              isCheckingVersion={isCheckingVersion}
+              isUpdating={isUpdating}
+              onInitialize={handleInitialize}
+              onUpdate={handleUpdate}
+            />
 
             {/* Environment Configuration - Only show if initialized */}
-            {project.autoBuildPath && (
+            {project.autoBuildPath && envConfig && (
               <>
                 <Separator />
 
                 {/* Claude Authentication Section */}
-                <section className="space-y-3">
-                  <button
-                    onClick={() => toggleSection('claude')}
-                    className="w-full flex items-center justify-between text-sm font-semibold text-foreground hover:text-foreground/80"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Key className="h-4 w-4" />
-                      Claude Authentication
-                      {claudeAuthStatus === 'authenticated' && (
-                        <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
-                          Connected
-                        </span>
-                      )}
-                      {claudeAuthStatus === 'not_authenticated' && (
-                        <span className="px-2 py-0.5 text-xs bg-warning/10 text-warning rounded-full">
-                          Not Connected
-                        </span>
-                      )}
-                    </div>
-                    {expandedSections.claude ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-
-                  {expandedSections.claude && (
-                    <div className="space-y-4 pl-6 pt-2">
-                      {isLoadingEnv ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Loading configuration...
-                        </div>
-                      ) : envConfig ? (
-                        <>
-                          {/* Claude CLI Status */}
-                          <div className="rounded-lg border border-border bg-muted/30 p-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-foreground">Claude CLI</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {isCheckingClaudeAuth ? 'Checking...' :
-                                    claudeAuthStatus === 'authenticated' ? 'Authenticated via OAuth' :
-                                    claudeAuthStatus === 'not_authenticated' ? 'Not authenticated' :
-                                    'Status unknown'}
-                                </p>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleClaudeSetup}
-                                disabled={isCheckingClaudeAuth}
-                              >
-                                {isCheckingClaudeAuth ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                    {claudeAuthStatus === 'authenticated' ? 'Re-authenticate' : 'Setup OAuth'}
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Manual OAuth Token */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-medium text-foreground">
-                                OAuth Token {envConfig.claudeTokenIsGlobal ? '(Override)' : ''}
-                              </Label>
-                              {envConfig.claudeTokenIsGlobal && (
-                                <span className="flex items-center gap-1 text-xs text-info">
-                                  <Globe className="h-3 w-3" />
-                                  Using global token
-                                </span>
-                              )}
-                            </div>
-                            {envConfig.claudeTokenIsGlobal ? (
-                              <p className="text-xs text-muted-foreground">
-                                Using token from App Settings. Enter a project-specific token below to override.
-                              </p>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">
-                                Paste a token from <code className="px-1 bg-muted rounded">claude setup-token</code>
-                              </p>
-                            )}
-                            <div className="relative">
-                              <Input
-                                type={showClaudeToken ? 'text' : 'password'}
-                                placeholder={envConfig.claudeTokenIsGlobal ? 'Enter to override global token...' : 'your-oauth-token-here'}
-                                value={envConfig.claudeTokenIsGlobal ? '' : (envConfig.claudeOAuthToken || '')}
-                                onChange={(e) => updateEnvConfig({
-                                  claudeOAuthToken: e.target.value || undefined,
-                                  // When user enters a value, it's no longer global
-                                })}
-                                className="pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowClaudeToken(!showClaudeToken)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showClaudeToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      ) : envError ? (
-                        <p className="text-sm text-destructive">{envError}</p>
-                      ) : null}
-                    </div>
-                  )}
-                </section>
+                <ClaudeAuthSection
+                  isExpanded={expandedSections.claude}
+                  onToggle={() => toggleSection('claude')}
+                  envConfig={envConfig}
+                  isLoadingEnv={isLoadingEnv}
+                  envError={envError}
+                  isCheckingAuth={isCheckingClaudeAuth}
+                  authStatus={claudeAuthStatus}
+                  onClaudeSetup={handleClaudeSetupWithCallback}
+                  onUpdateConfig={updateEnvConfig}
+                />
 
                 <Separator />
 
                 {/* Linear Integration Section */}
-                <section className="space-y-3">
-                  <button
-                    onClick={() => toggleSection('linear')}
-                    className="w-full flex items-center justify-between text-sm font-semibold text-foreground hover:text-foreground/80"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      Linear Integration
-                      {envConfig?.linearEnabled && (
-                        <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
-                          Enabled
-                        </span>
-                      )}
-                    </div>
-                    {expandedSections.linear ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-
-                  {expandedSections.linear && envConfig && (
-                    <div className="space-y-4 pl-6 pt-2">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="font-normal text-foreground">Enable Linear Sync</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Create and update Linear issues automatically
-                          </p>
-                        </div>
-                        <Switch
-                          checked={envConfig.linearEnabled}
-                          onCheckedChange={(checked) => updateEnvConfig({ linearEnabled: checked })}
-                        />
-                      </div>
-
-                      {envConfig.linearEnabled && (
-                        <>
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-foreground">API Key</Label>
-                            <p className="text-xs text-muted-foreground">
-                              Get your API key from{' '}
-                              <a
-                                href="https://linear.app/settings/api"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-info hover:underline"
-                              >
-                                Linear Settings
-                              </a>
-                            </p>
-                            <div className="relative">
-                              <Input
-                                type={showLinearKey ? 'text' : 'password'}
-                                placeholder="lin_api_xxxxxxxx"
-                                value={envConfig.linearApiKey || ''}
-                                onChange={(e) => updateEnvConfig({ linearApiKey: e.target.value })}
-                                className="pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowLinearKey(!showLinearKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showLinearKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Connection Status */}
-                          {envConfig.linearApiKey && (
-                            <div className="rounded-lg border border-border bg-muted/30 p-3">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">Connection Status</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {isCheckingLinear ? 'Checking...' :
-                                      linearConnectionStatus?.connected
-                                        ? `Connected${linearConnectionStatus.teamName ? ` to ${linearConnectionStatus.teamName}` : ''}`
-                                        : linearConnectionStatus?.error || 'Not connected'}
-                                  </p>
-                                  {linearConnectionStatus?.connected && linearConnectionStatus.issueCount !== undefined && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {linearConnectionStatus.issueCount}+ tasks available to import
-                                    </p>
-                                  )}
-                                </div>
-                                {isCheckingLinear ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                ) : linearConnectionStatus?.connected ? (
-                                  <CheckCircle2 className="h-4 w-4 text-success" />
-                                ) : (
-                                  <AlertCircle className="h-4 w-4 text-warning" />
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Import Existing Tasks Button */}
-                          {linearConnectionStatus?.connected && (
-                            <div className="rounded-lg border border-info/30 bg-info/5 p-3">
-                              <div className="flex items-start gap-3">
-                                <Import className="h-5 w-5 text-info mt-0.5" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-foreground">Import Existing Tasks</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Select which Linear issues to import into AutoBuild as tasks.
-                                  </p>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="mt-2"
-                                    onClick={() => setShowLinearImportModal(true)}
-                                  >
-                                    <Import className="h-4 w-4 mr-2" />
-                                    Import Tasks from Linear
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <Separator />
-
-                          {/* Real-time Sync Toggle */}
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <Radio className="h-4 w-4 text-info" />
-                                <Label className="font-normal text-foreground">Real-time Sync</Label>
-                              </div>
-                              <p className="text-xs text-muted-foreground pl-6">
-                                Automatically import new tasks created in Linear
-                              </p>
-                            </div>
-                            <Switch
-                              checked={envConfig.linearRealtimeSync || false}
-                              onCheckedChange={(checked) => updateEnvConfig({ linearRealtimeSync: checked })}
-                            />
-                          </div>
-
-                          {envConfig.linearRealtimeSync && (
-                            <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 ml-6">
-                              <p className="text-xs text-warning">
-                                When enabled, new Linear issues will be automatically imported into AutoBuild.
-                                Make sure to configure your team/project filters below to control which issues are imported.
-                              </p>
-                            </div>
-                          )}
-
-                          <Separator />
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium text-foreground">Team ID (Optional)</Label>
-                              <Input
-                                placeholder="Auto-detected"
-                                value={envConfig.linearTeamId || ''}
-                                onChange={(e) => updateEnvConfig({ linearTeamId: e.target.value })}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium text-foreground">Project ID (Optional)</Label>
-                              <Input
-                                placeholder="Auto-created"
-                                value={envConfig.linearProjectId || ''}
-                                onChange={(e) => updateEnvConfig({ linearProjectId: e.target.value })}
-                              />
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </section>
+                <LinearIntegrationSection
+                  isExpanded={expandedSections.linear}
+                  onToggle={() => toggleSection('linear')}
+                  envConfig={envConfig}
+                  onUpdateConfig={updateEnvConfig}
+                  linearConnectionStatus={linearConnectionStatus}
+                  isCheckingLinear={isCheckingLinear}
+                  onOpenImportModal={() => setShowLinearImportModal(true)}
+                />
 
                 <Separator />
 
                 {/* GitHub Integration Section */}
-                <section className="space-y-3">
-                  <button
-                    onClick={() => toggleSection('github')}
-                    className="w-full flex items-center justify-between text-sm font-semibold text-foreground hover:text-foreground/80"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Github className="h-4 w-4" />
-                      GitHub Integration
-                      {envConfig?.githubEnabled && (
-                        <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
-                          Enabled
-                        </span>
-                      )}
-                    </div>
-                    {expandedSections.github ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-
-                  {expandedSections.github && envConfig && (
-                    <div className="space-y-4 pl-6 pt-2">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="font-normal text-foreground">Enable GitHub Issues</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Sync issues from GitHub and create tasks automatically
-                          </p>
-                        </div>
-                        <Switch
-                          checked={envConfig.githubEnabled}
-                          onCheckedChange={(checked) => updateEnvConfig({ githubEnabled: checked })}
-                        />
-                      </div>
-
-                      {envConfig.githubEnabled && (
-                        <>
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-foreground">Personal Access Token</Label>
-                            <p className="text-xs text-muted-foreground">
-                              Create a token with <code className="px-1 bg-muted rounded">repo</code> scope from{' '}
-                              <a
-                                href="https://github.com/settings/tokens/new?scopes=repo&description=Auto-Build-UI"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-info hover:underline"
-                              >
-                                GitHub Settings
-                              </a>
-                            </p>
-                            <div className="relative">
-                              <Input
-                                type={showGitHubToken ? 'text' : 'password'}
-                                placeholder="ghp_xxxxxxxx or github_pat_xxxxxxxx"
-                                value={envConfig.githubToken || ''}
-                                onChange={(e) => updateEnvConfig({ githubToken: e.target.value })}
-                                className="pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowGitHubToken(!showGitHubToken)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showGitHubToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-foreground">Repository</Label>
-                            <p className="text-xs text-muted-foreground">
-                              Format: <code className="px-1 bg-muted rounded">owner/repo</code> (e.g., facebook/react)
-                            </p>
-                            <Input
-                              placeholder="owner/repository"
-                              value={envConfig.githubRepo || ''}
-                              onChange={(e) => updateEnvConfig({ githubRepo: e.target.value })}
-                            />
-                          </div>
-
-                          {/* Connection Status */}
-                          {envConfig.githubToken && envConfig.githubRepo && (
-                            <div className="rounded-lg border border-border bg-muted/30 p-3">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">Connection Status</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {isCheckingGitHub ? 'Checking...' :
-                                      gitHubConnectionStatus?.connected
-                                        ? `Connected to ${gitHubConnectionStatus.repoFullName}`
-                                        : gitHubConnectionStatus?.error || 'Not connected'}
-                                  </p>
-                                  {gitHubConnectionStatus?.connected && gitHubConnectionStatus.repoDescription && (
-                                    <p className="text-xs text-muted-foreground mt-1 italic">
-                                      {gitHubConnectionStatus.repoDescription}
-                                    </p>
-                                  )}
-                                </div>
-                                {isCheckingGitHub ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                ) : gitHubConnectionStatus?.connected ? (
-                                  <CheckCircle2 className="h-4 w-4 text-success" />
-                                ) : (
-                                  <AlertCircle className="h-4 w-4 text-warning" />
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Info about accessing issues */}
-                          {gitHubConnectionStatus?.connected && (
-                            <div className="rounded-lg border border-info/30 bg-info/5 p-3">
-                              <div className="flex items-start gap-3">
-                                <Github className="h-5 w-5 text-info mt-0.5" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-foreground">Issues Available</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Access GitHub Issues from the sidebar to view, investigate, and create tasks from issues.
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <Separator />
-
-                          {/* Auto-sync Toggle */}
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <RefreshCw className="h-4 w-4 text-info" />
-                                <Label className="font-normal text-foreground">Auto-Sync on Load</Label>
-                              </div>
-                              <p className="text-xs text-muted-foreground pl-6">
-                                Automatically fetch issues when the project loads
-                              </p>
-                            </div>
-                            <Switch
-                              checked={envConfig.githubAutoSync || false}
-                              onCheckedChange={(checked) => updateEnvConfig({ githubAutoSync: checked })}
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </section>
+                <GitHubIntegrationSection
+                  isExpanded={expandedSections.github}
+                  onToggle={() => toggleSection('github')}
+                  envConfig={envConfig}
+                  onUpdateConfig={updateEnvConfig}
+                  gitHubConnectionStatus={gitHubConnectionStatus}
+                  isCheckingGitHub={isCheckingGitHub}
+                />
 
                 <Separator />
 
                 {/* Memory Backend Section */}
-                <section className="space-y-3">
-                  <button
-                    onClick={() => toggleSection('graphiti')}
-                    className="w-full flex items-center justify-between text-sm font-semibold text-foreground hover:text-foreground/80"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Database className="h-4 w-4" />
-                      Memory Backend
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        envConfig?.graphitiEnabled
-                          ? 'bg-success/10 text-success'
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {envConfig?.graphitiEnabled ? 'Graphiti' : 'File-based'}
-                      </span>
-                    </div>
-                    {expandedSections.graphiti ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-
-                  {expandedSections.graphiti && envConfig && (
-                    <div className="space-y-4 pl-6 pt-2">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="font-normal text-foreground">Use Graphiti (Recommended)</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Persistent cross-session memory using FalkorDB graph database
-                          </p>
-                        </div>
-                        <Switch
-                          checked={envConfig.graphitiEnabled}
-                          onCheckedChange={(checked) => {
-                            updateEnvConfig({ graphitiEnabled: checked });
-                            // Also update project settings to match
-                            setSettings({ ...settings, memoryBackend: checked ? 'graphiti' : 'file' });
-                          }}
-                        />
-                      </div>
-
-                      {!envConfig.graphitiEnabled && (
-                        <div className="rounded-lg border border-border bg-muted/30 p-3">
-                          <p className="text-xs text-muted-foreground">
-                            Using file-based memory. Session insights are stored locally in JSON files.
-                            Enable Graphiti for persistent cross-session memory with semantic search.
-                          </p>
-                        </div>
-                      )}
-
-                      {envConfig.graphitiEnabled && (
-                        <>
-                          {/* Infrastructure Status - Dynamic Docker/FalkorDB check */}
-                          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-foreground">Infrastructure Status</span>
-                              {isCheckingInfrastructure && (
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              )}
-                            </div>
-
-                            {/* Docker Status */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {infrastructureStatus?.docker.running ? (
-                                  <CheckCircle2 className="h-4 w-4 text-success" />
-                                ) : infrastructureStatus?.docker.installed ? (
-                                  <AlertCircle className="h-4 w-4 text-warning" />
-                                ) : (
-                                  <AlertCircle className="h-4 w-4 text-destructive" />
-                                )}
-                                <span className="text-xs text-foreground">Docker</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {infrastructureStatus?.docker.running ? (
-                                  <span className="text-xs text-success">Running</span>
-                                ) : infrastructureStatus?.docker.installed ? (
-                                  <>
-                                    <span className="text-xs text-warning">Not Running</span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={handleOpenDockerDesktop}
-                                      disabled={isOpeningDocker}
-                                      className="h-6 text-xs"
-                                    >
-                                      {isOpeningDocker ? (
-                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                      ) : null}
-                                      Start Docker
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="text-xs text-destructive">Not Installed</span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={handleDownloadDocker}
-                                      className="h-6 text-xs"
-                                    >
-                                      <Download className="h-3 w-3 mr-1" />
-                                      Install
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* FalkorDB Status */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {infrastructureStatus?.falkordb.healthy ? (
-                                  <CheckCircle2 className="h-4 w-4 text-success" />
-                                ) : infrastructureStatus?.falkordb.containerRunning ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-warning" />
-                                ) : (
-                                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                <span className="text-xs text-foreground">FalkorDB</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {infrastructureStatus?.falkordb.healthy ? (
-                                  <span className="text-xs text-success">Ready</span>
-                                ) : infrastructureStatus?.falkordb.containerRunning ? (
-                                  <span className="text-xs text-warning">Starting...</span>
-                                ) : infrastructureStatus?.docker.running ? (
-                                  <>
-                                    <span className="text-xs text-muted-foreground">Not Running</span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={handleStartFalkorDB}
-                                      disabled={isStartingFalkorDB}
-                                      className="h-6 text-xs"
-                                    >
-                                      {isStartingFalkorDB ? (
-                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                      ) : (
-                                        <Zap className="h-3 w-3 mr-1" />
-                                      )}
-                                      Start
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">Requires Docker</span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Overall Status Message */}
-                            {infrastructureStatus?.ready ? (
-                              <div className="text-xs text-success flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Graph memory is ready to use
-                              </div>
-                            ) : infrastructureStatus && !infrastructureStatus.docker.installed && (
-                              <p className="text-xs text-muted-foreground">
-                                Docker Desktop is required for graph-based memory.
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Graphiti MCP Server Toggle */}
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                              <Label className="font-normal text-foreground">Enable Agent Memory Access</Label>
-                              <p className="text-xs text-muted-foreground">
-                                Allow agents to search and add to the knowledge graph via MCP
-                              </p>
-                            </div>
-                            <Switch
-                              checked={settings.graphitiMcpEnabled}
-                              onCheckedChange={(checked) =>
-                                setSettings({ ...settings, graphitiMcpEnabled: checked })
-                              }
-                            />
-                          </div>
-
-                          {settings.graphitiMcpEnabled && (
-                            <div className="space-y-2 ml-6">
-                              <Label className="text-sm font-medium text-foreground">Graphiti MCP Server URL</Label>
-                              <p className="text-xs text-muted-foreground">
-                                URL of the Graphiti MCP server (requires Docker container)
-                              </p>
-                              <Input
-                                placeholder="http://localhost:8000/mcp/"
-                                value={settings.graphitiMcpUrl || ''}
-                                onChange={(e) => setSettings({ ...settings, graphitiMcpUrl: e.target.value || undefined })}
-                              />
-                              <div className="rounded-lg border border-info/30 bg-info/5 p-3">
-                                <p className="text-xs text-info">
-                                  Start the MCP server with:{' '}
-                                  <code className="px-1 bg-info/10 rounded">docker run -d -p 8000:8000 falkordb/graphiti-knowledge-graph-mcp</code>
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          <Separator />
-
-                          {/* LLM Provider Selection - V2 Multi-provider support */}
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-foreground">LLM Provider</Label>
-                            <p className="text-xs text-muted-foreground">
-                              Provider for graph operations (extraction, search, reasoning)
-                            </p>
-                            <Select
-                              value={envConfig.graphitiProviderConfig?.llmProvider || 'openai'}
-                              onValueChange={(value) => updateEnvConfig({
-                                graphitiProviderConfig: {
-                                  ...envConfig.graphitiProviderConfig,
-                                  llmProvider: value as 'openai' | 'anthropic' | 'google' | 'groq',
-                                  embeddingProvider: envConfig.graphitiProviderConfig?.embeddingProvider || 'openai',
-                                }
-                              })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select LLM provider" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="openai">OpenAI (GPT-5-mini)</SelectItem>
-                                <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
-                                <SelectItem value="google">Google (Gemini)</SelectItem>
-                                <SelectItem value="groq">Groq (Llama)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Embedding Provider Selection */}
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-foreground">Embedding Provider</Label>
-                            <p className="text-xs text-muted-foreground">
-                              Provider for semantic search embeddings
-                            </p>
-                            <Select
-                              value={envConfig.graphitiProviderConfig?.embeddingProvider || 'openai'}
-                              onValueChange={(value) => updateEnvConfig({
-                                graphitiProviderConfig: {
-                                  ...envConfig.graphitiProviderConfig,
-                                  llmProvider: envConfig.graphitiProviderConfig?.llmProvider || 'openai',
-                                  embeddingProvider: value as 'openai' | 'voyage' | 'google' | 'huggingface',
-                                }
-                              })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select embedding provider" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="openai">OpenAI</SelectItem>
-                                <SelectItem value="voyage">Voyage AI</SelectItem>
-                                <SelectItem value="google">Google</SelectItem>
-                                <SelectItem value="huggingface">HuggingFace (Local)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Separator />
-
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-medium text-foreground">
-                                OpenAI API Key {envConfig.openaiKeyIsGlobal ? '(Override)' : ''}
-                              </Label>
-                              {envConfig.openaiKeyIsGlobal && (
-                                <span className="flex items-center gap-1 text-xs text-info">
-                                  <Globe className="h-3 w-3" />
-                                  Using global key
-                                </span>
-                              )}
-                            </div>
-                            {envConfig.openaiKeyIsGlobal ? (
-                              <p className="text-xs text-muted-foreground">
-                                Using key from App Settings. Enter a project-specific key below to override.
-                              </p>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">
-                                Required when using OpenAI as LLM or embedding provider
-                              </p>
-                            )}
-                            <div className="relative">
-                              <Input
-                                type={showOpenAIKey ? 'text' : 'password'}
-                                placeholder={envConfig.openaiKeyIsGlobal ? 'Enter to override global key...' : 'sk-xxxxxxxx'}
-                                value={envConfig.openaiKeyIsGlobal ? '' : (envConfig.openaiApiKey || '')}
-                                onChange={(e) => updateEnvConfig({ openaiApiKey: e.target.value || undefined })}
-                                className="pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowOpenAIKey(!showOpenAIKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showOpenAIKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium text-foreground">FalkorDB Host</Label>
-                              <Input
-                                placeholder="localhost"
-                                value={envConfig.graphitiFalkorDbHost || ''}
-                                onChange={(e) => updateEnvConfig({ graphitiFalkorDbHost: e.target.value })}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium text-foreground">FalkorDB Port</Label>
-                              <Input
-                                type="number"
-                                placeholder="6380"
-                                value={envConfig.graphitiFalkorDbPort || ''}
-                                onChange={(e) => updateEnvConfig({ graphitiFalkorDbPort: parseInt(e.target.value) || undefined })}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-foreground">FalkorDB Password (Optional)</Label>
-                            <div className="relative">
-                              <Input
-                                type={showFalkorPassword ? 'text' : 'password'}
-                                placeholder="Leave empty if none"
-                                value={envConfig.graphitiFalkorDbPassword || ''}
-                                onChange={(e) => updateEnvConfig({ graphitiFalkorDbPassword: e.target.value })}
-                                className="pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowFalkorPassword(!showFalkorPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showFalkorPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-foreground">Database Name</Label>
-                            <Input
-                              placeholder="auto_claude_memory"
-                              value={envConfig.graphitiDatabase || ''}
-                              onChange={(e) => updateEnvConfig({ graphitiDatabase: e.target.value })}
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </section>
+                <MemoryBackendSection
+                  isExpanded={expandedSections.graphiti}
+                  onToggle={() => toggleSection('graphiti')}
+                  envConfig={envConfig}
+                  settings={settings}
+                  onUpdateConfig={updateEnvConfig}
+                  onUpdateSettings={setSettings}
+                  infrastructureStatus={infrastructureStatus}
+                  isCheckingInfrastructure={isCheckingInfrastructure}
+                  isStartingFalkorDB={isStartingFalkorDB}
+                  isOpeningDocker={isOpeningDocker}
+                  onStartFalkorDB={handleStartFalkorDB}
+                  onOpenDockerDesktop={handleOpenDockerDesktop}
+                  onDownloadDocker={handleDownloadDocker}
+                />
 
                 <Separator />
               </>
             )}
 
             {/* Agent Settings */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Agent Configuration</h3>
-              <div className="space-y-2">
-                <Label htmlFor="model" className="text-sm font-medium text-foreground">Model</Label>
-                <Select
-                  value={settings.model}
-                  onValueChange={(value) => setSettings({ ...settings, model: value })}
-                >
-                  <SelectTrigger id="model">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_MODELS.map((model) => (
-                      <SelectItem key={model.value} value={model.value}>
-                        {model.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </section>
+            <AgentConfigSection
+              settings={settings}
+              onUpdateSettings={(updates) => setSettings({ ...settings, ...updates })}
+            />
 
             <Separator />
 
             {/* Notifications */}
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="font-normal text-foreground">On Task Complete</Label>
-                  <Switch
-                    checked={settings.notifications.onTaskComplete}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        notifications: {
-                          ...settings.notifications,
-                          onTaskComplete: checked
-                        }
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="font-normal text-foreground">On Task Failed</Label>
-                  <Switch
-                    checked={settings.notifications.onTaskFailed}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        notifications: {
-                          ...settings.notifications,
-                          onTaskFailed: checked
-                        }
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="font-normal text-foreground">On Review Needed</Label>
-                  <Switch
-                    checked={settings.notifications.onReviewNeeded}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        notifications: {
-                          ...settings.notifications,
-                          onReviewNeeded: checked
-                        }
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="font-normal text-foreground">Sound</Label>
-                  <Switch
-                    checked={settings.notifications.sound}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        notifications: {
-                          ...settings.notifications,
-                          sound: checked
-                        }
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </section>
+            <NotificationsSection
+              settings={settings}
+              onUpdateSettings={(updates) => setSettings({ ...settings, ...updates })}
+            />
 
             {/* Error */}
             {(error || envError) && (

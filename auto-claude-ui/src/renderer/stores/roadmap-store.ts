@@ -89,9 +89,18 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
 export async function loadRoadmap(projectId: string): Promise<void> {
   const result = await window.electronAPI.getRoadmap(projectId);
   if (result.success && result.data) {
-    useRoadmapStore.getState().setRoadmap(result.data);
+    const store = useRoadmapStore.getState();
+    store.setRoadmap(result.data);
+    // Extract and set competitor analysis separately if present
+    if (result.data.competitorAnalysis) {
+      store.setCompetitorAnalysis(result.data.competitorAnalysis);
+    } else {
+      store.setCompetitorAnalysis(null);
+    }
   } else {
-    useRoadmapStore.getState().setRoadmap(null);
+    const store = useRoadmapStore.getState();
+    store.setRoadmap(null);
+    store.setCompetitorAnalysis(null);
   }
 }
 

@@ -207,6 +207,8 @@ export interface Task {
   metadata?: TaskMetadata;  // Rich metadata from ideation or manual entry
   executionProgress?: ExecutionProgress;  // Real-time execution progress
   releasedInVersion?: string;  // Version in which this task was released
+  stagedInMainProject?: boolean;  // True if changes were staged to main project (worktree merged with --no-commit)
+  stagedAt?: string;  // ISO timestamp when changes were staged
   createdAt: Date;
   updatedAt: Date;
 }

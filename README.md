@@ -23,6 +23,7 @@ Your AI coding companion. Build features, fix bugs, and ship faster — with aut
 - **Context Engineering**: Agents understand your codebase structure before writing code
 - **Self-Validating**: Built-in QA loop catches issues before you review
 - **Isolated Workspaces**: All work happens in git worktrees — your code stays safe
+- **AI Merge Resolution**: Intelligent conflict resolution when merging back to main — no manual conflict fixing
 - **Memory Layer**: Agents remember insights across sessions for smarter decisions
 - **Cross-Platform**: Desktop app runs on Mac, Windows, and Linux
 - **Any Project Type**: Build web apps, APIs, CLIs — works with any software project
@@ -150,6 +151,18 @@ Write professional changelogs effortlessly. Generate release notes from complete
 
 See exactly what Auto Claude understands about your project — the tech stack, file structure, patterns, and insights it uses to write better code.
 
+### AI Merge Resolution
+
+When your main branch evolves while a build is in progress, Auto Claude automatically resolves merge conflicts using AI — no manual `<<<<<<< HEAD` fixing required.
+
+**How it works:**
+1. **Git Auto-Merge First** — Simple non-conflicting changes merge instantly without AI
+2. **Conflict-Only AI** — For actual conflicts, AI receives only the specific conflict regions (not entire files), achieving ~98% prompt reduction
+3. **Parallel Processing** — Multiple conflicting files resolve simultaneously for faster merges
+4. **Syntax Validation** — Every merge is validated before being applied
+
+**The result:** A build that was 50+ commits behind main merges in seconds instead of requiring manual conflict resolution.
+
 ---
 
 ## CLI Usage (Terminal-Only)
@@ -185,6 +198,15 @@ With a validated spec, coding agents execute the plan:
 4. **QA Fixer** — Fixes issues in a self-healing loop (up to 50 iterations)
 
 Each session runs with a fresh context window. Progress is tracked via `implementation_plan.json` and Git commits.
+
+**Phase 3: Merge**
+
+When you're ready to merge, AI handles any conflicts that arose while you were working:
+
+1. **Conflict Detection** — Identifies files modified in both main and the build
+2. **3-Tier Resolution** — Git auto-merge → Conflict-only AI → Full-file AI (fallback)
+3. **Parallel Merge** — Multiple files resolve simultaneously
+4. **Staged for Review** — Changes are staged but not committed, so you can review before finalizing
 
 ### 🔒 Security Model
 

@@ -35,11 +35,22 @@ from .types import (
     TaskSnapshot,
     FileEvolution,
 )
+from .models import MergeStats, TaskMergeRequest, MergeReport
 from .semantic_analyzer import SemanticAnalyzer
 from .conflict_detector import ConflictDetector
 from .auto_merger import AutoMerger
 from .file_evolution import FileEvolutionTracker
 from .ai_resolver import AIResolver, create_claude_resolver
+from .conflict_resolver import ConflictResolver
+from .merge_pipeline import MergePipeline
+from .git_utils import find_worktree, get_file_from_branch
+from .file_merger import (
+    apply_single_task_changes,
+    combine_non_conflicting_changes,
+    find_import_end,
+    extract_location_content,
+    apply_ai_merge,
+)
 from .orchestrator import MergeOrchestrator
 from .file_timeline import (
     FileTimelineTracker,
@@ -69,6 +80,10 @@ __all__ = [
     "MergeDecision",
     "TaskSnapshot",
     "FileEvolution",
+    # Models
+    "MergeStats",
+    "TaskMergeRequest",
+    "MergeReport",
     # Components
     "SemanticAnalyzer",
     "ConflictDetector",
@@ -76,7 +91,17 @@ __all__ = [
     "FileEvolutionTracker",
     "AIResolver",
     "create_claude_resolver",
+    "ConflictResolver",
+    "MergePipeline",
     "MergeOrchestrator",
+    # Utilities
+    "find_worktree",
+    "get_file_from_branch",
+    "apply_single_task_changes",
+    "combine_non_conflicting_changes",
+    "find_import_end",
+    "extract_location_content",
+    "apply_ai_merge",
     # File Timeline (Intent-Aware Merge System)
     "FileTimelineTracker",
     "FileTimeline",

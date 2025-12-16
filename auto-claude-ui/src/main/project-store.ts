@@ -285,6 +285,11 @@ export class ProjectStore {
           }));
         }) || [];
 
+        // Extract staged status from plan (set when changes are merged with --no-commit)
+        const planWithStaged = plan as unknown as { stagedInMainProject?: boolean; stagedAt?: string } | null;
+        const stagedInMainProject = planWithStaged?.stagedInMainProject;
+        const stagedAt = planWithStaged?.stagedAt;
+
         tasks.push({
           id: dir.name, // Use spec directory name as ID
           specId: dir.name,
@@ -296,6 +301,8 @@ export class ProjectStore {
           subtasks,
           logs: [],
           metadata,
+          stagedInMainProject,
+          stagedAt,
           createdAt: new Date(plan?.created_at || Date.now()),
           updatedAt: new Date(plan?.updated_at || Date.now())
         });

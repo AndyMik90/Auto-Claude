@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""
+Workspace Display
+=================
+
+Functions for displaying workspace information and build summaries.
+"""
+
+from pathlib import Path
+from typing import Optional
+
+from ui import (
+    bold,
+    error,
+    info,
+    print_status,
+    success,
+)
+from worktree import WorktreeManager
+
+
+def show_build_summary(manager: WorktreeManager, spec_name: str) -> None:
+    """Show a summary of what was built."""
+    summary = manager.get_change_summary(spec_name)
+    files = manager.get_changed_files(spec_name)
+
+    total = summary["new_files"] + summary["modified_files"] + summary["deleted_files"]
+
+    if total == 0:
+        print_status("No changes were made.", "info")
+        return
+
+    print()
+    print(bold("What was built:"))
+    if summary["new_files"] > 0:
+        print(
+            success(
+                f"  + {summary['new_files']} new file{'s' if summary['new_files'] != 1 else ''}"
+            )
+        )
+    if summary["modified_files"] > 0:
+        print(
+            info(
+                f"  ~ {summary['modified_files']} modified file{'s' if summary['modified_files'] != 1 else ''}"
+            )
+        )
+    if summary["deleted_files"] > 0:
+        print(
+            error(
+                f"  - {summary['deleted_files']} deleted file{'s' if summary['deleted_files'] != 1 else ''}"
+            )
+        )
+
+
+def show_changed_files(manager: WorktreeManager, spec_name: str) -> None:
+    """Show detailed list of changed files."""
+    files = manager.get_changed_files(spec_name)
+
+    if not files:
+        print_status("No changes.", "info")
+        return
+
+    print()
+    print(bold("Changed files:"))
+    for status, filepath in files:
+        if status == "A":
+            print(success(f"  + {filepath}"))
+        elif status == "M":
+            print(info(f"  ~ {filepath}"))
+        elif status == "D":
+            print(error(f"  - {filepath}"))
+        else:
+            print(f"  {status} {filepath}")
+
+
+def print_merge_success(no_commit: bool, stats: Optional[dict] = None) -> None:
+    """Print a success message after merge."""
+    from ui import box, icon, Icons, highlight
+
+    if no_commit:
+        content = [
+            success(f"{icon(Icons.SUCCESS)} CHANGES ADDED TO YOUR PROJECT"),
+            "",
+            "The new code is in your working directory.",
+            "Review the changes, then commit when ready.",
+        ]
+    else:
+        lines = [
+            success(f"{icon(Icons.SUCCESS)} FEATURE ADDED TO YOUR PROJECT!"),
+            "",
+        ]
+
+        if stats:
+            lines.append("What changed:")
+            if stats.get("files_added", 0) > 0:
+                lines.append(f"  + {stats['files_added']} file{'s' if stats['files_added'] != 1 else ''} added")
+            if stats.get("files_modified", 0) > 0:
+                lines.append(f"  ~ {stats['files_modified']} file{'s' if stats['files_modified'] != 1 else ''} modified")
+            if stats.get("files_deleted", 0) > 0:
+                lines.append(f"  - {stats['files_deleted']} file{'s' if stats['files_deleted'] != 1 else ''} deleted")
+            lines.append("")
+
+        lines.extend([
+            "Your new feature is now part of your project.",
+            "The separate workspace has been cleaned up.",
+        ])
+        content = lines
+
+    print()
+    print(box(content, width=60, style="heavy"))
+    print()
+
+
+def print_conflict_info(result: dict) -> None:
+    """Print information about conflicts that occurred during merge."""
+    from ui import warning, highlight, muted
+
+    conflicts = result.get("conflicts", [])
+    if not conflicts:
+        return
+
+    print()
+    print(warning(f"  {len(conflicts)} file{'s' if len(conflicts) != 1 else ''} had conflicts:"))
+    for conflict_file in conflicts:
+        print(f"    {highlight(conflict_file)}")
+    print()
+    print(muted("  These files have conflict markers (<<<<<<< =======  >>>>>>>)"))
+    print(muted("  Review and resolve them, then run:"))
+    print(f"    git add {' '.join(conflicts)}")
+    print("    git commit")
+    print()
+
+
+# Export private names for backward compatibility
+_print_merge_success = print_merge_success
+_print_conflict_info = print_conflict_info

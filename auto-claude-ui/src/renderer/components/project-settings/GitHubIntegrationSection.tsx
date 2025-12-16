@@ -1,0 +1,137 @@
+import { Github, RefreshCw } from 'lucide-react';
+import { CollapsibleSection } from './CollapsibleSection';
+import { StatusBadge } from './StatusBadge';
+import { PasswordInput } from './PasswordInput';
+import { ConnectionStatus } from './ConnectionStatus';
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
+import { Switch } from '../ui/switch';
+import { Separator } from '../ui/separator';
+import type { ProjectEnvConfig, GitHubSyncStatus } from '../../../shared/types';
+
+interface GitHubIntegrationSectionProps {
+  isExpanded: boolean;
+  onToggle: () => void;
+  envConfig: ProjectEnvConfig;
+  onUpdateConfig: (updates: Partial<ProjectEnvConfig>) => void;
+  gitHubConnectionStatus: GitHubSyncStatus | null;
+  isCheckingGitHub: boolean;
+}
+
+export function GitHubIntegrationSection({
+  isExpanded,
+  onToggle,
+  envConfig,
+  onUpdateConfig,
+  gitHubConnectionStatus,
+  isCheckingGitHub,
+}: GitHubIntegrationSectionProps) {
+  const badge = envConfig.githubEnabled ? (
+    <StatusBadge status="success" label="Enabled" />
+  ) : null;
+
+  return (
+    <CollapsibleSection
+      title="GitHub Integration"
+      icon={<Github className="h-4 w-4" />}
+      isExpanded={isExpanded}
+      onToggle={onToggle}
+      badge={badge}
+    >
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <Label className="font-normal text-foreground">Enable GitHub Issues</Label>
+          <p className="text-xs text-muted-foreground">
+            Sync issues from GitHub and create tasks automatically
+          </p>
+        </div>
+        <Switch
+          checked={envConfig.githubEnabled}
+          onCheckedChange={(checked) => onUpdateConfig({ githubEnabled: checked })}
+        />
+      </div>
+
+      {envConfig.githubEnabled && (
+        <>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-foreground">Personal Access Token</Label>
+            <p className="text-xs text-muted-foreground">
+              Create a token with <code className="px-1 bg-muted rounded">repo</code> scope from{' '}
+              <a
+                href="https://github.com/settings/tokens/new?scopes=repo&description=Auto-Build-UI"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-info hover:underline"
+              >
+                GitHub Settings
+              </a>
+            </p>
+            <PasswordInput
+              value={envConfig.githubToken || ''}
+              onChange={(value) => onUpdateConfig({ githubToken: value })}
+              placeholder="ghp_xxxxxxxx or github_pat_xxxxxxxx"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-foreground">Repository</Label>
+            <p className="text-xs text-muted-foreground">
+              Format: <code className="px-1 bg-muted rounded">owner/repo</code> (e.g., facebook/react)
+            </p>
+            <Input
+              placeholder="owner/repository"
+              value={envConfig.githubRepo || ''}
+              onChange={(e) => onUpdateConfig({ githubRepo: e.target.value })}
+            />
+          </div>
+
+          {/* Connection Status */}
+          {envConfig.githubToken && envConfig.githubRepo && (
+            <ConnectionStatus
+              isChecking={isCheckingGitHub}
+              isConnected={gitHubConnectionStatus?.connected || false}
+              title="Connection Status"
+              successMessage={`Connected to ${gitHubConnectionStatus?.repoFullName}`}
+              errorMessage={gitHubConnectionStatus?.error || 'Not connected'}
+              additionalInfo={gitHubConnectionStatus?.repoDescription}
+            />
+          )}
+
+          {/* Info about accessing issues */}
+          {gitHubConnectionStatus?.connected && (
+            <div className="rounded-lg border border-info/30 bg-info/5 p-3">
+              <div className="flex items-start gap-3">
+                <Github className="h-5 w-5 text-info mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Issues Available</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Access GitHub Issues from the sidebar to view, investigate, and create tasks from issues.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Auto-sync Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-info" />
+                <Label className="font-normal text-foreground">Auto-Sync on Load</Label>
+              </div>
+              <p className="text-xs text-muted-foreground pl-6">
+                Automatically fetch issues when the project loads
+              </p>
+            </div>
+            <Switch
+              checked={envConfig.githubAutoSync || false}
+              onCheckedChange={(checked) => onUpdateConfig({ githubAutoSync: checked })}
+            />
+          </div>
+        </>
+      )}
+    </CollapsibleSection>
+  );
+}

@@ -80,6 +80,11 @@ def pytest_runtest_setup(item):
     module_mocks = {
         'test_qa_criteria': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
         'test_qa_report': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_iteration': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_recurring': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_project_detection': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_manual_plan': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_config': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
         'test_qa_loop': {'claude_code_sdk', 'claude_code_sdk.types'},
         'test_spec_pipeline': {'claude_code_sdk', 'claude_code_sdk.types', 'init', 'client', 'review', 'task_logger', 'ui', 'validate_spec'},
         'test_spec_complexity': {'claude_code_sdk', 'claude_code_sdk.types', 'claude_agent_sdk', 'claude_agent_sdk.types'},
@@ -171,6 +176,19 @@ def spec_dir(temp_dir: Path) -> Path:
     spec_path = temp_dir / "spec"
     spec_path.mkdir(parents=True)
     return spec_path
+
+
+# =============================================================================
+# REVIEW FIXTURES - Import from review_fixtures.py
+# =============================================================================
+
+# Import review system fixtures from dedicated module
+from tests.review_fixtures import (  # noqa: E402, F401
+    approved_state,
+    complete_spec_dir,
+    pending_state,
+    review_spec_dir,
+)
 
 
 # =============================================================================
@@ -461,6 +479,30 @@ def qa_signoff_rejected() -> dict:
             {"title": "Missing validation", "type": "acceptance"},
         ],
     }
+
+
+@pytest.fixture
+def project_dir(temp_dir: Path) -> Path:
+    """Create a project directory for testing."""
+    project = temp_dir / "project"
+    project.mkdir()
+    return project
+
+
+@pytest.fixture
+def spec_with_plan(spec_dir: Path) -> Path:
+    """Create a spec directory with implementation plan."""
+    plan = {
+        "spec_name": "test-spec",
+        "qa_signoff": {
+            "status": "pending",
+            "qa_session": 0,
+        }
+    }
+    plan_file = spec_dir / "implementation_plan.json"
+    with open(plan_file, "w") as f:
+        json.dump(plan, f)
+    return spec_dir
 
 
 # =============================================================================
@@ -935,14 +977,178 @@ Add Google OAuth2 authentication to the application.
 3. Logout clears all session data
 
 ## Implementation Notes
-- Use google-auth library for token verification
-- Store refresh tokens server-side
-
-## Acceptance Criteria
-- [ ] POST /api/auth/google endpoint works
-- [ ] Frontend shows Google sign-in button
-- [ ] User profile displays after login
 """
     (spec_dir / "spec.md").write_text(spec_content)
 
     return spec_dir
+
+
+# =============================================================================
+# MERGE SYSTEM FIXTURES AND SAMPLE DATA
+# =============================================================================
+
+# Import merge module (path already added at top of conftest)
+try:
+    from merge import (
+        SemanticAnalyzer,
+        ConflictDetector,
+        AutoMerger,
+        FileEvolutionTracker,
+        AIResolver,
+    )
+except ImportError:
+    # Module will be available when tests run
+    pass
+
+# Sample React component code
+SAMPLE_REACT_COMPONENT = '''import React from 'react';
+import { useState } from 'react';
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <h1>Hello World</h1>
+      <button onClick={() => setCount(count + 1)}>
+        Count: {count}
+      </button>
+    </div>
+  );
+}
+
+export default App;
+'''
+
+SAMPLE_REACT_WITH_HOOK = '''import React from 'react';
+import { useState } from 'react';
+import { useAuth } from './hooks/useAuth';
+
+function App() {
+  const [count, setCount] = useState(0);
+  const { user } = useAuth();
+
+  return (
+    <div>
+      <h1>Hello World</h1>
+      <button onClick={() => setCount(count + 1)}>
+        Count: {count}
+      </button>
+    </div>
+  );
+}
+
+export default App;
+'''
+
+# Sample Python module code
+SAMPLE_PYTHON_MODULE = '''"""Sample Python module."""
+import os
+from pathlib import Path
+
+def hello():
+    """Say hello."""
+    print("Hello")
+
+def goodbye():
+    """Say goodbye."""
+    print("Goodbye")
+
+class Greeter:
+    """A greeter class."""
+
+    def greet(self, name: str) -> str:
+        return f"Hello, {name}"
+'''
+
+SAMPLE_PYTHON_WITH_NEW_IMPORT = '''"""Sample Python module."""
+import os
+import logging
+from pathlib import Path
+
+def hello():
+    """Say hello."""
+    print("Hello")
+
+def goodbye():
+    """Say goodbye."""
+    print("Goodbye")
+
+class Greeter:
+    """A greeter class."""
+
+    def greet(self, name: str) -> str:
+        return f"Hello, {name}"
+'''
+
+SAMPLE_PYTHON_WITH_NEW_FUNCTION = '''"""Sample Python module."""
+import os
+from pathlib import Path
+
+def hello():
+    """Say hello."""
+    print("Hello")
+
+def goodbye():
+    """Say goodbye."""
+    print("Goodbye")
+
+def new_function():
+    """A new function."""
+    return 42
+
+class Greeter:
+    """A greeter class."""
+
+    def greet(self, name: str) -> str:
+        return f"Hello, {name}"
+'''
+
+
+@pytest.fixture
+def semantic_analyzer():
+    """Create a SemanticAnalyzer instance."""
+    from merge import SemanticAnalyzer
+    return SemanticAnalyzer()
+
+
+@pytest.fixture
+def conflict_detector():
+    """Create a ConflictDetector instance."""
+    from merge import ConflictDetector
+    return ConflictDetector()
+
+
+@pytest.fixture
+def auto_merger():
+    """Create an AutoMerger instance."""
+    from merge import AutoMerger
+    return AutoMerger()
+
+
+@pytest.fixture
+def file_tracker(temp_git_repo: Path):
+    """Create a FileEvolutionTracker instance."""
+    from merge import FileEvolutionTracker
+    return FileEvolutionTracker(temp_git_repo)
+
+
+@pytest.fixture
+def ai_resolver():
+    """Create an AIResolver without AI function (for unit tests)."""
+    from merge import AIResolver
+    return AIResolver()
+
+
+@pytest.fixture
+def mock_ai_resolver():
+    """Create an AIResolver with mocked AI function."""
+    from merge import AIResolver
+
+    def mock_ai_call(system: str, user: str) -> str:
+        # Return TypeScript code with merged hooks
+        code = "const merged = useAuth();\n"
+        code += "const other = useOther();\n"
+        code += "return <div>Merged</div>;"
+        return code
+    return AIResolver(ai_call_fn=mock_ai_call)
