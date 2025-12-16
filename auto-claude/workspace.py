@@ -1868,6 +1868,13 @@ def _merge_file_with_ai(
         debug_detailed(MODULE, "AI response received",
                       response_length=len(response) if response else 0)
 
+        # Log response content for debugging (truncated)
+        if response:
+            preview = response[:200] if len(response) > 200 else response
+            print(f"    [DEBUG] AI response preview: {repr(preview)}", file=sys.stderr)
+        else:
+            print(f"    [DEBUG] AI response was empty", file=sys.stderr)
+
         # Extract code from response
         merged = resolver._extract_code_block(response, language)
         if not merged:

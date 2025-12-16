@@ -598,16 +598,15 @@ def create_claude_resolver() -> AIResolver:
     """
     Create an AIResolver configured to use Claude via the Agent SDK.
 
-    Uses the same SDK pattern as the rest of the auto-claude framework,
-    ensuring consistent authentication and rate limits.
+    Uses the same OAuth token pattern as the rest of the auto-claude framework.
 
     Returns:
         Configured AIResolver
     """
     import asyncio
     import os
+    import sys
 
-    # Check for OAuth token (required for Claude Agent SDK)
     oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
     if not oauth_token:
         logger.warning("CLAUDE_CODE_OAUTH_TOKEN not set, AI resolution unavailable")
@@ -622,43 +621,43 @@ def create_claude_resolver() -> AIResolver:
     def call_claude(system: str, user: str) -> str:
         """Call Claude using the Agent SDK for merge resolution."""
 
-        async def _run_merge_agent() -> str:
-            # Create a focused client for merge resolution (no tools needed)
+        async def _run_merge() -> str:
+            # Create a minimal client for merge resolution
             client = ClaudeSDKClient(
                 options=ClaudeAgentOptions(
-                    model="sonnet",  # Fast and capable for merges
+                    model="sonnet",
                     system_prompt=system,
-                    allowed_tools=[],  # No tools needed for merge resolution
-                    max_turns=3,  # Should complete in 1 turn, allow a few for safety
+                    allowed_tools=[],  # No tools needed for merge
+                    max_turns=1,
                 )
             )
 
             try:
-                async with client:
-                    await client.query(user)
+                # Use the same pattern as qa/reviewer.py - NO context manager
+                await client.query(user)
 
-                    response_text = ""
-                    async for msg in client.receive_response():
-                        msg_type = type(msg).__name__
-                        if msg_type == "AssistantMessage" and hasattr(msg, "content"):
-                            for block in msg.content:
-                                block_type = type(block).__name__
-                                if block_type == "TextBlock" and hasattr(block, "text"):
-                                    response_text += block.text
+                response_text = ""
+                async for msg in client.receive_response():
+                    msg_type = type(msg).__name__
+                    if msg_type == "AssistantMessage" and hasattr(msg, "content"):
+                        for block in msg.content:
+                            if hasattr(block, "text"):
+                                response_text += block.text
 
-                    return response_text
+                logger.info(f"AI merge response: {len(response_text)} chars")
+                return response_text
 
             except Exception as e:
-                logger.warning(f"Claude SDK call failed: {e}")
-                import sys
-                print(f"Claude SDK error: {e}", file=sys.stderr)
+                logger.error(f"Claude SDK call failed: {e}")
+                print(f"    [ERROR] Claude SDK error: {e}", file=sys.stderr)
                 return ""
 
-        # Run the async function synchronously
         try:
-            return asyncio.run(_run_merge_agent())
+            return asyncio.run(_run_merge())
         except Exception as e:
-            logger.warning(f"asyncio.run failed: {e}")
+            logger.error(f"asyncio.run failed: {e}")
+            print(f"    [ERROR] asyncio error: {e}", file=sys.stderr)
             return ""
 
+    logger.info("Using Claude Agent SDK for merge resolution")
     return AIResolver(ai_call_fn=call_claude)
