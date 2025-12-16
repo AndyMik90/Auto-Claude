@@ -596,56 +596,78 @@ Resolve all conflicts now:'''
 
 def create_claude_resolver() -> AIResolver:
     """
-    Create an AIResolver configured to use Claude via the Claude Agent SDK.
+    Create an AIResolver configured to use Claude via the CLI in print mode.
 
-    Uses the same SDK pattern as the rest of the auto-claude framework.
+    Uses the `claude --print` command for non-interactive text generation,
+    which is ideal for merge resolution tasks.
 
     Returns:
         Configured AIResolver
     """
-    import asyncio
     import os
+    import shutil
+    import subprocess
+    import tempfile
 
-    # Check for OAuth token (required for Claude Agent SDK)
+    # Check for OAuth token (required for Claude)
     oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
     if not oauth_token:
         logger.warning("CLAUDE_CODE_OAUTH_TOKEN not set, AI resolution unavailable")
         return AIResolver()
 
-    try:
-        from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
-    except ImportError:
-        logger.warning("claude_agent_sdk not installed, AI resolution unavailable")
+    # Check that claude CLI is available
+    claude_path = shutil.which("claude")
+    if not claude_path:
+        logger.warning("claude CLI not found in PATH, AI resolution unavailable")
         return AIResolver()
 
     def call_claude(system: str, user: str) -> str:
-        """Call Claude using the Agent SDK for merge resolution."""
+        """Call Claude using the CLI in print mode for merge resolution."""
+        # Combine system and user prompts
+        full_prompt = f"""{system}
 
-        async def _run_merge_agent() -> str:
-            client = ClaudeSDKClient(
-                options=ClaudeAgentOptions(
-                    model="claude-sonnet-4-5-20250514",  # Fast and capable
-                    system_prompt=system,
-                    allowed_tools=[],  # No tools needed for merge resolution
-                    max_turns=1,  # Single response
+{user}"""
+
+        try:
+            # Use claude --print for non-interactive single response
+            # Write prompt to temp file to avoid shell escaping issues with large prompts
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+                f.write(full_prompt)
+                prompt_file = f.name
+
+            try:
+                # Read prompt from file and pipe to claude
+                result = subprocess.run(
+                    [
+                        claude_path,
+                        "--print",
+                        "--model", "claude-sonnet-4-5-20250514",
+                        "--max-turns", "1",
+                        "--output-format", "text",
+                    ],
+                    input=full_prompt,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,  # 2 minute timeout for merge
+                    env={**os.environ, "CLAUDE_CODE_OAUTH_TOKEN": oauth_token},
                 )
-            )
 
-            async with client:
-                await client.query(user)
+                if result.returncode != 0:
+                    logger.warning(f"claude CLI returned non-zero: {result.returncode}")
+                    logger.debug(f"stderr: {result.stderr}")
+                    return ""
 
-                response_text = ""
-                async for msg in client.receive_response():
-                    msg_type = type(msg).__name__
-                    if msg_type == "AssistantMessage" and hasattr(msg, "content"):
-                        for block in msg.content:
-                            block_type = type(block).__name__
-                            if block_type == "TextBlock" and hasattr(block, "text"):
-                                response_text += block.text
+                return result.stdout.strip()
 
-                return response_text
+            finally:
+                # Clean up temp file
+                os.unlink(prompt_file)
 
-        # Run the async function synchronously
-        return asyncio.run(_run_merge_agent())
+        except subprocess.TimeoutExpired:
+            logger.warning("claude CLI timed out")
+            return ""
+        except Exception as e:
+            logger.warning(f"claude CLI call failed: {e}")
+            return ""
 
     return AIResolver(ai_call_fn=call_claude)

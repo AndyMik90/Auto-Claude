@@ -1011,11 +1011,15 @@ def _try_smart_merge_inner(
 
 def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
     """
-    Check for git-level conflicts by doing a dry-run merge.
+    Check for git-level conflicts WITHOUT modifying the working directory.
+
+    Uses git merge-tree to check conflicts in-memory, avoiding HMR triggers
+    from file system changes.
 
     Returns:
         Dict with has_conflicts, conflicting_files, etc.
     """
+    import re
     import subprocess
 
     spec_branch = f"auto-claude/{spec_name}"
@@ -1037,51 +1041,83 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
         if base_result.returncode == 0:
             result["base_branch"] = base_result.stdout.strip()
 
-        # Try merge --no-commit --no-ff to see if there are conflicts
-        stash_result = subprocess.run(
-            ["git", "stash", "push", "-m", "smart-merge-check"],
+        # Get merge base
+        merge_base_result = subprocess.run(
+            ["git", "merge-base", result["base_branch"], spec_branch],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if merge_base_result.returncode != 0:
+            debug_warning(MODULE, "Could not find merge base")
+            return result
+
+        merge_base = merge_base_result.stdout.strip()
+
+        # Get commit hashes
+        main_commit_result = subprocess.run(
+            ["git", "rev-parse", result["base_branch"]],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        spec_commit_result = subprocess.run(
+            ["git", "rev-parse", spec_branch],
             cwd=project_dir,
             capture_output=True,
             text=True,
         )
 
-        try:
-            merge_result = subprocess.run(
-                ["git", "merge", "--no-commit", "--no-ff", spec_branch],
-                cwd=project_dir,
-                capture_output=True,
-                text=True,
-            )
+        if main_commit_result.returncode != 0 or spec_commit_result.returncode != 0:
+            debug_warning(MODULE, "Could not resolve branch commits")
+            return result
 
-            if merge_result.returncode != 0:
-                result["has_conflicts"] = True
+        main_commit = main_commit_result.stdout.strip()
+        spec_commit = spec_commit_result.stdout.strip()
 
-                # Get list of unmerged files
-                status_result = subprocess.run(
-                    ["git", "diff", "--name-only", "--diff-filter=U"],
+        # Use git merge-tree to check for conflicts WITHOUT touching working directory
+        merge_tree_result = subprocess.run(
+            ["git", "merge-tree", "--write-tree", "--no-messages", merge_base, main_commit, spec_commit],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        # merge-tree returns exit code 1 if there are conflicts
+        if merge_tree_result.returncode != 0:
+            result["has_conflicts"] = True
+
+            # Parse the output for conflicting files
+            output = merge_tree_result.stdout + merge_tree_result.stderr
+            for line in output.split("\n"):
+                if "CONFLICT" in line:
+                    match = re.search(r"(?:Merge conflict in|CONFLICT.*?:)\s*(.+?)(?:\s*$|\s+\()", line)
+                    if match:
+                        file_path = match.group(1).strip()
+                        if file_path and file_path not in result["conflicting_files"]:
+                            result["conflicting_files"].append(file_path)
+
+            # Fallback: if we didn't parse conflicts, use diff to find files changed in both branches
+            if not result["conflicting_files"]:
+                main_files_result = subprocess.run(
+                    ["git", "diff", "--name-only", merge_base, main_commit],
                     cwd=project_dir,
                     capture_output=True,
                     text=True,
                 )
-                if status_result.returncode == 0:
-                    for line in status_result.stdout.strip().split("\n"):
-                        if line:
-                            result["conflicting_files"].append(line)
-        finally:
-            # Always abort and restore
-            subprocess.run(
-                ["git", "merge", "--abort"],
-                cwd=project_dir,
-                capture_output=True,
-                text=True,
-            )
-            if "No local changes" not in stash_result.stdout:
-                subprocess.run(
-                    ["git", "stash", "pop"],
+                main_files = set(main_files_result.stdout.strip().split("\n")) if main_files_result.stdout.strip() else set()
+
+                spec_files_result = subprocess.run(
+                    ["git", "diff", "--name-only", merge_base, spec_commit],
                     cwd=project_dir,
                     capture_output=True,
                     text=True,
                 )
+                spec_files = set(spec_files_result.stdout.strip().split("\n")) if spec_files_result.stdout.strip() else set()
+
+                # Files modified in both = potential conflicts
+                conflicting = main_files & spec_files
+                result["conflicting_files"] = list(conflicting)
 
     except Exception as e:
         print(muted(f"  Error checking git conflicts: {e}"))
@@ -1637,12 +1673,12 @@ def _validate_merged_syntax(file_path: str, content: str, project_dir: Path) -> 
     # TypeScript/JavaScript validation
     if ext in {'.ts', '.tsx', '.js', '.jsx'}:
         try:
-            # Write to temp file
+            # Write to temp file in system temp dir (NOT project dir to avoid HMR triggers)
             with tempfile.NamedTemporaryFile(
                 mode='w',
                 suffix=ext,
                 delete=False,
-                dir=project_dir
+                # Don't set dir= to avoid writing to project directory which triggers HMR
             ) as tmp:
                 tmp.write(content)
                 tmp_path = tmp.name
