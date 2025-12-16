@@ -44,6 +44,10 @@ BINARY_EXTENSIONS = {
 # Merge lock timeout in seconds
 MERGE_LOCK_TIMEOUT = 300  # 5 minutes
 
+# Max retries for AI merge when syntax validation fails
+# Gives AI a chance to fix its mistakes before falling back
+MAX_SYNTAX_FIX_RETRIES = 2
+
 
 def has_uncommitted_changes(project_dir: Path) -> bool:
     """Check if user has unsaved work."""
@@ -151,13 +155,18 @@ def validate_merged_syntax(file_path: str, content: str, project_dir: Path) -> t
     Validate the syntax of merged code.
 
     Returns (is_valid, error_message).
+
+    Uses esbuild for TypeScript/JavaScript validation as it:
+    - Is much faster than tsc (no npm setup overhead)
+    - Has accurate JSX/TSX parsing (matches Vite's behavior)
+    - Works in isolation without tsconfig.json
     """
     import tempfile
     from pathlib import Path as P
 
     ext = P(file_path).suffix.lower()
 
-    # TypeScript/JavaScript validation
+    # TypeScript/JavaScript validation using esbuild
     if ext in {'.ts', '.tsx', '.js', '.jsx'}:
         try:
             # Write to temp file in system temp dir (NOT project dir to avoid HMR triggers)
@@ -171,49 +180,65 @@ def validate_merged_syntax(file_path: str, content: str, project_dir: Path) -> t
                 tmp_path = tmp.name
 
             try:
-                # Try tsc first (TypeScript)
-                if ext in {'.ts', '.tsx'}:
-                    result = subprocess.run(
-                        ['npx', 'tsc', '--noEmit', '--skipLibCheck', tmp_path],
-                        cwd=project_dir,
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                    )
-                    if result.returncode != 0:
-                        # Filter out npm warnings (they go to stderr but aren't errors)
-                        error_lines = [
-                            line for line in result.stderr.strip().split('\n')
-                            if line and not line.startswith('npm warn') and not line.startswith('npm WARN')
-                        ]
-                        # Only treat as error if there are actual TypeScript errors
-                        if error_lines:
-                            return False, '\n'.join(error_lines[:3])
-                        # No actual errors, just npm warnings - syntax is valid
+                # Find esbuild binary - try multiple locations
+                esbuild_cmd = None
 
-                # Try eslint for all JS/TS
+                # Try to find esbuild in node_modules (works with pnpm, npm, yarn)
+                for search_dir in [project_dir, project_dir.parent]:
+                    # pnpm stores it differently
+                    pnpm_esbuild = search_dir / 'node_modules' / '.pnpm'
+                    if pnpm_esbuild.exists():
+                        for esbuild_dir in pnpm_esbuild.glob('esbuild@*/node_modules/esbuild/bin/esbuild'):
+                            if esbuild_dir.exists():
+                                esbuild_cmd = str(esbuild_dir)
+                                break
+                    # Standard npm/yarn location
+                    npm_esbuild = search_dir / 'node_modules' / '.bin' / 'esbuild'
+                    if npm_esbuild.exists():
+                        esbuild_cmd = str(npm_esbuild)
+                        break
+                    if esbuild_cmd:
+                        break
+
+                # Fall back to npx if not found
+                if not esbuild_cmd:
+                    esbuild_cmd = 'npx'
+                    args = ['npx', 'esbuild', tmp_path, '--log-level=error']
+                else:
+                    args = [esbuild_cmd, tmp_path, '--log-level=error']
+
+                # Use esbuild for fast, accurate syntax validation
+                # esbuild infers loader from extension (.tsx, .ts, etc.)
+                # --log-level=error only shows errors
                 result = subprocess.run(
-                    ['npx', 'eslint', '--no-eslintrc', '--parser', '@typescript-eslint/parser', tmp_path],
+                    args,
                     cwd=project_dir,
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=15,  # esbuild is fast, 15s is plenty
                 )
-                # eslint exit 1 for errors, 0 for clean
-                if result.returncode > 1:  # 2+ is config error, ignore
-                    pass
-                elif result.returncode == 1 and 'Parsing error' in result.stdout:
-                    return False, "Syntax error in merged code"
+
+                if result.returncode != 0:
+                    # Filter out npm warnings and extract actual errors
+                    error_output = result.stderr.strip()
+                    error_lines = [
+                        line for line in error_output.split('\n')
+                        if line and not line.startswith('npm warn') and not line.startswith('npm WARN')
+                    ]
+                    if error_lines:
+                        # Extract just the error message, not full path
+                        error_msg = '\n'.join(error_lines[:3])
+                        return False, f"Syntax error: {error_msg}"
+
+                return True, ""
 
             finally:
                 P(tmp_path).unlink(missing_ok=True)
 
-            return True, ""
-
         except subprocess.TimeoutExpired:
             return True, ""  # Timeout = assume ok
         except FileNotFoundError:
-            return True, ""  # No tsc/eslint = skip validation
+            return True, ""  # No esbuild = skip validation
         except Exception as e:
             return True, ""  # Other errors = skip validation
 

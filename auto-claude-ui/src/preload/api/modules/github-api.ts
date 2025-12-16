@@ -1,0 +1,89 @@
+import { IPC_CHANNELS } from '../../../shared/constants';
+import type {
+  GitHubRepository,
+  GitHubIssue,
+  GitHubSyncStatus,
+  GitHubImportResult,
+  GitHubInvestigationStatus,
+  GitHubInvestigationResult,
+  IPCResult
+} from '../../../shared/types';
+import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
+
+/**
+ * GitHub Integration API operations
+ */
+export interface GitHubAPI {
+  // Operations
+  getGitHubRepositories: (projectId: string) => Promise<IPCResult<GitHubRepository[]>>;
+  getGitHubIssues: (projectId: string, state?: 'open' | 'closed' | 'all') => Promise<IPCResult<GitHubIssue[]>>;
+  getGitHubIssue: (projectId: string, issueNumber: number) => Promise<IPCResult<GitHubIssue>>;
+  checkGitHubConnection: (projectId: string) => Promise<IPCResult<GitHubSyncStatus>>;
+  investigateGitHubIssue: (projectId: string, issueNumber: number) => void;
+  importGitHubIssues: (projectId: string, issueNumbers: number[]) => Promise<IPCResult<GitHubImportResult>>;
+  createGitHubRelease: (
+    projectId: string,
+    version: string,
+    releaseNotes: string,
+    options?: { draft?: boolean; prerelease?: boolean }
+  ) => Promise<IPCResult<{ url: string }>>;
+
+  // Event Listeners
+  onGitHubInvestigationProgress: (
+    callback: (projectId: string, status: GitHubInvestigationStatus) => void
+  ) => IpcListenerCleanup;
+  onGitHubInvestigationComplete: (
+    callback: (projectId: string, result: GitHubInvestigationResult) => void
+  ) => IpcListenerCleanup;
+  onGitHubInvestigationError: (
+    callback: (projectId: string, error: string) => void
+  ) => IpcListenerCleanup;
+}
+
+/**
+ * Creates the GitHub Integration API implementation
+ */
+export const createGitHubAPI = (): GitHubAPI => ({
+  // Operations
+  getGitHubRepositories: (projectId: string): Promise<IPCResult<GitHubRepository[]>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_GET_REPOSITORIES, projectId),
+
+  getGitHubIssues: (projectId: string, state?: 'open' | 'closed' | 'all'): Promise<IPCResult<GitHubIssue[]>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_GET_ISSUES, projectId, state),
+
+  getGitHubIssue: (projectId: string, issueNumber: number): Promise<IPCResult<GitHubIssue>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_GET_ISSUE, projectId, issueNumber),
+
+  checkGitHubConnection: (projectId: string): Promise<IPCResult<GitHubSyncStatus>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_CHECK_CONNECTION, projectId),
+
+  investigateGitHubIssue: (projectId: string, issueNumber: number): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_INVESTIGATE_ISSUE, projectId, issueNumber),
+
+  importGitHubIssues: (projectId: string, issueNumbers: number[]): Promise<IPCResult<GitHubImportResult>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_IMPORT_ISSUES, projectId, issueNumbers),
+
+  createGitHubRelease: (
+    projectId: string,
+    version: string,
+    releaseNotes: string,
+    options?: { draft?: boolean; prerelease?: boolean }
+  ): Promise<IPCResult<{ url: string }>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_CREATE_RELEASE, projectId, version, releaseNotes, options),
+
+  // Event Listeners
+  onGitHubInvestigationProgress: (
+    callback: (projectId: string, status: GitHubInvestigationStatus) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_INVESTIGATION_PROGRESS, callback),
+
+  onGitHubInvestigationComplete: (
+    callback: (projectId: string, result: GitHubInvestigationResult) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_INVESTIGATION_COMPLETE, callback),
+
+  onGitHubInvestigationError: (
+    callback: (projectId: string, error: string) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_INVESTIGATION_ERROR, callback)
+});

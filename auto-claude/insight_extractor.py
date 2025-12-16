@@ -5,7 +5,7 @@ Insight Extractor
 Automatically extracts structured insights from completed coding sessions.
 Runs after each session to capture rich, actionable knowledge for Graphiti memory.
 
-Uses Haiku by default for fast, cheap extraction (~$0.001 per extraction).
+Uses the Claude Agent SDK (same as the rest of the system) for extraction.
 Falls back to generic insights if extraction fails (never blocks the build).
 """
 
@@ -17,6 +17,15 @@ from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Check for Claude SDK availability
+try:
+    from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
+    SDK_AVAILABLE = True
+except ImportError:
+    SDK_AVAILABLE = False
+    ClaudeAgentOptions = None
+    ClaudeSDKClient = None
 
 # Default model for insight extraction (fast and cheap)
 DEFAULT_EXTRACTION_MODEL = "claude-3-5-haiku-latest"
@@ -30,6 +39,11 @@ MAX_ATTEMPTS_TO_INCLUDE = 3
 
 def is_extraction_enabled() -> bool:
     """Check if insight extraction is enabled."""
+    # Extraction requires Claude SDK and OAuth token
+    if not SDK_AVAILABLE:
+        return False
+    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        return False
     enabled_str = os.environ.get("INSIGHT_EXTRACTION_ENABLED", "true").lower()
     return enabled_str in ("true", "1", "yes")
 
@@ -316,44 +330,60 @@ def _format_attempt_history(attempts: list[dict]) -> str:
     return "\n".join(lines)
 
 
-async def run_insight_extraction(inputs: dict) -> dict | None:
+async def run_insight_extraction(inputs: dict, project_dir: Path | None = None) -> dict | None:
     """
-    Run the insight extraction using Anthropic API.
+    Run the insight extraction using Claude Agent SDK.
 
     Args:
         inputs: Gathered session inputs
+        project_dir: Project directory for SDK context (optional)
 
     Returns:
         Extracted insights dict or None if failed
     """
-    try:
-        import anthropic
-    except ImportError:
-        logger.warning("anthropic package not installed, skipping insight extraction")
+    if not SDK_AVAILABLE:
+        logger.warning("Claude SDK not available, skipping insight extraction")
         return None
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        logger.warning("ANTHROPIC_API_KEY not set, skipping insight extraction")
+    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+    if not oauth_token:
+        logger.warning("CLAUDE_CODE_OAUTH_TOKEN not set, skipping insight extraction")
         return None
 
     model = get_extraction_model()
     prompt = _build_extraction_prompt(inputs)
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
+    # Use current directory if project_dir not specified
+    cwd = str(project_dir.resolve()) if project_dir else os.getcwd()
 
-        message = client.messages.create(
-            model=model,
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
+    try:
+        # Create a minimal SDK client for insight extraction
+        # No tools needed - just text generation
+        client = ClaudeSDKClient(
+            options=ClaudeAgentOptions(
+                model=model,
+                system_prompt=(
+                    "You are an expert code analyst. You extract structured insights from coding sessions. "
+                    "Always respond with valid JSON only, no markdown formatting or explanations."
+                ),
+                allowed_tools=[],  # No tools needed for extraction
+                max_turns=1,  # Single turn extraction
+                cwd=cwd,
+            )
         )
 
-        # Extract text content
-        response_text = ""
-        for block in message.content:
-            if hasattr(block, "text"):
-                response_text += block.text
+        # Use async context manager
+        async with client:
+            await client.query(prompt)
+
+            # Collect the response
+            response_text = ""
+            async for msg in client.receive_response():
+                msg_type = type(msg).__name__
+                if msg_type == "AssistantMessage" and hasattr(msg, "content"):
+                    for block in msg.content:
+                        if hasattr(block, "text"):
+                            response_text += block.text
 
         # Parse JSON from response
         return parse_insights(response_text)
@@ -469,7 +499,7 @@ async def extract_session_insights(
         )
 
         # Run extraction
-        extracted = await run_insight_extraction(inputs)
+        extracted = await run_insight_extraction(inputs, project_dir=project_dir)
 
         if extracted:
             # Add metadata

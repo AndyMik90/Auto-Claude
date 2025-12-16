@@ -61,6 +61,7 @@ from .git_utils import (
     # Constants
     MAX_FILE_LINES_FOR_AI,
     MAX_PARALLEL_AI_MERGES,
+    MAX_SYNTAX_FIX_RETRIES,
     BINARY_EXTENSIONS,
     LOCK_FILES,
     MERGE_LOCK_TIMEOUT,

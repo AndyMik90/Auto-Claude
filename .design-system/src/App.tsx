@@ -338,7 +338,7 @@ export default function App() {
                       { name: 'Alice' },
                       { name: 'Bob' },
                       { name: 'Charlie' },
-                      { name: 'David' },
+                      { name: 'Diana' },
                       { name: 'Eve' },
                       { name: 'Frank' }
                     ]}

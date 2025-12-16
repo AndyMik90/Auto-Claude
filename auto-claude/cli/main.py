@@ -20,10 +20,8 @@ from ui import (
     icon,
 )
 
-from .build_commands import (
-    handle_build_command,
-    handle_followup_command,
-)
+from .build_commands import handle_build_command
+from .followup_commands import handle_followup_command
 from .qa_commands import (
     handle_qa_command,
     handle_qa_status_command,

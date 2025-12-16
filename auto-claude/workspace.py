@@ -87,6 +87,7 @@ from workspace.git_utils import (
     create_conflict_file_with_git as _create_conflict_file_with_git,
     MAX_FILE_LINES_FOR_AI,
     MAX_PARALLEL_AI_MERGES,
+    MAX_SYNTAX_FIX_RETRIES,
     BINARY_EXTENSIONS,
     LOCK_FILES,
     MERGE_LOCK_TIMEOUT,
@@ -1150,14 +1151,55 @@ async def _merge_file_with_ai_async(
                             resolutions = extract_conflict_resolutions(response, conflicts, language)
                             if resolutions:
                                 merged = reassemble_with_resolutions(merged_content, conflicts, resolutions)
-                                is_valid, _ = _validate_merged_syntax(file_path, merged, project_dir)
+                                is_valid, error_msg = _validate_merged_syntax(file_path, merged, project_dir)
+
+                                # Retry loop: if syntax is invalid, give AI feedback to fix it
+                                retry_count = 0
+                                while not is_valid and retry_count < MAX_SYNTAX_FIX_RETRIES:
+                                    retry_count += 1
+                                    debug(MODULE, f"[PARALLEL] Syntax error in merge, retry {retry_count}/{MAX_SYNTAX_FIX_RETRIES}: {file_path}")
+
+                                    # Build fix prompt with error feedback
+                                    fix_prompt = f"""The merged code you produced has a syntax error:
+
+{error_msg}
+
+Here is your merged code that has the error:
+```{language}
+{merged}
+```
+
+Please fix the syntax error and output the corrected code. Make sure:
+1. All lines are properly separated (no concatenated lines)
+2. All brackets/braces are properly matched
+3. All statements end correctly
+
+Output ONLY the fixed code, no explanations."""
+
+                                    fix_response = await _async_ai_call(
+                                        client,
+                                        "You are an expert code fixer. Fix the syntax error in the code.",
+                                        fix_prompt,
+                                    )
+
+                                    if fix_response:
+                                        fixed = resolver._extract_code_block(fix_response, language)
+                                        if not fixed and resolver._looks_like_code(fix_response, language):
+                                            fixed = fix_response.strip()
+                                        if fixed:
+                                            merged = fixed
+                                            is_valid, error_msg = _validate_merged_syntax(file_path, merged, project_dir)
+
                                 if is_valid:
-                                    debug_success(MODULE, f"[PARALLEL] Conflict-only merge succeeded: {file_path}")
+                                    debug_success(MODULE, f"[PARALLEL] Conflict-only merge succeeded: {file_path}" +
+                                                  (f" (after {retry_count} fix retries)" if retry_count > 0 else ""))
                                     return ParallelMergeResult(
                                         file_path=file_path,
                                         merged_content=merged,
                                         success=True
                                     )
+                                else:
+                                    debug(MODULE, f"[PARALLEL] Conflict-only merge failed validation after {retry_count} retries, falling back to full-file: {file_path}")
 
                 # Case 3: Full-file AI merge (fallback)
                 debug(MODULE, f"[PARALLEL] Full-file merge for: {file_path}")
@@ -1184,21 +1226,62 @@ async def _merge_file_with_ai_async(
                         merged = response.strip()
 
                     if merged:
-                        is_valid, _ = _validate_merged_syntax(file_path, merged, project_dir)
+                        is_valid, error_msg = _validate_merged_syntax(file_path, merged, project_dir)
+
+                        # Retry loop: if syntax is invalid, give AI feedback to fix it
+                        retry_count = 0
+                        while not is_valid and retry_count < MAX_SYNTAX_FIX_RETRIES:
+                            retry_count += 1
+                            debug(MODULE, f"[PARALLEL] Syntax error in full-file merge, retry {retry_count}/{MAX_SYNTAX_FIX_RETRIES}: {file_path}")
+
+                            # Build fix prompt with error feedback
+                            fix_prompt = f"""The merged code you produced has a syntax error:
+
+{error_msg}
+
+Here is your merged code that has the error:
+```{language}
+{merged}
+```
+
+Please fix the syntax error and output the corrected code. Make sure:
+1. All lines are properly separated (no concatenated lines)
+2. All brackets/braces are properly matched
+3. All statements end correctly
+
+Output ONLY the fixed code, no explanations."""
+
+                            fix_response = await _async_ai_call(
+                                client,
+                                "You are an expert code fixer. Fix the syntax error in the code.",
+                                fix_prompt,
+                            )
+
+                            if fix_response:
+                                fixed = resolver._extract_code_block(fix_response, language)
+                                if not fixed and resolver._looks_like_code(fix_response, language):
+                                    fixed = fix_response.strip()
+                                if fixed:
+                                    merged = fixed
+                                    is_valid, error_msg = _validate_merged_syntax(file_path, merged, project_dir)
+
                         if is_valid:
-                            debug_success(MODULE, f"[PARALLEL] Full-file merge succeeded: {file_path}")
+                            debug_success(MODULE, f"[PARALLEL] Full-file merge succeeded: {file_path}" +
+                                          (f" (after {retry_count} fix retries)" if retry_count > 0 else ""))
                             return ParallelMergeResult(
                                 file_path=file_path,
                                 merged_content=merged,
                                 success=True
                             )
+                        else:
+                            debug_error(MODULE, f"[PARALLEL] Full-file merge failed validation after {retry_count} retries: {file_path}")
 
                 # AI couldn't merge
                 return ParallelMergeResult(
                     file_path=file_path,
                     merged_content=None,
                     success=False,
-                    error="AI could not merge file"
+                    error="AI could not merge file - syntax validation failed after retries"
                 )
 
         except Exception as e:

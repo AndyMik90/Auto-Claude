@@ -1,0 +1,239 @@
+/**
+ * IPC Channel names for Electron communication
+ * Main process <-> Renderer process communication
+ */
+
+export const IPC_CHANNELS = {
+  // Project operations
+  PROJECT_ADD: 'project:add',
+  PROJECT_REMOVE: 'project:remove',
+  PROJECT_LIST: 'project:list',
+  PROJECT_UPDATE_SETTINGS: 'project:updateSettings',
+  PROJECT_INITIALIZE: 'project:initialize',
+  PROJECT_UPDATE_AUTOBUILD: 'project:updateAutoBuild',
+  PROJECT_CHECK_VERSION: 'project:checkVersion',
+
+  // Task operations
+  TASK_LIST: 'task:list',
+  TASK_CREATE: 'task:create',
+  TASK_DELETE: 'task:delete',
+  TASK_UPDATE: 'task:update',
+  TASK_START: 'task:start',
+  TASK_STOP: 'task:stop',
+  TASK_REVIEW: 'task:review',
+  TASK_UPDATE_STATUS: 'task:updateStatus',
+  TASK_RECOVER_STUCK: 'task:recoverStuck',
+  TASK_CHECK_RUNNING: 'task:checkRunning',
+
+  // Workspace management (for human review)
+  // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
+  TASK_WORKTREE_STATUS: 'task:worktreeStatus',
+  TASK_WORKTREE_DIFF: 'task:worktreeDiff',
+  TASK_WORKTREE_MERGE: 'task:worktreeMerge',
+  TASK_WORKTREE_MERGE_PREVIEW: 'task:worktreeMergePreview',  // Preview merge conflicts before merging
+  TASK_WORKTREE_DISCARD: 'task:worktreeDiscard',
+  TASK_LIST_WORKTREES: 'task:listWorktrees',
+  TASK_ARCHIVE: 'task:archive',
+  TASK_UNARCHIVE: 'task:unarchive',
+
+  // Task events (main -> renderer)
+  TASK_PROGRESS: 'task:progress',
+  TASK_ERROR: 'task:error',
+  TASK_LOG: 'task:log',
+  TASK_STATUS_CHANGE: 'task:statusChange',
+  TASK_EXECUTION_PROGRESS: 'task:executionProgress',
+
+  // Task phase logs (persistent, collapsible logs by phase)
+  TASK_LOGS_GET: 'task:logsGet',           // Load logs from spec dir
+  TASK_LOGS_WATCH: 'task:logsWatch',       // Start watching for log changes
+  TASK_LOGS_UNWATCH: 'task:logsUnwatch',   // Stop watching for log changes
+  TASK_LOGS_CHANGED: 'task:logsChanged',   // Event: logs changed (main -> renderer)
+  TASK_LOGS_STREAM: 'task:logsStream',     // Event: streaming log chunk (main -> renderer)
+
+  // Terminal operations
+  TERMINAL_CREATE: 'terminal:create',
+  TERMINAL_DESTROY: 'terminal:destroy',
+  TERMINAL_INPUT: 'terminal:input',
+  TERMINAL_RESIZE: 'terminal:resize',
+  TERMINAL_INVOKE_CLAUDE: 'terminal:invokeClaude',
+  TERMINAL_GENERATE_NAME: 'terminal:generateName',
+
+  // Terminal session management
+  TERMINAL_GET_SESSIONS: 'terminal:getSessions',
+  TERMINAL_RESTORE_SESSION: 'terminal:restoreSession',
+  TERMINAL_CLEAR_SESSIONS: 'terminal:clearSessions',
+  TERMINAL_RESUME_CLAUDE: 'terminal:resumeClaude',
+  TERMINAL_GET_SESSION_DATES: 'terminal:getSessionDates',
+  TERMINAL_GET_SESSIONS_FOR_DATE: 'terminal:getSessionsForDate',
+  TERMINAL_RESTORE_FROM_DATE: 'terminal:restoreFromDate',
+
+  // Terminal events (main -> renderer)
+  TERMINAL_OUTPUT: 'terminal:output',
+  TERMINAL_EXIT: 'terminal:exit',
+  TERMINAL_TITLE_CHANGE: 'terminal:titleChange',
+  TERMINAL_CLAUDE_SESSION: 'terminal:claudeSession',  // Claude session ID captured
+  TERMINAL_RATE_LIMIT: 'terminal:rateLimit',  // Claude Code rate limit detected
+  TERMINAL_OAUTH_TOKEN: 'terminal:oauthToken',  // OAuth token captured from setup-token output
+
+  // Claude profile management (multi-account support)
+  CLAUDE_PROFILES_GET: 'claude:profilesGet',
+  CLAUDE_PROFILE_SAVE: 'claude:profileSave',
+  CLAUDE_PROFILE_DELETE: 'claude:profileDelete',
+  CLAUDE_PROFILE_RENAME: 'claude:profileRename',
+  CLAUDE_PROFILE_SET_ACTIVE: 'claude:profileSetActive',
+  CLAUDE_PROFILE_SWITCH: 'claude:profileSwitch',
+  CLAUDE_PROFILE_INITIALIZE: 'claude:profileInitialize',
+  CLAUDE_PROFILE_SET_TOKEN: 'claude:profileSetToken',  // Set OAuth token for a profile
+  CLAUDE_PROFILE_AUTO_SWITCH_SETTINGS: 'claude:autoSwitchSettings',
+  CLAUDE_PROFILE_UPDATE_AUTO_SWITCH: 'claude:updateAutoSwitch',
+  CLAUDE_PROFILE_FETCH_USAGE: 'claude:fetchUsage',
+  CLAUDE_PROFILE_GET_BEST_PROFILE: 'claude:getBestProfile',
+
+  // SDK/CLI rate limit event (for non-terminal Claude invocations)
+  CLAUDE_SDK_RATE_LIMIT: 'claude:sdkRateLimit',
+  // Retry a rate-limited operation with a different profile
+  CLAUDE_RETRY_WITH_PROFILE: 'claude:retryWithProfile',
+
+  // Settings
+  SETTINGS_GET: 'settings:get',
+  SETTINGS_SAVE: 'settings:save',
+
+  // Dialogs
+  DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',
+  DIALOG_CREATE_PROJECT_FOLDER: 'dialog:createProjectFolder',
+  DIALOG_GET_DEFAULT_PROJECT_LOCATION: 'dialog:getDefaultProjectLocation',
+
+  // App info
+  APP_VERSION: 'app:version',
+
+  // Shell operations
+  SHELL_OPEN_EXTERNAL: 'shell:openExternal',
+
+  // Roadmap operations
+  ROADMAP_GET: 'roadmap:get',
+  ROADMAP_SAVE: 'roadmap:save',
+  ROADMAP_GENERATE: 'roadmap:generate',
+  ROADMAP_GENERATE_WITH_COMPETITOR: 'roadmap:generateWithCompetitor',
+  ROADMAP_REFRESH: 'roadmap:refresh',
+  ROADMAP_UPDATE_FEATURE: 'roadmap:updateFeature',
+  ROADMAP_CONVERT_TO_SPEC: 'roadmap:convertToSpec',
+
+  // Roadmap events (main -> renderer)
+  ROADMAP_PROGRESS: 'roadmap:progress',
+  ROADMAP_COMPLETE: 'roadmap:complete',
+  ROADMAP_ERROR: 'roadmap:error',
+
+  // Context operations
+  CONTEXT_GET: 'context:get',
+  CONTEXT_REFRESH_INDEX: 'context:refreshIndex',
+  CONTEXT_MEMORY_STATUS: 'context:memoryStatus',
+  CONTEXT_SEARCH_MEMORIES: 'context:searchMemories',
+  CONTEXT_GET_MEMORIES: 'context:getMemories',
+
+  // Environment configuration
+  ENV_GET: 'env:get',
+  ENV_UPDATE: 'env:update',
+  ENV_CHECK_CLAUDE_AUTH: 'env:checkClaudeAuth',
+  ENV_INVOKE_CLAUDE_SETUP: 'env:invokeClaudeSetup',
+
+  // Ideation operations
+  IDEATION_GET: 'ideation:get',
+  IDEATION_GENERATE: 'ideation:generate',
+  IDEATION_REFRESH: 'ideation:refresh',
+  IDEATION_STOP: 'ideation:stop',
+  IDEATION_UPDATE_IDEA: 'ideation:updateIdea',
+  IDEATION_CONVERT_TO_TASK: 'ideation:convertToTask',
+  IDEATION_DISMISS: 'ideation:dismiss',
+  IDEATION_DISMISS_ALL: 'ideation:dismissAll',
+
+  // Ideation events (main -> renderer)
+  IDEATION_PROGRESS: 'ideation:progress',
+  IDEATION_LOG: 'ideation:log',
+  IDEATION_COMPLETE: 'ideation:complete',
+  IDEATION_ERROR: 'ideation:error',
+  IDEATION_STOPPED: 'ideation:stopped',
+  IDEATION_TYPE_COMPLETE: 'ideation:typeComplete',
+  IDEATION_TYPE_FAILED: 'ideation:typeFailed',
+
+  // Linear integration
+  LINEAR_GET_TEAMS: 'linear:getTeams',
+  LINEAR_GET_PROJECTS: 'linear:getProjects',
+  LINEAR_GET_ISSUES: 'linear:getIssues',
+  LINEAR_IMPORT_ISSUES: 'linear:importIssues',
+  LINEAR_CHECK_CONNECTION: 'linear:checkConnection',
+
+  // GitHub integration
+  GITHUB_GET_REPOSITORIES: 'github:getRepositories',
+  GITHUB_GET_ISSUES: 'github:getIssues',
+  GITHUB_GET_ISSUE: 'github:getIssue',
+  GITHUB_CHECK_CONNECTION: 'github:checkConnection',
+  GITHUB_INVESTIGATE_ISSUE: 'github:investigateIssue',
+  GITHUB_IMPORT_ISSUES: 'github:importIssues',
+  GITHUB_CREATE_RELEASE: 'github:createRelease',
+
+  // GitHub events (main -> renderer)
+  GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',
+  GITHUB_INVESTIGATION_COMPLETE: 'github:investigationComplete',
+  GITHUB_INVESTIGATION_ERROR: 'github:investigationError',
+
+  // Docker & Infrastructure status
+  DOCKER_STATUS: 'docker:status',
+  DOCKER_START_FALKORDB: 'docker:startFalkordb',
+  DOCKER_STOP_FALKORDB: 'docker:stopFalkordb',
+  DOCKER_OPEN_DESKTOP: 'docker:openDesktop',
+  DOCKER_GET_DOWNLOAD_URL: 'docker:getDownloadUrl',
+
+  // Graphiti validation
+  GRAPHITI_VALIDATE_FALKORDB: 'graphiti:validateFalkordb',
+  GRAPHITI_VALIDATE_OPENAI: 'graphiti:validateOpenai',
+  GRAPHITI_TEST_CONNECTION: 'graphiti:testConnection',
+
+  // Auto Claude source updates
+  AUTOBUILD_SOURCE_CHECK: 'autobuild:source:check',
+  AUTOBUILD_SOURCE_DOWNLOAD: 'autobuild:source:download',
+  AUTOBUILD_SOURCE_VERSION: 'autobuild:source:version',
+  AUTOBUILD_SOURCE_PROGRESS: 'autobuild:source:progress',
+
+  // Auto Claude source environment configuration
+  AUTOBUILD_SOURCE_ENV_GET: 'autobuild:source:env:get',
+  AUTOBUILD_SOURCE_ENV_UPDATE: 'autobuild:source:env:update',
+  AUTOBUILD_SOURCE_ENV_CHECK_TOKEN: 'autobuild:source:env:checkToken',
+
+  // Changelog operations
+  CHANGELOG_GET_DONE_TASKS: 'changelog:getDoneTasks',
+  CHANGELOG_LOAD_TASK_SPECS: 'changelog:loadTaskSpecs',
+  CHANGELOG_GENERATE: 'changelog:generate',
+  CHANGELOG_SAVE: 'changelog:save',
+  CHANGELOG_READ_EXISTING: 'changelog:readExisting',
+  CHANGELOG_SUGGEST_VERSION: 'changelog:suggestVersion',
+
+  // Changelog git operations (for git-based changelog generation)
+  CHANGELOG_GET_BRANCHES: 'changelog:getBranches',
+  CHANGELOG_GET_TAGS: 'changelog:getTags',
+  CHANGELOG_GET_COMMITS_PREVIEW: 'changelog:getCommitsPreview',
+  CHANGELOG_SAVE_IMAGE: 'changelog:saveImage',
+
+  // Changelog events (main -> renderer)
+  CHANGELOG_GENERATION_PROGRESS: 'changelog:generationProgress',
+  CHANGELOG_GENERATION_COMPLETE: 'changelog:generationComplete',
+  CHANGELOG_GENERATION_ERROR: 'changelog:generationError',
+
+  // Insights operations
+  INSIGHTS_GET_SESSION: 'insights:getSession',
+  INSIGHTS_SEND_MESSAGE: 'insights:sendMessage',
+  INSIGHTS_CLEAR_SESSION: 'insights:clearSession',
+  INSIGHTS_CREATE_TASK: 'insights:createTask',
+  INSIGHTS_LIST_SESSIONS: 'insights:listSessions',
+  INSIGHTS_NEW_SESSION: 'insights:newSession',
+  INSIGHTS_SWITCH_SESSION: 'insights:switchSession',
+  INSIGHTS_DELETE_SESSION: 'insights:deleteSession',
+  INSIGHTS_RENAME_SESSION: 'insights:renameSession',
+
+  // Insights events (main -> renderer)
+  INSIGHTS_STREAM_CHUNK: 'insights:streamChunk',
+  INSIGHTS_STATUS: 'insights:status',
+  INSIGHTS_ERROR: 'insights:error',
+
+  // File explorer operations
+  FILE_EXPLORER_LIST: 'fileExplorer:list'
+} as const;

@@ -38,6 +38,7 @@ from .types import (
 from .models import MergeStats, TaskMergeRequest, MergeReport
 from .semantic_analyzer import SemanticAnalyzer
 from .conflict_detector import ConflictDetector
+from .compatibility_rules import CompatibilityRule
 from .auto_merger import AutoMerger
 from .file_evolution import FileEvolutionTracker
 from .ai_resolver import AIResolver, create_claude_resolver
@@ -84,6 +85,7 @@ __all__ = [
     "MergeStats",
     "TaskMergeRequest",
     "MergeReport",
+    "CompatibilityRule",
     # Components
     "SemanticAnalyzer",
     "ConflictDetector",
