@@ -41,6 +41,12 @@ export default defineConfig({
         '@': resolve(__dirname, 'src/renderer'),
         '@shared': resolve(__dirname, 'src/shared')
       }
+    },
+    server: {
+      watch: {
+        // Ignore worktrees directory to prevent HMR conflicts during merge operations
+        ignored: ['**/.worktrees/**', '**/node_modules/**', '**/.git/**']
+      }
     }
   }
 });

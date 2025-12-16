@@ -1810,8 +1810,10 @@ export function registerTaskHandlers(
                         totalFiles: 0,
                         conflictFiles: 0,
                         totalConflicts: 0,
-                        autoMergeable: 0
-                      }
+                        autoMergeable: 0,
+                        hasGitConflicts: false
+                      },
+                      gitConflicts: result.gitConflicts || null
                     }
                   }
                 });

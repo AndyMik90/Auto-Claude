@@ -39,7 +39,7 @@ from .semantic_analyzer import SemanticAnalyzer
 from .conflict_detector import ConflictDetector
 from .auto_merger import AutoMerger
 from .file_evolution import FileEvolutionTracker
-from .ai_resolver import AIResolver
+from .ai_resolver import AIResolver, create_claude_resolver
 from .orchestrator import MergeOrchestrator
 
 __all__ = [
@@ -60,5 +60,6 @@ __all__ = [
     "AutoMerger",
     "FileEvolutionTracker",
     "AIResolver",
+    "create_claude_resolver",
     "MergeOrchestrator",
 ]

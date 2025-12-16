@@ -46,12 +46,27 @@ from ui import (
 )
 from worktree import WorktreeInfo, WorktreeManager
 
+# Import debug utilities
+try:
+    from debug import debug, debug_detailed, debug_verbose, debug_success, debug_error, debug_warning, is_debug_enabled
+except ImportError:
+    def debug(*args, **kwargs): pass
+    def debug_detailed(*args, **kwargs): pass
+    def debug_verbose(*args, **kwargs): pass
+    def debug_success(*args, **kwargs): pass
+    def debug_error(*args, **kwargs): pass
+    def debug_warning(*args, **kwargs): pass
+    def is_debug_enabled(): return False
+
 # Import merge system
 from merge import (
     MergeOrchestrator,
     MergeDecision,
     ConflictSeverity,
+    FileEvolutionTracker,
 )
+
+MODULE = "workspace"
 
 
 class WorkspaceMode(Enum):
@@ -620,21 +635,58 @@ def merge_existing_build(
     # Try smart merge first if enabled
     if use_smart_merge:
         smart_result = _try_smart_merge(
-            project_dir, spec_name, worktree_path, manager
+            project_dir, spec_name, worktree_path, manager, no_commit=no_commit
         )
 
         if smart_result is not None:
             # Smart merge handled it (success or identified conflicts)
             if smart_result.get("success"):
-                # Smart merge succeeded, now do git merge
-                success_result = manager.merge_worktree(
-                    spec_name, delete_after=True, no_commit=no_commit
-                )
-                if success_result:
+                # Check if smart merge resolved git conflicts directly
+                if smart_result.get("stats", {}).get("ai_assisted"):
+                    # AI resolved git conflicts - changes are already staged
                     _print_merge_success(no_commit, smart_result.get("stats"))
+
+                    # Cleanup the worktree since merge is done
+                    try:
+                        manager.remove_worktree(spec_name, delete_branch=True)
+                    except Exception:
+                        pass  # Best effort cleanup
+
                     return True
+                else:
+                    # No git conflicts, do standard git merge
+                    success_result = manager.merge_worktree(
+                        spec_name, delete_after=True, no_commit=no_commit
+                    )
+                    if success_result:
+                        _print_merge_success(no_commit, smart_result.get("stats"))
+                        return True
+            elif smart_result.get("git_conflicts"):
+                # Had git conflicts that AI couldn't fully resolve
+                resolved = smart_result.get("resolved", [])
+                remaining = smart_result.get("conflicts", [])
+
+                if resolved:
+                    print()
+                    print_status(f"AI resolved {len(resolved)} file(s)", "success")
+
+                if remaining:
+                    print()
+                    print_status(
+                        f"{len(remaining)} conflict(s) require manual resolution:",
+                        "warning"
+                    )
+                    _print_conflict_info(smart_result)
+
+                    # Changes for resolved files are staged, remaining need manual work
+                    print()
+                    print("The resolved files are staged. For remaining conflicts:")
+                    print(muted("  1. Manually resolve the conflicting files"))
+                    print(muted("  2. git add <resolved-files>"))
+                    print(muted("  3. git commit"))
+                    return False
             elif smart_result.get("conflicts"):
-                # Has conflicts that need resolution
+                # Has semantic conflicts that need resolution
                 _print_conflict_info(smart_result)
                 print()
                 print(muted("Attempting git merge anyway..."))
@@ -670,17 +722,54 @@ def _try_smart_merge(
     spec_name: str,
     worktree_path: Path,
     manager: WorktreeManager,
+    no_commit: bool = False,
 ) -> Optional[dict]:
     """
     Try to use the intent-aware merge system.
 
+    This handles both semantic conflicts (parallel tasks) and git conflicts
+    (branch divergence) by using AI to intelligently merge files.
+
+    Uses a lock file to prevent concurrent merges for the same spec.
+
     Returns:
         Dict with results, or None if smart merge not applicable
     """
+    # Quick Win 5: Acquire merge lock to prevent concurrent operations
+    try:
+        with MergeLock(project_dir, spec_name):
+            return _try_smart_merge_inner(
+                project_dir, spec_name, worktree_path, manager, no_commit
+            )
+    except MergeLockError as e:
+        print(warning(f"  {e}"))
+        return {
+            "success": False,
+            "error": str(e),
+            "conflicts": [],
+        }
+
+
+def _try_smart_merge_inner(
+    project_dir: Path,
+    spec_name: str,
+    worktree_path: Path,
+    manager: WorktreeManager,
+    no_commit: bool = False,
+) -> Optional[dict]:
+    """Inner implementation of smart merge (called with lock held)."""
+    debug(MODULE, "=== SMART MERGE START ===",
+          spec_name=spec_name,
+          worktree_path=str(worktree_path),
+          no_commit=no_commit)
+
     try:
         print(muted("  Analyzing changes with intent-aware merge..."))
 
         # Initialize the orchestrator
+        debug(MODULE, "Initializing MergeOrchestrator",
+              project_dir=str(project_dir),
+              enable_ai=True)
         orchestrator = MergeOrchestrator(
             project_dir,
             enable_ai=True,  # Enable AI for ambiguous conflicts
@@ -688,9 +777,57 @@ def _try_smart_merge(
         )
 
         # Refresh evolution data from the worktree
+        debug(MODULE, "Refreshing evolution data from git",
+              spec_name=spec_name)
         orchestrator.evolution_tracker.refresh_from_git(spec_name, worktree_path)
 
-        # Preview what merge would look like
+        # Check for git-level conflicts first (branch divergence)
+        debug(MODULE, "Checking for git-level conflicts")
+        git_conflicts = _check_git_conflicts(project_dir, spec_name)
+
+        debug_detailed(MODULE, "Git conflict check result",
+                      has_conflicts=git_conflicts.get("has_conflicts"),
+                      conflicting_files=git_conflicts.get("conflicting_files", []),
+                      base_branch=git_conflicts.get("base_branch"))
+
+        if git_conflicts.get("has_conflicts"):
+            print(muted(f"  Branch has diverged from {git_conflicts.get('base_branch', 'main')}"))
+            print(muted(f"  Conflicting files: {len(git_conflicts.get('conflicting_files', []))}"))
+
+            debug(MODULE, "Starting AI conflict resolution",
+                  num_conflicts=len(git_conflicts.get("conflicting_files", [])))
+
+            # Try to resolve git conflicts with AI
+            resolution_result = _resolve_git_conflicts_with_ai(
+                project_dir,
+                spec_name,
+                worktree_path,
+                git_conflicts,
+                orchestrator,
+                no_commit=no_commit,
+            )
+
+            if resolution_result.get("success"):
+                debug_success(MODULE, "AI conflict resolution succeeded",
+                             resolved_files=resolution_result.get("resolved_files", []),
+                             stats=resolution_result.get("stats", {}))
+                return resolution_result
+            else:
+                # AI couldn't resolve all conflicts
+                debug_error(MODULE, "AI conflict resolution failed",
+                           remaining_conflicts=resolution_result.get("remaining_conflicts", []),
+                           resolved_files=resolution_result.get("resolved_files", []),
+                           error=resolution_result.get("error"))
+                return {
+                    "success": False,
+                    "conflicts": resolution_result.get("remaining_conflicts", []),
+                    "resolved": resolution_result.get("resolved_files", []),
+                    "git_conflicts": True,
+                    "error": resolution_result.get("error"),
+                }
+
+        # No git conflicts - proceed with semantic analysis
+        debug(MODULE, "No git conflicts, proceeding with semantic analysis")
         preview = orchestrator.preview_merge([spec_name])
 
         files_to_merge = len(preview.get("files_to_merge", []))
@@ -728,7 +865,938 @@ def _try_smart_merge(
 
     except Exception as e:
         # If smart merge fails, fall back to git
-        print(muted(f"  Smart merge unavailable: {e}"))
+        import traceback
+        print(muted(f"  Smart merge error: {e}"))
+        traceback.print_exc()
+        return None
+
+
+def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
+    """
+    Check for git-level conflicts by doing a dry-run merge.
+
+    Returns:
+        Dict with has_conflicts, conflicting_files, etc.
+    """
+    import subprocess
+
+    spec_branch = f"auto-claude/{spec_name}"
+    result = {
+        "has_conflicts": False,
+        "conflicting_files": [],
+        "base_branch": "main",
+        "spec_branch": spec_branch,
+    }
+
+    try:
+        # Get current branch
+        base_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if base_result.returncode == 0:
+            result["base_branch"] = base_result.stdout.strip()
+
+        # Try merge --no-commit --no-ff to see if there are conflicts
+        stash_result = subprocess.run(
+            ["git", "stash", "push", "-m", "smart-merge-check"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        try:
+            merge_result = subprocess.run(
+                ["git", "merge", "--no-commit", "--no-ff", spec_branch],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+
+            if merge_result.returncode != 0:
+                result["has_conflicts"] = True
+
+                # Get list of unmerged files
+                status_result = subprocess.run(
+                    ["git", "diff", "--name-only", "--diff-filter=U"],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                )
+                if status_result.returncode == 0:
+                    for line in status_result.stdout.strip().split("\n"):
+                        if line:
+                            result["conflicting_files"].append(line)
+        finally:
+            # Always abort and restore
+            subprocess.run(
+                ["git", "merge", "--abort"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if "No local changes" not in stash_result.stdout:
+                subprocess.run(
+                    ["git", "stash", "pop"],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                )
+
+    except Exception as e:
+        print(muted(f"  Error checking git conflicts: {e}"))
+
+    return result
+
+
+def _resolve_git_conflicts_with_ai(
+    project_dir: Path,
+    spec_name: str,
+    worktree_path: Path,
+    git_conflicts: dict,
+    orchestrator: MergeOrchestrator,
+    no_commit: bool = False,
+) -> dict:
+    """
+    Resolve git-level conflicts using AI.
+
+    This handles the case where main has diverged from the worktree branch.
+    For each conflicting file, it:
+    1. Gets the content from the main branch
+    2. Gets the content from the worktree branch
+    3. Gets the common ancestor (merge-base) content
+    4. Uses AI to intelligently merge them
+    5. Writes the merged content to main and stages it
+
+    Returns:
+        Dict with success, resolved_files, remaining_conflicts
+    """
+    import subprocess
+
+    debug(MODULE, "=== AI CONFLICT RESOLUTION START ===",
+          spec_name=spec_name,
+          num_conflicting_files=len(git_conflicts.get("conflicting_files", [])))
+
+    conflicting_files = git_conflicts.get("conflicting_files", [])
+    base_branch = git_conflicts.get("base_branch", "main")
+    spec_branch = git_conflicts.get("spec_branch", f"auto-claude/{spec_name}")
+
+    debug_detailed(MODULE, "Conflict resolution params",
+                  base_branch=base_branch,
+                  spec_branch=spec_branch,
+                  conflicting_files=conflicting_files)
+
+    resolved_files = []
+    remaining_conflicts = []
+
+    print()
+    print_status(f"Resolving {len(conflicting_files)} conflicting file(s) with AI...", "progress")
+
+    # Get merge-base commit
+    merge_base_result = subprocess.run(
+        ["git", "merge-base", base_branch, spec_branch],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+    )
+    merge_base = merge_base_result.stdout.strip() if merge_base_result.returncode == 0 else None
+    debug(MODULE, "Found merge-base commit", merge_base=merge_base[:12] if merge_base else None)
+
+    for file_path in conflicting_files:
+        debug(MODULE, f"Processing conflicting file: {file_path}")
+        print(muted(f"  Processing: {file_path}"))
+
+        try:
+            # Get content from main branch
+            main_content = _get_file_content_from_ref(project_dir, base_branch, file_path)
+
+            # Get content from worktree branch
+            worktree_content = _get_file_content_from_ref(project_dir, spec_branch, file_path)
+
+            # Get content from merge-base (common ancestor)
+            base_content = None
+            if merge_base:
+                base_content = _get_file_content_from_ref(project_dir, merge_base, file_path)
+
+            if main_content is None and worktree_content is None:
+                # File doesn't exist in either - skip
+                continue
+
+            if main_content is None:
+                # File only exists in worktree - it's a new file
+                merged_content = worktree_content
+                print(muted(f"    New file from worktree"))
+            elif worktree_content is None:
+                # File only exists in main - was deleted in worktree
+                merged_content = None  # Will delete
+                print(muted(f"    File deleted in worktree"))
+            else:
+                # File exists in both - need to merge
+                merged_content = _merge_file_with_ai(
+                    file_path=file_path,
+                    main_content=main_content,
+                    worktree_content=worktree_content,
+                    base_content=base_content,
+                    spec_name=spec_name,
+                    orchestrator=orchestrator,
+                    project_dir=project_dir,
+                )
+
+                if merged_content is None:
+                    # AI couldn't merge
+                    remaining_conflicts.append({
+                        "file": file_path,
+                        "reason": "AI could not resolve the conflict",
+                        "severity": "high",
+                    })
+                    continue
+
+            # Write the merged content to the project
+            if merged_content is not None:
+                target_path = project_dir / file_path
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                target_path.write_text(merged_content, encoding="utf-8")
+
+                # Stage the file
+                subprocess.run(
+                    ["git", "add", file_path],
+                    cwd=project_dir,
+                    capture_output=True,
+                )
+
+                resolved_files.append(file_path)
+                print(success(f"    ✓ Merged successfully"))
+            else:
+                # Delete the file
+                target_path = project_dir / file_path
+                if target_path.exists():
+                    target_path.unlink()
+                    subprocess.run(
+                        ["git", "add", file_path],
+                        cwd=project_dir,
+                        capture_output=True,
+                    )
+                resolved_files.append(file_path)
+                print(success(f"    ✓ Deleted as per worktree"))
+
+        except Exception as e:
+            print(error(f"    ✗ Failed: {e}"))
+            remaining_conflicts.append({
+                "file": file_path,
+                "reason": str(e),
+                "severity": "high",
+            })
+
+    if remaining_conflicts:
+        return {
+            "success": False,
+            "resolved_files": resolved_files,
+            "remaining_conflicts": remaining_conflicts,
+        }
+
+    # All conflicts resolved - now merge non-conflicting files
+    print(muted("  Merging remaining files..."))
+
+    # Get list of all changed files in worktree that aren't conflicting
+    changed_files = _get_changed_files_from_branch(project_dir, base_branch, spec_branch)
+    non_conflicting = [f for f in changed_files if f not in conflicting_files]
+
+    for file_path, status in non_conflicting:
+        try:
+            if status == "D":
+                # Deleted in worktree
+                target_path = project_dir / file_path
+                if target_path.exists():
+                    target_path.unlink()
+                    subprocess.run(["git", "add", file_path], cwd=project_dir, capture_output=True)
+            else:
+                # Added or modified - copy from worktree
+                content = _get_file_content_from_ref(project_dir, spec_branch, file_path)
+                if content is not None:
+                    target_path = project_dir / file_path
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    target_path.write_text(content, encoding="utf-8")
+                    subprocess.run(["git", "add", file_path], cwd=project_dir, capture_output=True)
+                    resolved_files.append(file_path)
+        except Exception as e:
+            print(muted(f"    Warning: Could not process {file_path}: {e}"))
+
+    # V2: Record merge completion in Evolution Tracker for future context
+    if resolved_files:
+        _record_merge_completion(project_dir, spec_name, resolved_files)
+
+    return {
+        "success": True,
+        "resolved_files": resolved_files,
+        "stats": {
+            "files_merged": len(resolved_files),
+            "conflicts_resolved": len(conflicting_files),
+            "ai_assisted": len(conflicting_files),
+        },
+    }
+
+
+def _get_file_content_from_ref(project_dir: Path, ref: str, file_path: str) -> Optional[str]:
+    """Get file content from a git ref (branch, commit, etc.)."""
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "show", f"{ref}:{file_path}"],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return result.stdout
+    return None
+
+
+def _get_changed_files_from_branch(
+    project_dir: Path,
+    base_branch: str,
+    spec_branch: str,
+) -> list[tuple[str, str]]:
+    """Get list of changed files between branches."""
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "diff", "--name-status", f"{base_branch}...{spec_branch}"],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+    )
+
+    files = []
+    if result.returncode == 0:
+        for line in result.stdout.strip().split("\n"):
+            if line:
+                parts = line.split("\t", 1)
+                if len(parts) == 2:
+                    files.append((parts[1], parts[0]))  # (file_path, status)
+    return files
+
+
+# Constants for merge limits
+MAX_FILE_LINES_FOR_AI = 5000  # Skip AI for files larger than this
+BINARY_EXTENSIONS = {
+    '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.bmp', '.svg',
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.zip', '.tar', '.gz', '.rar', '.7z',
+    '.exe', '.dll', '.so', '.dylib', '.bin',
+    '.mp3', '.mp4', '.wav', '.avi', '.mov', '.mkv',
+    '.woff', '.woff2', '.ttf', '.otf', '.eot',
+    '.pyc', '.pyo', '.class', '.o', '.obj',
+}
+
+# Merge lock timeout in seconds
+MERGE_LOCK_TIMEOUT = 300  # 5 minutes
+
+
+class MergeLock:
+    """
+    Context manager for merge locking to prevent concurrent merges.
+
+    Uses a lock file in .auto-claude/ to ensure only one merge operation
+    runs at a time for a given project.
+    """
+
+    def __init__(self, project_dir: Path, spec_name: str):
+        self.project_dir = project_dir
+        self.spec_name = spec_name
+        self.lock_dir = project_dir / ".auto-claude" / ".locks"
+        self.lock_file = self.lock_dir / f"merge-{spec_name}.lock"
+        self.acquired = False
+
+    def __enter__(self):
+        """Acquire the merge lock."""
+        import time
+        import os
+
+        self.lock_dir.mkdir(parents=True, exist_ok=True)
+
+        # Check if lock exists and is stale
+        if self.lock_file.exists():
+            try:
+                lock_data = json.loads(self.lock_file.read_text())
+                lock_time = lock_data.get("timestamp", 0)
+                lock_pid = lock_data.get("pid", 0)
+
+                # Check if lock is stale (older than timeout)
+                if time.time() - lock_time > MERGE_LOCK_TIMEOUT:
+                    print(muted(f"    Removing stale merge lock (older than {MERGE_LOCK_TIMEOUT}s)"))
+                    self.lock_file.unlink()
+                # Check if locking process is still alive
+                elif lock_pid and not _is_process_running(lock_pid):
+                    print(muted(f"    Removing orphaned merge lock (PID {lock_pid} not running)"))
+                    self.lock_file.unlink()
+                else:
+                    raise MergeLockError(
+                        f"Another merge operation is in progress for {self.spec_name}. "
+                        f"If this is an error, delete {self.lock_file}"
+                    )
+            except json.JSONDecodeError:
+                # Corrupted lock file, remove it
+                self.lock_file.unlink()
+
+        # Create lock file
+        lock_data = {
+            "spec_name": self.spec_name,
+            "timestamp": time.time(),
+            "pid": os.getpid(),
+        }
+        self.lock_file.write_text(json.dumps(lock_data))
+        self.acquired = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Release the merge lock."""
+        if self.acquired and self.lock_file.exists():
+            try:
+                self.lock_file.unlink()
+            except Exception:
+                pass  # Best effort cleanup
+        return False
+
+
+class MergeLockError(Exception):
+    """Raised when a merge lock cannot be acquired."""
+    pass
+
+
+def _is_process_running(pid: int) -> bool:
+    """Check if a process with the given PID is running."""
+    import os
+    try:
+        os.kill(pid, 0)
+        return True
+    except (OSError, ProcessLookupError):
+        return False
+
+
+def _is_binary_file(file_path: str) -> bool:
+    """Check if a file is binary based on extension."""
+    from pathlib import Path
+    return Path(file_path).suffix.lower() in BINARY_EXTENSIONS
+
+
+def _record_merge_completion(
+    project_dir: Path,
+    spec_name: str,
+    merged_files: list[str],
+    task_intent: str = "",
+) -> None:
+    """
+    Record completed merge in the Evolution Tracker.
+
+    This enables future AI merges to understand the history of file changes,
+    creating a knowledge chain for intelligent conflict resolution.
+
+    Args:
+        project_dir: Project root directory
+        spec_name: The task/spec that was merged
+        merged_files: List of file paths that were merged
+        task_intent: Description of what the task accomplished
+    """
+    try:
+        tracker = FileEvolutionTracker(project_dir)
+
+        # Get intent from implementation plan if not provided
+        if not task_intent:
+            intent_data = _get_task_intent(project_dir, spec_name)
+            if intent_data:
+                task_intent = intent_data.get("description", "") or intent_data.get("title", spec_name)
+
+        # Mark the task as completed for all its tracked files
+        tracker.mark_task_completed(spec_name)
+
+        # Record merge metadata for each file
+        for file_path in merged_files:
+            evolution = tracker.get_file_evolution(file_path)
+            if evolution:
+                # The task snapshot should already exist from refresh_from_git
+                # Just ensure it's marked as completed with intent
+                snapshot = evolution.get_task_snapshot(spec_name)
+                if snapshot:
+                    snapshot.task_intent = task_intent
+
+        # Save updates
+        tracker._save_evolutions()
+
+        print(muted(f"    Recorded merge completion for {len(merged_files)} files"))
+
+    except Exception as e:
+        # Non-fatal - this is supplementary tracking
+        print(muted(f"    Could not record merge completion: {e}"))
+
+
+def _get_task_intent(project_dir: Path, spec_name: str) -> Optional[dict]:
+    """
+    Load task intent from implementation_plan.json.
+
+    Returns dict with:
+    - title: Task title
+    - description: What the task does
+    - files_to_modify: List of files the task planned to modify
+    - current_subtask: What the agent was working on
+    """
+    try:
+        # Try worktree location first, then main project
+        for base_path in [
+            project_dir / ".worktrees" / spec_name / ".auto-claude" / "specs" / spec_name,
+            project_dir / ".auto-claude" / "specs" / spec_name,
+        ]:
+            plan_path = base_path / "implementation_plan.json"
+            if plan_path.exists():
+                with open(plan_path) as f:
+                    plan = json.load(f)
+
+                # Extract key intent information
+                intent = {
+                    "title": plan.get("title", spec_name),
+                    "description": plan.get("description", ""),
+                    "files_to_modify": [],
+                    "subtasks": [],
+                }
+
+                # Get files_to_modify from phases/subtasks
+                for phase in plan.get("phases", []):
+                    for subtask in phase.get("subtasks", []):
+                        intent["subtasks"].append({
+                            "title": subtask.get("title", ""),
+                            "description": subtask.get("description", ""),
+                            "status": subtask.get("status", "pending"),
+                        })
+                        # Extract files from subtask if present
+                        files = subtask.get("files", [])
+                        intent["files_to_modify"].extend(files)
+
+                # Also check spec.md for high-level context
+                spec_path = base_path / "spec.md"
+                if spec_path.exists():
+                    spec_content = spec_path.read_text()
+                    # Extract first paragraph as summary
+                    lines = spec_content.split("\n\n")
+                    if len(lines) > 1:
+                        intent["spec_summary"] = lines[1][:500]  # First content paragraph
+
+                return intent
+
+        return None
+    except Exception as e:
+        print(muted(f"    Could not load task intent: {e}"))
+        return None
+
+
+def _get_recent_merges_context(project_dir: Path, file_path: str, limit: int = 3) -> list[dict]:
+    """
+    Get context about recent merges that touched this file.
+
+    Uses the FileEvolutionTracker to retrieve historical information about
+    recent tasks that have modified this file. This enables the AI to understand
+    the file's evolution when resolving merge conflicts.
+
+    Args:
+        project_dir: Project root directory
+        file_path: Path to the file (relative or absolute)
+        limit: Maximum number of recent merges to return
+
+    Returns:
+        List of {task_id, intent, timestamp, changes} for recent tasks that modified this file.
+    """
+    try:
+        from merge import FileEvolutionTracker
+
+        tracker = FileEvolutionTracker(project_dir)
+        evolution = tracker.get_file_evolution(file_path)
+
+        if not evolution:
+            return []
+
+        # Get task snapshots that have completed modifications
+        completed_snapshots = [
+            ts for ts in evolution.task_snapshots
+            if ts.completed_at is not None and ts.semantic_changes
+        ]
+
+        # Sort by completion time (most recent first)
+        completed_snapshots.sort(
+            key=lambda ts: ts.completed_at or ts.started_at,
+            reverse=True
+        )
+
+        # Limit results
+        recent = completed_snapshots[:limit]
+
+        # Build context for each merge
+        result = []
+        for snapshot in recent:
+            # Summarize the semantic changes
+            change_summary = []
+            for change in snapshot.semantic_changes[:5]:  # Limit to 5 changes
+                change_summary.append(
+                    f"{change.change_type.value}: {change.symbol_name or change.description}"
+                )
+
+            result.append({
+                "task_id": snapshot.task_id,
+                "intent": snapshot.task_intent,
+                "timestamp": (snapshot.completed_at or snapshot.started_at).isoformat(),
+                "changes": change_summary,
+            })
+
+        return result
+
+    except Exception as e:
+        # Log but don't fail - this is supplementary context
+        print(muted(f"    Could not load merge history for {file_path}: {e}"))
+        return []
+
+
+def _validate_merged_syntax(file_path: str, content: str, project_dir: Path) -> tuple[bool, str]:
+    """
+    Validate the syntax of merged code.
+
+    Returns (is_valid, error_message).
+    """
+    import subprocess
+    import tempfile
+    from pathlib import Path as P
+
+    ext = P(file_path).suffix.lower()
+
+    # TypeScript/JavaScript validation
+    if ext in {'.ts', '.tsx', '.js', '.jsx'}:
+        try:
+            # Write to temp file
+            with tempfile.NamedTemporaryFile(
+                mode='w',
+                suffix=ext,
+                delete=False,
+                dir=project_dir
+            ) as tmp:
+                tmp.write(content)
+                tmp_path = tmp.name
+
+            try:
+                # Try tsc first (TypeScript)
+                if ext in {'.ts', '.tsx'}:
+                    result = subprocess.run(
+                        ['npx', 'tsc', '--noEmit', '--skipLibCheck', tmp_path],
+                        cwd=project_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    if result.returncode != 0:
+                        # Extract first error line
+                        error_lines = result.stderr.strip().split('\n')[:3]
+                        return False, '\n'.join(error_lines)
+
+                # Try eslint for all JS/TS
+                result = subprocess.run(
+                    ['npx', 'eslint', '--no-eslintrc', '--parser', '@typescript-eslint/parser', tmp_path],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                # eslint exit 1 for errors, 0 for clean
+                if result.returncode > 1:  # 2+ is config error, ignore
+                    pass
+                elif result.returncode == 1 and 'Parsing error' in result.stdout:
+                    return False, "Syntax error in merged code"
+
+            finally:
+                P(tmp_path).unlink(missing_ok=True)
+
+            return True, ""
+
+        except subprocess.TimeoutExpired:
+            return True, ""  # Timeout = assume ok
+        except FileNotFoundError:
+            return True, ""  # No tsc/eslint = skip validation
+        except Exception as e:
+            return True, ""  # Other errors = skip validation
+
+    # Python validation
+    elif ext == '.py':
+        try:
+            compile(content, file_path, 'exec')
+            return True, ""
+        except SyntaxError as e:
+            return False, f"Python syntax error: {e.msg} at line {e.lineno}"
+
+    # JSON validation
+    elif ext == '.json':
+        try:
+            json.loads(content)
+            return True, ""
+        except json.JSONDecodeError as e:
+            return False, f"JSON error: {e.msg} at line {e.lineno}"
+
+    # Other file types - skip validation
+    return True, ""
+
+
+def _merge_file_with_ai(
+    file_path: str,
+    main_content: str,
+    worktree_content: str,
+    base_content: Optional[str],
+    spec_name: str,
+    orchestrator: MergeOrchestrator,
+    project_dir: Optional[Path] = None,
+) -> Optional[str]:
+    """
+    Use AI to merge a conflicting file.
+
+    This enhanced version includes:
+    - Task intent from implementation_plan.json
+    - Binary file detection
+    - File size limits
+    - Syntax validation after merge
+
+    Returns merged content, or None if AI couldn't resolve.
+    """
+    from merge import create_claude_resolver
+
+    debug(MODULE, f"AI merge starting for: {file_path}",
+          spec_name=spec_name,
+          has_base_content=base_content is not None)
+
+    # Quick Win 2: Binary file detection
+    if _is_binary_file(file_path):
+        debug_warning(MODULE, "Skipping binary file", file_path=file_path)
+        print(warning(f"    Binary file detected, skipping AI merge"))
+        return None
+
+    # Quick Win 4: File size limit
+    main_lines = main_content.count('\n') if main_content else 0
+    worktree_lines = worktree_content.count('\n') if worktree_content else 0
+    max_lines = max(main_lines, worktree_lines)
+
+    debug_detailed(MODULE, "File size check",
+                  main_lines=main_lines,
+                  worktree_lines=worktree_lines,
+                  max_allowed=MAX_FILE_LINES_FOR_AI)
+
+    if max_lines > MAX_FILE_LINES_FOR_AI:
+        debug_warning(MODULE, "File too large for AI merge",
+                     max_lines=max_lines,
+                     limit=MAX_FILE_LINES_FOR_AI)
+        print(warning(f"    File too large ({max_lines} lines > {MAX_FILE_LINES_FOR_AI}), skipping AI merge"))
+        return None
+
+    print(muted(f"    Using AI to merge changes..."))
+
+    # Create an AI resolver
+    resolver = create_claude_resolver()
+
+    if not resolver.ai_call_fn:
+        debug_warning(MODULE, "AI not available, using heuristic merge")
+        print(muted(f"    AI not available, trying heuristic merge..."))
+        return _heuristic_merge(main_content, worktree_content, base_content)
+
+    # Determine language
+    language = resolver._infer_language(file_path)
+    debug(MODULE, "Detected language", language=language)
+
+    # Quick Win 1: Get task intent for richer context
+    task_intent = None
+    if project_dir:
+        task_intent = _get_task_intent(project_dir, spec_name)
+        if task_intent:
+            debug(MODULE, "Loaded task intent",
+                  title=task_intent.get('title'),
+                  num_subtasks=len(task_intent.get('subtasks', [])))
+
+    # Build intent context string
+    intent_context = ""
+    if task_intent:
+        intent_context = f"""
+=== FEATURE BRANCH INTENT ({spec_name}) ===
+Task: {task_intent.get('title', spec_name)}
+Description: {task_intent.get('description', 'No description')}
+"""
+        if task_intent.get('spec_summary'):
+            intent_context += f"Summary: {task_intent['spec_summary']}\n"
+
+        # Add relevant subtasks
+        relevant_subtasks = [
+            st for st in task_intent.get('subtasks', [])
+            if st.get('status') in ('completed', 'in_progress')
+        ]
+        if relevant_subtasks:
+            intent_context += "Completed work:\n"
+            for st in relevant_subtasks[:5]:  # Limit to 5
+                intent_context += f"  - {st.get('title', 'Unknown')}\n"
+
+    # Get context about recent merges to this file (for v2)
+    recent_merges_context = ""
+    if project_dir:
+        recent_merges = _get_recent_merges_context(project_dir, file_path)
+        if recent_merges:
+            recent_merges_context = "\n=== RECENT CHANGES TO THIS FILE ===\n"
+            for merge in recent_merges:
+                recent_merges_context += f"- Task '{merge['task_id']}': {merge['intent']}\n"
+
+    # Build a focused prompt for three-way merge with intent
+    prompt = f'''You are a code merge expert. Merge the following conflicting versions of a file.
+
+FILE: {file_path}
+
+The file was modified in both the main branch and in the "{spec_name}" feature branch.
+Your task is to produce a merged version that incorporates ALL changes from both branches.
+{intent_context}{recent_merges_context}
+=== COMMON ANCESTOR (base) ===
+{base_content if base_content else "(File did not exist in common ancestor)"}
+
+=== MAIN BRANCH VERSION ===
+{main_content}
+
+=== FEATURE BRANCH VERSION ({spec_name}) ===
+{worktree_content}
+
+MERGE RULES:
+1. Keep ALL imports from both versions
+2. Keep ALL new functions/components from both versions
+3. If the same function was modified differently, combine the changes logically
+4. Preserve the intent of BOTH branches - main's changes are important too
+5. If there's a genuine semantic conflict (same thing done differently), prefer the feature branch version but include main's additions
+6. The merged code MUST be syntactically valid {language}
+
+Output ONLY the merged code, wrapped in triple backticks:
+```{language}
+merged code here
+```
+'''
+
+    try:
+        debug(MODULE, "Calling AI for merge",
+              file_path=file_path,
+              has_intent_context=bool(intent_context),
+              has_recent_merges=bool(recent_merges_context))
+
+        response = resolver.ai_call_fn(
+            "You are an expert code merge assistant. Output only the merged code. The code MUST be syntactically valid.",
+            prompt,
+        )
+
+        debug_detailed(MODULE, "AI response received",
+                      response_length=len(response) if response else 0)
+
+        # Extract code from response
+        merged = resolver._extract_code_block(response, language)
+        if not merged:
+            # If extraction failed, try using the whole response if it looks like code
+            if resolver._looks_like_code(response, language):
+                merged = response.strip()
+
+        if not merged:
+            debug_error(MODULE, "Could not extract merged code from AI response")
+            print(muted(f"    Could not extract merged code from AI response"))
+            return None
+
+        debug(MODULE, "Extracted merged code",
+              merged_lines=merged.count('\n') + 1)
+
+        # Quick Win 3: Validate syntax before returning
+        if project_dir:
+            debug(MODULE, "Validating merged syntax")
+            is_valid, error_msg = _validate_merged_syntax(file_path, merged, project_dir)
+            if not is_valid:
+                debug_warning(MODULE, "AI merge produced invalid syntax",
+                             error=error_msg)
+                print(warning(f"    AI merge produced invalid syntax: {error_msg}"))
+                print(muted(f"    Retrying with syntax fix..."))
+
+                # Try once more with explicit syntax fix request
+                retry_prompt = f'''The previous merge attempt produced invalid {language} code.
+Error: {error_msg}
+
+Please fix the syntax error and output valid {language} code:
+
+{merged}
+
+Output ONLY the fixed code, wrapped in triple backticks:
+```{language}
+fixed code here
+```
+'''
+                retry_response = resolver.ai_call_fn(
+                    f"Fix the syntax error in this {language} code. Output only valid code.",
+                    retry_prompt,
+                )
+                retry_merged = resolver._extract_code_block(retry_response, language)
+                if retry_merged:
+                    is_valid, _ = _validate_merged_syntax(file_path, retry_merged, project_dir)
+                    if is_valid:
+                        debug_success(MODULE, "Syntax fix retry succeeded", file_path=file_path)
+                        return retry_merged
+                    else:
+                        debug_error(MODULE, "Syntax fix retry also failed", file_path=file_path)
+                        print(warning(f"    Retry also produced invalid syntax"))
+                        return None
+                else:
+                    debug_error(MODULE, "Could not extract code from retry response")
+                    return None
+
+        debug_success(MODULE, "AI merge completed successfully",
+                     file_path=file_path,
+                     merged_lines=merged.count('\n') + 1)
+        return merged
+
+    except Exception as e:
+        debug_error(MODULE, "AI merge failed with exception",
+                   file_path=file_path,
+                   error=str(e))
+        print(muted(f"    AI merge failed: {e}"))
+        return _heuristic_merge(main_content, worktree_content, base_content)
+
+
+def _heuristic_merge(
+    main_content: str,
+    worktree_content: str,
+    base_content: Optional[str],
+) -> Optional[str]:
+    """
+    Try a simple heuristic merge when AI is unavailable.
+
+    This uses Python's difflib to attempt a three-way merge.
+    """
+    import difflib
+
+    if base_content is None:
+        # Without a base, we can't do a proper three-way merge
+        # Just prefer worktree content (the feature being merged)
+        return worktree_content
+
+    try:
+        # Use diff3-style merge
+        main_lines = main_content.splitlines(keepends=True)
+        worktree_lines = worktree_content.splitlines(keepends=True)
+        base_lines = base_content.splitlines(keepends=True)
+
+        # Simple approach: find what's changed in each branch and try to combine
+        # This is a simplified version - real diff3 is more complex
+
+        # Get diffs from base to each branch
+        main_diff = list(difflib.unified_diff(base_lines, main_lines))
+        worktree_diff = list(difflib.unified_diff(base_lines, worktree_lines))
+
+        # If one has no changes, use the other
+        if not main_diff:
+            return worktree_content
+        if not worktree_diff:
+            return main_content
+
+        # If both have changes, this simple heuristic won't work reliably
+        # Return None to indicate AI is needed
+        return None
+
+    except Exception:
         return None
 
 

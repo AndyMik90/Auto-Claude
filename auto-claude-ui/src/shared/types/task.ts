@@ -274,6 +274,9 @@ export interface WorktreeDiffFile {
 // Conflict severity levels from merge system
 export type ConflictSeverity = 'none' | 'low' | 'medium' | 'high' | 'critical';
 
+// Type of conflict
+export type ConflictType = 'semantic' | 'git';
+
 // Information about a detected conflict
 export interface MergeConflict {
   file: string;
@@ -283,6 +286,17 @@ export interface MergeConflict {
   canAutoMerge: boolean;
   strategy?: string;
   reason: string;
+  type?: ConflictType; // 'semantic' = parallel task conflict, 'git' = branch divergence
+}
+
+// Git-level conflict information (branch divergence)
+export interface GitConflictInfo {
+  hasConflicts: boolean;
+  conflictingFiles: string[];
+  needsRebase: boolean;
+  commitsBehind: number;
+  baseBranch: string;
+  specBranch: string;
 }
 
 // Summary statistics from merge preview/execution
@@ -293,6 +307,7 @@ export interface MergeStats {
   autoMergeable: number;
   aiResolved?: number;
   humanRequired?: number;
+  hasGitConflicts?: boolean; // True if there are git-level conflicts requiring rebase
 }
 
 export interface WorktreeMergeResult {
@@ -304,11 +319,13 @@ export interface WorktreeMergeResult {
   // New conflict info from smart merge
   conflicts?: MergeConflict[];
   stats?: MergeStats;
+  gitConflicts?: GitConflictInfo; // Git-level conflict info
   // Preview mode results
   preview?: {
     files: string[];
     conflicts: MergeConflict[];
     summary: MergeStats;
+    gitConflicts?: GitConflictInfo;
   };
 }
 

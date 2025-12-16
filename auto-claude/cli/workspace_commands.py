@@ -130,6 +130,149 @@ def handle_cleanup_worktrees_command(project_dir: Path) -> None:
     cleanup_all_worktrees(project_dir, confirm=True)
 
 
+def _check_git_merge_conflicts(project_dir: Path, spec_name: str) -> dict:
+    """
+    Check for git-level merge conflicts by attempting a dry-run merge.
+
+    This detects conflicts that occur when main has diverged from the
+    worktree branch (e.g., other changes were merged to main since
+    the worktree was created).
+
+    Args:
+        project_dir: Project root directory
+        spec_name: Name of the spec
+
+    Returns:
+        Dictionary with git conflict information:
+        - has_conflicts: bool
+        - conflicting_files: list of file paths
+        - needs_rebase: bool (if main has advanced)
+        - base_branch: str
+        - spec_branch: str
+    """
+    import subprocess
+
+    debug(MODULE, "Checking for git-level merge conflicts...")
+
+    spec_branch = f"auto-claude/{spec_name}"
+    result = {
+        "has_conflicts": False,
+        "conflicting_files": [],
+        "needs_rebase": False,
+        "base_branch": "main",
+        "spec_branch": spec_branch,
+        "commits_behind": 0,
+    }
+
+    try:
+        # Get the current branch (base branch)
+        base_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if base_result.returncode == 0:
+            result["base_branch"] = base_result.stdout.strip()
+
+        # Check how many commits main is ahead of the merge-base
+        merge_base_result = subprocess.run(
+            ["git", "merge-base", result["base_branch"], spec_branch],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if merge_base_result.returncode == 0:
+            merge_base = merge_base_result.stdout.strip()
+
+            # Count commits main is ahead
+            ahead_result = subprocess.run(
+                ["git", "rev-list", "--count", f"{merge_base}..{result['base_branch']}"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if ahead_result.returncode == 0:
+                commits_behind = int(ahead_result.stdout.strip())
+                result["commits_behind"] = commits_behind
+                if commits_behind > 0:
+                    result["needs_rebase"] = True
+                    debug(MODULE, f"Main is {commits_behind} commits ahead of worktree base")
+
+        # Try a merge --no-commit --no-ff to see if there would be conflicts
+        # First, save current state
+        stash_result = subprocess.run(
+            ["git", "stash", "push", "-m", "merge-preview-check"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        try:
+            # Attempt the merge (dry run style)
+            merge_result = subprocess.run(
+                ["git", "merge", "--no-commit", "--no-ff", spec_branch],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+
+            if merge_result.returncode != 0:
+                result["has_conflicts"] = True
+                debug(MODULE, "Git merge would have conflicts")
+
+                # Parse conflicting files from the output
+                # Look for "CONFLICT (content): Merge conflict in <file>"
+                import re
+                for line in merge_result.stdout.split("\n") + merge_result.stderr.split("\n"):
+                    # Match patterns like "CONFLICT (content): Merge conflict in path/to/file"
+                    match = re.search(r"CONFLICT.*:\s*(?:Merge conflict in\s+)?(.+)", line)
+                    if match:
+                        file_path = match.group(1).strip()
+                        if file_path and file_path not in result["conflicting_files"]:
+                            result["conflicting_files"].append(file_path)
+
+                # Also check git status for unmerged files
+                status_result = subprocess.run(
+                    ["git", "diff", "--name-only", "--diff-filter=U"],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                )
+                if status_result.returncode == 0:
+                    for line in status_result.stdout.strip().split("\n"):
+                        if line and line not in result["conflicting_files"]:
+                            result["conflicting_files"].append(line)
+
+                debug(MODULE, f"Conflicting files: {result['conflicting_files']}")
+            else:
+                debug_success(MODULE, "Git merge would succeed without conflicts")
+
+        finally:
+            # Always abort the merge and restore state
+            subprocess.run(
+                ["git", "merge", "--abort"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            # Restore stash if we made one
+            if "No local changes" not in stash_result.stdout:
+                subprocess.run(
+                    ["git", "stash", "pop"],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                )
+
+    except Exception as e:
+        debug_error(MODULE, f"Error checking git conflicts: {e}")
+        import traceback
+        debug_verbose(MODULE, "Exception traceback", traceback=traceback.format_exc())
+
+    return result
+
+
 def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
     """
     Handle the --merge-preview command.
@@ -137,6 +280,10 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
     Returns a JSON-serializable preview of merge conflicts without
     actually performing the merge. This is used by the UI to show
     potential conflicts before the user clicks "Stage Changes".
+
+    This checks for TWO types of conflicts:
+    1. Semantic conflicts: Multiple parallel tasks modifying the same code
+    2. Git conflicts: Main branch has diverged from worktree branch
 
     Args:
         project_dir: Project root directory
@@ -164,6 +311,7 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
             "error": f"No existing build found for '{spec_name}'",
             "files": [],
             "conflicts": [],
+            "gitConflicts": None,
             "summary": {
                 "totalFiles": 0,
                 "conflictFiles": 0,
@@ -173,6 +321,9 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
         }
 
     try:
+        # First, check for git-level conflicts (diverged branches)
+        git_conflicts = _check_git_merge_conflicts(project_dir, spec_name)
+
         debug(MODULE, "Initializing MergeOrchestrator for preview...")
 
         # Initialize the orchestrator
@@ -186,14 +337,14 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
         debug(MODULE, f"Refreshing evolution data from worktree: {worktree_path}")
         orchestrator.evolution_tracker.refresh_from_git(spec_name, worktree_path)
 
-        # Get merge preview
+        # Get merge preview (semantic conflicts between parallel tasks)
         debug(MODULE, "Generating merge preview...")
         preview = orchestrator.preview_merge([spec_name])
 
-        # Transform to UI-friendly format
+        # Transform semantic conflicts to UI-friendly format
         conflicts = []
         for c in preview.get("conflicts", []):
-            debug_verbose(MODULE, f"Processing conflict",
+            debug_verbose(MODULE, f"Processing semantic conflict",
                          file=c.get("file", ""),
                          severity=c.get("severity", "unknown"))
             conflicts.append({
@@ -204,25 +355,51 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
                 "canAutoMerge": c.get("can_auto_merge", False),
                 "strategy": c.get("strategy"),
                 "reason": c.get("reason", ""),
+                "type": "semantic",
+            })
+
+        # Add git conflicts to the list
+        for file_path in git_conflicts.get("conflicting_files", []):
+            conflicts.append({
+                "file": file_path,
+                "location": "file-level",
+                "tasks": [spec_name, git_conflicts["base_branch"]],
+                "severity": "high",
+                "canAutoMerge": False,
+                "strategy": None,
+                "reason": f"File modified in both {git_conflicts['base_branch']} and worktree since branch point",
+                "type": "git",
             })
 
         summary = preview.get("summary", {})
+        total_conflicts = summary.get("total_conflicts", 0) + len(git_conflicts.get("conflicting_files", []))
+        conflict_files = summary.get("conflict_files", 0) + len(git_conflicts.get("conflicting_files", []))
 
         result = {
             "success": True,
             "files": preview.get("files_to_merge", []),
             "conflicts": conflicts,
+            "gitConflicts": {
+                "hasConflicts": git_conflicts["has_conflicts"],
+                "conflictingFiles": git_conflicts["conflicting_files"],
+                "needsRebase": git_conflicts["needs_rebase"],
+                "commitsBehind": git_conflicts["commits_behind"],
+                "baseBranch": git_conflicts["base_branch"],
+                "specBranch": git_conflicts["spec_branch"],
+            },
             "summary": {
                 "totalFiles": summary.get("total_files", 0),
-                "conflictFiles": summary.get("conflict_files", 0),
-                "totalConflicts": summary.get("total_conflicts", 0),
+                "conflictFiles": conflict_files,
+                "totalConflicts": total_conflicts,
                 "autoMergeable": summary.get("auto_mergeable", 0),
+                "hasGitConflicts": git_conflicts["has_conflicts"],
             }
         }
 
         debug_success(MODULE, "Merge preview complete",
                      total_files=result["summary"]["totalFiles"],
                      total_conflicts=result["summary"]["totalConflicts"],
+                     has_git_conflicts=git_conflicts["has_conflicts"],
                      auto_mergeable=result["summary"]["autoMergeable"])
 
         return result
@@ -236,6 +413,7 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
             "error": str(e),
             "files": [],
             "conflicts": [],
+            "gitConflicts": None,
             "summary": {
                 "totalFiles": 0,
                 "conflictFiles": 0,

@@ -29,7 +29,7 @@ import {
 } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
-import type { Task, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats } from '../../../shared/types';
+import type { Task, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo } from '../../../shared/types';
 
 interface TaskReviewProps {
   task: Task;
@@ -46,7 +46,7 @@ interface TaskReviewProps {
   stageOnly: boolean;
   stagedSuccess: string | null;
   stagedProjectPath: string | undefined;
-  mergePreview: { files: string[]; conflicts: MergeConflict[]; summary: MergeStats } | null;
+  mergePreview: { files: string[]; conflicts: MergeConflict[]; summary: MergeStats; gitConflicts?: GitConflictInfo } | null;
   isLoadingPreview: boolean;
   showConflictDialog: boolean;
   onFeedbackChange: (value: string) => void;
@@ -270,15 +270,22 @@ export function TaskReview({
           {mergePreview && (
             <div className={cn(
               "rounded-lg p-3 mb-3 border",
-              mergePreview.conflicts.length === 0
-                ? "bg-success/10 border-success/30"
-                : mergePreview.conflicts.some(c => c.severity === 'high' || c.severity === 'critical')
-                  ? "bg-destructive/10 border-destructive/30"
-                  : "bg-warning/10 border-warning/30"
+              mergePreview.gitConflicts?.hasConflicts
+                ? "bg-warning/10 border-warning/30"  // AI will resolve - show warning not error
+                : mergePreview.conflicts.length === 0
+                  ? "bg-success/10 border-success/30"
+                  : mergePreview.conflicts.some(c => c.severity === 'high' || c.severity === 'critical')
+                    ? "bg-destructive/10 border-destructive/30"
+                    : "bg-warning/10 border-warning/30"
             )}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium flex items-center gap-2">
-                  {mergePreview.conflicts.length === 0 ? (
+                  {mergePreview.gitConflicts?.hasConflicts ? (
+                    <>
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                      Branch Diverged - AI Will Resolve
+                    </>
+                  ) : mergePreview.conflicts.length === 0 ? (
                     <>
                       <CheckCircle className="h-4 w-4 text-success" />
                       No Conflicts Detected
@@ -301,9 +308,29 @@ export function TaskReview({
                   </Button>
                 )}
               </div>
+              {/* Show git conflict details if present */}
+              {mergePreview.gitConflicts?.hasConflicts && (
+                <div className="mb-3 p-2 bg-warning/10 rounded text-xs border border-warning/30">
+                  <p className="font-medium text-warning mb-1">Branch has diverged - AI will resolve</p>
+                  <p className="text-muted-foreground mb-2">
+                    The main branch has {mergePreview.gitConflicts.commitsBehind} new commit{mergePreview.gitConflicts.commitsBehind !== 1 ? 's' : ''} since this worktree was created.
+                    {mergePreview.gitConflicts.conflictingFiles.length} file{mergePreview.gitConflicts.conflictingFiles.length !== 1 ? 's' : ''} will need intelligent merging:
+                  </p>
+                  <ul className="list-disc list-inside text-muted-foreground">
+                    {mergePreview.gitConflicts.conflictingFiles.map((file, idx) => (
+                      <li key={idx} className="truncate">{file}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-muted-foreground">
+                    AI will automatically merge these conflicts when you click Stage Changes.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div>Files to merge: {mergePreview.summary.totalFiles}</div>
-                {mergePreview.conflicts.length > 0 ? (
+                {mergePreview.gitConflicts?.hasConflicts ? (
+                  <div className="text-warning">AI will resolve conflicts</div>
+                ) : mergePreview.conflicts.length > 0 ? (
                   <>
                     <div>Auto-mergeable: {mergePreview.summary.autoMergeable}</div>
                     {mergePreview.summary.aiResolved !== undefined && (
@@ -334,15 +361,23 @@ export function TaskReview({
           {/* Primary Actions */}
           <div className="flex gap-2">
             <Button
-              variant="success"
+              variant={mergePreview?.gitConflicts?.hasConflicts ? "warning" : "success"}
               onClick={onMerge}
               disabled={isMerging || isDiscarding}
               className="flex-1"
+              title={mergePreview?.gitConflicts?.hasConflicts ? "AI will resolve conflicts automatically" : undefined}
             >
               {isMerging ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {stageOnly ? 'Staging...' : 'Merging...'}
+                  {mergePreview?.gitConflicts?.hasConflicts
+                    ? 'AI Resolving Conflicts...'
+                    : stageOnly ? 'Staging...' : 'Merging...'}
+                </>
+              ) : mergePreview?.gitConflicts?.hasConflicts ? (
+                <>
+                  <GitMerge className="mr-2 h-4 w-4" />
+                  {stageOnly ? 'Stage with AI Merge' : 'Merge with AI'}
                 </>
               ) : (
                 <>
