@@ -1694,9 +1694,15 @@ def _validate_merged_syntax(file_path: str, content: str, project_dir: Path) -> 
                         timeout=30,
                     )
                     if result.returncode != 0:
-                        # Extract first error line
-                        error_lines = result.stderr.strip().split('\n')[:3]
-                        return False, '\n'.join(error_lines)
+                        # Filter out npm warnings (they go to stderr but aren't errors)
+                        error_lines = [
+                            line for line in result.stderr.strip().split('\n')
+                            if line and not line.startswith('npm warn') and not line.startswith('npm WARN')
+                        ]
+                        # Only treat as error if there are actual TypeScript errors
+                        if error_lines:
+                            return False, '\n'.join(error_lines[:3])
+                        # No actual errors, just npm warnings - syntax is valid
 
                 # Try eslint for all JS/TS
                 result = subprocess.run(
@@ -1744,6 +1750,71 @@ def _validate_merged_syntax(file_path: str, content: str, project_dir: Path) -> 
     return True, ""
 
 
+def _create_conflict_file_with_git(
+    main_content: str,
+    worktree_content: str,
+    base_content: Optional[str],
+    project_dir: Path,
+) -> Optional[str]:
+    """
+    Use git merge-file to create a file with conflict markers.
+
+    This produces a file with standard git conflict markers that can be
+    parsed to extract only the conflicting regions.
+
+    Returns the merged content with conflict markers, or None if no conflicts.
+    """
+    import subprocess
+    import tempfile
+
+    if not base_content:
+        # Without a base, we can't do proper 3-way merge with markers
+        return None
+
+    try:
+        # Create temp files for git merge-file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.main', delete=False) as main_f:
+            main_f.write(main_content)
+            main_path = main_f.name
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.base', delete=False) as base_f:
+            base_f.write(base_content)
+            base_path = base_f.name
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.worktree', delete=False) as worktree_f:
+            worktree_f.write(worktree_content)
+            worktree_path = worktree_f.name
+
+        try:
+            # git merge-file modifies the first file in place
+            # Returns 0 if no conflicts, >0 if conflicts
+            result = subprocess.run(
+                ['git', 'merge-file', '-p', main_path, base_path, worktree_path],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            # Return code > 0 means conflicts exist
+            if result.returncode > 0 and '<<<<<<' in result.stdout:
+                return result.stdout
+            elif result.returncode == 0:
+                # Clean merge, no conflicts
+                return None
+
+        finally:
+            # Cleanup temp files
+            Path(main_path).unlink(missing_ok=True)
+            Path(base_path).unlink(missing_ok=True)
+            Path(worktree_path).unlink(missing_ok=True)
+
+    except Exception as e:
+        debug_warning(MODULE, f"git merge-file failed: {e}")
+
+    return None
+
+
 def _merge_file_with_ai(
     file_path: str,
     main_content: str,
@@ -1756,7 +1827,12 @@ def _merge_file_with_ai(
     """
     Use AI to merge a conflicting file.
 
+    OPTIMIZED: First tries to identify specific conflict regions and only
+    sends those to the AI, rather than regenerating the entire file.
+
     This enhanced version includes:
+    - Conflict-region-only merging (FAST - only sends conflict lines)
+    - Fallback to full-file merge for complex cases
     - FileTimelineTracker context for full situational awareness
     - Task intent from implementation_plan.json
     - Binary file detection
@@ -1766,7 +1842,14 @@ def _merge_file_with_ai(
     Returns merged content, or None if AI couldn't resolve.
     """
     from merge import create_claude_resolver
-    from merge.prompts import build_timeline_merge_prompt, build_simple_merge_prompt
+    from merge.prompts import (
+        build_timeline_merge_prompt,
+        build_simple_merge_prompt,
+        build_conflict_only_prompt,
+        parse_conflict_markers,
+        reassemble_with_resolutions,
+        extract_conflict_resolutions,
+    )
 
     debug(MODULE, f"AI merge starting for: {file_path}",
           spec_name=spec_name,
@@ -1795,8 +1878,6 @@ def _merge_file_with_ai(
         print(warning(f"    File too large ({max_lines} lines > {MAX_FILE_LINES_FOR_AI}), skipping AI merge"))
         return None
 
-    print(muted(f"    Using AI to merge changes..."))
-
     # Create an AI resolver
     resolver = create_claude_resolver()
 
@@ -1804,6 +1885,90 @@ def _merge_file_with_ai(
         debug_warning(MODULE, "AI not available, using heuristic merge")
         print(muted(f"    AI not available, trying heuristic merge..."))
         return _heuristic_merge(main_content, worktree_content, base_content)
+
+    # Determine language
+    language = resolver._infer_language(file_path)
+    debug(MODULE, "Detected language", language=language)
+
+    # Get task intent for context
+    task_intent = None
+    if project_dir:
+        task_intent = _get_task_intent(project_dir, spec_name)
+
+    # OPTIMIZATION: Try conflict-region-only merge first
+    # This is MUCH faster than sending entire files to AI
+    if project_dir and base_content:
+        conflict_file = _create_conflict_file_with_git(
+            main_content, worktree_content, base_content, project_dir
+        )
+
+        if conflict_file:
+            conflicts, _ = parse_conflict_markers(conflict_file)
+
+            if conflicts:
+                # Calculate how much smaller this approach is
+                total_conflict_lines = sum(
+                    len(c['main_lines'].split('\n')) + len(c['worktree_lines'].split('\n'))
+                    for c in conflicts
+                )
+                savings_pct = 100 - (total_conflict_lines * 100 // max(max_lines, 1))
+
+                debug(MODULE, "Using conflict-only merge (optimized)",
+                      num_conflicts=len(conflicts),
+                      conflict_lines=total_conflict_lines,
+                      file_lines=max_lines,
+                      savings_pct=savings_pct)
+                print(muted(f"    Found {len(conflicts)} conflict region(s) ({total_conflict_lines} lines vs {max_lines} total - {savings_pct}% smaller prompt)"))
+
+                # Build focused prompt with only conflict regions
+                prompt = build_conflict_only_prompt(
+                    file_path=file_path,
+                    conflicts=conflicts,
+                    spec_name=spec_name,
+                    language=language,
+                    task_intent=task_intent,
+                )
+
+                try:
+                    response = resolver.ai_call_fn(
+                        "You are an expert code merge assistant. Resolve ONLY the specific conflicts shown. Output the resolved code for each conflict.",
+                        prompt,
+                    )
+
+                    if response:
+                        # Extract resolutions for each conflict
+                        resolutions = extract_conflict_resolutions(response, conflicts, language)
+
+                        if resolutions:
+                            debug(MODULE, "Extracted conflict resolutions",
+                                  num_resolutions=len(resolutions),
+                                  expected=len(conflicts))
+
+                            # Reassemble the file with resolved conflicts
+                            merged = reassemble_with_resolutions(conflict_file, conflicts, resolutions)
+
+                            # Validate syntax
+                            if project_dir:
+                                is_valid, error_msg = _validate_merged_syntax(file_path, merged, project_dir)
+                                if is_valid:
+                                    debug_success(MODULE, "Conflict-only merge succeeded",
+                                                 file_path=file_path,
+                                                 conflicts_resolved=len(resolutions))
+                                    print(success(f"    ✓ Resolved {len(resolutions)} conflict(s)"))
+                                    return merged
+                                else:
+                                    debug_warning(MODULE, "Conflict-only merge produced invalid syntax, falling back",
+                                                 error=error_msg)
+                                    print(muted(f"    Conflict-only merge had syntax issues, trying full-file merge..."))
+                            else:
+                                return merged
+
+                except Exception as e:
+                    debug_warning(MODULE, f"Conflict-only merge failed: {e}, falling back to full-file")
+                    print(muted(f"    Conflict-only merge failed, trying full-file merge..."))
+
+    # FALLBACK: Full-file merge approach (slower but more comprehensive)
+    print(muted(f"    Using full-file AI merge..."))
 
     # Try to get timeline context for richer merge prompt
     timeline_context = None
@@ -1819,10 +1984,6 @@ def _merge_file_with_ai(
         except Exception as e:
             debug_warning(MODULE, f"Could not get timeline context: {e}")
 
-    # Determine language
-    language = resolver._infer_language(file_path)
-    debug(MODULE, "Detected language", language=language)
-
     # Build prompt - use timeline context if available, fallback to simple prompt
     if timeline_context and timeline_context.total_commits_behind > 0:
         # Use the rich timeline-based prompt with full situational awareness
@@ -1836,14 +1997,10 @@ def _merge_file_with_ai(
         # Fallback to simple three-way merge prompt
         debug(MODULE, "Building simple merge prompt (no timeline context)")
 
-        # Get task intent for basic context
-        task_intent = None
-        if project_dir:
-            task_intent = _get_task_intent(project_dir, spec_name)
-            if task_intent:
-                debug(MODULE, "Loaded task intent",
-                      title=task_intent.get('title'),
-                      num_subtasks=len(task_intent.get('subtasks', [])))
+        if task_intent:
+            debug(MODULE, "Loaded task intent",
+                  title=task_intent.get('title'),
+                  num_subtasks=len(task_intent.get('subtasks', [])))
 
         prompt = build_simple_merge_prompt(
             file_path=file_path,
@@ -1856,7 +2013,7 @@ def _merge_file_with_ai(
         )
 
     try:
-        debug(MODULE, "Calling AI for merge",
+        debug(MODULE, "Calling AI for full-file merge",
               file_path=file_path,
               has_timeline_context=timeline_context is not None)
 

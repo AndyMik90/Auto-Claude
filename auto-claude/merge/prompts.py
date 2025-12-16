@@ -227,6 +227,256 @@ merged code here
     return prompt
 
 
+def build_conflict_only_prompt(
+    file_path: str,
+    conflicts: list[dict],
+    spec_name: str,
+    language: str,
+    task_intent: dict | None = None,
+) -> str:
+    """
+    Build a focused prompt that only asks AI to resolve specific conflict regions.
+
+    This is MUCH more efficient than sending entire files - the AI only needs
+    to resolve the actual conflicting lines, not regenerate thousands of lines.
+
+    Args:
+        file_path: Path to the file being merged
+        conflicts: List of conflict dicts with keys:
+            - id: Unique conflict identifier (e.g., "CONFLICT_1")
+            - main_lines: Lines from main branch (the <<<<<<< section)
+            - worktree_lines: Lines from feature branch (the >>>>>>> section)
+            - context_before: Few lines before the conflict for context
+            - context_after: Few lines after the conflict for context
+        spec_name: Name of the feature branch/spec
+        language: Programming language
+        task_intent: Optional dict with title, description, spec_summary
+
+    Returns:
+        Focused prompt asking AI to resolve only the conflict regions
+    """
+    intent_section = ""
+    if task_intent:
+        intent_section = f"""
+FEATURE INTENT: {task_intent.get('title', spec_name)}
+{task_intent.get('description', '')}
+"""
+
+    conflict_sections = []
+    for i, conflict in enumerate(conflicts, 1):
+        context_before = conflict.get('context_before', '')
+        context_after = conflict.get('context_after', '')
+        main_lines = conflict.get('main_lines', '')
+        worktree_lines = conflict.get('worktree_lines', '')
+        conflict_id = conflict.get('id', f'CONFLICT_{i}')
+
+        section = f"""
+--- {conflict_id} ---
+{f"CONTEXT BEFORE:{chr(10)}{context_before}{chr(10)}" if context_before else ""}
+MAIN BRANCH VERSION:
+```{language}
+{main_lines}
+```
+
+FEATURE BRANCH VERSION ({spec_name}):
+```{language}
+{worktree_lines}
+```
+{f"{chr(10)}CONTEXT AFTER:{chr(10)}{context_after}" if context_after else ""}
+"""
+        conflict_sections.append(section)
+
+    all_conflicts = "\n".join(conflict_sections)
+
+    prompt = f'''You are a code merge expert. Resolve the following {len(conflicts)} conflict(s) in {file_path}.
+{intent_section}
+FILE: {file_path}
+LANGUAGE: {language}
+
+{all_conflicts}
+
+MERGE RULES:
+1. Keep ALL necessary code from both versions
+2. Combine changes logically - don't lose functionality from either branch
+3. If both branches add different things, include both
+4. If both branches modify the same thing differently, prefer the feature branch but include main's additions
+5. Output MUST be syntactically valid {language}
+
+For EACH conflict, output the resolved code in this exact format:
+
+--- {conflicts[0].get('id', 'CONFLICT_1')} RESOLVED ---
+```{language}
+resolved code here
+```
+
+{f"--- CONFLICT_2 RESOLVED ---" if len(conflicts) > 1 else ""}
+{f"```{language}" if len(conflicts) > 1 else ""}
+{f"resolved code here" if len(conflicts) > 1 else ""}
+{f"```" if len(conflicts) > 1 else ""}
+
+(continue for each conflict)
+'''
+    return prompt
+
+
+def parse_conflict_markers(content: str) -> tuple[list[dict], list[str]]:
+    """
+    Parse a file with git conflict markers and extract conflict regions.
+
+    Args:
+        content: File content with git conflict markers
+
+    Returns:
+        Tuple of (conflicts, clean_sections) where:
+        - conflicts: List of conflict dicts with main_lines, worktree_lines, etc.
+        - clean_sections: List of non-conflicting parts of the file (for reassembly)
+    """
+    import re
+
+    conflicts = []
+    clean_sections = []
+
+    # Pattern to match git conflict markers
+    # <<<<<<< HEAD or <<<<<<< branch_name
+    # content from current branch
+    # =======
+    # content from incoming branch
+    # >>>>>>> branch_name or commit_hash
+    conflict_pattern = re.compile(
+        r'<<<<<<<[^\n]*\n'  # Start marker
+        r'(.*?)'             # Main/HEAD content (group 1)
+        r'=======\n'         # Separator
+        r'(.*?)'             # Incoming/feature content (group 2)
+        r'>>>>>>>[^\n]*\n?', # End marker
+        re.DOTALL
+    )
+
+    last_end = 0
+    for i, match in enumerate(conflict_pattern.finditer(content), 1):
+        # Get the clean section before this conflict
+        clean_before = content[last_end:match.start()]
+        clean_sections.append(clean_before)
+
+        # Extract context (last 3 lines before conflict)
+        before_lines = clean_before.rstrip().split('\n')
+        context_before = '\n'.join(before_lines[-3:]) if len(before_lines) >= 3 else clean_before.rstrip()
+
+        # Extract the conflict content
+        main_lines = match.group(1).rstrip('\n')
+        worktree_lines = match.group(2).rstrip('\n')
+
+        # Get context after (first 3 lines after conflict)
+        after_start = match.end()
+        after_content = content[after_start:after_start + 500]  # Look ahead 500 chars
+        after_lines = after_content.split('\n')[:3]
+        context_after = '\n'.join(after_lines)
+
+        conflicts.append({
+            'id': f'CONFLICT_{i}',
+            'start': match.start(),
+            'end': match.end(),
+            'main_lines': main_lines,
+            'worktree_lines': worktree_lines,
+            'context_before': context_before,
+            'context_after': context_after,
+        })
+
+        last_end = match.end()
+
+    # Add the final clean section after last conflict
+    if last_end < len(content):
+        clean_sections.append(content[last_end:])
+
+    return conflicts, clean_sections
+
+
+def reassemble_with_resolutions(
+    original_content: str,
+    conflicts: list[dict],
+    resolutions: dict[str, str],
+) -> str:
+    """
+    Reassemble a file by replacing conflict regions with AI resolutions.
+
+    Args:
+        original_content: File content with conflict markers
+        conflicts: List of conflict dicts from parse_conflict_markers
+        resolutions: Dict mapping conflict_id to resolved code
+
+    Returns:
+        Clean file with conflicts resolved
+    """
+    # Sort conflicts by start position (should already be sorted, but ensure it)
+    sorted_conflicts = sorted(conflicts, key=lambda c: c['start'])
+
+    result_parts = []
+    last_end = 0
+
+    for conflict in sorted_conflicts:
+        # Add clean content before this conflict
+        result_parts.append(original_content[last_end:conflict['start']])
+
+        # Add the resolution (or keep conflict if no resolution)
+        conflict_id = conflict['id']
+        if conflict_id in resolutions:
+            result_parts.append(resolutions[conflict_id])
+        else:
+            # Fallback: prefer feature branch version if no resolution
+            result_parts.append(conflict['worktree_lines'])
+
+        last_end = conflict['end']
+
+    # Add remaining content after last conflict
+    result_parts.append(original_content[last_end:])
+
+    return ''.join(result_parts)
+
+
+def extract_conflict_resolutions(response: str, conflicts: list[dict], language: str) -> dict[str, str]:
+    """
+    Extract resolved code for each conflict from AI response.
+
+    Args:
+        response: AI response with resolved code blocks
+        conflicts: List of conflict dicts (to get the IDs)
+        language: Programming language for code block detection
+
+    Returns:
+        Dict mapping conflict_id to resolved code
+    """
+    import re
+
+    resolutions = {}
+
+    # Pattern to match resolution blocks
+    # --- CONFLICT_1 RESOLVED --- or similar variations
+    resolution_pattern = re.compile(
+        r'---\s*(CONFLICT_\d+)\s*RESOLVED\s*---\s*\n'
+        r'```(?:\w+)?\n'
+        r'(.*?)'
+        r'```',
+        re.DOTALL | re.IGNORECASE
+    )
+
+    for match in resolution_pattern.finditer(response):
+        conflict_id = match.group(1).upper()
+        resolved_code = match.group(2).rstrip('\n')
+        resolutions[conflict_id] = resolved_code
+
+    # Fallback: if only one conflict and we can find a single code block
+    if len(conflicts) == 1 and not resolutions:
+        code_block_pattern = re.compile(
+            r'```(?:\w+)?\n(.*?)```',
+            re.DOTALL
+        )
+        matches = list(code_block_pattern.finditer(response))
+        if matches:
+            # Use the first (or only) code block
+            resolutions[conflicts[0]['id']] = matches[0].group(1).rstrip('\n')
+
+    return resolutions
+
+
 def optimize_prompt_for_length(
     context: "MergeContext",
     max_content_chars: int = 50000,
