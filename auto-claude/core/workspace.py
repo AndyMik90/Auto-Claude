@@ -519,15 +519,15 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
         spec_commit = spec_commit_result.stdout.strip()
 
         # Use git merge-tree to check for conflicts WITHOUT touching working directory
+        # Note: --write-tree mode only accepts 2 branches (it auto-finds the merge base)
         merge_tree_result = subprocess.run(
             [
                 "git",
                 "merge-tree",
                 "--write-tree",
                 "--no-messages",
-                merge_base,
-                main_commit,
-                spec_commit,
+                result["base_branch"],  # Use branch names, not commit hashes
+                spec_branch,
             ],
             cwd=project_dir,
             capture_output=True,
