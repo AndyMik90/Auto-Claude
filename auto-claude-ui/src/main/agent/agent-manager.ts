@@ -102,7 +102,7 @@ export class AgentManager extends EventEmitter {
       return;
     }
 
-    const specRunnerPath = path.join(autoBuildSource, 'spec_runner.py');
+    const specRunnerPath = path.join(autoBuildSource, 'runners', 'spec_runner.py');
 
     if (!existsSync(specRunnerPath)) {
       this.emit('error', taskId, `Spec runner not found at: ${specRunnerPath}`);
