@@ -14,15 +14,19 @@ import {
   Loader2,
   LogIn,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  RefreshCw,
+  Activity,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
 import { cn } from '../../lib/utils';
 import { SettingsSection } from './SettingsSection';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
-import type { AppSettings, ClaudeProfile } from '../../../shared/types';
+import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings } from '../../../shared/types';
 
 interface IntegrationSettingsProps {
   settings: AppSettings;
@@ -53,10 +57,15 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   const [showManualToken, setShowManualToken] = useState(false);
   const [savingTokenProfileId, setSavingTokenProfileId] = useState<string | null>(null);
 
-  // Load Claude profiles when section is shown
+  // Auto-swap settings state
+  const [autoSwitchSettings, setAutoSwitchSettings] = useState<ClaudeAutoSwitchSettings | null>(null);
+  const [isLoadingAutoSwitch, setIsLoadingAutoSwitch] = useState(false);
+
+  // Load Claude profiles and auto-swap settings when section is shown
   useEffect(() => {
     if (isOpen) {
       loadClaudeProfiles();
+      loadAutoSwitchSettings();
     }
   }, [isOpen]);
 
@@ -253,6 +262,39 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       alert('Failed to save token. Please try again.');
     } finally {
       setSavingTokenProfileId(null);
+    }
+  };
+
+  // Load auto-swap settings
+  const loadAutoSwitchSettings = async () => {
+    setIsLoadingAutoSwitch(true);
+    try {
+      const result = await window.electronAPI.getAutoSwitchSettings();
+      if (result.success && result.data) {
+        setAutoSwitchSettings(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to load auto-switch settings:', err);
+    } finally {
+      setIsLoadingAutoSwitch(false);
+    }
+  };
+
+  // Update auto-swap settings
+  const handleUpdateAutoSwitch = async (updates: Partial<ClaudeAutoSwitchSettings>) => {
+    setIsLoadingAutoSwitch(true);
+    try {
+      const result = await window.electronAPI.updateAutoSwitchSettings(updates);
+      if (result.success) {
+        await loadAutoSwitchSettings();
+      } else {
+        alert(`Failed to update settings: ${result.error || 'Please try again.'}`);
+      }
+    } catch (err) {
+      console.error('Failed to update auto-switch settings:', err);
+      alert('Failed to update settings. Please try again.');
+    } finally {
+      setIsLoadingAutoSwitch(false);
     }
   };
 
@@ -542,6 +584,144 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
             </div>
           </div>
         </div>
+
+        {/* Auto-Switch Settings Section */}
+        {claudeProfiles.length > 1 && (
+          <div className="space-y-4 pt-6 border-t border-border">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-semibold text-foreground">Automatic Account Switching</h4>
+            </div>
+
+            <div className="rounded-lg bg-muted/30 border border-border p-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Automatically switch between Claude accounts to avoid interruptions.
+                Configure proactive monitoring to switch before hitting limits.
+              </p>
+
+              {/* Master toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">Enable automatic switching</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Master switch for all auto-swap features
+                  </p>
+                </div>
+                <Switch
+                  checked={autoSwitchSettings?.enabled ?? false}
+                  onCheckedChange={(enabled) => handleUpdateAutoSwitch({ enabled })}
+                  disabled={isLoadingAutoSwitch}
+                />
+              </div>
+
+              {autoSwitchSettings?.enabled && (
+                <>
+                  {/* Proactive Monitoring Section */}
+                  <div className="pl-6 space-y-4 pt-2 border-l-2 border-primary/20">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <Activity className="h-3.5 w-3.5" />
+                          Proactive Monitoring
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Check usage regularly and swap before hitting limits
+                        </p>
+                      </div>
+                      <Switch
+                        checked={autoSwitchSettings?.proactiveSwapEnabled ?? true}
+                        onCheckedChange={(value) => handleUpdateAutoSwitch({ proactiveSwapEnabled: value })}
+                        disabled={isLoadingAutoSwitch}
+                      />
+                    </div>
+
+                    {autoSwitchSettings?.proactiveSwapEnabled && (
+                      <>
+                        {/* Check interval */}
+                        <div className="space-y-2">
+                          <Label className="text-sm">Check usage every</Label>
+                          <select
+                            className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
+                            value={autoSwitchSettings?.usageCheckInterval ?? 30000}
+                            onChange={(e) => handleUpdateAutoSwitch({ usageCheckInterval: parseInt(e.target.value) })}
+                            disabled={isLoadingAutoSwitch}
+                          >
+                            <option value={15000}>15 seconds</option>
+                            <option value={30000}>30 seconds (recommended)</option>
+                            <option value={60000}>1 minute</option>
+                            <option value={0}>Disabled</option>
+                          </select>
+                        </div>
+
+                        {/* Session threshold */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Session usage threshold</Label>
+                            <span className="text-sm font-mono">{autoSwitchSettings?.sessionThreshold ?? 95}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="70"
+                            max="99"
+                            step="1"
+                            value={autoSwitchSettings?.sessionThreshold ?? 95}
+                            onChange={(e) => handleUpdateAutoSwitch({ sessionThreshold: parseInt(e.target.value) })}
+                            disabled={isLoadingAutoSwitch}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Switch when session usage reaches this level (recommended: 95%)
+                          </p>
+                        </div>
+
+                        {/* Weekly threshold */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Weekly usage threshold</Label>
+                            <span className="text-sm font-mono">{autoSwitchSettings?.weeklyThreshold ?? 99}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="70"
+                            max="99"
+                            step="1"
+                            value={autoSwitchSettings?.weeklyThreshold ?? 99}
+                            onChange={(e) => handleUpdateAutoSwitch({ weeklyThreshold: parseInt(e.target.value) })}
+                            disabled={isLoadingAutoSwitch}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Switch when weekly usage reaches this level (recommended: 99%)
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Reactive Recovery Section */}
+                  <div className="pl-6 space-y-4 pt-2 border-l-2 border-orange-500/20">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          Reactive Recovery
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Auto-swap when unexpected rate limit is hit
+                        </p>
+                      </div>
+                      <Switch
+                        checked={autoSwitchSettings?.autoSwitchOnRateLimit ?? false}
+                        onCheckedChange={(value) => handleUpdateAutoSwitch({ autoSwitchOnRateLimit: value })}
+                        disabled={isLoadingAutoSwitch}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* API Keys Section */}
         <div className="space-y-4 pt-4 border-t border-border">

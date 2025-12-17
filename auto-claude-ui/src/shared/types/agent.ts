@@ -25,6 +25,29 @@ export interface ClaudeUsageData {
 }
 
 /**
+ * Real-time usage snapshot for proactive monitoring
+ * Returned from API or CLI usage check
+ */
+export interface ClaudeUsageSnapshot {
+  /** Session usage percentage (0-100) */
+  sessionPercent: number;
+  /** Weekly usage percentage (0-100) */
+  weeklyPercent: number;
+  /** When the session limit resets (human-readable or ISO) */
+  sessionResetTime?: string;
+  /** When the weekly limit resets (human-readable or ISO) */
+  weeklyResetTime?: string;
+  /** Profile ID this snapshot belongs to */
+  profileId: string;
+  /** Profile name for display */
+  profileName: string;
+  /** When this snapshot was captured */
+  fetchedAt: Date;
+  /** Which limit is closest to threshold ('session' or 'weekly') */
+  limitType?: 'session' | 'weekly';
+}
+
+/**
  * Rate limit event recorded for a profile
  */
 export interface ClaudeRateLimitEvent {
@@ -90,16 +113,24 @@ export interface ClaudeProfileSettings {
  * Settings for automatic profile switching
  */
 export interface ClaudeAutoSwitchSettings {
-  /** Whether auto-switch is enabled */
+  /** Master toggle - enables all auto-switch features */
   enabled: boolean;
-  /** Session usage threshold (0-100) to trigger proactive switch consideration */
-  sessionThreshold: number;
-  /** Weekly usage threshold (0-100) to trigger proactive switch consideration */
-  weeklyThreshold: number;
-  /** Whether to automatically switch on rate limit (vs. prompting user) */
-  autoSwitchOnRateLimit: boolean;
-  /** Interval (ms) to check usage via /usage command (0 = disabled) */
+
+  // Proactive monitoring settings
+  /** Enable proactive monitoring and swapping before hitting limits */
+  proactiveSwapEnabled: boolean;
+  /** Interval (ms) to check usage (default: 30000 = 30s, 0 = disabled) */
   usageCheckInterval: number;
+
+  // Threshold settings
+  /** Session usage threshold (0-100) to trigger proactive switch (default: 95) */
+  sessionThreshold: number;
+  /** Weekly usage threshold (0-100) to trigger proactive switch (default: 99) */
+  weeklyThreshold: number;
+
+  // Reactive recovery
+  /** Whether to automatically switch on unexpected rate limit (vs. prompting user) */
+  autoSwitchOnRateLimit: boolean;
 }
 
 export interface ClaudeAuthResult {

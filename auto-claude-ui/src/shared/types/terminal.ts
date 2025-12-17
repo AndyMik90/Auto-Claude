@@ -106,6 +106,17 @@ export interface SDKRateLimitInfo {
   detectedAt: Date;
   /** Original error message */
   originalError?: string;
+
+  // Auto-swap information (NEW)
+  /** Whether this rate limit was automatically handled via account swap */
+  wasAutoSwapped?: boolean;
+  /** Profile that was swapped to (if auto-swapped) */
+  swappedToProfile?: {
+    id: string;
+    name: string;
+  };
+  /** Why the swap occurred: 'proactive' (before limit) or 'reactive' (after limit hit) */
+  swapReason?: 'proactive' | 'reactive';
 }
 
 /**

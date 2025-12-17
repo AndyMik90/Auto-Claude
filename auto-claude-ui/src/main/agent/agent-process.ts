@@ -8,6 +8,7 @@ import { AgentEvents } from './agent-events';
 import { ProcessType, ExecutionProgressData } from './types';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { projectStore } from '../project-store';
+import { getClaudeProfileManager } from '../claude-profile-manager';
 
 /**
  * Process spawning and lifecycle management
@@ -280,10 +281,43 @@ export class AgentProcessManager {
             suggestedProfile: rateLimitDetection.suggestedProfile?.name
           });
 
-          // Determine source type based on processType
-          const source = processType === 'spec-creation' ? 'task' : 'task';
+          // Check if auto-swap is enabled
+          const profileManager = getClaudeProfileManager();
+          const autoSwitchSettings = profileManager.getAutoSwitchSettings();
 
-          // Emit rate limit event
+          if (autoSwitchSettings.enabled && autoSwitchSettings.autoSwitchOnRateLimit) {
+            console.log('[spawnProcess] Reactive auto-swap enabled');
+
+            const currentProfileId = rateLimitDetection.profileId;
+            const bestProfile = profileManager.getBestAvailableProfile(currentProfileId);
+
+            if (bestProfile) {
+              console.log('[spawnProcess] Reactive swap to:', bestProfile.name);
+
+              // Switch active profile
+              profileManager.setActiveProfile(bestProfile.id);
+
+              // Emit swap info (for modal)
+              const source = processType === 'spec-creation' ? 'task' : 'task';
+              const rateLimitInfo = createSDKRateLimitInfo(source, rateLimitDetection, {
+                taskId
+              });
+              rateLimitInfo.wasAutoSwapped = true;
+              rateLimitInfo.swappedToProfile = {
+                id: bestProfile.id,
+                name: bestProfile.name
+              };
+              rateLimitInfo.swapReason = 'reactive';
+              this.emitter.emit('sdk-rate-limit', rateLimitInfo);
+
+              // Restart task
+              this.emitter.emit('auto-swap-restart-task', taskId, bestProfile.id);
+              return;
+            }
+          }
+
+          // Fall back to manual modal (no auto-swap or no alternative profile)
+          const source = processType === 'spec-creation' ? 'task' : 'task';
           const rateLimitInfo = createSDKRateLimitInfo(source, rateLimitDetection, {
             taskId
           });

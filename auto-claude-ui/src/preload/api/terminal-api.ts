@@ -63,6 +63,11 @@ export interface TerminalAPI {
   getBestAvailableProfile: (excludeProfileId?: string) => Promise<IPCResult<import('../../shared/types').ClaudeProfile | null>>;
   onSDKRateLimit: (callback: (info: import('../../shared/types').SDKRateLimitInfo) => void) => () => void;
   retryWithProfile: (request: import('../../shared/types').RetryWithProfileRequest) => Promise<IPCResult>;
+
+  // Usage Monitoring (Proactive Account Switching)
+  requestUsageUpdate: () => Promise<IPCResult<import('../../shared/types').ClaudeUsageSnapshot | null>>;
+  onUsageUpdated: (callback: (usage: import('../../shared/types').ClaudeUsageSnapshot) => void) => () => void;
+  onProactiveSwapNotification: (callback: (notification: any) => void) => () => void;
 }
 
 export const createTerminalAPI = (): TerminalAPI => ({
@@ -267,5 +272,36 @@ export const createTerminalAPI = (): TerminalAPI => ({
   },
 
   retryWithProfile: (request: import('../../shared/types').RetryWithProfileRequest): Promise<IPCResult> =>
-    ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_RETRY_WITH_PROFILE, request)
+    ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_RETRY_WITH_PROFILE, request),
+
+  // Usage Monitoring (Proactive Account Switching)
+  requestUsageUpdate: (): Promise<IPCResult<import('../../shared/types').ClaudeUsageSnapshot | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.USAGE_REQUEST),
+
+  onUsageUpdated: (
+    callback: (usage: import('../../shared/types').ClaudeUsageSnapshot) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      usage: import('../../shared/types').ClaudeUsageSnapshot
+    ): void => {
+      callback(usage);
+    };
+    ipcRenderer.on(IPC_CHANNELS.USAGE_UPDATED, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.USAGE_UPDATED, handler);
+    };
+  },
+
+  onProactiveSwapNotification: (
+    callback: (notification: any) => void
+  ): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, notification: any): void => {
+      callback(notification);
+    };
+    ipcRenderer.on(IPC_CHANNELS.PROACTIVE_SWAP_NOTIFICATION, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.PROACTIVE_SWAP_NOTIFICATION, handler);
+    };
+  }
 });

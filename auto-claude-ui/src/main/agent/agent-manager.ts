@@ -23,6 +23,16 @@ export class AgentManager extends EventEmitter {
   private events: AgentEvents;
   private processManager: AgentProcessManager;
   private queueManager: AgentQueueManager;
+  private taskExecutionContext: Map<string, {
+    projectPath: string;
+    specId: string;
+    options: TaskExecutionOptions;
+    isSpecCreation?: boolean;
+    taskDescription?: string;
+    specDir?: string;
+    metadata?: SpecCreationMetadata;
+    swapCount: number;
+  }> = new Map();
 
   constructor() {
     super();
@@ -32,6 +42,12 @@ export class AgentManager extends EventEmitter {
     this.events = new AgentEvents();
     this.processManager = new AgentProcessManager(this.state, this.events, this);
     this.queueManager = new AgentQueueManager(this.state, this.events, this.processManager, this);
+
+    // Listen for auto-swap restart events
+    this.on('auto-swap-restart-task', (taskId: string, newProfileId: string) => {
+      console.log('[AgentManager] Auto-swap restart:', taskId, newProfileId);
+      this.restartTask(taskId);
+    });
   }
 
   /**
@@ -81,6 +97,9 @@ export class AgentManager extends EventEmitter {
       // Auto-approve: When user starts a task from the UI without requiring review
       args.push('--auto-approve');
     }
+
+    // Store context for potential restart
+    this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata);
 
     // Note: This is spec-creation but it chains to task-execution via run.py
     this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
@@ -132,6 +151,9 @@ export class AgentManager extends EventEmitter {
 
     // Note: --parallel was removed from run.py CLI - parallel execution is handled internally by the agent
     // The options.parallel and options.workers are kept for future use or logging purposes
+
+    // Store context for potential restart
+    this.storeTaskContext(taskId, projectPath, specId, options, false);
 
     console.log('[AgentManager] Spawning process with args:', args);
     this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
@@ -231,5 +253,75 @@ export class AgentManager extends EventEmitter {
    */
   getRunningTasks(): string[] {
     return this.state.getRunningTaskIds();
+  }
+
+  /**
+   * Store task execution context for potential restarts
+   */
+  private storeTaskContext(
+    taskId: string,
+    projectPath: string,
+    specId: string,
+    options: TaskExecutionOptions,
+    isSpecCreation?: boolean,
+    taskDescription?: string,
+    specDir?: string,
+    metadata?: SpecCreationMetadata
+  ): void {
+    this.taskExecutionContext.set(taskId, {
+      projectPath,
+      specId,
+      options,
+      isSpecCreation,
+      taskDescription,
+      specDir,
+      metadata,
+      swapCount: 0
+    });
+  }
+
+  /**
+   * Restart task after profile swap
+   */
+  restartTask(taskId: string): boolean {
+    const context = this.taskExecutionContext.get(taskId);
+    if (!context) {
+      console.error('[AgentManager] No context for task:', taskId);
+      return false;
+    }
+
+    // Prevent infinite swap loops
+    if (context.swapCount >= 2) {
+      console.error('[AgentManager] Max swap count reached for task:', taskId);
+      return false;
+    }
+
+    context.swapCount++;
+    console.log('[AgentManager] Restarting task:', taskId, 'swap count:', context.swapCount);
+
+    // Kill current process
+    this.killTask(taskId);
+
+    // Wait for cleanup, then restart
+    setTimeout(() => {
+      if (context.isSpecCreation) {
+        this.startSpecCreation(
+          taskId,
+          context.projectPath,
+          context.taskDescription!,
+          context.specDir,
+          context.metadata
+        );
+      } else {
+        this.startTaskExecution(
+          taskId,
+          context.projectPath,
+          context.specId,
+          context.options
+        );
+      }
+    }, 500);
+
+    return true;
   }
 }

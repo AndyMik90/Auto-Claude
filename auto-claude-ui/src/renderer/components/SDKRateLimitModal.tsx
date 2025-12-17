@@ -61,6 +61,12 @@ export function SDKRateLimitModal() {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isAddingProfile, setIsAddingProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
+  const [swapInfo, setSwapInfo] = useState<{
+    wasAutoSwapped: boolean;
+    swapReason?: 'proactive' | 'reactive';
+    swappedFrom?: string;
+    swappedTo?: string;
+  } | null>(null);
 
   // Load profiles and auto-switch settings when modal opens
   useEffect(() => {
@@ -72,8 +78,18 @@ export function SDKRateLimitModal() {
       if (sdkRateLimitInfo?.suggestedProfile?.id) {
         setSelectedProfileId(sdkRateLimitInfo.suggestedProfile.id);
       }
+
+      // Set swap info if auto-swap occurred
+      if (sdkRateLimitInfo) {
+        setSwapInfo({
+          wasAutoSwapped: sdkRateLimitInfo.wasAutoSwapped ?? false,
+          swapReason: sdkRateLimitInfo.swapReason,
+          swappedFrom: profiles.find(p => p.id === sdkRateLimitInfo.profileId)?.name,
+          swappedTo: sdkRateLimitInfo.swappedToProfile?.name
+        });
+      }
     }
-  }, [isSDKModalOpen, sdkRateLimitInfo?.suggestedProfile?.id]);
+  }, [isSDKModalOpen, sdkRateLimitInfo, profiles]);
 
   // Reset selection when modal closes
   useEffect(() => {
@@ -232,6 +248,47 @@ export function SDKRateLimitModal() {
         </DialogHeader>
 
         <div className="py-4 space-y-4">
+          {/* Swap notification info */}
+          <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
+            {swapInfo?.wasAutoSwapped ? (
+              <>
+                <p className="font-medium mb-1">
+                  {swapInfo.swapReason === 'proactive' ? '✓ Proactive Swap' : '⚡ Reactive Swap'}
+                </p>
+                <p>
+                  {swapInfo.swapReason === 'proactive'
+                    ? `Automatically switched from ${swapInfo.swappedFrom} to ${swapInfo.swappedTo} before hitting rate limit.`
+                    : `Rate limit hit on ${swapInfo.swappedFrom}. Automatically switched to ${swapInfo.swappedTo} and restarted.`
+                  }
+                </p>
+                <p className="mt-2 text-[10px]">
+                  Your work continued without interruption.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium mb-1">Rate limit reached</p>
+                <p>
+                  The operation was stopped because {currentProfile?.name || 'your account'} reached its usage limit.
+                  {hasMultipleProfiles
+                    ? ' Switch to another account below to continue.'
+                    : ' Add another Claude account to continue working.'}
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Upgrade button */}
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-2 w-full"
+            onClick={() => window.open(CLAUDE_UPGRADE_URL, '_blank')}
+          >
+            <Zap className="h-4 w-4" />
+            Upgrade to Pro for Higher Limits
+          </Button>
+
           {/* Reset time info */}
           {sdkRateLimitInfo.resetTime && (
             <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-4">

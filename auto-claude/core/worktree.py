@@ -82,10 +82,11 @@ class WorktreeManager:
 
     def _unstage_gitignored_files(self) -> None:
         """
-        Unstage any staged files that are gitignored in the current branch.
+        Unstage any staged files that are gitignored in the current branch,
+        plus any files in the .auto-claude directory which should never be merged.
 
         This is needed after a --no-commit merge because files that exist in the
-        source branch (like spec files in auto-claude/specs/) get staged even if
+        source branch (like spec files in .auto-claude/specs/) get staged even if
         they're gitignored in the target branch.
         """
         # Get list of staged files
@@ -95,10 +96,11 @@ class WorktreeManager:
 
         staged_files = result.stdout.strip().split("\n")
 
-        # Check which staged files are gitignored
+        # Files to unstage: gitignored files + .auto-claude directory files
+        files_to_unstage = set()
+
+        # 1. Check which staged files are gitignored
         # git check-ignore returns the files that ARE ignored
-        result = self._run_git(["check-ignore", "--stdin"], cwd=self.project_dir)
-        # We need to pass the files via stdin
         result = subprocess.run(
             ["git", "check-ignore", "--stdin"],
             cwd=self.project_dir,
@@ -107,17 +109,28 @@ class WorktreeManager:
             text=True,
         )
 
-        if not result.stdout.strip():
-            return
-
-        ignored_files = result.stdout.strip().split("\n")
-
-        if ignored_files:
-            print(f"Unstaging {len(ignored_files)} gitignored file(s)...")
-            # Unstage each ignored file
-            for file in ignored_files:
+        if result.stdout.strip():
+            for file in result.stdout.strip().split("\n"):
                 if file.strip():
-                    self._run_git(["reset", "HEAD", "--", file.strip()])
+                    files_to_unstage.add(file.strip())
+
+        # 2. Always unstage .auto-claude directory files - these are project-specific
+        # and should never be merged from the worktree branch
+        auto_claude_patterns = [".auto-claude/", "auto-claude/specs/"]
+        for file in staged_files:
+            file = file.strip()
+            if not file:
+                continue
+            for pattern in auto_claude_patterns:
+                if file.startswith(pattern) or f"/{pattern}" in file:
+                    files_to_unstage.add(file)
+                    break
+
+        if files_to_unstage:
+            print(f"Unstaging {len(files_to_unstage)} auto-claude/gitignored file(s)...")
+            # Unstage each file
+            for file in files_to_unstage:
+                self._run_git(["reset", "HEAD", "--", file])
 
     def setup(self) -> None:
         """Create worktrees directory if needed."""

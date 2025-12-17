@@ -51,3 +51,6 @@ export {
   hasValidToken,
   expandHomePath
 } from './profile-utils';
+
+// Usage monitoring (proactive account switching)
+export { UsageMonitor, getUsageMonitor } from './usage-monitor';

@@ -80,10 +80,11 @@ from core.workspace.display import (
     show_build_summary,
 )
 from core.workspace.git_utils import (
-    get_changed_files_from_branch as _get_changed_files_from_branch,
+    _is_auto_claude_file,
+    get_existing_build_worktree,
 )
 from core.workspace.git_utils import (
-    get_existing_build_worktree,
+    get_changed_files_from_branch as _get_changed_files_from_branch,
 )
 from core.workspace.git_utils import (
     get_file_content_from_ref as _get_file_content_from_ref,
@@ -548,7 +549,8 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
                     )
                     if match:
                         file_path = match.group(1).strip()
-                        if file_path and file_path not in result["conflicting_files"]:
+                        # Skip .auto-claude files - they should never be merged
+                        if file_path and file_path not in result["conflicting_files"] and not _is_auto_claude_file(file_path):
                             result["conflicting_files"].append(file_path)
 
             # Fallback: if we didn't parse conflicts, use diff to find files changed in both branches
@@ -578,8 +580,9 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
                 )
 
                 # Files modified in both = potential conflicts
+                # Filter out .auto-claude files - they should never be merged
                 conflicting = main_files & spec_files
-                result["conflicting_files"] = list(conflicting)
+                result["conflicting_files"] = [f for f in conflicting if not _is_auto_claude_file(f)]
 
     except Exception as e:
         print(muted(f"  Error checking git conflicts: {e}"))

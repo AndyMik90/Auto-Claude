@@ -94,6 +94,11 @@ export const IPC_CHANNELS = {
   // Retry a rate-limited operation with a different profile
   CLAUDE_RETRY_WITH_PROFILE: 'claude:retryWithProfile',
 
+  // Usage monitoring (proactive account switching)
+  USAGE_UPDATED: 'claude:usageUpdated',  // Event: usage data updated (main -> renderer)
+  USAGE_REQUEST: 'claude:usageRequest',  // Request current usage snapshot
+  PROACTIVE_SWAP_NOTIFICATION: 'claude:proactiveSwapNotification',  // Event: proactive swap occurred
+
   // Settings
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
