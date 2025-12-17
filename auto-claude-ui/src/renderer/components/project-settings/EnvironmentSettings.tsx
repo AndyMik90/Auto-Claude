@@ -167,7 +167,7 @@ export function EnvironmentSettings({
                             <Star className="h-3 w-3" />
                             Active
                           </span>
-                          {activeProfile.oauthToken ? (
+                          {(activeProfile.oauthToken || (activeProfile.isDefault && activeProfile.configDir)) ? (
                             <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
                               <Check className="h-3 w-3" />
                               Authenticated

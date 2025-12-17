@@ -72,20 +72,11 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   // Listen for OAuth authentication completion
   useEffect(() => {
     const unsubscribe = window.electronAPI.onTerminalOAuthToken(async (info) => {
-      console.log('[IntegrationSettings] OAuth authentication event:', {
-        terminalId: info.terminalId,
-        profileId: info.profileId,
-        email: info.email,
-        success: info.success
-      });
-
       if (info.success && info.profileId) {
         // Reload profiles to show updated state
         await loadClaudeProfiles();
         // Show simple success notification
         alert(`✅ Profile authenticated successfully!\n\n${info.email ? `Account: ${info.email}` : 'Authentication complete.'}\n\nYou can now use this profile.`);
-      } else if (!info.success) {
-        console.log('[IntegrationSettings] Authentication detected but not saved:', info.message);
       }
     });
 
@@ -393,7 +384,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                     Active
                                   </span>
                                 )}
-                                {profile.oauthToken ? (
+                                {(profile.oauthToken || (profile.isDefault && profile.configDir)) ? (
                                   <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
                                     <Check className="h-3 w-3" />
                                     Authenticated

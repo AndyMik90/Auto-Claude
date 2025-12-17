@@ -13,10 +13,11 @@ export const STORE_VERSION = 3;  // Bumped for encrypted token storage
  */
 export const DEFAULT_AUTO_SWITCH_SETTINGS: ClaudeAutoSwitchSettings = {
   enabled: false,
-  sessionThreshold: 85,  // Consider switching at 85% session usage
-  weeklyThreshold: 90,   // Consider switching at 90% weekly usage
+  proactiveSwapEnabled: false,  // Proactive monitoring disabled by default
+  sessionThreshold: 95,  // Consider switching at 95% session usage
+  weeklyThreshold: 99,   // Consider switching at 99% weekly usage
   autoSwitchOnRateLimit: false,  // Prompt user by default
-  usageCheckInterval: 0  // Disabled by default (in ms, e.g., 300000 = 5 min)
+  usageCheckInterval: 30000  // Check every 30s when enabled (0 = disabled)
 };
 
 /**

@@ -550,7 +550,11 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
                     if match:
                         file_path = match.group(1).strip()
                         # Skip .auto-claude files - they should never be merged
-                        if file_path and file_path not in result["conflicting_files"] and not _is_auto_claude_file(file_path):
+                        if (
+                            file_path
+                            and file_path not in result["conflicting_files"]
+                            and not _is_auto_claude_file(file_path)
+                        ):
                             result["conflicting_files"].append(file_path)
 
             # Fallback: if we didn't parse conflicts, use diff to find files changed in both branches
@@ -582,7 +586,9 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
                 # Files modified in both = potential conflicts
                 # Filter out .auto-claude files - they should never be merged
                 conflicting = main_files & spec_files
-                result["conflicting_files"] = [f for f in conflicting if not _is_auto_claude_file(f)]
+                result["conflicting_files"] = [
+                    f for f in conflicting if not _is_auto_claude_file(f)
+                ]
 
     except Exception as e:
         print(muted(f"  Error checking git conflicts: {e}"))
@@ -735,7 +741,10 @@ def _resolve_git_conflicts_with_ai(
                     # They must be regenerated after merge by running the package manager
                     # (e.g., npm install, pnpm install, uv sync, cargo update)
                     lock_files_excluded.append(file_path)
-                    debug(MODULE, f"  {file_path}: lock file (excluded - regenerate after merge)")
+                    debug(
+                        MODULE,
+                        f"  {file_path}: lock file (excluded - regenerate after merge)",
+                    )
                 else:
                     # Regular file - needs AI merge
                     files_needing_ai_merge.append(
@@ -928,7 +937,9 @@ def _resolve_git_conflicts_with_ai(
     if lock_files_excluded:
         result["lock_files_excluded"] = lock_files_excluded
         print()
-        print(muted(f"  ℹ {len(lock_files_excluded)} lock file(s) excluded from merge:"))
+        print(
+            muted(f"  ℹ {len(lock_files_excluded)} lock file(s) excluded from merge:")
+        )
         for lock_file in lock_files_excluded:
             print(muted(f"    - {lock_file}"))
         print()

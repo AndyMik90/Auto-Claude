@@ -1,8 +1,9 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
-import type { IPCResult, TerminalCreateOptions, ClaudeProfile, ClaudeProfileSettings } from '../../shared/types';
+import type { IPCResult, TerminalCreateOptions, ClaudeProfile, ClaudeProfileSettings, ClaudeUsageSnapshot } from '../../shared/types';
 import { getClaudeProfileManager } from '../claude-profile-manager';
+import { getUsageMonitor } from '../claude-profile/usage-monitor';
 import { TerminalManager } from '../terminal-manager';
 import { projectStore } from '../project-store';
 import { terminalNameGenerator } from '../terminal-name-generator';
@@ -558,16 +559,15 @@ export function registerTerminalHandlers(
  * Call this after mainWindow is created
  */
 export function initializeUsageMonitorForwarding(mainWindow: BrowserWindow): void {
-  const { getUsageMonitor } = require('../claude-profile/usage-monitor');
   const monitor = getUsageMonitor();
 
   // Forward usage updates to renderer
-  monitor.on('usage-updated', (usage: import('../../shared/types').ClaudeUsageSnapshot) => {
+  monitor.on('usage-updated', (usage: ClaudeUsageSnapshot) => {
     mainWindow.webContents.send(IPC_CHANNELS.USAGE_UPDATED, usage);
   });
 
   // Forward proactive swap notifications to renderer
-  monitor.on('show-swap-notification', (notification: any) => {
+  monitor.on('show-swap-notification', (notification: unknown) => {
     mainWindow.webContents.send(IPC_CHANNELS.PROACTIVE_SWAP_NOTIFICATION, notification);
   });
 

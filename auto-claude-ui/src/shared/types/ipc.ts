@@ -51,7 +51,8 @@ import type {
   ClaudeProfileSettings,
   ClaudeProfile,
   ClaudeAutoSwitchSettings,
-  ClaudeAuthResult
+  ClaudeAuthResult,
+  ClaudeUsageSnapshot
 } from './agent';
 import type { AppSettings, SourceEnvConfig, SourceEnvCheckResult, AutoBuildSourceUpdateCheck, AutoBuildSourceUpdateProgress } from './settings';
 import type {
@@ -205,6 +206,19 @@ export interface ElectronAPI {
   onSDKRateLimit: (callback: (info: SDKRateLimitInfo) => void) => () => void;
   /** Retry a rate-limited operation with a different profile */
   retryWithProfile: (request: RetryWithProfileRequest) => Promise<IPCResult>;
+
+  // Usage Monitoring (Proactive Account Switching)
+  /** Request current usage snapshot */
+  requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;
+  /** Listen for usage data updates */
+  onUsageUpdated: (callback: (usage: ClaudeUsageSnapshot) => void) => () => void;
+  /** Listen for proactive swap notifications */
+  onProactiveSwapNotification: (callback: (notification: {
+    fromProfile: { id: string; name: string };
+    toProfile: { id: string; name: string };
+    reason: string;
+    usageSnapshot: ClaudeUsageSnapshot;
+  }) => void) => () => void;
 
   // App settings
   getSettings: () => Promise<IPCResult<AppSettings>>;

@@ -184,8 +184,11 @@ def handle_build_command(
         source_spec_dir = spec_dir
 
         working_dir, worktree_manager, localized_spec_dir = setup_workspace(
-            project_dir, spec_dir.name, workspace_mode, source_spec_dir=spec_dir,
-            base_branch=base_branch
+            project_dir,
+            spec_dir.name,
+            workspace_mode,
+            source_spec_dir=spec_dir,
+            base_branch=base_branch,
         )
         # Use the localized spec directory (inside worktree) for AI access
         if localized_spec_dir:

@@ -127,7 +127,9 @@ class WorktreeManager:
                     break
 
         if files_to_unstage:
-            print(f"Unstaging {len(files_to_unstage)} auto-claude/gitignored file(s)...")
+            print(
+                f"Unstaging {len(files_to_unstage)} auto-claude/gitignored file(s)..."
+            )
             # Unstage each file
             for file in files_to_unstage:
                 self._run_git(["reset", "HEAD", "--", file])

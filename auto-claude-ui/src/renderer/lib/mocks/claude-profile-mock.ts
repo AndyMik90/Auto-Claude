@@ -39,10 +39,11 @@ export const claudeProfileMock = {
     success: true,
     data: {
       enabled: false,
-      sessionThreshold: 80,
-      weeklyThreshold: 90,
+      proactiveSwapEnabled: false,
+      sessionThreshold: 95,
+      weeklyThreshold: 99,
       autoSwitchOnRateLimit: false,
-      usageCheckInterval: 0
+      usageCheckInterval: 30000
     }
   }),
 
@@ -57,5 +58,15 @@ export const claudeProfileMock = {
 
   onSDKRateLimit: () => () => {},
 
-  retryWithProfile: async () => ({ success: true })
+  retryWithProfile: async () => ({ success: true }),
+
+  // Usage Monitoring (Proactive Account Switching)
+  requestUsageUpdate: async () => ({
+    success: true,
+    data: null
+  }),
+
+  onUsageUpdated: () => () => {},
+
+  onProactiveSwapNotification: () => () => {}
 };

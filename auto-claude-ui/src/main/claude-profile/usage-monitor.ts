@@ -221,32 +221,19 @@ export class UsageMonitor extends EventEmitter {
 
   /**
    * Fetch usage via CLI /usage command (fallback)
+   * Note: This is a fallback method. The API method is preferred.
+   * CLI-based fetching would require spawning a Claude process and parsing output,
+   * which is complex. For now, we rely on the API method.
    */
   private async fetchUsageViaCLI(
-    profileId: string,
-    profileName: string
+    _profileId: string,
+    _profileName: string
   ): Promise<ClaudeUsageSnapshot | null> {
-    const profileManager = getClaudeProfileManager();
-
-    // Use existing CLI-based usage fetching mechanism
-    const result = await profileManager.fetchProfileUsage(profileId);
-
-    if (!result.success || !result.data) {
-      return null;
-    }
-
-    return {
-      sessionPercent: result.data.sessionUsagePercent || 0,
-      weeklyPercent: result.data.weeklyUsagePercent || 0,
-      sessionResetTime: result.data.sessionResetTime,
-      weeklyResetTime: result.data.weeklyResetTime,
-      profileId,
-      profileName,
-      fetchedAt: new Date(),
-      limitType: (result.data.weeklyUsagePercent || 0) > (result.data.sessionUsagePercent || 0)
-        ? 'weekly'
-        : 'session'
-    };
+    // CLI-based usage fetching is not implemented yet.
+    // The API method should handle most cases. If we need CLI fallback,
+    // we would need to spawn a Claude process with /usage command and parse the output.
+    console.log('[UsageMonitor] CLI fallback not implemented, API method should be used');
+    return null;
   }
 
   /**

@@ -266,7 +266,11 @@ def _check_git_merge_conflicts(project_dir: Path, spec_name: str) -> dict:
                     if match:
                         file_path = match.group(1).strip()
                         # Skip .auto-claude files - they should never be merged
-                        if file_path and file_path not in result["conflicting_files"] and not _is_auto_claude_file(file_path):
+                        if (
+                            file_path
+                            and file_path not in result["conflicting_files"]
+                            and not _is_auto_claude_file(file_path)
+                        ):
                             result["conflicting_files"].append(file_path)
 
             # Fallback: if we didn't parse conflicts, use diff to find files changed in both branches
@@ -300,7 +304,9 @@ def _check_git_merge_conflicts(project_dir: Path, spec_name: str) -> dict:
                 # Files modified in both = potential conflicts
                 # Filter out .auto-claude files - they should never be merged
                 conflicting = main_files & spec_files
-                result["conflicting_files"] = [f for f in conflicting if not _is_auto_claude_file(f)]
+                result["conflicting_files"] = [
+                    f for f in conflicting if not _is_auto_claude_file(f)
+                ]
                 debug(
                     MODULE, f"Found {len(conflicting)} files modified in both branches"
                 )
@@ -447,9 +453,7 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
 
         # Filter lock files from the git conflicts list for the response
         non_lock_conflicting_files = [
-            f
-            for f in git_conflicts.get("conflicting_files", [])
-            if not is_lock_file(f)
+            f for f in git_conflicts.get("conflicting_files", []) if not is_lock_file(f)
         ]
 
         result = {
