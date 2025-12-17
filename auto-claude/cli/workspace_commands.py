@@ -229,38 +229,17 @@ def _check_git_merge_conflicts(project_dir: Path, spec_name: str) -> dict:
                     MODULE, f"Main is {commits_behind} commits ahead of worktree base"
                 )
 
-        # Get commit hashes for merge-tree
-        main_commit_result = subprocess.run(
-            ["git", "rev-parse", result["base_branch"]],
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-        )
-        spec_commit_result = subprocess.run(
-            ["git", "rev-parse", spec_branch],
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-        )
-
-        if main_commit_result.returncode != 0 or spec_commit_result.returncode != 0:
-            debug_warning(MODULE, "Could not resolve branch commits")
-            return result
-
-        main_commit = main_commit_result.stdout.strip()
-        spec_commit = spec_commit_result.stdout.strip()
-
         # Use git merge-tree to check for conflicts WITHOUT touching working directory
         # This is a plumbing command that does a 3-way merge in memory
+        # Note: --write-tree mode only accepts 2 branches (it auto-finds the merge base)
         merge_tree_result = subprocess.run(
             [
                 "git",
                 "merge-tree",
                 "--write-tree",
                 "--no-messages",
-                merge_base,
-                main_commit,
-                spec_commit,
+                result["base_branch"],  # Use branch names, not commit hashes
+                spec_branch,
             ],
             cwd=project_dir,
             capture_output=True,
