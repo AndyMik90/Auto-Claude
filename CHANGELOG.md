@@ -1,3 +1,83 @@
+## 2.2.0 - 2025-12-17
+
+### ✨ New Features
+
+- Add usage monitoring with profile swap detection to prevent cascading resource issues
+
+- Option to stash changes before merge operations for safer branch integration
+
+- Add hideCloseButton prop to DialogContent component for improved UI flexibility
+
+### 🛠️ Improvements
+
+- Enhance AgentManager to manage task context cleanup and preserve swapCount on restarts
+
+- Improve changelog feature with version tracking, markdown/preview, and persistent styling options
+
+- Refactor merge conflict handling to use branch names instead of commit hashes for better clarity
+
+- Streamline usage monitoring logic by removing unnecessary dynamic imports
+
+- Better handling of lock files during merge conflicts
+
+- Refactor code for improved readability and maintainability
+
+- Refactor IdeationHeader and update handleDeleteSelected logic
+
+### 🐛 Bug Fixes
+
+- Fix worktree merge logic to correctly handle branch operations
+
+- Fix spec_runner.py path resolution after move to runners/ directory
+
+- Fix Discord release webhook failing on large changelogs
+
+- Fix branch logic for merge AI operations
+
+- Hotfix for spec-runner path location
+
+---
+
+## What's Changed
+
+- fix: hotfix/spec-runner path location by @AndyMik90 in f201f7e
+
+- refactor: Remove unnecessary dynamic imports of getUsageMonitor in terminal-handlers.ts to streamline usage monitoring logic by @AndyMik90 in 0da4bc4
+
+- feat: Improve changelog feature, version tracking, markdown/preview, persistent styling options by @AndyMik90 in a0d142b
+
+- refactor: Refactor code for improved readability and maintainability by @AndyMik90 in 473b045
+
+- feat: Enhance AgentManager to manage task context cleanup and preserve swapCount on restarts. Update UsageMonitor to delay profile usage checks to prevent cascading swaps by @AndyMik90 in e5b9488
+
+- feat: Usage-monitoring by @AndyMik90 in de33b2c
+
+- feat: option to stash changes before merge by @AndyMik90 in 7e09739
+
+- refactor: Refactor merge conflict check to use branch names instead of commit hashes by @AndyMik90 in e6d6cea
+
+- fix: worktree merge logic by @AndyMik90 in dfb5cf9
+
+- test: Sign off - all verification passed by @AndyMik90 in 34631c3
+
+- feat: Pass hideCloseButton={showFileExplorer} to DialogContent by @AndyMik90 in 7c327ed
+
+- feat: Add hideCloseButton prop to DialogContent component by @AndyMik90 in 5f9653a
+
+- fix: branch logic for merge AI by @AndyMik90 in 2d2a813
+
+- fix: spec_runner.py path resolution after move to runners/ directory by @AndyMik90 in ce9c2cd
+
+- refactor: Better handling of lock files during merge conflicts by @AndyMik90 in 460c76d
+
+- fix: Discord release webhook failing on large changelogs by @AndyMik90 in 4eb66f5
+
+- chore: Update CHANGELOG with new features, improvements, bug fixes, and other changes by @AndyMik90 in 788b8d0
+
+- refactor: Enhance merge conflict handling by excluding lock files by @AndyMik90 in 957746e
+
+- refactor: Refactor IdeationHeader and update handleDeleteSelected logic by @AndyMik90 in 36338f3
+
 ## What's New
 
 ### ✨ New Features
