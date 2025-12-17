@@ -456,12 +456,9 @@ export function TaskCreationWizard({
             <div
               ref={setDropRef}
               className={cn(
-                "flex-1 flex flex-col p-6 min-w-0 min-h-0 overflow-y-auto transition-all duration-200",
-                // Visual feedback when dragging files over the drop zone
-                activeDragData && isOverDropZone && !isAtMaxFiles && "ring-2 ring-inset ring-info bg-info/5",
-                activeDragData && isOverDropZone && isAtMaxFiles && "ring-2 ring-inset ring-warning bg-warning/5",
-                // Subtle indication when dragging but not over this zone
-                activeDragData && !isOverDropZone && "ring-1 ring-inset ring-muted-foreground/20"
+                "flex-1 flex flex-col p-6 min-w-0 min-h-0 overflow-y-auto transition-colors duration-150 ease-out",
+                // Subtle background tint when dragging files - keeps modal usable
+                activeDragData && "bg-muted/20"
               )}
             >
         <DialogHeader>
@@ -753,25 +750,32 @@ export function TaskCreationWizard({
           {/* Referenced Files Section - Always visible */}
           <div
             className={cn(
-              "space-y-3 p-4 rounded-lg border bg-muted/30 relative transition-all",
-              activeDragData && isOverDropZone && !isAtMaxFiles && "ring-2 ring-info border-info",
-              activeDragData && isOverDropZone && isAtMaxFiles && "ring-2 ring-warning border-warning",
-              !activeDragData || !isOverDropZone ? "border-border" : ""
+              "space-y-3 p-4 rounded-lg border bg-muted/30 relative transition-all duration-150 ease-out",
+              // Default state
+              !activeDragData && "border-border",
+              // Subtle dashed border when dragging but not over drop zone
+              activeDragData && !isOverDropZone && "border-dashed border-muted-foreground/40",
+              // Highlighted when dragging over - can accept files
+              activeDragData && isOverDropZone && !isAtMaxFiles && "border-info border-solid bg-info/5 shadow-sm",
+              // Warning when at max capacity
+              activeDragData && isOverDropZone && isAtMaxFiles && "border-warning border-solid bg-warning/5"
             )}
           >
-            {/* Drop zone overlay indicator - shows when dragging over the modal */}
+            {/* Drop zone indicator - only shows when dragging over the section */}
             {activeDragData && isOverDropZone && (
               <div className={cn(
-                "absolute inset-0 z-10 flex items-center justify-center pointer-events-none rounded-lg",
-                isAtMaxFiles ? "bg-warning/10" : "bg-info/10"
+                "absolute inset-0 z-10 flex items-center justify-center pointer-events-none rounded-lg transition-opacity duration-100",
+                isAtMaxFiles ? "bg-warning/5" : "bg-info/5"
               )}>
                 <div className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-md",
-                  isAtMaxFiles ? "bg-warning/90 text-warning-foreground" : "bg-info/90 text-info-foreground"
+                  "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs",
+                  isAtMaxFiles
+                    ? "bg-warning/80 text-warning-foreground"
+                    : "bg-info/80 text-info-foreground"
                 )}>
-                  <FileDown className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    {isAtMaxFiles ? `Max ${MAX_REFERENCED_FILES} files reached` : 'Drop to add reference'}
+                  <FileDown className="h-3.5 w-3.5" />
+                  <span className="font-medium">
+                    {isAtMaxFiles ? `Max ${MAX_REFERENCED_FILES} files` : 'Drop to add'}
                   </span>
                 </div>
               </div>
