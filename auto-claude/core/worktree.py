@@ -15,6 +15,7 @@ This allows:
 """
 
 import asyncio
+import os
 import re
 import shutil
 import subprocess
@@ -53,9 +54,54 @@ class WorktreeManager:
 
     def __init__(self, project_dir: Path, base_branch: str | None = None):
         self.project_dir = project_dir
-        self.base_branch = base_branch or self._get_current_branch()
+        self.base_branch = base_branch or self._detect_base_branch()
         self.worktrees_dir = project_dir / ".worktrees"
         self._merge_lock = asyncio.Lock()
+
+    def _detect_base_branch(self) -> str:
+        """
+        Detect the base branch for worktree creation.
+
+        Priority order:
+        1. DEFAULT_BRANCH environment variable
+        2. Auto-detect main/master (if they exist)
+        3. Fall back to current branch (with warning)
+
+        Returns:
+            The detected base branch name
+        """
+        # 1. Check for DEFAULT_BRANCH env var
+        env_branch = os.getenv("DEFAULT_BRANCH")
+        if env_branch:
+            # Verify the branch exists
+            result = subprocess.run(
+                ["git", "rev-parse", "--verify", env_branch],
+                cwd=self.project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return env_branch
+            else:
+                print(f"Warning: DEFAULT_BRANCH '{env_branch}' not found, auto-detecting...")
+
+        # 2. Auto-detect main/master
+        for branch in ["main", "master"]:
+            result = subprocess.run(
+                ["git", "rev-parse", "--verify", branch],
+                cwd=self.project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return branch
+
+        # 3. Fall back to current branch with warning
+        current = self._get_current_branch()
+        print(f"Warning: Could not find 'main' or 'master' branch.")
+        print(f"Warning: Using current branch '{current}' as base for worktree.")
+        print(f"Tip: Set DEFAULT_BRANCH=your-branch in .env to avoid this.")
+        return current
 
     def _get_current_branch(self) -> str:
         """Get the current git branch."""
