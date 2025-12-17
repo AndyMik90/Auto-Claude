@@ -319,7 +319,6 @@ export function registerTerminalHandlers(
         profileManager.updateAutoSwitchSettings(settings);
 
         // Restart usage monitor with new settings
-        const { getUsageMonitor } = await import('../claude-profile/usage-monitor');
         const monitor = getUsageMonitor();
         monitor.stop();
         monitor.start();
@@ -425,7 +424,6 @@ export function registerTerminalHandlers(
     IPC_CHANNELS.USAGE_REQUEST,
     async (): Promise<IPCResult<import('../../shared/types').ClaudeUsageSnapshot | null>> => {
       try {
-        const { getUsageMonitor } = await import('../claude-profile/usage-monitor');
         const monitor = getUsageMonitor();
         const usage = monitor.getCurrentUsage();
         return { success: true, data: usage };
