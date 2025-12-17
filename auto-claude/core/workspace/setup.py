@@ -184,6 +184,7 @@ def setup_workspace(
     spec_name: str,
     mode: WorkspaceMode,
     source_spec_dir: Path | None = None,
+    base_branch: str | None = None,
 ) -> tuple[Path, WorktreeManager | None, Path | None]:
     """
     Set up the workspace based on user's choice.
@@ -195,6 +196,7 @@ def setup_workspace(
         spec_name: Name of the spec being built (e.g., "001-feature-name")
         mode: The workspace mode to use
         source_spec_dir: Optional source spec directory to copy to worktree
+        base_branch: Base branch for worktree creation (default: current branch)
 
     Returns:
         Tuple of (working_directory, worktree_manager or None, localized_spec_dir or None)
@@ -215,7 +217,7 @@ def setup_workspace(
     # Ensure timeline tracking hook is installed (once per session)
     ensure_timeline_hook_installed(project_dir)
 
-    manager = WorktreeManager(project_dir)
+    manager = WorktreeManager(project_dir, base_branch=base_branch)
     manager.setup()
 
     # Get or create worktree for THIS SPECIFIC SPEC

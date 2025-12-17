@@ -246,5 +246,10 @@ export const IPC_CHANNELS = {
   INSIGHTS_ERROR: 'insights:error',
 
   // File explorer operations
-  FILE_EXPLORER_LIST: 'fileExplorer:list'
+  FILE_EXPLORER_LIST: 'fileExplorer:list',
+
+  // Git operations
+  GIT_GET_BRANCHES: 'git:getBranches',
+  GIT_GET_CURRENT_BRANCH: 'git:getCurrentBranch',
+  GIT_DETECT_MAIN_BRANCH: 'git:detectMainBranch'
 } as const;

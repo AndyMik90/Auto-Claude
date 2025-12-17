@@ -40,6 +40,7 @@ export interface IdeationConfig {
 export interface TaskExecutionOptions {
   parallel?: boolean;
   workers?: number;
+  baseBranch?: string;
 }
 
 export interface SpecCreationMetadata {

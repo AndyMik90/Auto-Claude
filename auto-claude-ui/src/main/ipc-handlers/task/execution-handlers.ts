@@ -62,6 +62,9 @@ export function registerTaskExecutionHandlers(
 
       console.log('[TASK_START] hasSpec:', hasSpec, 'needsSpecCreation:', needsSpecCreation, 'needsImplementation:', needsImplementation);
 
+      // Get base branch from project settings for worktree creation
+      const baseBranch = project.settings?.mainBranch;
+
       if (needsSpecCreation) {
         // No spec file - need to run spec_runner.py to create the spec
         const taskDescription = task.description || task.title;
@@ -89,7 +92,8 @@ export function registerTaskExecutionHandlers(
           task.specId,
           {
             parallel: false,  // Sequential for planning phase
-            workers: 1
+            workers: 1,
+            baseBranch
           }
         );
       } else {
@@ -103,7 +107,8 @@ export function registerTaskExecutionHandlers(
           task.specId,
           {
             parallel: false,
-            workers: 1
+            workers: 1,
+            baseBranch
           }
         );
       }

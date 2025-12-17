@@ -229,6 +229,14 @@ Environment Variables:
         help="Skip approval check and start build anyway (for debugging)",
     )
 
+    # Base branch for worktree creation
+    parser.add_argument(
+        "--base-branch",
+        type=str,
+        default=None,
+        help="Base branch for creating worktrees (default: auto-detect or current branch)",
+    )
+
     return parser.parse_args()
 
 
@@ -366,6 +374,7 @@ def main() -> None:
         auto_continue=args.auto_continue,
         skip_qa=args.skip_qa,
         force_bypass_approval=args.force,
+        base_branch=args.base_branch,
     )
 
 

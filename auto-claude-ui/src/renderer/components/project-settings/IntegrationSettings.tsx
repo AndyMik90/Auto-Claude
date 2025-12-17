@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Zap,
   Eye,
@@ -10,18 +11,31 @@ import {
   Import,
   Radio,
   Github,
-  RefreshCw
+  RefreshCw,
+  GitBranch
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
-import type { ProjectEnvConfig, LinearSyncStatus, GitHubSyncStatus } from '../../../shared/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../ui/select';
+import type { ProjectEnvConfig, LinearSyncStatus, GitHubSyncStatus, Project, ProjectSettings as ProjectSettingsType } from '../../../shared/types';
 
 interface IntegrationSettingsProps {
   envConfig: ProjectEnvConfig | null;
   updateEnvConfig: (updates: Partial<ProjectEnvConfig>) => void;
+
+  // Project settings for main branch
+  project: Project;
+  settings: ProjectSettingsType;
+  setSettings: React.Dispatch<React.SetStateAction<ProjectSettingsType>>;
 
   // Linear state
   showLinearKey: boolean;
@@ -44,6 +58,9 @@ interface IntegrationSettingsProps {
 export function IntegrationSettings({
   envConfig,
   updateEnvConfig,
+  project,
+  settings,
+  setSettings,
   showLinearKey,
   setShowLinearKey,
   linearConnectionStatus,
@@ -58,6 +75,38 @@ export function IntegrationSettings({
   githubExpanded,
   onGitHubToggle
 }: IntegrationSettingsProps) {
+  // Branch selection state
+  const [branches, setBranches] = useState<string[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+
+  // Load branches when GitHub section expands
+  useEffect(() => {
+    if (githubExpanded && project.path) {
+      loadBranches();
+    }
+  }, [githubExpanded, project.path]);
+
+  const loadBranches = async () => {
+    setIsLoadingBranches(true);
+    try {
+      const result = await window.electronAPI.getGitBranches(project.path);
+      if (result.success && result.data) {
+        setBranches(result.data);
+        // Auto-detect main branch if not set
+        if (!settings.mainBranch) {
+          const detectResult = await window.electronAPI.detectMainBranch(project.path);
+          if (detectResult.success && detectResult.data) {
+            setSettings(prev => ({ ...prev, mainBranch: detectResult.data! }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load branches:', error);
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  };
+
   if (!envConfig) return null;
 
   return (
@@ -384,6 +433,47 @@ export function IntegrationSettings({
                     checked={envConfig.githubAutoSync || false}
                     onCheckedChange={(checked) => updateEnvConfig({ githubAutoSync: checked })}
                   />
+                </div>
+
+                <Separator />
+
+                {/* Main Branch Selection */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <GitBranch className="h-4 w-4 text-info" />
+                    <Label className="text-sm font-medium text-foreground">Main Branch</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The base branch for creating task worktrees. All new tasks will branch from here.
+                  </p>
+                  <Select
+                    value={settings.mainBranch || ''}
+                    onValueChange={(value) => setSettings(prev => ({ ...prev, mainBranch: value }))}
+                    disabled={isLoadingBranches || branches.length === 0}
+                  >
+                    <SelectTrigger>
+                      {isLoadingBranches ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span>Loading branches...</span>
+                        </div>
+                      ) : (
+                        <SelectValue placeholder="Select main branch" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch} value={branch}>
+                          {branch}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {settings.mainBranch && (
+                    <p className="text-xs text-muted-foreground">
+                      Tasks will be created on branches like <code className="px-1 bg-muted rounded">auto-claude/task-name</code> from <code className="px-1 bg-muted rounded">{settings.mainBranch}</code>
+                    </p>
+                  )}
                 </div>
               </>
             )}

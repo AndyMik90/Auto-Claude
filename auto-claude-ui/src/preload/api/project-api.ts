@@ -67,6 +67,11 @@ export interface ProjectAPI {
     falkorDbUri: string,
     openAiApiKey: string
   ) => Promise<IPCResult<GraphitiConnectionTestResult>>;
+
+  // Git Operations
+  getGitBranches: (projectPath: string) => Promise<IPCResult<string[]>>;
+  getCurrentGitBranch: (projectPath: string) => Promise<IPCResult<string | null>>;
+  detectMainBranch: (projectPath: string) => Promise<IPCResult<string | null>>;
 }
 
 export const createProjectAPI = (): ProjectAPI => ({
@@ -165,5 +170,15 @@ export const createProjectAPI = (): ProjectAPI => ({
     falkorDbUri: string,
     openAiApiKey: string
   ): Promise<IPCResult<GraphitiConnectionTestResult>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_TEST_CONNECTION, falkorDbUri, openAiApiKey)
+    ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_TEST_CONNECTION, falkorDbUri, openAiApiKey),
+
+  // Git Operations
+  getGitBranches: (projectPath: string): Promise<IPCResult<string[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GIT_GET_BRANCHES, projectPath),
+
+  getCurrentGitBranch: (projectPath: string): Promise<IPCResult<string | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GIT_GET_CURRENT_BRANCH, projectPath),
+
+  detectMainBranch: (projectPath: string): Promise<IPCResult<string | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GIT_DETECT_MAIN_BRANCH, projectPath)
 });

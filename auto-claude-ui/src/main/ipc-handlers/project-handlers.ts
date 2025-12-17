@@ -1,6 +1,7 @@
 import { ipcMain, app } from 'electron';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type {
   Project,
@@ -21,6 +22,79 @@ import { changelogService } from '../changelog-service';
 import { insightsService } from '../insights-service';
 import { titleGenerator } from '../title-generator';
 import type { BrowserWindow } from 'electron';
+
+// ============================================
+// Git Helper Functions
+// ============================================
+
+/**
+ * Get list of git branches for a directory
+ */
+function getGitBranches(projectPath: string): string[] {
+  try {
+    const result = execSync('git branch --list --format="%(refname:short)"', {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    return result.trim().split('\n').filter(b => b.trim());
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get the current git branch for a directory
+ */
+function getCurrentGitBranch(projectPath: string): string | null {
+  try {
+    const result = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    return result.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Detect the main branch for a git repository
+ * Checks for common main branch names in order of preference
+ */
+function detectMainBranch(projectPath: string): string | null {
+  const branches = getGitBranches(projectPath);
+  if (branches.length === 0) return null;
+
+  // Check for common main branch names in order of preference
+  const mainBranchCandidates = ['main', 'master', 'develop', 'dev', 'trunk'];
+  for (const candidate of mainBranchCandidates) {
+    if (branches.includes(candidate)) {
+      return candidate;
+    }
+  }
+
+  // If none of the common names found, check for origin/HEAD reference
+  try {
+    const result = execSync('git symbolic-ref refs/remotes/origin/HEAD', {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    const ref = result.trim();
+    // Extract branch name from refs/remotes/origin/main
+    const match = ref.match(/refs\/remotes\/origin\/(.+)/);
+    if (match && branches.includes(match[1])) {
+      return match[1];
+    }
+  } catch {
+    // origin/HEAD not set, continue with fallback
+  }
+
+  // Fallback: return the first branch (usually the current one)
+  return branches[0] || null;
+}
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
@@ -322,6 +396,67 @@ export function registerProjectHandlers(
           return { success: false, error: 'Project not found' };
         }
         return { success: true, data: hasLocalSource(project.path) };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Git Operations
+  // ============================================
+
+  // Get all branches for a project
+  ipcMain.handle(
+    IPC_CHANNELS.GIT_GET_BRANCHES,
+    async (_, projectPath: string): Promise<IPCResult<string[]>> => {
+      try {
+        if (!existsSync(projectPath)) {
+          return { success: false, error: 'Directory does not exist' };
+        }
+        const branches = getGitBranches(projectPath);
+        return { success: true, data: branches };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    }
+  );
+
+  // Get current branch for a project
+  ipcMain.handle(
+    IPC_CHANNELS.GIT_GET_CURRENT_BRANCH,
+    async (_, projectPath: string): Promise<IPCResult<string | null>> => {
+      try {
+        if (!existsSync(projectPath)) {
+          return { success: false, error: 'Directory does not exist' };
+        }
+        const branch = getCurrentGitBranch(projectPath);
+        return { success: true, data: branch };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    }
+  );
+
+  // Auto-detect main branch for a project
+  ipcMain.handle(
+    IPC_CHANNELS.GIT_DETECT_MAIN_BRANCH,
+    async (_, projectPath: string): Promise<IPCResult<string | null>> => {
+      try {
+        if (!existsSync(projectPath)) {
+          return { success: false, error: 'Directory does not exist' };
+        }
+        const mainBranch = detectMainBranch(projectPath);
+        return { success: true, data: mainBranch };
       } catch (error) {
         return {
           success: false,

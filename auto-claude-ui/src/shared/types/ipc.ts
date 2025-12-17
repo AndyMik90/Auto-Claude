@@ -459,6 +459,11 @@ export interface ElectronAPI {
 
   // File explorer operations
   listDirectory: (dirPath: string) => Promise<IPCResult<FileNode[]>>;
+
+  // Git operations
+  getGitBranches: (projectPath: string) => Promise<IPCResult<string[]>>;
+  getCurrentGitBranch: (projectPath: string) => Promise<IPCResult<string | null>>;
+  detectMainBranch: (projectPath: string) => Promise<IPCResult<string | null>>;
 }
 
 declare global {

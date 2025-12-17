@@ -118,6 +118,9 @@ export function ProjectSettings({ project, open, onOpenChange }: ProjectSettings
                 <IntegrationSettings
                   envConfig={envConfig}
                   updateEnvConfig={updateEnvConfig}
+                  project={project}
+                  settings={settings}
+                  setSettings={setSettings}
                   showLinearKey={showLinearKey}
                   setShowLinearKey={setShowLinearKey}
                   linearConnectionStatus={linearConnectionStatus}

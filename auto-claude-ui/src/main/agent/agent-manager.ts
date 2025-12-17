@@ -125,6 +125,11 @@ export class AgentManager extends EventEmitter {
     // Force: When user starts a task from the UI, that IS their approval
     args.push('--force');
 
+    // Pass base branch if specified (ensures worktrees are created from the correct branch)
+    if (options.baseBranch) {
+      args.push('--base-branch', options.baseBranch);
+    }
+
     // Note: --parallel was removed from run.py CLI - parallel execution is handled internally by the agent
     // The options.parallel and options.workers are kept for future use or logging purposes
 

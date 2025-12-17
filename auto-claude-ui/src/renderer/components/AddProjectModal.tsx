@@ -63,6 +63,17 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
       if (path) {
         const project = await addProject(path);
         if (project) {
+          // Auto-detect and save the main branch for the project
+          try {
+            const mainBranchResult = await window.electronAPI.detectMainBranch(path);
+            if (mainBranchResult.success && mainBranchResult.data) {
+              await window.electronAPI.updateProjectSettings(project.id, {
+                mainBranch: mainBranchResult.data
+              });
+            }
+          } catch {
+            // Non-fatal - main branch can be set later in settings
+          }
           onProjectAdded?.(project, !project.autoBuildPath);
           onOpenChange(false);
         }
@@ -112,6 +123,20 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
       // Add the project to our store
       const project = await addProject(result.data.path);
       if (project) {
+        // For new projects with git init, set main branch
+        // Git init creates 'main' branch by default on modern git
+        if (initGit) {
+          try {
+            const mainBranchResult = await window.electronAPI.detectMainBranch(result.data.path);
+            if (mainBranchResult.success && mainBranchResult.data) {
+              await window.electronAPI.updateProjectSettings(project.id, {
+                mainBranch: mainBranchResult.data
+              });
+            }
+          } catch {
+            // Non-fatal - main branch can be set later in settings
+          }
+        }
         onProjectAdded?.(project, true); // New projects always need init
         onOpenChange(false);
       }

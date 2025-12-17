@@ -68,5 +68,21 @@ export const projectMock = {
   listDirectory: async () => ({
     success: true,
     data: []
+  }),
+
+  // Git operations
+  getGitBranches: async () => ({
+    success: true,
+    data: ['main', 'develop', 'feature/test']
+  }),
+
+  getCurrentGitBranch: async () => ({
+    success: true,
+    data: 'main'
+  }),
+
+  detectMainBranch: async () => ({
+    success: true,
+    data: 'main'
   })
 };
