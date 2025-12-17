@@ -240,7 +240,7 @@ Examples:
             print()
 
             # Build the run.py command
-            run_script = Path(__file__).parent / "run.py"
+            run_script = Path(__file__).parent.parent / "run.py"
             run_cmd = [
                 sys.executable,
                 str(run_script),

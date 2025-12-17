@@ -1,3 +1,15 @@
+## 2.3.1 - Linux Compatibility Fix
+
+### 🐛 Bug Fixes
+
+- Resolved path handling issues on Linux systems for improved cross-platform compatibility
+
+---
+
+## What's Changed
+
+- fix: Fix to linux path issue by @AndyMik90 in 3276034
+
 ## 2.2.0 - 2025-12-17
 
 ### ✨ New Features
