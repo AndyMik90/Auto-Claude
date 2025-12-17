@@ -15,6 +15,7 @@ import { registerTaskCRUDHandlers } from './crud-handlers';
 import { registerTaskExecutionHandlers } from './execution-handlers';
 import { registerWorktreeHandlers } from './worktree-handlers';
 import { registerTaskLogsHandlers } from './logs-handlers';
+import { registerTaskArchiveHandlers } from './archive-handlers';
 
 /**
  * Register all task-related IPC handlers
@@ -35,6 +36,9 @@ export function registerTaskHandlers(
 
   // Register logs handlers (get, watch, unwatch)
   registerTaskLogsHandlers(getMainWindow);
+
+  // Register archive handlers (archive, unarchive)
+  registerTaskArchiveHandlers();
 }
 
 // Export shared utilities for use by other modules if needed

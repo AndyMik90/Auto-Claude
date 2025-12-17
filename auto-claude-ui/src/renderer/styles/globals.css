@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* Auto-Build UI Design System - Oscura Midnight Theme */
 /* A modern, professional design system with deep dark mode and warm yellow accents */

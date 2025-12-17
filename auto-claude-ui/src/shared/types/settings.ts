@@ -3,6 +3,7 @@
  */
 
 import type { NotificationSettings } from './project';
+import type { ChangelogFormat, ChangelogAudience, ChangelogEmojiLevel } from './changelog';
 
 // Thinking level for Claude model (budget token allocation)
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
@@ -33,6 +34,10 @@ export interface AppSettings {
   onboardingCompleted?: boolean;
   // Selected agent profile for preset model/thinking configurations
   selectedAgentProfile?: string;
+  // Changelog preferences
+  changelogFormat?: ChangelogFormat;
+  changelogAudience?: ChangelogAudience;
+  changelogEmojiLevel?: ChangelogEmojiLevel;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

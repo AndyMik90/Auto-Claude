@@ -17,6 +17,7 @@ import type {
   GitTagInfo
 } from '../../shared/types';
 import { ChangelogGenerator } from './generator';
+import { VersionSuggester } from './version-suggester';
 import { parseExistingChangelog } from './parser';
 import {
   getBranches,
@@ -38,6 +39,7 @@ export class ChangelogService extends EventEmitter {
   private cachedEnv: Record<string, string> | null = null;
   private debugEnabled: boolean | null = null;
   private generator: ChangelogGenerator | null = null;
+  private versionSuggester: VersionSuggester | null = null;
 
   constructor() {
     super();
@@ -240,6 +242,32 @@ export class ChangelogService extends EventEmitter {
     return this.generator;
   }
 
+  /**
+   * Get or create the version suggester instance
+   */
+  private getVersionSuggester(): VersionSuggester {
+    if (!this.versionSuggester) {
+      const autoBuildSource = this.getAutoBuildSourcePath();
+      if (!autoBuildSource) {
+        throw new Error('Auto-build source path not found');
+      }
+
+      // Verify claude CLI is available
+      if (this.claudePath !== 'claude' && !existsSync(this.claudePath)) {
+        throw new Error(`Claude CLI not found. Please ensure Claude Code is installed. Looked for: ${this.claudePath}`);
+      }
+
+      this.versionSuggester = new VersionSuggester(
+        this.pythonPath,
+        this.claudePath,
+        autoBuildSource,
+        this.isDebugEnabled()
+      );
+    }
+
+    return this.versionSuggester;
+  }
+
   // ============================================
   // Task Management
   // ============================================
@@ -432,7 +460,7 @@ export class ChangelogService extends EventEmitter {
   }
 
   /**
-   * Suggest next version based on task types
+   * Suggest next version based on task types (rule-based)
    */
   suggestVersion(specs: TaskSpecContent[], currentVersion?: string): string {
     // Default starting version
@@ -445,7 +473,7 @@ export class ChangelogService extends EventEmitter {
       return '1.0.0';
     }
 
-    let [major, minor, patch] = parts;
+    const [major, minor, patch] = parts;
 
     // Analyze specs for version increment decision
     let hasBreakingChanges = false;
@@ -471,6 +499,46 @@ export class ChangelogService extends EventEmitter {
       return `${major}.${minor + 1}.0`;
     } else {
       return `${major}.${minor}.${patch + 1}`;
+    }
+  }
+
+  /**
+   * Suggest version using AI analysis of git commits
+   */
+  async suggestVersionFromCommits(
+    projectPath: string,
+    commits: import('../../shared/types').GitCommit[],
+    currentVersion?: string
+  ): Promise<{ version: string; reason: string }> {
+    try {
+      // Default starting version
+      if (!currentVersion) {
+        return { version: '1.0.0', reason: 'Initial version' };
+      }
+
+      const parts = currentVersion.split('.').map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) {
+        return { version: '1.0.0', reason: 'Invalid current version, resetting to 1.0.0' };
+      }
+
+      // Use AI to analyze commits and suggest version bump
+      const suggester = this.getVersionSuggester();
+      const suggestion = await suggester.suggestVersionBump(commits, currentVersion);
+
+      this.debug('AI version suggestion', suggestion);
+
+      return {
+        version: suggestion.version,
+        reason: suggestion.reason
+      };
+    } catch (error) {
+      this.debug('Error in AI version suggestion, falling back to patch bump', error);
+      // Fallback to patch bump if AI fails
+      const [major, minor, patch] = (currentVersion || '1.0.0').split('.').map(Number);
+      return {
+        version: `${major}.${minor}.${patch + 1}`,
+        reason: 'Patch version bump (AI analysis failed)'
+      };
     }
   }
 }

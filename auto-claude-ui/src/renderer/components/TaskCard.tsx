@@ -17,7 +17,7 @@ import {
   EXECUTION_PHASE_LABELS,
   EXECUTION_PHASE_BADGE_COLORS
 } from '../../shared/constants';
-import { startTask, stopTask, checkTaskRunning, recoverStuckTask, isIncompleteHumanReview } from '../stores/task-store';
+import { startTask, stopTask, checkTaskRunning, recoverStuckTask, isIncompleteHumanReview, archiveTasks } from '../stores/task-store';
 import type { Task, TaskCategory, ExecutionPhase, ReviewReason } from '../../shared/types';
 
 // Category icon mapping
@@ -83,6 +83,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
       setHasCheckedRunning(false);
     }
     setIsRecovering(false);
+  };
+
+  const handleArchive = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await archiveTasks(task.projectId, [task.id]);
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -329,6 +334,17 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             >
               <Play className="mr-1.5 h-3 w-3" />
               Resume
+            </Button>
+          ) : task.status === 'done' && !task.metadata?.archivedAt ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2.5 hover:bg-muted-foreground/10"
+              onClick={handleArchive}
+              title="Archive task"
+            >
+              <Archive className="mr-1.5 h-3 w-3" />
+              Archive
             </Button>
           ) : (task.status === 'backlog' || task.status === 'in_progress') && (
             <Button

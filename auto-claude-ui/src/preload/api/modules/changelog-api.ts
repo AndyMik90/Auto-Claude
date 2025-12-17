@@ -32,6 +32,10 @@ export interface ChangelogAPI {
     projectId: string,
     taskIds: string[]
   ) => Promise<IPCResult<{ version: string; reason: string }>>;
+  suggestChangelogVersionFromCommits: (
+    projectId: string,
+    commits: GitCommit[]
+  ) => Promise<IPCResult<{ version: string; reason: string }>>;
   getChangelogBranches: (projectId: string) => Promise<IPCResult<GitBranchInfo[]>>;
   getChangelogTags: (projectId: string) => Promise<IPCResult<GitTagInfo[]>>;
   getChangelogCommitsPreview: (
@@ -82,6 +86,12 @@ export const createChangelogAPI = (): ChangelogAPI => ({
     taskIds: string[]
   ): Promise<IPCResult<{ version: string; reason: string }>> =>
     invokeIpc(IPC_CHANNELS.CHANGELOG_SUGGEST_VERSION, projectId, taskIds),
+
+  suggestChangelogVersionFromCommits: (
+    projectId: string,
+    commits: GitCommit[]
+  ): Promise<IPCResult<{ version: string; reason: string }>> =>
+    invokeIpc(IPC_CHANNELS.CHANGELOG_SUGGEST_VERSION_FROM_COMMITS, projectId, commits),
 
   getChangelogBranches: (projectId: string): Promise<IPCResult<GitBranchInfo[]>> =>
     invokeIpc(IPC_CHANNELS.CHANGELOG_GET_BRANCHES, projectId),

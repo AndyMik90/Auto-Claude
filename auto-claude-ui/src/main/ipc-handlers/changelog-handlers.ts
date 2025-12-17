@@ -210,6 +210,48 @@ export function registerChangelogHandlers(
     }
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.CHANGELOG_SUGGEST_VERSION_FROM_COMMITS,
+    async (_, projectId: string, commits: GitCommit[]): Promise<IPCResult<{ version: string; reason: string }>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        // Get current version from existing changelog or git tags
+        const existing = changelogService.readExistingChangelog(project.path);
+        let currentVersion = existing.lastVersion;
+
+        // If no version in changelog, try to get latest tag
+        if (!currentVersion) {
+          const tags = changelogService.getTags(project.path);
+          if (tags.length > 0) {
+            // Extract version from tag name (e.g., "v2.1.0" -> "2.1.0")
+            currentVersion = tags[0].name.replace(/^v/, '');
+          }
+        }
+
+        // Use AI to analyze commits and suggest version
+        const result = await changelogService.suggestVersionFromCommits(
+          project.path,
+          commits,
+          currentVersion
+        );
+
+        return {
+          success: true,
+          data: result
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to suggest version from commits'
+        };
+      }
+    }
+  );
+
   // ============================================
   // Changelog Git Operations
   // ============================================

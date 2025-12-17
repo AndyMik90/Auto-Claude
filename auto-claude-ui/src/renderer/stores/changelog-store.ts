@@ -17,6 +17,8 @@ import type {
   BranchDiffOptions
 } from '../../shared/types';
 import { useTaskStore } from './task-store';
+import { useSettingsStore } from './settings-store';
+import { saveSettings } from './settings-store';
 
 interface ChangelogState {
   // Data
@@ -105,6 +107,7 @@ interface ChangelogState {
   setAudience: (audience: ChangelogAudience) => void;
   setEmojiLevel: (level: ChangelogEmojiLevel) => void;
   setCustomInstructions: (instructions: string) => void;
+  initializeFromSettings: () => void;
 
   // Generation actions
   setGenerationProgress: (progress: ChangelogGenerationProgress | null) => void;
@@ -239,10 +242,27 @@ export const useChangelogStore = create<ChangelogState>((set, get) => ({
   // Config actions
   setVersion: (version) => set({ version }),
   setDate: (date) => set({ date }),
-  setFormat: (format) => set({ format }),
-  setAudience: (audience) => set({ audience }),
-  setEmojiLevel: (level) => set({ emojiLevel: level }),
+  setFormat: (format) => {
+    set({ format });
+    saveSettings({ changelogFormat: format });
+  },
+  setAudience: (audience) => {
+    set({ audience });
+    saveSettings({ changelogAudience: audience });
+  },
+  setEmojiLevel: (level) => {
+    set({ emojiLevel: level });
+    saveSettings({ changelogEmojiLevel: level });
+  },
   setCustomInstructions: (instructions) => set({ customInstructions: instructions }),
+  initializeFromSettings: () => {
+    const settings = useSettingsStore.getState().settings;
+    set({
+      format: settings.changelogFormat || 'keep-a-changelog',
+      audience: settings.changelogAudience || 'user-facing',
+      emojiLevel: settings.changelogEmojiLevel || 'none'
+    });
+  },
 
   // Generation actions
   setGenerationProgress: (progress) => set({ generationProgress: progress }),
@@ -340,6 +360,11 @@ export async function loadGitData(projectId: string): Promise<void> {
       }
       if (tagsResult.data.length > 1 && !store.gitHistoryToTag) {
         store.setGitHistoryToTag(tagsResult.data[1].name);
+      }
+
+      // Auto-set since-version to newest tag if not already set
+      if (tagsResult.data.length > 0 && !store.gitHistorySinceVersion) {
+        store.setGitHistorySinceVersion(tagsResult.data[0].name);
       }
     }
   } catch (error) {

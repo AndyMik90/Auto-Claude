@@ -99,6 +99,12 @@ export function useChangelog() {
   const [copySuccess, setCopySuccess] = useState(false);
   const [versionReason, setVersionReason] = useState<string | null>(null);
 
+  // Initialize changelog preferences from settings on mount
+  const initializeFromSettings = useChangelogStore((state) => state.initializeFromSettings);
+  useEffect(() => {
+    initializeFromSettings();
+  }, [initializeFromSettings]);
+
   // Load data when project changes
   useEffect(() => {
     if (selectedProjectId) {
@@ -204,17 +210,32 @@ export function useChangelog() {
   };
 
   const handleContinue = async () => {
-    if (selectedProjectId && selectedTaskIds.length > 0) {
+    if (selectedProjectId) {
       try {
-        const result = await window.electronAPI.suggestChangelogVersion(
-          selectedProjectId,
-          selectedTaskIds
-        );
-        if (result.success && result.data) {
-          setVersion(result.data.version);
-          setVersionReason(result.data.reason);
+        // Use different version suggestion based on source mode
+        if (sourceMode === 'tasks' && selectedTaskIds.length > 0) {
+          // Task-based: Use rule-based suggester
+          const result = await window.electronAPI.suggestChangelogVersion(
+            selectedProjectId,
+            selectedTaskIds
+          );
+          if (result.success && result.data) {
+            setVersion(result.data.version);
+            setVersionReason(result.data.reason);
+          }
+        } else if ((sourceMode === 'git-history' || sourceMode === 'branch-diff') && previewCommits.length > 0) {
+          // Git-based: Use AI-powered suggester with commits
+          const result = await window.electronAPI.suggestChangelogVersionFromCommits(
+            selectedProjectId,
+            previewCommits
+          );
+          if (result.success && result.data) {
+            setVersion(result.data.version);
+            setVersionReason(result.data.reason);
+          }
         }
-      } catch {
+      } catch (error) {
+        console.error('Failed to suggest version:', error);
         setVersionReason(null);
       }
     }

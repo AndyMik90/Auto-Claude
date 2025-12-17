@@ -393,6 +393,37 @@ export async function deleteTask(
   }
 }
 
+/**
+ * Archive tasks
+ * Marks tasks as archived by adding archivedAt timestamp to metadata
+ */
+export async function archiveTasks(
+  projectId: string,
+  taskIds: string[],
+  version?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await window.electronAPI.archiveTasks(projectId, taskIds, version);
+
+    if (result.success) {
+      // Reload tasks to update the UI (archived tasks will be filtered out by default)
+      await loadTasks(projectId);
+      return { success: true };
+    }
+
+    return {
+      success: false,
+      error: result.error || 'Failed to archive tasks'
+    };
+  } catch (error) {
+    console.error('Error archiving tasks:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
 // ============================================
 // Task Creation Draft Management
 // ============================================

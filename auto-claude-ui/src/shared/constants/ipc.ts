@@ -222,6 +222,7 @@ export const IPC_CHANNELS = {
   CHANGELOG_SAVE: 'changelog:save',
   CHANGELOG_READ_EXISTING: 'changelog:readExisting',
   CHANGELOG_SUGGEST_VERSION: 'changelog:suggestVersion',
+  CHANGELOG_SUGGEST_VERSION_FROM_COMMITS: 'changelog:suggestVersionFromCommits',
 
   // Changelog git operations (for git-based changelog generation)
   CHANGELOG_GET_BRANCHES: 'changelog:getBranches',

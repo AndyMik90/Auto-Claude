@@ -31,7 +31,7 @@ const FORMAT_TEMPLATES = {
 **Bug Fixes:**
 - [List fixes]`,
 
-  'github-release': (version: string) => `## What's New in v${version}
+  'github-release': (version: string, date: string) => `## ${version} - ${date}
 
 ### New Features
 
@@ -223,9 +223,9 @@ export function buildGitPrompt(
   let formatSpecificInstructions = '';
   if (request.format === 'github-release') {
     formatSpecificInstructions = `
-For GitHub Release format, create TWO parts:
+For GitHub Release format, create TWO parts after the version header:
 
-PART 1 - "What's New" (summarized changes):
+PART 1 - Categorized changes (summarized):
 - Use category sections: New Features, Improvements, Bug Fixes, Documentation, Other Changes
 - ONLY include sections that have actual changes - skip empty sections entirely
 - Add a blank line between each bullet point for cleaner formatting
