@@ -756,49 +756,63 @@ export function TaskCreationWizard({
             </div>
           )}
 
-          {/* Referenced Files Section */}
-          {showFiles && (
-            <div
-              className={cn(
-                "space-y-3 p-4 rounded-lg border bg-muted/30 relative transition-all",
-                activeDragData && isOverDropZone && !isAtMaxFiles && "ring-2 ring-info border-info",
-                activeDragData && isOverDropZone && isAtMaxFiles && "ring-2 ring-warning border-warning",
-                !activeDragData || !isOverDropZone ? "border-border" : ""
-              )}
-            >
-              {/* Drop zone overlay indicator - shows when dragging over the modal */}
-              {activeDragData && isOverDropZone && (
+          {/* Referenced Files Section - Always visible */}
+          <div
+            className={cn(
+              "space-y-3 p-4 rounded-lg border bg-muted/30 relative transition-all",
+              activeDragData && isOverDropZone && !isAtMaxFiles && "ring-2 ring-info border-info",
+              activeDragData && isOverDropZone && isAtMaxFiles && "ring-2 ring-warning border-warning",
+              !activeDragData || !isOverDropZone ? "border-border" : ""
+            )}
+          >
+            {/* Drop zone overlay indicator - shows when dragging over the modal */}
+            {activeDragData && isOverDropZone && (
+              <div className={cn(
+                "absolute inset-0 z-10 flex items-center justify-center pointer-events-none rounded-lg",
+                isAtMaxFiles ? "bg-warning/10" : "bg-info/10"
+              )}>
                 <div className={cn(
-                  "absolute inset-0 z-10 flex items-center justify-center pointer-events-none rounded-lg",
-                  isAtMaxFiles ? "bg-warning/10" : "bg-info/10"
+                  "flex items-center gap-2 px-3 py-2 rounded-md",
+                  isAtMaxFiles ? "bg-warning/90 text-warning-foreground" : "bg-info/90 text-info-foreground"
                 )}>
-                  <div className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-md",
-                    isAtMaxFiles ? "bg-warning/90 text-warning-foreground" : "bg-info/90 text-info-foreground"
-                  )}>
-                    <FileDown className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      {isAtMaxFiles ? `Max ${MAX_REFERENCED_FILES} files reached` : 'Drop to add reference'}
-                    </span>
-                  </div>
+                  <FileDown className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    {isAtMaxFiles ? `Max ${MAX_REFERENCED_FILES} files reached` : 'Drop to add reference'}
+                  </span>
                 </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Reference specific files or folders from your project to provide context for the AI.
-              </p>
-              <ReferencedFilesSection
-                files={referencedFiles}
-                onRemove={(id) => setReferencedFiles(prev => prev.filter(f => f.id !== id))}
-                maxFiles={MAX_REFERENCED_FILES}
-                disabled={isCreating}
-              />
-              {referencedFiles.length === 0 && (
-                <p className="text-xs text-muted-foreground italic">
-                  No files referenced yet. Drag files from the file explorer to add them.
-                </p>
+              </div>
+            )}
+
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <FolderTree className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Referenced Files</span>
+              {referencedFiles.length > 0 && (
+                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                  {referencedFiles.length}/{MAX_REFERENCED_FILES}
+                </span>
               )}
             </div>
-          )}
+
+            {/* Empty state hint */}
+            {referencedFiles.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Drag files from the file explorer to add references, or use the "Browse Files" button below.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  These files will provide context for the AI when working on your task.
+                </p>
+                <ReferencedFilesSection
+                  files={referencedFiles}
+                  onRemove={(id) => setReferencedFiles(prev => prev.filter(f => f.id !== id))}
+                  maxFiles={MAX_REFERENCED_FILES}
+                  disabled={isCreating}
+                />
+              </>
+            )}
+          </div>
 
           {/* Review Requirement Toggle */}
           <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
