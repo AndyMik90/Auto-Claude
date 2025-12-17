@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
-import type { IPCResult, Task, TaskStartOptions, TaskStatus } from '../../../shared/types';
+import type { IPCResult, TaskStartOptions, TaskStatus } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { AgentManager } from '../../agent';
@@ -19,7 +19,7 @@ export function registerTaskExecutionHandlers(
    */
   ipcMain.on(
     IPC_CHANNELS.TASK_START,
-    (_, taskId: string, options?: TaskStartOptions) => {
+    (_, taskId: string, _options?: TaskStartOptions) => {
       console.log('[TASK_START] Received request for taskId:', taskId);
       const mainWindow = getMainWindow();
       if (!mainWindow) {
@@ -76,9 +76,9 @@ export function registerTaskExecutionHandlers(
       } else if (needsImplementation) {
         // Spec exists but no subtasks - run run.py to create implementation plan and execute
         // Read the spec.md to get the task description
-        let taskDescription = task.description || task.title;
+        const _taskDescription = task.description || task.title;
         try {
-          taskDescription = readFileSync(specFilePath, 'utf-8');
+          readFileSync(specFilePath, 'utf-8');
         } catch {
           // Use default description
         }
@@ -505,16 +505,29 @@ export function registerTaskExecutionHandlers(
             const specDirForWatcher = path.join(project.path, specsBaseDir, task.specId);
             fileWatcher.watch(taskId, specDirForWatcher);
 
-            // Note: Parallel execution is handled internally by the agent
-            agentManager.startTaskExecution(
-              taskId,
-              project.path,
-              task.specId,
-              {
-                parallel: false,
-                workers: 1
-              }
-            );
+            // Check if spec.md exists to determine whether to run spec creation or task execution
+            const specFilePath = path.join(specDirForWatcher, AUTO_BUILD_PATHS.SPEC_FILE);
+            const hasSpec = existsSync(specFilePath);
+            const needsSpecCreation = !hasSpec;
+
+            if (needsSpecCreation) {
+              // No spec file - need to run spec_runner.py to create the spec
+              const taskDescription = task.description || task.title;
+              console.log(`[Recovery] Starting spec creation for: ${task.specId}`);
+              agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDirForWatcher, task.metadata);
+            } else {
+              // Spec exists - run task execution
+              console.log(`[Recovery] Starting task execution for: ${task.specId}`);
+              agentManager.startTaskExecution(
+                taskId,
+                project.path,
+                task.specId,
+                {
+                  parallel: false,
+                  workers: 1
+                }
+              );
+            }
 
             autoRestarted = true;
             console.log(`[Recovery] Auto-restarted task ${taskId}`);

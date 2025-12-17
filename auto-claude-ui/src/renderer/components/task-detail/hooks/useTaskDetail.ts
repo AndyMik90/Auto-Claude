@@ -55,16 +55,26 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   const taskProgress = getTaskProgress(task);
 
   // Check if task is stuck (status says in_progress but no actual process)
+  // Add a grace period to avoid false positives during process spawn
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | undefined;
+
     if (isRunning && !hasCheckedRunning) {
-      checkTaskRunning(task.id).then((actuallyRunning) => {
-        setIsStuck(!actuallyRunning);
-        setHasCheckedRunning(true);
-      });
+      // Wait 2 seconds before checking - gives process time to spawn and register
+      timeoutId = setTimeout(() => {
+        checkTaskRunning(task.id).then((actuallyRunning) => {
+          setIsStuck(!actuallyRunning);
+          setHasCheckedRunning(true);
+        });
+      }, 2000);
     } else if (!isRunning) {
       setIsStuck(false);
       setHasCheckedRunning(false);
     }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [task.id, isRunning, hasCheckedRunning]);
 
   // Handle scroll events in logs to detect if user scrolled up
@@ -192,7 +202,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
         console.log('%c[useTaskDetail] Restored merge preview from sessionStorage:', 'color: magenta;', previewData);
         setMergePreview(previewData);
         // Don't auto-popup - restored data stays silent
-      } catch (e) {
+      } catch {
         console.warn('[useTaskDetail] Failed to parse stored merge preview');
         sessionStorage.removeItem(storageKey);
       }
