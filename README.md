@@ -39,6 +39,20 @@ The Desktop UI is the recommended way to use Auto Claude. It provides visual tas
 3. **Docker Desktop** - Required for the Memory Layer
 4. **Claude Code CLI** - `npm install -g @anthropic-ai/claude-code`
 5. **Claude Subscription** - Requires [Claude Pro or Max](https://claude.ai/upgrade) for Claude Code access
+6. **Git Repository** - Your project must be initialized as a git repository
+
+### Git Initialization
+
+**Auto Claude requires a git repository** to create isolated worktrees for safe parallel development. If your project isn't a git repo yet:
+
+```bash
+cd your-project
+git init
+git add .
+git commit -m "Initial commit"
+```
+
+> **Why git?** Auto Claude uses git branches and worktrees to isolate each task in its own workspace, keeping your main branch clean until you're ready to merge. This allows you to work on multiple features simultaneously without conflicts.
 
 ---
 
@@ -250,6 +264,29 @@ your-project/
 │   └── ...
 └── docker-compose.yml        # FalkorDB for Memory Layer
 ```
+
+### Understanding the Folders
+
+**You don't create these folders manually** - they serve different purposes:
+
+- **`auto-claude/`** - The framework repository itself (clone this once from GitHub)
+- **`.auto-claude/`** - Created automatically in YOUR project when you run Auto Claude (stores specs, plans, QA reports)
+- **`.worktrees/`** - Temporary isolated workspaces created during builds (git-ignored, deleted after merge)
+
+**When using Auto Claude on your project:**
+```bash
+cd your-project/              # Your own project directory
+python /path/to/auto-claude/run.py --spec 001
+# Auto Claude creates .auto-claude/ automatically in your-project/
+```
+
+**When developing Auto Claude itself:**
+```bash
+git clone https://github.com/yourusername/auto-claude
+cd auto-claude/               # You're working in the framework repo
+```
+
+The `.auto-claude/` directory is gitignored and project-specific - you'll have one per project you use Auto Claude on.
 
 ## Environment Variables (CLI Only)
 
