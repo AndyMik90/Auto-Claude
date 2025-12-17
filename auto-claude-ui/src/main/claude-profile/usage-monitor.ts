@@ -318,8 +318,8 @@ export class UsageMonitor extends EventEmitter {
       limitType
     });
 
-    // Fetch usage for newly active profile immediately
-    this.checkUsageAndSwap();
+    // Note: Don't immediately check new profile - let normal interval handle it
+    // This prevents cascading swaps if multiple profiles are near limits
   }
 }
 

@@ -48,6 +48,34 @@ export class AgentManager extends EventEmitter {
       console.log('[AgentManager] Auto-swap restart:', taskId, newProfileId);
       this.restartTask(taskId);
     });
+
+    // Listen for task completion to clean up context (prevent memory leak)
+    this.on('exit', (taskId: string, code: number | null) => {
+      // Clean up context when:
+      // 1. Task completed successfully (code === 0), or
+      // 2. Task failed and won't be restarted (handled by auto-swap logic)
+
+      // Note: Auto-swap restart happens BEFORE this exit event is processed,
+      // so we need a small delay to allow restart to preserve context
+      setTimeout(() => {
+        const context = this.taskExecutionContext.get(taskId);
+        if (!context) return; // Already cleaned up or restarted
+
+        // If task completed successfully, always clean up
+        if (code === 0) {
+          this.taskExecutionContext.delete(taskId);
+          console.log('[AgentManager] Cleaned up context for completed task:', taskId);
+          return;
+        }
+
+        // If task failed and hit max retries, clean up
+        if (context.swapCount >= 2) {
+          this.taskExecutionContext.delete(taskId);
+          console.log('[AgentManager] Cleaned up context for max-retry task:', taskId);
+        }
+        // Otherwise keep context for potential restart
+      }, 1000); // Delay to allow restart logic to run first
+    });
   }
 
   /**
@@ -268,6 +296,10 @@ export class AgentManager extends EventEmitter {
     specDir?: string,
     metadata?: SpecCreationMetadata
   ): void {
+    // Preserve swapCount if context already exists (for restarts)
+    const existingContext = this.taskExecutionContext.get(taskId);
+    const swapCount = existingContext?.swapCount ?? 0;
+
     this.taskExecutionContext.set(taskId, {
       projectPath,
       specId,
@@ -276,7 +308,7 @@ export class AgentManager extends EventEmitter {
       taskDescription,
       specDir,
       metadata,
-      swapCount: 0
+      swapCount // Preserve existing count instead of resetting
     });
   }
 
