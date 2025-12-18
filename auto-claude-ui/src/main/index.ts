@@ -139,12 +139,21 @@ app.whenReady().then(() => {
     usageMonitor.start();
     console.log('[main] Usage monitor initialized and started');
 
-    // Initialize app auto-updater (only in production)
-    if (app.isPackaged) {
+    // Initialize app auto-updater (only in production, or when DEBUG_UPDATER is set)
+    const forceUpdater = process.env.DEBUG_UPDATER === 'true';
+    if (app.isPackaged || forceUpdater) {
       initializeAppUpdater(mainWindow);
       console.log('[main] App auto-updater initialized');
+      if (forceUpdater && !app.isPackaged) {
+        console.log('[main] ⚠️  Updater forced in dev mode via DEBUG_UPDATER=true');
+        console.log('[main] ⚠️  Note: Updates won\'t actually work in dev mode');
+      }
     } else {
-      console.log('[main] App auto-updater disabled in development mode');
+      console.log('[main] ========================================');
+      console.log('[main] App auto-updater DISABLED (development mode)');
+      console.log('[main] To test updater logging, set DEBUG_UPDATER=true');
+      console.log('[main] Note: Actual updates only work in packaged builds');
+      console.log('[main] ========================================');
     }
   }
 

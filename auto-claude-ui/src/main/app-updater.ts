@@ -18,13 +18,27 @@
  */
 
 import { autoUpdater } from 'electron-updater';
+import { app } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/constants';
 import type { AppUpdateInfo } from '../shared/types';
 
+// Debug mode - set via environment variable
+const DEBUG_UPDATER = process.env.DEBUG_UPDATER === 'true' || process.env.DEBUG === 'true';
+
 // Configure electron-updater
 autoUpdater.autoDownload = true;  // Automatically download updates when available
 autoUpdater.autoInstallOnAppQuit = true;  // Automatically install on app quit
+
+// Enable more verbose logging in debug mode
+if (DEBUG_UPDATER) {
+  autoUpdater.logger = {
+    info: (msg: string) => console.log('[app-updater:debug]', msg),
+    warn: (msg: string) => console.warn('[app-updater:debug]', msg),
+    error: (msg: string) => console.error('[app-updater:debug]', msg),
+    debug: (msg: string) => console.log('[app-updater:debug]', msg)
+  };
+}
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -40,9 +54,13 @@ export function initializeAppUpdater(window: BrowserWindow): void {
   mainWindow = window;
 
   // Log updater configuration
+  console.log('[app-updater] ========================================');
   console.log('[app-updater] Initializing app auto-updater');
+  console.log('[app-updater] App packaged:', app.isPackaged);
   console.log('[app-updater] Current version:', autoUpdater.currentVersion.version);
   console.log('[app-updater] Auto-download enabled:', autoUpdater.autoDownload);
+  console.log('[app-updater] Debug mode:', DEBUG_UPDATER);
+  console.log('[app-updater] ========================================');
 
   // ============================================
   // Event Handlers
@@ -98,12 +116,16 @@ export function initializeAppUpdater(window: BrowserWindow): void {
 
   // No update available
   autoUpdater.on('update-not-available', (info) => {
-    console.log('[app-updater] No updates available. Current version:', info.version);
+    console.log('[app-updater] ✓ No updates available - you are on the latest version');
+    console.log('[app-updater]   Current version:', info.version);
+    if (DEBUG_UPDATER) {
+      console.log('[app-updater:debug] Full info:', JSON.stringify(info, null, 2));
+    }
   });
 
   // Checking for updates
   autoUpdater.on('checking-for-update', () => {
-    console.log('[app-updater] Checking for updates...');
+    console.log('[app-updater] 🔍 Checking for updates...');
   });
 
   // ============================================
@@ -111,23 +133,34 @@ export function initializeAppUpdater(window: BrowserWindow): void {
   // ============================================
 
   // Check for updates 3 seconds after launch
+  const INITIAL_DELAY = 3000;
+  console.log(`[app-updater] Will check for updates in ${INITIAL_DELAY / 1000} seconds...`);
+
   setTimeout(() => {
-    console.log('[app-updater] Performing initial update check');
+    console.log('[app-updater] 🚀 Performing initial update check');
     autoUpdater.checkForUpdates().catch((error) => {
-      console.error('[app-updater] Initial update check failed:', error);
+      console.error('[app-updater] ❌ Initial update check failed:', error.message);
+      if (DEBUG_UPDATER) {
+        console.error('[app-updater:debug] Full error:', error);
+      }
     });
-  }, 3000);
+  }, INITIAL_DELAY);
 
   // Check for updates every 4 hours
   const FOUR_HOURS = 4 * 60 * 60 * 1000;
+  console.log(`[app-updater] Periodic checks scheduled every ${FOUR_HOURS / 1000 / 60 / 60} hours`);
+
   setInterval(() => {
-    console.log('[app-updater] Performing periodic update check');
+    console.log('[app-updater] 🔄 Performing periodic update check');
     autoUpdater.checkForUpdates().catch((error) => {
-      console.error('[app-updater] Periodic update check failed:', error);
+      console.error('[app-updater] ❌ Periodic update check failed:', error.message);
+      if (DEBUG_UPDATER) {
+        console.error('[app-updater:debug] Full error:', error);
+      }
     });
   }, FOUR_HOURS);
 
-  console.log('[app-updater] Auto-updater initialized successfully');
+  console.log('[app-updater] ✓ Auto-updater initialized successfully');
 }
 
 /**
