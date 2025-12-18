@@ -18,6 +18,7 @@ from auto_claude_tools import (
 )
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
+from core.auth import get_sdk_env_vars, require_auth_token
 from linear_updater import is_linear_enabled
 from security import bash_security_hook
 
@@ -152,12 +153,12 @@ def create_client(
        (see security.py for ALLOWED_COMMANDS)
     4. Tool filtering - Each agent type only sees relevant tools (prevents misuse)
     """
-    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
-    if not oauth_token:
-        raise ValueError(
-            "CLAUDE_CODE_OAUTH_TOKEN environment variable not set.\n"
-            "Get your token by running: claude setup-token"
-        )
+    oauth_token = require_auth_token()
+    # Ensure SDK can access it via its expected env var
+    os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
+
+    # Collect env vars to pass to SDK (ANTHROPIC_BASE_URL, etc.)
+    sdk_env = get_sdk_env_vars()
 
     # Check if Linear integration is enabled
     linear_enabled = is_linear_enabled()
@@ -318,5 +319,6 @@ def create_client(
             max_turns=1000,
             cwd=str(project_dir.resolve()),
             settings=str(settings_file.resolve()),
+            env=sdk_env,  # Pass ANTHROPIC_BASE_URL etc. to subprocess
         )
     )

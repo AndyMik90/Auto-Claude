@@ -28,6 +28,8 @@ except ImportError:
     ClaudeAgentOptions = None
     ClaudeSDKClient = None
 
+from core.auth import ensure_claude_code_oauth_token, get_auth_token
+
 # Default model for insight extraction (fast and cheap)
 DEFAULT_EXTRACTION_MODEL = "claude-3-5-haiku-latest"
 
@@ -40,10 +42,10 @@ MAX_ATTEMPTS_TO_INCLUDE = 3
 
 def is_extraction_enabled() -> bool:
     """Check if insight extraction is enabled."""
-    # Extraction requires Claude SDK and OAuth token
+    # Extraction requires Claude SDK and authentication token
     if not SDK_AVAILABLE:
         return False
-    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+    if not get_auth_token():
         return False
     enabled_str = os.environ.get("INSIGHT_EXTRACTION_ENABLED", "true").lower()
     return enabled_str in ("true", "1", "yes")
@@ -348,10 +350,12 @@ async def run_insight_extraction(
         logger.warning("Claude SDK not available, skipping insight extraction")
         return None
 
-    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
-    if not oauth_token:
-        logger.warning("CLAUDE_CODE_OAUTH_TOKEN not set, skipping insight extraction")
+    if not get_auth_token():
+        logger.warning("No authentication token found, skipping insight extraction")
         return None
+
+    # Ensure SDK can find the token
+    ensure_claude_code_oauth_token()
 
     model = get_extraction_model()
     prompt = _build_extraction_prompt(inputs)

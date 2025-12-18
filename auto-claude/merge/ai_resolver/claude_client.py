@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import sys
 from typing import TYPE_CHECKING
 
@@ -32,12 +31,16 @@ def create_claude_resolver() -> AIResolver:
         Configured AIResolver instance
     """
     # Import here to avoid circular dependency
+    from core.auth import ensure_claude_code_oauth_token, get_auth_token
+
     from .resolver import AIResolver
 
-    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
-    if not oauth_token:
-        logger.warning("CLAUDE_CODE_OAUTH_TOKEN not set, AI resolution unavailable")
+    if not get_auth_token():
+        logger.warning("No authentication token found, AI resolution unavailable")
         return AIResolver()
+
+    # Ensure SDK can find the token
+    ensure_claude_code_oauth_token()
 
     try:
         from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient

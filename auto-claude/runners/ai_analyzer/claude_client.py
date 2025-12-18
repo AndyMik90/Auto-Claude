@@ -3,7 +3,6 @@ Claude SDK client wrapper for AI analysis.
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -38,9 +37,10 @@ class ClaudeAnalysisClient:
         self._validate_oauth_token()
 
     def _validate_oauth_token(self) -> None:
-        """Validate that CLAUDE_CODE_OAUTH_TOKEN is set."""
-        if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
-            raise ValueError("CLAUDE_CODE_OAUTH_TOKEN not set. Run: claude setup-token")
+        """Validate that an authentication token is available."""
+        from core.auth import require_auth_token
+
+        require_auth_token()  # Raises ValueError if no token found
 
     async def run_analysis_query(self, prompt: str) -> str:
         """
