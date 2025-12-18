@@ -235,6 +235,23 @@ class WorktreeManager:
             **stats,
         )
 
+    def _check_branch_namespace_conflict(self) -> str | None:
+        """
+        Check if a branch named 'auto-claude' exists, which would block creating
+        branches in the 'auto-claude/*' namespace.
+
+        Git stores branch refs as files under .git/refs/heads/, so a branch named
+        'auto-claude' creates a file that prevents creating the 'auto-claude/'
+        directory needed for 'auto-claude/{spec-name}' branches.
+
+        Returns:
+            The conflicting branch name if found, None otherwise.
+        """
+        result = self._run_git(["rev-parse", "--verify", "auto-claude"])
+        if result.returncode == 0:
+            return "auto-claude"
+        return None
+
     def _get_worktree_stats(self, spec_name: str) -> dict:
         """Get diff statistics for a worktree."""
         worktree_path = self.get_worktree_path(spec_name)
@@ -283,9 +300,25 @@ class WorktreeManager:
 
         Returns:
             WorktreeInfo for the created worktree
+
+        Raises:
+            WorktreeError: If a branch namespace conflict exists or worktree creation fails
         """
         worktree_path = self.get_worktree_path(spec_name)
         branch_name = self.get_branch_name(spec_name)
+
+        # Check for branch namespace conflict (e.g., 'auto-claude' blocking 'auto-claude/*')
+        conflicting_branch = self._check_branch_namespace_conflict()
+        if conflicting_branch:
+            raise WorktreeError(
+                f"Branch '{conflicting_branch}' exists and blocks creating '{branch_name}'.\n"
+                f"\n"
+                f"Git branch names work like file paths - a branch named 'auto-claude' prevents\n"
+                f"creating branches under 'auto-claude/' (like 'auto-claude/{spec_name}').\n"
+                f"\n"
+                f"Fix: Rename the conflicting branch:\n"
+                f"  git branch -m {conflicting_branch} {conflicting_branch}-backup"
+            )
 
         # Remove existing if present (from crashed previous run)
         if worktree_path.exists():
