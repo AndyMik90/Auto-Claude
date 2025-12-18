@@ -146,7 +146,8 @@ export function registerInvestigateIssue(
           issue.number,
           issue.title,
           taskDescription,
-          issue.html_url
+          issue.html_url,
+          labels
         );
 
         // NOTE: We intentionally do NOT call agentManager.startSpecCreation() here

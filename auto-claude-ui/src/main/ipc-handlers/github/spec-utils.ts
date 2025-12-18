@@ -52,6 +52,58 @@ function slugifyTitle(title: string): string {
 }
 
 /**
+ * Determine task category based on GitHub issue labels
+ * Maps to TaskCategory type from shared/types/task.ts
+ */
+function determineCategoryFromLabels(labels: string[]): 'feature' | 'bug_fix' | 'refactoring' | 'documentation' | 'security' | 'performance' | 'ui_ux' | 'infrastructure' | 'testing' {
+  const lowerLabels = labels.map(l => l.toLowerCase());
+
+  // Check for bug labels
+  if (lowerLabels.some(l => l.includes('bug') || l.includes('defect') || l.includes('error') || l.includes('fix'))) {
+    return 'bug_fix';
+  }
+
+  // Check for security labels
+  if (lowerLabels.some(l => l.includes('security') || l.includes('vulnerability') || l.includes('cve'))) {
+    return 'security';
+  }
+
+  // Check for performance labels
+  if (lowerLabels.some(l => l.includes('performance') || l.includes('optimization') || l.includes('speed'))) {
+    return 'performance';
+  }
+
+  // Check for UI/UX labels
+  if (lowerLabels.some(l => l.includes('ui') || l.includes('ux') || l.includes('design') || l.includes('styling'))) {
+    return 'ui_ux';
+  }
+
+  // Check for infrastructure labels
+  if (lowerLabels.some(l => l.includes('infrastructure') || l.includes('devops') || l.includes('deployment') || l.includes('ci') || l.includes('cd'))) {
+    return 'infrastructure';
+  }
+
+  // Check for testing labels
+  if (lowerLabels.some(l => l.includes('test') || l.includes('testing') || l.includes('qa'))) {
+    return 'testing';
+  }
+
+  // Check for refactoring labels
+  if (lowerLabels.some(l => l.includes('refactor') || l.includes('cleanup') || l.includes('maintenance') || l.includes('chore') || l.includes('tech-debt') || l.includes('technical debt'))) {
+    return 'refactoring';
+  }
+
+  // Check for documentation labels
+  if (lowerLabels.some(l => l.includes('documentation') || l.includes('docs'))) {
+    return 'documentation';
+  }
+
+  // Check for enhancement/feature labels (default)
+  // This catches 'enhancement', 'feature', 'improvement', or any unlabeled issues
+  return 'feature';
+}
+
+/**
  * Create a new spec directory and initial files
  */
 export function createSpecForIssue(
@@ -59,7 +111,8 @@ export function createSpecForIssue(
   issueNumber: number,
   issueTitle: string,
   taskDescription: string,
-  githubUrl: string
+  githubUrl: string,
+  labels: string[] = []
 ): SpecCreationData {
   const specsBaseDir = getSpecsDir(project.autoBuildPath);
   const specsDir = path.join(project.path, specsBaseDir);
@@ -104,12 +157,15 @@ export function createSpecForIssue(
     JSON.stringify(requirements, null, 2)
   );
 
+  // Determine category from GitHub issue labels
+  const category = determineCategoryFromLabels(labels);
+
   // task_metadata.json
   const metadata: TaskMetadata = {
     sourceType: 'github',
     githubIssueNumber: issueNumber,
     githubUrl,
-    category: 'feature'
+    category
   };
   writeFileSync(
     path.join(specDir, 'task_metadata.json'),
