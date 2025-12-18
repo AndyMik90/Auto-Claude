@@ -5,6 +5,7 @@ import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { AgentQueueManager } from './agent-queue';
+import { getClaudeProfileManager } from '../claude-profile-manager';
 import {
   SpecCreationMetadata,
   TaskExecutionOptions,
@@ -89,6 +90,13 @@ export class AgentManager extends EventEmitter {
     specDir?: string,
     metadata?: SpecCreationMetadata
   ): void {
+    // Pre-flight auth check: Verify active profile has valid authentication
+    const profileManager = getClaudeProfileManager();
+    if (!profileManager.hasValidAuth()) {
+      this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+      return;
+    }
+
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
 
     if (!autoBuildSource) {
@@ -136,6 +144,13 @@ export class AgentManager extends EventEmitter {
     specId: string,
     options: TaskExecutionOptions = {}
   ): void {
+    // Pre-flight auth check: Verify active profile has valid authentication
+    const profileManager = getClaudeProfileManager();
+    if (!profileManager.hasValidAuth()) {
+      this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+      return;
+    }
+
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
 
     if (!autoBuildSource) {
