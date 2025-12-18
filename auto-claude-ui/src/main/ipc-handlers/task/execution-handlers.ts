@@ -7,6 +7,7 @@ import { AgentManager } from '../../agent';
 import { fileWatcher } from '../../file-watcher';
 import { findTaskAndProject } from './shared';
 import { checkGitStatus } from '../../project-initializer';
+import { getClaudeProfileManager } from '../../claude-profile-manager';
 
 /**
  * Register task execution handlers (start, stop, review, status management, recovery)
@@ -58,6 +59,18 @@ export function registerTaskExecutionHandlers(
           IPC_CHANNELS.TASK_ERROR,
           taskId,
           'Git repository has no commits. Please make an initial commit first (git add . && git commit -m "Initial commit").'
+        );
+        return;
+      }
+
+      // Check authentication - Claude requires valid auth to run tasks
+      const profileManager = getClaudeProfileManager();
+      if (!profileManager.hasValidAuth()) {
+        console.warn('[TASK_START] No valid authentication for active profile');
+        mainWindow.webContents.send(
+          IPC_CHANNELS.TASK_ERROR,
+          taskId,
+          'Claude authentication required. Please go to Settings > Claude Profiles and authenticate your account, or set an OAuth token.'
         );
         return;
       }
@@ -265,6 +278,37 @@ export function registerTaskExecutionHandlers(
         }
       }
 
+      // Validate status transition - 'human_review' requires actual work to have been done
+      // This prevents tasks from being incorrectly marked as ready for review when execution failed
+      if (status === 'human_review') {
+        const specsBaseDirForValidation = getSpecsDir(project.autoBuildPath);
+        const specDirForValidation = path.join(
+          project.path,
+          specsBaseDirForValidation,
+          task.specId
+        );
+        const specFilePath = path.join(specDirForValidation, AUTO_BUILD_PATHS.SPEC_FILE);
+
+        // Check if spec.md exists and has meaningful content (at least 100 chars)
+        const MIN_SPEC_CONTENT_LENGTH = 100;
+        let specContent = '';
+        try {
+          if (existsSync(specFilePath)) {
+            specContent = readFileSync(specFilePath, 'utf-8');
+          }
+        } catch {
+          // Ignore read errors - treat as empty spec
+        }
+
+        if (!specContent || specContent.length < MIN_SPEC_CONTENT_LENGTH) {
+          console.warn(`[TASK_UPDATE_STATUS] Blocked attempt to set status 'human_review' for task ${taskId}. No spec has been created yet.`);
+          return {
+            success: false,
+            error: "Cannot move to human review - no spec has been created yet. The task must complete processing before review."
+          };
+        }
+      }
+
       // Get the spec directory
       const specsBaseDir = getSpecsDir(project.autoBuildPath);
       const specDir = path.join(
@@ -332,6 +376,20 @@ export function registerTaskExecutionHandlers(
               );
             }
             return { success: false, error: gitStatusCheck.error || 'Git repository required' };
+          }
+
+          // Check authentication before auto-starting
+          const profileManager = getClaudeProfileManager();
+          if (!profileManager.hasValidAuth()) {
+            console.warn('[TASK_UPDATE_STATUS] No valid authentication for active profile');
+            if (mainWindow) {
+              mainWindow.webContents.send(
+                IPC_CHANNELS.TASK_ERROR,
+                taskId,
+                'Claude authentication required. Please go to Settings > Claude Profiles and authenticate your account, or set an OAuth token.'
+              );
+            }
+            return { success: false, error: 'Claude authentication required' };
           }
 
           console.warn('[TASK_UPDATE_STATUS] Auto-starting task:', taskId);
@@ -557,6 +615,23 @@ export function registerTaskExecutionHandlers(
                 recovered: true,
                 newStatus,
                 message: `Task recovered but cannot restart: ${gitStatusForRestart.error || 'Git repository with commits required.'}`,
+                autoRestarted: false
+              }
+            };
+          }
+
+          // Check authentication before auto-restarting
+          const profileManager = getClaudeProfileManager();
+          if (!profileManager.hasValidAuth()) {
+            console.warn('[Recovery] Auth check failed, cannot auto-restart task');
+            // Recovery succeeded but we can't restart without auth
+            return {
+              success: true,
+              data: {
+                taskId,
+                recovered: true,
+                newStatus,
+                message: 'Task recovered but cannot restart: Claude authentication required. Please go to Settings > Claude Profiles and authenticate your account.',
                 autoRestarted: false
               }
             };
