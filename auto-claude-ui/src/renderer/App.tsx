@@ -258,8 +258,8 @@ export function App() {
   const handleGoToTask = (taskId: string) => {
     // Switch to kanban view
     setActiveView('kanban');
-    // Find and select the task
-    const task = tasks.find((t) => t.id === taskId);
+    // Find and select the task (match by id or specId)
+    const task = tasks.find((t) => t.id === taskId || t.specId === taskId);
     if (task) {
       setSelectedTask(task);
     }
@@ -340,10 +340,13 @@ export function App() {
                   <Insights projectId={selectedProjectId} />
                 )}
                 {activeView === 'github-issues' && selectedProjectId && (
-                  <GitHubIssues onOpenSettings={() => {
-                    setSettingsInitialProjectSection('github');
-                    setIsSettingsDialogOpen(true);
-                  }} />
+                  <GitHubIssues
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('github');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                    onNavigateToTask={handleGoToTask}
+                  />
                 )}
                 {activeView === 'changelog' && selectedProjectId && (
                   <Changelog />

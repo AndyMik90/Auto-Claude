@@ -515,6 +515,19 @@ export function isDraftEmpty(draft: TaskDraft | null): boolean {
 }
 
 // ============================================
+// GitHub Issue Linking Helpers
+// ============================================
+
+/**
+ * Find a task by GitHub issue number
+ * Used to check if a task already exists for a GitHub issue
+ */
+export function getTaskByGitHubIssue(issueNumber: number): Task | undefined {
+  const store = useTaskStore.getState();
+  return store.tasks.find(t => t.metadata?.githubIssueNumber === issueNumber);
+}
+
+// ============================================
 // Task State Detection Helpers
 // ============================================
 

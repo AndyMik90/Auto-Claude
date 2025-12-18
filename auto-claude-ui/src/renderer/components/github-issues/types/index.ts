@@ -4,6 +4,8 @@ export type FilterState = 'open' | 'closed' | 'all';
 
 export interface GitHubIssuesProps {
   onOpenSettings?: () => void;
+  /** Navigate to view a task in the kanban board */
+  onNavigateToTask?: (taskId: string) => void;
 }
 
 export interface IssueListItemProps {
@@ -17,6 +19,10 @@ export interface IssueDetailProps {
   issue: GitHubIssue;
   onInvestigate: () => void;
   investigationResult: GitHubInvestigationResult | null;
+  /** ID of existing task linked to this issue (from metadata.githubIssueNumber) */
+  linkedTaskId?: string;
+  /** Handler to navigate to view the linked task */
+  onViewTask?: (taskId: string) => void;
 }
 
 export interface InvestigationDialogProps {

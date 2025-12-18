@@ -1,4 +1,4 @@
-import { ExternalLink, User, Clock, MessageCircle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ExternalLink, User, Clock, MessageCircle, Sparkles, CheckCircle2, Eye } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
@@ -11,7 +11,17 @@ import {
 import { formatDate } from '../utils';
 import type { IssueDetailProps } from '../types';
 
-export function IssueDetail({ issue, onInvestigate, investigationResult }: IssueDetailProps) {
+export function IssueDetail({ issue, onInvestigate, investigationResult, linkedTaskId, onViewTask }: IssueDetailProps) {
+  // Determine which task ID to use - either already linked or just created
+  const taskId = linkedTaskId || (investigationResult?.success ? investigationResult.taskId : undefined);
+  const hasLinkedTask = !!taskId;
+
+  const handleViewTask = () => {
+    if (taskId && onViewTask) {
+      onViewTask(taskId);
+    }
+  };
+
   return (
     <ScrollArea className="flex-1">
       <div className="p-4 space-y-4">
@@ -77,31 +87,48 @@ export function IssueDetail({ issue, onInvestigate, investigationResult }: Issue
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <Button onClick={onInvestigate} className="flex-1">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Create Task
-          </Button>
+          {hasLinkedTask ? (
+            <Button onClick={handleViewTask} className="flex-1" variant="secondary">
+              <Eye className="h-4 w-4 mr-2" />
+              View Task
+            </Button>
+          ) : (
+            <Button onClick={onInvestigate} className="flex-1">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Create Task
+            </Button>
+          )}
         </div>
 
-        {/* Task Created Result */}
-        {investigationResult?.success && (
+        {/* Task Linked Info */}
+        {hasLinkedTask && (
           <Card className="bg-success/5 border-success/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2 text-success">
                 <CheckCircle2 className="h-4 w-4" />
-                Task Created
+                Task Linked
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-2">
-              <p className="text-foreground">{investigationResult.analysis.summary}</p>
-              <div className="flex items-center gap-2">
-                <Badge className={GITHUB_COMPLEXITY_COLORS[investigationResult.analysis.estimatedComplexity]}>
-                  {investigationResult.analysis.estimatedComplexity}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  Task ID: {investigationResult.taskId}
-                </span>
-              </div>
+              {investigationResult?.success ? (
+                <>
+                  <p className="text-foreground">{investigationResult.analysis.summary}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge className={GITHUB_COMPLEXITY_COLORS[investigationResult.analysis.estimatedComplexity]}>
+                      {investigationResult.analysis.estimatedComplexity}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Task ID: {taskId}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    Task ID: {taskId}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useProjectStore } from '../stores/project-store';
+import { useTaskStore } from '../stores/task-store';
 import { useGitHubIssues, useGitHubInvestigation, useIssueFiltering } from './github-issues/hooks';
 import {
   NotConnectedState,
@@ -12,10 +13,11 @@ import {
 import type { GitHubIssue } from '../../shared/types';
 import type { GitHubIssuesProps } from './github-issues/types';
 
-export function GitHubIssues({ onOpenSettings }: GitHubIssuesProps) {
+export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesProps) {
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
+  const tasks = useTaskStore((state) => state.tasks);
 
   const {
     issues,
@@ -42,6 +44,17 @@ export function GitHubIssues({ onOpenSettings }: GitHubIssuesProps) {
 
   const [showInvestigateDialog, setShowInvestigateDialog] = useState(false);
   const [selectedIssueForInvestigation, setSelectedIssueForInvestigation] = useState<GitHubIssue | null>(null);
+
+  // Build a map of GitHub issue numbers to task IDs for quick lookup
+  const issueToTaskMap = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const task of tasks) {
+      if (task.metadata?.githubIssueNumber) {
+        map.set(task.metadata.githubIssueNumber, task.specId || task.id);
+      }
+    }
+    return map;
+  }, [tasks]);
 
   const handleInvestigate = useCallback((issue: GitHubIssue) => {
     setSelectedIssueForInvestigation(issue);
@@ -110,6 +123,8 @@ export function GitHubIssues({ onOpenSettings }: GitHubIssuesProps) {
                   ? lastInvestigationResult
                   : null
               }
+              linkedTaskId={issueToTaskMap.get(selectedIssue.number)}
+              onViewTask={onNavigateToTask}
             />
           ) : (
             <EmptyState message="Select an issue to view details" />
