@@ -4,7 +4,7 @@ Your AI coding companion. Build features, fix bugs, and ship faster — with aut
 
 ![Auto Claude Kanban Board](.github/assets/Auto-Claude-Kanban.png)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/maj9EWmY)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
 
 ## What It Does ✨
 
@@ -321,7 +321,7 @@ See `auto-claude/.env.example` for complete configuration options.
 
 Join our Discord to get help, share what you're building, and connect with other Auto Claude users:
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/maj9EWmY)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
 
 ## 🤝 Contributing
 
