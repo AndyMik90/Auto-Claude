@@ -2,161 +2,130 @@
 
 A desktop application for managing AI-driven development tasks using the Auto Claude autonomous coding framework.
 
-## Overview
+## Quick Start
 
-Auto Claude UI provides a visual Kanban board interface for creating, monitoring, and managing auto-claude tasks. It replaces the terminal-based workflow with an intuitive GUI while preserving all CLI functionality.
+```bash
+# 1. Clone the repo (if you haven't already)
+git clone https://github.com/AndyMik90/Auto-Claude.git
+cd Auto-Claude/auto-claude-ui
+
+# 2. Install dependencies
+npm install
+
+# 3. Build the desktop app
+npm run package:win    # Windows
+npm run package:mac    # macOS
+npm run package:linux  # Linux
+
+# 4. Run the app
+# Windows: .\dist\win-unpacked\Auto Claude.exe
+# macOS:   open dist/mac-arm64/Auto\ Claude.app
+# Linux:   ./dist/linux-unpacked/auto-claude
+```
+
+## Prerequisites
+
+- Node.js 18+
+- npm or pnpm
+- Python 3.10+ (for auto-claude backend)
+- **Windows only**: Visual Studio Build Tools 2022 with "Desktop development with C++" workload
+- **Windows only**: Developer Mode enabled (Settings → System → For developers)
+
+## How to Run
+
+### Building for Production (Recommended)
+
+Build the Electron desktop app for your platform:
+
+```bash
+# Build for Windows
+npm run package:win
+
+# Build for macOS
+npm run package:mac
+
+# Build for Linux
+npm run package:linux
+```
+
+### Running the Production Build
+
+After building, run the application from the `dist` folder:
+
+```bash
+# Windows - run the executable
+.\dist\win-unpacked\Auto Claude.exe
+
+# Windows - or use the installer
+.\dist\Auto Claude Setup X.X.X.exe
+
+# macOS
+open dist/mac-arm64/Auto\ Claude.app
+
+# Linux
+./dist/linux-unpacked/auto-claude
+```
+
+### Development Mode
+
+For development with hot reload (optional):
+
+```bash
+npm run dev
+```
+
+> **Note**: Some features like auto-updates only work in packaged builds.
+
+## Distribution Files
+
+After packaging, the `dist` folder contains:
+
+| Platform | Files |
+|----------|-------|
+| macOS | `Auto Claude.app`, `.dmg`, `.zip` |
+| Windows | `Auto Claude Setup X.X.X.exe` (installer), `.zip`, `win-unpacked/` |
+| Linux | `.AppImage`, `.deb`, `linux-unpacked/` |
+
+## Testing
+
+```bash
+# Run tests
+npm run test
+```
+
+## Linting
+
+```bash
+# Run ESLint
+npm run lint
+
+# Run type checking
+npm run typecheck
+```
 
 ## Features
 
 - **Project Management**: Add, configure, and switch between multiple projects
 - **Kanban Board**: Visual task board with columns for Backlog, In Progress, AI Review, Human Review, and Done
 - **Task Creation Wizard**: Form-based interface for creating new tasks
-- **Real-Time Progress**: Live updates from implementation_plan.json during agent execution
+- **Real-Time Progress**: Live updates during agent execution
 - **Human Review Workflow**: Review QA results and provide feedback
-- **Theme Support**: Light and dark mode with system preference detection
-- **Settings**: Per-project and app-wide configuration options
+- **Theme Support**: Light and dark mode
+- **Auto Updates**: Automatic update notifications
 
 ## Tech Stack
 
-- **Framework**: Electron with React 18 (TypeScript)
-- **Build Tool**: electron-vite with electron-builder
-- **UI Components**: Radix UI primitives (shadcn/ui pattern)
-- **Styling**: TailwindCSS with dark mode support
+- **Framework**: Electron + React 18 (TypeScript)
+- **Build Tool**: electron-vite + electron-builder
+- **UI Components**: Radix UI (shadcn/ui pattern)
+- **Styling**: TailwindCSS
 - **State Management**: Zustand
-- **File Watching**: chokidar
-
-## Project Structure
-
-```
-auto-claude-ui/
-├── src/
-│   ├── main/                 # Electron main process
-│   │   ├── index.ts          # App entry point
-│   │   ├── agent-manager.ts  # Python subprocess management
-│   │   ├── file-watcher.ts   # Implementation plan watching
-│   │   ├── ipc-handlers.ts   # IPC message handlers
-│   │   └── project-store.ts  # JSON project persistence
-│   ├── preload/              # Preload scripts
-│   │   └── index.ts          # Secure contextBridge API
-│   ├── renderer/             # React application
-│   │   ├── components/       # React components
-│   │   │   ├── ui/           # Wrapped Radix UI components
-│   │   │   ├── Sidebar.tsx
-│   │   │   ├── KanbanBoard.tsx
-│   │   │   ├── TaskCard.tsx
-│   │   │   ├── TaskDetailPanel.tsx
-│   │   │   ├── TaskCreationWizard.tsx
-│   │   │   ├── ProjectSettings.tsx
-│   │   │   └── AppSettings.tsx
-│   │   ├── stores/           # Zustand state stores
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── styles/           # Global CSS
-│   │   └── App.tsx           # Root component
-│   └── shared/               # Shared code
-│       ├── types.ts          # TypeScript interfaces
-│       └── constants.ts      # Constants and IPC channels
-├── electron.vite.config.ts   # Build configuration
-├── package.json
-├── tsconfig.json
-├── tailwind.config.js
-└── postcss.config.js
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or pnpm
-- Python 3.10+ (for auto-claude backend)
-
-### Installation
-
-```bash
-# Navigate to auto-claude-ui directory
-cd auto-claude-ui
-
-# Install dependencies
-npm install
-```
-
-### Development
-
-```bash
-# Start development server with hot reload
-npm run dev
-```
-
-### Build
-
-```bash
-# Build for production
-npm run build
-
-# Package for macOS
-npm run package:mac
-
-# Package for Windows
-npm run package:win
-
-# Package for Linux
-npm run package:linux
-```
-
-### Type Checking
-
-```bash
-npm run typecheck
-```
-
-### Linting
-
-```bash
-npm run lint
-```
-
-### Testing
-
-```bash
-npm run test
-```
-
-## Architecture
-
-### Main Process
-
-The main process handles:
-- Window management
-- Python subprocess spawning (agent-manager.ts)
-- File system watching (file-watcher.ts)
-- Project data persistence (project-store.ts)
-- IPC communication with renderer
-
-### Preload Script
-
-Provides a secure bridge between main and renderer processes using Electron's contextBridge. All IPC channels are explicitly defined and typed.
-
-### Renderer Process
-
-A React application with:
-- Zustand stores for state management
-- Custom hooks for IPC event handling
-- Radix UI components wrapped in the shadcn/ui pattern
-- TailwindCSS for styling
-
-## Security
-
-The application follows Electron security best practices:
-- `contextIsolation: true`
-- `nodeIntegration: false`
-- Minimal API surface via contextBridge
-- No direct ipcRenderer exposure
 
 ## Environment Variables
 
 - `CLAUDE_CODE_OAUTH_TOKEN`: OAuth token for Claude Code SDK (from auto-claude/.env)
-- `FALKORDB_URL`: FalkorDB connection URL (optional, defaults to localhost:6379)
+- `FALKORDB_URL`: FalkorDB connection URL (optional)
 
 ## License
 
-MIT
+AGPL-3.0
