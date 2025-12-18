@@ -27,6 +27,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
     handleRefresh,
     handleCompetitorDialogAccept,
     handleCompetitorDialogDecline,
+    handleStop,
   } = useRoadmapGeneration(projectId);
 
   // Event handlers
@@ -47,6 +48,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
         <RoadmapGenerationProgress
           generationStatus={generationStatus}
           className="w-full max-w-md"
+          onStop={handleStop}
         />
       </div>
     );
@@ -73,6 +75,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
       {/* Header */}
       <RoadmapHeader
         roadmap={roadmap}
+        competitorAnalysis={competitorAnalysis}
         onAddFeature={() => setShowAddFeatureDialog(true)}
         onRefresh={handleRefresh}
       />

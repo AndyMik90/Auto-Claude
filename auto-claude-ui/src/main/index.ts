@@ -139,6 +139,21 @@ app.whenReady().then(() => {
     usageMonitor.start();
     console.warn('[main] Usage monitor initialized and started');
 
+    // Log debug mode status
+    const isDebugMode = process.env.DEBUG === 'true';
+    const isAutoClaudeDebug = process.env.AUTO_CLAUDE_DEBUG === 'true';
+    if (isDebugMode || isAutoClaudeDebug) {
+      console.warn('[main] ========================================');
+      console.warn('[main] DEBUG MODE ENABLED');
+      if (isDebugMode) {
+        console.warn('[main] - DEBUG=true (Ideation/Roadmap debug logging)');
+      }
+      if (isAutoClaudeDebug) {
+        console.warn('[main] - AUTO_CLAUDE_DEBUG=true (Core features debug logging)');
+      }
+      console.warn('[main] ========================================');
+    }
+
     // Initialize app auto-updater (only in production, or when DEBUG_UPDATER is set)
     const forceUpdater = process.env.DEBUG_UPDATER === 'true';
     if (app.isPackaged || forceUpdater) {

@@ -171,7 +171,7 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
         setSourceUpdateCheck(result.data);
       }
     } catch (err) {
-      console.error('Failed to check for source updates:', err);
+      // Silent fail - user can retry via button
     } finally {
       setIsCheckingSourceUpdate(false);
     }

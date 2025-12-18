@@ -7,6 +7,7 @@ import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { IdeationConfig } from './types';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
+import { debugLog, debugError } from '../../shared/utils/debug-logger';
 
 /**
  * Queue management for ideation and roadmap generation
@@ -38,16 +39,25 @@ export class AgentQueueManager {
     refresh: boolean = false,
     enableCompetitorAnalysis: boolean = false
   ): void {
+    debugLog('[Agent Queue] Starting roadmap generation:', {
+      projectId,
+      projectPath,
+      refresh,
+      enableCompetitorAnalysis
+    });
+
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
 
     if (!autoBuildSource) {
+      debugError('[Agent Queue] Auto-build source path not found');
       this.emitter.emit('roadmap-error', projectId, 'Auto-build source path not found. Please configure it in App Settings.');
       return;
     }
 
-    const roadmapRunnerPath = path.join(autoBuildSource, 'roadmap_runner.py');
+    const roadmapRunnerPath = path.join(autoBuildSource, 'runners', 'roadmap_runner.py');
 
     if (!existsSync(roadmapRunnerPath)) {
+      debugError('[Agent Queue] Roadmap runner not found at:', roadmapRunnerPath);
       this.emitter.emit('roadmap-error', projectId, `Roadmap runner not found at: ${roadmapRunnerPath}`);
       return;
     }
@@ -63,6 +73,8 @@ export class AgentQueueManager {
       args.push('--competitor-analysis');
     }
 
+    debugLog('[Agent Queue] Spawning roadmap process with args:', args);
+
     // Use projectId as taskId for roadmap operations
     this.spawnRoadmapProcess(projectId, projectPath, args);
   }
@@ -76,16 +88,25 @@ export class AgentQueueManager {
     config: IdeationConfig,
     refresh: boolean = false
   ): void {
+    debugLog('[Agent Queue] Starting ideation generation:', {
+      projectId,
+      projectPath,
+      config,
+      refresh
+    });
+
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
 
     if (!autoBuildSource) {
+      debugError('[Agent Queue] Auto-build source path not found');
       this.emitter.emit('ideation-error', projectId, 'Auto-build source path not found. Please configure it in App Settings.');
       return;
     }
 
-    const ideationRunnerPath = path.join(autoBuildSource, 'ideation_runner.py');
+    const ideationRunnerPath = path.join(autoBuildSource, 'runners', 'ideation_runner.py');
 
     if (!existsSync(ideationRunnerPath)) {
+      debugError('[Agent Queue] Ideation runner not found at:', ideationRunnerPath);
       this.emitter.emit('ideation-error', projectId, `Ideation runner not found at: ${ideationRunnerPath}`);
       return;
     }
@@ -119,6 +140,8 @@ export class AgentQueueManager {
       args.push('--append');
     }
 
+    debugLog('[Agent Queue] Spawning ideation process with args:', args);
+
     // Use projectId as taskId for ideation operations
     this.spawnIdeationProcess(projectId, projectPath, args);
   }
@@ -131,11 +154,17 @@ export class AgentQueueManager {
     projectPath: string,
     args: string[]
   ): void {
+    debugLog('[Agent Queue] Spawning ideation process:', { projectId, projectPath });
+
     // Kill existing process for this project if any
-    this.processManager.killProcess(projectId);
+    const wasKilled = this.processManager.killProcess(projectId);
+    if (wasKilled) {
+      debugLog('[Agent Queue] Killed existing process for project:', projectId);
+    }
 
     // Generate unique spawn ID for this process instance
     const spawnId = this.state.generateSpawnId();
+    debugLog('[Agent Queue] Generated spawn ID:', spawnId);
 
     // Run from auto-claude source directory so imports work correctly
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
@@ -144,22 +173,41 @@ export class AgentQueueManager {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
-    // Get active Claude profile environment (CLAUDE_CONFIG_DIR if not default)
+    // Get active Claude profile environment (CLAUDE_CODE_OAUTH_TOKEN if not default)
     const profileEnv = getProfileEnv();
 
     // Get Python path from process manager (uses venv if configured)
     const pythonPath = this.processManager.getPythonPath();
 
+    // Build final environment with proper precedence:
+    // 1. process.env (system)
+    // 2. combinedEnv (auto-claude/.env for CLI usage)
+    // 3. profileEnv (Electron app OAuth token - highest priority)
+    // 4. Our specific overrides
+    const finalEnv = {
+      ...process.env,
+      ...combinedEnv,
+      ...profileEnv,
+      PYTHONPATH: autoBuildSource || '', // Allow imports from auto-claude directory
+      PYTHONUNBUFFERED: '1',
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1'
+    };
+
+    // Debug: Show OAuth token source
+    const tokenSource = profileEnv.CLAUDE_CODE_OAUTH_TOKEN
+      ? 'Electron app profile'
+      : (combinedEnv.CLAUDE_CODE_OAUTH_TOKEN ? 'auto-claude/.env' : 'not found');
+    const hasToken = !!finalEnv.CLAUDE_CODE_OAUTH_TOKEN;
+    debugLog('[Agent Queue] OAuth token status:', {
+      source: tokenSource,
+      hasToken,
+      tokenPreview: hasToken ? finalEnv.CLAUDE_CODE_OAUTH_TOKEN?.substring(0, 20) + '...' : 'none'
+    });
+
     const childProcess = spawn(pythonPath, args, {
       cwd,
-      env: {
-        ...process.env,
-        ...combinedEnv,
-        ...profileEnv,
-        PYTHONUNBUFFERED: '1',
-        PYTHONIOENCODING: 'utf-8',
-        PYTHONUTF8: '1'
-      }
+      env: finalEnv
     });
 
     this.state.addProcess(projectId, {
@@ -206,6 +254,13 @@ export class AgentQueueManager {
         const [, ideationType, ideasCount] = typeCompleteMatch;
         completedTypes.add(ideationType);
 
+        debugLog('[Agent Queue] Ideation type completed:', {
+          projectId,
+          ideationType,
+          ideasCount: parseInt(ideasCount, 10),
+          totalCompleted: completedTypes.size
+        });
+
         // Emit event for UI to load this type's ideas immediately
         this.emitter.emit('ideation-type-complete', projectId, ideationType, parseInt(ideasCount, 10));
       }
@@ -214,6 +269,8 @@ export class AgentQueueManager {
       if (typeFailedMatch) {
         const [, ideationType] = typeFailedMatch;
         completedTypes.add(ideationType);
+
+        debugError('[Agent Queue] Ideation type failed:', { projectId, ideationType });
         this.emitter.emit('ideation-type-failed', projectId, ideationType);
       }
 
@@ -254,6 +311,8 @@ export class AgentQueueManager {
 
     // Handle process exit
     childProcess.on('exit', (code: number | null) => {
+      debugLog('[Agent Queue] Ideation process exited:', { projectId, code, spawnId });
+
       // Get the stored project path before deleting from map
       const processInfo = this.state.getProcess(projectId);
       const storedProjectPath = processInfo?.projectPath;
@@ -261,8 +320,10 @@ export class AgentQueueManager {
 
       // Check for rate limit if process failed
       if (code !== 0) {
+        debugLog('[Agent Queue] Checking for rate limit (non-zero exit)');
         const rateLimitDetection = detectRateLimit(allOutput);
         if (rateLimitDetection.isRateLimited) {
+          debugLog('[Agent Queue] Rate limit detected for ideation');
           const rateLimitInfo = createSDKRateLimitInfo('ideation', rateLimitDetection, {
             projectId
           });
@@ -271,6 +332,7 @@ export class AgentQueueManager {
       }
 
       if (code === 0) {
+        debugLog('[Agent Queue] Ideation generation completed successfully');
         this.emitter.emit('ideation-progress', projectId, {
           phase: 'complete',
           progress: 100,
@@ -286,18 +348,25 @@ export class AgentQueueManager {
               'ideation',
               'ideation.json'
             );
+            debugLog('[Agent Queue] Loading ideation session from:', ideationFilePath);
             if (existsSync(ideationFilePath)) {
               const content = readFileSync(ideationFilePath, 'utf-8');
               const session = JSON.parse(content);
+              debugLog('[Agent Queue] Loaded ideation session:', {
+                totalIdeas: session.ideas?.length || 0
+              });
               this.emitter.emit('ideation-complete', projectId, session);
             } else {
+              debugError('[Ideation] ideation.json not found at:', ideationFilePath);
               console.warn('[Ideation] ideation.json not found at:', ideationFilePath);
             }
           } catch (err) {
+            debugError('[Ideation] Failed to load ideation session:', err);
             console.error('[Ideation] Failed to load ideation session:', err);
           }
         }
       } else {
+        debugError('[Agent Queue] Ideation generation failed:', { projectId, code });
         this.emitter.emit('ideation-error', projectId, `Ideation generation failed with exit code ${code}`);
       }
     });
@@ -318,11 +387,17 @@ export class AgentQueueManager {
     projectPath: string,
     args: string[]
   ): void {
+    debugLog('[Agent Queue] Spawning roadmap process:', { projectId, projectPath });
+
     // Kill existing process for this project if any
-    this.processManager.killProcess(projectId);
+    const wasKilled = this.processManager.killProcess(projectId);
+    if (wasKilled) {
+      debugLog('[Agent Queue] Killed existing roadmap process for project:', projectId);
+    }
 
     // Generate unique spawn ID for this process instance
     const spawnId = this.state.generateSpawnId();
+    debugLog('[Agent Queue] Generated roadmap spawn ID:', spawnId);
 
     // Run from auto-claude source directory so imports work correctly
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
@@ -331,22 +406,41 @@ export class AgentQueueManager {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
-    // Get active Claude profile environment (CLAUDE_CONFIG_DIR if not default)
+    // Get active Claude profile environment (CLAUDE_CODE_OAUTH_TOKEN if not default)
     const profileEnv = getProfileEnv();
 
     // Get Python path from process manager (uses venv if configured)
     const pythonPath = this.processManager.getPythonPath();
 
+    // Build final environment with proper precedence:
+    // 1. process.env (system)
+    // 2. combinedEnv (auto-claude/.env for CLI usage)
+    // 3. profileEnv (Electron app OAuth token - highest priority)
+    // 4. Our specific overrides
+    const finalEnv = {
+      ...process.env,
+      ...combinedEnv,
+      ...profileEnv,
+      PYTHONPATH: autoBuildSource || '', // Allow imports from auto-claude directory
+      PYTHONUNBUFFERED: '1',
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1'
+    };
+
+    // Debug: Show OAuth token source
+    const tokenSource = profileEnv.CLAUDE_CODE_OAUTH_TOKEN
+      ? 'Electron app profile'
+      : (combinedEnv.CLAUDE_CODE_OAUTH_TOKEN ? 'auto-claude/.env' : 'not found');
+    const hasToken = !!finalEnv.CLAUDE_CODE_OAUTH_TOKEN;
+    debugLog('[Agent Queue] OAuth token status:', {
+      source: tokenSource,
+      hasToken,
+      tokenPreview: hasToken ? finalEnv.CLAUDE_CODE_OAUTH_TOKEN?.substring(0, 20) + '...' : 'none'
+    });
+
     const childProcess = spawn(pythonPath, args, {
       cwd,
-      env: {
-        ...process.env,
-        ...combinedEnv,
-        ...profileEnv,
-        PYTHONUNBUFFERED: '1',
-        PYTHONIOENCODING: 'utf-8',
-        PYTHONUTF8: '1'
-      }
+      env: finalEnv
     });
 
     this.state.addProcess(projectId, {
@@ -412,6 +506,8 @@ export class AgentQueueManager {
 
     // Handle process exit
     childProcess.on('exit', (code: number | null) => {
+      debugLog('[Agent Queue] Roadmap process exited:', { projectId, code, spawnId });
+
       // Get the stored project path before deleting from map
       const processInfo = this.state.getProcess(projectId);
       const storedProjectPath = processInfo?.projectPath;
@@ -419,8 +515,10 @@ export class AgentQueueManager {
 
       // Check for rate limit if process failed
       if (code !== 0) {
+        debugLog('[Agent Queue] Checking for rate limit (non-zero exit)');
         const rateLimitDetection = detectRateLimit(allRoadmapOutput);
         if (rateLimitDetection.isRateLimited) {
+          debugLog('[Agent Queue] Rate limit detected for roadmap');
           const rateLimitInfo = createSDKRateLimitInfo('roadmap', rateLimitDetection, {
             projectId
           });
@@ -429,6 +527,7 @@ export class AgentQueueManager {
       }
 
       if (code === 0) {
+        debugLog('[Agent Queue] Roadmap generation completed successfully');
         this.emitter.emit('roadmap-progress', projectId, {
           phase: 'complete',
           progress: 100,
@@ -444,18 +543,26 @@ export class AgentQueueManager {
               'roadmap',
               'roadmap.json'
             );
+            debugLog('[Agent Queue] Loading roadmap from:', roadmapFilePath);
             if (existsSync(roadmapFilePath)) {
               const content = readFileSync(roadmapFilePath, 'utf-8');
               const roadmap = JSON.parse(content);
+              debugLog('[Agent Queue] Loaded roadmap:', {
+                featuresCount: roadmap.features?.length || 0,
+                phasesCount: roadmap.phases?.length || 0
+              });
               this.emitter.emit('roadmap-complete', projectId, roadmap);
             } else {
+              debugError('[Roadmap] roadmap.json not found at:', roadmapFilePath);
               console.warn('[Roadmap] roadmap.json not found at:', roadmapFilePath);
             }
           } catch (err) {
+            debugError('[Roadmap] Failed to load roadmap:', err);
             console.error('[Roadmap] Failed to load roadmap:', err);
           }
         }
       } else {
+        debugError('[Agent Queue] Roadmap generation failed:', { projectId, code });
         this.emitter.emit('roadmap-error', projectId, `Roadmap generation failed with exit code ${code}`);
       }
     });
@@ -472,12 +579,18 @@ export class AgentQueueManager {
    * Stop ideation generation for a project
    */
   stopIdeation(projectId: string): boolean {
+    debugLog('[Agent Queue] Stop ideation requested:', { projectId });
+
     const wasRunning = this.state.hasProcess(projectId);
+    debugLog('[Agent Queue] Process running?', { projectId, wasRunning });
+
     if (wasRunning) {
+      debugLog('[Agent Queue] Killing ideation process:', projectId);
       this.processManager.killProcess(projectId);
       this.emitter.emit('ideation-stopped', projectId);
       return true;
     }
+    debugLog('[Agent Queue] No running process found for:', projectId);
     return false;
   }
 
@@ -485,6 +598,32 @@ export class AgentQueueManager {
    * Check if ideation is running for a project
    */
   isIdeationRunning(projectId: string): boolean {
+    return this.state.hasProcess(projectId);
+  }
+
+  /**
+   * Stop roadmap generation for a project
+   */
+  stopRoadmap(projectId: string): boolean {
+    debugLog('[Agent Queue] Stop roadmap requested:', { projectId });
+
+    const wasRunning = this.state.hasProcess(projectId);
+    debugLog('[Agent Queue] Roadmap process running?', { projectId, wasRunning });
+
+    if (wasRunning) {
+      debugLog('[Agent Queue] Killing roadmap process:', projectId);
+      this.processManager.killProcess(projectId);
+      this.emitter.emit('roadmap-stopped', projectId);
+      return true;
+    }
+    debugLog('[Agent Queue] No running roadmap process found for:', projectId);
+    return false;
+  }
+
+  /**
+   * Check if roadmap is running for a project
+   */
+  isRoadmapRunning(projectId: string): boolean {
     return this.state.hasProcess(projectId);
   }
 }

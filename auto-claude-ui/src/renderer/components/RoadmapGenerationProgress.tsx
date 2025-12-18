@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Users, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Users, Sparkles, CheckCircle2, AlertCircle, Square } from 'lucide-react';
+import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { cn } from '../lib/utils';
 import type { RoadmapGenerationStatus } from '../../shared/types/roadmap';
 
@@ -36,6 +38,7 @@ function useReducedMotion(): boolean {
 interface RoadmapGenerationProgressProps {
   generationStatus: RoadmapGenerationStatus;
   className?: string;
+  onStop?: () => void;
 }
 
 // Type for generation phases (excluding idle)
@@ -190,6 +193,7 @@ function PhaseStepsIndicator({
 export function RoadmapGenerationProgress({
   generationStatus,
   className,
+  onStop
 }: RoadmapGenerationProgressProps) {
   const { phase, progress, message, error } = generationStatus;
   const reducedMotion = useReducedMotion();
@@ -248,6 +252,25 @@ export function RoadmapGenerationProgress({
 
   return (
     <div className={cn('space-y-4 p-6 rounded-xl bg-card border', className)}>
+      {/* Header with Stop button */}
+      {isActivePhase && onStop && (
+        <div className="flex justify-end mb-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={onStop}
+              >
+                <Square className="h-4 w-4 mr-1" />
+                Stop
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Stop generation</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+
       {/* Main phase display */}
       <div className="flex flex-col items-center text-center space-y-3">
         {/* Animated icon with pulsing animation for active phase */}

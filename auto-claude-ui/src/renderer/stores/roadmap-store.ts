@@ -176,22 +176,58 @@ export async function loadRoadmap(projectId: string): Promise<void> {
   }
 }
 
-export function generateRoadmap(projectId: string): void {
+export function generateRoadmap(projectId: string, enableCompetitorAnalysis?: boolean): void {
+  // Debug logging
+  if (window.DEBUG) {
+    console.log('[Roadmap] Starting generation:', { projectId, enableCompetitorAnalysis });
+  }
+
   useRoadmapStore.getState().setGenerationStatus({
     phase: 'analyzing',
     progress: 0,
     message: 'Starting roadmap generation...'
   });
-  window.electronAPI.generateRoadmap(projectId);
+  window.electronAPI.generateRoadmap(projectId, enableCompetitorAnalysis);
 }
 
-export function refreshRoadmap(projectId: string): void {
+export function refreshRoadmap(projectId: string, enableCompetitorAnalysis?: boolean): void {
   useRoadmapStore.getState().setGenerationStatus({
     phase: 'analyzing',
     progress: 0,
     message: 'Refreshing roadmap...'
   });
-  window.electronAPI.refreshRoadmap(projectId);
+  window.electronAPI.refreshRoadmap(projectId, enableCompetitorAnalysis);
+}
+
+export async function stopRoadmap(projectId: string): Promise<boolean> {
+  const store = useRoadmapStore.getState();
+
+  // Debug logging
+  if (window.DEBUG) {
+    console.log('[Roadmap] Stop requested:', { projectId });
+  }
+
+  // Always update UI state to 'idle' when user requests stop, regardless of backend response
+  // This prevents the UI from getting stuck in "generating" state if the process already ended
+  store.setGenerationStatus({
+    phase: 'idle',
+    progress: 0,
+    message: 'Generation stopped'
+  });
+
+  const result = await window.electronAPI.stopRoadmap(projectId);
+
+  // Debug logging
+  if (window.DEBUG) {
+    console.log('[Roadmap] Stop result:', { projectId, success: result.success });
+  }
+
+  if (!result.success) {
+    // Backend couldn't find/stop the process (likely already finished/crashed)
+    console.log('[Roadmap] Process already stopped');
+  }
+
+  return result.success;
 }
 
 // Selectors

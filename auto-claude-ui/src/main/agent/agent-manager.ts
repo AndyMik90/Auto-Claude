@@ -251,6 +251,20 @@ export class AgentManager extends EventEmitter {
   }
 
   /**
+   * Stop roadmap generation for a project
+   */
+  stopRoadmap(projectId: string): boolean {
+    return this.queueManager.stopRoadmap(projectId);
+  }
+
+  /**
+   * Check if roadmap is running for a project
+   */
+  isRoadmapRunning(projectId: string): boolean {
+    return this.queueManager.isRoadmapRunning(projectId);
+  }
+
+  /**
    * Kill all running processes
    */
   async killAll(): Promise<void> {

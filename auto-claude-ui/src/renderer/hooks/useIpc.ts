@@ -53,12 +53,29 @@ export function useIpcListeners(): void {
 
     const cleanupRoadmapProgress = window.electronAPI.onRoadmapProgress(
       (_projectId: string, status: RoadmapGenerationStatus) => {
+        // Debug logging
+        if (window.DEBUG) {
+          console.log('[Roadmap] Progress update:', {
+            projectId: _projectId,
+            phase: status.phase,
+            progress: status.progress,
+            message: status.message
+          });
+        }
         setGenerationStatus(status);
       }
     );
 
     const cleanupRoadmapComplete = window.electronAPI.onRoadmapComplete(
       (_projectId: string, roadmap: Roadmap) => {
+        // Debug logging
+        if (window.DEBUG) {
+          console.log('[Roadmap] Generation complete:', {
+            projectId: _projectId,
+            featuresCount: roadmap.features?.length || 0,
+            phasesCount: roadmap.phases?.length || 0
+          });
+        }
         setRoadmap(roadmap);
         setGenerationStatus({
           phase: 'complete',
@@ -70,11 +87,29 @@ export function useIpcListeners(): void {
 
     const cleanupRoadmapError = window.electronAPI.onRoadmapError(
       (_projectId: string, error: string) => {
+        // Debug logging
+        if (window.DEBUG) {
+          console.error('[Roadmap] Error received:', { projectId: _projectId, error });
+        }
         setGenerationStatus({
           phase: 'error',
           progress: 0,
           message: 'Generation failed',
           error
+        });
+      }
+    );
+
+    const cleanupRoadmapStopped = window.electronAPI.onRoadmapStopped(
+      (_projectId: string) => {
+        // Debug logging
+        if (window.DEBUG) {
+          console.log('[Roadmap] Generation stopped:', { projectId: _projectId });
+        }
+        setGenerationStatus({
+          phase: 'idle',
+          progress: 0,
+          message: 'Generation stopped'
         });
       }
     );
@@ -117,6 +152,7 @@ export function useIpcListeners(): void {
       cleanupRoadmapProgress();
       cleanupRoadmapComplete();
       cleanupRoadmapError();
+      cleanupRoadmapStopped();
       cleanupRateLimit();
       cleanupSDKRateLimit();
     };

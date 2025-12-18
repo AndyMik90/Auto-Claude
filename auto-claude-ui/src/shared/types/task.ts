@@ -239,9 +239,10 @@ export interface Task {
 
 // Implementation Plan (from auto-claude)
 export interface ImplementationPlan {
-  feature: string;
+  feature?: string;  // Some plans use 'feature', some use 'title'
+  title?: string;    // Alternative to 'feature' for task name
   workflow_type: string;
-  services_involved: string[];
+  services_involved?: string[];
   phases: Phase[];
   final_acceptance: string[];
   created_at: string;

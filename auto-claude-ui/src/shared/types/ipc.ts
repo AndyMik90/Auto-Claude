@@ -238,7 +238,9 @@ export interface ElectronAPI {
   getRoadmap: (projectId: string) => Promise<IPCResult<Roadmap | null>>;
   saveRoadmap: (projectId: string, roadmap: Roadmap) => Promise<IPCResult>;
   generateRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;
-  refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;  updateFeatureStatus: (
+  refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;
+  stopRoadmap: (projectId: string) => Promise<IPCResult>;
+  updateFeatureStatus: (
     projectId: string,
     featureId: string,
     status: RoadmapFeatureStatus
@@ -257,6 +259,9 @@ export interface ElectronAPI {
   ) => () => void;
   onRoadmapError: (
     callback: (projectId: string, error: string) => void
+  ) => () => void;
+  onRoadmapStopped: (
+    callback: (projectId: string) => void
   ) => () => void;
 
   // Context operations
@@ -507,5 +512,6 @@ export interface ElectronAPI {
 declare global {
   interface Window {
     electronAPI: ElectronAPI;
+    DEBUG: boolean;
   }
 }

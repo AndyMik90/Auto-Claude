@@ -32,6 +32,7 @@ export interface FeatureDetailPanelProps {
 
 export interface RoadmapHeaderProps {
   roadmap: Roadmap;
+  competitorAnalysis: CompetitorAnalysis | null;
   onAddFeature: () => void;
   onRefresh: () => void;
 }

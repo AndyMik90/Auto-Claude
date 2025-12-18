@@ -77,8 +77,11 @@ class ImplementationPlan:
             )
             workflow_type = WorkflowType.FEATURE
 
+        # Support both 'feature' and 'title' fields for task name
+        feature_name = data.get("feature") or data.get("title") or "Unnamed Feature"
+
         return cls(
-            feature=data["feature"],
+            feature=feature_name,
             workflow_type=workflow_type,
             services_involved=data.get("services_involved", []),
             phases=[
