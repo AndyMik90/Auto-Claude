@@ -34,6 +34,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { RateLimitModal } from './components/RateLimitModal';
 import { SDKRateLimitModal } from './components/SDKRateLimitModal';
 import { OnboardingWizard } from './components/onboarding';
+import { AppUpdateNotification } from './components/AppUpdateNotification';
 import { UsageIndicator } from './components/UsageIndicator';
 import { ProactiveSwapListener } from './components/ProactiveSwapListener';
 import { useProjectStore, loadProjects, addProject, initializeProject } from './stores/project-store';
@@ -479,6 +480,9 @@ export function App() {
             setIsSettingsDialogOpen(true);
           }}
         />
+
+        {/* App Update Notification - shows when new app version is available */}
+        <AppUpdateNotification />
       </div>
     </TooltipProvider>
   );

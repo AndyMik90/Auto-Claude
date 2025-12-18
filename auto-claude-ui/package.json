@@ -55,6 +55,7 @@
     "chokidar": "^5.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "electron-updater": "^6.6.2",
     "ioredis": "^5.8.2",
     "lucide-react": "^0.560.0",
     "motion": "^12.23.26",
@@ -114,6 +115,13 @@
   "build": {
     "appId": "com.autoclaude.ui",
     "productName": "Auto Claude",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "AndyMik90",
+        "repo": "Auto-Claude"
+      }
+    ],
     "directories": {
       "output": "dist",
       "buildResources": "resources"

@@ -7,6 +7,7 @@ import { TerminalManager } from './terminal-manager';
 import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
+import { initializeAppUpdater } from './app-updater';
 
 // Get icon path based on platform
 function getIconPath(): string {
@@ -137,6 +138,14 @@ app.whenReady().then(() => {
     const usageMonitor = getUsageMonitor();
     usageMonitor.start();
     console.log('[main] Usage monitor initialized and started');
+
+    // Initialize app auto-updater (only in production)
+    if (app.isPackaged) {
+      initializeAppUpdater(mainWindow);
+      console.log('[main] App auto-updater initialized');
+    } else {
+      console.log('[main] App auto-updater disabled in development mode');
+    }
   }
 
   // macOS: re-create window when dock icon is clicked

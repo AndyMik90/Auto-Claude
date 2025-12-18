@@ -27,6 +27,7 @@ import { registerIdeationHandlers } from './ideation-handlers';
 import { registerChangelogHandlers } from './changelog-handlers';
 import { registerInsightsHandlers } from './insights-handlers';
 import { registerDockerHandlers } from './docker-handlers';
+import { registerAppUpdateHandlers } from './app-update-handlers';
 import { notificationService } from '../notification-service';
 
 /**
@@ -94,6 +95,9 @@ export function setupIpcHandlers(
   // Docker & infrastructure handlers (for Graphiti/FalkorDB)
   registerDockerHandlers();
 
+  // App auto-update handlers
+  registerAppUpdateHandlers();
+
   console.log('[IPC] All handler modules registered successfully');
 }
 
@@ -114,5 +118,6 @@ export {
   registerIdeationHandlers,
   registerChangelogHandlers,
   registerInsightsHandlers,
-  registerDockerHandlers
+  registerDockerHandlers,
+  registerAppUpdateHandlers
 };

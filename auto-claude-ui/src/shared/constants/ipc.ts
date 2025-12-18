@@ -257,5 +257,17 @@ export const IPC_CHANNELS = {
   // Git operations
   GIT_GET_BRANCHES: 'git:getBranches',
   GIT_GET_CURRENT_BRANCH: 'git:getCurrentBranch',
-  GIT_DETECT_MAIN_BRANCH: 'git:detectMainBranch'
+  GIT_DETECT_MAIN_BRANCH: 'git:detectMainBranch',
+
+  // App auto-update operations
+  APP_UPDATE_CHECK: 'app-update:check',
+  APP_UPDATE_DOWNLOAD: 'app-update:download',
+  APP_UPDATE_INSTALL: 'app-update:install',
+  APP_UPDATE_GET_VERSION: 'app-update:get-version',
+
+  // App auto-update events (main -> renderer)
+  APP_UPDATE_AVAILABLE: 'app-update:available',
+  APP_UPDATE_DOWNLOADED: 'app-update:downloaded',
+  APP_UPDATE_PROGRESS: 'app-update:progress',
+  APP_UPDATE_ERROR: 'app-update:error'
 } as const;
