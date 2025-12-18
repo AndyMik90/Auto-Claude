@@ -14,6 +14,7 @@ _PARENT_DIR = Path(__file__).parent.parent
 if str(_PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(_PARENT_DIR))
 
+from core.auth import AUTH_TOKEN_ENV_VARS, get_auth_token, get_auth_token_source
 from dotenv import load_dotenv
 from graphiti_config import get_graphiti_status
 from linear_integration import LinearManager
@@ -95,14 +96,25 @@ def validate_environment(spec_dir: Path) -> bool:
     """
     valid = True
 
-    # Check for Claude Code OAuth token
-    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
-        print("Error: CLAUDE_CODE_OAUTH_TOKEN environment variable not set")
-        print("\nGet your OAuth token by running:")
+    # Check for authentication token (supports multiple env vars)
+    if not get_auth_token():
+        print("Error: No authentication token found")
+        print(f"\nSet one of: {', '.join(AUTH_TOKEN_ENV_VARS)}")
+        print("\nFor Claude Code CLI, get your OAuth token by running:")
         print("  claude setup-token")
         print("\nThen set it:")
         print("  export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'")
         valid = False
+    else:
+        # Show which auth source is being used
+        source = get_auth_token_source()
+        if source and source != "CLAUDE_CODE_OAUTH_TOKEN":
+            print(f"Auth: Using token from {source}")
+
+        # Show custom base URL if set
+        base_url = os.environ.get("ANTHROPIC_BASE_URL")
+        if base_url:
+            print(f"API Endpoint: {base_url}")
 
     # Check for spec.md in spec directory
     spec_file = spec_dir / "spec.md"

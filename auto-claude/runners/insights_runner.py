@@ -9,7 +9,6 @@ about a codebase. It can also suggest tasks based on the conversation.
 import argparse
 import asyncio
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -32,6 +31,7 @@ except ImportError:
     ClaudeAgentOptions = None
     ClaudeSDKClient = None
 
+from core.auth import ensure_claude_code_oauth_token, get_auth_token
 from debug import (
     debug,
     debug_detailed,
@@ -135,14 +135,16 @@ async def run_with_sdk(project_dir: str, message: str, history: list) -> None:
         run_simple(project_dir, message, history)
         return
 
-    oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
-    if not oauth_token:
+    if not get_auth_token():
         print(
-            "CLAUDE_CODE_OAUTH_TOKEN not set, falling back to simple mode",
+            "No authentication token found, falling back to simple mode",
             file=sys.stderr,
         )
         run_simple(project_dir, message, history)
         return
+
+    # Ensure SDK can find the token
+    ensure_claude_code_oauth_token()
 
     system_prompt = build_system_prompt(project_dir)
     project_path = Path(project_dir).resolve()
