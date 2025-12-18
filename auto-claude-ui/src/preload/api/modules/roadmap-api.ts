@@ -17,6 +17,7 @@ export interface RoadmapAPI {
   saveRoadmap: (projectId: string, roadmap: Roadmap) => Promise<IPCResult>;
   generateRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;
   refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;
+  stopRoadmap: (projectId: string) => Promise<IPCResult>;
   updateFeatureStatus: (
     projectId: string,
     featureId: string,
@@ -37,6 +38,9 @@ export interface RoadmapAPI {
   onRoadmapError: (
     callback: (projectId: string, error: string) => void
   ) => IpcListenerCleanup;
+  onRoadmapStopped: (
+    callback: (projectId: string) => void
+  ) => IpcListenerCleanup;
 }
 
 /**
@@ -55,6 +59,9 @@ export const createRoadmapAPI = (): RoadmapAPI => ({
 
   refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean): void =>
     sendIpc(IPC_CHANNELS.ROADMAP_REFRESH, projectId, enableCompetitorAnalysis),
+
+  stopRoadmap: (projectId: string): Promise<IPCResult> =>
+    invokeIpc(IPC_CHANNELS.ROADMAP_STOP, projectId),
 
   updateFeatureStatus: (
     projectId: string,
@@ -83,5 +90,10 @@ export const createRoadmapAPI = (): RoadmapAPI => ({
   onRoadmapError: (
     callback: (projectId: string, error: string) => void
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.ROADMAP_ERROR, callback)
+    createIpcListener(IPC_CHANNELS.ROADMAP_ERROR, callback),
+
+  onRoadmapStopped: (
+    callback: (projectId: string) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.ROADMAP_STOPPED, callback)
 });

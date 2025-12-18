@@ -6,6 +6,7 @@ import path from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
 import { projectStore } from '../project-store';
 import { AgentManager } from '../agent';
+import { debugLog, debugError } from '../../shared/utils/debug-logger';
 
 
 /**
@@ -162,11 +163,17 @@ export function registerRoadmapHandlers(
   ipcMain.on(
     IPC_CHANNELS.ROADMAP_GENERATE,
     (_, projectId: string, enableCompetitorAnalysis?: boolean) => {
+      debugLog('[Roadmap Handler] Generate request:', {
+        projectId,
+        enableCompetitorAnalysis
+      });
+
       const mainWindow = getMainWindow();
       if (!mainWindow) return;
 
       const project = projectStore.getProject(projectId);
       if (!project) {
+        debugError('[Roadmap Handler] Project not found:', projectId);
         mainWindow.webContents.send(
           IPC_CHANNELS.ROADMAP_ERROR,
           projectId,
@@ -174,6 +181,11 @@ export function registerRoadmapHandlers(
         );
         return;
       }
+
+      debugLog('[Roadmap Handler] Starting agent manager generation:', {
+        projectId,
+        projectPath: project.path
+      });
 
       // Start roadmap generation via agent manager
       agentManager.startRoadmapGeneration(projectId, project.path, false, enableCompetitorAnalysis ?? false);
@@ -220,6 +232,27 @@ export function registerRoadmapHandlers(
           message: 'Refreshing roadmap...'
         } as RoadmapGenerationStatus
       );
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROADMAP_STOP,
+    async (_, projectId: string): Promise<IPCResult> => {
+      debugLog('[Roadmap Handler] Stop generation request:', { projectId });
+
+      const mainWindow = getMainWindow();
+
+      // Stop roadmap generation for this project
+      const wasStopped = agentManager.stopRoadmap(projectId);
+
+      debugLog('[Roadmap Handler] Stop result:', { projectId, wasStopped });
+
+      if (wasStopped && mainWindow) {
+        debugLog('[Roadmap Handler] Sending stopped event to renderer');
+        mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_STOPPED, projectId);
+      }
+
+      return { success: wasStopped };
     }
   );
 

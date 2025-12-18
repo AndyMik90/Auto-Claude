@@ -1,6 +1,6 @@
 {
   "name": "auto-claude-ui",
-  "version": "2.3.0",
+  "version": "2.5.0",
   "description": "Desktop UI for Auto Claude autonomous coding framework",
   "main": "./out/main/index.js",
   "author": "Auto Claude Team",
@@ -138,6 +138,18 @@
       {
         "from": "resources/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "../auto-claude",
+        "to": "auto-claude",
+        "filter": [
+          "!**/.git",
+          "!**/__pycache__",
+          "!**/*.pyc",
+          "!**/specs",
+          "!**/.venv",
+          "!**/.env"
+        ]
       }
     ],
     "mac": {

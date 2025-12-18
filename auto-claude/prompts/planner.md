@@ -209,6 +209,7 @@ Based on the workflow type and services involved, create the implementation plan
 
 ```json
 {
+  "feature": "Short descriptive name for this task/feature",
   "workflow_type": "feature|refactor|investigation|migration|simple",
   "workflow_rationale": "Why this workflow type was chosen",
   "phases": [

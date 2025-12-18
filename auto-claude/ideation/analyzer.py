@@ -30,13 +30,13 @@ class ProjectAnalyzer:
         self,
         project_dir: Path,
         output_dir: Path,
-        include_roadmap: bool = True,
-        include_kanban: bool = True,
+        include_roadmap_context: bool = True,
+        include_kanban_context: bool = True,
     ):
         self.project_dir = Path(project_dir)
         self.output_dir = Path(output_dir)
-        self.include_roadmap = include_roadmap
-        self.include_kanban = include_kanban
+        self.include_roadmap = include_roadmap_context
+        self.include_kanban = include_kanban_context
 
     def gather_context(self) -> dict:
         """Gather context from project for ideation."""

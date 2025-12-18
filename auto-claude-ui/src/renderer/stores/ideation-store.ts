@@ -337,6 +337,18 @@ export async function loadIdeation(projectId: string): Promise<void> {
 export function generateIdeation(projectId: string): void {
   const store = useIdeationStore.getState();
   const config = store.config;
+
+  // Debug logging
+  if (window.DEBUG) {
+    console.log('[Ideation] Starting generation:', {
+      projectId,
+      enabledTypes: config.enabledTypes,
+      includeRoadmapContext: config.includeRoadmapContext,
+      includeKanbanContext: config.includeKanbanContext,
+      maxIdeasPerType: config.maxIdeasPerType
+    });
+  }
+
   store.clearLogs();
   store.clearSession(); // Clear existing session for fresh generation
   store.initializeTypeStates(config.enabledTypes);
@@ -351,15 +363,35 @@ export function generateIdeation(projectId: string): void {
 
 export async function stopIdeation(projectId: string): Promise<boolean> {
   const store = useIdeationStore.getState();
-  const result = await window.electronAPI.stopIdeation(projectId);
-  if (result.success) {
-    store.addLog('Ideation generation stopped');
-    store.setGenerationStatus({
-      phase: 'idle',
-      progress: 0,
-      message: 'Generation stopped'
-    });
+
+  // Debug logging
+  if (window.DEBUG) {
+    console.log('[Ideation] Stop requested:', { projectId });
   }
+
+  // Always update UI state to 'idle' when user requests stop, regardless of backend response
+  // This prevents the UI from getting stuck in "generating" state if the process already ended
+  store.addLog('Stopping ideation generation...');
+  store.setGenerationStatus({
+    phase: 'idle',
+    progress: 0,
+    message: 'Generation stopped'
+  });
+
+  const result = await window.electronAPI.stopIdeation(projectId);
+
+  // Debug logging
+  if (window.DEBUG) {
+    console.log('[Ideation] Stop result:', { projectId, success: result.success });
+  }
+
+  if (!result.success) {
+    // Backend couldn't find/stop the process (likely already finished/crashed)
+    store.addLog('Process already stopped');
+  } else {
+    store.addLog('Ideation generation stopped');
+  }
+
   return result.success;
 }
 
@@ -528,6 +560,15 @@ export function setupIdeationListeners(): () => void {
 
   // Listen for progress updates
   const unsubProgress = window.electronAPI.onIdeationProgress((_projectId, status) => {
+    // Debug logging
+    if (window.DEBUG) {
+      console.log('[Ideation] Progress update:', {
+        projectId: _projectId,
+        phase: status.phase,
+        progress: status.progress,
+        message: status.message
+      });
+    }
     store().setGenerationStatus(status);
   });
 
@@ -539,6 +580,16 @@ export function setupIdeationListeners(): () => void {
   // Listen for individual ideation type completion (streaming)
   const unsubTypeComplete = window.electronAPI.onIdeationTypeComplete(
     (_projectId, ideationType, ideas) => {
+      // Debug logging
+      if (window.DEBUG) {
+        console.log('[Ideation] Type completed:', {
+          projectId: _projectId,
+          ideationType,
+          ideasCount: ideas.length,
+          ideas: ideas.map(i => ({ id: i.id, title: i.title, type: i.type }))
+        });
+      }
+
       store().addIdeasForType(ideationType, ideas);
       store().addLog(`✓ ${ideationType} completed with ${ideas.length} ideas`);
 
@@ -564,6 +615,11 @@ export function setupIdeationListeners(): () => void {
   // Listen for individual ideation type failure
   const unsubTypeFailed = window.electronAPI.onIdeationTypeFailed(
     (_projectId, ideationType) => {
+      // Debug logging
+      if (window.DEBUG) {
+        console.error('[Ideation] Type failed:', { projectId: _projectId, ideationType });
+      }
+
       store().setTypeState(ideationType as IdeationType, 'failed');
       store().addLog(`✗ ${ideationType} failed`);
     }
@@ -571,6 +627,18 @@ export function setupIdeationListeners(): () => void {
 
   // Listen for completion (final session with all data)
   const unsubComplete = window.electronAPI.onIdeationComplete((_projectId, session) => {
+    // Debug logging
+    if (window.DEBUG) {
+      console.log('[Ideation] Generation complete:', {
+        projectId: _projectId,
+        totalIdeas: session.ideas.length,
+        ideaTypes: session.ideas.reduce((acc, idea) => {
+          acc[idea.type] = (acc[idea.type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      });
+    }
+
     // Final session replaces the partial one with complete data
     store().setSession(session);
     store().setGenerationStatus({
@@ -583,6 +651,11 @@ export function setupIdeationListeners(): () => void {
 
   // Listen for errors
   const unsubError = window.electronAPI.onIdeationError((_projectId, error) => {
+    // Debug logging
+    if (window.DEBUG) {
+      console.error('[Ideation] Error received:', { projectId: _projectId, error });
+    }
+
     store().setGenerationStatus({
       phase: 'error',
       progress: 0,

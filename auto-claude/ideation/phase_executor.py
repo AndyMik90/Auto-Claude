@@ -193,8 +193,8 @@ class PhaseExecutor:
             "graph_hints": graph_hints,  # Include graph hints in context
             "config": {
                 "enabled_types": self.enabled_types,
-                "include_roadmap_context": self.analyzer.include_roadmap_context,
-                "include_kanban_context": self.analyzer.include_kanban_context,
+                "include_roadmap_context": self.analyzer.include_roadmap,
+                "include_kanban_context": self.analyzer.include_kanban,
                 "max_ideas_per_type": self.max_ideas_per_type,
             },
             "created_at": datetime.now().isoformat(),

@@ -74,6 +74,7 @@ dmypy.json
 .auto-claude-security.json
 .auto-claude-status
 .claude_settings.json
+.update-metadata.json
 
 # Development of Auto Build with Auto Build
 dev/

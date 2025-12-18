@@ -294,7 +294,7 @@ export class ProjectStore {
           id: dir.name, // Use spec directory name as ID
           specId: dir.name,
           projectId,
-          title: plan?.feature || dir.name,
+          title: plan?.feature || plan?.title || dir.name,
           description,
           status,
           reviewReason,

@@ -47,11 +47,12 @@ export function registerImportIssues(agentManager: AgentManager): void {
           };
 
           // Build description with metadata
-          const labels = issue.labels.map(l => l.name).join(', ');
+          const labelNames = issue.labels.map(l => l.name);
+          const labelsString = labelNames.join(', ');
           const description = `# ${issue.title}
 
 **GitHub Issue:** [#${issue.number}](${issue.html_url})
-${labels ? `**Labels:** ${labels}` : ''}
+${labelsString ? `**Labels:** ${labelsString}` : ''}
 
 ## Description
 
@@ -64,7 +65,8 @@ ${issue.body || 'No description provided.'}
             issue.number,
             issue.title,
             description,
-            issue.html_url
+            issue.html_url,
+            labelNames
           );
 
           // Start spec creation with the existing spec directory

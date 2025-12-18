@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useRoadmapStore, loadRoadmap, generateRoadmap, refreshRoadmap } from '../../stores/roadmap-store';
+import { useRoadmapStore, loadRoadmap, generateRoadmap, refreshRoadmap, stopRoadmap } from '../../stores/roadmap-store';
 import type { RoadmapFeature } from '../../../shared/types';
 
 /**
@@ -70,20 +70,24 @@ export function useRoadmapGeneration(projectId: string) {
 
   const handleCompetitorDialogAccept = () => {
     if (pendingAction === 'generate') {
-      generateRoadmap(projectId);
+      generateRoadmap(projectId, true); // Enable competitor analysis
     } else if (pendingAction === 'refresh') {
-      refreshRoadmap(projectId);
+      refreshRoadmap(projectId, true); // Enable competitor analysis
     }
     setPendingAction(null);
   };
 
   const handleCompetitorDialogDecline = () => {
     if (pendingAction === 'generate') {
-      generateRoadmap(projectId);
+      generateRoadmap(projectId, false); // Disable competitor analysis
     } else if (pendingAction === 'refresh') {
-      refreshRoadmap(projectId);
+      refreshRoadmap(projectId, false); // Disable competitor analysis
     }
     setPendingAction(null);
+  };
+
+  const handleStop = async () => {
+    await stopRoadmap(projectId);
   };
 
   return {
@@ -94,5 +98,6 @@ export function useRoadmapGeneration(projectId: string) {
     handleRefresh,
     handleCompetitorDialogAccept,
     handleCompetitorDialogDecline,
+    handleStop,
   };
 }

@@ -1,4 +1,4 @@
-import type { RoadmapFeature, RoadmapPhase, Roadmap, CompetitorPainPoint } from '../../../shared/types';
+import type { RoadmapFeature, RoadmapPhase, Roadmap, CompetitorPainPoint, CompetitorAnalysis } from '../../../shared/types';
 
 export interface RoadmapProps {
   projectId: string;
@@ -32,8 +32,10 @@ export interface FeatureDetailPanelProps {
 
 export interface RoadmapHeaderProps {
   roadmap: Roadmap;
+  competitorAnalysis: CompetitorAnalysis | null;
   onAddFeature: () => void;
   onRefresh: () => void;
+  onViewCompetitorAnalysis?: () => void;
 }
 
 export interface RoadmapEmptyStateProps {

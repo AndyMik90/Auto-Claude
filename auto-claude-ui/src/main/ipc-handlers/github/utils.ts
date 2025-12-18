@@ -69,7 +69,7 @@ export async function githubFetch(
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Accept': 'application/vnd.github.v3+json',
+      'Accept': 'application/vnd.github+json',
       'Authorization': `Bearer ${token}`,
       'User-Agent': 'Auto-Claude-UI',
       ...options.headers

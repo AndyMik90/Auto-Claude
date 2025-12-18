@@ -11,12 +11,12 @@ import { TIMEOUTS } from './config';
  */
 export function fetchJson<T>(url: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    const request = https.get(url, {
-      headers: {
-        'User-Agent': 'Auto-Claude-UI',
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    }, (response) => {
+    const headers = {
+      'User-Agent': 'Auto-Claude-UI',
+      'Accept': 'application/vnd.github+json'
+    };
+
+    const request = https.get(url, { headers }, (response) => {
       // Handle redirects
       if (response.statusCode === 301 || response.statusCode === 302) {
         const redirectUrl = response.headers.location;
@@ -27,7 +27,19 @@ export function fetchJson<T>(url: string): Promise<T> {
       }
 
       if (response.statusCode !== 200) {
-        reject(new Error(`HTTP ${response.statusCode}`));
+        // Collect response body for error details (limit to 10KB)
+        const maxErrorSize = 10 * 1024;
+        let errorData = '';
+        response.on('data', chunk => {
+          if (errorData.length < maxErrorSize) {
+            errorData += chunk.toString().slice(0, maxErrorSize - errorData.length);
+          }
+        });
+        response.on('end', () => {
+          const errorMsg = `HTTP ${response.statusCode}: ${errorData || response.statusMessage || 'No error details'}`;
+          reject(new Error(errorMsg));
+        });
+        response.on('error', reject);
         return;
       }
 
@@ -62,12 +74,12 @@ export function downloadFile(
   return new Promise((resolve, reject) => {
     const file = createWriteStream(destPath);
 
-    const request = https.get(url, {
-      headers: {
-        'User-Agent': 'Auto-Claude-UI',
-        'Accept': 'application/octet-stream'
-      }
-    }, (response) => {
+    const headers = {
+      'User-Agent': 'Auto-Claude-UI',
+      'Accept': 'application/octet-stream'
+    };
+
+    const request = https.get(url, { headers }, (response) => {
       // Handle redirects
       if (response.statusCode === 301 || response.statusCode === 302) {
         file.close();
@@ -80,7 +92,19 @@ export function downloadFile(
 
       if (response.statusCode !== 200) {
         file.close();
-        reject(new Error(`HTTP ${response.statusCode}`));
+        // Collect response body for error details (limit to 10KB)
+        const maxErrorSize = 10 * 1024;
+        let errorData = '';
+        response.on('data', chunk => {
+          if (errorData.length < maxErrorSize) {
+            errorData += chunk.toString().slice(0, maxErrorSize - errorData.length);
+          }
+        });
+        response.on('end', () => {
+          const errorMsg = `HTTP ${response.statusCode}: ${errorData || response.statusMessage || 'No error details'}`;
+          reject(new Error(errorMsg));
+        });
+        response.on('error', reject);
         return;
       }
 

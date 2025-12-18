@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { RoadmapGenerationProgress } from './RoadmapGenerationProgress';
 import { CompetitorAnalysisDialog } from './CompetitorAnalysisDialog';
+import { CompetitorAnalysisViewer } from './CompetitorAnalysisViewer';
 import { AddFeatureDialog } from './AddFeatureDialog';
 import { RoadmapHeader } from './roadmap/RoadmapHeader';
 import { RoadmapEmptyState } from './roadmap/RoadmapEmptyState';
@@ -16,6 +17,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
   const [selectedFeature, setSelectedFeature] = useState<RoadmapFeature | null>(null);
   const [activeTab, setActiveTab] = useState('phases');
   const [showAddFeatureDialog, setShowAddFeatureDialog] = useState(false);
+  const [showCompetitorViewer, setShowCompetitorViewer] = useState(false);
 
   // Custom hooks
   const { roadmap, competitorAnalysis, generationStatus } = useRoadmapData(projectId);
@@ -27,6 +29,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
     handleRefresh,
     handleCompetitorDialogAccept,
     handleCompetitorDialogDecline,
+    handleStop,
   } = useRoadmapGeneration(projectId);
 
   // Event handlers
@@ -47,6 +50,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
         <RoadmapGenerationProgress
           generationStatus={generationStatus}
           className="w-full max-w-md"
+          onStop={handleStop}
         />
       </div>
     );
@@ -73,8 +77,10 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
       {/* Header */}
       <RoadmapHeader
         roadmap={roadmap}
+        competitorAnalysis={competitorAnalysis}
         onAddFeature={() => setShowAddFeatureDialog(true)}
         onRefresh={handleRefresh}
+        onViewCompetitorAnalysis={() => setShowCompetitorViewer(true)}
       />
 
       {/* Content */}
@@ -106,6 +112,13 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
         onOpenChange={setShowCompetitorDialog}
         onAccept={handleCompetitorDialogAccept}
         onDecline={handleCompetitorDialogDecline}
+      />
+
+      {/* Competitor Analysis Viewer */}
+      <CompetitorAnalysisViewer
+        analysis={competitorAnalysis}
+        open={showCompetitorViewer}
+        onOpenChange={setShowCompetitorViewer}
       />
 
       {/* Add Feature Dialog */}

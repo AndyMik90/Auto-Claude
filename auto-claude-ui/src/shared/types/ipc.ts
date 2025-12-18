@@ -238,7 +238,9 @@ export interface ElectronAPI {
   getRoadmap: (projectId: string) => Promise<IPCResult<Roadmap | null>>;
   saveRoadmap: (projectId: string, roadmap: Roadmap) => Promise<IPCResult>;
   generateRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;
-  refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;  updateFeatureStatus: (
+  refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;
+  stopRoadmap: (projectId: string) => Promise<IPCResult>;
+  updateFeatureStatus: (
     projectId: string,
     featureId: string,
     status: RoadmapFeatureStatus
@@ -257,6 +259,9 @@ export interface ElectronAPI {
   ) => () => void;
   onRoadmapError: (
     callback: (projectId: string, error: string) => void
+  ) => () => void;
+  onRoadmapStopped: (
+    callback: (projectId: string) => void
   ) => () => void;
 
   // Context operations
@@ -299,7 +304,8 @@ export interface ElectronAPI {
   getGitHubIssues: (projectId: string, state?: 'open' | 'closed' | 'all') => Promise<IPCResult<GitHubIssue[]>>;
   getGitHubIssue: (projectId: string, issueNumber: number) => Promise<IPCResult<GitHubIssue>>;
   checkGitHubConnection: (projectId: string) => Promise<IPCResult<GitHubSyncStatus>>;
-  investigateGitHubIssue: (projectId: string, issueNumber: number) => void;
+  investigateGitHubIssue: (projectId: string, issueNumber: number, selectedCommentIds?: number[]) => void;
+  getIssueComments: (projectId: string, issueNumber: number) => Promise<IPCResult<Array<{ id: number; body: string; user: { login: string; avatar_url?: string }; created_at: string; updated_at: string }>>>;
   importGitHubIssues: (projectId: string, issueNumbers: number[]) => Promise<IPCResult<GitHubImportResult>>;
   createGitHubRelease: (
     projectId: string,
@@ -507,5 +513,6 @@ export interface ElectronAPI {
 declare global {
   interface Window {
     electronAPI: ElectronAPI;
+    DEBUG: boolean;
   }
 }

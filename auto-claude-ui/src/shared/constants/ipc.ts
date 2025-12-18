@@ -120,6 +120,7 @@ export const IPC_CHANNELS = {
   ROADMAP_GENERATE: 'roadmap:generate',
   ROADMAP_GENERATE_WITH_COMPETITOR: 'roadmap:generateWithCompetitor',
   ROADMAP_REFRESH: 'roadmap:refresh',
+  ROADMAP_STOP: 'roadmap:stop',
   ROADMAP_UPDATE_FEATURE: 'roadmap:updateFeature',
   ROADMAP_CONVERT_TO_SPEC: 'roadmap:convertToSpec',
 
@@ -127,6 +128,7 @@ export const IPC_CHANNELS = {
   ROADMAP_PROGRESS: 'roadmap:progress',
   ROADMAP_COMPLETE: 'roadmap:complete',
   ROADMAP_ERROR: 'roadmap:error',
+  ROADMAP_STOPPED: 'roadmap:stopped',
 
   // Context operations
   CONTEXT_GET: 'context:get',
@@ -174,6 +176,7 @@ export const IPC_CHANNELS = {
   GITHUB_GET_REPOSITORIES: 'github:getRepositories',
   GITHUB_GET_ISSUES: 'github:getIssues',
   GITHUB_GET_ISSUE: 'github:getIssue',
+  GITHUB_GET_ISSUE_COMMENTS: 'github:getIssueComments',
   GITHUB_CHECK_CONNECTION: 'github:checkConnection',
   GITHUB_INVESTIGATE_ISSUE: 'github:investigateIssue',
   GITHUB_IMPORT_ISSUES: 'github:importIssues',
