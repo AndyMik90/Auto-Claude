@@ -33,10 +33,20 @@ Usage:
     python auto-claude/spec_runner.py --task "Simple fix" --no-ai-assessment
 """
 
+import sys
+
+# Python version check - must be before any imports using 3.10+ syntax
+if sys.version_info < (3, 10):
+    sys.exit(
+        f"Error: Auto Claude requires Python 3.10 or higher.\n"
+        f"You are running Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}\n"
+        f"\n"
+        f"Please upgrade Python: https://www.python.org/downloads/"
+    )
+
 import asyncio
 import io
 import os
-import sys
 from pathlib import Path
 
 # Configure safe encoding on Windows BEFORE any imports that might print

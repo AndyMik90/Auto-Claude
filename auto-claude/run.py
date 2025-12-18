@@ -28,8 +28,18 @@ Prerequisites:
     - Claude Code CLI installed
 """
 
-import io
 import sys
+
+# Python version check - must be before any imports using 3.10+ syntax
+if sys.version_info < (3, 10):
+    sys.exit(
+        f"Error: Auto Claude requires Python 3.10 or higher.\n"
+        f"You are running Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}\n"
+        f"\n"
+        f"Please upgrade Python: https://www.python.org/downloads/"
+    )
+
+import io
 
 # Configure safe encoding on Windows BEFORE any imports that might print
 # This handles both TTY and piped output (e.g., from Electron)
