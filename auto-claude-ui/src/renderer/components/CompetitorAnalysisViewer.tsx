@@ -107,24 +107,26 @@ export function CompetitorAnalysisViewer({
                               <p className="text-sm font-medium">
                                 {painPoint.description}
                               </p>
-                              {painPoint.userQuotes && painPoint.userQuotes.length > 0 && (
-                                <div className="mt-2 space-y-1">
-                                  {painPoint.userQuotes.map((quote, idx) => (
-                                    <p
-                                      key={idx}
-                                      className="text-xs text-muted-foreground italic border-l-2 border-muted pl-2"
-                                    >
-                                      "{quote}"
-                                    </p>
-                                  ))}
-                                </div>
-                              )}
-                              {painPoint.opportunityScore !== undefined && (
+                              {painPoint.source && (
                                 <div className="mt-2">
                                   <span className="text-xs text-muted-foreground">
-                                    Opportunity Score:{' '}
+                                    Source: <span className="italic">{painPoint.source}</span>
+                                  </span>
+                                </div>
+                              )}
+                              {painPoint.frequency && (
+                                <div className="mt-1">
+                                  <span className="text-xs text-muted-foreground">
+                                    Frequency: {painPoint.frequency}
+                                  </span>
+                                </div>
+                              )}
+                              {painPoint.opportunity && (
+                                <div className="mt-1">
+                                  <span className="text-xs text-muted-foreground">
+                                    Opportunity:{' '}
                                     <span className="font-medium text-foreground">
-                                      {painPoint.opportunityScore}/10
+                                      {painPoint.opportunity}
                                     </span>
                                   </span>
                                 </div>
@@ -139,11 +141,43 @@ export function CompetitorAnalysisViewer({
               </div>
             ))}
 
-            {/* Summary */}
-            {analysis.summary && (
-              <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
-                <h4 className="text-sm font-semibold mb-2">Market Summary</h4>
-                <p className="text-sm text-muted-foreground">{analysis.summary}</p>
+            {/* Insights Summary */}
+            {analysis.insightsSummary && (
+              <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 space-y-3">
+                <h4 className="text-sm font-semibold">Market Insights Summary</h4>
+
+                {analysis.insightsSummary.topPainPoints.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Top Pain Points:</p>
+                    <ul className="text-sm space-y-1">
+                      {analysis.insightsSummary.topPainPoints.map((point, idx) => (
+                        <li key={idx} className="text-muted-foreground">• {point}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {analysis.insightsSummary.differentiatorOpportunities.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Differentiator Opportunities:</p>
+                    <ul className="text-sm space-y-1">
+                      {analysis.insightsSummary.differentiatorOpportunities.map((opp, idx) => (
+                        <li key={idx} className="text-muted-foreground">• {opp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {analysis.insightsSummary.marketTrends.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Market Trends:</p>
+                    <ul className="text-sm space-y-1">
+                      {analysis.insightsSummary.marketTrends.map((trend, idx) => (
+                        <li key={idx} className="text-muted-foreground">• {trend}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
