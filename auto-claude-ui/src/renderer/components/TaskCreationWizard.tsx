@@ -135,10 +135,16 @@ export function TaskCreationWizard({
     })
   );
 
-  // Setup drop zone for file references
+  // Setup drop zone for file references (entire form)
   const { setNodeRef: setDropRef, isOver: isOverDropZone } = useDroppable({
     id: 'file-drop-zone',
     data: { type: 'file-drop-zone' }
+  });
+
+  // Setup drop zone for description textarea (inline @mentions)
+  const { setNodeRef: setTextareaDropRef, isOver: isOverTextarea } = useDroppable({
+    id: 'description-drop-zone',
+    data: { type: 'description-drop-zone' }
   });
 
   // Determine if drop zone is at capacity
@@ -397,7 +403,7 @@ export function TaskCreationWizard({
   }, []);
 
   /**
-   * Handle drag end - add file to referencedFiles when dropped on valid target
+   * Handle drag end - insert @mention in description or add to referencedFiles
    */
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -407,9 +413,6 @@ export function TaskCreationWizard({
 
     // If not dropped on a valid target, do nothing
     if (!over) return;
-
-    // Only accept drops on the file-drop-zone
-    if (over.id !== 'file-drop-zone') return;
 
     const data = active.data.current as {
       type?: string;
@@ -421,30 +424,89 @@ export function TaskCreationWizard({
     // Only process file drops
     if (data?.type !== 'file' || !data.path || !data.name) return;
 
-    // Check if we're at the max limit
-    if (referencedFiles.length >= MAX_REFERENCED_FILES) {
-      setError(`Maximum of ${MAX_REFERENCED_FILES} referenced files allowed`);
+    // Handle drop on description textarea - insert inline @mention
+    if (over.id === 'description-drop-zone') {
+      const textarea = descriptionRef.current;
+      if (!textarea) return;
+
+      const cursorPos = textarea.selectionStart || 0;
+      const textBefore = description.substring(0, cursorPos);
+      const textAfter = description.substring(cursorPos);
+
+      // Insert @mention at cursor position
+      const mention = `@${data.name}`;
+      const newDescription = textBefore + mention + textAfter;
+      setDescription(newDescription);
+
+      // Set cursor after the inserted mention
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = cursorPos + mention.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+
       return;
     }
 
-    // Check for duplicates
-    if (referencedFiles.some(f => f.path === data.path)) {
-      // Silently skip duplicates
-      return;
+    // Handle drop on file-drop-zone - add to referenced files list
+    if (over.id === 'file-drop-zone') {
+      // Check if we're at the max limit
+      if (referencedFiles.length >= MAX_REFERENCED_FILES) {
+        setError(`Maximum of ${MAX_REFERENCED_FILES} referenced files allowed`);
+        return;
+      }
+
+      // Check for duplicates
+      if (referencedFiles.some(f => f.path === data.path)) {
+        // Silently skip duplicates
+        return;
+      }
+
+      // Add the file to referenced files
+      const newFile: ReferencedFile = {
+        id: crypto.randomUUID(),
+        path: data.path,
+        name: data.name,
+        isDirectory: data.isDirectory ?? false,
+        addedAt: new Date()
+      };
+
+      setReferencedFiles(prev => [...prev, newFile]);
     }
+  }, [referencedFiles, description]);
 
-    // Add the file to referenced files
-    const newFile: ReferencedFile = {
-      id: crypto.randomUUID(),
-      path: data.path,
-      name: data.name,
-      isDirectory: data.isDirectory ?? false,
-      addedAt: new Date()
-    };
+  /**
+   * Parse @mentions from description and create ReferencedFile entries
+   * Merges with existing referencedFiles, avoiding duplicates
+   */
+  const parseFileMentions = useCallback((text: string, existingFiles: ReferencedFile[]): ReferencedFile[] => {
+    // Match @filename patterns (supports filenames with dots, hyphens, underscores, and path separators)
+    const mentionRegex = /@([\w\-./\\]+\.\w+)/g;
+    const matches = Array.from(text.matchAll(mentionRegex));
 
-    setReferencedFiles(prev => [...prev, newFile]);
-    // Note: Referenced Files section is always visible, no need to expand
-  }, [referencedFiles]);
+    if (matches.length === 0) return existingFiles;
+
+    // Create a set of existing file names for quick lookup
+    const existingNames = new Set(existingFiles.map(f => f.name));
+
+    // Parse mentioned files that aren't already in the list
+    const newFiles: ReferencedFile[] = [];
+    matches.forEach(match => {
+      const fileName = match[1];
+      if (!existingNames.has(fileName)) {
+        newFiles.push({
+          id: crypto.randomUUID(),
+          path: fileName, // Store relative path from @mention
+          name: fileName,
+          isDirectory: false,
+          addedAt: new Date()
+        });
+        existingNames.add(fileName); // Prevent duplicates within mentions
+      }
+    });
+
+    return [...existingFiles, ...newFiles];
+  }, []);
 
   const handleCreate = async () => {
     if (!description.trim()) {
@@ -456,6 +518,9 @@ export function TaskCreationWizard({
     setError(null);
 
     try {
+      // Parse @mentions from description and merge with referenced files
+      const allReferencedFiles = parseFileMentions(description, referencedFiles);
+
       // Build metadata from selected values
       const metadata: TaskMetadata = {
         sourceType: 'manual'
@@ -468,7 +533,7 @@ export function TaskCreationWizard({
       if (model) metadata.model = model;
       if (thinkingLevel) metadata.thinkingLevel = thinkingLevel;
       if (images.length > 0) metadata.attachedImages = images;
-      if (referencedFiles.length > 0) metadata.referencedFiles = referencedFiles;
+      if (allReferencedFiles.length > 0) metadata.referencedFiles = allReferencedFiles;
       if (requireReviewBeforeCoding) metadata.requireReviewBeforeCoding = true;
 
       // Title is optional - if empty, it will be auto-generated by the backend
@@ -558,11 +623,35 @@ export function TaskCreationWizard({
             <div
               ref={setDropRef}
               className={cn(
-                "flex-1 flex flex-col p-6 min-w-0 min-h-0 overflow-y-auto transition-colors duration-150 ease-out",
-                // Subtle background tint when dragging files - keeps modal usable
-                activeDragData && "bg-muted/20"
+                "flex-1 flex flex-col p-6 min-w-0 min-h-0 overflow-y-auto relative transition-all duration-150 ease-out",
+                // Default state - no border
+                !activeDragData && "",
+                // Subtle visual feedback when dragging - border on the entire form
+                activeDragData && !isOverDropZone && "border-2 border-dashed border-muted-foreground/40 rounded-lg",
+                // Clear drop target feedback when over the form
+                activeDragData && isOverDropZone && !isAtMaxFiles && "border-2 border-solid border-info rounded-lg bg-info/5",
+                // Warning state when at capacity
+                activeDragData && isOverDropZone && isAtMaxFiles && "border-2 border-solid border-warning rounded-lg bg-warning/5"
               )}
             >
+              {/* Drop zone indicator overlay - shows when dragging over form */}
+              {activeDragData && isOverDropZone && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none rounded-lg">
+                  <div className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-lg",
+                    isAtMaxFiles
+                      ? "bg-warning text-warning-foreground"
+                      : "bg-info text-info-foreground"
+                  )}>
+                    <FileDown className="h-4 w-4" />
+                    <span>
+                      {isAtMaxFiles
+                        ? `Maximum ${MAX_REFERENCED_FILES} files reached`
+                        : 'Drop file to add reference'}
+                    </span>
+                  </div>
+                </div>
+              )}
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-foreground">Create New Task</DialogTitle>
@@ -595,25 +684,67 @@ export function TaskCreationWizard({
             <Label htmlFor="description" className="text-sm font-medium text-foreground">
               Description <span className="text-destructive">*</span>
             </Label>
-            <Textarea
-              ref={descriptionRef}
-              id="description"
-              placeholder="Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onPaste={handlePaste}
-              onDragOver={handleTextareaDragOver}
-              onDragLeave={handleTextareaDragLeave}
-              onDrop={handleTextareaDrop}
-              rows={5}
-              disabled={isCreating}
-              className={cn(
-                "resize-y min-h-[120px] max-h-[400px]",
-                isDragOverTextarea && !isCreating && "border-primary bg-primary/5 ring-2 ring-primary/20"
+            {/* Wrap textarea in drop zone for file @mentions */}
+            <div ref={setTextareaDropRef} className="relative">
+              {/* Syntax highlight overlay for @mentions */}
+              <div
+                className="absolute inset-0 pointer-events-none overflow-hidden rounded-md border border-transparent"
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  font: 'inherit',
+                  lineHeight: '1.5',
+                  wordWrap: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  color: 'transparent'
+                }}
+              >
+                {description.split(/(@[\w\-./\\]+\.\w+)/g).map((part, i) => {
+                  // Check if this part is an @mention
+                  if (part.match(/^@[\w\-./\\]+\.\w+$/)) {
+                    return (
+                      <span
+                        key={i}
+                        className="bg-info/20 text-info-foreground rounded px-0.5"
+                        style={{ color: 'hsl(var(--info))' }}
+                      >
+                        {part}
+                      </span>
+                    );
+                  }
+                  return <span key={i}>{part}</span>;
+                })}
+              </div>
+              <Textarea
+                ref={descriptionRef}
+                id="description"
+                placeholder="Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onPaste={handlePaste}
+                onDragOver={handleTextareaDragOver}
+                onDragLeave={handleTextareaDragLeave}
+                onDrop={handleTextareaDrop}
+                rows={5}
+                disabled={isCreating}
+                className={cn(
+                  "resize-y min-h-[120px] max-h-[400px] relative bg-transparent",
+                  // Image drop feedback (native drops)
+                  isDragOverTextarea && !isCreating && "border-primary bg-primary/5 ring-2 ring-primary/20",
+                  // File reference drop feedback (dnd-kit drops for @mentions)
+                  activeDragData && isOverTextarea && "border-info bg-info/5 ring-2 ring-info/20"
+                )}
+                style={{ caretColor: 'auto' }}
+              />
+              {/* Drop indicator for file references */}
+              {activeDragData && isOverTextarea && (
+                <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-info text-info-foreground text-xs font-medium shadow-sm pointer-events-none z-10">
+                  <File className="h-3 w-3" />
+                  <span>Insert @{activeDragData.name}</span>
+                </div>
               )}
-            />
+            </div>
             <p className="text-xs text-muted-foreground">
-              Tip: Paste screenshots directly with {navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V'} to add reference images.
+              Tip: Drag files from the explorer to insert @references, or paste screenshots with {navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V'}.
             </p>
           </div>
 
@@ -855,40 +986,8 @@ export function TaskCreationWizard({
             </div>
           )}
 
-          {/* Referenced Files Section - Always visible */}
-          <div
-            className={cn(
-              "space-y-3 p-4 rounded-lg border bg-muted/30 relative transition-all duration-150 ease-out",
-              // Default state
-              !activeDragData && "border-border",
-              // Subtle dashed border when dragging but not over drop zone
-              activeDragData && !isOverDropZone && "border-dashed border-muted-foreground/40",
-              // Highlighted when dragging over - can accept files
-              activeDragData && isOverDropZone && !isAtMaxFiles && "border-info border-solid bg-info/5 shadow-sm",
-              // Warning when at max capacity
-              activeDragData && isOverDropZone && isAtMaxFiles && "border-warning border-solid bg-warning/5"
-            )}
-          >
-            {/* Drop zone indicator - only shows when dragging over the section */}
-            {activeDragData && isOverDropZone && (
-              <div className={cn(
-                "absolute inset-0 z-10 flex items-center justify-center pointer-events-none rounded-lg transition-opacity duration-100",
-                isAtMaxFiles ? "bg-warning/5" : "bg-info/5"
-              )}>
-                <div className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs",
-                  isAtMaxFiles
-                    ? "bg-warning/80 text-warning-foreground"
-                    : "bg-info/80 text-info-foreground"
-                )}>
-                  <FileDown className="h-3.5 w-3.5" />
-                  <span className="font-medium">
-                    {isAtMaxFiles ? `Max ${MAX_REFERENCED_FILES} files` : 'Drop to add'}
-                  </span>
-                </div>
-              </div>
-            )}
-
+          {/* Referenced Files Section - Always visible, clean list */}
+          <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">
             {/* Header */}
             <div className="flex items-center gap-2">
               <FolderTree className="h-4 w-4 text-muted-foreground" />
@@ -903,7 +1002,7 @@ export function TaskCreationWizard({
             {/* Empty state hint */}
             {referencedFiles.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                Drag files from the file explorer to add references, or use the "Browse Files" button below.
+                Drag files from the file explorer anywhere onto this form to add references, or use the "Browse Files" button below.
               </p>
             ) : (
               <>
