@@ -91,6 +91,7 @@ if env_file.exists():
 elif dev_env_file.exists():
     load_dotenv(dev_env_file)
 
+from debug import debug, debug_error, debug_section, debug_success
 from review import ReviewState
 from spec import SpecOrchestrator
 from ui import Icons, highlight, icon, muted, print_section, print_status
@@ -98,6 +99,7 @@ from ui import Icons, highlight, icon, muted, print_section, print_status
 
 def main():
     """CLI entry point."""
+    debug_section("spec_runner", "Spec Runner CLI")
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -232,6 +234,18 @@ Examples:
             f"\n{icon(Icons.GEAR)} Note: --dev flag is deprecated. All specs now go to .auto-claude/specs/\n"
         )
 
+    debug(
+        "spec_runner",
+        "Creating spec orchestrator",
+        project_dir=str(project_dir),
+        task_description=task_description[:200] if task_description else None,
+        model=args.model,
+        complexity_override=args.complexity,
+        use_ai_assessment=not args.no_ai_assessment,
+        interactive=args.interactive or not task_description,
+        auto_approve=args.auto_approve,
+    )
+
     orchestrator = SpecOrchestrator(
         project_dir=project_dir,
         task_description=task_description,
@@ -244,6 +258,7 @@ Examples:
     )
 
     try:
+        debug("spec_runner", "Starting spec orchestrator run...")
         success = asyncio.run(
             orchestrator.run(
                 interactive=args.interactive or not task_description,
@@ -252,13 +267,18 @@ Examples:
         )
 
         if not success:
+            debug_error("spec_runner", "Spec creation failed")
             sys.exit(1)
+
+        debug_success("spec_runner", "Spec creation succeeded", spec_dir=str(orchestrator.spec_dir))
 
         # Auto-start build unless --no-build is specified
         if not args.no_build:
+            debug("spec_runner", "Checking if spec is approved for build...")
             # Verify spec is approved before starting build (defensive check)
             review_state = ReviewState.load(orchestrator.spec_dir)
             if not review_state.is_approved():
+                debug_error("spec_runner", "Spec not approved - cannot start build")
                 print()
                 print_status("Build cannot start: spec not approved.", "error")
                 print()
@@ -276,6 +296,7 @@ Examples:
                 print(f"  {highlight(example_cmd)}")
                 sys.exit(1)
 
+            debug_success("spec_runner", "Spec approved - starting build")
             print()
             print_section("STARTING BUILD", Icons.LIGHTNING)
             print()
@@ -300,6 +321,11 @@ Examples:
             if args.model != "claude-opus-4-5-20251101":
                 run_cmd.extend(["--model", args.model])
 
+            debug(
+                "spec_runner",
+                "Executing run.py for build",
+                command=" ".join(run_cmd),
+            )
             print(f"  {muted('Running:')} {' '.join(run_cmd)}")
             print()
 
@@ -309,6 +335,7 @@ Examples:
         sys.exit(0)
 
     except KeyboardInterrupt:
+        debug_error("spec_runner", "Spec creation interrupted by user")
         print("\n\nSpec creation interrupted.")
         print(
             f"To continue: python auto-claude/spec_runner.py --continue {orchestrator.spec_dir.name}"

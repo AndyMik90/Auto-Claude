@@ -8,6 +8,7 @@ Runs QA fixer sessions to resolve issues identified by the reviewer.
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
+from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from task_logger import (
     LogEntryType,
     LogPhase,
@@ -58,6 +59,14 @@ async def run_qa_fixer_session(
         - "fixed" if fixes were applied
         - "error" if an error occurred
     """
+    debug_section("qa_fixer", f"QA Fixer Session {fix_session}")
+    debug(
+        "qa_fixer",
+        "Starting QA fixer session",
+        spec_dir=str(spec_dir),
+        fix_session=fix_session,
+    )
+
     print(f"\n{'=' * 70}")
     print(f"  QA FIXER SESSION {fix_session}")
     print("  Applying fixes from QA_FIX_REQUEST.md...")
@@ -66,14 +75,18 @@ async def run_qa_fixer_session(
     # Get task logger for streaming markers
     task_logger = get_task_logger(spec_dir)
     current_tool = None
+    message_count = 0
+    tool_count = 0
 
     # Check that fix request file exists
     fix_request_file = spec_dir / "QA_FIX_REQUEST.md"
     if not fix_request_file.exists():
+        debug_error("qa_fixer", "QA_FIX_REQUEST.md not found")
         return "error", "QA_FIX_REQUEST.md not found"
 
     # Load fixer prompt
     prompt = load_qa_fixer_prompt()
+    debug_detailed("qa_fixer", "Loaded QA fixer prompt", prompt_length=len(prompt))
 
     # Add session context - use full path so agent can find files
     prompt += f"\n\n---\n\n**Fix Session**: {fix_session}\n"
@@ -83,11 +96,20 @@ async def run_qa_fixer_session(
     prompt += f"The fix request file is at: `{spec_dir}/QA_FIX_REQUEST.md`\n"
 
     try:
+        debug("qa_fixer", "Sending query to Claude SDK...")
         await client.query(prompt)
+        debug_success("qa_fixer", "Query sent successfully")
 
         response_text = ""
+        debug("qa_fixer", "Starting to receive response stream...")
         async for msg in client.receive_response():
             msg_type = type(msg).__name__
+            message_count += 1
+            debug_detailed(
+                "qa_fixer",
+                f"Received message #{message_count}",
+                msg_type=msg_type,
+            )
 
             if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                 for block in msg.content:
@@ -107,6 +129,7 @@ async def run_qa_fixer_session(
                     elif block_type == "ToolUseBlock" and hasattr(block, "name"):
                         tool_name = block.name
                         tool_input = None
+                        tool_count += 1
 
                         if hasattr(block, "input") and block.input:
                             inp = block.input
@@ -121,6 +144,12 @@ async def run_qa_fixer_session(
                                     if len(cmd) > 50:
                                         cmd = cmd[:47] + "..."
                                     tool_input = cmd
+
+                        debug(
+                            "qa_fixer",
+                            f"Tool call #{tool_count}: {tool_name}",
+                            tool_input=tool_input,
+                        )
 
                         # Log tool start (handles printing)
                         if task_logger:
@@ -150,6 +179,11 @@ async def run_qa_fixer_session(
                         result_content = getattr(block, "content", "")
 
                         if is_error:
+                            debug_error(
+                                "qa_fixer",
+                                f"Tool error: {current_tool}",
+                                error=str(result_content)[:200],
+                            )
                             error_str = str(result_content)[:500]
                             print(f"   [Error] {error_str}", flush=True)
                             if task_logger and current_tool:
@@ -162,6 +196,11 @@ async def run_qa_fixer_session(
                                     phase=LogPhase.VALIDATION,
                                 )
                         else:
+                            debug_detailed(
+                                "qa_fixer",
+                                f"Tool success: {current_tool}",
+                                result_length=len(str(result_content)),
+                            )
                             if verbose:
                                 result_str = str(result_content)[:200]
                                 print(f"   [Done] {result_str}", flush=True)
@@ -193,13 +232,28 @@ async def run_qa_fixer_session(
 
         # Check if fixes were applied
         status = get_qa_signoff_status(spec_dir)
+        debug(
+            "qa_fixer",
+            "Fixer session completed",
+            message_count=message_count,
+            tool_count=tool_count,
+            response_length=len(response_text),
+            ready_for_revalidation=status.get("ready_for_qa_revalidation") if status else False,
+        )
         if status and status.get("ready_for_qa_revalidation"):
+            debug_success("qa_fixer", "Fixes applied, ready for QA revalidation")
             return "fixed", response_text
         else:
             # Fixer didn't update the status properly, but we'll trust it worked
+            debug_success("qa_fixer", "Fixes assumed applied (status not updated)")
             return "fixed", response_text
 
     except Exception as e:
+        debug_error(
+            "qa_fixer",
+            f"Fixer session exception: {e}",
+            exception_type=type(e).__name__,
+        )
         print(f"Error during fixer session: {e}")
         if task_logger:
             task_logger.log_error(f"QA fixer error: {e}", LogPhase.VALIDATION)

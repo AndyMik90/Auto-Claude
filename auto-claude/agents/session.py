@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
+from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from insight_extractor import extract_session_insights
 from linear_updater import (
     linear_subtask_completed,
@@ -332,20 +333,40 @@ async def run_agent_session(
         - "complete" if all subtasks complete
         - "error" if an error occurred
     """
+    debug_section("session", f"Agent Session - {phase.value}")
+    debug(
+        "session",
+        "Starting agent session",
+        spec_dir=str(spec_dir),
+        phase=phase.value,
+        prompt_length=len(message),
+        prompt_preview=message[:200] + "..." if len(message) > 200 else message,
+    )
     print("Sending prompt to Claude Agent SDK...\n")
 
     # Get task logger for this spec
     task_logger = get_task_logger(spec_dir)
     current_tool = None
+    message_count = 0
+    tool_count = 0
 
     try:
         # Send the query
+        debug("session", "Sending query to Claude SDK...")
         await client.query(message)
+        debug_success("session", "Query sent successfully")
 
         # Collect response text and show tool use
         response_text = ""
+        debug("session", "Starting to receive response stream...")
         async for msg in client.receive_response():
             msg_type = type(msg).__name__
+            message_count += 1
+            debug_detailed(
+                "session",
+                f"Received message #{message_count}",
+                msg_type=msg_type,
+            )
 
             # Handle AssistantMessage (text and tool use)
             if msg_type == "AssistantMessage" and hasattr(msg, "content"):
@@ -366,6 +387,7 @@ async def run_agent_session(
                     elif block_type == "ToolUseBlock" and hasattr(block, "name"):
                         tool_name = block.name
                         tool_input = None
+                        tool_count += 1
 
                         # Extract meaningful tool input for display
                         if hasattr(block, "input") and block.input:
@@ -385,6 +407,13 @@ async def run_agent_session(
                                     tool_input = cmd
                                 elif "path" in inp:
                                     tool_input = inp["path"]
+
+                        debug(
+                            "session",
+                            f"Tool call #{tool_count}: {tool_name}",
+                            tool_input=tool_input,
+                            full_input=str(block.input)[:500] if hasattr(block, "input") else None,
+                        )
 
                         # Log tool start (handles printing too)
                         if task_logger:
@@ -413,6 +442,11 @@ async def run_agent_session(
 
                         # Check if command was blocked by security hook
                         if "blocked" in str(result_content).lower():
+                            debug_error(
+                                "session",
+                                f"Tool BLOCKED: {current_tool}",
+                                result=str(result_content)[:300],
+                            )
                             print(f"   [BLOCKED] {result_content}", flush=True)
                             if task_logger and current_tool:
                                 task_logger.tool_end(
@@ -425,6 +459,11 @@ async def run_agent_session(
                         elif is_error:
                             # Show errors (truncated)
                             error_str = str(result_content)[:500]
+                            debug_error(
+                                "session",
+                                f"Tool error: {current_tool}",
+                                error=error_str[:200],
+                            )
                             print(f"   [Error] {error_str}", flush=True)
                             if task_logger and current_tool:
                                 # Store full error in detail for expandable view
@@ -437,6 +476,11 @@ async def run_agent_session(
                                 )
                         else:
                             # Tool succeeded
+                            debug_detailed(
+                                "session",
+                                f"Tool success: {current_tool}",
+                                result_length=len(str(result_content)),
+                            )
                             if verbose:
                                 result_str = str(result_content)[:200]
                                 print(f"   [Done] {result_str}", flush=True)
@@ -472,11 +516,32 @@ async def run_agent_session(
 
         # Check if build is complete
         if is_build_complete(spec_dir):
+            debug_success(
+                "session",
+                "Session completed - build is complete",
+                message_count=message_count,
+                tool_count=tool_count,
+                response_length=len(response_text),
+            )
             return "complete", response_text
 
+        debug_success(
+            "session",
+            "Session completed - continuing",
+            message_count=message_count,
+            tool_count=tool_count,
+            response_length=len(response_text),
+        )
         return "continue", response_text
 
     except Exception as e:
+        debug_error(
+            "session",
+            f"Session error: {e}",
+            exception_type=type(e).__name__,
+            message_count=message_count,
+            tool_count=tool_count,
+        )
         print(f"Error during agent session: {e}")
         if task_logger:
             task_logger.log_error(f"Session error: {e}", phase)

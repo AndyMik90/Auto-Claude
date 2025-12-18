@@ -10,6 +10,7 @@ import time as time_module
 from pathlib import Path
 
 from client import create_client
+from debug import debug, debug_error, debug_section, debug_success, debug_warning
 from linear_updater import (
     LinearTaskState,
     is_linear_enabled,
@@ -79,6 +80,16 @@ async def run_qa_validation_loop(
     Returns:
         True if QA approved, False otherwise
     """
+    debug_section("qa_loop", "QA Validation Loop")
+    debug(
+        "qa_loop",
+        "Starting QA validation loop",
+        project_dir=str(project_dir),
+        spec_dir=str(spec_dir),
+        model=model,
+        max_iterations=MAX_QA_ITERATIONS,
+    )
+
     print("\n" + "=" * 70)
     print("  QA VALIDATION LOOP")
     print("  Self-validating quality assurance")
@@ -89,13 +100,16 @@ async def run_qa_validation_loop(
 
     # Verify build is complete
     if not is_build_complete(spec_dir):
+        debug_warning("qa_loop", "Build is not complete, cannot run QA")
         print("\n❌ Build is not complete. Cannot run QA validation.")
         completed, total = count_subtasks(spec_dir)
+        debug("qa_loop", "Build progress", completed=completed, total=total)
         print(f"   Progress: {completed}/{total} subtasks completed")
         return False
 
     # Check if already approved
     if is_qa_approved(spec_dir):
+        debug_success("qa_loop", "Build already approved by QA")
         print("\n✅ Build already approved by QA.")
         return True
 
@@ -127,20 +141,43 @@ async def run_qa_validation_loop(
         qa_iteration += 1
         iteration_start = time_module.time()
 
+        debug_section("qa_loop", f"QA Iteration {qa_iteration}")
+        debug(
+            "qa_loop",
+            f"Starting iteration {qa_iteration}/{MAX_QA_ITERATIONS}",
+            iteration=qa_iteration,
+            max_iterations=MAX_QA_ITERATIONS,
+        )
+
         print(f"\n--- QA Iteration {qa_iteration}/{MAX_QA_ITERATIONS} ---")
 
         # Run QA reviewer
+        debug("qa_loop", "Creating client for QA reviewer session...")
         client = create_client(project_dir, spec_dir, model)
 
         async with client:
+            debug("qa_loop", "Running QA reviewer agent session...")
             status, response = await run_qa_agent_session(
                 client, spec_dir, qa_iteration, MAX_QA_ITERATIONS, verbose
             )
 
         iteration_duration = time_module.time() - iteration_start
+        debug(
+            "qa_loop",
+            f"QA reviewer session completed",
+            status=status,
+            duration_seconds=f"{iteration_duration:.1f}",
+            response_length=len(response),
+        )
 
         if status == "approved":
             # Record successful iteration
+            debug_success(
+                "qa_loop",
+                "QA APPROVED",
+                iteration=qa_iteration,
+                duration=f"{iteration_duration:.1f}s",
+            )
             record_iteration(spec_dir, qa_iteration, "approved", [], iteration_duration)
 
             print("\n" + "=" * 70)
@@ -168,11 +205,23 @@ async def run_qa_validation_loop(
             return True
 
         elif status == "rejected":
+            debug_warning(
+                "qa_loop",
+                "QA REJECTED",
+                iteration=qa_iteration,
+                duration=f"{iteration_duration:.1f}s",
+            )
             print(f"\n❌ QA found issues. Iteration {qa_iteration}/{MAX_QA_ITERATIONS}")
 
             # Get issues from QA report
             qa_status = get_qa_signoff_status(spec_dir)
             current_issues = qa_status.get("issues_found", []) if qa_status else []
+            debug(
+                "qa_loop",
+                "Issues found by QA",
+                issue_count=len(current_issues),
+                issues=current_issues[:3] if current_issues else [],  # Show first 3
+            )
 
             # Record rejected iteration
             record_iteration(
@@ -188,6 +237,12 @@ async def run_qa_validation_loop(
             if has_recurring:
                 from .report import RECURRING_ISSUE_THRESHOLD
 
+                debug_error(
+                    "qa_loop",
+                    "Recurring issues detected - escalating to human",
+                    recurring_count=len(recurring_issues),
+                    threshold=RECURRING_ISSUE_THRESHOLD,
+                )
                 print(
                     f"\n⚠️  Recurring issues detected ({len(recurring_issues)} issue(s) appeared {RECURRING_ISSUE_THRESHOLD}+ times)"
                 )
@@ -224,6 +279,7 @@ async def run_qa_validation_loop(
                 break
 
             # Run fixer
+            debug("qa_loop", "Starting QA fixer session...")
             print("\nRunning QA Fixer Agent...")
 
             fix_client = create_client(project_dir, spec_dir, model)
@@ -233,7 +289,15 @@ async def run_qa_validation_loop(
                     fix_client, spec_dir, qa_iteration, verbose
                 )
 
+            debug(
+                "qa_loop",
+                "QA fixer session completed",
+                fix_status=fix_status,
+                response_length=len(fix_response),
+            )
+
             if fix_status == "error":
+                debug_error("qa_loop", f"Fixer error: {fix_response[:200]}")
                 print(f"\n❌ Fixer encountered error: {fix_response}")
                 record_iteration(
                     spec_dir,
@@ -243,9 +307,11 @@ async def run_qa_validation_loop(
                 )
                 break
 
+            debug_success("qa_loop", "Fixes applied, re-running QA validation")
             print("\n✅ Fixes applied. Re-running QA validation...")
 
         elif status == "error":
+            debug_error("qa_loop", f"QA session error: {response[:200]}")
             print(f"\n❌ QA error: {response}")
             record_iteration(
                 spec_dir,
@@ -256,6 +322,12 @@ async def run_qa_validation_loop(
             print("Retrying...")
 
     # Max iterations reached without approval
+    debug_error(
+        "qa_loop",
+        "QA VALIDATION INCOMPLETE - max iterations reached",
+        iterations=qa_iteration,
+        max_iterations=MAX_QA_ITERATIONS,
+    )
     print("\n" + "=" * 70)
     print("  ⚠️  QA VALIDATION INCOMPLETE")
     print("=" * 70)
@@ -265,6 +337,13 @@ async def run_qa_validation_loop(
     # Show iteration summary
     history = get_iteration_history(spec_dir)
     summary = get_recurring_issue_summary(history)
+    debug(
+        "qa_loop",
+        "QA loop final summary",
+        total_iterations=len(history),
+        total_issues=summary.get("total_issues", 0),
+        unique_issues=summary.get("unique_issues", 0),
+    )
     if summary["total_issues"] > 0:
         print("\n📊 Iteration Summary:")
         print(f"   Total iterations: {len(history)}")

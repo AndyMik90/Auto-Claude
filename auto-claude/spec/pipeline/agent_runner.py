@@ -13,6 +13,7 @@ from ui.capabilities import configure_safe_encoding
 configure_safe_encoding()
 
 from client import create_client
+from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from task_logger import (
     LogEntryType,
     LogPhase,
@@ -59,13 +60,29 @@ class AgentRunner:
         Returns:
             Tuple of (success, response_text)
         """
+        debug_section("agent_runner", f"Spec Agent - {prompt_file}")
+        debug(
+            "agent_runner",
+            "Running spec creation agent",
+            prompt_file=prompt_file,
+            spec_dir=str(self.spec_dir),
+            model=self.model,
+            interactive=interactive,
+        )
+
         prompt_path = Path(__file__).parent.parent.parent / "prompts" / prompt_file
 
         if not prompt_path.exists():
+            debug_error("agent_runner", f"Prompt file not found: {prompt_path}")
             return False, f"Prompt not found: {prompt_path}"
 
         # Load prompt
         prompt = prompt_path.read_text()
+        debug_detailed(
+            "agent_runner",
+            "Loaded prompt file",
+            prompt_length=len(prompt),
+        )
 
         # Add context
         prompt += f"\n\n---\n\n**Spec Directory**: {self.spec_dir}\n"
@@ -73,19 +90,36 @@ class AgentRunner:
 
         if additional_context:
             prompt += f"\n{additional_context}\n"
+            debug_detailed(
+                "agent_runner",
+                "Added additional context",
+                context_length=len(additional_context),
+            )
 
         # Create client
+        debug("agent_runner", "Creating Claude SDK client...")
         client = create_client(self.project_dir, self.spec_dir, self.model)
 
         current_tool = None
+        message_count = 0
+        tool_count = 0
 
         try:
             async with client:
+                debug("agent_runner", "Sending query to Claude SDK...")
                 await client.query(prompt)
+                debug_success("agent_runner", "Query sent successfully")
 
                 response_text = ""
+                debug("agent_runner", "Starting to receive response stream...")
                 async for msg in client.receive_response():
                     msg_type = type(msg).__name__
+                    message_count += 1
+                    debug_detailed(
+                        "agent_runner",
+                        f"Received message #{message_count}",
+                        msg_type=msg_type,
+                    )
 
                     if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                         for block in msg.content:
@@ -105,12 +139,19 @@ class AgentRunner:
                             ):
                                 tool_name = block.name
                                 tool_input = None
+                                tool_count += 1
 
                                 # Extract meaningful tool input for display
                                 if hasattr(block, "input") and block.input:
                                     tool_input = self._extract_tool_input_display(
                                         block.input
                                     )
+
+                                debug(
+                                    "agent_runner",
+                                    f"Tool call #{tool_count}: {tool_name}",
+                                    tool_input=tool_input,
+                                )
 
                                 if self.task_logger:
                                     self.task_logger.tool_start(
@@ -129,6 +170,18 @@ class AgentRunner:
                             if block_type == "ToolResultBlock":
                                 is_error = getattr(block, "is_error", False)
                                 result_content = getattr(block, "content", "")
+                                if is_error:
+                                    debug_error(
+                                        "agent_runner",
+                                        f"Tool error: {current_tool}",
+                                        error=str(result_content)[:200],
+                                    )
+                                else:
+                                    debug_detailed(
+                                        "agent_runner",
+                                        f"Tool success: {current_tool}",
+                                        result_length=len(str(result_content)),
+                                    )
                                 if self.task_logger and current_tool:
                                     detail_content = self._get_tool_detail_content(
                                         current_tool, result_content
@@ -142,9 +195,21 @@ class AgentRunner:
                                 current_tool = None
 
                 print()
+                debug_success(
+                    "agent_runner",
+                    "Agent session completed successfully",
+                    message_count=message_count,
+                    tool_count=tool_count,
+                    response_length=len(response_text),
+                )
                 return True, response_text
 
         except Exception as e:
+            debug_error(
+                "agent_runner",
+                f"Agent session error: {e}",
+                exception_type=type(e).__name__,
+            )
             if self.task_logger:
                 self.task_logger.log_error(f"Agent error: {e}", LogPhase.PLANNING)
             return False, str(e)

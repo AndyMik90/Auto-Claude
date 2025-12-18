@@ -9,6 +9,7 @@ acceptance criteria.
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
+from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from task_logger import (
     LogEntryType,
     LogPhase,
@@ -62,6 +63,15 @@ async def run_qa_agent_session(
         - "rejected" if QA finds issues
         - "error" if an error occurred
     """
+    debug_section("qa_reviewer", f"QA Reviewer Session {qa_session}")
+    debug(
+        "qa_reviewer",
+        "Starting QA reviewer session",
+        spec_dir=str(spec_dir),
+        qa_session=qa_session,
+        max_iterations=max_iterations,
+    )
+
     print(f"\n{'=' * 70}")
     print(f"  QA REVIEWER SESSION {qa_session}")
     print("  Validating all acceptance criteria...")
@@ -70,9 +80,12 @@ async def run_qa_agent_session(
     # Get task logger for streaming markers
     task_logger = get_task_logger(spec_dir)
     current_tool = None
+    message_count = 0
+    tool_count = 0
 
     # Load QA prompt
     prompt = load_qa_reviewer_prompt()
+    debug_detailed("qa_reviewer", "Loaded QA reviewer prompt", prompt_length=len(prompt))
 
     # Add session context - use full path so agent can find files
     prompt += f"\n\n---\n\n**QA Session**: {qa_session}\n"
@@ -83,11 +96,20 @@ async def run_qa_agent_session(
     prompt += f"Use the full path when reading files, e.g.: `cat {spec_dir}/spec.md`\n"
 
     try:
+        debug("qa_reviewer", "Sending query to Claude SDK...")
         await client.query(prompt)
+        debug_success("qa_reviewer", "Query sent successfully")
 
         response_text = ""
+        debug("qa_reviewer", "Starting to receive response stream...")
         async for msg in client.receive_response():
             msg_type = type(msg).__name__
+            message_count += 1
+            debug_detailed(
+                "qa_reviewer",
+                f"Received message #{message_count}",
+                msg_type=msg_type,
+            )
 
             if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                 for block in msg.content:
@@ -107,6 +129,7 @@ async def run_qa_agent_session(
                     elif block_type == "ToolUseBlock" and hasattr(block, "name"):
                         tool_name = block.name
                         tool_input = None
+                        tool_count += 1
 
                         # Extract tool input for display
                         if hasattr(block, "input") and block.input:
@@ -119,6 +142,12 @@ async def run_qa_agent_session(
                                     tool_input = fp
                                 elif "pattern" in inp:
                                     tool_input = f"pattern: {inp['pattern']}"
+
+                        debug(
+                            "qa_reviewer",
+                            f"Tool call #{tool_count}: {tool_name}",
+                            tool_input=tool_input,
+                        )
 
                         # Log tool start (handles printing)
                         if task_logger:
@@ -148,6 +177,11 @@ async def run_qa_agent_session(
                         result_content = getattr(block, "content", "")
 
                         if is_error:
+                            debug_error(
+                                "qa_reviewer",
+                                f"Tool error: {current_tool}",
+                                error=str(result_content)[:200],
+                            )
                             error_str = str(result_content)[:500]
                             print(f"   [Error] {error_str}", flush=True)
                             if task_logger and current_tool:
@@ -160,6 +194,11 @@ async def run_qa_agent_session(
                                     phase=LogPhase.VALIDATION,
                                 )
                         else:
+                            debug_detailed(
+                                "qa_reviewer",
+                                f"Tool success: {current_tool}",
+                                result_length=len(str(result_content)),
+                            )
                             if verbose:
                                 result_str = str(result_content)[:200]
                                 print(f"   [Done] {result_str}", flush=True)
@@ -191,15 +230,31 @@ async def run_qa_agent_session(
 
         # Check the QA result from implementation_plan.json
         status = get_qa_signoff_status(spec_dir)
+        debug(
+            "qa_reviewer",
+            "QA session completed",
+            message_count=message_count,
+            tool_count=tool_count,
+            response_length=len(response_text),
+            qa_status=status.get("status") if status else "unknown",
+        )
         if status and status.get("status") == "approved":
+            debug_success("qa_reviewer", "QA APPROVED")
             return "approved", response_text
         elif status and status.get("status") == "rejected":
+            debug_error("qa_reviewer", "QA REJECTED")
             return "rejected", response_text
         else:
             # Agent didn't update the status properly
+            debug_error("qa_reviewer", "QA agent did not update implementation_plan.json")
             return "error", "QA agent did not update implementation_plan.json"
 
     except Exception as e:
+        debug_error(
+            "qa_reviewer",
+            f"QA session exception: {e}",
+            exception_type=type(e).__name__,
+        )
         print(f"Error during QA session: {e}")
         if task_logger:
             task_logger.log_error(f"QA session error: {e}", LogPhase.VALIDATION)
