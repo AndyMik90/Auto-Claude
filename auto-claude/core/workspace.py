@@ -197,22 +197,20 @@ def merge_existing_build(
 
                 if had_conflicts:
                     # Git conflicts were resolved (via AI or lock file exclusion) - changes are already staged
-                    _print_merge_success(no_commit, stats)
+                    _print_merge_success(no_commit, stats, spec_name=spec_name, keep_worktree=True)
 
-                    # Cleanup the worktree since merge is done
-                    try:
-                        manager.remove_worktree(spec_name, delete_branch=True)
-                    except Exception:
-                        pass  # Best effort cleanup
+                    # Don't auto-delete worktree - let user test and manually cleanup
+                    # User can delete with: python auto-claude/run.py --spec <name> --discard
+                    # Or via UI "Delete Worktree" button
 
                     return True
                 else:
                     # No git conflicts, do standard git merge
                     success_result = manager.merge_worktree(
-                        spec_name, delete_after=True, no_commit=no_commit
+                        spec_name, delete_after=False, no_commit=no_commit
                     )
                     if success_result:
-                        _print_merge_success(no_commit, stats)
+                        _print_merge_success(no_commit, stats, spec_name=spec_name, keep_worktree=True)
                         return True
             elif smart_result.get("git_conflicts"):
                 # Had git conflicts that AI couldn't fully resolve
@@ -247,7 +245,7 @@ def merge_existing_build(
 
     # Fall back to standard git merge
     success_result = manager.merge_worktree(
-        spec_name, delete_after=True, no_commit=no_commit
+        spec_name, delete_after=False, no_commit=no_commit
     )
 
     if success_result:
@@ -258,10 +256,13 @@ def merge_existing_build(
             print("Review the changes in your IDE, then commit:")
             print(highlight("  git commit -m 'your commit message'"))
             print()
-            print("Or discard if not satisfied:")
-            print(muted("  git reset --hard HEAD"))
+            print("When satisfied, delete the worktree:")
+            print(muted(f"  python auto-claude/run.py --spec {spec_name} --discard"))
         else:
             print_status("Your feature has been added to your project.", "success")
+            print()
+            print("When satisfied, delete the worktree:")
+            print(muted(f"  python auto-claude/run.py --spec {spec_name} --discard"))
         return True
     else:
         print()

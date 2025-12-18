@@ -112,9 +112,13 @@ export function TaskReview({
           onMerge={onMerge}
         />
       ) : task.stagedInMainProject ? (
-        <StagedInProjectMessage task={task} />
+        <StagedInProjectMessage
+          task={task}
+          projectPath={stagedProjectPath}
+          hasWorktree={worktreeStatus?.exists || false}
+        />
       ) : (
-        <NoWorkspaceMessage />
+        <NoWorkspaceMessage task={task} />
       )}
 
       {/* QA Feedback Section */}

@@ -70,7 +70,12 @@ def show_changed_files(manager: WorktreeManager, spec_name: str) -> None:
             print(f"  {status} {filepath}")
 
 
-def print_merge_success(no_commit: bool, stats: dict | None = None) -> None:
+def print_merge_success(
+    no_commit: bool,
+    stats: dict | None = None,
+    spec_name: str | None = None,
+    keep_worktree: bool = False
+) -> None:
     """Print a success message after merge."""
     from ui import Icons, box, icon
 
@@ -87,6 +92,12 @@ def print_merge_success(no_commit: bool, stats: dict | None = None) -> None:
             lines.append("")
             lines.append("Note: Lock files kept from main.")
             lines.append("Regenerate: npm install / pip install / cargo update")
+
+        # Add worktree cleanup instructions
+        if keep_worktree and spec_name:
+            lines.append("")
+            lines.append("Worktree kept for testing. Delete when satisfied:")
+            lines.append(f"  python auto-claude/run.py --spec {spec_name} --discard")
 
         content = lines
     else:
@@ -111,12 +122,23 @@ def print_merge_success(no_commit: bool, stats: dict | None = None) -> None:
                 )
             lines.append("")
 
-        lines.extend(
-            [
-                "Your new feature is now part of your project.",
-                "The separate workspace has been cleaned up.",
-            ]
-        )
+        if keep_worktree:
+            lines.extend(
+                [
+                    "Your new feature is now part of your project.",
+                    "",
+                    "Worktree kept for testing. Delete when satisfied:",
+                ]
+            )
+            if spec_name:
+                lines.append(f"  python auto-claude/run.py --spec {spec_name} --discard")
+        else:
+            lines.extend(
+                [
+                    "Your new feature is now part of your project.",
+                    "The separate workspace has been cleaned up.",
+                ]
+            )
         content = lines
 
     print()
