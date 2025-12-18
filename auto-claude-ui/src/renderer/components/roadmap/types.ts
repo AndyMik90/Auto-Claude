@@ -35,6 +35,7 @@ export interface RoadmapHeaderProps {
   competitorAnalysis: CompetitorAnalysis | null;
   onAddFeature: () => void;
   onRefresh: () => void;
+  onViewCompetitorAnalysis?: () => void;
 }
 
 export interface RoadmapEmptyStateProps {

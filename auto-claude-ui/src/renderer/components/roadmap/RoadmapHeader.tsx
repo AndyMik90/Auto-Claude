@@ -6,7 +6,7 @@ import { getFeatureStats } from '../../stores/roadmap-store';
 import { ROADMAP_PRIORITY_COLORS } from '../../../shared/constants';
 import type { RoadmapHeaderProps } from './types';
 
-export function RoadmapHeader({ roadmap, competitorAnalysis, onAddFeature, onRefresh }: RoadmapHeaderProps) {
+export function RoadmapHeader({ roadmap, competitorAnalysis, onAddFeature, onRefresh, onViewCompetitorAnalysis }: RoadmapHeaderProps) {
   const stats = getFeatureStats(roadmap);
 
   return (
@@ -20,20 +20,22 @@ export function RoadmapHeader({ roadmap, competitorAnalysis, onAddFeature, onRef
             {competitorAnalysis && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 cursor-pointer hover:bg-secondary/80 transition-colors"
+                    onClick={onViewCompetitorAnalysis}
+                  >
                     <TrendingUp className="h-3 w-3" />
                     Competitor Analysis
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md">
                   <div className="space-y-2">
-                    <div className="font-semibold">Analyzed {competitorAnalysis.competitors.length} competitors:</div>
-                    {competitorAnalysis.competitors.map((comp) => (
-                      <div key={comp.id} className="text-sm">
-                        <div className="font-medium">• {comp.name}</div>
-                        <div className="text-muted-foreground ml-3">{comp.painPoints.length} pain points identified</div>
-                      </div>
-                    ))}
+                    <div className="font-semibold">Click to view detailed analysis</div>
+                    <div className="text-sm text-muted-foreground">
+                      Analyzed {competitorAnalysis.competitors.length} competitors with {' '}
+                      {competitorAnalysis.competitors.reduce((sum, c) => sum + c.painPoints.length, 0)} pain points identified
+                    </div>
                   </div>
                 </TooltipContent>
               </Tooltip>
