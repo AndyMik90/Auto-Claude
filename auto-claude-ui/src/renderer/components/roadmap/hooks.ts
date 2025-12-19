@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useRoadmapStore, loadRoadmap, generateRoadmap, refreshRoadmap, stopRoadmap } from '../../stores/roadmap-store';
+import { useTaskStore } from '../../stores/task-store';
 import type { RoadmapFeature } from '../../../shared/types';
 
 /**
  * Hook to manage roadmap data and loading
+ *
+ * When the projectId changes, this hook:
+ * 1. Loads the new project's roadmap data
+ * 2. Queries the backend to check if generation is running for this project
+ * 3. Restores the generation status UI state accordingly
+ *
+ * NOTE: Generation continues in the background when switching projects.
+ * The loadRoadmap function queries the backend to restore the correct UI state.
  */
 export function useRoadmapData(projectId: string) {
   const roadmap = useRoadmapStore((state) => state.roadmap);
@@ -11,6 +20,9 @@ export function useRoadmapData(projectId: string) {
   const generationStatus = useRoadmapStore((state) => state.generationStatus);
 
   useEffect(() => {
+    // Load roadmap data and query generation status for this project
+    // The loadRoadmap function handles checking if generation is running
+    // and restores the UI state accordingly
     loadRoadmap(projectId);
   }, [projectId]);
 
@@ -26,6 +38,7 @@ export function useRoadmapData(projectId: string) {
  */
 export function useFeatureActions() {
   const updateFeatureLinkedSpec = useRoadmapStore((state) => state.updateFeatureLinkedSpec);
+  const addTask = useTaskStore((state) => state.addTask);
 
   const convertFeatureToSpec = async (
     projectId: string,
@@ -35,6 +48,10 @@ export function useFeatureActions() {
   ) => {
     const result = await window.electronAPI.convertFeatureToSpec(projectId, feature.id);
     if (result.success && result.data) {
+      // Add the created task to the task store so it appears in the kanban immediately
+      addTask(result.data);
+
+      // Update the roadmap feature with the linked spec
       updateFeatureLinkedSpec(feature.id, result.data.specId);
       if (selectedFeature?.id === feature.id) {
         setSelectedFeature({

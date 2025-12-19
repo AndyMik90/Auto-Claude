@@ -160,6 +160,16 @@ export function registerRoadmapHandlers(
     }
   );
 
+  // Get roadmap generation status - allows frontend to query if generation is running
+  ipcMain.handle(
+    IPC_CHANNELS.ROADMAP_GET_STATUS,
+    async (_, projectId: string): Promise<IPCResult<{ isRunning: boolean }>> => {
+      const isRunning = agentManager.isRoadmapRunning(projectId);
+      debugLog('[Roadmap Handler] Get status:', { projectId, isRunning });
+      return { success: true, data: { isRunning } };
+    }
+  );
+
   ipcMain.on(
     IPC_CHANNELS.ROADMAP_GENERATE,
     (_, projectId: string, enableCompetitorAnalysis?: boolean) => {

@@ -14,6 +14,7 @@ import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc
 export interface RoadmapAPI {
   // Operations
   getRoadmap: (projectId: string) => Promise<IPCResult<Roadmap | null>>;
+  getRoadmapStatus: (projectId: string) => Promise<IPCResult<{ isRunning: boolean }>>;
   saveRoadmap: (projectId: string, roadmap: Roadmap) => Promise<IPCResult>;
   generateRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;
   refreshRoadmap: (projectId: string, enableCompetitorAnalysis?: boolean) => void;
@@ -50,6 +51,9 @@ export const createRoadmapAPI = (): RoadmapAPI => ({
   // Operations
   getRoadmap: (projectId: string): Promise<IPCResult<Roadmap | null>> =>
     invokeIpc(IPC_CHANNELS.ROADMAP_GET, projectId),
+
+  getRoadmapStatus: (projectId: string): Promise<IPCResult<{ isRunning: boolean }>> =>
+    invokeIpc(IPC_CHANNELS.ROADMAP_GET_STATUS, projectId),
 
   saveRoadmap: (projectId: string, roadmap: Roadmap): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.ROADMAP_SAVE, projectId, roadmap),
