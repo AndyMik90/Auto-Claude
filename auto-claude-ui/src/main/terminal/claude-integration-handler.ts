@@ -95,6 +95,7 @@ export function handleOAuthToken(
   const profileIdMatch = terminal.id.match(/claude-login-(profile-\d+)-/);
 
   if (profileIdMatch) {
+    // Save to specific profile (profile login terminal)
     const profileId = profileIdMatch[1];
     const profileManager = getClaudeProfileManager();
     const success = profileManager.setProfileToken(profileId, token, email || undefined);
@@ -116,16 +117,37 @@ export function handleOAuthToken(
       console.error('[ClaudeIntegration] Failed to save OAuth token to profile:', profileId);
     }
   } else {
-    console.warn('[ClaudeIntegration] OAuth token detected but not in a profile login terminal');
-    const win = getWindow();
-    if (win) {
-      win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
-        terminalId: terminal.id,
-        email,
-        success: false,
-        message: 'Token detected but no profile associated with this terminal',
-        detectedAt: new Date().toISOString()
-      } as OAuthTokenEvent);
+    // No profile-specific terminal, save to active profile (GitHub OAuth flow, etc.)
+    console.warn('[ClaudeIntegration] OAuth token detected in non-profile terminal, saving to active profile');
+    const profileManager = getClaudeProfileManager();
+    const activeProfile = profileManager.getActiveProfile();
+    const success = profileManager.setProfileToken(activeProfile.id, token, email || undefined);
+
+    if (success) {
+      console.warn('[ClaudeIntegration] OAuth token auto-saved to active profile:', activeProfile.name);
+
+      const win = getWindow();
+      if (win) {
+        win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
+          terminalId: terminal.id,
+          profileId: activeProfile.id,
+          email,
+          success: true,
+          detectedAt: new Date().toISOString()
+        } as OAuthTokenEvent);
+      }
+    } else {
+      console.error('[ClaudeIntegration] Failed to save OAuth token to active profile:', activeProfile.name);
+      const win = getWindow();
+      if (win) {
+        win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
+          terminalId: terminal.id,
+          email,
+          success: false,
+          message: 'Failed to save token to active profile',
+          detectedAt: new Date().toISOString()
+        } as OAuthTokenEvent);
+      }
     }
   }
 }
