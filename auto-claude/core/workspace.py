@@ -164,6 +164,35 @@ def merge_existing_build(
         print(highlight(f"  python auto-claude/run.py --spec {spec_name}"))
         return False
 
+    # Detect current branch - this is where user wants changes merged
+    # Normal workflow: user is on their feature branch (e.g., version/2.5.5)
+    # and wants to merge the spec changes into it, then PR to main
+    current_branch_result = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+    )
+    current_branch = (
+        current_branch_result.stdout.strip()
+        if current_branch_result.returncode == 0
+        else None
+    )
+
+    spec_branch = f"auto-claude/{spec_name}"
+
+    # Don't merge a branch into itself
+    if current_branch == spec_branch:
+        print()
+        print_status(
+            "You're on the spec branch. Switch to your target branch first.", "warning"
+        )
+        print()
+        print("Example:")
+        print(highlight(f"  git checkout main  # or your feature branch"))
+        print(highlight(f"  python auto-claude/run.py --spec {spec_name} --merge"))
+        return False
+
     if no_commit:
         content = [
             bold(f"{icon(Icons.SUCCESS)} STAGING BUILD FOR REVIEW"),
@@ -178,7 +207,8 @@ def merge_existing_build(
     print()
     print(box(content, width=60, style="heavy"))
 
-    manager = WorktreeManager(project_dir)
+    # Use current branch as merge target (not auto-detected main/master)
+    manager = WorktreeManager(project_dir, base_branch=current_branch)
     show_build_summary(manager, spec_name)
     print()
 
