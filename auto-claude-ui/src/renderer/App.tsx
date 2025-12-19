@@ -130,12 +130,15 @@ export function App() {
 
   // Check if selected project needs initialization (e.g., .auto-claude folder was deleted)
   useEffect(() => {
+    // Don't show dialog while initialization is in progress
+    if (isInitializing) return;
+
     if (selectedProject && !selectedProject.autoBuildPath && skippedInitProjectId !== selectedProject.id) {
       // Project exists but isn't initialized - show init dialog
       setPendingProject(selectedProject);
       setShowInitDialog(true);
     }
-  }, [selectedProject, skippedInitProjectId]);
+  }, [selectedProject, skippedInitProjectId, isInitializing]);
 
   // Load tasks when project changes
   useEffect(() => {
@@ -235,12 +238,15 @@ export function App() {
   const handleInitialize = async () => {
     if (!pendingProject) return;
 
+    const projectId = pendingProject.id;
     setIsInitializing(true);
     try {
-      const result = await initializeProject(pendingProject.id);
+      const result = await initializeProject(projectId);
       if (result?.success) {
-        setShowInitDialog(false);
+        // Clear pendingProject FIRST before closing dialog
+        // This prevents onOpenChange from triggering skip logic
         setPendingProject(null);
+        setShowInitDialog(false);
       }
     } finally {
       setIsInitializing(false);
@@ -417,7 +423,9 @@ export function App() {
 
         {/* Initialize Auto Claude Dialog */}
         <Dialog open={showInitDialog} onOpenChange={(open) => {
-          if (!open) {
+          // Only trigger skip if user manually closed the dialog
+          // Don't trigger if pendingProject is null (successful init) or if initializing
+          if (!open && pendingProject && !isInitializing) {
             handleSkipInit();
           }
         }}>
