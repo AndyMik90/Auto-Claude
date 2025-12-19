@@ -121,6 +121,24 @@ export function handleOAuthToken(
     console.warn('[ClaudeIntegration] OAuth token detected in non-profile terminal, saving to active profile');
     const profileManager = getClaudeProfileManager();
     const activeProfile = profileManager.getActiveProfile();
+
+    // Defensive null check for active profile
+    if (!activeProfile) {
+      console.error('[ClaudeIntegration] Failed to save OAuth token: no active profile found');
+      const win = getWindow();
+      if (win) {
+        win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
+          terminalId: terminal.id,
+          profileId: undefined,
+          email,
+          success: false,
+          message: 'No active profile found',
+          detectedAt: new Date().toISOString()
+        } as OAuthTokenEvent);
+      }
+      return;
+    }
+
     const success = profileManager.setProfileToken(activeProfile.id, token, email || undefined);
 
     if (success) {
@@ -142,6 +160,7 @@ export function handleOAuthToken(
       if (win) {
         win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
           terminalId: terminal.id,
+          profileId: activeProfile?.id,
           email,
           success: false,
           message: 'Failed to save token to active profile',
