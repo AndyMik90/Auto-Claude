@@ -189,7 +189,7 @@ def merge_existing_build(
         )
         print()
         print("Example:")
-        print(highlight(f"  git checkout main  # or your feature branch"))
+        print(highlight("  git checkout main  # or your feature branch"))
         print(highlight(f"  python auto-claude/run.py --spec {spec_name} --merge"))
         return False
 

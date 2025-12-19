@@ -31,7 +31,9 @@ from workspace import (
 from .utils import print_banner
 
 
-def _get_changed_files_from_git(worktree_path: Path, base_branch: str = "main") -> list[str]:
+def _get_changed_files_from_git(
+    worktree_path: Path, base_branch: str = "main"
+) -> list[str]:
     """
     Get list of changed files from git diff between base branch and HEAD.
 

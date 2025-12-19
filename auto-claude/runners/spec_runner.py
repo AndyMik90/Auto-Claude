@@ -92,7 +92,7 @@ elif dev_env_file.exists():
     load_dotenv(dev_env_file)
 
 from debug import debug, debug_error, debug_section, debug_success
-from phase_config import get_phase_config, resolve_model_id
+from phase_config import resolve_model_id
 from review import ReviewState
 from spec import SpecOrchestrator
 from ui import Icons, highlight, icon, muted, print_section, print_status
