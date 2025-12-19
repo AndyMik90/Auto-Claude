@@ -37,6 +37,7 @@ import { OnboardingWizard } from './components/onboarding';
 import { AppUpdateNotification } from './components/AppUpdateNotification';
 import { UsageIndicator } from './components/UsageIndicator';
 import { ProactiveSwapListener } from './components/ProactiveSwapListener';
+import { GitHubSetupModal } from './components/GitHubSetupModal';
 import { useProjectStore, loadProjects, addProject, initializeProject } from './stores/project-store';
 import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings } from './stores/settings-store';
@@ -69,6 +70,10 @@ export function App() {
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [skippedInitProjectId, setSkippedInitProjectId] = useState<string | null>(null);
+
+  // GitHub setup state (shown after Auto Claude init)
+  const [showGitHubSetup, setShowGitHubSetup] = useState(false);
+  const [gitHubSetupProject, setGitHubSetupProject] = useState<Project | null>(null);
 
   // Get selected project
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -243,14 +248,57 @@ export function App() {
     try {
       const result = await initializeProject(projectId);
       if (result?.success) {
-        // Clear pendingProject FIRST before closing dialog
-        // This prevents onOpenChange from triggering skip logic
+        // Get the updated project from store
+        const updatedProject = useProjectStore.getState().projects.find(p => p.id === projectId);
+
+        // Clear init dialog state
         setPendingProject(null);
         setShowInitDialog(false);
+
+        // Show GitHub setup modal
+        if (updatedProject) {
+          setGitHubSetupProject(updatedProject);
+          setShowGitHubSetup(true);
+        }
       }
     } finally {
       setIsInitializing(false);
     }
+  };
+
+  const handleGitHubSetupComplete = async (settings: {
+    githubToken: string;
+    githubRepo: string;
+    mainBranch: string;
+  }) => {
+    if (!gitHubSetupProject) return;
+
+    try {
+      // Update project env config with GitHub settings
+      await window.electronAPI.updateProjectEnv(gitHubSetupProject.id, {
+        githubEnabled: true,
+        githubToken: settings.githubToken,
+        githubRepo: settings.githubRepo
+      });
+
+      // Update project settings with mainBranch
+      await window.electronAPI.updateProjectSettings(gitHubSetupProject.id, {
+        mainBranch: settings.mainBranch
+      });
+
+      // Refresh projects to get updated data
+      await loadProjects();
+    } catch (error) {
+      console.error('Failed to save GitHub settings:', error);
+    }
+
+    setShowGitHubSetup(false);
+    setGitHubSetupProject(null);
+  };
+
+  const handleGitHubSetupSkip = () => {
+    setShowGitHubSetup(false);
+    setGitHubSetupProject(null);
   };
 
   const handleSkipInit = () => {
@@ -485,6 +533,17 @@ export function App() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* GitHub Setup Modal - shows after Auto Claude init to configure GitHub */}
+        {gitHubSetupProject && (
+          <GitHubSetupModal
+            open={showGitHubSetup}
+            onOpenChange={setShowGitHubSetup}
+            project={gitHubSetupProject}
+            onComplete={handleGitHubSetupComplete}
+            onSkip={handleGitHubSetupSkip}
+          />
+        )}
 
         {/* Rate Limit Modal - shows when Claude Code hits usage limits (terminal) */}
         <RateLimitModal />

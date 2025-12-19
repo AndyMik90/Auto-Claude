@@ -297,6 +297,93 @@ export function registerListUserRepos(): void {
 }
 
 /**
+ * Detect GitHub repository from git remote origin
+ */
+export function registerDetectGitHubRepo(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_DETECT_REPO,
+    async (_event: Electron.IpcMainInvokeEvent, projectPath: string): Promise<IPCResult<string>> => {
+      debugLog('detectGitHubRepo handler called', { projectPath });
+      try {
+        // Get the remote URL
+        debugLog('Running: git remote get-url origin');
+        const remoteUrl = execSync('git remote get-url origin', {
+          encoding: 'utf-8',
+          cwd: projectPath,
+          stdio: 'pipe'
+        }).trim();
+
+        debugLog('Remote URL:', remoteUrl);
+
+        // Parse GitHub repo from URL
+        // Formats:
+        // - https://github.com/owner/repo.git
+        // - git@github.com:owner/repo.git
+        // - https://github.com/owner/repo
+        const match = remoteUrl.match(/github\.com[/:]([^/]+\/[^/]+?)(?:\.git)?$/);
+        if (match) {
+          const repo = match[1];
+          debugLog('Detected repo:', repo);
+          return {
+            success: true,
+            data: repo
+          };
+        }
+
+        debugLog('Could not parse GitHub repo from URL');
+        return {
+          success: false,
+          error: 'Remote URL is not a GitHub repository'
+        };
+      } catch (error) {
+        debugLog('Failed to detect repo:', error instanceof Error ? error.message : error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to detect GitHub repository'
+        };
+      }
+    }
+  );
+}
+
+/**
+ * Get branches from GitHub repository
+ */
+export function registerGetGitHubBranches(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_GET_BRANCHES,
+    async (_event: Electron.IpcMainInvokeEvent, repo: string, _token: string): Promise<IPCResult<string[]>> => {
+      debugLog('getGitHubBranches handler called', { repo });
+      try {
+        // Use gh CLI to list branches (uses authenticated session)
+        debugLog(`Running: gh api repos/${repo}/branches --jq '.[].name'`);
+        const output = execSync(
+          `gh api repos/${repo}/branches --paginate --jq '.[].name'`,
+          {
+            encoding: 'utf-8',
+            stdio: 'pipe'
+          }
+        );
+
+        const branches = output.trim().split('\n').filter(b => b.length > 0);
+        debugLog('Found branches:', branches.length);
+
+        return {
+          success: true,
+          data: branches
+        };
+      } catch (error) {
+        debugLog('Failed to get branches:', error instanceof Error ? error.message : error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get branches'
+        };
+      }
+    }
+  );
+}
+
+/**
  * Register all GitHub OAuth handlers
  */
 export function registerGithubOAuthHandlers(): void {
@@ -307,5 +394,7 @@ export function registerGithubOAuthHandlers(): void {
   registerGetGhToken();
   registerGetGhUser();
   registerListUserRepos();
+  registerDetectGitHubRepo();
+  registerGetGitHubBranches();
   debugLog('GitHub OAuth handlers registered');
 }

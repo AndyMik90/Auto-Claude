@@ -322,6 +322,8 @@ export interface ElectronAPI {
   getGitHubToken: () => Promise<IPCResult<{ token: string }>>;
   getGitHubUser: () => Promise<IPCResult<{ username: string; name?: string }>>;
   listGitHubUserRepos: () => Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>>;
+  detectGitHubRepo: (projectPath: string) => Promise<IPCResult<string>>;
+  getGitHubBranches: (repo: string, token: string) => Promise<IPCResult<string[]>>;
 
   // GitHub event listeners
   onGitHubInvestigationProgress: (

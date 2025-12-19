@@ -178,5 +178,15 @@ export const integrationMock = {
         { fullName: 'user/private-repo', description: 'A private repository', isPrivate: true }
       ]
     }
+  }),
+
+  detectGitHubRepo: async () => ({
+    success: true,
+    data: 'user/example-repo'
+  }),
+
+  getGitHubBranches: async () => ({
+    success: true,
+    data: ['main', 'develop', 'feature/example']
   })
 };
