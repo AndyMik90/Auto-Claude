@@ -181,6 +181,11 @@ interface GitHubAuthStartResult {
   deviceCode?: string;
   authUrl?: string;
   browserOpened?: boolean;
+  /**
+   * Fallback URL provided when browser launch fails.
+   * The frontend should display this URL so users can manually navigate to complete auth.
+   */
+  fallbackUrl?: string;
 }
 
 /**
@@ -260,28 +265,39 @@ export function registerStartGhAuth(): void {
             debugLog('Full stderr:', errorOutput);
 
             if (code === 0) {
+              // Success case - include fallbackUrl if browser failed to open
+              // so the user can manually navigate if needed
               resolve({
                 success: true,
                 data: {
                   success: true,
-                  message: 'Successfully authenticated with GitHub',
+                  message: browserOpenedSuccessfully
+                    ? 'Successfully authenticated with GitHub'
+                    : 'Authentication successful. Browser could not be opened automatically.',
                   deviceCode: extractedDeviceCode || undefined,
                   authUrl: extractedAuthUrl,
-                  browserOpened: browserOpenedSuccessfully
+                  browserOpened: browserOpenedSuccessfully,
+                  // Provide fallback URL when browser failed to open
+                  fallbackUrl: !browserOpenedSuccessfully ? extractedAuthUrl : undefined
                 }
               });
             } else {
               // Even if auth failed, return device code info if we extracted it
-              // This allows user to retry manually
+              // This allows user to retry manually with the fallback URL
+              const fallbackUrlForManualAuth = extractedDeviceCode ? extractedAuthUrl : GITHUB_DEVICE_URL;
+
               resolve({
                 success: false,
                 error: errorOutput || `Authentication failed with exit code ${code}`,
-                data: extractedDeviceCode ? {
+                data: {
                   success: false,
-                  deviceCode: extractedDeviceCode,
+                  deviceCode: extractedDeviceCode || undefined,
                   authUrl: extractedAuthUrl,
-                  browserOpened: browserOpenedSuccessfully
-                } : undefined
+                  browserOpened: browserOpenedSuccessfully,
+                  // Always provide fallback URL on failure for manual recovery
+                  fallbackUrl: fallbackUrlForManualAuth,
+                  message: 'Authentication failed. Please visit the URL manually to complete authentication.'
+                }
               });
             }
           });
@@ -290,14 +306,28 @@ export function registerStartGhAuth(): void {
             debugLog('gh process error:', error.message);
             resolve({
               success: false,
-              error: error.message
+              error: error.message,
+              data: {
+                success: false,
+                browserOpened: false,
+                // Provide fallback URL so user can attempt manual auth
+                fallbackUrl: GITHUB_DEVICE_URL,
+                message: 'Failed to start GitHub CLI. Please visit the URL manually to authenticate.'
+              }
             });
           });
         } catch (error) {
           debugLog('Exception in startGitHubAuth:', error instanceof Error ? error.message : error);
           resolve({
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
+            data: {
+              success: false,
+              browserOpened: false,
+              // Provide fallback URL for manual authentication recovery
+              fallbackUrl: GITHUB_DEVICE_URL,
+              message: 'An unexpected error occurred. Please visit the URL manually to authenticate.'
+            }
           });
         }
       });
