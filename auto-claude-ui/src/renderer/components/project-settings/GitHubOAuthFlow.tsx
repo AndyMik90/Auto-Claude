@@ -47,6 +47,7 @@ export function GitHubOAuthFlow({ onSuccess, onCancel }: GitHubOAuthFlowProps) {
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [browserOpened, setBrowserOpened] = useState<boolean>(false);
   const [codeCopied, setCodeCopied] = useState<boolean>(false);
+  const [urlCopied, setUrlCopied] = useState<boolean>(false);
 
   // Check gh CLI installation and authentication status on mount
   // Use a ref to prevent double-execution in React Strict Mode
@@ -151,6 +152,7 @@ export function GitHubOAuthFlow({ onSuccess, onCancel }: GitHubOAuthFlowProps) {
     setAuthUrl(null);
     setBrowserOpened(false);
     setCodeCopied(false);
+    setUrlCopied(false);
 
     try {
       debugLog('Calling startGitHubAuth...');
@@ -430,8 +432,84 @@ export function GitHubOAuthFlow({ onSuccess, onCancel }: GitHubOAuthFlowProps) {
             </CardContent>
           </Card>
 
+          {/* Fallback URL display when browser failed to open */}
+          {authUrl && (
+            <Card className="border border-warning/30 bg-warning/10">
+              <CardContent className="p-5">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="text-base font-medium text-foreground">
+                        Complete Authentication Manually
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        The browser couldn't be opened automatically. Please visit the URL below to complete authentication:
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                      <code className="text-sm font-mono text-foreground flex-1 break-all">
+                        {authUrl}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(authUrl);
+                            setUrlCopied(true);
+                            setTimeout(() => setUrlCopied(false), 2000);
+                          } catch (err) {
+                            debugLog('Failed to copy URL:', err);
+                          }
+                        }}
+                        className="shrink-0"
+                      >
+                        {urlCopied ? (
+                          <>
+                            <Check className="h-4 w-4 mr-1 text-success" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    <Button
+                      variant="secondary"
+                      onClick={handleOpenAuthUrl}
+                      className="gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open URL in Browser
+                    </Button>
+                  </div>
+
+                  {/* Device code reminder if available */}
+                  {deviceCode && (
+                    <div className="pt-2 border-t border-warning/20">
+                      <p className="text-sm text-muted-foreground">
+                        When prompted, enter this code:{' '}
+                        <code className="font-mono font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">
+                          {deviceCode}
+                        </code>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="flex justify-center gap-3">
-            <Button onClick={handleRetry} variant="outline">
+            <Button onClick={handleStartAuth} variant="outline">
               Retry
             </Button>
             {onCancel && (
