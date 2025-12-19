@@ -3,6 +3,7 @@ import {
   DndContext,
   DragOverlay,
   useDroppable,
+  pointerWithin,
   type DragEndEvent,
   type DragStartEvent,
   PointerSensor,
@@ -635,6 +636,7 @@ export function TaskCreationWizard({
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
