@@ -3,7 +3,7 @@
  * Provides a simpler OAuth flow than manual PAT creation
  */
 
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 import { execSync, execFileSync, spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
@@ -31,6 +31,64 @@ const GITHUB_REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
  */
 function isValidGitHubRepo(repo: string): boolean {
   return GITHUB_REPO_PATTERN.test(repo);
+}
+
+// Regex patterns for parsing device code from gh CLI output
+// Expected format: "! First copy your one-time code: XXXX-XXXX"
+const DEVICE_CODE_PATTERN = /(?:one-time code|code):\s*([A-Z0-9]{4}-[A-Z0-9]{4})/i;
+
+// GitHub device flow URL pattern
+const DEVICE_URL_PATTERN = /https:\/\/github\.com\/login\/device/i;
+
+// Default GitHub device flow URL
+const GITHUB_DEVICE_URL = 'https://github.com/login/device';
+
+/**
+ * Parse device code from gh CLI stdout output
+ * Returns the device code (format: XXXX-XXXX) if found, null otherwise
+ */
+function parseDeviceCode(output: string): string | null {
+  const match = output.match(DEVICE_CODE_PATTERN);
+  if (match && match[1]) {
+    debugLog('Parsed device code:', match[1]);
+    return match[1];
+  }
+  return null;
+}
+
+/**
+ * Parse device URL from gh CLI output
+ * Returns the URL if found, or the default GitHub device URL
+ */
+function parseDeviceUrl(output: string): string {
+  const match = output.match(DEVICE_URL_PATTERN);
+  if (match) {
+    debugLog('Found device URL in output:', match[0]);
+    return match[0];
+  }
+  // Default to standard GitHub device flow URL
+  return GITHUB_DEVICE_URL;
+}
+
+/**
+ * Result of parsing device flow output from gh CLI
+ */
+interface DeviceFlowInfo {
+  deviceCode: string | null;
+  authUrl: string;
+}
+
+/**
+ * Parse both device code and URL from combined gh CLI output
+ * Searches through both stdout and stderr as gh may output to either
+ */
+function parseDeviceFlowOutput(stdout: string, stderr: string): DeviceFlowInfo {
+  const combinedOutput = `${stdout}\n${stderr}`;
+
+  return {
+    deviceCode: parseDeviceCode(combinedOutput),
+    authUrl: parseDeviceUrl(combinedOutput)
+  };
 }
 
 /**
