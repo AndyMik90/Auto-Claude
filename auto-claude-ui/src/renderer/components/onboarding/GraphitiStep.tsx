@@ -18,12 +18,14 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent } from '../ui/card';
 import { Switch } from '../ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from '../ui/tooltip';
 import { useSettingsStore } from '../../stores/settings-store';
+import type { GraphitiProviderType } from '../../../shared/types';
 
 interface GraphitiStepProps {
   onNext: () => void;
@@ -34,12 +36,21 @@ interface GraphitiStepProps {
 interface GraphitiConfig {
   enabled: boolean;
   falkorDbUri: string;
-  openAiApiKey: string;
+  llmProvider: GraphitiProviderType;
+  apiKey: string;
 }
+
+// Provider display info
+const PROVIDER_INFO: Record<GraphitiProviderType, { name: string; placeholder: string; link: string }> = {
+  openai: { name: 'OpenAI', placeholder: 'sk-...', link: 'https://platform.openai.com/api-keys' },
+  anthropic: { name: 'Anthropic', placeholder: 'sk-ant-...', link: 'https://console.anthropic.com/settings/keys' },
+  google: { name: 'Google (Gemini)', placeholder: 'AIza...', link: 'https://aistudio.google.com/apikey' },
+  groq: { name: 'Groq', placeholder: 'gsk_...', link: 'https://console.groq.com/keys' },
+};
 
 interface ValidationStatus {
   falkordb: { tested: boolean; success: boolean; message: string } | null;
-  openai: { tested: boolean; success: boolean; message: string } | null;
+  llm: { tested: boolean; success: boolean; message: string } | null;
 }
 
 /**
@@ -52,7 +63,8 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
   const [config, setConfig] = useState<GraphitiConfig>({
     enabled: false,
     falkorDbUri: 'bolt://localhost:6379',  // Standard FalkorDB port, will be auto-detected from Docker
-    openAiApiKey: settings.globalOpenAIApiKey || ''
+    llmProvider: 'openai',
+    apiKey: settings.globalOpenAIApiKey || ''
   });
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -63,7 +75,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
     falkordb: null,
-    openai: null
+    llm: null
   });
 
   // Check Docker/Infrastructure availability on mount
@@ -99,23 +111,32 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     setError(null);
     setSuccess(false);
     // Reset validation status when toggling
-    setValidationStatus({ falkordb: null, openai: null });
+    setValidationStatus({ falkordb: null, llm: null });
+  };
+
+  const handleProviderChange = (provider: GraphitiProviderType) => {
+    setConfig(prev => ({ ...prev, llmProvider: provider, apiKey: '' }));
+    setValidationStatus(prev => ({ ...prev, llm: null }));
+    setError(null);
   };
 
   const handleTestConnection = async () => {
-    if (!config.openAiApiKey.trim()) {
-      setError('Please enter an OpenAI API key to test the connection');
+    const providerName = PROVIDER_INFO[config.llmProvider].name;
+    if (!config.apiKey.trim()) {
+      setError(`Please enter a ${providerName} API key to test the connection`);
       return;
     }
 
     setIsValidating(true);
     setError(null);
-    setValidationStatus({ falkordb: null, openai: null });
+    setValidationStatus({ falkordb: null, llm: null });
 
     try {
+      // For now, we still use the OpenAI test endpoint, but pass the provider info
+      // TODO: Add provider-specific validation endpoints
       const result = await window.electronAPI.testGraphitiConnection(
         config.falkorDbUri,
-        config.openAiApiKey.trim()
+        config.apiKey.trim()
       );
 
       if (result?.success && result?.data) {
@@ -125,7 +146,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
             success: result.data.falkordb.success,
             message: result.data.falkordb.message
           },
-          openai: {
+          llm: {
             tested: true,
             success: result.data.openai.success,
             message: result.data.openai.message
@@ -138,7 +159,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
             errors.push(`FalkorDB: ${result.data.falkordb.message}`);
           }
           if (!result.data.openai.success) {
-            errors.push(`OpenAI: ${result.data.openai.message}`);
+            errors.push(`${providerName}: ${result.data.openai.message}`);
           }
           if (errors.length > 0) {
             setError(errors.join('\n'));
@@ -161,8 +182,9 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
       return;
     }
 
-    if (!config.openAiApiKey.trim()) {
-      setError('OpenAI API key is required for Graphiti embeddings');
+    const providerName = PROVIDER_INFO[config.llmProvider].name;
+    if (!config.apiKey.trim()) {
+      setError(`${providerName} API key is required for Graphiti`);
       return;
     }
 
@@ -170,14 +192,29 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     setError(null);
 
     try {
-      // Save OpenAI API key to global settings
-      const result = await window.electronAPI.saveSettings({
-        globalOpenAIApiKey: config.openAiApiKey.trim()
-      });
+      // Build settings update based on selected provider
+      const settingsUpdate: Record<string, string> = {
+        graphitiLlmProvider: config.llmProvider,
+      };
+
+      // Save the API key for the selected provider
+      if (config.llmProvider === 'openai') {
+        settingsUpdate.globalOpenAIApiKey = config.apiKey.trim();
+      } else if (config.llmProvider === 'anthropic') {
+        settingsUpdate.globalAnthropicApiKey = config.apiKey.trim();
+      } else if (config.llmProvider === 'google') {
+        settingsUpdate.globalGoogleApiKey = config.apiKey.trim();
+      } else if (config.llmProvider === 'groq') {
+        settingsUpdate.globalGroqApiKey = config.apiKey.trim();
+      }
+
+      const result = await window.electronAPI.saveSettings(settingsUpdate);
 
       if (result?.success) {
         // Update local settings store
-        updateSettings({ globalOpenAIApiKey: config.openAiApiKey.trim() });
+        if (config.llmProvider === 'openai') {
+          updateSettings({ globalOpenAIApiKey: config.apiKey.trim() });
+        }
         // Proceed to next step immediately after successful save
         onNext();
       } else {
@@ -344,7 +381,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                             Enable Graphiti Memory
                           </Label>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Requires FalkorDB (Docker) and OpenAI API key
+                            Requires FalkorDB (Docker) and an LLM API key
                           </p>
                         </div>
                       </div>
@@ -360,6 +397,29 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                 {/* Configuration fields (shown when enabled) */}
                 {config.enabled && (
                   <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+                    {/* LLM Provider Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-foreground">LLM Provider</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Select the AI provider for graph operations
+                      </p>
+                      <Select
+                        value={config.llmProvider}
+                        onValueChange={(value) => handleProviderChange(value as GraphitiProviderType)}
+                        disabled={isSaving || isValidating}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select provider" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                          <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                          <SelectItem value="google">Google (Gemini)</SelectItem>
+                          <SelectItem value="groq">Groq (Llama)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     {/* FalkorDB URI */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -399,35 +459,35 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                       </p>
                     </div>
 
-                    {/* OpenAI API Key */}
+                    {/* Dynamic API Key based on provider */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="openai-key" className="text-sm font-medium text-foreground">
-                          OpenAI API Key
+                        <Label htmlFor="api-key" className="text-sm font-medium text-foreground">
+                          {PROVIDER_INFO[config.llmProvider].name} API Key
                         </Label>
-                        {validationStatus.openai && (
+                        {validationStatus.llm && (
                           <div className="flex items-center gap-1.5">
-                            {validationStatus.openai.success ? (
+                            {validationStatus.llm.success ? (
                               <CheckCircle2 className="h-4 w-4 text-success" />
                             ) : (
                               <XCircle className="h-4 w-4 text-destructive" />
                             )}
-                            <span className={`text-xs ${validationStatus.openai.success ? 'text-success' : 'text-destructive'}`}>
-                              {validationStatus.openai.success ? 'Valid' : 'Invalid'}
+                            <span className={`text-xs ${validationStatus.llm.success ? 'text-success' : 'text-destructive'}`}>
+                              {validationStatus.llm.success ? 'Valid' : 'Invalid'}
                             </span>
                           </div>
                         )}
                       </div>
                       <div className="relative">
                         <Input
-                          id="openai-key"
+                          id="api-key"
                           type={showApiKey ? 'text' : 'password'}
-                          value={config.openAiApiKey}
+                          value={config.apiKey}
                           onChange={(e) => {
-                            setConfig(prev => ({ ...prev, openAiApiKey: e.target.value }));
-                            setValidationStatus(prev => ({ ...prev, openai: null }));
+                            setConfig(prev => ({ ...prev, apiKey: e.target.value }));
+                            setValidationStatus(prev => ({ ...prev, llm: null }));
                           }}
-                          placeholder="sk-..."
+                          placeholder={PROVIDER_INFO[config.llmProvider].placeholder}
                           className="pr-10 font-mono text-sm"
                           disabled={isSaving || isValidating}
                         />
@@ -451,14 +511,14 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                         </Tooltip>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Required for generating embeddings. Get your key from{' '}
+                        Required for graph operations. Get your key from{' '}
                         <a
-                          href="https://platform.openai.com/api-keys"
+                          href={PROVIDER_INFO[config.llmProvider].link}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:text-primary/80"
                         >
-                          OpenAI
+                          {PROVIDER_INFO[config.llmProvider].name}
                         </a>
                       </p>
                     </div>
@@ -468,7 +528,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                       <Button
                         variant="outline"
                         onClick={handleTestConnection}
-                        disabled={!config.openAiApiKey.trim() || isValidating || isSaving}
+                        disabled={!config.apiKey.trim() || isValidating || isSaving}
                         className="w-full"
                       >
                         {isValidating ? (
@@ -483,7 +543,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                           </>
                         )}
                       </Button>
-                      {validationStatus.falkordb?.success && validationStatus.openai?.success && (
+                      {validationStatus.falkordb?.success && validationStatus.llm?.success && (
                         <p className="text-xs text-success text-center mt-2">
                           All connections validated successfully!
                         </p>
@@ -515,7 +575,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
             </Button>
             <Button
               onClick={handleContinue}
-              disabled={isCheckingDocker || (config.enabled && !config.openAiApiKey.trim() && !success) || isSaving || isValidating}
+              disabled={isCheckingDocker || (config.enabled && !config.apiKey.trim() && !success) || isSaving || isValidating}
             >
               {isSaving ? (
                 <>
