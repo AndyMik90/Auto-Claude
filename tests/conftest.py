@@ -602,6 +602,7 @@ def mock_run_agent_fn():
         async def _mock_agent(
             prompt_file: str,
             additional_context: str = None,
+            phase_name: str = None,
         ) -> tuple[bool, str]:
             nonlocal call_count
             if side_effect is not None:

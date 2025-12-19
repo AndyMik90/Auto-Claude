@@ -199,12 +199,15 @@ export function Sidebar({
   const handleInitialize = async () => {
     if (!pendingProject) return;
 
+    const projectId = pendingProject.id;
     setIsInitializing(true);
     try {
-      const result = await initializeProject(pendingProject.id);
+      const result = await initializeProject(projectId);
       if (result?.success) {
-        setShowInitDialog(false);
+        // Clear pendingProject FIRST before closing dialog
+        // This prevents onOpenChange from triggering skip logic
         setPendingProject(null);
+        setShowInitDialog(false);
       }
     } finally {
       setIsInitializing(false);
@@ -474,7 +477,12 @@ export function Sidebar({
       </div>
 
       {/* Initialize Auto Claude Dialog */}
-      <Dialog open={showInitDialog} onOpenChange={setShowInitDialog}>
+      <Dialog open={showInitDialog} onOpenChange={(open) => {
+        // Only allow closing if user manually closes (not during initialization)
+        if (!open && !isInitializing) {
+          handleSkipInit();
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

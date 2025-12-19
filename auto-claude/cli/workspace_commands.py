@@ -5,6 +5,7 @@ Workspace Commands
 CLI commands for workspace management (merge, review, discard, list, cleanup)
 """
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -28,6 +29,106 @@ from workspace import (
 )
 
 from .utils import print_banner
+
+
+def _detect_default_branch(project_dir: Path) -> str:
+    """
+    Detect the default branch for the repository.
+
+    This matches the logic in WorktreeManager._detect_base_branch() to ensure
+    we compare against the same branch that worktrees are created from.
+
+    Priority order:
+    1. DEFAULT_BRANCH environment variable
+    2. Auto-detect main/master (if they exist)
+    3. Fall back to "main" as final default
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        The detected default branch name
+    """
+    import os
+
+    # 1. Check for DEFAULT_BRANCH env var
+    env_branch = os.getenv("DEFAULT_BRANCH")
+    if env_branch:
+        # Verify the branch exists
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", env_branch],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return env_branch
+
+    # 2. Auto-detect main/master
+    for branch in ["main", "master"]:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", branch],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return branch
+
+    # 3. Fall back to "main" as final default
+    return "main"
+
+
+def _get_changed_files_from_git(
+    worktree_path: Path, base_branch: str = "main"
+) -> list[str]:
+    """
+    Get list of changed files from git diff between base branch and HEAD.
+
+    Args:
+        worktree_path: Path to the worktree
+        base_branch: Base branch to compare against (default: main)
+
+    Returns:
+        List of changed file paths
+    """
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", f"{base_branch}...HEAD"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+        return files
+    except subprocess.CalledProcessError as e:
+        # Log the failure before trying fallback
+        debug_warning(
+            "workspace_commands",
+            f"git diff (three-dot) failed: returncode={e.returncode}, "
+            f"stderr={e.stderr.strip() if e.stderr else 'N/A'}",
+        )
+        # Fallback: try without the three-dot notation
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", base_branch, "HEAD"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+            return files
+        except subprocess.CalledProcessError as e:
+            # Log the failure before returning empty list
+            debug_warning(
+                "workspace_commands",
+                f"git diff (two-arg) failed: returncode={e.returncode}, "
+                f"stderr={e.stderr.strip() if e.stderr else 'N/A'}",
+            )
+            return []
+
 
 # Import debug utilities
 try:
@@ -381,6 +482,18 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
         # First, check for git-level conflicts (diverged branches)
         git_conflicts = _check_git_merge_conflicts(project_dir, spec_name)
 
+        # Get actual changed files from git diff (this is the authoritative count)
+        # Detect the default branch (main/master) that worktrees are created from
+        # Note: git_conflicts["base_branch"] is the current project branch, not the
+        # worktree base, so we detect the default branch separately
+        default_branch = _detect_default_branch(project_dir)
+        all_changed_files = _get_changed_files_from_git(worktree_path, default_branch)
+        debug(
+            MODULE,
+            f"Git diff against '{default_branch}' shows {len(all_changed_files)} changed files",
+            changed_files=all_changed_files[:10],  # Log first 10
+        )
+
         debug(MODULE, "Initializing MergeOrchestrator for preview...")
 
         # Initialize the orchestrator
@@ -456,9 +569,15 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
             f for f in git_conflicts.get("conflicting_files", []) if not is_lock_file(f)
         ]
 
+        # Use git diff file count as the authoritative totalFiles count
+        # The semantic tracker may not track all files (e.g., test files, config files)
+        # but we want to show the user all files that will be merged
+        total_files_from_git = len(all_changed_files)
+
         result = {
             "success": True,
-            "files": preview.get("files_to_merge", []),
+            # Use git diff files as the authoritative list of files to merge
+            "files": all_changed_files,
             "conflicts": conflicts,
             "gitConflicts": {
                 "hasConflicts": git_conflicts["has_conflicts"]
@@ -470,7 +589,8 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
                 "specBranch": git_conflicts["spec_branch"],
             },
             "summary": {
-                "totalFiles": summary.get("total_files", 0),
+                # Use git diff count, not semantic tracker count
+                "totalFiles": total_files_from_git,
                 "conflictFiles": conflict_files,
                 "totalConflicts": total_conflicts,
                 "autoMergeable": summary.get("auto_mergeable", 0),
@@ -485,6 +605,8 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
             MODULE,
             "Merge preview complete",
             total_files=result["summary"]["totalFiles"],
+            total_files_source="git_diff",
+            semantic_tracked_files=summary.get("total_files", 0),
             total_conflicts=result["summary"]["totalConflicts"],
             has_git_conflicts=git_conflicts["has_conflicts"],
             auto_mergeable=result["summary"]["autoMergeable"],

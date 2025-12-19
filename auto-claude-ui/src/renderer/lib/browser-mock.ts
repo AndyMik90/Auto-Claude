@@ -53,6 +53,11 @@ const browserMockAPI: ElectronAPI = {
     data: null
   }),
 
+  getRoadmapStatus: async () => ({
+    success: true,
+    data: { isRunning: false }
+  }),
+
   saveRoadmap: async () => ({
     success: true
   }),

@@ -12,11 +12,13 @@ interface RoadmapState {
   roadmap: Roadmap | null;
   competitorAnalysis: CompetitorAnalysis | null;
   generationStatus: RoadmapGenerationStatus;
+  currentProjectId: string | null;  // Track which project we're viewing/generating for
 
   // Actions
   setRoadmap: (roadmap: Roadmap | null) => void;
   setCompetitorAnalysis: (analysis: CompetitorAnalysis | null) => void;
   setGenerationStatus: (status: RoadmapGenerationStatus) => void;
+  setCurrentProjectId: (projectId: string | null) => void;
   updateFeatureStatus: (featureId: string, status: RoadmapFeatureStatus) => void;
   updateFeatureLinkedSpec: (featureId: string, specId: string) => void;
   clearRoadmap: () => void;
@@ -37,6 +39,7 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
   roadmap: null,
   competitorAnalysis: null,
   generationStatus: initialGenerationStatus,
+  currentProjectId: null,
 
   // Actions
   setRoadmap: (roadmap) => set({ roadmap }),
@@ -44,6 +47,8 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
   setCompetitorAnalysis: (analysis) => set({ competitorAnalysis: analysis }),
 
   setGenerationStatus: (status) => set({ generationStatus: status }),
+
+  setCurrentProjectId: (projectId) => set({ currentProjectId: projectId }),
 
   updateFeatureStatus: (featureId, status) =>
     set((state) => {
@@ -85,7 +90,8 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
     set({
       roadmap: null,
       competitorAnalysis: null,
-      generationStatus: initialGenerationStatus
+      generationStatus: initialGenerationStatus,
+      currentProjectId: null
     }),
 
   // Reorder features within a phase
@@ -159,9 +165,34 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
 
 // Helper functions for loading roadmap
 export async function loadRoadmap(projectId: string): Promise<void> {
+  const store = useRoadmapStore.getState();
+
+  // Always set current project ID first - this ensures event handlers
+  // only process events for the currently viewed project
+  store.setCurrentProjectId(projectId);
+
+  // Query if roadmap generation is currently running for this project
+  // This restores the generation status when switching back to a project
+  const statusResult = await window.electronAPI.getRoadmapStatus(projectId);
+  if (statusResult.success && statusResult.data?.isRunning) {
+    // Generation is running - restore the UI state to show progress
+    // The actual progress will be updated by incoming events
+    store.setGenerationStatus({
+      phase: 'analyzing',
+      progress: 0,
+      message: 'Roadmap generation in progress...'
+    });
+  } else {
+    // Generation is not running - reset to idle
+    store.setGenerationStatus({
+      phase: 'idle',
+      progress: 0,
+      message: ''
+    });
+  }
+
   const result = await window.electronAPI.getRoadmap(projectId);
   if (result.success && result.data) {
-    const store = useRoadmapStore.getState();
     store.setRoadmap(result.data);
     // Extract and set competitor analysis separately if present
     if (result.data.competitorAnalysis) {
@@ -170,7 +201,6 @@ export async function loadRoadmap(projectId: string): Promise<void> {
       store.setCompetitorAnalysis(null);
     }
   } else {
-    const store = useRoadmapStore.getState();
     store.setRoadmap(null);
     store.setCompetitorAnalysis(null);
   }

@@ -41,6 +41,10 @@ export interface GitHubAPI {
   getGitHubUser: () => Promise<IPCResult<{ username: string; name?: string }>>;
   listGitHubUserRepos: () => Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>>;
 
+  // Repository detection
+  detectGitHubRepo: (projectPath: string) => Promise<IPCResult<string>>;
+  getGitHubBranches: (repo: string, token: string) => Promise<IPCResult<string[]>>;
+
   // Event Listeners
   onGitHubInvestigationProgress: (
     callback: (projectId: string, status: GitHubInvestigationStatus) => void
@@ -108,6 +112,13 @@ export const createGitHubAPI = (): GitHubAPI => ({
 
   listGitHubUserRepos: (): Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>> =>
     invokeIpc(IPC_CHANNELS.GITHUB_LIST_USER_REPOS),
+
+  // Repository detection
+  detectGitHubRepo: (projectPath: string): Promise<IPCResult<string>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_DETECT_REPO, projectPath),
+
+  getGitHubBranches: (repo: string, token: string): Promise<IPCResult<string[]>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_GET_BRANCHES, repo, token),
 
   // Event Listeners
   onGitHubInvestigationProgress: (

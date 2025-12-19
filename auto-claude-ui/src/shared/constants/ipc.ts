@@ -116,6 +116,7 @@ export const IPC_CHANNELS = {
 
   // Roadmap operations
   ROADMAP_GET: 'roadmap:get',
+  ROADMAP_GET_STATUS: 'roadmap:getStatus',
   ROADMAP_SAVE: 'roadmap:save',
   ROADMAP_GENERATE: 'roadmap:generate',
   ROADMAP_GENERATE_WITH_COMPETITOR: 'roadmap:generateWithCompetitor',
@@ -189,6 +190,8 @@ export const IPC_CHANNELS = {
   GITHUB_GET_TOKEN: 'github:getToken',
   GITHUB_GET_USER: 'github:getUser',
   GITHUB_LIST_USER_REPOS: 'github:listUserRepos',
+  GITHUB_DETECT_REPO: 'github:detectRepo',
+  GITHUB_GET_BRANCHES: 'github:getBranches',
 
   // GitHub events (main -> renderer)
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',

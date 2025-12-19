@@ -4,7 +4,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { execSync, spawn } from 'child_process';
+import { execSync, execFileSync, spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
 
@@ -19,6 +19,18 @@ function debugLog(message: string, data?: unknown): void {
       console.warn(`[GitHub OAuth] ${message}`);
     }
   }
+}
+
+// Regex pattern to validate GitHub repository format (owner/repo)
+// Allows alphanumeric characters, hyphens, underscores, and periods
+const GITHUB_REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+
+/**
+ * Validate that a repository string matches the expected owner/repo format
+ * Prevents command injection by rejecting strings with shell metacharacters
+ */
+function isValidGitHubRepo(repo: string): boolean {
+  return GITHUB_REPO_PATTERN.test(repo);
 }
 
 /**
@@ -297,6 +309,106 @@ export function registerListUserRepos(): void {
 }
 
 /**
+ * Detect GitHub repository from git remote origin
+ */
+export function registerDetectGitHubRepo(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_DETECT_REPO,
+    async (_event: Electron.IpcMainInvokeEvent, projectPath: string): Promise<IPCResult<string>> => {
+      debugLog('detectGitHubRepo handler called', { projectPath });
+      try {
+        // Get the remote URL
+        debugLog('Running: git remote get-url origin');
+        const remoteUrl = execSync('git remote get-url origin', {
+          encoding: 'utf-8',
+          cwd: projectPath,
+          stdio: 'pipe'
+        }).trim();
+
+        debugLog('Remote URL:', remoteUrl);
+
+        // Parse GitHub repo from URL
+        // Formats:
+        // - https://github.com/owner/repo.git
+        // - git@github.com:owner/repo.git
+        // - https://github.com/owner/repo
+        const match = remoteUrl.match(/github\.com[/:]([^/]+\/[^/]+?)(?:\.git)?$/);
+        if (match) {
+          const repo = match[1];
+          debugLog('Detected repo:', repo);
+          return {
+            success: true,
+            data: repo
+          };
+        }
+
+        debugLog('Could not parse GitHub repo from URL');
+        return {
+          success: false,
+          error: 'Remote URL is not a GitHub repository'
+        };
+      } catch (error) {
+        debugLog('Failed to detect repo:', error instanceof Error ? error.message : error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to detect GitHub repository'
+        };
+      }
+    }
+  );
+}
+
+/**
+ * Get branches from GitHub repository
+ */
+export function registerGetGitHubBranches(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_GET_BRANCHES,
+    async (_event: Electron.IpcMainInvokeEvent, repo: string, _token: string): Promise<IPCResult<string[]>> => {
+      debugLog('getGitHubBranches handler called', { repo });
+      
+      // Validate repo format to prevent command injection
+      if (!isValidGitHubRepo(repo)) {
+        debugLog('Invalid repo format rejected:', repo);
+        return {
+          success: false,
+          error: 'Invalid repository format. Expected: owner/repo'
+        };
+      }
+      
+      try {
+        // Use gh CLI to list branches (uses authenticated session)
+        // Use execFileSync with separate arguments to avoid shell injection
+        const apiEndpoint = `repos/${repo}/branches`;
+        debugLog(`Running: gh api ${apiEndpoint} --paginate --jq '.[].name'`);
+        const output = execFileSync(
+          'gh',
+          ['api', apiEndpoint, '--paginate', '--jq', '.[].name'],
+          {
+            encoding: 'utf-8',
+            stdio: 'pipe'
+          }
+        );
+
+        const branches = output.trim().split('\n').filter(b => b.length > 0);
+        debugLog('Found branches:', branches.length);
+
+        return {
+          success: true,
+          data: branches
+        };
+      } catch (error) {
+        debugLog('Failed to get branches:', error instanceof Error ? error.message : error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get branches'
+        };
+      }
+    }
+  );
+}
+
+/**
  * Register all GitHub OAuth handlers
  */
 export function registerGithubOAuthHandlers(): void {
@@ -307,5 +419,7 @@ export function registerGithubOAuthHandlers(): void {
   registerGetGhToken();
   registerGetGhUser();
   registerListUserRepos();
+  registerDetectGitHubRepo();
+  registerGetGitHubBranches();
   debugLog('GitHub OAuth handlers registered');
 }

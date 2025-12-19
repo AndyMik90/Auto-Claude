@@ -23,6 +23,26 @@ const RATE_LIMIT_INDICATORS = [
 ];
 
 /**
+ * Patterns that indicate authentication failures
+ * These patterns detect when Claude CLI/SDK fails due to missing or invalid auth
+ */
+const AUTH_FAILURE_PATTERNS = [
+  /authentication\s*(is\s*)?required/i,
+  /not\s*(yet\s*)?authenticated/i,
+  /login\s*(is\s*)?required/i,
+  /oauth\s*token\s*(is\s*)?(invalid|expired|missing)/i,
+  /unauthorized/i,
+  /please\s*(log\s*in|login|authenticate)/i,
+  /invalid\s*(credentials|token|api\s*key)/i,
+  /auth(entication)?\s*(failed|error|failure)/i,
+  /session\s*(expired|invalid)/i,
+  /access\s*denied/i,
+  /permission\s*denied/i,
+  /401\s*unauthorized/i,
+  /credentials\s*(are\s*)?(missing|invalid|expired)/i
+];
+
+/**
  * Result of rate limit detection
  */
 export interface RateLimitDetectionResult {
@@ -40,6 +60,22 @@ export interface RateLimitDetectionResult {
     name: string;
   };
   /** Original error message */
+  originalError?: string;
+}
+
+/**
+ * Result of authentication failure detection
+ */
+export interface AuthFailureDetectionResult {
+  /** Whether an authentication failure was detected */
+  isAuthFailure: boolean;
+  /** The profile ID that failed to authenticate (if known) */
+  profileId?: string;
+  /** The type of auth failure detected */
+  failureType?: 'missing' | 'invalid' | 'expired' | 'unknown';
+  /** User-friendly message describing the failure */
+  message?: string;
+  /** Original error message from the process output */
   originalError?: string;
 }
 
@@ -130,6 +166,80 @@ export function isRateLimitError(output: string): boolean {
 export function extractResetTime(output: string): string | null {
   const match = output.match(RATE_LIMIT_PATTERN);
   return match ? match[1].trim() : null;
+}
+
+/**
+ * Classify the type of authentication failure based on the error message
+ */
+function classifyAuthFailureType(output: string): 'missing' | 'invalid' | 'expired' | 'unknown' {
+  const lowerOutput = output.toLowerCase();
+
+  if (/missing|not\s*(yet\s*)?authenticated|required/.test(lowerOutput)) {
+    return 'missing';
+  }
+  if (/expired|session\s*expired/.test(lowerOutput)) {
+    return 'expired';
+  }
+  if (/invalid|unauthorized|denied/.test(lowerOutput)) {
+    return 'invalid';
+  }
+  return 'unknown';
+}
+
+/**
+ * Get a user-friendly message for the authentication failure
+ */
+function getAuthFailureMessage(failureType: 'missing' | 'invalid' | 'expired' | 'unknown'): string {
+  switch (failureType) {
+    case 'missing':
+      return 'Claude authentication required. Please go to Settings > Claude Profiles and authenticate your account.';
+    case 'expired':
+      return 'Your Claude session has expired. Please re-authenticate in Settings > Claude Profiles.';
+    case 'invalid':
+      return 'Invalid Claude credentials. Please check your OAuth token or re-authenticate in Settings > Claude Profiles.';
+    case 'unknown':
+    default:
+      return 'Claude authentication failed. Please verify your authentication in Settings > Claude Profiles.';
+  }
+}
+
+/**
+ * Detect authentication failure from output (stdout + stderr combined)
+ */
+export function detectAuthFailure(
+  output: string,
+  profileId?: string
+): AuthFailureDetectionResult {
+  // First, make sure this isn't a rate limit error (those should be handled separately)
+  if (detectRateLimit(output).isRateLimited) {
+    return { isAuthFailure: false };
+  }
+
+  // Check for authentication failure patterns
+  for (const pattern of AUTH_FAILURE_PATTERNS) {
+    if (pattern.test(output)) {
+      const profileManager = getClaudeProfileManager();
+      const effectiveProfileId = profileId || profileManager.getActiveProfile().id;
+      const failureType = classifyAuthFailureType(output);
+
+      return {
+        isAuthFailure: true,
+        profileId: effectiveProfileId,
+        failureType,
+        message: getAuthFailureMessage(failureType),
+        originalError: output
+      };
+    }
+  }
+
+  return { isAuthFailure: false };
+}
+
+/**
+ * Check if output contains authentication failure error
+ */
+export function isAuthFailureError(output: string): boolean {
+  return detectAuthFailure(output).isAuthFailure;
 }
 
 /**
