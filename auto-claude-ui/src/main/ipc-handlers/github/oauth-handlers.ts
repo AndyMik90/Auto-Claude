@@ -173,13 +173,25 @@ export function registerCheckGhAuth(): void {
 }
 
 /**
+ * Result type for GitHub auth start, including device flow information
+ */
+interface GitHubAuthStartResult {
+  success: boolean;
+  message?: string;
+  deviceCode?: string;
+  authUrl?: string;
+  browserOpened?: boolean;
+}
+
+/**
  * Start GitHub OAuth flow using gh CLI
- * This will open the browser for device flow authentication
+ * This will extract the device code from gh CLI output and open the browser
+ * using Electron's shell.openExternal (bypasses macOS child process restrictions)
  */
 export function registerStartGhAuth(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_START_AUTH,
-    async (): Promise<IPCResult<{ success: boolean; message?: string }>> => {
+    async (): Promise<IPCResult<GitHubAuthStartResult>> => {
       debugLog('startGitHubAuth handler called');
       return new Promise((resolve) => {
         try {
@@ -193,17 +205,53 @@ export function registerStartGhAuth(): void {
 
           let output = '';
           let errorOutput = '';
+          let deviceCodeExtracted = false;
+          let extractedDeviceCode: string | null = null;
+          let extractedAuthUrl: string = GITHUB_DEVICE_URL;
+          let browserOpenedSuccessfully = false;
+
+          // Function to attempt device code extraction and browser opening
+          const tryExtractAndOpenBrowser = async () => {
+            if (deviceCodeExtracted) return; // Already extracted
+
+            const deviceFlowInfo = parseDeviceFlowOutput(output, errorOutput);
+
+            if (deviceFlowInfo.deviceCode) {
+              deviceCodeExtracted = true;
+              extractedDeviceCode = deviceFlowInfo.deviceCode;
+              extractedAuthUrl = deviceFlowInfo.authUrl;
+
+              debugLog('Device code extracted:', extractedDeviceCode);
+              debugLog('Auth URL:', extractedAuthUrl);
+
+              // Open browser using Electron's shell.openExternal
+              // This bypasses macOS child process restrictions that block gh CLI's browser launch
+              try {
+                await shell.openExternal(extractedAuthUrl);
+                browserOpenedSuccessfully = true;
+                debugLog('Browser opened successfully via shell.openExternal');
+              } catch (browserError) {
+                debugLog('Failed to open browser:', browserError instanceof Error ? browserError.message : browserError);
+                browserOpenedSuccessfully = false;
+                // Don't fail here - we'll return the device code so user can manually navigate
+              }
+            }
+          };
 
           ghProcess.stdout?.on('data', (data) => {
             const chunk = data.toString();
             output += chunk;
             debugLog('gh stdout:', chunk);
+            // Try to extract device code as data comes in
+            tryExtractAndOpenBrowser();
           });
 
           ghProcess.stderr?.on('data', (data) => {
             const chunk = data.toString();
             errorOutput += chunk;
             debugLog('gh stderr:', chunk);
+            // gh often outputs to stderr, so check there too
+            tryExtractAndOpenBrowser();
           });
 
           ghProcess.on('close', (code) => {
@@ -216,13 +264,24 @@ export function registerStartGhAuth(): void {
                 success: true,
                 data: {
                   success: true,
-                  message: 'Successfully authenticated with GitHub'
+                  message: 'Successfully authenticated with GitHub',
+                  deviceCode: extractedDeviceCode || undefined,
+                  authUrl: extractedAuthUrl,
+                  browserOpened: browserOpenedSuccessfully
                 }
               });
             } else {
+              // Even if auth failed, return device code info if we extracted it
+              // This allows user to retry manually
               resolve({
                 success: false,
-                error: errorOutput || `Authentication failed with exit code ${code}`
+                error: errorOutput || `Authentication failed with exit code ${code}`,
+                data: extractedDeviceCode ? {
+                  success: false,
+                  deviceCode: extractedDeviceCode,
+                  authUrl: extractedAuthUrl,
+                  browserOpened: browserOpenedSuccessfully
+                } : undefined
               });
             }
           });
