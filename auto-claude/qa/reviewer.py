@@ -19,7 +19,6 @@ from task_logger import (
 
 from .criteria import get_qa_signoff_status
 
-
 # =============================================================================
 # QA REVIEWER SESSION
 # =============================================================================
@@ -102,8 +101,8 @@ async def run_qa_agent_session(
 
 The previous QA session failed with the following error:
 
-**Error**: {previous_error.get('error_message', 'Unknown error')}
-**Consecutive Failures**: {previous_error.get('consecutive_errors', 1)}
+**Error**: {previous_error.get("error_message", "Unknown error")}
+**Consecutive Failures**: {previous_error.get("consecutive_errors", 1)}
 
 ### What Went Wrong
 
@@ -154,12 +153,14 @@ After completing your QA review, you MUST:
 
 ### FAILURE TO DO THIS WILL CAUSE ANOTHER ERROR
 
-This is attempt {previous_error.get('consecutive_errors', 1) + 1}. If you fail to update implementation_plan.json again, the QA process will be escalated to human review.
+This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail to update implementation_plan.json again, the QA process will be escalated to human review.
 
 ---
 
 """
-        print(f"\n⚠️  Retry with self-correction context (attempt {previous_error.get('consecutive_errors', 1) + 1})")
+        print(
+            f"\n⚠️  Retry with self-correction context (attempt {previous_error.get('consecutive_errors', 1) + 1})"
+        )
 
     try:
         debug("qa_reviewer", "Sending query to Claude SDK...")

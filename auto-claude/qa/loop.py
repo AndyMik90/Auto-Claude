@@ -19,7 +19,7 @@ from linear_updater import (
     linear_qa_rejected,
     linear_qa_started,
 )
-from phase_config import get_phase_model, get_thinking_budget, get_phase_thinking_budget
+from phase_config import get_phase_model, get_phase_thinking_budget
 from progress import count_subtasks, is_build_complete
 from task_logger import (
     LogPhase,
@@ -410,7 +410,9 @@ async def run_qa_validation_loop(
                 max_consecutive=MAX_CONSECUTIVE_ERRORS,
             )
             print(f"\n❌ QA error: {response}")
-            print(f"   Consecutive errors: {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}")
+            print(
+                f"   Consecutive errors: {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}"
+            )
             record_iteration(
                 spec_dir,
                 qa_iteration,
@@ -433,8 +435,12 @@ async def run_qa_validation_loop(
                     "qa_loop",
                     f"Max consecutive errors ({MAX_CONSECUTIVE_ERRORS}) reached - escalating to human",
                 )
-                print(f"\n⚠️  {MAX_CONSECUTIVE_ERRORS} consecutive errors without progress.")
-                print("The QA agent is unable to properly update implementation_plan.json.")
+                print(
+                    f"\n⚠️  {MAX_CONSECUTIVE_ERRORS} consecutive errors without progress."
+                )
+                print(
+                    "The QA agent is unable to properly update implementation_plan.json."
+                )
                 print("Escalating to human review.")
 
                 # End validation phase as failed

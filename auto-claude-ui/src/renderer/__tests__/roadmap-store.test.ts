@@ -502,7 +502,7 @@ describe('Roadmap Store', () => {
   });
 
   describe('updateFeatureLinkedSpec', () => {
-    it('should update linked spec and set status to planned', () => {
+    it('should update linked spec and set status to in_progress', () => {
       const features = [createTestFeature({ id: 'feature-1', status: 'under_review' })];
       const roadmap = createTestRoadmap({ features });
 
@@ -512,7 +512,7 @@ describe('Roadmap Store', () => {
 
       const state = useRoadmapStore.getState();
       expect(state.roadmap?.features[0].linkedSpecId).toBe('spec-abc');
-      expect(state.roadmap?.features[0].status).toBe('planned');
+      expect(state.roadmap?.features[0].status).toBe('in_progress');
     });
   });
 
@@ -607,7 +607,7 @@ describe('Roadmap Store', () => {
         expect(stats.total).toBe(3);
         expect(stats.byPriority['must']).toBe(2);
         expect(stats.byPriority['should']).toBe(1);
-        expect(stats.byStatus['idea']).toBe(2);
+        expect(stats.byStatus['under_review']).toBe(2);
         expect(stats.byStatus['planned']).toBe(1);
         expect(stats.byComplexity['high']).toBe(1);
         expect(stats.byComplexity['medium']).toBe(1);

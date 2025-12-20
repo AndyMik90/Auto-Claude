@@ -211,7 +211,9 @@ def create_client(
     if agent_type in ("qa_reviewer", "qa_fixer"):
         if project_capabilities.get("is_electron") and electron_mcp_enabled:
             browser_tools_permissions = ELECTRON_TOOLS
-        elif project_capabilities.get("is_web_frontend") and not project_capabilities.get("is_electron"):
+        elif project_capabilities.get(
+            "is_web_frontend"
+        ) and not project_capabilities.get("is_electron"):
             # Only add Puppeteer for non-Electron web frontends
             browser_tools_permissions = PUPPETEER_TOOLS
 
