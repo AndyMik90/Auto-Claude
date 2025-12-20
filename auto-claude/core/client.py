@@ -267,7 +267,9 @@ def create_client(
             mcp_servers_list.append(
                 f"electron (desktop automation, port {get_electron_debug_port()})"
             )
-        elif project_capabilities.get("is_web_frontend") and not project_capabilities.get("is_electron"):
+        elif project_capabilities.get(
+            "is_web_frontend"
+        ) and not project_capabilities.get("is_electron"):
             mcp_servers_list.append("puppeteer (browser automation)")
     if linear_enabled:
         mcp_servers_list.append("linear (project management)")
@@ -301,7 +303,9 @@ def create_client(
                 "command": "npm",
                 "args": ["exec", "electron-mcp-server"],
             }
-        elif project_capabilities.get("is_web_frontend") and not project_capabilities.get("is_electron"):
+        elif project_capabilities.get(
+            "is_web_frontend"
+        ) and not project_capabilities.get("is_electron"):
             # Puppeteer for web frontends (not Electron)
             mcp_servers["puppeteer"] = {
                 "command": "npx",
