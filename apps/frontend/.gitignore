@@ -51,6 +51,9 @@ pnpm-lock.yaml
 bun.lock
 bun.lockb
 
+# Auto Claude data directory
+.auto-claude/
+
 # Backup files
 *.backup
 
