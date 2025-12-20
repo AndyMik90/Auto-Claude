@@ -55,6 +55,8 @@ def get_electron_debug_port() -> int:
 
 
 # Puppeteer MCP tools for browser automation
+# NOTE: Screenshots must be compressed (1280x720, quality 60, JPEG) to stay under
+# Claude SDK's 1MB JSON message buffer limit. See GitHub issue #74.
 PUPPETEER_TOOLS = [
     "mcp__puppeteer__puppeteer_connect_active_tab",
     "mcp__puppeteer__puppeteer_navigate",
@@ -106,6 +108,8 @@ GRAPHITI_MCP_TOOLS = [
 # Uses electron-mcp-server to connect to Electron apps via Chrome DevTools Protocol.
 # Electron app must be started with --remote-debugging-port=9222 (or ELECTRON_DEBUG_PORT).
 # These tools are only available to QA agents (qa_reviewer, qa_fixer), not Coder/Planner.
+# NOTE: Screenshots must be compressed to stay under Claude SDK's 1MB JSON message buffer limit.
+# See GitHub issue #74.
 ELECTRON_TOOLS = [
     "mcp__electron__get_electron_window_info",  # Get info about running Electron windows
     "mcp__electron__take_screenshot",  # Capture screenshot of Electron window

@@ -192,9 +192,9 @@ Input: { "debugPort": 9222 }
 Tool: mcp__puppeteer__puppeteer_navigate
 Input: { "url": "file:///path/or/route" }
 
-# Take screenshot of current state
+# Take screenshot of current state (compressed to stay under SDK buffer limit)
 Tool: mcp__puppeteer__puppeteer_screenshot
-Input: { "name": "electron-app-main-view" }
+Input: { "name": "electron-app-main-view", "width": 1280, "height": 720, "quality": 60, "type": "jpeg" }
 ```
 
 ### 4.5.3: Verify UI Elements

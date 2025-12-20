@@ -35,7 +35,10 @@ function isValidGitHubRepo(repo: string): boolean {
 
 // Regex patterns for parsing device code from gh CLI output
 // Expected format: "! First copy your one-time code: XXXX-XXXX"
-const DEVICE_CODE_PATTERN = /(?:one-time code|code):\s*([A-Z0-9]{4}-[A-Z0-9]{4})/i;
+// Pattern updated to handle different gh CLI versions - supports:
+// - "one-time code", "code", or "verification code" prefixes
+// - Optional space or hyphen separator in the code (XXXX-XXXX or XXXX XXXX)
+const DEVICE_CODE_PATTERN = /(?:one-time code|verification code|code):\s*([A-Z0-9]{4}[-\s]?[A-Z0-9]{4})/i;
 
 // GitHub device flow URL pattern
 const DEVICE_URL_PATTERN = /https:\/\/github\.com\/login\/device/i;
@@ -243,6 +246,11 @@ export function registerStartGhAuth(): void {
                 browserOpenedSuccessfully = false;
                 // Don't fail here - we'll return the device code so user can manually navigate
               }
+
+              // Reset extraction flag after browser open attempt to allow retry if needed
+              setTimeout(() => {
+                extractionInProgress = false;
+              }, 5000);
             } else {
               // No device code found yet, allow next data chunk to try again
               extractionInProgress = false;
@@ -252,6 +260,8 @@ export function registerStartGhAuth(): void {
           ghProcess.stdout?.on('data', (data) => {
             const chunk = data.toString();
             output += chunk;
+            // Always log raw output for debugging critical auth flow (even in non-DEBUG mode)
+            console.log('[GitHub Auth] Raw stdout chunk:', chunk.substring(0, 200));
             debugLog('gh stdout:', chunk);
             // Try to extract device code as data comes in
             // Use void to explicitly ignore promise
@@ -261,6 +271,8 @@ export function registerStartGhAuth(): void {
           ghProcess.stderr?.on('data', (data) => {
             const chunk = data.toString();
             errorOutput += chunk;
+            // Always log raw output for debugging critical auth flow (even in non-DEBUG mode)
+            console.log('[GitHub Auth] Raw stderr chunk:', chunk.substring(0, 200));
             debugLog('gh stderr:', chunk);
             // gh often outputs to stderr, so check there too
             void tryExtractAndOpenBrowser();
