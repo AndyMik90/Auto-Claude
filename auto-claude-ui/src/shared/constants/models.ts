@@ -49,20 +49,20 @@ export const THINKING_LEVELS = [
 // ============================================
 
 // Default phase model configuration for Auto profile
-// Optimized for each phase: fast discovery, quality planning, balanced coding, thorough QA
+// Uses Opus across all phases for maximum quality
 export const DEFAULT_PHASE_MODELS: PhaseModelConfig = {
-  spec: 'sonnet',     // Good quality specs without being too slow
+  spec: 'opus',       // Best quality for spec creation
   planning: 'opus',   // Complex architecture decisions benefit from Opus
-  coding: 'sonnet',   // Good balance of speed and quality for implementation
-  qa: 'sonnet'        // Thorough but not overly slow QA
+  coding: 'opus',     // Highest quality implementation
+  qa: 'opus'          // Thorough QA review
 };
 
 // Default phase thinking configuration for Auto profile
 export const DEFAULT_PHASE_THINKING: import('../types/settings').PhaseThinkingConfig = {
-  spec: 'medium',       // Moderate thinking for spec creation
-  planning: 'high',     // Deep thinking for planning complex features
-  coding: 'medium',     // Standard thinking for coding
-  qa: 'high'            // Thorough analysis for QA review
+  spec: 'ultrathink',   // Deep thinking for comprehensive spec creation
+  planning: 'high',     // High thinking for planning complex features
+  coding: 'low',        // Faster coding iterations
+  qa: 'low'             // Efficient QA review
 };
 
 // Default agent profiles for preset model/thinking configurations
@@ -70,9 +70,9 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
   {
     id: 'auto',
     name: 'Auto (Optimized)',
-    description: 'Uses different models per phase for optimal speed & quality',
-    model: 'sonnet',  // Fallback/default model
-    thinkingLevel: 'medium',
+    description: 'Uses Opus across all phases with optimized thinking levels',
+    model: 'opus',  // Fallback/default model
+    thinkingLevel: 'high',
     icon: 'Sparkles',
     isAutoProfile: true,
     phaseModels: DEFAULT_PHASE_MODELS,
