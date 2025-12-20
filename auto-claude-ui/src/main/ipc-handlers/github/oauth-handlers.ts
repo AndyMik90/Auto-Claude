@@ -37,8 +37,9 @@ function isValidGitHubRepo(repo: string): boolean {
 // Expected format: "! First copy your one-time code: XXXX-XXXX"
 // Pattern updated to handle different gh CLI versions - supports:
 // - "one-time code", "code", or "verification code" prefixes
-// - Optional space or hyphen separator in the code (XXXX-XXXX or XXXX XXXX)
-const DEVICE_CODE_PATTERN = /(?:one-time code|verification code|code):\s*([A-Z0-9]{4}[-\s]?[A-Z0-9]{4})/i;
+// - Hyphen or space separator in the code (XXXX-XXXX or XXXX XXXX)
+// Note: Separator is REQUIRED to avoid matching 8-char strings without separator
+const DEVICE_CODE_PATTERN = /(?:one-time code|verification code|code):\s*([A-Z0-9]{4}[-\s][A-Z0-9]{4})/i;
 
 // GitHub device flow URL pattern
 const DEVICE_URL_PATTERN = /https:\/\/github\.com\/login\/device/i;
@@ -49,12 +50,15 @@ const GITHUB_DEVICE_URL = 'https://github.com/login/device';
 /**
  * Parse device code from gh CLI stdout output
  * Returns the device code (format: XXXX-XXXX) if found, null otherwise
+ * Normalizes space separator to hyphen (GitHub always expects XXXX-XXXX)
  */
 function parseDeviceCode(output: string): string | null {
   const match = output.match(DEVICE_CODE_PATTERN);
   if (match && match[1]) {
-    debugLog('Parsed device code:', match[1]);
-    return match[1];
+    // Normalize: replace space with hyphen (GitHub expects XXXX-XXXX format)
+    const normalizedCode = match[1].replace(/\s/, '-');
+    debugLog('Parsed device code:', normalizedCode);
+    return normalizedCode;
   }
   return null;
 }
