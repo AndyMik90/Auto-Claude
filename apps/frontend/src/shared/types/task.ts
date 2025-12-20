@@ -248,6 +248,12 @@ export interface Task {
   specsPath?: string;  // Full path to specs directory for this task
   createdAt: Date;
   updatedAt: Date;
+
+  // Hierarchical task support
+  parentTaskId?: string;  // Reference to parent task if this is a child task
+  hasChildren?: boolean;  // True if this task has child tasks (cached for performance)
+  childTaskIds?: string[];  // Array of child task IDs (cached for performance)
+  orderIndex?: number;  // Order within siblings (for maintaining subtask order)
 }
 
 // Implementation Plan (from auto-claude)
