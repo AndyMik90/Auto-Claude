@@ -116,6 +116,8 @@ export interface AppSettings {
   _migratedAgentProfileToAuto?: boolean;
   // Language preference for UI (i18n)
   language?: SupportedLanguage;
+  // Developer/Debug settings
+  enableBackendLogging?: boolean;  // Show backend logs in DevTools console (default: false)
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)
