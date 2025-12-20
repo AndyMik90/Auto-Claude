@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,14 @@ export function CustomModelModal({ currentConfig, onSave, onClose, open = true }
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(
     currentConfig?.thinkingLevel || 'medium'
   );
+
+  // Sync internal state when modal opens or config changes
+  useEffect(() => {
+    if (open) {
+      setModel(currentConfig?.model || 'sonnet');
+      setThinkingLevel(currentConfig?.thinkingLevel || 'medium');
+    }
+  }, [open, currentConfig]);
 
   const handleSave = () => {
     onSave({

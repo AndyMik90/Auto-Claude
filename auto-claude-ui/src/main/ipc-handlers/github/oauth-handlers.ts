@@ -264,8 +264,6 @@ export function registerStartGhAuth(): void {
           ghProcess.stdout?.on('data', (data) => {
             const chunk = data.toString();
             output += chunk;
-            // Always log raw output for debugging critical auth flow (even in non-DEBUG mode)
-            console.log('[GitHub Auth] Raw stdout chunk:', chunk.substring(0, 200));
             debugLog('gh stdout:', chunk);
             // Try to extract device code as data comes in
             // Use void to explicitly ignore promise
@@ -275,8 +273,6 @@ export function registerStartGhAuth(): void {
           ghProcess.stderr?.on('data', (data) => {
             const chunk = data.toString();
             errorOutput += chunk;
-            // Always log raw output for debugging critical auth flow (even in non-DEBUG mode)
-            console.log('[GitHub Auth] Raw stderr chunk:', chunk.substring(0, 200));
             debugLog('gh stderr:', chunk);
             // gh often outputs to stderr, so check there too
             void tryExtractAndOpenBrowser();

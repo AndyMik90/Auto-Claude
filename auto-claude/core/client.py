@@ -201,15 +201,8 @@ def create_client(
         allowed_tools_list.extend(LINEAR_TOOLS)
     if graphiti_mcp_enabled:
         allowed_tools_list.extend(GRAPHITI_MCP_TOOLS)
-
-    # Add browser automation tools only for QA agents, based on project type
-    # Electron apps get Electron MCP tools; web frontends get Puppeteer tools
-    if agent_type in ("qa_reviewer", "qa_fixer"):
-        if project_capabilities.get("is_electron") and electron_mcp_enabled:
-            allowed_tools_list.extend(ELECTRON_TOOLS)
-        elif project_capabilities.get("is_web_frontend"):
-            allowed_tools_list.extend(PUPPETEER_TOOLS)
-        # CLI/backend-only projects get neither - saves context
+    # Note: Browser automation tools (ELECTRON_TOOLS, PUPPETEER_TOOLS) are already
+    # added by get_agent_allowed_tools() via _get_qa_mcp_tools() for QA agents
 
     # Determine which browser automation tools to allow based on project type
     browser_tools_permissions = []
