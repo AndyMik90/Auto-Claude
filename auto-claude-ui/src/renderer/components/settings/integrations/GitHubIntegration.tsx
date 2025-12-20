@@ -74,7 +74,7 @@ export function GitHubIntegration({
 
   // Fetch branches when GitHub is enabled and project path is available
   useEffect(() => {
-    debugLog('useEffect[branches] - githubEnabled:', envConfig?.githubEnabled, 'projectPath:', projectPath);
+    debugLog(`useEffect[branches] - githubEnabled: ${envConfig?.githubEnabled}, projectPath: ${projectPath}`);
     if (envConfig?.githubEnabled && projectPath) {
       debugLog('useEffect[branches] - Triggering fetchBranches');
       fetchBranches();
