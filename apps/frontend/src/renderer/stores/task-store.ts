@@ -227,7 +227,13 @@ export async function createTaskWithChildren(
 ): Promise<{ parent: Task; children: Task[] } | null> {
   const store = useTaskStore.getState();
 
+  console.log('[Store] createTaskWithChildren called');
+  console.log('[Store] Project ID:', projectId);
+  console.log('[Store] Title:', title);
+  console.log('[Store] Children count:', children.length);
+
   try {
+    console.log('[Store] Calling IPC createTaskWithChildren...');
     const result = await window.electronAPI.createTaskWithChildren(
       projectId,
       title,
@@ -236,7 +242,10 @@ export async function createTaskWithChildren(
       metadata
     );
 
+    console.log('[Store] IPC call completed, result:', result);
+
     if (result.success && result.data) {
+      console.log('[Store] Success! Adding tasks to store...');
       // Add parent task
       store.addTask(result.data.parent);
 
@@ -245,12 +254,15 @@ export async function createTaskWithChildren(
         store.addTask(child);
       });
 
+      console.log('[Store] All tasks added to store');
       return result.data;
     } else {
+      console.error('[Store] IPC call failed:', result.error);
       store.setError(result.error || 'Failed to create task with children');
       return null;
     }
   } catch (error) {
+    console.error('[Store] Exception caught:', error);
     store.setError(error instanceof Error ? error.message : 'Unknown error');
     return null;
   }
