@@ -351,8 +351,10 @@ export interface MergeStats {
 export interface WorktreeMergeResult {
   success: boolean;
   message: string;
+  merged?: boolean;
   conflictFiles?: string[];
   staged?: boolean;
+  alreadyStaged?: boolean;
   projectPath?: string;
   // New conflict info from smart merge
   conflicts?: MergeConflict[];
