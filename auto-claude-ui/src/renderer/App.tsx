@@ -173,20 +173,31 @@ export function App() {
 
   // Apply theme on load
   useEffect(() => {
+    const root = document.documentElement;
+
     const applyTheme = () => {
+      // Apply light/dark mode
       if (settings.theme === 'dark') {
-        document.documentElement.classList.add('dark');
+        root.classList.add('dark');
       } else if (settings.theme === 'light') {
-        document.documentElement.classList.remove('dark');
+        root.classList.remove('dark');
       } else {
         // System preference
         if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          document.documentElement.classList.add('dark');
+          root.classList.add('dark');
         } else {
-          document.documentElement.classList.remove('dark');
+          root.classList.remove('dark');
         }
       }
     };
+
+    // Apply color theme via data-theme attribute
+    const colorTheme = settings.colorTheme ?? 'default';
+    if (colorTheme === 'default') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', colorTheme);
+    }
 
     applyTheme();
 
@@ -202,7 +213,7 @@ export function App() {
     return () => {
       mediaQuery.removeEventListener('change', handleChange);
     };
-  }, [settings.theme]);
+  }, [settings.theme, settings.colorTheme]);
 
   // Update selected task when tasks change (for real-time updates)
   useEffect(() => {
