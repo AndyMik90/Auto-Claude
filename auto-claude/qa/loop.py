@@ -45,6 +45,7 @@ from .reviewer import run_qa_agent_session
 
 # Configuration
 MAX_QA_ITERATIONS = 50
+MAX_CONSECUTIVE_ERRORS = 3  # Stop after 3 consecutive errors without progress
 
 
 # =============================================================================
@@ -185,6 +186,8 @@ async def run_qa_validation_loop(
             print("Linear task moved to 'In Review'")
 
     qa_iteration = get_qa_iteration_count(spec_dir)
+    consecutive_errors = 0
+    last_error_context = None  # Track error for self-correction feedback
 
     while qa_iteration < MAX_QA_ITERATIONS:
         qa_iteration += 1
@@ -220,7 +223,8 @@ async def run_qa_validation_loop(
         async with client:
             debug("qa_loop", "Running QA reviewer agent session...")
             status, response = await run_qa_agent_session(
-                client, spec_dir, qa_iteration, MAX_QA_ITERATIONS, verbose
+                client, spec_dir, qa_iteration, MAX_QA_ITERATIONS, verbose,
+                previous_error=last_error_context  # Pass error context for self-correction
             )
 
         iteration_duration = time_module.time() - iteration_start
@@ -233,6 +237,10 @@ async def run_qa_validation_loop(
         )
 
         if status == "approved":
+            # Reset error tracking on success
+            consecutive_errors = 0
+            last_error_context = None
+
             # Record successful iteration
             debug_success(
                 "qa_loop",
@@ -267,6 +275,10 @@ async def run_qa_validation_loop(
             return True
 
         elif status == "rejected":
+            # Reset error tracking on valid response (rejected is a valid response)
+            consecutive_errors = 0
+            last_error_context = None
+
             debug_warning(
                 "qa_loop",
                 "QA REJECTED",
@@ -385,15 +397,51 @@ async def run_qa_validation_loop(
             print("\n✅ Fixes applied. Re-running QA validation...")
 
         elif status == "error":
-            debug_error("qa_loop", f"QA session error: {response[:200]}")
+            consecutive_errors += 1
+            debug_error(
+                "qa_loop",
+                f"QA session error: {response[:200]}",
+                consecutive_errors=consecutive_errors,
+                max_consecutive=MAX_CONSECUTIVE_ERRORS,
+            )
             print(f"\n❌ QA error: {response}")
+            print(f"   Consecutive errors: {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}")
             record_iteration(
                 spec_dir,
                 qa_iteration,
                 "error",
                 [{"title": "QA error", "description": response}],
             )
-            print("Retrying...")
+
+            # Build error context for self-correction in next iteration
+            last_error_context = {
+                "error_type": "missing_implementation_plan_update",
+                "error_message": response,
+                "consecutive_errors": consecutive_errors,
+                "expected_action": "You MUST update implementation_plan.json with a qa_signoff object containing 'status': 'approved' or 'status': 'rejected'",
+                "file_path": str(spec_dir / "implementation_plan.json"),
+            }
+
+            # Check if we've hit max consecutive errors
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                debug_error(
+                    "qa_loop",
+                    f"Max consecutive errors ({MAX_CONSECUTIVE_ERRORS}) reached - escalating to human",
+                )
+                print(f"\n⚠️  {MAX_CONSECUTIVE_ERRORS} consecutive errors without progress.")
+                print("The QA agent is unable to properly update implementation_plan.json.")
+                print("Escalating to human review.")
+
+                # End validation phase as failed
+                if task_logger:
+                    task_logger.end_phase(
+                        LogPhase.VALIDATION,
+                        success=False,
+                        message=f"QA agent failed {MAX_CONSECUTIVE_ERRORS} consecutive times - unable to update implementation_plan.json",
+                    )
+                return False
+
+            print("Retrying with error feedback...")
 
     # Max iterations reached without approval
     debug_error(

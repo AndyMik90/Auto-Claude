@@ -46,6 +46,7 @@ async def run_qa_agent_session(
     qa_session: int,
     max_iterations: int,
     verbose: bool = False,
+    previous_error: dict | None = None,
 ) -> tuple[str, str]:
     """
     Run a QA reviewer agent session.
@@ -56,6 +57,7 @@ async def run_qa_agent_session(
         qa_session: QA iteration number
         max_iterations: Maximum number of QA iterations
         verbose: Whether to show detailed output
+        previous_error: Error context from previous iteration for self-correction
 
     Returns:
         (status, response_text) where status is:
@@ -96,6 +98,81 @@ async def run_qa_agent_session(
     prompt += f"**Max Iterations**: {max_iterations}\n"
     prompt += f"\n**IMPORTANT**: All spec files (spec.md, implementation_plan.json, etc.) are located in: `{spec_dir}/`\n"
     prompt += f"Use the full path when reading files, e.g.: `cat {spec_dir}/spec.md`\n"
+
+    # Add error context for self-correction if previous iteration failed
+    if previous_error:
+        debug(
+            "qa_reviewer",
+            "Adding error context for self-correction",
+            error_type=previous_error.get("error_type"),
+            consecutive_errors=previous_error.get("consecutive_errors"),
+        )
+        prompt += f"""
+
+---
+
+## ⚠️ CRITICAL: PREVIOUS ITERATION FAILED - SELF-CORRECTION REQUIRED
+
+The previous QA session failed with the following error:
+
+**Error**: {previous_error.get('error_message', 'Unknown error')}
+**Consecutive Failures**: {previous_error.get('consecutive_errors', 1)}
+
+### What Went Wrong
+
+You did NOT update the `implementation_plan.json` file with the required `qa_signoff` object.
+
+### Required Action
+
+After completing your QA review, you MUST:
+
+1. **Read the current implementation_plan.json**:
+   ```bash
+   cat {spec_dir}/implementation_plan.json
+   ```
+
+2. **Update it with your qa_signoff** by editing the JSON file to add/update the `qa_signoff` field:
+
+   If APPROVED:
+   ```json
+   {{
+     "qa_signoff": {{
+       "status": "approved",
+       "timestamp": "[current ISO timestamp]",
+       "qa_session": {qa_session},
+       "report_file": "qa_report.md",
+       "tests_passed": {{"unit": "X/Y", "integration": "X/Y", "e2e": "X/Y"}},
+       "verified_by": "qa_agent"
+     }}
+   }}
+   ```
+
+   If REJECTED:
+   ```json
+   {{
+     "qa_signoff": {{
+       "status": "rejected",
+       "timestamp": "[current ISO timestamp]",
+       "qa_session": {qa_session},
+       "issues_found": [
+         {{"type": "critical", "title": "[issue]", "location": "[file:line]", "fix_required": "[description]"}}
+       ],
+       "fix_request_file": "QA_FIX_REQUEST.md"
+     }}
+   }}
+   ```
+
+3. **Use the Edit tool or Write tool** to update the file. The file path is:
+   `{spec_dir}/implementation_plan.json`
+
+### FAILURE TO DO THIS WILL CAUSE ANOTHER ERROR
+
+This is attempt {previous_error.get('consecutive_errors', 1) + 1}. If you fail to update implementation_plan.json again, the QA process will be escalated to human review.
+
+---
+
+"""
+        print(f"\n⚠️  Retry with self-correction context (attempt {previous_error.get('consecutive_errors', 1) + 1})")
 
     try:
         debug("qa_reviewer", "Sending query to Claude SDK...")
@@ -247,11 +324,29 @@ async def run_qa_agent_session(
             debug_error("qa_reviewer", "QA REJECTED")
             return "rejected", response_text
         else:
-            # Agent didn't update the status properly
+            # Agent didn't update the status properly - provide detailed error
             debug_error(
-                "qa_reviewer", "QA agent did not update implementation_plan.json"
+                "qa_reviewer",
+                "QA agent did not update implementation_plan.json",
+                message_count=message_count,
+                tool_count=tool_count,
+                response_preview=response_text[:500] if response_text else "empty",
             )
-            return "error", "QA agent did not update implementation_plan.json"
+
+            # Build informative error message for feedback loop
+            error_details = []
+            if message_count == 0:
+                error_details.append("No messages received from agent")
+            if tool_count == 0:
+                error_details.append("No tools were used by agent")
+            if not response_text:
+                error_details.append("Agent produced no output")
+
+            error_msg = "QA agent did not update implementation_plan.json"
+            if error_details:
+                error_msg += f" ({'; '.join(error_details)})"
+
+            return "error", error_msg
 
     except Exception as e:
         debug_error(
