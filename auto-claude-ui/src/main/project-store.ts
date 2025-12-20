@@ -326,11 +326,30 @@ export class ProjectStore {
         const stagedInMainProject = planWithStaged?.stagedInMainProject;
         const stagedAt = planWithStaged?.stagedAt;
 
+        // Determine title - check if feature looks like a spec ID (e.g., "054-something-something")
+        let title = plan?.feature || plan?.title || dir.name;
+        const looksLikeSpecId = /^\d{3}-/.test(title);
+        if (looksLikeSpecId && existsSync(specFilePath)) {
+          try {
+            const specContent = readFileSync(specFilePath, 'utf-8');
+            // Extract title from first # line, handling patterns like:
+            // "# Quick Spec: Title" -> "Title"
+            // "# Specification: Title" -> "Title"
+            // "# Title" -> "Title"
+            const titleMatch = specContent.match(/^#\s+(?:Quick Spec:|Specification:)?\s*(.+)$/m);
+            if (titleMatch && titleMatch[1]) {
+              title = titleMatch[1].trim();
+            }
+          } catch {
+            // Keep the original title on error
+          }
+        }
+
         tasks.push({
           id: dir.name, // Use spec directory name as ID
           specId: dir.name,
           projectId,
-          title: plan?.feature || plan?.title || dir.name,
+          title,
           description,
           status,
           reviewReason,
