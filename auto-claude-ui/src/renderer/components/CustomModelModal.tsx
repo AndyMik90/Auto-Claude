@@ -24,9 +24,10 @@ interface CustomModelModalProps {
   currentConfig?: InsightsModelConfig;
   onSave: (config: InsightsModelConfig) => void;
   onClose: () => void;
+  open?: boolean;
 }
 
-export function CustomModelModal({ currentConfig, onSave, onClose }: CustomModelModalProps) {
+export function CustomModelModal({ currentConfig, onSave, onClose, open = true }: CustomModelModalProps) {
   const [model, setModel] = useState<ModelType>(
     currentConfig?.model || 'sonnet'
   );
@@ -43,7 +44,7 @@ export function CustomModelModal({ currentConfig, onSave, onClose }: CustomModel
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Custom Model Configuration</DialogTitle>

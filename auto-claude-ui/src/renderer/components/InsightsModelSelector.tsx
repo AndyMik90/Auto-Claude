@@ -132,13 +132,12 @@ export function InsightsModelSelector({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {showCustomModal && (
-        <CustomModelModal
-          currentConfig={currentConfig}
-          onSave={handleCustomSave}
-          onClose={() => setShowCustomModal(false)}
-        />
-      )}
+      <CustomModelModal
+        open={showCustomModal}
+        currentConfig={currentConfig}
+        onSave={handleCustomSave}
+        onClose={() => setShowCustomModal(false)}
+      />
     </>
   );
 }
