@@ -1,4 +1,4 @@
-import { Search, Globe, RefreshCw, TrendingUp, CheckCircle } from 'lucide-react';
+import { Globe, RefreshCw, TrendingUp, CheckCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogContent,
