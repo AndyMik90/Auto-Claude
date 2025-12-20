@@ -295,9 +295,15 @@ Output the complete roadmap to roadmap.json.
             missing = [k for k in required if k not in data]
             feature_count = len(data.get("features", []))
 
-            # Validate target_audience structure
+            # Validate target_audience structure with type checking
             target_audience = data.get("target_audience", {})
-            if not target_audience.get("primary"):
+            if not isinstance(target_audience, dict):
+                debug_warning(
+                    "roadmap_phase",
+                    f"Invalid target_audience type: expected dict, got {type(target_audience).__name__}",
+                )
+                missing.append("target_audience (invalid type)")
+            elif not target_audience.get("primary"):
                 missing.append("target_audience.primary")
 
             debug_detailed(

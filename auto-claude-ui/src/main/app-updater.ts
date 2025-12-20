@@ -23,8 +23,8 @@ import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/constants';
 import type { AppUpdateInfo } from '../shared/types';
 
-// Debug mode - unified to DEBUG=true or development mode
-const DEBUG_UPDATER = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+// Debug mode - DEBUG_UPDATER=true or development mode
+const DEBUG_UPDATER = process.env.DEBUG_UPDATER === 'true' || process.env.NODE_ENV === 'development';
 
 // Configure electron-updater
 autoUpdater.autoDownload = true;  // Automatically download updates when available

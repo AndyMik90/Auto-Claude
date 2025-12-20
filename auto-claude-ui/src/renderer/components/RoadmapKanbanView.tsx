@@ -275,10 +275,10 @@ export function RoadmapKanbanView({
     // Features are displayed in their natural order within each status
   };
 
-  // Get phase name for a feature (for display in drag overlay)
-  const getPhaseNameForFeature = (feature: RoadmapFeature) => {
-    const phase = roadmap.phases.find((p) => p.id === feature.phaseId);
-    return phase?.name || 'Unknown Phase';
+  // Get status label for a feature (for display in drag overlay)
+  const getStatusLabelForFeature = (feature: RoadmapFeature) => {
+    const statusColumn = ROADMAP_STATUS_COLUMNS.find((c) => c.id === feature.status);
+    return statusColumn?.label || 'Unknown Status';
   };
 
   return (
@@ -313,7 +313,7 @@ export function RoadmapKanbanView({
               <Card className="p-4 w-80 shadow-2xl">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                    {getPhaseNameForFeature(activeFeature)}
+                    {getStatusLabelForFeature(activeFeature)}
                   </Badge>
                 </div>
                 <div className="font-medium">{activeFeature.title}</div>

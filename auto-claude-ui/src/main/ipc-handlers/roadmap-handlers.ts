@@ -170,7 +170,7 @@ export function registerRoadmapHandlers(
             impact: feature.impact || 'medium',
             phaseId: feature.phase_id,
             dependencies: feature.dependencies || [],
-            status: feature.status || 'idea',
+            status: feature.status || 'under_review',
             acceptanceCriteria: feature.acceptance_criteria || [],
             userStories: feature.user_stories || [],
             linkedSpecId: feature.linked_spec_id,
