@@ -43,7 +43,8 @@ import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings } from './stores/settings-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
 import { useIpcListeners } from './hooks/useIpc';
-import type { Task, Project } from '../shared/types';
+import { COLOR_THEMES } from '../shared/constants';
+import type { Task, Project, ColorTheme } from '../shared/types';
 
 export function App() {
   // Load IPC listeners for real-time updates
@@ -192,7 +193,13 @@ export function App() {
     };
 
     // Apply color theme via data-theme attribute
-    const colorTheme = settings.colorTheme ?? 'default';
+    // Validate colorTheme against known themes, fallback to 'default' if invalid
+    const validThemeIds = COLOR_THEMES.map((t) => t.id);
+    const rawColorTheme = settings.colorTheme ?? 'default';
+    const colorTheme: ColorTheme = validThemeIds.includes(rawColorTheme as ColorTheme)
+      ? (rawColorTheme as ColorTheme)
+      : 'default';
+
     if (colorTheme === 'default') {
       root.removeAttribute('data-theme');
     } else {
