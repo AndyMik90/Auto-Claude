@@ -275,7 +275,7 @@ export function registerRoadmapHandlers(
     async (
       _,
       projectId: string,
-      features: RoadmapFeature[]
+      roadmapData: Roadmap
     ): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
@@ -294,10 +294,10 @@ export function registerRoadmapHandlers(
 
       try {
         const content = readFileSync(roadmapPath, 'utf-8');
-        const roadmap = JSON.parse(content);
+        const existingRoadmap = JSON.parse(content);
 
         // Transform camelCase features back to snake_case for JSON file
-        roadmap.features = features.map((feature) => ({
+        existingRoadmap.features = roadmapData.features.map((feature) => ({
           id: feature.id,
           title: feature.title,
           description: feature.description,
@@ -315,10 +315,10 @@ export function registerRoadmapHandlers(
         }));
 
         // Update metadata timestamp
-        roadmap.metadata = roadmap.metadata || {};
-        roadmap.metadata.updated_at = new Date().toISOString();
+        existingRoadmap.metadata = existingRoadmap.metadata || {};
+        existingRoadmap.metadata.updated_at = new Date().toISOString();
 
-        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+        writeFileSync(roadmapPath, JSON.stringify(existingRoadmap, null, 2));
 
         return { success: true };
       } catch (error) {

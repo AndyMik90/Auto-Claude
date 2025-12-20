@@ -193,7 +193,10 @@ class ModificationTracker:
 
                 current_file = worktree_path / file_path
                 if current_file.exists():
-                    new_content = current_file.read_text(encoding="utf-8")
+                    try:
+                        new_content = current_file.read_text(encoding="utf-8")
+                    except UnicodeDecodeError:
+                        new_content = current_file.read_text(encoding="utf-8", errors="replace")
                 else:
                     # File was deleted
                     new_content = ""

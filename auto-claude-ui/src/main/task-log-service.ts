@@ -44,6 +44,7 @@ export class TaskLogService extends EventEmitter {
     try {
       const content = readFileSync(logFile, 'utf-8');
       const logs = JSON.parse(content) as TaskLogs;
+      this.logCache.set(specDir, logs);
       return logs;
     } catch (error) {
       // JSON parse error - file may be mid-write, return cached version if available

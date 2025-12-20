@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, writeFileSync, unlinkSync } from 'fs';
 import path from 'path';
+import os from 'os';
 import { EventEmitter } from 'events';
 import type {
   InsightsChatMessage,
@@ -86,12 +87,27 @@ export class InsightsExecutor extends EventEmitter {
     // Get process environment
     const processEnv = this.config.getProcessEnv();
 
+    // Write conversation history to temp file to avoid Windows command-line length limit
+    const historyFile = path.join(
+      os.tmpdir(),
+      `insights-history-${projectId}-${Date.now()}.json`
+    );
+
+    let historyFileCreated = false;
+    try {
+      writeFileSync(historyFile, JSON.stringify(conversationHistory), 'utf-8');
+      historyFileCreated = true;
+    } catch (err) {
+      console.error('[Insights] Failed to write history file:', err);
+      throw new Error('Failed to write conversation history to temp file');
+    }
+
     // Build command arguments
     const args = [
       runnerPath,
       '--project-dir', projectPath,
       '--message', message,
-      '--history', JSON.stringify(conversationHistory)
+      '--history-file', historyFile
     ];
 
     // Add model config if provided
@@ -151,6 +167,15 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('close', (code) => {
         this.activeSessions.delete(projectId);
 
+        // Cleanup temp file
+        if (historyFileCreated && existsSync(historyFile)) {
+          try {
+            unlinkSync(historyFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+
         // Check for rate limit if process failed
         if (code !== 0) {
           this.handleRateLimit(projectId, allInsightsOutput);
@@ -184,6 +209,16 @@ export class InsightsExecutor extends EventEmitter {
 
       proc.on('error', (err) => {
         this.activeSessions.delete(projectId);
+
+        // Cleanup temp file
+        if (historyFileCreated && existsSync(historyFile)) {
+          try {
+            unlinkSync(historyFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+
         this.emit('error', projectId, err.message);
         reject(err);
       });

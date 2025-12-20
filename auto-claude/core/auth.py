@@ -6,7 +6,10 @@ for multiple environment variables, and SDK environment variable passthrough
 for custom API endpoints.
 """
 
+import json
 import os
+import platform
+import subprocess
 
 # Priority order for auth token resolution
 AUTH_TOKEN_ENV_VARS = [
@@ -27,30 +30,90 @@ SDK_ENV_VARS = [
 ]
 
 
+def get_token_from_keychain() -> str | None:
+    """
+    Get authentication token from macOS Keychain.
+
+    Reads Claude Code credentials from macOS Keychain and extracts the OAuth token.
+    Only works on macOS (Darwin platform).
+
+    Returns:
+        Token string if found in Keychain, None otherwise
+    """
+    # Only attempt on macOS
+    if platform.system() != "Darwin":
+        return None
+
+    try:
+        # Query macOS Keychain for Claude Code credentials
+        result = subprocess.run(
+            ["/usr/bin/security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            return None
+
+        # Parse JSON response
+        credentials_json = result.stdout.strip()
+        if not credentials_json:
+            return None
+
+        data = json.loads(credentials_json)
+
+        # Extract OAuth token from nested structure
+        token = data.get("claudeAiOauth", {}).get("accessToken")
+
+        if not token:
+            return None
+
+        # Validate token format (Claude OAuth tokens start with sk-ant-oat01-)
+        if not token.startswith("sk-ant-oat01-"):
+            return None
+
+        return token
+
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError, Exception):
+        # Silently fail - this is a fallback mechanism
+        return None
+
+
 def get_auth_token() -> str | None:
     """
-    Get authentication token from environment variables.
+    Get authentication token from environment variables or macOS Keychain.
 
-    Checks multiple env vars in priority order:
-    1. CLAUDE_CODE_OAUTH_TOKEN (original)
-    2. ANTHROPIC_AUTH_TOKEN (ccr/proxy)
-    3. ANTHROPIC_API_KEY (direct API key)
+    Checks multiple sources in priority order:
+    1. CLAUDE_CODE_OAUTH_TOKEN (env var)
+    2. ANTHROPIC_AUTH_TOKEN (ccr/proxy env var)
+    3. ANTHROPIC_API_KEY (direct API key env var)
+    4. macOS Keychain (if on Darwin platform)
 
     Returns:
         Token string if found, None otherwise
     """
+    # First check environment variables
     for var in AUTH_TOKEN_ENV_VARS:
         token = os.environ.get(var)
         if token:
             return token
-    return None
+
+    # Fallback to macOS Keychain
+    return get_token_from_keychain()
 
 
 def get_auth_token_source() -> str | None:
-    """Get the name of the env var that provided the auth token."""
+    """Get the name of the source that provided the auth token."""
+    # Check environment variables first
     for var in AUTH_TOKEN_ENV_VARS:
         if os.environ.get(var):
             return var
+
+    # Check if token came from macOS Keychain
+    if get_token_from_keychain():
+        return "macOS Keychain"
+
     return None
 
 
@@ -59,15 +122,20 @@ def require_auth_token() -> str:
     Get authentication token or raise ValueError.
 
     Raises:
-        ValueError: If no auth token is found in any supported env var
+        ValueError: If no auth token is found in any supported source
     """
     token = get_auth_token()
     if not token:
-        raise ValueError(
+        error_msg = (
             "No authentication token found.\n"
             f"Set one of: {', '.join(AUTH_TOKEN_ENV_VARS)}\n"
-            "For Claude Code CLI: run 'claude setup-token'"
         )
+        # Provide platform-specific guidance
+        if platform.system() == "Darwin":
+            error_msg += "For Claude Code CLI: run 'claude setup-token' to save token to macOS Keychain"
+        else:
+            error_msg += "For Claude Code CLI: run 'claude setup-token'"
+        raise ValueError(error_msg)
     return token
 
 

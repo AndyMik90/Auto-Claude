@@ -99,7 +99,9 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Fetch current usage (hybrid approach)
-      const usage = await this.fetchUsage(activeProfile.id, activeProfile.oauthToken);
+      // Get decrypted token from ProfileManager (activeProfile.oauthToken is encrypted)
+      const decryptedToken = profileManager.getProfileToken(activeProfile.id);
+      const usage = await this.fetchUsage(activeProfile.id, decryptedToken ?? undefined);
       if (!usage) {
         console.warn('[UsageMonitor] Failed to fetch usage');
         return;

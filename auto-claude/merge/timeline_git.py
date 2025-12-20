@@ -191,7 +191,10 @@ class TimelineGitHelper:
 
         worktree_path = self.project_path / ".worktrees" / spec_name / file_path
         if worktree_path.exists():
-            return worktree_path.read_text(encoding="utf-8")
+            try:
+                return worktree_path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                return worktree_path.read_text(encoding="utf-8", errors="replace")
         return ""
 
     def get_changed_files_in_worktree(self, worktree_path: Path) -> list[str]:

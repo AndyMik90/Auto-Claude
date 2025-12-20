@@ -41,7 +41,6 @@ interface TaskCardProps {
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const [isStuck, setIsStuck] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
-  const [hasCheckedRunning, setHasCheckedRunning] = useState(false);
 
   const isRunning = task.status === 'in_progress';
   const executionPhase = task.executionProgress?.phase;
@@ -53,25 +52,46 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
   // Check if task is stuck (status says in_progress but no actual process)
   // Add a grace period to avoid false positives during process spawn
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | undefined;
-
-    if (isRunning && !hasCheckedRunning) {
-      // Wait 2 seconds before checking - gives process time to spawn and register
-      timeoutId = setTimeout(() => {
-        checkTaskRunning(task.id).then((actuallyRunning) => {
-          setIsStuck(!actuallyRunning);
-          setHasCheckedRunning(true);
-        });
-      }, 2000);
-    } else if (!isRunning) {
+    if (!isRunning) {
       setIsStuck(false);
-      setHasCheckedRunning(false);
+      return;
     }
 
+    // Initial check after 2s grace period
+    const initialTimeout = setTimeout(() => {
+      checkTaskRunning(task.id).then((actuallyRunning) => {
+        setIsStuck(!actuallyRunning);
+      });
+    }, 2000);
+
+    // Periodic re-check every 15 seconds
+    const recheckInterval = setInterval(() => {
+      checkTaskRunning(task.id).then((actuallyRunning) => {
+        setIsStuck(!actuallyRunning);
+      });
+    }, 15000);
+
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      clearTimeout(initialTimeout);
+      clearInterval(recheckInterval);
     };
-  }, [task.id, isRunning, hasCheckedRunning]);
+  }, [task.id, isRunning]);
+
+  // Add visibility change handler to re-validate on focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isRunning) {
+        checkTaskRunning(task.id).then((actuallyRunning) => {
+          setIsStuck(!actuallyRunning);
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [task.id, isRunning]);
 
   const handleStartStop = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -89,8 +109,6 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     const result = await recoverStuckTask(task.id, { autoRestart: true });
     if (result.success) {
       setIsStuck(false);
-      // Reset the check flag so it will re-verify running state
-      setHasCheckedRunning(false);
     }
     setIsRecovering(false);
   };

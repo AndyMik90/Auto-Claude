@@ -506,7 +506,10 @@ class FileTimelineTracker:
             for file_path in changed_files:
                 full_path = worktree_path / file_path
                 if full_path.exists():
-                    content = full_path.read_text(encoding="utf-8")
+                    try:
+                        content = full_path.read_text(encoding="utf-8")
+                    except UnicodeDecodeError:
+                        content = full_path.read_text(encoding="utf-8", errors="replace")
                     self.on_task_worktree_change(task_id, file_path, content)
 
             debug_success(MODULE, f"Captured {len(changed_files)} files from worktree")
