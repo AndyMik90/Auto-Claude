@@ -118,7 +118,9 @@ export function parseMarkdownTask(content: string, filename: string): ParsedTask
 
       case 'subtasks':
         // Check if this line starts a new subtask
-        const subtaskTitle = extractSubtaskTitle(line);
+        // IMPORTANT: Only H3/H4 headers are treated as new subtasks
+        // Bullets and numbered lists under headers are part of the description
+        const subtaskTitle = extractSubtaskTitleFromHeader(line);
         if (subtaskTitle) {
           // Save previous subtask if exists
           if (currentSubtask) {
@@ -198,32 +200,22 @@ function extractTitle(lines: string[], filename: string): string {
 }
 
 /**
- * Extract subtask title from line if it's a subtask marker
- * Returns the title or null if not a subtask
+ * Extract subtask title from H3/H4 headers ONLY
+ * In "Implementation Steps" sections, only headers represent new subtasks
+ * Everything else (bullets, numbered lists) is part of the description
  */
-function extractSubtaskTitle(line: string): string | null {
-  // Numbered list: 1. Task, 1) Task, etc.
-  const numberedMatch = line.match(/^\s*\d+[\.)]\s+(.+)$/);
-  if (numberedMatch) {
-    return numberedMatch[1].trim();
+function extractSubtaskTitleFromHeader(line: string): string | null {
+  // H3 headers as subtasks (###)
+  // Matches: ### 1. Create Plugin Manager Backend
+  const h3Match = line.match(/^###\s+(.+)$/);
+  if (h3Match) {
+    return h3Match[1].trim();
   }
 
-  // Bullet list: -, *, +
-  const bulletMatch = line.match(/^\s*[-*+]\s+(.+)$/);
-  if (bulletMatch) {
-    return bulletMatch[1].trim();
-  }
-
-  // Checkbox list: - [ ] Task or - [x] Task
-  const checkboxMatch = line.match(/^\s*-\s*\[[ x]\]\s+(.+)$/i);
-  if (checkboxMatch) {
-    return checkboxMatch[1].trim();
-  }
-
-  // H3/H4 headers as subtasks (###, ####)
-  const headerMatch = line.match(/^####+\s+(.+)$/);
-  if (headerMatch) {
-    return headerMatch[1].trim();
+  // H4 headers as subtasks (####)
+  const h4Match = line.match(/^####\s+(.+)$/);
+  if (h4Match) {
+    return h4Match[1].trim();
   }
 
   return null;
