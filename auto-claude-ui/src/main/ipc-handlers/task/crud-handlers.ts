@@ -211,10 +211,19 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       children: Array<{ title: string; description?: string; orderIndex: number }>,
       metadata?: TaskMetadata
     ): Promise<IPCResult<{ parent: Task; children: Task[] }>> => {
+      console.log('[createTaskWithChildren] Starting hierarchical task creation...');
+      console.log('[createTaskWithChildren] Project ID:', projectId);
+      console.log('[createTaskWithChildren] Parent title:', title);
+      console.log('[createTaskWithChildren] Number of children:', children.length);
+
       const project = projectStore.getProject(projectId);
       if (!project) {
+        console.error('[createTaskWithChildren] ERROR: Project not found');
         return { success: false, error: 'Project not found' };
       }
+
+      console.log('[createTaskWithChildren] Project found:', project.name);
+      console.log('[createTaskWithChildren] Creating parent task...');
 
       // Create parent task first (same logic as TASK_CREATE)
       const parentResult = await new Promise<IPCResult<Task>>((resolve) => {
@@ -233,15 +242,24 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       });
 
       if (!parentResult.success || !parentResult.data) {
+        console.error('[createTaskWithChildren] ERROR: Failed to create parent task:', parentResult.error);
         return { success: false, error: parentResult.error || 'Failed to create parent task' };
       }
 
       const parentTask = parentResult.data;
+      console.log('[createTaskWithChildren] ✓ Parent task created:', parentTask.id);
+
       const childTasks: Task[] = [];
       const childTaskIds: string[] = [];
 
+      console.log('[createTaskWithChildren] Creating child tasks...');
+
       // Create each child task
-      for (const child of children) {
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        console.log(`[createTaskWithChildren] Creating child ${i + 1}/${children.length}: "${child.title}"`);
+
+        try {
         // Generate child spec ID
         const specsBaseDir = getSpecsDir(project.autoBuildPath);
         const specsDir = path.join(project.path, specsBaseDir);
@@ -326,7 +344,15 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
 
         childTasks.push(childTask);
         childTaskIds.push(childTask.id);
+        console.log(`[createTaskWithChildren] ✓ Child ${i + 1}/${children.length} created:`, childTask.id);
+
+        } catch (error) {
+          console.error(`[createTaskWithChildren] ERROR creating child ${i + 1}:`, error);
+          throw error;
+        }
       }
+
+      console.log('[createTaskWithChildren] All children created. Updating parent task...');
 
       // Update parent task with child references
       parentTask.hasChildren = true;
@@ -345,6 +371,11 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         childTaskIds: childTaskIds
       };
       writeFileSync(parentMetadataPath, JSON.stringify(updatedParentMetadata, null, 2));
+
+      console.log('[createTaskWithChildren] ✓ Parent metadata updated');
+      console.log('[createTaskWithChildren] ✅ SUCCESS: Created 1 parent + ' + childTasks.length + ' children');
+      console.log('[createTaskWithChildren] Parent ID:', parentTask.id);
+      console.log('[createTaskWithChildren] Child IDs:', childTaskIds);
 
       return {
         success: true,
