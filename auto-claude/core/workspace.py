@@ -72,14 +72,25 @@ except ImportError:
 # Import merge system
 from core.workspace.display import (
     print_conflict_info as _print_conflict_info,
+)
+from core.workspace.display import (
     print_merge_success as _print_merge_success,
+)
+from core.workspace.display import (
     show_build_summary,
 )
 from core.workspace.git_utils import (
+    MAX_PARALLEL_AI_MERGES,
     _is_auto_claude_file,
-    get_changed_files_from_branch as _get_changed_files_from_branch,
     get_existing_build_worktree,
+)
+from core.workspace.git_utils import (
+    get_changed_files_from_branch as _get_changed_files_from_branch,
+)
+from core.workspace.git_utils import (
     get_file_content_from_ref as _get_file_content_from_ref,
+)
+from core.workspace.git_utils import (
     is_lock_file as _is_lock_file,
 )
 
@@ -87,10 +98,9 @@ from core.workspace.git_utils import (
 from core.workspace.models import (
     MergeLock,
     MergeLockError,
-    ParallelMergeTask,
     ParallelMergeResult,
+    ParallelMergeTask,
 )
-from core.workspace.git_utils import MAX_PARALLEL_AI_MERGES
 from merge import (
     FileTimelineTracker,
     MergeOrchestrator,
@@ -850,11 +860,13 @@ def _resolve_git_conflicts_with_ai(
         start_time = time.time()
 
         # Run parallel merges
-        parallel_results = asyncio.run(_run_parallel_merges(
-            tasks=files_needing_ai_merge,
-            project_dir=project_dir,
-            max_concurrent=MAX_PARALLEL_AI_MERGES,
-        ))
+        parallel_results = asyncio.run(
+            _run_parallel_merges(
+                tasks=files_needing_ai_merge,
+                project_dir=project_dir,
+                max_concurrent=MAX_PARALLEL_AI_MERGES,
+            )
+        )
 
         elapsed = time.time() - start_time
 
@@ -1132,13 +1144,13 @@ Merge these versions, preserving all meaningful changes from both. Output only t
 def _strip_code_fences(content: str) -> str:
     """Remove markdown code fences if present."""
     # Check if content starts with code fence
-    lines = content.strip().split('\n')
-    if lines and lines[0].startswith('```'):
+    lines = content.strip().split("\n")
+    if lines and lines[0].startswith("```"):
         # Remove first and last line if they're code fences
-        if lines[-1].strip() == '```':
-            return '\n'.join(lines[1:-1])
+        if lines[-1].strip() == "```":
+            return "\n".join(lines[1:-1])
         else:
-            return '\n'.join(lines[1:])
+            return "\n".join(lines[1:])
     return content
 
 
@@ -1279,16 +1291,16 @@ async def _run_parallel_merges(
     if not tasks:
         return []
 
-    debug(MODULE, f"Starting parallel merge of {len(tasks)} files (max concurrent: {max_concurrent})")
+    debug(
+        MODULE,
+        f"Starting parallel merge of {len(tasks)} files (max concurrent: {max_concurrent})",
+    )
 
     # Create semaphore for concurrency control
     semaphore = asyncio.Semaphore(max_concurrent)
 
     # Create tasks
-    merge_coroutines = [
-        _merge_file_with_ai_async(task, semaphore)
-        for task in tasks
-    ]
+    merge_coroutines = [_merge_file_with_ai_async(task, semaphore) for task in tasks]
 
     # Run all merges concurrently
     results = await asyncio.gather(*merge_coroutines, return_exceptions=True)
@@ -1297,19 +1309,21 @@ async def _run_parallel_merges(
     final_results: list[ParallelMergeResult] = []
     for i, result in enumerate(results):
         if isinstance(result, Exception):
-            final_results.append(ParallelMergeResult(
-                file_path=tasks[i].file_path,
-                merged_content=None,
-                success=False,
-                error=str(result),
-            ))
+            final_results.append(
+                ParallelMergeResult(
+                    file_path=tasks[i].file_path,
+                    merged_content=None,
+                    success=False,
+                    error=str(result),
+                )
+            )
         else:
             final_results.append(result)
 
     debug(
         MODULE,
         f"Parallel merge complete: {sum(1 for r in final_results if r.success)} succeeded, "
-        f"{sum(1 for r in final_results if not r.success)} failed"
+        f"{sum(1 for r in final_results if not r.success)} failed",
     )
 
     return final_results
