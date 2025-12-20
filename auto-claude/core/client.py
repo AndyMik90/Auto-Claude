@@ -103,17 +103,14 @@ GRAPHITI_MCP_TOOLS = [
 ]
 
 # Electron MCP tools for desktop app automation (when ELECTRON_MCP_ENABLED is set)
-# Uses puppeteer-mcp-server to connect to Electron apps via Chrome DevTools Protocol.
+# Uses electron-mcp-server to connect to Electron apps via Chrome DevTools Protocol.
 # Electron app must be started with --remote-debugging-port=9222 (or ELECTRON_DEBUG_PORT).
 # These tools are only available to QA agents (qa_reviewer, qa_fixer), not Coder/Planner.
 ELECTRON_TOOLS = [
-    "mcp__electron__electron_connect",  # Connect to Electron app via DevTools
-    "mcp__electron__electron_screenshot",  # Take screenshot of Electron window
-    "mcp__electron__electron_click",  # Click element in Electron app
-    "mcp__electron__electron_fill",  # Fill input field in Electron app
-    "mcp__electron__electron_evaluate",  # Execute JS in Electron renderer
-    "mcp__electron__electron_get_window_info",  # Get window state/bounds
-    "mcp__electron__electron_get_console",  # Get console logs from renderer
+    "mcp__electron__get_electron_window_info",  # Get info about running Electron windows
+    "mcp__electron__take_screenshot",  # Capture screenshot of Electron window
+    "mcp__electron__send_command_to_electron",  # Send commands (click, fill, evaluate JS)
+    "mcp__electron__read_electron_logs",  # Read console logs from Electron app
 ]
 
 # Built-in tools
@@ -286,17 +283,11 @@ def create_client(
 
     # Add Electron MCP server if enabled
     # Electron app must be started with --remote-debugging-port=<port> for connection
-    # Uses puppeteer-mcp-server to connect to Electron via Chrome DevTools Protocol
+    # Uses electron-mcp-server to connect to Electron via Chrome DevTools Protocol
     if electron_mcp_enabled:
-        electron_port = get_electron_debug_port()
         mcp_servers["electron"] = {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@anthropic/puppeteer-mcp-server",
-                "--debug-port",
-                str(electron_port),
-            ],
+            "command": "npm",
+            "args": ["exec", "electron-mcp-server"],
         }
 
     # Add custom auto-claude MCP server if available
