@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react';
+import { useState, useRef, type DragEvent } from 'react';
 import { ChevronRight, ChevronDown, Folder, File, FileCode, FileJson, FileText, FileImage, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { FileNode } from '../../shared/types';
@@ -71,6 +71,7 @@ export function FileTreeItem({
   onToggle,
 }: FileTreeItemProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const dragImageRef = useRef<HTMLDivElement | null>(null);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -107,17 +108,22 @@ export function FileTreeItem({
     dragImage.innerHTML = `<span>${node.isDirectory ? '📁' : '📄'}</span><span>${node.name}</span>`;
     dragImage.style.position = 'absolute';
     dragImage.style.top = '-1000px';
+    dragImage.style.left = '-1000px';
     document.body.appendChild(dragImage);
     e.dataTransfer.setDragImage(dragImage, 0, 0);
 
-    // Clean up drag image after a short delay
-    setTimeout(() => {
-      document.body.removeChild(dragImage);
-    }, 0);
+    // Store reference for cleanup in dragend
+    dragImageRef.current = dragImage;
   };
 
   const handleDragEnd = () => {
     setIsDragging(false);
+
+    // Clean up drag image element
+    if (dragImageRef.current && dragImageRef.current.parentNode) {
+      dragImageRef.current.parentNode.removeChild(dragImageRef.current);
+      dragImageRef.current = null;
+    }
   };
 
   return (
