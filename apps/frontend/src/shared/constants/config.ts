@@ -46,7 +46,9 @@ export const DEFAULT_APP_SETTINGS = {
   // Beta updates opt-in (receive pre-release versions)
   betaUpdates: false,
   // Language preference (default to English)
-  language: 'en' as const
+  language: 'en' as const,
+  // Plugin context injection (enabled by default for boilerplate projects)
+  enablePluginContextInjection: true
 };
 
 // ============================================

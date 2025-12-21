@@ -60,6 +60,8 @@
     "agentFrameworkAutoClaude": "Auto Claude",
     "aiTerminalNaming": "AI Terminal Naming",
     "aiTerminalNamingDescription": "Automatically name terminals based on commands (uses Haiku)",
+    "pluginContextInjection": "Plugin Context Injection",
+    "pluginContextInjectionDescription": "Automatically inject boilerplate skills and patterns into task context",
     "featureModelSettings": "Feature Model Settings",
     "featureModelSettingsDescription": "Model and thinking level for Insights, Ideation, and Roadmap",
     "model": "Model",
