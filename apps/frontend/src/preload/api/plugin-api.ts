@@ -4,6 +4,7 @@ import type {
   Plugin,
   PluginInstallOptions,
   PluginInstallResult,
+  PluginInstallProgress,
   PluginUpdateCheck,
   PluginUpdateOptions,
   PluginUpdateResult,
@@ -35,6 +36,9 @@ export interface PluginAPI {
   validateGitHubToken: (token: string) => Promise<GitHubTokenValidation>;
   checkGitHubRepoAccess: (owner: string, repo: string, token?: string) => Promise<GitHubRepoAccess>;
   checkGitAvailability: () => Promise<GitAvailability>;
+
+  // Plugin Event Listeners
+  onPluginInstallProgress: (callback: (progress: PluginInstallProgress) => void) => () => void;
 }
 
 export const createPluginAPI = (): PluginAPI => ({
@@ -71,5 +75,21 @@ export const createPluginAPI = (): PluginAPI => ({
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_CHECK_GITHUB_REPO_ACCESS, owner, repo, token),
 
   checkGitAvailability: (): Promise<GitAvailability> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_CHECK_GIT_AVAILABILITY)
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_CHECK_GIT_AVAILABILITY),
+
+  // Plugin Event Listeners
+  onPluginInstallProgress: (
+    callback: (progress: PluginInstallProgress) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      progress: PluginInstallProgress
+    ): void => {
+      callback(progress);
+    };
+    ipcRenderer.on(IPC_CHANNELS.PLUGIN_INSTALL_PROGRESS, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.PLUGIN_INSTALL_PROGRESS, handler);
+    };
+  }
 });

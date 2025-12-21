@@ -74,11 +74,13 @@ export function registerPluginHandlers(
   // ============================================
 
   /**
-   * Install a plugin from GitHub or local path
+   * Install a plugin from GitHub or local path.
+   * Returns PluginInstallResult directly (not wrapped in IPCResult).
+   * Progress updates are sent via PLUGIN_INSTALL_PROGRESS events.
    */
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_INSTALL,
-    async (_, options: PluginInstallOptions): Promise<IPCResult<PluginInstallResult>> => {
+    async (_, options: PluginInstallOptions): Promise<PluginInstallResult> => {
       try {
         const mainWindow = getMainWindow();
         const { source, sourceType, token } = options;
@@ -96,10 +98,7 @@ export function registerPluginHandlers(
           if (!gitAvailability.available || !gitAvailability.meetsMinimum) {
             return {
               success: false,
-              data: {
-                success: false,
-                error: gitAvailability.error || 'Git is not available'
-              }
+              error: gitAvailability.error || 'Git is not available'
             };
           }
 
@@ -108,10 +107,7 @@ export function registerPluginHandlers(
           if (!parsed) {
             return {
               success: false,
-              data: {
-                success: false,
-                error: 'Invalid GitHub URL format. Expected: https://github.com/owner/repo or git@github.com:owner/repo.git'
-              }
+              error: 'Invalid GitHub URL format. Expected: https://github.com/owner/repo or git@github.com:owner/repo.git'
             };
           }
 
@@ -127,10 +123,7 @@ export function registerPluginHandlers(
             if (!tokenValidation.valid) {
               return {
                 success: false,
-                data: {
-                  success: false,
-                  error: tokenValidation.error || 'Invalid GitHub token'
-                }
+                error: tokenValidation.error || 'Invalid GitHub token'
               };
             }
 
@@ -139,10 +132,7 @@ export function registerPluginHandlers(
             if (!repoAccess.hasAccess) {
               return {
                 success: false,
-                data: {
-                  success: false,
-                  error: repoAccess.error || 'Cannot access repository'
-                }
+                error: repoAccess.error || 'Cannot access repository'
               };
             }
           }
@@ -164,10 +154,7 @@ export function registerPluginHandlers(
           if (!cloneResult.success) {
             return {
               success: false,
-              data: {
-                success: false,
-                error: cloneResult.error || 'Failed to clone repository'
-              }
+              error: cloneResult.error || 'Failed to clone repository'
             };
           }
 
@@ -192,7 +179,7 @@ export function registerPluginHandlers(
             });
           }
 
-          return { success: result.success, data: result };
+          return result;
         } else {
           // Local path installation
           reportProgress({
@@ -224,7 +211,7 @@ export function registerPluginHandlers(
             });
           }
 
-          return { success: result.success, data: result };
+          return result;
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
@@ -242,7 +229,7 @@ export function registerPluginHandlers(
 
         return {
           success: false,
-          data: { success: false, error: message }
+          error: message
         };
       }
     }
