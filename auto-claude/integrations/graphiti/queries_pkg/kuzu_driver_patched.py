@@ -17,9 +17,9 @@ try:
 except ImportError:
     import real_ladybug as kuzu  # type: ignore
 
+from graphiti_core.driver.driver import GraphProvider
 from graphiti_core.driver.kuzu_driver import KuzuDriver as OriginalKuzuDriver
 from graphiti_core.graph_queries import get_fulltext_indices
-from graphiti_core.driver.driver import GraphProvider
 
 logger = logging.getLogger(__name__)
 

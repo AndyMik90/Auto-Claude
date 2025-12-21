@@ -454,14 +454,17 @@ def get_graphiti_status() -> dict:
         status["reason"] = "GRAPHITI_ENABLED not set to true"
         return status
 
-    # Get validation errors
+    # Get validation errors (these are warnings, not blockers)
     errors = config.get_validation_errors()
     if errors:
         status["errors"] = errors
-        status["reason"] = errors[0]  # First error as primary reason
-        return status
+        # Errors are informational - embedder is optional (keyword search fallback)
 
-    status["available"] = True
+    # Available if is_valid() returns True (just needs enabled flag)
+    status["available"] = config.is_valid()
+    if not status["available"]:
+        status["reason"] = errors[0] if errors else "Configuration invalid"
+
     return status
 
 

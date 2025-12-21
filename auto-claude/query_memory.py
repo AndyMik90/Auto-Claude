@@ -39,7 +39,7 @@ def apply_monkeypatch():
 
     # Try native kuzu as fallback
     try:
-        import kuzu
+        import kuzu  # noqa: F401
         return "kuzu"
     except ImportError:
         return None

@@ -17,8 +17,8 @@ Output:
 import argparse
 import json
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
 from typing import Any
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
