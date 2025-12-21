@@ -1,5 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Settings2, Download, RefreshCw, AlertCircle } from 'lucide-react';
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy
+} from '@dnd-kit/sortable';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Button } from './components/ui/button';
 import {
@@ -58,6 +71,7 @@ export function App() {
   const openProjectTab = useProjectStore((state) => state.openProjectTab);
   const closeProjectTab = useProjectStore((state) => state.closeProjectTab);
   const setActiveProject = useProjectStore((state) => state.setActiveProject);
+  const reorderTabs = useProjectStore((state) => state.reorderTabs);
   const tasks = useTaskStore((state) => state.tasks);
   const settings = useSettingsStore((state) => state.settings);
   const settingsLoading = useSettingsStore((state) => state.isLoading);
@@ -82,6 +96,18 @@ export function App() {
   // GitHub setup state (shown after Auto Claude init)
   const [showGitHubSetup, setShowGitHubSetup] = useState(false);
   const [gitHubSetupProject, setGitHubSetupProject] = useState<Project | null>(null);
+
+  // Setup drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  );
+
+  // Track dragging state for overlay
+  const [activeDragProject, setActiveDragProject] = useState<Project | null>(null);
 
   // Get tabs and selected project
   const projectTabs = getProjectTabs();
@@ -299,6 +325,30 @@ export function App() {
     closeProjectTab(projectId);
   };
 
+  // Handle drag start - set the active dragged project
+  const handleDragStart = (event: any) => {
+    const { active } = event;
+    const draggedProject = projectTabs.find(p => p.id === active.id);
+    if (draggedProject) {
+      setActiveDragProject(draggedProject);
+    }
+  };
+
+  // Handle drag end - reorder tabs if dropped over another tab
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragProject(null);
+
+    if (!over) return;
+
+    const oldIndex = projectTabs.findIndex(p => p.id === active.id);
+    const newIndex = projectTabs.findIndex(p => p.id === over.id);
+
+    if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
+      reorderTabs(oldIndex, newIndex);
+    }
+  };
+
   const handleInitialize = async () => {
     if (!pendingProject) return;
 
@@ -424,13 +474,34 @@ export function App() {
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Project Tabs */}
           {projectTabs.length > 0 && (
-            <ProjectTabBar
-              projects={projectTabs}
-              activeProjectId={activeProjectId}
-              onProjectSelect={handleProjectTabSelect}
-              onProjectClose={handleProjectTabClose}
-              onAddProject={handleAddProject}
-            />
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={projectTabs.map(p => p.id)} strategy={horizontalListSortingStrategy}>
+                <ProjectTabBar
+                  projects={projectTabs}
+                  activeProjectId={activeProjectId}
+                  onProjectSelect={handleProjectTabSelect}
+                  onProjectClose={handleProjectTabClose}
+                  onAddProject={handleAddProject}
+                />
+              </SortableContext>
+
+              {/* Drag overlay - shows what's being dragged */}
+              <DragOverlay>
+                {activeDragProject && (
+                  <div className="flex items-center gap-2 bg-card border border-border rounded-md px-4 py-2.5 shadow-lg max-w-[200px]">
+                    <div className="w-1 h-4 bg-muted-foreground rounded-full" />
+                    <span className="truncate font-medium text-sm">
+                      {activeDragProject.name}
+                    </span>
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
           )}
 
           {/* Header */}
