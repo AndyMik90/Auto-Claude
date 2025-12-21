@@ -158,9 +158,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   restoreTabState: () => {
-    const openProjectIds = JSON.parse(localStorage.getItem(OPEN_PROJECTS_KEY) || '[]');
+    let openProjectIds: string[] = [];
+    let tabOrder: string[] = [];
+
+    try {
+      openProjectIds = JSON.parse(localStorage.getItem(OPEN_PROJECTS_KEY) || '[]');
+    } catch {
+      // If JSON is invalid, use empty array
+    }
+
+    try {
+      tabOrder = JSON.parse(localStorage.getItem(TAB_ORDER_KEY) || '[]');
+    } catch {
+      // If JSON is invalid, use empty array
+    }
+
     const activeProjectId = localStorage.getItem(ACTIVE_PROJECT_KEY);
-    const tabOrder = JSON.parse(localStorage.getItem(TAB_ORDER_KEY) || '[]');
 
     set({
       openProjectIds,
