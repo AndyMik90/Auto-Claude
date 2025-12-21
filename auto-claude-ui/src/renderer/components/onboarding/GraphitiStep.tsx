@@ -766,27 +766,11 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
         {needsOllama && (
           <div className="space-y-4">
              {/* Ollama Configuration */}
-             <div className="space-y-3 p-4 rounded-md bg-muted/50 border border-border/50">
-               <div className="flex items-center justify-between">
-                 <div>
-                   <p className="text-sm font-semibold text-foreground">Ollama Settings</p>
-                   <p className="text-xs text-muted-foreground mt-0.5">Configure local model settings</p>
-                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={scanAvailableModels}
-                  disabled={isScanningModels || !config.ollamaBaseUrl.trim()}
-                  className="flex items-center gap-2"
-                >
-                  {isScanningModels ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                  {isScanningModels ? 'Scanning...' : 'Discover Models'}
-                </Button>
-              </div>
+              <div className="space-y-3 p-4 rounded-md bg-muted/50 border border-border/50">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Ollama Settings</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Configure local model settings</p>
+                </div>
 
                <div className="space-y-2">
                  <Label htmlFor="ollama-url" className="text-xs text-muted-foreground">Ollama Base URL</Label>
@@ -896,10 +880,6 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
              {/* Model Discovery & Selection */}
              {showModelDiscovery && (
                <div className="border-t pt-6 mt-2">
-                 <div className="mb-4">
-                   <h3 className="text-sm font-semibold text-foreground mb-1">Available Models</h3>
-                   <p className="text-xs text-muted-foreground">Discover and select models from your Ollama server</p>
-                 </div>
                  <ModelDiscoveryGrid
                   models={availableModels}
                   onDownloadModel={downloadModel}
