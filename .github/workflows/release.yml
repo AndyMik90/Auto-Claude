@@ -47,12 +47,14 @@ jobs:
       - name: Package macOS (Intel)
         run: cd auto-claude-ui && pnpm run package:mac -- --arch=x64
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
 
       - name: Package macOS (Apple Silicon)
         run: cd auto-claude-ui && pnpm run package:mac -- --arch=arm64
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
 
@@ -117,6 +119,7 @@ jobs:
       - name: Package Windows
         run: cd auto-claude-ui && pnpm run package:win
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.WIN_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTIFICATE_PASSWORD }}
 
@@ -160,6 +163,8 @@ jobs:
 
       - name: Package Linux
         run: cd auto-claude-ui && pnpm run package:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
