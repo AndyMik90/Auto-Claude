@@ -4,8 +4,8 @@
  *
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi } from 'vitest';
-import type { Project } from '../../shared/types';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Project } from '../../../shared/types';
 
 // Helper to create test projects
 function createTestProject(overrides: Partial<Project> = {}): Project {
