@@ -246,6 +246,9 @@ export async function createTaskWithChildren(
 
     if (result.success && result.data) {
       console.log('[Store] Success! Adding tasks to store...');
+      console.log('[Store] Parent task hasChildren:', result.data.parent.hasChildren);
+      console.log('[Store] Parent task childTaskIds:', result.data.parent.childTaskIds);
+
       // Add parent task
       store.addTask(result.data.parent);
 
