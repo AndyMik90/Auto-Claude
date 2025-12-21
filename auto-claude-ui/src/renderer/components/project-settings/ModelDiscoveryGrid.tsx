@@ -59,7 +59,6 @@ export function ModelDiscoveryGrid({
   onScanModels
 }: ModelDiscoveryGridProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [modelType, setModelType] = useState<'all' | 'llm' | 'embedding'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'recent'>('name');
 
   // Classify model types
@@ -72,32 +71,7 @@ export function ModelDiscoveryGrid({
     return 'llm';
   };
 
-  // Filter and sort models
-  const filteredModels = useMemo(() => {
-    let filtered = models;
 
-    // Filter by type
-    if (modelType !== 'all') {
-      filtered = filtered.filter(model => classifyModel(model.name) === modelType);
-    }
-
-    // Filter by search
-    if (searchQuery) {
-      filtered = filtered.filter(model =>
-        model.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Sort
-    return filtered.sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
-      if (sortBy === 'size') return b.size - a.size; // Largest first
-      if (sortBy === 'recent') {
-        return new Date(b.modified_at).getTime() - new Date(a.modified_at).getTime();
-      }
-      return 0;
-    });
-  }, [models, modelType, searchQuery, sortBy]);
 
   // Format file size
   const formatSize = (bytes: number): string => {
@@ -120,8 +94,17 @@ export function ModelDiscoveryGrid({
     return 'low';
   };
 
+  // Separate models by type
+  const llmModels = useMemo(() => {
+    return models.filter(model => classifyModel(model.name) === 'llm');
+  }, [models]);
+
+  const embeddingModels = useMemo(() => {
+    return models.filter(model => classifyModel(model.name) === 'embedding');
+  }, [models]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header with scan button */}
       <div className="flex items-center justify-between">
         <div>
@@ -167,19 +150,8 @@ export function ModelDiscoveryGrid({
           />
         </div>
 
-        <Select value={modelType} onValueChange={(value: any) => setModelType(value)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Models</SelectItem>
-            <SelectItem value="llm">LLM Models</SelectItem>
-            <SelectItem value="embedding">Embedding Models</SelectItem>
-          </SelectContent>
-        </Select>
-
         <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -200,147 +172,263 @@ export function ModelDiscoveryGrid({
         </div>
       )}
 
-       {/* Model Grid */}
-       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredModels.map((model) => {
-          const modelType = classifyModel(model.name);
-          const popularity = getPopularity(model.name);
-          const isSelected = (modelType === 'llm' && selectedLLM === model.name) ||
-                           (modelType === 'embedding' && selectedEmbedding === model.name);
+      {/* LLM Models Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <Brain className="w-3.5 h-3.5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">LLM Models</h3>
+            <p className="text-xs text-muted-foreground">Large language models for intelligent responses</p>
+          </div>
+        </div>
+        
+        {llmModels.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {llmModels.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).sort((a, b) => {
+              if (sortBy === 'name') return a.name.localeCompare(b.name);
+              if (sortBy === 'size') return b.size - a.size;
+              if (sortBy === 'recent') return new Date(b.modified_at).getTime() - new Date(a.modified_at).getTime();
+              return 0;
+            }).map((model) => {
+              const isSelected = selectedLLM === model.name;
+              const popularity = getPopularity(model.name);
 
-           return (
-             <Card
-               key={model.name}
-               className={`flex flex-col transition-all duration-200 ${
-                 isSelected 
-                   ? 'ring-2 ring-blue-500 shadow-lg bg-blue-500/5' 
-                   : 'hover:shadow-md hover:border-border'
-               }`}
-             >
-               <CardContent className="p-4 flex-1 flex flex-col">
-                 {/* Header: Icon + Model Name */}
-                 <div className="flex items-start gap-3 mb-3">
-                   <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                     modelType === 'llm'
-                       ? 'bg-gradient-to-br from-blue-500 to-purple-600'
-                       : 'bg-gradient-to-br from-green-500 to-teal-600'
-                   }`}>
-                     {modelType === 'llm' ? (
-                       <Brain className="w-6 h-6 text-white" />
-                     ) : (
-                       <Zap className="w-6 h-6 text-white" />
-                     )}
-                   </div>
-                   <div className="min-w-0 flex-1">
-                     <h4 className="font-semibold text-sm break-words">{model.name}</h4>
-                     <div className="flex items-center gap-2 mt-1.5">
-                       <Badge
-                         variant={modelType === 'llm' ? 'default' : 'secondary'}
-                         className="text-xs px-2 py-0.5 flex-shrink-0"
-                       >
-                         {modelType.toUpperCase()}
-                       </Badge>
-                       {popularity === 'high' && (
-                         <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />
-                       )}
-                     </div>
-                   </div>
-                 </div>
+              return (
+                <Card
+                  key={model.name}
+                  className={`flex flex-col transition-all duration-200 ${
+                    isSelected 
+                      ? 'ring-2 ring-blue-500 shadow-lg bg-blue-500/5' 
+                      : 'hover:shadow-md hover:border-border'
+                  }`}
+                >
+                  <CardContent className="p-4 flex-1 flex flex-col">
+                    {/* Header: Icon + Model Name */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600">
+                        <Brain className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-semibold text-sm break-words">{model.name}</h4>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          {popularity === 'high' && (
+                            <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-                 {/* Model Info */}
-                 <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
-                   <div className="flex items-center gap-1">
-                     <HardDrive className="w-3 h-3 flex-shrink-0" />
-                     <span>{formatSize(model.size)}</span>
-                   </div>
-                   <div className="flex items-center gap-1">
-                     <Clock className="w-3 h-3 flex-shrink-0" />
-                     <span>{new Date(model.modified_at).toLocaleDateString()}</span>
-                   </div>
-                 </div>
+                    {/* Model Info */}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
+                      <div className="flex items-center gap-1">
+                        <HardDrive className="w-3 h-3 flex-shrink-0" />
+                        <span>{formatSize(model.size)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        <span>{new Date(model.modified_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
 
-                 {/* Download Progress */}
-                 {model.downloading && model.progress !== undefined && (
-                   <div className="mb-4">
-                     <div className="flex items-center justify-between text-xs mb-1.5">
-                       <span>Downloading...</span>
-                       <span>{Math.round(model.progress)}%</span>
-                     </div>
-                     <div className="w-full bg-muted rounded-full h-2">
-                       <div
-                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                         style={{ width: `${model.progress}%` }}
-                       />
-                     </div>
-                   </div>
-                 )}
+                    {/* Download Progress */}
+                    {model.downloading && model.progress !== undefined && (
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between text-xs mb-1.5">
+                          <span>Downloading...</span>
+                          <span>{Math.round(model.progress)}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${model.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-                 {/* Actions - spacer for flex layout */}
-                 <div className="flex-1" />
+                    {/* Actions - spacer for flex layout */}
+                    <div className="flex-1" />
 
-                 {/* Action Buttons */}
-                 <div className="flex gap-2">
-                   {!model.downloaded && (
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       className="flex-1 text-xs"
-                       disabled={model.downloading}
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         onDownloadModel(model.name);
-                       }}
-                     >
-                       {model.downloading ? (
-                         <>
-                           <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                           Downloading
-                         </>
-                       ) : (
-                         <>
-                           <Download className="w-3 h-3 mr-1" />
-                           Download
-                         </>
-                       )}
-                     </Button>
-                   )}
-                   <Button
-                     variant={isSelected ? "default" : "outline"}
-                     size="sm"
-                     className={`flex-1 text-sm font-medium ${isSelected ? 'ring-offset-2' : ''}`}
-                     onClick={(e) => {
-                       e.stopPropagation();
-                       onSelectModel(model.name, modelType);
-                     }}
-                   >
-                     {isSelected ? '✓ Selected' : 'Select'}
-                   </Button>
-                 </div>
-               </CardContent>
-             </Card>
-           );
-        })}
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      {!model.downloaded && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs"
+                          disabled={model.downloading}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDownloadModel(model.name);
+                          }}
+                        >
+                          {model.downloading ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                              Downloading
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3 h-3 mr-1" />
+                              Download
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      <Button
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        className={`flex-1 text-sm font-medium ${isSelected ? 'ring-offset-2' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectModel(model.name, 'llm');
+                        }}
+                      >
+                        {isSelected ? '✓ Selected' : 'Select'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground">No LLM models available</p>
+          </div>
+        )}
       </div>
 
-      {/* Empty State */}
-      {filteredModels.length === 0 && !isScanning && (
-        <div className="text-center py-12">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">No models found</h3>
-          <p className="text-muted-foreground mb-4">
-            {searchQuery || modelType !== 'all'
-              ? 'Try adjusting your search or filters'
-              : 'Scan for available models to get started'
-            }
-          </p>
-          {!searchQuery && modelType === 'all' && onScanModels && (
-            <Button onClick={onScanModels} variant="outline">
-              <Search className="w-4 h-4 mr-2" />
-              Scan for Models
-            </Button>
-          )}
+      {/* Embedding Models Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center">
+            <Zap className="w-3.5 h-3.5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">Embedding Models</h3>
+            <p className="text-xs text-muted-foreground">Models for semantic search and vector embeddings</p>
+          </div>
         </div>
-      )}
+        
+        {embeddingModels.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {embeddingModels.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).sort((a, b) => {
+              if (sortBy === 'name') return a.name.localeCompare(b.name);
+              if (sortBy === 'size') return b.size - a.size;
+              if (sortBy === 'recent') return new Date(b.modified_at).getTime() - new Date(a.modified_at).getTime();
+              return 0;
+            }).map((model) => {
+              const isSelected = selectedEmbedding === model.name;
+              const popularity = getPopularity(model.name);
+
+              return (
+                <Card
+                  key={model.name}
+                  className={`flex flex-col transition-all duration-200 ${
+                    isSelected 
+                      ? 'ring-2 ring-green-500 shadow-lg bg-green-500/5' 
+                      : 'hover:shadow-md hover:border-border'
+                  }`}
+                >
+                  <CardContent className="p-4 flex-1 flex flex-col">
+                    {/* Header: Icon + Model Name */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-green-500 to-teal-600">
+                        <Zap className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-semibold text-sm break-words">{model.name}</h4>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          {popularity === 'high' && (
+                            <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Model Info */}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
+                      <div className="flex items-center gap-1">
+                        <HardDrive className="w-3 h-3 flex-shrink-0" />
+                        <span>{formatSize(model.size)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        <span>{new Date(model.modified_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Download Progress */}
+                    {model.downloading && model.progress !== undefined && (
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between text-xs mb-1.5">
+                          <span>Downloading...</span>
+                          <span>{Math.round(model.progress)}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${model.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions - spacer for flex layout */}
+                    <div className="flex-1" />
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      {!model.downloaded && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs"
+                          disabled={model.downloading}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDownloadModel(model.name);
+                          }}
+                        >
+                          {model.downloading ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                              Downloading
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3 h-3 mr-1" />
+                              Download
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      <Button
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        className={`flex-1 text-sm font-medium ${isSelected ? 'ring-offset-2' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectModel(model.name, 'embedding');
+                        }}
+                      >
+                        {isSelected ? '✓ Selected' : 'Select'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground">No embedding models available</p>
+          </div>
+        )}
+      </div>
 
       {/* Loading State */}
       {isScanning && (
