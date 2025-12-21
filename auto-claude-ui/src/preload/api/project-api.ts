@@ -64,6 +64,17 @@ export interface ProjectAPI {
     openAiApiKey: string
   ) => Promise<IPCResult<GraphitiConnectionTestResult>>;
 
+  // Ollama Model Management
+  scanOllamaModels: (baseUrl: string) => Promise<IPCResult<{
+    models: Array<{
+      name: string;
+      size: number;
+      modified_at: string;
+      digest: string;
+    }>;
+  }>>;
+  downloadOllamaModel: (baseUrl: string, modelName: string) => Promise<IPCResult<{ message: string }>>;
+
   // Git Operations
   getGitBranches: (projectPath: string) => Promise<IPCResult<string[]>>;
   getCurrentGitBranch: (projectPath: string) => Promise<IPCResult<string | null>>;
@@ -169,6 +180,20 @@ export const createProjectAPI = (): ProjectAPI => ({
     openAiApiKey: string
   ): Promise<IPCResult<GraphitiConnectionTestResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_TEST_CONNECTION, falkorDbUri, openAiApiKey),
+
+  // Ollama Model Management
+  scanOllamaModels: (baseUrl: string): Promise<IPCResult<{
+    models: Array<{
+      name: string;
+      size: number;
+      modified_at: string;
+      digest: string;
+    }>;
+  }>> =>
+    ipcRenderer.invoke('scan-ollama-models', baseUrl),
+
+  downloadOllamaModel: (baseUrl: string, modelName: string): Promise<IPCResult<{ message: string }>> =>
+    ipcRenderer.invoke('download-ollama-model', baseUrl, modelName),
 
   // Git Operations
   getGitBranches: (projectPath: string): Promise<IPCResult<string[]>> =>

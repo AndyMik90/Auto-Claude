@@ -11,7 +11,10 @@ import {
   EyeOff,
   Server,
   Zap,
-  XCircle
+  XCircle,
+  Search,
+  Download,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -26,6 +29,7 @@ import {
   SelectValue
 } from '../ui/select';
 import { useSettingsStore } from '../../stores/settings-store';
+import { ModelDiscoveryGrid } from '../project-settings/ModelDiscoveryGrid';
 import type { GraphitiLLMProvider, GraphitiEmbeddingProvider, AppSettings } from '../../../shared/types';
 
 interface GraphitiStepProps {
@@ -135,6 +139,20 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     falkordb: null,
     provider: null
   });
+
+  // Model discovery state
+  const [availableModels, setAvailableModels] = useState<Array<{
+    name: string;
+    size: number;
+    modified_at: string;
+    digest: string;
+    downloaded?: boolean;
+    downloading?: boolean;
+    progress?: number;
+  }>>([]);
+  const [isScanningModels, setIsScanningModels] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [showModelDiscovery, setShowModelDiscovery] = useState(false);
 
   // Check Docker/Infrastructure availability on mount
   useEffect(() => {
@@ -348,6 +366,106 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
   const handleReconfigure = () => {
     setSuccess(false);
     setError(null);
+  };
+
+  // Model discovery functions
+  const scanAvailableModels = async () => {
+    if (!config.ollamaBaseUrl.trim()) {
+      setScanError('Please enter Ollama base URL first');
+      return;
+    }
+
+    setIsScanningModels(true);
+    setScanError(null);
+    setAvailableModels([]);
+
+    try {
+      const result = await window.electronAPI.scanOllamaModels(config.ollamaBaseUrl.trim());
+      if (result?.success && result?.data?.models) {
+        // Mark models that are already selected as downloaded
+        const modelsWithStatus = result.data.models.map(model => ({
+          ...model,
+          downloaded: model.name === config.ollamaLlmModel || model.name === config.ollamaEmbeddingModel
+        }));
+        setAvailableModels(modelsWithStatus);
+        setShowModelDiscovery(true);
+      } else {
+        setScanError(result?.error || 'Failed to scan models');
+      }
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Failed to scan models');
+    } finally {
+      setIsScanningModels(false);
+    }
+  };
+
+  const downloadModel = async (modelName: string) => {
+    if (!config.ollamaBaseUrl.trim()) {
+      setError('Please enter Ollama base URL first');
+      return;
+    }
+
+    // Update model status
+    setAvailableModels(prev =>
+      prev.map(model =>
+        model.name === modelName
+          ? { ...model, downloading: true, progress: 0 }
+          : model
+      )
+    );
+
+    try {
+      const result = await window.electronAPI.downloadOllamaModel(
+        config.ollamaBaseUrl.trim(),
+        modelName
+      );
+
+      if (result?.success) {
+        // Mark as downloaded
+        setAvailableModels(prev =>
+          prev.map(model =>
+            model.name === modelName
+              ? { ...model, downloaded: true, downloading: false, progress: 100 }
+              : model
+          )
+        );
+
+        // Show success notification (you could use a toast library here)
+        console.log(`Model ${modelName} downloaded successfully!`);
+      } else {
+        // Reset download status
+        setAvailableModels(prev =>
+          prev.map(model =>
+            model.name === modelName
+              ? { ...model, downloading: false, progress: undefined }
+              : model
+          )
+        );
+        setError(result?.error || `Failed to download ${modelName}`);
+      }
+    } catch (err) {
+      // Reset download status
+      setAvailableModels(prev =>
+        prev.map(model =>
+          model.name === modelName
+            ? { ...model, downloading: false, progress: undefined }
+            : model
+        )
+      );
+      setError(err instanceof Error ? err.message : `Failed to download ${modelName}`);
+    }
+  };
+
+  const selectModel = (modelName: string, modelType: 'llm' | 'embedding') => {
+    if (modelType === 'llm') {
+      setConfig(prev => ({ ...prev, ollamaLlmModel: modelName }));
+    } else {
+      setConfig(prev => ({ ...prev, ollamaEmbeddingModel: modelName }));
+      // Auto-set embedding dimension based on model
+      const embeddingDim = modelName.includes('nomic') ? '768' :
+                          modelName.includes('large') ? '1024' : '768';
+      setConfig(prev => ({ ...prev, ollamaEmbeddingDim: embeddingDim }));
+    }
   };
 
   // Render provider-specific configuration fields
@@ -646,68 +764,118 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
 
         {/* Ollama Settings */}
         {needsOllama && (
-          <div className="space-y-3 p-3 rounded-md bg-muted/50">
-            <p className="text-sm font-medium text-foreground">Ollama Settings (Local)</p>
-            <div className="space-y-2">
-              <Label htmlFor="ollama-url" className="text-xs text-muted-foreground">Base URL</Label>
-              <Input
-                id="ollama-url"
-                type="text"
-                value={config.ollamaBaseUrl}
-                onChange={(e) => setConfig(prev => ({ ...prev, ollamaBaseUrl: e.target.value }))}
-                placeholder="http://localhost:11434"
-                className="font-mono text-sm"
-                disabled={isSaving || isValidating}
-              />
-            </div>
-            {llmProvider === 'ollama' && (
+          <div className="space-y-4">
+            {/* Ollama Configuration */}
+            <div className="space-y-3 p-3 rounded-md bg-muted/50">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">Ollama Settings (Local)</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={scanAvailableModels}
+                  disabled={isScanningModels || !config.ollamaBaseUrl.trim()}
+                  className="flex items-center gap-2"
+                >
+                  {isScanningModels ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {isScanningModels ? 'Scanning...' : 'Discover Models'}
+                </Button>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="ollama-llm" className="text-xs text-muted-foreground">LLM Model</Label>
+                <Label htmlFor="ollama-url" className="text-xs text-muted-foreground">Base URL</Label>
                 <Input
-                  id="ollama-llm"
+                  id="ollama-url"
                   type="text"
-                  value={config.ollamaLlmModel}
-                  onChange={(e) => setConfig(prev => ({ ...prev, ollamaLlmModel: e.target.value }))}
-                  placeholder="llama3.2, deepseek-r1:7b, etc."
+                  value={config.ollamaBaseUrl}
+                  onChange={(e) => setConfig(prev => ({ ...prev, ollamaBaseUrl: e.target.value }))}
+                  placeholder="http://localhost:11434"
                   className="font-mono text-sm"
                   disabled={isSaving || isValidating}
                 />
               </div>
-            )}
-            {embeddingProvider === 'ollama' && (
-              <>
+
+              {llmProvider === 'ollama' && (
                 <div className="space-y-2">
-                  <Label htmlFor="ollama-embedding" className="text-xs text-muted-foreground">Embedding Model</Label>
+                  <Label htmlFor="ollama-llm" className="text-xs text-muted-foreground">LLM Model</Label>
                   <Input
-                    id="ollama-embedding"
+                    id="ollama-llm"
                     type="text"
-                    value={config.ollamaEmbeddingModel}
-                    onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingModel: e.target.value }))}
-                    placeholder="nomic-embed-text"
+                    value={config.ollamaLlmModel}
+                    onChange={(e) => setConfig(prev => ({ ...prev, ollamaLlmModel: e.target.value }))}
+                    placeholder="llama3.2, deepseek-r1:7b, etc."
                     className="font-mono text-sm"
                     disabled={isSaving || isValidating}
                   />
+                  {config.ollamaLlmModel && (
+                    <p className="text-xs text-muted-foreground">
+                      Selected: <code className="bg-muted px-1 py-0.5 rounded">{config.ollamaLlmModel}</code>
+                    </p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ollama-dim" className="text-xs text-muted-foreground">Embedding Dimension</Label>
-                  <Input
-                    id="ollama-dim"
-                    type="number"
-                    value={config.ollamaEmbeddingDim}
-                    onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingDim: e.target.value }))}
-                    placeholder="768"
-                    className="font-mono text-sm"
-                    disabled={isSaving || isValidating}
-                  />
-                </div>
-              </>
+              )}
+
+              {embeddingProvider === 'ollama' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="ollama-embedding" className="text-xs text-muted-foreground">Embedding Model</Label>
+                    <Input
+                      id="ollama-embedding"
+                      type="text"
+                      value={config.ollamaEmbeddingModel}
+                      onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingModel: e.target.value }))}
+                      placeholder="nomic-embed-text"
+                      className="font-mono text-sm"
+                      disabled={isSaving || isValidating}
+                    />
+                    {config.ollamaEmbeddingModel && (
+                      <p className="text-xs text-muted-foreground">
+                        Selected: <code className="bg-muted px-1 py-0.5 rounded">{config.ollamaEmbeddingModel}</code>
+                        ({config.ollamaEmbeddingDim} dimensions)
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ollama-dim" className="text-xs text-muted-foreground">Embedding Dimension</Label>
+                    <Input
+                      id="ollama-dim"
+                      type="number"
+                      value={config.ollamaEmbeddingDim}
+                      onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingDim: e.target.value }))}
+                      placeholder="768"
+                      className="font-mono text-sm"
+                      disabled={isSaving || isValidating}
+                    />
+                  </div>
+                </>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                Ensure Ollama is running locally. See{' '}
+                <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+                  ollama.ai
+                </a>
+              </p>
+            </div>
+
+            {/* Sexy Model Discovery Grid */}
+            {showModelDiscovery && (
+              <div className="border-t pt-6">
+                <ModelDiscoveryGrid
+                  models={availableModels}
+                  onDownloadModel={downloadModel}
+                  onSelectModel={selectModel}
+                  selectedLLM={config.ollamaLlmModel}
+                  selectedEmbedding={config.ollamaEmbeddingModel}
+                  isScanning={isScanningModels}
+                  scanError={scanError}
+                  onScanModels={scanAvailableModels}
+                />
+              </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Ensure Ollama is running locally. See{' '}
-              <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-                ollama.ai
-              </a>
-            </p>
           </div>
         )}
       </div>

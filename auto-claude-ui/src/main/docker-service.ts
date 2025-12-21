@@ -584,3 +584,271 @@ export async function testGraphitiConnection(
     ready: falkordb.success && openai.success,
   };
 }
+
+/**
+ * Scan for all available Ollama models on the server
+ * @param baseUrl - Ollama base URL (e.g., http://localhost:11434)
+ * @returns List of available models with metadata
+ */
+export async function scanOllamaModels(
+  baseUrl: string
+): Promise<{
+  success: boolean;
+  models: Array<{
+    name: string;
+    size: number;
+    modified_at: string;
+    digest: string;
+  }>;
+  error?: string;
+}> {
+  if (!baseUrl || !baseUrl.trim()) {
+    return {
+      success: false,
+      models: [],
+      error: 'Ollama base URL is required'
+    };
+  }
+
+  try {
+    // Normalize the URL
+    let normalizedUrl = baseUrl.trim();
+    if (normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl.slice(0, -1);
+    }
+
+    // Use native http/https module to check Ollama API
+    const result = await new Promise<{
+      success: boolean;
+      models: any[];
+      error?: string;
+    }>((resolve) => {
+      let url: URL;
+      try {
+        url = new URL(`${normalizedUrl}/api/tags`);
+      } catch {
+        resolve({
+          success: false,
+          models: [],
+          error: `Invalid URL: ${normalizedUrl}. Please use format: http://hostname:port`
+        });
+        return;
+      }
+
+      const isHttps = url.protocol === 'https:';
+      const request = isHttps ? httpsRequest : httpRequest;
+
+      const options = {
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname,
+        method: 'GET',
+        timeout: 5000,
+      };
+
+      const req = request(options, (res: IncomingMessage) => {
+        let data = '';
+
+        res.on('data', (chunk: Buffer) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try {
+              const response = JSON.parse(data);
+              const models = response.models || [];
+              resolve({
+                success: true,
+                models
+              });
+            } catch {
+              resolve({
+                success: false,
+                models: [],
+                error: 'Invalid response from Ollama server'
+              });
+            }
+          } else {
+            resolve({
+              success: false,
+              models: [],
+              error: `Ollama server returned status ${res.statusCode}`
+            });
+          }
+        });
+      });
+
+      req.on('error', (error: Error) => {
+        if (error.message.includes('ECONNREFUSED')) {
+          resolve({
+            success: false,
+            models: [],
+            error: 'Cannot connect to Ollama. Is it running? Start with: ollama serve'
+          });
+        } else {
+          resolve({
+            success: false,
+            models: [],
+            error: `Connection error: ${error.message}`
+          });
+        }
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({
+          success: false,
+          models: [],
+          error: 'Connection timeout. Please check your Ollama server.'
+        });
+      });
+
+      req.end();
+    });
+
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      models: [],
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+/**
+ * Download an Ollama model with progress tracking
+ * @param baseUrl - Ollama base URL
+ * @param modelName - Model name to download
+ * @param onProgress - Optional progress callback
+ * @returns Promise with download result
+ */
+export async function downloadOllamaModel(
+  baseUrl: string,
+  modelName: string,
+  onProgress?: (progress: { status: string; completed: number; total: number }) => void
+): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+}> {
+  if (!baseUrl || !baseUrl.trim()) {
+    return {
+      success: false,
+      message: 'Ollama base URL is required',
+      error: 'Missing base URL'
+    };
+  }
+
+  if (!modelName || !modelName.trim()) {
+    return {
+      success: false,
+      message: 'Model name is required',
+      error: 'Missing model name'
+    };
+  }
+
+  try {
+    // Normalize the URL
+    let normalizedUrl = baseUrl.trim();
+    if (normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl.slice(0, -1);
+    }
+
+    // Use native http/https module to pull model
+    const result = await new Promise<{
+      success: boolean;
+      message: string;
+      error?: string;
+    }>((resolve) => {
+      let url: URL;
+      try {
+        url = new URL(`${normalizedUrl}/api/pull`);
+      } catch {
+        resolve({
+          success: false,
+          message: `Invalid URL: ${normalizedUrl}`,
+          error: 'Invalid URL format'
+        });
+        return;
+      }
+
+      const isHttps = url.protocol === 'https:';
+      const request = isHttps ? httpsRequest : httpRequest;
+
+      const postData = JSON.stringify({ name: modelName.trim() });
+
+      const options = {
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname,
+        method: 'POST',
+        timeout: 300000, // 5 minutes timeout for downloads
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+
+      const req = request(options, (res: IncomingMessage) => {
+        let data = '';
+
+        res.on('data', (chunk: Buffer) => {
+          data += chunk;
+          try {
+            const progressData = JSON.parse(data);
+            if (progressData.status && progressData.completed !== undefined) {
+              onProgress?.(progressData);
+            }
+          } catch {
+            // Ignore non-JSON chunks
+          }
+        });
+
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            resolve({
+              success: true,
+              message: `${modelName} downloaded successfully`
+            });
+          } else {
+            resolve({
+              success: false,
+              message: `Download failed with status ${res.statusCode}`,
+              error: `HTTP ${res.statusCode}`
+            });
+          }
+        });
+      });
+
+      req.on('error', (error: Error) => {
+        resolve({
+          success: false,
+          message: `Download error: ${error.message}`,
+          error: error.message
+        });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({
+          success: false,
+          message: 'Download timeout - model may be too large',
+          error: 'Timeout'
+        });
+      });
+
+      req.write(postData);
+      req.end();
+    });
+
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Download failed',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
