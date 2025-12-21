@@ -25,6 +25,12 @@ see graphiti/graphiti.py.
 
 from pathlib import Path
 
+# Import config utilities
+from graphiti_config import (
+    GraphitiConfig,
+    is_graphiti_enabled,
+)
+
 # Re-export from modular system (queries_pkg)
 from .queries_pkg.graphiti import GraphitiMemory
 from .queries_pkg.schema import (
@@ -37,12 +43,6 @@ from .queries_pkg.schema import (
     EPISODE_TYPE_TASK_OUTCOME,
     MAX_CONTEXT_RESULTS,
     GroupIdMode,
-)
-
-# Import config utilities
-from graphiti_config import (
-    GraphitiConfig,
-    is_graphiti_enabled,
 )
 
 
