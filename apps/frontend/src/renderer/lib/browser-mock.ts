@@ -110,6 +110,42 @@ const browserMockAPI: ElectronAPI = {
   // Infrastructure & Docker Operations
   ...infrastructureMock,
 
+  // API Profile Management (custom Anthropic-compatible endpoints)
+  getAPIProfiles: async () => ({
+    success: true,
+    data: {
+      profiles: [],
+      activeProfileId: null,
+      version: 1
+    }
+  }),
+
+  saveAPIProfile: async (profile) => ({
+    success: true,
+    data: {
+      id: `mock-profile-${Date.now()}`,
+      ...profile,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
+  }),
+
+  updateAPIProfile: async (profile) => ({
+    success: true,
+    data: {
+      ...profile,
+      updatedAt: Date.now()
+    }
+  }),
+
+  deleteAPIProfile: async (_profileId: string) => ({
+    success: true
+  }),
+
+  setActiveAPIProfile: async (_profileId: string) => ({
+    success: true
+  }),
+
   // GitHub API
   github: {
     getGitHubRepositories: async () => ({ success: true, data: [] }),
