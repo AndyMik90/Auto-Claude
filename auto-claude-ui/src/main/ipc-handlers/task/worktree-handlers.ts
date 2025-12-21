@@ -61,12 +61,13 @@ export function registerWorktreeHandlers(
             baseBranch = 'main';
           }
 
-          // Get commit count
+          // Get commit count (cross-platform - no shell syntax)
           let commitCount = 0;
           try {
-            const countOutput = execSync(`git rev-list --count ${baseBranch}..HEAD 2>/dev/null || echo 0`, {
+            const countOutput = execSync(`git rev-list --count ${baseBranch}..HEAD`, {
               cwd: worktreePath,
-              encoding: 'utf-8'
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'pipe']
             }).trim();
             commitCount = parseInt(countOutput, 10) || 0;
           } catch {
@@ -78,10 +79,12 @@ export function registerWorktreeHandlers(
           let additions = 0;
           let deletions = 0;
 
+          let diffStat = '';
           try {
-            const diffStat = execSync(`git diff --stat ${baseBranch}...HEAD 2>/dev/null || echo ""`, {
+            diffStat = execSync(`git diff --stat ${baseBranch}...HEAD`, {
               cwd: worktreePath,
-              encoding: 'utf-8'
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'pipe']
             }).trim();
 
             // Parse the summary line (e.g., "3 files changed, 50 insertions(+), 10 deletions(-)")
@@ -159,17 +162,21 @@ export function registerWorktreeHandlers(
         // Get the diff with file stats
         const files: WorktreeDiffFile[] = [];
 
+        let numstat = '';
+        let nameStatus = '';
         try {
-          // Get numstat for additions/deletions per file
-          const numstat = execSync(`git diff --numstat ${baseBranch}...HEAD 2>/dev/null || echo ""`, {
+          // Get numstat for additions/deletions per file (cross-platform)
+          numstat = execSync(`git diff --numstat ${baseBranch}...HEAD`, {
             cwd: worktreePath,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe']
           }).trim();
 
-          // Get name-status for file status
-          const nameStatus = execSync(`git diff --name-status ${baseBranch}...HEAD 2>/dev/null || echo ""`, {
+          // Get name-status for file status (cross-platform)
+          nameStatus = execSync(`git diff --name-status ${baseBranch}...HEAD`, {
             cwd: worktreePath,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe']
           }).trim();
 
           // Parse name-status to get file statuses
@@ -446,14 +453,17 @@ export function registerWorktreeHandlers(
                     const specBranch = `auto-claude/${task.specId}`;
                     try {
                       // Check if current branch contains all commits from spec branch
-                      const mergeBaseResult = execSync(
-                        `git merge-base --is-ancestor ${specBranch} HEAD 2>/dev/null && echo "merged" || echo "not-merged"`,
-                        { cwd: project.path, encoding: 'utf-8' }
-                      ).trim();
-                      mergeAlreadyCommitted = mergeBaseResult === 'merged';
+                      // git merge-base --is-ancestor returns exit code 0 if true, 1 if false
+                      execSync(
+                        `git merge-base --is-ancestor ${specBranch} HEAD`,
+                        { cwd: project.path, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+                      );
+                      // If we reach here, the command succeeded (exit code 0) - branch is merged
+                      mergeAlreadyCommitted = true;
                       debug('Merge already committed check:', mergeAlreadyCommitted);
                     } catch {
-                      // Branch may not exist or other error - assume not merged
+                      // Exit code 1 means not merged, or branch may not exist
+                      mergeAlreadyCommitted = false;
                       debug('Could not check merge status, assuming not merged');
                     }
                   }
@@ -892,27 +902,30 @@ export function registerWorktreeHandlers(
               baseBranch = 'main';
             }
 
-            // Get commit count
+            // Get commit count (cross-platform - no shell syntax)
             let commitCount = 0;
             try {
-              const countOutput = execSync(`git rev-list --count ${baseBranch}..HEAD 2>/dev/null || echo 0`, {
+              const countOutput = execSync(`git rev-list --count ${baseBranch}..HEAD`, {
                 cwd: entryPath,
-                encoding: 'utf-8'
+                encoding: 'utf-8',
+                stdio: ['pipe', 'pipe', 'pipe']
               }).trim();
               commitCount = parseInt(countOutput, 10) || 0;
             } catch {
               commitCount = 0;
             }
 
-            // Get diff stats
+            // Get diff stats (cross-platform - no shell syntax)
             let filesChanged = 0;
             let additions = 0;
             let deletions = 0;
+            let diffStat = '';
 
             try {
-              const diffStat = execSync(`git diff --shortstat ${baseBranch}...HEAD 2>/dev/null || echo ""`, {
+              diffStat = execSync(`git diff --shortstat ${baseBranch}...HEAD`, {
                 cwd: entryPath,
-                encoding: 'utf-8'
+                encoding: 'utf-8',
+                stdio: ['pipe', 'pipe', 'pipe']
               }).trim();
 
               const filesMatch = diffStat.match(/(\d+) files? changed/);
