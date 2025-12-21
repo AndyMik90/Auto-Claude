@@ -21,14 +21,12 @@ import {
   SelectValue
 } from './ui/select';
 import {
-  ImageUpload,
   generateImageId,
   blobToBase64,
   createThumbnail,
   isValidImageMimeType,
   resolveFilename
 } from './ImageUpload';
-import { ReferencedFilesSection } from './ReferencedFilesSection';
 import { TaskFileExplorerDrawer } from './TaskFileExplorerDrawer';
 import { AgentProfileSelector } from './AgentProfileSelector';
 import { createTask, saveDraft, loadDraft, clearDraft, isDraftEmpty } from '../stores/task-store';
@@ -42,7 +40,6 @@ import {
   TASK_COMPLEXITY_LABELS,
   TASK_IMPACT_LABELS,
   MAX_IMAGES_PER_TASK,
-  MAX_REFERENCED_FILES,
   ALLOWED_IMAGE_TYPES_DISPLAY,
   DEFAULT_AGENT_PROFILES,
   DEFAULT_PHASE_MODELS,
@@ -72,7 +69,6 @@ export function TaskCreationWizard({
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showImages, setShowImages] = useState(false);
   const [showFileExplorer, setShowFileExplorer] = useState(false);
   const [showGitOptions, setShowGitOptions] = useState(false);
 
@@ -155,10 +151,6 @@ export function TaskCreationWizard({
         if (draft.category || draft.priority || draft.complexity || draft.impact) {
           setShowAdvanced(true);
         }
-        if (draft.images.length > 0) {
-          setShowImages(true);
-        }
-        // Note: Referenced Files section is always visible, no need to expand
       } else {
         // No draft - initialize from selected profile and custom settings
         setProfileId(settings.selectedAgentProfile || 'auto');
@@ -308,8 +300,6 @@ export function TaskCreationWizard({
 
     if (newImages.length > 0) {
       setImages(prev => [...prev, ...newImages]);
-      // Auto-expand images section
-      setShowImages(true);
       // Show success feedback
       setPasteSuccess(true);
       setTimeout(() => setPasteSuccess(false), 2000);
@@ -439,8 +429,6 @@ export function TaskCreationWizard({
 
       if (newImages.length > 0) {
         setImages(prev => [...prev, ...newImages]);
-        // Auto-expand images section
-        setShowImages(true);
         // Show success feedback
         setPasteSuccess(true);
         setTimeout(() => setPasteSuccess(false), 2000);
@@ -555,7 +543,6 @@ export function TaskCreationWizard({
     setBaseBranch(PROJECT_DEFAULT_BRANCH);
     setError(null);
     setShowAdvanced(false);
-    setShowImages(false);
     setShowFileExplorer(false);
     setShowGitOptions(false);
     setIsDraftRestored(false);
@@ -686,8 +673,50 @@ export function TaskCreationWizard({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Tip: Drag files from the explorer to insert @references, or paste screenshots with {navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V'}.
+              Files and images can be copy/pasted or dragged & dropped into the description.
             </p>
+
+            {/* Image Thumbnails - displayed inline below description */}
+            {images.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {images.map((image) => (
+                  <div
+                    key={image.id}
+                    className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                    style={{ width: '64px', height: '64px' }}
+                    onClick={() => {
+                      // Open full-size image in a new window/modal could be added here
+                    }}
+                    title={image.filename}
+                  >
+                    {image.thumbnail ? (
+                      <img
+                        src={image.thumbnail}
+                        alt={image.filename}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-muted">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    {/* Remove button */}
+                    {!isCreating && (
+                      <button
+                        type="button"
+                        className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImages(prev => prev.filter(img => img.id !== image.id));
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Title (Optional - Auto-generated if empty) */}
@@ -854,79 +883,6 @@ export function TaskCreationWizard({
               </p>
             </div>
           )}
-
-          {/* Images Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowImages(!showImages)}
-            className={cn(
-              'flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors',
-              'w-full justify-between py-2 px-3 rounded-md hover:bg-muted/50'
-            )}
-            disabled={isCreating}
-          >
-            <span className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4" />
-              Reference Images (optional)
-              {images.length > 0 && (
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                  {images.length}
-                </span>
-              )}
-            </span>
-            {showImages ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </button>
-
-          {/* Image Upload Section */}
-          {showImages && (
-            <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">
-              <p className="text-xs text-muted-foreground">
-                Attach screenshots, mockups, or diagrams to provide visual context for the AI.
-              </p>
-              <ImageUpload
-                images={images}
-                onImagesChange={setImages}
-                disabled={isCreating}
-              />
-            </div>
-          )}
-
-          {/* Referenced Files Section - Always visible, clean list */}
-          <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">
-            {/* Header */}
-            <div className="flex items-center gap-2">
-              <FolderTree className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Referenced Files</span>
-              {referencedFiles.length > 0 && (
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                  {referencedFiles.length}/{MAX_REFERENCED_FILES}
-                </span>
-              )}
-            </div>
-
-            {/* Empty state hint */}
-            {referencedFiles.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Drag files from the file explorer anywhere onto this form to add references, or use the "Browse Files" button below.
-              </p>
-            ) : (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  These files will provide context for the AI when working on your task.
-                </p>
-                <ReferencedFilesSection
-                  files={referencedFiles}
-                  onRemove={(id) => setReferencedFiles(prev => prev.filter(f => f.id !== id))}
-                  maxFiles={MAX_REFERENCED_FILES}
-                  disabled={isCreating}
-                />
-              </>
-            )}
-          </div>
 
           {/* Review Requirement Toggle */}
           <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
