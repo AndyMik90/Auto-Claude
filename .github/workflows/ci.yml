@@ -98,7 +98,7 @@ jobs:
 
       - name: Run tests
         working-directory: auto-claude-ui
-        run: pnpm test
+        run: pnpm run test
 
       - name: Build
         working-directory: auto-claude-ui

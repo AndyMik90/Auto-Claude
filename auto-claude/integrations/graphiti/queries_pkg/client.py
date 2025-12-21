@@ -150,7 +150,18 @@ class GraphitiClient:
                 )
 
                 db_path = self.config.get_db_path()
-                self._driver = KuzuDriver(db=str(db_path))
+                try:
+                    self._driver = KuzuDriver(db=str(db_path))
+                except (OSError, PermissionError) as e:
+                    logger.warning(
+                        f"Failed to initialize LadybugDB driver at {db_path}: {e}"
+                    )
+                    return False
+                except Exception as e:
+                    logger.warning(
+                        f"Unexpected error initializing LadybugDB driver at {db_path}: {e}"
+                    )
+                    return False
                 logger.info(f"Initialized LadybugDB driver (patched) at: {db_path}")
             except ImportError as e:
                 logger.warning(f"KuzuDriver not available: {e}")

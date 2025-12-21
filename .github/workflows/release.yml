@@ -39,7 +39,7 @@ jobs:
           restore-keys: ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: cd auto-claude-ui && pnpm install
+        run: cd auto-claude-ui && pnpm install --frozen-lockfile
 
       - name: Build application
         run: cd auto-claude-ui && pnpm run build
@@ -57,7 +57,11 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
 
       - name: Notarize macOS apps
-        if: ${{ secrets.APPLE_ID != '' }}
+        if: env.APPLE_ID != ''
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd auto-claude-ui
           for dmg in dist/*.dmg; do
@@ -69,10 +73,6 @@ jobs:
               --wait
             xcrun stapler staple "$dmg"
           done
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -109,7 +109,7 @@ jobs:
           restore-keys: ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: cd auto-claude-ui && pnpm install
+        run: cd auto-claude-ui && pnpm install --frozen-lockfile
 
       - name: Build application
         run: cd auto-claude-ui && pnpm run build
@@ -153,7 +153,7 @@ jobs:
           restore-keys: ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: cd auto-claude-ui && pnpm install
+        run: cd auto-claude-ui && pnpm install --frozen-lockfile
 
       - name: Build application
         run: cd auto-claude-ui && pnpm run build
@@ -184,10 +184,19 @@ jobs:
         with:
           path: dist
 
-      - name: Flatten artifacts
+      - name: Flatten and validate artifacts
         run: |
           mkdir -p release-assets
           find dist -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" \) -exec cp {} release-assets/ \;
+
+          # Validate that at least one artifact was copied
+          artifact_count=$(find release-assets -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" \) | wc -l)
+          if [ "$artifact_count" -eq 0 ]; then
+            echo "::error::No build artifacts found! Expected .dmg, .zip, .exe, .AppImage, or .deb files."
+            exit 1
+          fi
+
+          echo "Found $artifact_count artifact(s):"
           ls -la release-assets/
 
       - name: Generate checksums
@@ -212,9 +221,9 @@ jobs:
       - name: Generate changelog
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
         id: changelog
-        uses: mikepenz/release-changelog-builder-action@v4
+        uses: release-drafter/release-drafter@v6
         with:
-          configuration: ".github/changelog-config.json"
+          config-name: release-drafter.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

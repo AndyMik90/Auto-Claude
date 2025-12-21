@@ -43,8 +43,10 @@ export class AgentManager extends EventEmitter {
     this.queueManager = new AgentQueueManager(this.state, this.events, this.processManager, this);
 
     // Listen for auto-swap restart events
-    this.on('auto-swap-restart-task', (taskId: string, _newProfileId: string) => {
-      this.restartTask(taskId);
+    this.on('auto-swap-restart-task', (taskId: string, newProfileId: string) => {
+      console.log('[AgentManager] Received auto-swap-restart-task event:', { taskId, newProfileId });
+      const success = this.restartTask(taskId);
+      console.log('[AgentManager] Task restart result:', success ? 'SUCCESS' : 'FAILED');
     });
 
     // Listen for task completion to clean up context (prevent memory leak)
@@ -352,26 +354,42 @@ export class AgentManager extends EventEmitter {
    * Restart task after profile swap
    */
   restartTask(taskId: string): boolean {
+    console.log('[AgentManager] restartTask called for:', taskId);
+
     const context = this.taskExecutionContext.get(taskId);
     if (!context) {
       console.error('[AgentManager] No context for task:', taskId);
+      console.log('[AgentManager] Available task contexts:', Array.from(this.taskExecutionContext.keys()));
       return false;
     }
 
+    console.log('[AgentManager] Task context found:', {
+      taskId,
+      projectPath: context.projectPath,
+      specId: context.specId,
+      isSpecCreation: context.isSpecCreation,
+      swapCount: context.swapCount
+    });
+
     // Prevent infinite swap loops
     if (context.swapCount >= 2) {
-      console.error('[AgentManager] Max swap count reached for task:', taskId);
+      console.error('[AgentManager] Max swap count reached for task:', taskId, '- stopping restart loop');
       return false;
     }
 
     context.swapCount++;
+    console.log('[AgentManager] Incremented swap count to:', context.swapCount);
 
     // Kill current process
+    console.log('[AgentManager] Killing current process for task:', taskId);
     this.killTask(taskId);
 
     // Wait for cleanup, then restart
+    console.log('[AgentManager] Scheduling task restart in 500ms');
     setTimeout(() => {
+      console.log('[AgentManager] Restarting task now:', taskId);
       if (context.isSpecCreation) {
+        console.log('[AgentManager] Restarting as spec creation');
         this.startSpecCreation(
           taskId,
           context.projectPath,
@@ -380,6 +398,7 @@ export class AgentManager extends EventEmitter {
           context.metadata
         );
       } else {
+        console.log('[AgentManager] Restarting as task execution');
         this.startTaskExecution(
           taskId,
           context.projectPath,

@@ -324,7 +324,8 @@ class GraphitiConfig:
         Get the resolved database path.
 
         Expands ~ to home directory and appends the database name.
-        Creates the directory if it doesn't exist.
+        Creates the parent directory if it doesn't exist (not the final
+        database file/directory itself, which is created by the driver).
         """
         base_path = Path(self.db_path).expanduser()
         full_path = base_path / self.database
