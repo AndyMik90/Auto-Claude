@@ -117,7 +117,7 @@
   },
   "build": {
     "appId": "com.autoclaude.ui",
-    "productName": "Auto Claude",
+    "productName": "Auto-Claude",
     "publish": [
       {
         "provider": "github",
