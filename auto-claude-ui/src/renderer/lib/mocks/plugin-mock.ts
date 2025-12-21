@@ -5,6 +5,7 @@
 import type {
   Plugin,
   PluginInstallResult,
+  PluginInstallProgress,
   IPCResult,
   PluginUpdateCheck,
   PluginUpdateResult,
@@ -76,5 +77,11 @@ export const pluginMock = {
     meetsMinimum: false,
     minimumRequired: '2.1.0',
     error: 'Git availability check not available in browser mode'
-  })
+  }),
+
+  // Plugin Event Listeners (no-op in browser mode)
+  onPluginInstallProgress: (_callback: (progress: PluginInstallProgress) => void): (() => void) => {
+    // Return cleanup function (no-op)
+    return () => {};
+  }
 };

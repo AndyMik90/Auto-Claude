@@ -117,6 +117,39 @@ export const usePluginStore = create<PluginState>((set, get) => ({
 }));
 
 // ============================================
+// Event Subscription
+// ============================================
+
+// Store the cleanup function for progress subscription
+let progressUnsubscribe: (() => void) | null = null;
+
+/**
+ * Subscribe to plugin install progress events from the main process.
+ * This should be called once when the app starts or when the install dialog opens.
+ * Returns a cleanup function to unsubscribe.
+ */
+export function subscribeToInstallProgress(): () => void {
+  // Clean up any existing subscription first
+  if (progressUnsubscribe) {
+    progressUnsubscribe();
+  }
+
+  const store = usePluginStore.getState();
+
+  // Subscribe to progress events from the main process
+  progressUnsubscribe = window.electronAPI.onPluginInstallProgress((progress) => {
+    store.setInstallProgress(progress);
+  });
+
+  return () => {
+    if (progressUnsubscribe) {
+      progressUnsubscribe();
+      progressUnsubscribe = null;
+    }
+  };
+}
+
+// ============================================
 // Async Actions (IPC calls)
 // ============================================
 
@@ -143,15 +176,19 @@ export async function loadPlugins(): Promise<void> {
 }
 
 /**
- * Install a plugin from GitHub or local path
+ * Install a plugin from GitHub or local path.
+ * This function subscribes to progress events from the main process during installation.
  */
 export async function installPlugin(
   options: PluginInstallOptions
 ): Promise<Plugin | null> {
   const store = usePluginStore.getState();
   store.setInstalling(true);
-  store.setInstallProgress({ stage: 'validating', percent: 0, message: 'Validating source...' });
+  store.setInstallProgress({ stage: 'validating', percent: 0, message: 'Starting installation...' });
   store.setError(null);
+
+  // Subscribe to progress events from main process
+  const unsubscribe = subscribeToInstallProgress();
 
   try {
     const result = await window.electronAPI.installPlugin(options);
@@ -170,6 +207,8 @@ export async function installPlugin(
     store.setInstallProgress({ stage: 'error', percent: 0, message: errorMessage });
     return null;
   } finally {
+    // Clean up the subscription
+    unsubscribe();
     store.setInstalling(false);
   }
 }

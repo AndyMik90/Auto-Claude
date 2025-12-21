@@ -538,6 +538,9 @@ export interface ElectronAPI {
   validateGitHubToken: (token: string) => Promise<GitHubTokenValidation>;
   checkGitHubRepoAccess: (owner: string, repo: string, token?: string) => Promise<GitHubRepoAccess>;
   checkGitAvailability: () => Promise<GitAvailability>;
+
+  // Plugin event listeners
+  onPluginInstallProgress: (callback: (progress: import('./plugin').PluginInstallProgress) => void) => () => void;
 }
 
 declare global {
