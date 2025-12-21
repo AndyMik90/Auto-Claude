@@ -146,7 +146,7 @@ echo -e "${BLUE}═════════════════════�
 echo -e "${BLUE}SUMMARY${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
-echo -e "  Total version tags: ${GREEN}$(echo "$tags" | wc -l | xargs)${NC}"
+echo -e "  Total version tags: ${GREEN}$(echo "$tags" | grep -c ^ || echo 0)${NC}"
 echo -e "  Colliding branches: ${RED}${#colliding_branches[@]}${NC}"
 echo ""
 

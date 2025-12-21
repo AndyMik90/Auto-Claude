@@ -97,7 +97,7 @@ EMBEDDING_PATTERNS = [
 ]
 
 
-def output_json(success: bool, data: Any = None, error: str = None) -> None:
+def output_json(success: bool, data: Any = None, error: str | None = None) -> None:
     """Output JSON result to stdout and exit."""
     result = {"success": success}
     if data is not None:

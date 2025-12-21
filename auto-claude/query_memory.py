@@ -173,17 +173,17 @@ def cmd_get_memories(args):
     try:
         limit = args.limit or 20
 
-        # Query episodic nodes
-        query = f"""
+        # Query episodic nodes with parameterized query
+        query = """
             MATCH (e:Episodic)
             RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
                    e.content as content, e.source_description as description,
                    e.group_id as group_id
             ORDER BY e.created_at DESC
-            LIMIT {limit}
+            LIMIT $limit
         """
 
-        result = conn.execute(query)
+        result = conn.execute(query, parameters={"limit": limit})
         df = result.get_as_df()
 
         memories = []
@@ -232,22 +232,22 @@ def cmd_search(args):
 
     try:
         limit = args.limit or 20
-        search_query = args.query.lower().replace("'", "''")
+        search_query = args.query.lower()
 
-        # Search in episodic nodes using CONTAINS
-        query = f"""
+        # Search in episodic nodes using CONTAINS with parameterized query
+        query = """
             MATCH (e:Episodic)
-            WHERE toLower(e.name) CONTAINS '{search_query}'
-               OR toLower(e.content) CONTAINS '{search_query}'
-               OR toLower(e.source_description) CONTAINS '{search_query}'
+            WHERE toLower(e.name) CONTAINS $search_query
+               OR toLower(e.content) CONTAINS $search_query
+               OR toLower(e.source_description) CONTAINS $search_query
             RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
                    e.content as content, e.source_description as description,
                    e.group_id as group_id
             ORDER BY e.created_at DESC
-            LIMIT {limit}
+            LIMIT $limit
         """
 
-        result = conn.execute(query)
+        result = conn.execute(query, parameters={"search_query": search_query, "limit": limit})
         df = result.get_as_df()
 
         memories = []
@@ -338,11 +338,12 @@ async def _async_semantic_search(args):
         config.database = args.database
         config.enabled = True  # Force enabled for search
 
-        # Validate embedder configuration
-        if not config._validate_embedder_provider():
+        # Validate embedder configuration using public API
+        validation_errors = config.get_validation_errors()
+        if validation_errors:
             return {
                 "success": False,
-                "error": "Embedder provider not properly configured",
+                "error": f"Embedder provider not properly configured: {'; '.join(validation_errors)}",
             }
 
         # Initialize client
@@ -444,16 +445,16 @@ def cmd_get_entities(args):
     try:
         limit = args.limit or 20
 
-        # Query entity nodes
-        query = f"""
+        # Query entity nodes with parameterized query
+        query = """
             MATCH (e:Entity)
             RETURN e.uuid as uuid, e.name as name, e.summary as summary,
                    e.created_at as created_at
             ORDER BY e.created_at DESC
-            LIMIT {limit}
+            LIMIT $limit
         """
 
-        result = conn.execute(query)
+        result = conn.execute(query, parameters={"limit": limit})
         df = result.get_as_df()
 
         entities = []

@@ -202,7 +202,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd release-assets
-          sha256sum * > checksums.sha256
+          sha256sum ./* > checksums.sha256
           cat checksums.sha256
 
       - name: Dry run summary

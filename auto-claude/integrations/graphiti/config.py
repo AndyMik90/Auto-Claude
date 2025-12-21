@@ -250,11 +250,6 @@ class GraphitiConfig:
         # Return True if enabled, embedder config is a bonus for semantic search
         return True
 
-    def _validate_llm_provider(self) -> bool:
-        """Validate LLM provider configuration (deprecated - Claude SDK handles RAG)."""
-        # LLM provider is no longer required - Claude Agent SDK handles graph operations
-        return True
-
     def _validate_embedder_provider(self) -> bool:
         """Validate embedder provider configuration."""
         if self.embedder_provider == "openai":

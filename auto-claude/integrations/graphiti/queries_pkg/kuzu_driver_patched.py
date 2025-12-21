@@ -97,44 +97,46 @@ class PatchedKuzuDriver(OriginalKuzuDriver):
         # Create a sync connection for index creation
         conn = kuzu.Connection(self.db)
 
-        for query in fts_queries:
-            try:
-                # Check if we need to drop existing index first
-                if delete_existing:
-                    # Extract index name from query
-                    # Format: CALL CREATE_FTS_INDEX('TableName', 'index_name', [...])
-                    parts = query.split("'")
-                    if len(parts) >= 4:
-                        table_name = parts[1]
-                        index_name = parts[3]
-                        drop_query = (
-                            f"CALL DROP_FTS_INDEX('{table_name}', '{index_name}')"
+        try:
+            for query in fts_queries:
+                try:
+                    # Check if we need to drop existing index first
+                    if delete_existing:
+                        # Extract index name from query
+                        # Format: CALL CREATE_FTS_INDEX('TableName', 'index_name', [...])
+                        parts = query.split("'")
+                        if len(parts) >= 4:
+                            table_name = parts[1]
+                            index_name = parts[3]
+                            drop_query = (
+                                f"CALL DROP_FTS_INDEX('{table_name}', '{index_name}')"
+                            )
+                            try:
+                                conn.execute(drop_query)
+                                logger.debug(f"Dropped existing FTS index: {index_name}")
+                            except Exception:
+                                # Index might not exist, that's fine
+                                pass
+
+                    # Create the FTS index
+                    conn.execute(query)
+                    logger.debug(f"Created FTS index: {query[:80]}...")
+
+                except Exception as e:
+                    error_msg = str(e).lower()
+                    # Handle "index already exists" gracefully
+                    if "already exists" in error_msg or "duplicate" in error_msg:
+                        logger.debug(
+                            f"FTS index already exists (skipping): {query[:60]}..."
                         )
-                        try:
-                            conn.execute(drop_query)
-                            logger.debug(f"Dropped existing FTS index: {index_name}")
-                        except Exception:
-                            # Index might not exist, that's fine
-                            pass
+                    else:
+                        # Log but don't fail - some indexes might fail in certain Kuzu versions
+                        logger.warning(f"Failed to create FTS index: {e}")
+                        logger.debug(f"Query was: {query}")
 
-                # Create the FTS index
-                conn.execute(query)
-                logger.debug(f"Created FTS index: {query[:80]}...")
-
-            except Exception as e:
-                error_msg = str(e).lower()
-                # Handle "index already exists" gracefully
-                if "already exists" in error_msg or "duplicate" in error_msg:
-                    logger.debug(
-                        f"FTS index already exists (skipping): {query[:60]}..."
-                    )
-                else:
-                    # Log but don't fail - some indexes might fail in certain Kuzu versions
-                    logger.warning(f"Failed to create FTS index: {e}")
-                    logger.debug(f"Query was: {query}")
-
-        conn.close()
-        logger.info("FTS indexes created successfully")
+            logger.info("FTS indexes created successfully")
+        finally:
+            conn.close()
 
     def setup_schema(self):
         """
@@ -144,25 +146,26 @@ class PatchedKuzuDriver(OriginalKuzuDriver):
         """
         conn = kuzu.Connection(self.db)
 
-        # First, install the FTS extension (required before loading)
         try:
-            conn.execute("INSTALL fts")
-            logger.debug("Installed FTS extension")
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "already" not in error_msg:
-                logger.debug(f"FTS extension install note: {e}")
+            # First, install the FTS extension (required before loading)
+            try:
+                conn.execute("INSTALL fts")
+                logger.debug("Installed FTS extension")
+            except Exception as e:
+                error_msg = str(e).lower()
+                if "already" not in error_msg:
+                    logger.debug(f"FTS extension install note: {e}")
 
-        # Then load the FTS extension
-        try:
-            conn.execute("LOAD EXTENSION fts")
-            logger.debug("Loaded FTS extension")
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "already loaded" not in error_msg:
-                logger.debug(f"FTS extension load note: {e}")
-
-        conn.close()
+            # Then load the FTS extension
+            try:
+                conn.execute("LOAD EXTENSION fts")
+                logger.debug("Loaded FTS extension")
+            except Exception as e:
+                error_msg = str(e).lower()
+                if "already loaded" not in error_msg:
+                    logger.debug(f"FTS extension load note: {e}")
+        finally:
+            conn.close()
 
         # Run the parent schema setup (creates tables)
         super().setup_schema()
