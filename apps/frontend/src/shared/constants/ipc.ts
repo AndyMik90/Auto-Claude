@@ -315,6 +315,9 @@ export const IPC_CHANNELS = {
   PLUGIN_CHECK_GITHUB_REPO_ACCESS: 'plugin:checkGitHubRepoAccess',
   PLUGIN_CHECK_GIT_AVAILABILITY: 'plugin:checkGitAvailability',
 
+  // Plugin file operations
+  PLUGIN_GET_FILE_DIFF: 'plugin:getFileDiff',
+
   // Plugin events (main -> renderer)
   PLUGIN_INSTALL_PROGRESS: 'plugin:installProgress'
 } as const;

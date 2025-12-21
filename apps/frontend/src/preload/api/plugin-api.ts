@@ -25,6 +25,7 @@ export interface PluginAPI {
   // Plugin Updates
   checkPluginUpdates: (pluginId: string) => Promise<IPCResult<PluginUpdateCheck>>;
   applyPluginUpdates: (options: PluginUpdateOptions) => Promise<IPCResult<PluginUpdateResult>>;
+  getPluginFileDiff: (pluginId: string, filePath: string) => Promise<IPCResult<string | null>>;
 
   // Boilerplate Detection
   detectBoilerplate: (projectPath: string) => Promise<IPCResult<BoilerplateDetectionResult>>;
@@ -58,6 +59,9 @@ export const createPluginAPI = (): PluginAPI => ({
 
   applyPluginUpdates: (options: PluginUpdateOptions): Promise<IPCResult<PluginUpdateResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_APPLY_UPDATES, options),
+
+  getPluginFileDiff: (pluginId: string, filePath: string): Promise<IPCResult<string | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_GET_FILE_DIFF, pluginId, filePath),
 
   // Boilerplate Detection
   detectBoilerplate: (projectPath: string): Promise<IPCResult<BoilerplateDetectionResult>> =>

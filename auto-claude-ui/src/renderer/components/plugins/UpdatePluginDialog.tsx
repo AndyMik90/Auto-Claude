@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ChevronRight,
   ChevronDown,
+  ChevronLeft,
   FileText,
   FilePlus,
   FileMinus,
@@ -15,7 +16,11 @@ import {
   History,
   Download,
   Check,
-  Shield
+  Shield,
+  Eye,
+  Plus,
+  Minus,
+  X
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
@@ -37,7 +42,6 @@ import {
 } from '../../stores/plugin-store';
 import type {
   Plugin,
-  PluginUpdateCheck,
   UpdateCategory,
   UpdateFile,
   PluginUpdateResult
@@ -50,7 +54,14 @@ interface UpdatePluginDialogProps {
   onSuccess?: () => void;
 }
 
-type DialogStep = 'checking' | 'categories' | 'applying' | 'complete' | 'error' | 'up_to_date';
+type DialogStep = 'checking' | 'categories' | 'preview' | 'applying' | 'complete' | 'error' | 'up_to_date';
+
+/** Interface for parsed diff lines */
+interface DiffLine {
+  type: 'header' | 'hunk' | 'added' | 'deleted' | 'context' | 'empty';
+  content: string;
+  lineNumber?: { old?: number; new?: number };
+}
 
 /**
  * UpdatePluginDialog - Dialog for checking and applying plugin updates
@@ -87,6 +98,11 @@ export function UpdatePluginDialog({
   // Update result
   const [updateResult, setUpdateResult] = useState<PluginUpdateResult | null>(null);
 
+  // Diff preview state
+  const [previewFile, setPreviewFile] = useState<UpdateFile | null>(null);
+  const [diffContent, setDiffContent] = useState<string | null>(null);
+  const [isLoadingDiff, setIsLoadingDiff] = useState(false);
+
   // Reset state when dialog opens
   useEffect(() => {
     if (open && plugin) {
@@ -96,6 +112,9 @@ export function UpdatePluginDialog({
       setExpandedCategories(new Set());
       setCreateBackup(true);
       setUpdateResult(null);
+      setPreviewFile(null);
+      setDiffContent(null);
+      setIsLoadingDiff(false);
 
       // Auto-check for updates when dialog opens
       handleCheckUpdates();
@@ -243,6 +262,99 @@ export function UpdatePluginDialog({
    */
   const deselectAll = useCallback(() => {
     setSelectedFiles(new Set());
+  }, []);
+
+  /**
+   * Preview diff for a specific file
+   */
+  const handlePreviewFile = useCallback(async (file: UpdateFile) => {
+    if (!plugin) return;
+
+    setPreviewFile(file);
+    setIsLoadingDiff(true);
+    setDiffContent(null);
+    setStep('preview');
+
+    try {
+      // If the file already has diff content cached, use it
+      if (file.diff) {
+        setDiffContent(file.diff);
+        setIsLoadingDiff(false);
+        return;
+      }
+
+      // Otherwise fetch from the main process
+      const result = await window.electronAPI.getPluginFileDiff(plugin.id, file.path);
+      if (result.success && result.data) {
+        setDiffContent(result.data);
+      } else {
+        setDiffContent(null);
+      }
+    } catch {
+      setDiffContent(null);
+    } finally {
+      setIsLoadingDiff(false);
+    }
+  }, [plugin]);
+
+  /**
+   * Go back from preview to categories view
+   */
+  const handleBackFromPreview = useCallback(() => {
+    setStep('categories');
+    setPreviewFile(null);
+    setDiffContent(null);
+  }, []);
+
+  /**
+   * Parse unified diff into structured lines
+   */
+  const parseDiff = useCallback((diff: string): DiffLine[] => {
+    if (!diff) return [];
+
+    const lines = diff.split('\n');
+    const result: DiffLine[] = [];
+    let oldLineNum = 0;
+    let newLineNum = 0;
+
+    for (const line of lines) {
+      if (line.startsWith('diff --git') || line.startsWith('index ') || line.startsWith('---') || line.startsWith('+++')) {
+        result.push({ type: 'header', content: line });
+      } else if (line.startsWith('@@')) {
+        // Parse hunk header like @@ -1,5 +1,7 @@
+        const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+        if (match) {
+          oldLineNum = parseInt(match[1], 10);
+          newLineNum = parseInt(match[2], 10);
+        }
+        result.push({ type: 'hunk', content: line });
+      } else if (line.startsWith('+')) {
+        result.push({
+          type: 'added',
+          content: line.slice(1),
+          lineNumber: { new: newLineNum++ }
+        });
+      } else if (line.startsWith('-')) {
+        result.push({
+          type: 'deleted',
+          content: line.slice(1),
+          lineNumber: { old: oldLineNum++ }
+        });
+      } else if (line.startsWith(' ')) {
+        result.push({
+          type: 'context',
+          content: line.slice(1),
+          lineNumber: { old: oldLineNum++, new: newLineNum++ }
+        });
+      } else if (line === '') {
+        result.push({ type: 'empty', content: '' });
+      } else {
+        // Other lines (like binary file markers)
+        result.push({ type: 'context', content: line });
+      }
+    }
+
+    return result;
   }, []);
 
   /**
@@ -456,6 +568,21 @@ export function UpdatePluginDialog({
                           {file.path}
                         </span>
                         <div className="flex items-center gap-2">
+                          {/* Preview diff button */}
+                          {file.status !== 'deleted' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePreviewFile(file);
+                              }}
+                              title="Preview changes"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           {getStatusBadge(file)}
                           {file.hasConflict && (
                             <Badge
@@ -487,6 +614,121 @@ export function UpdatePluginDialog({
             <span className="text-sm text-foreground">Create backup before updating</span>
             <span className="text-xs text-muted-foreground">(recommended)</span>
           </label>
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render diff preview view
+   */
+  const renderPreviewView = () => {
+    if (!previewFile) return null;
+
+    const parsedLines = diffContent ? parseDiff(diffContent) : [];
+    const addedCount = parsedLines.filter(l => l.type === 'added').length;
+    const deletedCount = parsedLines.filter(l => l.type === 'deleted').length;
+
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header with file info and back button */}
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBackFromPreview}
+              className="h-8 px-2"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+            <div className="flex items-center gap-2">
+              {getFileIcon(previewFile)}
+              <span className="text-sm font-medium font-mono text-foreground">
+                {previewFile.path}
+              </span>
+              {getStatusBadge(previewFile)}
+            </div>
+          </div>
+          {!isLoadingDiff && diffContent && (
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1 text-success">
+                <Plus className="h-3 w-3" />
+                {addedCount} added
+              </span>
+              <span className="flex items-center gap-1 text-destructive">
+                <Minus className="h-3 w-3" />
+                {deletedCount} deleted
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Conflict warning if applicable */}
+        {previewFile.hasConflict && (
+          <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-warning/10 border border-warning/30 rounded-lg text-xs text-warning">
+            <AlertTriangle className="h-4 w-4" />
+            <span>This file has local modifications that may conflict with the update</span>
+          </div>
+        )}
+
+        {/* Diff content area */}
+        <div className="flex-1 min-h-0">
+          {isLoadingDiff ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading diff...</span>
+            </div>
+          ) : !diffContent ? (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <FileText className="h-8 w-8 mb-2" />
+              <p className="text-sm">No diff available for this file</p>
+              <p className="text-xs mt-1">This may be a binary file or a new file</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="font-mono text-xs bg-muted/20 rounded-lg overflow-hidden">
+                {parsedLines.map((line, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      'flex',
+                      line.type === 'added' && 'bg-success/10',
+                      line.type === 'deleted' && 'bg-destructive/10',
+                      line.type === 'hunk' && 'bg-info/10 text-info border-y border-info/20',
+                      line.type === 'header' && 'bg-muted/50 text-muted-foreground'
+                    )}
+                  >
+                    {/* Line numbers column */}
+                    <div className="flex shrink-0 border-r border-border/50 text-muted-foreground select-none">
+                      <span className="w-12 px-2 py-0.5 text-right border-r border-border/30">
+                        {line.lineNumber?.old ?? ''}
+                      </span>
+                      <span className="w-12 px-2 py-0.5 text-right">
+                        {line.lineNumber?.new ?? ''}
+                      </span>
+                    </div>
+                    {/* Change indicator */}
+                    <span
+                      className={cn(
+                        'w-6 shrink-0 text-center py-0.5 font-bold',
+                        line.type === 'added' && 'text-success',
+                        line.type === 'deleted' && 'text-destructive'
+                      )}
+                    >
+                      {line.type === 'added' && '+'}
+                      {line.type === 'deleted' && '-'}
+                    </span>
+                    {/* Content */}
+                    <pre className="flex-1 py-0.5 pr-3 overflow-x-auto whitespace-pre">
+                      {line.content || ' '}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
         </div>
       </div>
     );
@@ -578,6 +820,8 @@ export function UpdatePluginDialog({
         return renderUpToDateState();
       case 'categories':
         return renderCategoriesView();
+      case 'preview':
+        return renderPreviewView();
       case 'applying':
         return renderApplyingState();
       case 'complete':
@@ -614,6 +858,38 @@ export function UpdatePluginDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
+        </DialogFooter>
+      );
+    }
+
+    // preview step - simplified footer with just back button
+    if (step === 'preview') {
+      return (
+        <DialogFooter>
+          <Button variant="outline" onClick={handleBackFromPreview}>
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to Updates
+          </Button>
+          {previewFile && (
+            <Button
+              variant={selectedFiles.has(previewFile.path) ? 'destructive' : 'default'}
+              onClick={() => {
+                toggleFile(previewFile.path);
+              }}
+            >
+              {selectedFiles.has(previewFile.path) ? (
+                <>
+                  <X className="mr-2 h-4 w-4" />
+                  Deselect This File
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Select This File
+                </>
+              )}
+            </Button>
+          )}
         </DialogFooter>
       );
     }

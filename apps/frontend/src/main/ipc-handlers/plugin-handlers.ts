@@ -31,6 +31,7 @@ import type {
 } from '../../shared/types';
 import { getPluginManager } from '../plugin/PluginManager';
 import { getGitHubAuth } from '../plugin/GitHubAuth';
+import { getUpdateEngine } from '../plugin/UpdateEngine';
 
 /**
  * Register all plugin-related IPC handlers
@@ -420,6 +421,28 @@ export function registerPluginHandlers(
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return { available: false, meetsMinimum: false, minimumRequired: '2.1.0', error: message };
+      }
+    }
+  );
+
+  // ============================================
+  // Plugin File Diff Operations
+  // ============================================
+
+  /**
+   * Get unified diff for a specific file in a plugin update
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.PLUGIN_GET_FILE_DIFF,
+    async (_, pluginId: string, filePath: string): Promise<IPCResult<string | null>> => {
+      try {
+        const updateEngine = getUpdateEngine();
+        const diff = await updateEngine.getFileDiff(pluginId, filePath);
+        return { success: true, data: diff ?? null };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[plugin-handlers] Failed to get file diff:', message);
+        return { success: false, error: message };
       }
     }
   );

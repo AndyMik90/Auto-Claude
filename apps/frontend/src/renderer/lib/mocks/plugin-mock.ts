@@ -44,6 +44,11 @@ export const pluginMock = {
     error: 'Plugin updates not available in browser mode'
   }),
 
+  getPluginFileDiff: async (_pluginId: string, _filePath: string): Promise<IPCResult<string | null>> => ({
+    success: true,
+    data: null
+  }),
+
   // Boilerplate Detection
   detectBoilerplate: async (): Promise<IPCResult<BoilerplateDetectionResult>> => ({
     success: true,

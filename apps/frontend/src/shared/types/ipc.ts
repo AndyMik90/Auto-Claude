@@ -621,6 +621,7 @@ export interface ElectronAPI {
   uninstallPlugin: (pluginId: string) => Promise<IPCResult>;
   checkPluginUpdates: (pluginId: string) => Promise<IPCResult<PluginUpdateCheck>>;
   applyPluginUpdates: (options: PluginUpdateOptions) => Promise<IPCResult<PluginUpdateResult>>;
+  getPluginFileDiff: (pluginId: string, filePath: string) => Promise<IPCResult<string | null>>;
   detectBoilerplate: (projectPath: string) => Promise<IPCResult<BoilerplateDetectionResult>>;
   getPluginContext: (projectId: string) => Promise<IPCResult<PluginContext>>;
   validateGitHubToken: (token: string) => Promise<GitHubTokenValidation>;
