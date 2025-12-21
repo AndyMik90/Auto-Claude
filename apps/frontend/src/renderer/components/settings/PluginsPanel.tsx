@@ -15,6 +15,7 @@ import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { SettingsSection } from './SettingsSection';
 import { usePluginStore, loadPlugins, uninstallPlugin } from '../../stores/plugin-store';
+import { InstallPluginDialog } from '../plugins/InstallPluginDialog';
 import type { Plugin } from '../../../shared/types';
 
 /**
@@ -32,6 +33,7 @@ export function PluginsPanel() {
   const error = usePluginStore((state) => state.error);
 
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
+  const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
 
   // Load plugins when component mounts
   useEffect(() => {
@@ -128,8 +130,7 @@ export function PluginsPanel() {
             <Button
               size="sm"
               className="gap-1 h-8"
-              disabled
-              title="Install Plugin dialog coming in next phase"
+              onClick={() => setIsInstallDialogOpen(true)}
             >
               <Plus className="h-3.5 w-3.5" />
               Install Plugin
@@ -257,6 +258,16 @@ export function PluginsPanel() {
           </div>
         )}
       </div>
+
+      {/* Install Plugin Dialog */}
+      <InstallPluginDialog
+        open={isInstallDialogOpen}
+        onOpenChange={setIsInstallDialogOpen}
+        onSuccess={() => {
+          // Refresh plugin list after successful installation
+          loadPlugins();
+        }}
+      />
     </SettingsSection>
   );
 }
