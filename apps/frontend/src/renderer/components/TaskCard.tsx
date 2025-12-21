@@ -194,7 +194,7 @@ export function TaskCard({ task, onClick, allTasks }: TaskCardProps) {
         {/* Header - improved visual hierarchy */}
         <div className="flex items-start justify-between gap-3">
           <h3
-            className="font-semibold text-sm text-foreground line-clamp-2 leading-snug flex-1 min-w-0"
+            className="font-semibold text-sm text-foreground line-clamp-3 leading-snug flex-1 min-w-0 break-words"
             title={task.title}
           >
             {task.title}

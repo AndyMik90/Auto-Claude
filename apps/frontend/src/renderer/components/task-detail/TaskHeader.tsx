@@ -28,18 +28,9 @@ export function TaskHeader({
   return (
     <div className="flex items-start justify-between p-4 pb-3">
       <div className="flex-1 min-w-0 pr-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <h2 className="font-semibold text-lg text-foreground line-clamp-2 leading-snug cursor-default">
-              {task.title}
-            </h2>
-          </TooltipTrigger>
-          {task.title.length > 40 && (
-            <TooltipContent side="bottom" className="max-w-xs">
-              <p className="text-sm">{task.title}</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
+        <h2 className="font-semibold text-lg text-foreground leading-snug break-words hyphens-auto">
+          {task.title}
+        </h2>
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-xs font-mono">
             {task.specId}

@@ -3,12 +3,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { ScrollArea } from '../ui/scroll-area';
 import { TooltipProvider } from '../ui/tooltip';
 import { calculateProgress } from '../../lib/utils';
-import { startTask, stopTask, submitReview, recoverStuckTask, deleteTask } from '../../stores/task-store';
+import { startTask, stopTask, submitReview, recoverStuckTask, deleteTask, useTaskStore } from '../../stores/task-store';
 import { TaskEditDialog } from '../TaskEditDialog';
 import { useTaskDetail } from './hooks/useTaskDetail';
 import { TaskHeader } from './TaskHeader';
 import { TaskProgress } from './TaskProgress';
 import { TaskMetadata } from './TaskMetadata';
+import { TaskHierarchy } from './TaskHierarchy';
 import { TaskActions } from './TaskActions';
 import { TaskWarnings } from './TaskWarnings';
 import { TaskSubtasks } from './TaskSubtasks';
@@ -24,6 +25,7 @@ interface TaskDetailPanelProps {
 export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
   const state = useTaskDetail({ task });
   const _progress = calculateProgress(task.subtasks);
+  const allTasks = useTaskStore((state) => state.tasks);
 
   // Event Handlers
   const handleStartStop = () => {
@@ -179,6 +181,18 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
 
                 {/* Metadata */}
                 <TaskMetadata task={task} />
+
+                {/* Hierarchical Task Relationships */}
+                <TaskHierarchy
+                  task={task}
+                  allTasks={allTasks}
+                  onTaskClick={(clickedTask) => {
+                    // For now, just close this panel - user can click the task card to open its detail
+                    // TODO: Add ability to switch between tasks without closing panel
+                    onClose();
+                    // The task click will be handled by the Kanban board
+                  }}
+                />
 
                 {/* Human Review Section */}
                 {state.needsReview && (

@@ -353,6 +353,15 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         return { success: false, error: 'Cannot delete a running task. Stop the task first.' };
       }
 
+      // Check if this is a parent task with children
+      if (task.hasChildren && task.childTaskIds && task.childTaskIds.length > 0) {
+        const childCount = task.childTaskIds.length;
+        return {
+          success: false,
+          error: `Cannot delete parent task with ${childCount} child task${childCount > 1 ? 's' : ''}. Delete child tasks first.`
+        };
+      }
+
       // Delete the spec directory
       const specsBaseDir = getSpecsDir(project.autoBuildPath);
       const specDir = path.join(project.path, specsBaseDir, task.specId);
