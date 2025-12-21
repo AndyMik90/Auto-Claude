@@ -46,6 +46,8 @@ interface ModelDiscoveryGridProps {
   isScanning?: boolean;
   scanError?: string;
   onScanModels?: () => void;
+  showLLMSection?: boolean;
+  showEmbeddingSection?: boolean;
 }
 
 export function ModelDiscoveryGrid({
@@ -56,7 +58,9 @@ export function ModelDiscoveryGrid({
   selectedEmbedding,
   isScanning = false,
   scanError,
-  onScanModels
+  onScanModels,
+  showLLMSection = true,
+  showEmbeddingSection = true
 }: ModelDiscoveryGridProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'recent'>('name');
@@ -173,6 +177,7 @@ export function ModelDiscoveryGrid({
       )}
 
       {/* LLM Models Section */}
+      {showLLMSection && (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -303,8 +308,10 @@ export function ModelDiscoveryGrid({
           </div>
         )}
       </div>
+      )}
 
       {/* Embedding Models Section */}
+      {showEmbeddingSection && (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center">
@@ -435,6 +442,7 @@ export function ModelDiscoveryGrid({
           </div>
         )}
       </div>
+      )}
 
       {/* Loading State */}
       {isScanning && (

@@ -858,19 +858,38 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
 
             </div>
 
-             {/* Model Discovery & Selection */}
-             <div className="border-t pt-6 mt-2">
-               <ModelDiscoveryGrid
-                models={availableModels}
-                onDownloadModel={downloadModel}
-                onSelectModel={selectModel}
-                selectedLLM={config.ollamaLlmModel}
-                selectedEmbedding={config.ollamaEmbeddingModel}
-                isScanning={isScanningModels}
-                scanError={scanError}
-                onScanModels={scanAvailableModels}
-              />
-            </div>
+             {/* Model Discovery & Selection - Only show if we actually need models */}
+             {(llmProvider === 'ollama' || embeddingProvider === 'ollama') && (
+               <div className="border-t pt-6 mt-2">
+                 {!config.ollamaBaseUrl.trim() ? (
+                   <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
+                     <p className="text-sm text-amber-700">
+                       Please enter your Ollama Base URL above before scanning for models.
+                     </p>
+                   </div>
+                 ) : availableModels.length === 0 && !isScanningModels ? (
+                   <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-4 text-center">
+                     <p className="text-sm text-foreground mb-3">No models scanned yet</p>
+                     <p className="text-xs text-muted-foreground mb-4">
+                       Click "Scan Models" below to discover available models on your Ollama server
+                     </p>
+                   </div>
+                 ) : null}
+                 
+                 <ModelDiscoveryGrid
+                  models={availableModels}
+                  onDownloadModel={downloadModel}
+                  onSelectModel={selectModel}
+                  selectedLLM={llmProvider === 'ollama' ? config.ollamaLlmModel : undefined}
+                  selectedEmbedding={embeddingProvider === 'ollama' ? config.ollamaEmbeddingModel : undefined}
+                  isScanning={isScanningModels}
+                  scanError={scanError}
+                  onScanModels={scanAvailableModels}
+                  showLLMSection={llmProvider === 'ollama'}
+                  showEmbeddingSection={embeddingProvider === 'ollama'}
+                />
+              </div>
+             )}
           </div>
         )}
       </div>
