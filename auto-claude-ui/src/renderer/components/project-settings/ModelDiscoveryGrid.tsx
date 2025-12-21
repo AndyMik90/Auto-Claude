@@ -303,26 +303,115 @@ export function ModelDiscoveryGrid({
             })}
           </div>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-sm font-medium text-foreground mb-3">No LLM models downloaded yet</p>
-            <p className="text-xs text-muted-foreground mb-4">
+          <div className="py-8">
+            <p className="text-sm font-medium text-foreground mb-3 text-center">No LLM models downloaded yet</p>
+            <p className="text-xs text-muted-foreground mb-4 text-center">
               Try downloading one of these popular models:
             </p>
-            <div className="space-y-2 text-sm">
-              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
-                <p className="font-mono text-xs text-foreground mb-1">llama3.2</p>
-                <p className="text-xs text-muted-foreground">Fast, capable LLM (good for most tasks)</p>
+            <div className="space-y-3 text-sm">
+              {/* llama3.2 - ~4.1GB, 3.8B parameters */}
+              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 text-left">
+                    <p className="font-mono text-sm font-semibold text-foreground mb-1">llama3.2</p>
+                    <p className="text-xs text-muted-foreground mb-2">Fast, capable LLM (good for most tasks)</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1">
+                              <HardDrive className="w-3 h-3" />
+                              4.1 GB
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Model size on disk</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span>•</span>
+                      <span>3.8B parameters</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => onDownloadModel('llama3.2')}
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Download
+                  </Button>
+                </div>
               </div>
-              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
-                <p className="font-mono text-xs text-foreground mb-1">mistral</p>
-                <p className="text-xs text-muted-foreground">Efficient and fast (great for code)</p>
+
+              {/* mistral - ~4.1GB, 7.3B parameters */}
+              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 text-left">
+                    <p className="font-mono text-sm font-semibold text-foreground mb-1">mistral</p>
+                    <p className="text-xs text-muted-foreground mb-2">Efficient and fast (great for code)</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1">
+                              <HardDrive className="w-3 h-3" />
+                              4.1 GB
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Model size on disk</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span>•</span>
+                      <span>7.3B parameters</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => onDownloadModel('mistral')}
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Download
+                  </Button>
+                </div>
               </div>
-              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
-                <p className="font-mono text-xs text-foreground mb-1">deepseek-r1:7b</p>
-                <p className="text-xs text-muted-foreground">Advanced reasoning (best quality)</p>
+
+              {/* deepseek-r1:7b - ~3.6GB, 7.0B parameters */}
+              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 text-left">
+                    <p className="font-mono text-sm font-semibold text-foreground mb-1">deepseek-r1:7b</p>
+                    <p className="text-xs text-muted-foreground mb-2">Advanced reasoning (best quality)</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1">
+                              <HardDrive className="w-3 h-3" />
+                              3.6 GB
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Model size on disk</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span>•</span>
+                      <span>7.0B parameters</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => onDownloadModel('deepseek-r1:7b')}
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Download
+                  </Button>
+                </div>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="text-xs text-muted-foreground mt-4 text-center">
               Click "Scan Models" above to see if you have any already downloaded
             </p>
           </div>
@@ -457,26 +546,115 @@ export function ModelDiscoveryGrid({
             })}
           </div>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-sm font-medium text-foreground mb-3">No embedding models downloaded yet</p>
-            <p className="text-xs text-muted-foreground mb-4">
+          <div className="py-8">
+            <p className="text-sm font-medium text-foreground mb-3 text-center">No embedding models downloaded yet</p>
+            <p className="text-xs text-muted-foreground mb-4 text-center">
               Try downloading one of these popular models:
             </p>
-            <div className="space-y-2 text-sm">
-              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3">
-                <p className="font-mono text-xs text-foreground mb-1">nomic-embed-text</p>
-                <p className="text-xs text-muted-foreground">Great for semantic search (recommended)</p>
+            <div className="space-y-3 text-sm">
+              {/* nomic-embed-text - ~262MB, 384d */}
+              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 text-left">
+                    <p className="font-mono text-sm font-semibold text-foreground mb-1">nomic-embed-text</p>
+                    <p className="text-xs text-muted-foreground mb-2">Great for semantic search (recommended)</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1">
+                              <HardDrive className="w-3 h-3" />
+                              262 MB
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Model size on disk</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span>•</span>
+                      <span>384-dim vectors</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => onDownloadModel('nomic-embed-text')}
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Download
+                  </Button>
+                </div>
               </div>
-              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3">
-                <p className="font-mono text-xs text-foreground mb-1">mxbai-embed-large</p>
-                <p className="text-xs text-muted-foreground">Larger, more accurate embeddings</p>
+
+              {/* mxbai-embed-large - ~638MB, 1024d */}
+              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 text-left">
+                    <p className="font-mono text-sm font-semibold text-foreground mb-1">mxbai-embed-large</p>
+                    <p className="text-xs text-muted-foreground mb-2">Larger, more accurate embeddings</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1">
+                              <HardDrive className="w-3 h-3" />
+                              638 MB
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Model size on disk</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span>•</span>
+                      <span>1024-dim vectors</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => onDownloadModel('mxbai-embed-large')}
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Download
+                  </Button>
+                </div>
               </div>
-              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3">
-                <p className="font-mono text-xs text-foreground mb-1">all-minilm-l6-v2</p>
-                <p className="text-xs text-muted-foreground">Lightweight and fast</p>
+
+              {/* all-minilm-l6-v2 - ~61MB, 384d */}
+              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 text-left">
+                    <p className="font-mono text-sm font-semibold text-foreground mb-1">all-minilm-l6-v2</p>
+                    <p className="text-xs text-muted-foreground mb-2">Lightweight and fast</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1">
+                              <HardDrive className="w-3 h-3" />
+                              61 MB
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Model size on disk</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span>•</span>
+                      <span>384-dim vectors</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => onDownloadModel('all-minilm-l6-v2')}
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Download
+                  </Button>
+                </div>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="text-xs text-muted-foreground mt-4 text-center">
               Click "Scan Models" above to see if you have any already downloaded
             </p>
           </div>
