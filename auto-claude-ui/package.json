@@ -116,6 +116,7 @@
       "node-pty": "npm:@lydell/node-pty@^1.1.0"
     },
     "onlyBuiltDependencies": [
+      "@lydell/node-pty",
       "electron",
       "electron-winstaller",
       "esbuild"
