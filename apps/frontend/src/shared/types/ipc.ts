@@ -114,6 +114,7 @@ import type {
   PluginUpdateCheck,
   PluginUpdateOptions,
   PluginUpdateResult,
+  PluginBackup,
   PluginContext,
   BoilerplateDetectionResult,
   GitHubTokenValidation,
@@ -619,9 +620,11 @@ export interface ElectronAPI {
   getPlugins: () => Promise<IPCResult<Plugin[]>>;
   installPlugin: (options: PluginInstallOptions) => Promise<PluginInstallResult>;
   uninstallPlugin: (pluginId: string) => Promise<IPCResult>;
-  checkPluginUpdates: (pluginId: string) => Promise<IPCResult<PluginUpdateCheck>>;
+  checkPluginUpdates: (pluginId: string, token?: string) => Promise<IPCResult<PluginUpdateCheck>>;
   applyPluginUpdates: (options: PluginUpdateOptions) => Promise<IPCResult<PluginUpdateResult>>;
   getPluginFileDiff: (pluginId: string, filePath: string) => Promise<IPCResult<string | null>>;
+  listPluginBackups: (pluginId: string) => Promise<IPCResult<PluginBackup[]>>;
+  rollbackPlugin: (pluginId: string, backupPath: string) => Promise<IPCResult<PluginUpdateResult>>;
   detectBoilerplate: (projectPath: string) => Promise<IPCResult<BoilerplateDetectionResult>>;
   getPluginContext: (projectId: string) => Promise<IPCResult<PluginContext>>;
   validateGitHubToken: (token: string) => Promise<GitHubTokenValidation>;
