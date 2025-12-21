@@ -25,8 +25,9 @@ see graphiti/graphiti.py.
 
 from pathlib import Path
 
-# Re-export from modular system
-from graphiti import (
+# Re-export from modular system (queries_pkg)
+from .queries_pkg.graphiti import GraphitiMemory
+from .queries_pkg.schema import (
     EPISODE_TYPE_CODEBASE_DISCOVERY,
     EPISODE_TYPE_GOTCHA,
     EPISODE_TYPE_HISTORICAL_CONTEXT,
@@ -35,7 +36,6 @@ from graphiti import (
     EPISODE_TYPE_SESSION_INSIGHT,
     EPISODE_TYPE_TASK_OUTCOME,
     MAX_CONTEXT_RESULTS,
-    GraphitiMemory,
     GroupIdMode,
 )
 

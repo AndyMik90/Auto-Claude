@@ -109,9 +109,9 @@ async def test_ladybugdb_connection(db_path: str, database: str) -> bool:
     try:
         import kuzu  # This is real_ladybug via monkeypatch
 
-        # Create database directory if needed
+        # Ensure parent directory exists (database will create its own structure)
         full_path = Path(db_path) / database
-        full_path.mkdir(parents=True, exist_ok=True)
+        full_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create database and connection
         db = kuzu.Database(str(full_path))

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Database,
   Eye,
@@ -54,14 +54,20 @@ export function SecuritySettings({
     azure: false
   });
 
+  // Sync parent's showOpenAIKey prop to local state
+  useEffect(() => {
+    setShowApiKey(prev => ({ ...prev, openai: showOpenAIKey }));
+  }, [showOpenAIKey]);
+
   const embeddingProvider = envConfig?.graphitiProviderConfig?.embeddingProvider || 'ollama';
 
   // Toggle API key visibility
   const toggleShowApiKey = (key: string) => {
-    setShowApiKey(prev => ({ ...prev, [key]: !prev[key] }));
+    const newValue = !showApiKey[key];
+    setShowApiKey(prev => ({ ...prev, [key]: newValue }));
     // Sync with parent for OpenAI
     if (key === 'openai') {
-      setShowOpenAIKey(!showApiKey.openai);
+      setShowOpenAIKey(newValue);
     }
   };
 
@@ -117,6 +123,7 @@ export function SecuritySettings({
               type="button"
               onClick={() => toggleShowApiKey('openai')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showApiKey['openai'] ? 'Hide OpenAI API key' : 'Show OpenAI API key'}
             >
               {showApiKey['openai'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -157,6 +164,7 @@ export function SecuritySettings({
               type="button"
               onClick={() => toggleShowApiKey('voyage')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showApiKey['voyage'] ? 'Hide Voyage AI API key' : 'Show Voyage AI API key'}
             >
               {showApiKey['voyage'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -211,6 +219,7 @@ export function SecuritySettings({
               type="button"
               onClick={() => toggleShowApiKey('google')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showApiKey['google'] ? 'Hide Google API key' : 'Show Google API key'}
             >
               {showApiKey['google'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -250,6 +259,7 @@ export function SecuritySettings({
                 type="button"
                 onClick={() => toggleShowApiKey('azure')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showApiKey['azure'] ? 'Hide Azure OpenAI API key' : 'Show Azure OpenAI API key'}
               >
                 {showApiKey['azure'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>

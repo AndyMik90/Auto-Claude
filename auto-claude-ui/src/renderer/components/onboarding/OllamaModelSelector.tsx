@@ -68,18 +68,16 @@ export function OllamaModelSelector({
   const [error, setError] = useState<string | null>(null);
   const [ollamaAvailable, setOllamaAvailable] = useState(true);
 
-  // Fetch installed models on mount
-  useEffect(() => {
-    checkInstalledModels();
-  }, []);
-
-  const checkInstalledModels = async () => {
+  // Check installed models - used by both mount effect and refresh after download
+  const checkInstalledModels = async (abortSignal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
 
     try {
       // Check Ollama status first
       const statusResult = await window.electronAPI.checkOllamaStatus();
+      if (abortSignal?.aborted) return;
+
       if (!statusResult?.success || !statusResult?.data?.running) {
         setOllamaAvailable(false);
         setIsLoading(false);
@@ -90,6 +88,8 @@ export function OllamaModelSelector({
 
       // Get list of installed embedding models
       const result = await window.electronAPI.listOllamaEmbeddingModels();
+      if (abortSignal?.aborted) return;
+
       if (result?.success && result?.data?.embedding_models) {
         const installedNames = new Set(
           result.data.embedding_models.map((m: { name: string }) => {
@@ -110,12 +110,24 @@ export function OllamaModelSelector({
           })
         );
       }
-    } catch {
-      setError('Failed to check Ollama models');
+    } catch (err) {
+      if (!abortSignal?.aborted) {
+        console.error('Failed to check Ollama models:', err);
+        setError('Failed to check Ollama models');
+      }
     } finally {
-      setIsLoading(false);
+      if (!abortSignal?.aborted) {
+        setIsLoading(false);
+      }
     }
   };
+
+  // Fetch installed models on mount with cleanup
+  useEffect(() => {
+    const controller = new AbortController();
+    checkInstalledModels(controller.signal);
+    return () => controller.abort();
+  }, []);
 
   const handleDownload = async (modelName: string) => {
     setIsDownloading(modelName);
@@ -163,7 +175,7 @@ export function OllamaModelSelector({
             <Button
               variant="outline"
               size="sm"
-              onClick={checkInstalledModels}
+              onClick={() => checkInstalledModels()}
               className="mt-3"
             >
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" />

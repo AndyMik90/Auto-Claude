@@ -34,7 +34,7 @@ export async function validateOpenAIApiKey(
   if (!trimmedKey.startsWith('sk-') && !trimmedKey.startsWith('sess-')) {
     return {
       success: false,
-      message: 'Invalid API key format. OpenAI API keys should start with "sk-"',
+      message: 'Invalid API key format. OpenAI API keys should start with "sk-" or "sess-"',
     };
   }
 
