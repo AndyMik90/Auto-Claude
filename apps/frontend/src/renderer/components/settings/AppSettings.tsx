@@ -17,7 +17,8 @@ import {
   Sparkles,
   Monitor,
   Globe,
-  Bug
+  Bug,
+  Puzzle
 } from 'lucide-react';
 import {
   FullScreenDialog,
@@ -38,6 +39,7 @@ import { LanguageSettings } from './LanguageSettings';
 import { GeneralSettings } from './GeneralSettings';
 import { IntegrationSettings } from './IntegrationSettings';
 import { AdvancedSettings } from './AdvancedSettings';
+import { PluginsPanel } from './PluginsPanel';
 import { DeveloperSettings } from './DeveloperSettings';
 import { ProjectSelector } from './ProjectSelector';
 import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
@@ -53,7 +55,7 @@ interface AppSettingsDialogProps {
 }
 
 // App-level settings sections
-export type AppSection = 'appearance' | 'display' | 'language' | 'agent' | 'paths' | 'integrations' | 'updates' | 'notifications' | 'developer';
+export type AppSection = 'appearance' | 'display' | 'language' | 'agent' | 'paths' | 'integrations' | 'plugins' | 'updates' | 'notifications' | 'developer';
 
 interface NavItemConfig<T extends string> {
   id: T;
@@ -67,6 +69,7 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: 'agent', icon: Bot },
   { id: 'paths', icon: FolderOpen },
   { id: 'integrations', icon: Key },
+  { id: 'plugins', icon: Puzzle },
   { id: 'updates', icon: Package },
   { id: 'notifications', icon: Bell },
   { id: 'developer', icon: Bug }
@@ -176,6 +179,8 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         return <GeneralSettings settings={settings} onSettingsChange={setSettings} section="paths" />;
       case 'integrations':
         return <IntegrationSettings settings={settings} onSettingsChange={setSettings} isOpen={open} />;
+      case 'plugins':
+        return <PluginsPanel />;
       case 'updates':
         return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="updates" version={version} />;
       case 'notifications':
