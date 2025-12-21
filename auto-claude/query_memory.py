@@ -336,10 +336,13 @@ async def _async_semantic_search(args):
         # Create config from environment
         config = GraphitiConfig.from_env()
 
-        # Override database path from CLI args
+        # Override database location from CLI args
+        # Note: We only override db_path/database for CLI-specified locations.
+        # The config.enabled flag is respected - if the user has disabled memory,
+        # this CLI tool should not be used. The caller (main()) routes to this
+        # function only when semantic-search command is explicitly requested.
         config.db_path = args.db_path
         config.database = args.database
-        config.enabled = True  # Force enabled for search
 
         # Validate embedder configuration using public API
         validation_errors = config.get_validation_errors()
