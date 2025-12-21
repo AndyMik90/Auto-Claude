@@ -25,6 +25,7 @@ import type {
   PluginUpdateCheck,
   PluginUpdateOptions,
   PluginUpdateResult,
+  PluginBackup,
   GitHubTokenValidation,
   GitHubRepoAccess,
   GitAvailability
@@ -266,32 +267,41 @@ export function registerPluginHandlers(
 
   /**
    * Check for plugin updates
-   * Note: Full implementation of UpdateEngine is in a later subtask
-   * For now, this returns a basic check result
+   * Uses UpdateEngine to fetch latest from remote and detect conflicts
    */
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_CHECK_UPDATES,
-    async (_, pluginId: string): Promise<IPCResult<PluginUpdateCheck>> => {
+    async (_, pluginId: string, token?: string): Promise<IPCResult<PluginUpdateCheck>> => {
       try {
         const plugin = pluginManager.getPlugin(pluginId);
         if (!plugin) {
           return { success: false, error: 'Plugin not found' };
         }
 
-        // Basic update check - full implementation comes in Phase 7
-        const updateCheck: PluginUpdateCheck = {
-          pluginId: plugin.id,
-          hasUpdate: false,
-          currentVersion: plugin.version,
-          categories: [],
-          summary: {
-            totalFiles: 0,
-            addedFiles: 0,
-            modifiedFiles: 0,
-            deletedFiles: 0,
-            conflictFiles: 0
-          }
-        };
+        // Only GitHub plugins support update checking
+        if (plugin.sourceType !== 'github') {
+          return {
+            success: true,
+            data: {
+              pluginId: plugin.id,
+              hasUpdate: false,
+              currentVersion: plugin.version,
+              categories: [],
+              summary: {
+                totalFiles: 0,
+                addedFiles: 0,
+                modifiedFiles: 0,
+                deletedFiles: 0,
+                conflictFiles: 0
+              },
+              error: 'Only GitHub plugins support update checking'
+            }
+          };
+        }
+
+        // Use UpdateEngine to check for updates
+        const updateEngine = getUpdateEngine();
+        const updateCheck = await updateEngine.checkForUpdates(pluginId, token);
 
         return { success: true, data: updateCheck };
       } catch (error) {
@@ -303,8 +313,8 @@ export function registerPluginHandlers(
   );
 
   /**
-   * Apply plugin updates
-   * Note: Full implementation of UpdateEngine is in a later subtask
+   * Apply selected plugin updates with optional backup
+   * Uses UpdateEngine for safe update application with rollback capability
    */
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_APPLY_UPDATES,
@@ -315,12 +325,14 @@ export function registerPluginHandlers(
           return { success: false, error: 'Plugin not found' };
         }
 
-        // Placeholder - full implementation comes in Phase 7
-        const result: PluginUpdateResult = {
-          success: true,
-          appliedFiles: [],
-          skippedFiles: options.selectedFiles
-        };
+        // Use UpdateEngine to apply updates
+        const updateEngine = getUpdateEngine();
+        const result = await updateEngine.applyUpdates(options);
+
+        // If update succeeded, refresh the plugin list to get updated metadata
+        if (result.success) {
+          await pluginManager.refresh();
+        }
 
         return { success: true, data: result };
       } catch (error) {
@@ -442,6 +454,52 @@ export function registerPluginHandlers(
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         console.error('[plugin-handlers] Failed to get file diff:', message);
+        return { success: false, error: message };
+      }
+    }
+  );
+
+  // ============================================
+  // Plugin Backup & Rollback Operations
+  // ============================================
+
+  /**
+   * List available backups for a plugin
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.PLUGIN_LIST_BACKUPS,
+    async (_, pluginId: string): Promise<IPCResult<PluginBackup[]>> => {
+      try {
+        const updateEngine = getUpdateEngine();
+        const backups = updateEngine.listBackups(pluginId);
+        return { success: true, data: backups };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[plugin-handlers] Failed to list backups:', message);
+        return { success: false, error: message };
+      }
+    }
+  );
+
+  /**
+   * Rollback a plugin to a previous backup
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.PLUGIN_ROLLBACK,
+    async (_, pluginId: string, backupPath: string): Promise<IPCResult<PluginUpdateResult>> => {
+      try {
+        const updateEngine = getUpdateEngine();
+        const result = await updateEngine.rollback(pluginId, backupPath);
+
+        // If rollback succeeded, refresh the plugin list to get restored metadata
+        if (result.success) {
+          await pluginManager.refresh();
+        }
+
+        return { success: true, data: result };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[plugin-handlers] Failed to rollback plugin:', message);
         return { success: false, error: message };
       }
     }

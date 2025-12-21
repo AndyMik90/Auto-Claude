@@ -6,6 +6,7 @@ import type {
   Plugin,
   PluginInstallResult,
   PluginInstallProgress,
+  PluginBackup,
   IPCResult,
   PluginUpdateCheck,
   PluginUpdateResult,
@@ -34,7 +35,7 @@ export const pluginMock = {
   }),
 
   // Plugin Updates
-  checkPluginUpdates: async (): Promise<IPCResult<PluginUpdateCheck>> => ({
+  checkPluginUpdates: async (_pluginId: string, _token?: string): Promise<IPCResult<PluginUpdateCheck>> => ({
     success: true
     // data is optional in IPCResult, omitting means no update check result
   }),
@@ -47,6 +48,17 @@ export const pluginMock = {
   getPluginFileDiff: async (_pluginId: string, _filePath: string): Promise<IPCResult<string | null>> => ({
     success: true,
     data: null
+  }),
+
+  // Plugin Backup & Rollback
+  listPluginBackups: async (_pluginId: string): Promise<IPCResult<PluginBackup[]>> => ({
+    success: true,
+    data: []
+  }),
+
+  rollbackPlugin: async (_pluginId: string, _backupPath: string): Promise<IPCResult<PluginUpdateResult>> => ({
+    success: false,
+    error: 'Plugin rollback not available in browser mode'
   }),
 
   // Boilerplate Detection

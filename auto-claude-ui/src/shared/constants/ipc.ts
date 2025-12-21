@@ -304,6 +304,10 @@ export const IPC_CHANNELS = {
   // Plugin file operations
   PLUGIN_GET_FILE_DIFF: 'plugin:getFileDiff',
 
+  // Plugin backup and rollback operations
+  PLUGIN_LIST_BACKUPS: 'plugin:listBackups',
+  PLUGIN_ROLLBACK: 'plugin:rollback',
+
   // Plugin events (main -> renderer)
   PLUGIN_INSTALL_PROGRESS: 'plugin:installProgress'
 } as const;

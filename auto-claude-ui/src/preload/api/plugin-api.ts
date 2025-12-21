@@ -8,6 +8,7 @@ import type {
   PluginUpdateCheck,
   PluginUpdateOptions,
   PluginUpdateResult,
+  PluginBackup,
   PluginContext,
   BoilerplateDetectionResult,
   GitHubTokenValidation,
@@ -23,9 +24,13 @@ export interface PluginAPI {
   uninstallPlugin: (pluginId: string) => Promise<IPCResult>;
 
   // Plugin Updates
-  checkPluginUpdates: (pluginId: string) => Promise<IPCResult<PluginUpdateCheck>>;
+  checkPluginUpdates: (pluginId: string, token?: string) => Promise<IPCResult<PluginUpdateCheck>>;
   applyPluginUpdates: (options: PluginUpdateOptions) => Promise<IPCResult<PluginUpdateResult>>;
   getPluginFileDiff: (pluginId: string, filePath: string) => Promise<IPCResult<string | null>>;
+
+  // Plugin Backup & Rollback
+  listPluginBackups: (pluginId: string) => Promise<IPCResult<PluginBackup[]>>;
+  rollbackPlugin: (pluginId: string, backupPath: string) => Promise<IPCResult<PluginUpdateResult>>;
 
   // Boilerplate Detection
   detectBoilerplate: (projectPath: string) => Promise<IPCResult<BoilerplateDetectionResult>>;
@@ -54,14 +59,21 @@ export const createPluginAPI = (): PluginAPI => ({
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_UNINSTALL, pluginId),
 
   // Plugin Updates
-  checkPluginUpdates: (pluginId: string): Promise<IPCResult<PluginUpdateCheck>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_CHECK_UPDATES, pluginId),
+  checkPluginUpdates: (pluginId: string, token?: string): Promise<IPCResult<PluginUpdateCheck>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_CHECK_UPDATES, pluginId, token),
 
   applyPluginUpdates: (options: PluginUpdateOptions): Promise<IPCResult<PluginUpdateResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_APPLY_UPDATES, options),
 
   getPluginFileDiff: (pluginId: string, filePath: string): Promise<IPCResult<string | null>> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_GET_FILE_DIFF, pluginId, filePath),
+
+  // Plugin Backup & Rollback
+  listPluginBackups: (pluginId: string): Promise<IPCResult<PluginBackup[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_LIST_BACKUPS, pluginId),
+
+  rollbackPlugin: (pluginId: string, backupPath: string): Promise<IPCResult<PluginUpdateResult>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_ROLLBACK, pluginId, backupPath),
 
   // Boilerplate Detection
   detectBoilerplate: (projectPath: string): Promise<IPCResult<BoilerplateDetectionResult>> =>
