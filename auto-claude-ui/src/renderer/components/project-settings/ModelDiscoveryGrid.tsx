@@ -304,7 +304,27 @@ export function ModelDiscoveryGrid({
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground">No LLM models available</p>
+            <p className="text-sm font-medium text-foreground mb-3">No LLM models downloaded yet</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Try downloading one of these popular models:
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
+                <p className="font-mono text-xs text-foreground mb-1">llama3.2</p>
+                <p className="text-xs text-muted-foreground">Fast, capable LLM (good for most tasks)</p>
+              </div>
+              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
+                <p className="font-mono text-xs text-foreground mb-1">mistral</p>
+                <p className="text-xs text-muted-foreground">Efficient and fast (great for code)</p>
+              </div>
+              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
+                <p className="font-mono text-xs text-foreground mb-1">deepseek-r1:7b</p>
+                <p className="text-xs text-muted-foreground">Advanced reasoning (best quality)</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Click "Scan Models" above to see if you have any already downloaded
+            </p>
           </div>
         )}
       </div>
@@ -438,7 +458,27 @@ export function ModelDiscoveryGrid({
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground">No embedding models available</p>
+            <p className="text-sm font-medium text-foreground mb-3">No embedding models downloaded yet</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Try downloading one of these popular models:
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3">
+                <p className="font-mono text-xs text-foreground mb-1">nomic-embed-text</p>
+                <p className="text-xs text-muted-foreground">Great for semantic search (recommended)</p>
+              </div>
+              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3">
+                <p className="font-mono text-xs text-foreground mb-1">mxbai-embed-large</p>
+                <p className="text-xs text-muted-foreground">Larger, more accurate embeddings</p>
+              </div>
+              <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3">
+                <p className="font-mono text-xs text-foreground mb-1">all-minilm-l6-v2</p>
+                <p className="text-xs text-muted-foreground">Lightweight and fast</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Click "Scan Models" above to see if you have any already downloaded
+            </p>
           </div>
         )}
       </div>

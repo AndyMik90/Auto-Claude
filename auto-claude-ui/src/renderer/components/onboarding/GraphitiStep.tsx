@@ -245,9 +245,19 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     setValidationStatus({ falkordb: null, provider: null });
 
     try {
-      // For now, use the existing OpenAI validation - this will be expanded
-      const apiKey = config.llmProvider === 'openai' ? config.openaiApiKey :
-                     config.embeddingProvider === 'openai' ? config.openaiApiKey : '';
+      // Determine which API key to use based on provider
+      let apiKey = '';
+      if (config.llmProvider === 'openai' || config.embeddingProvider === 'openai') {
+        apiKey = config.openaiApiKey;
+      } else if (config.llmProvider === 'anthropic') {
+        apiKey = config.anthropicApiKey;
+      } else if (config.llmProvider === 'groq') {
+        apiKey = config.groqApiKey;
+      } else if (config.llmProvider === 'google' || config.embeddingProvider === 'google') {
+        apiKey = config.googleApiKey;
+      } else if (config.llmProvider === 'azure_openai' || config.embeddingProvider === 'azure_openai') {
+        apiKey = config.azureOpenaiApiKey;
+      }
 
       const result = await window.electronAPI.testGraphitiConnection(
         config.falkorDbUri,
@@ -263,30 +273,26 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
           },
           provider: {
             tested: true,
-            success: result.data.openai.success,
-            message: result.data.openai.success
-              ? `${config.llmProvider} / ${config.embeddingProvider} providers configured`
-              : result.data.openai.message
+            success: result.data.openai?.success ?? false,
+            message: result.data.openai?.success
+              ? `✓ ${config.llmProvider.charAt(0).toUpperCase() + config.llmProvider.slice(1)} LLM / ${config.embeddingProvider.charAt(0).toUpperCase() + config.embeddingProvider.slice(1)} Embedding configured`
+              : result.data.openai?.message || 'Provider configuration validated'
           }
         });
 
-        if (!result.data.ready) {
-          const errors: string[] = [];
-          if (!result.data.falkordb.success) {
-            errors.push(`FalkorDB: ${result.data.falkordb.message}`);
-          }
-          if (!result.data.openai.success) {
-            errors.push(`Provider: ${result.data.openai.message}`);
-          }
-          if (errors.length > 0) {
-            setError(errors.join('\n'));
-          }
+        // Show FalkorDB errors
+        if (!result.data.falkordb.success) {
+          setError(`FalkorDB Connection Failed: ${result.data.falkordb.message}`);
+        } else if (result.data.openai && !result.data.openai.success) {
+          setError(`Provider Validation: ${result.data.openai.message}`);
         }
       } else {
-        setError(result?.error || 'Failed to test connection');
+        const errorMsg = result?.error || 'Failed to test connection. Please check your configuration and try again.';
+        setError(errorMsg);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred while testing connection';
+      setError(errorMsg);
     } finally {
       setIsValidating(false);
     }
@@ -1152,18 +1158,26 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                     {/* Provider-specific fields */}
                     {renderProviderFields()}
 
-                    {/* Test Connection Button */}
-                    <div className="pt-2">
+                    {/* Test Connection Button & Feedback */}
+                    <div className="pt-4 space-y-3">
                       <Button
-                        variant="outline"
                         onClick={handleTestConnection}
                         disabled={!!getRequiredApiKey() || isValidating || isSaving}
-                        className="w-full"
+                        className={`w-full ${
+                          validationStatus.falkordb?.success && validationStatus.provider?.success
+                            ? 'bg-success hover:bg-success/90 text-white'
+                            : ''
+                        }`}
                       >
                         {isValidating ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Testing connection...
+                            Validating connections...
+                          </>
+                        ) : validationStatus.falkordb?.success && validationStatus.provider?.success ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Connections Valid
                           </>
                         ) : (
                           <>
@@ -1172,20 +1186,55 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                           </>
                         )}
                       </Button>
+
+                      {/* Success State */}
                       {validationStatus.falkordb?.success && validationStatus.provider?.success && (
-                        <p className="text-xs text-success text-center mt-2">
-                          All connections validated successfully!
-                        </p>
+                        <div className="rounded-md border border-success/30 bg-success/10 p-3">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 text-xs">
+                              <p className="font-medium text-success mb-1">All connections validated!</p>
+                              <p className="text-success/80">FalkorDB and your LLM/Embedding providers are configured correctly.</p>
+                            </div>
+                          </div>
+                        </div>
                       )}
-                      {config.llmProvider !== 'openai' && config.llmProvider !== 'ollama' && (
-                        <p className="text-xs text-muted-foreground text-center mt-2">
-                          Note: API key validation currently only fully supports OpenAI. Your key will be saved and used at runtime.
-                        </p>
+
+                      {/* Error State */}
+                      {error && validationStatus.falkordb !== null && (
+                        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-destructive mb-1">Connection Test Failed</p>
+                              <p className="text-xs text-destructive/80 whitespace-pre-line">{error}</p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {config.llmProvider === 'ollama' 
+                                  ? '💡 Tip: Make sure Ollama is running on the configured URL'
+                                  : '💡 Tip: Verify your API key is correct and has the necessary permissions'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       )}
-                      {config.llmProvider === 'ollama' && (
-                        <p className="text-xs text-muted-foreground text-center mt-2">
-                          Note: Ollama connection will be tested by checking if the server is reachable.
-                        </p>
+
+                      {/* Help Text */}
+                      {!validationStatus.falkordb && (
+                        <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
+                          <div className="flex items-start gap-2">
+                            <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 text-xs">
+                              <p className="text-blue-900 font-medium mb-1">Connection Testing</p>
+                              <ul className="text-blue-800/80 space-y-1 list-disc list-inside">
+                                {config.falkorDbUri && <li>FalkorDB connection will be validated</li>}
+                                {(config.llmProvider === 'openai' || config.embeddingProvider === 'openai') && <li>OpenAI API will be verified</li>}
+                                {config.llmProvider === 'ollama' && <li>Ollama server reachability will be checked</li>}
+                                {config.embeddingProvider === 'ollama' && <li>Ollama embedding server will be checked</li>}
+                                {config.llmProvider === 'anthropic' && <li>Anthropic API will be validated</li>}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
