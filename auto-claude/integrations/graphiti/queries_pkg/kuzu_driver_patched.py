@@ -108,7 +108,9 @@ class PatchedKuzuDriver(OriginalKuzuDriver):
                         if len(parts) >= 4:
                             table_name = parts[1]
                             index_name = parts[3]
-                            drop_query = f"CALL DROP_FTS_INDEX('{table_name}', '{index_name}')"
+                            drop_query = (
+                                f"CALL DROP_FTS_INDEX('{table_name}', '{index_name}')"
+                            )
                             try:
                                 conn.execute(drop_query)
                                 logger.debug(

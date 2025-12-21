@@ -145,9 +145,7 @@ class GraphitiMemory:
             logger.warning(
                 f"   Episodes in old database: {migration_info['episode_count']}"
             )
-            logger.warning(
-                "   Run: python integrations/graphiti/migrate_embeddings.py"
-            )
+            logger.warning("   Run: python integrations/graphiti/migrate_embeddings.py")
             logger.warning(
                 f"   Or start fresh by removing: {self.spec_dir / '.graphiti_state.json'}"
             )
