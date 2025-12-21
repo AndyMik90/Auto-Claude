@@ -49,20 +49,19 @@ export interface ProjectAPI {
   ) => Promise<IPCResult<import('../../shared/types').CreateProjectFolderResult>>;
   getDefaultProjectLocation: () => Promise<string | null>;
 
-  // Docker & Infrastructure Operations (for Graphiti/FalkorDB)
-  getInfrastructureStatus: (port?: number) => Promise<IPCResult<InfrastructureStatus>>;
-  startFalkorDB: (port?: number) => Promise<IPCResult<{ success: boolean; error?: string }>>;
-  stopFalkorDB: () => Promise<IPCResult<{ success: boolean; error?: string }>>;
-  openDockerDesktop: () => Promise<IPCResult<{ success: boolean; error?: string }>>;
-  getDockerDownloadUrl: () => Promise<string>;
+  // Memory Infrastructure Operations (LadybugDB - no Docker required)
+  getMemoryInfrastructureStatus: (dbPath?: string) => Promise<IPCResult<InfrastructureStatus>>;
+  listMemoryDatabases: (dbPath?: string) => Promise<IPCResult<string[]>>;
+  testMemoryConnection: (dbPath?: string, database?: string) => Promise<IPCResult<GraphitiValidationResult>>;
 
   // Graphiti Validation Operations
-  validateFalkorDBConnection: (uri: string) => Promise<IPCResult<GraphitiValidationResult>>;
-  validateOpenAIApiKey: (apiKey: string) => Promise<IPCResult<GraphitiValidationResult>>;
-  testGraphitiConnection: (
-    falkorDbUri: string,
-    openAiApiKey: string
-  ) => Promise<IPCResult<GraphitiConnectionTestResult>>;
+  validateLLMApiKey: (provider: string, apiKey: string) => Promise<IPCResult<GraphitiValidationResult>>;
+  testGraphitiConnection: (config: {
+    dbPath?: string;
+    database?: string;
+    llmProvider: string;
+    apiKey: string;
+  }) => Promise<IPCResult<GraphitiConnectionTestResult>>;
 
   // Git Operations
   getGitBranches: (projectPath: string) => Promise<IPCResult<string[]>>;
@@ -70,6 +69,36 @@ export interface ProjectAPI {
   detectMainBranch: (projectPath: string) => Promise<IPCResult<string | null>>;
   checkGitStatus: (projectPath: string) => Promise<IPCResult<GitStatus>>;
   initializeGit: (projectPath: string) => Promise<IPCResult<InitializationResult>>;
+
+  // Ollama Model Detection
+  checkOllamaStatus: (baseUrl?: string) => Promise<IPCResult<{
+    running: boolean;
+    url: string;
+    version?: string;
+    message?: string;
+  }>>;
+  listOllamaModels: (baseUrl?: string) => Promise<IPCResult<{
+    models: Array<{
+      name: string;
+      size_bytes: number;
+      size_gb: number;
+      modified_at: string;
+      is_embedding: boolean;
+      embedding_dim?: number | null;
+      description?: string;
+    }>;
+    count: number;
+  }>>;
+  listOllamaEmbeddingModels: (baseUrl?: string) => Promise<IPCResult<{
+    embedding_models: Array<{
+      name: string;
+      embedding_dim: number | null;
+      description: string;
+      size_bytes: number;
+      size_gb: number;
+    }>;
+    count: number;
+  }>>;
 }
 
 export const createProjectAPI = (): ProjectAPI => ({
@@ -141,34 +170,27 @@ export const createProjectAPI = (): ProjectAPI => ({
   getDefaultProjectLocation: (): Promise<string | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.DIALOG_GET_DEFAULT_PROJECT_LOCATION),
 
-  // Docker & Infrastructure Operations
-  getInfrastructureStatus: (port?: number): Promise<IPCResult<InfrastructureStatus>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_STATUS, port),
+  // Memory Infrastructure Operations (LadybugDB - no Docker required)
+  getMemoryInfrastructureStatus: (dbPath?: string): Promise<IPCResult<InfrastructureStatus>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_STATUS, dbPath),
 
-  startFalkorDB: (port?: number): Promise<IPCResult<{ success: boolean; error?: string }>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_START_FALKORDB, port),
+  listMemoryDatabases: (dbPath?: string): Promise<IPCResult<string[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_LIST_DATABASES, dbPath),
 
-  stopFalkorDB: (): Promise<IPCResult<{ success: boolean; error?: string }>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_STOP_FALKORDB),
-
-  openDockerDesktop: (): Promise<IPCResult<{ success: boolean; error?: string }>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_OPEN_DESKTOP),
-
-  getDockerDownloadUrl: (): Promise<string> =>
-    ipcRenderer.invoke(IPC_CHANNELS.DOCKER_GET_DOWNLOAD_URL),
+  testMemoryConnection: (dbPath?: string, database?: string): Promise<IPCResult<GraphitiValidationResult>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_TEST_CONNECTION, dbPath, database),
 
   // Graphiti Validation Operations
-  validateFalkorDBConnection: (uri: string): Promise<IPCResult<GraphitiValidationResult>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_VALIDATE_FALKORDB, uri),
+  validateLLMApiKey: (provider: string, apiKey: string): Promise<IPCResult<GraphitiValidationResult>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_VALIDATE_LLM, provider, apiKey),
 
-  validateOpenAIApiKey: (apiKey: string): Promise<IPCResult<GraphitiValidationResult>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_VALIDATE_OPENAI, apiKey),
-
-  testGraphitiConnection: (
-    falkorDbUri: string,
-    openAiApiKey: string
-  ): Promise<IPCResult<GraphitiConnectionTestResult>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_TEST_CONNECTION, falkorDbUri, openAiApiKey),
+  testGraphitiConnection: (config: {
+    dbPath?: string;
+    database?: string;
+    llmProvider: string;
+    apiKey: string;
+  }): Promise<IPCResult<GraphitiConnectionTestResult>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_TEST_CONNECTION, config),
 
   // Git Operations
   getGitBranches: (projectPath: string): Promise<IPCResult<string[]>> =>
@@ -184,5 +206,15 @@ export const createProjectAPI = (): ProjectAPI => ({
     ipcRenderer.invoke(IPC_CHANNELS.GIT_CHECK_STATUS, projectPath),
 
   initializeGit: (projectPath: string): Promise<IPCResult<InitializationResult>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.GIT_INITIALIZE, projectPath)
+    ipcRenderer.invoke(IPC_CHANNELS.GIT_INITIALIZE, projectPath),
+
+  // Ollama Model Detection
+  checkOllamaStatus: (baseUrl?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.OLLAMA_CHECK_STATUS, baseUrl),
+
+  listOllamaModels: (baseUrl?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.OLLAMA_LIST_MODELS, baseUrl),
+
+  listOllamaEmbeddingModels: (baseUrl?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.OLLAMA_LIST_EMBEDDING_MODELS, baseUrl)
 });

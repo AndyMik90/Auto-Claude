@@ -26,8 +26,6 @@ interface SectionRouterProps {
   setShowLinearKey: React.Dispatch<React.SetStateAction<boolean>>;
   showOpenAIKey: boolean;
   setShowOpenAIKey: React.Dispatch<React.SetStateAction<boolean>>;
-  showFalkorPassword: boolean;
-  setShowFalkorPassword: React.Dispatch<React.SetStateAction<boolean>>;
   showGitHubToken: boolean;
   setShowGitHubToken: React.Dispatch<React.SetStateAction<boolean>>;
   gitHubConnectionStatus: GitHubSyncStatus | null;
@@ -64,8 +62,6 @@ export function SectionRouter({
   setShowLinearKey,
   showOpenAIKey,
   setShowOpenAIKey,
-  showFalkorPassword,
-  setShowFalkorPassword,
   showGitHubToken,
   setShowGitHubToken,
   gitHubConnectionStatus,
@@ -193,8 +189,6 @@ export function SectionRouter({
               updateEnvConfig={updateEnvConfig}
               showOpenAIKey={showOpenAIKey}
               setShowOpenAIKey={setShowOpenAIKey}
-              showFalkorPassword={showFalkorPassword}
-              setShowFalkorPassword={setShowFalkorPassword}
               expanded={true}
               onToggle={() => {}}
             />

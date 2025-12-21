@@ -98,26 +98,19 @@ export function registerEnvHandlers(
       if (pc.ollamaLlmModel) existingVars['OLLAMA_LLM_MODEL'] = pc.ollamaLlmModel;
       if (pc.ollamaEmbeddingModel) existingVars['OLLAMA_EMBEDDING_MODEL'] = pc.ollamaEmbeddingModel;
       if (pc.ollamaEmbeddingDim) existingVars['OLLAMA_EMBEDDING_DIM'] = String(pc.ollamaEmbeddingDim);
-      // FalkorDB
-      if (pc.falkorDbHost) existingVars['GRAPHITI_FALKORDB_HOST'] = pc.falkorDbHost;
-      if (pc.falkorDbPort) existingVars['GRAPHITI_FALKORDB_PORT'] = String(pc.falkorDbPort);
-      if (pc.falkorDbPassword) existingVars['GRAPHITI_FALKORDB_PASSWORD'] = pc.falkorDbPassword;
+      // LadybugDB (embedded database)
+      if (pc.dbPath) existingVars['GRAPHITI_DB_PATH'] = pc.dbPath;
+      if (pc.database) existingVars['GRAPHITI_DATABASE'] = pc.database;
     }
     // Legacy fields (still supported)
     if (config.openaiApiKey !== undefined) {
       existingVars['OPENAI_API_KEY'] = config.openaiApiKey;
     }
-    if (config.graphitiFalkorDbHost !== undefined) {
-      existingVars['GRAPHITI_FALKORDB_HOST'] = config.graphitiFalkorDbHost;
-    }
-    if (config.graphitiFalkorDbPort !== undefined) {
-      existingVars['GRAPHITI_FALKORDB_PORT'] = String(config.graphitiFalkorDbPort);
-    }
-    if (config.graphitiFalkorDbPassword !== undefined) {
-      existingVars['GRAPHITI_FALKORDB_PASSWORD'] = config.graphitiFalkorDbPassword;
-    }
     if (config.graphitiDatabase !== undefined) {
       existingVars['GRAPHITI_DATABASE'] = config.graphitiDatabase;
+    }
+    if (config.graphitiDbPath !== undefined) {
+      existingVars['GRAPHITI_DB_PATH'] = config.graphitiDbPath;
     }
     if (config.enableFancyUi !== undefined) {
       existingVars['ENABLE_FANCY_UI'] = config.enableFancyUi ? 'true' : 'false';
@@ -200,11 +193,9 @@ ${existingVars['OLLAMA_LLM_MODEL'] ? `OLLAMA_LLM_MODEL=${existingVars['OLLAMA_LL
 ${existingVars['OLLAMA_EMBEDDING_MODEL'] ? `OLLAMA_EMBEDDING_MODEL=${existingVars['OLLAMA_EMBEDDING_MODEL']}` : '# OLLAMA_EMBEDDING_MODEL='}
 ${existingVars['OLLAMA_EMBEDDING_DIM'] ? `OLLAMA_EMBEDDING_DIM=${existingVars['OLLAMA_EMBEDDING_DIM']}` : '# OLLAMA_EMBEDDING_DIM=768'}
 
-# FalkorDB Connection
-${existingVars['GRAPHITI_FALKORDB_HOST'] ? `GRAPHITI_FALKORDB_HOST=${existingVars['GRAPHITI_FALKORDB_HOST']}` : '# GRAPHITI_FALKORDB_HOST=localhost'}
-${existingVars['GRAPHITI_FALKORDB_PORT'] ? `GRAPHITI_FALKORDB_PORT=${existingVars['GRAPHITI_FALKORDB_PORT']}` : '# GRAPHITI_FALKORDB_PORT=6380'}
-${existingVars['GRAPHITI_FALKORDB_PASSWORD'] ? `GRAPHITI_FALKORDB_PASSWORD=${existingVars['GRAPHITI_FALKORDB_PASSWORD']}` : '# GRAPHITI_FALKORDB_PASSWORD='}
+# LadybugDB Database (embedded - no Docker required)
 ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHITI_DATABASE']}` : '# GRAPHITI_DATABASE=auto_claude_memory'}
+${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_DB_PATH']}` : '# GRAPHITI_DB_PATH=~/.auto-claude/graphs'}
 `;
 
     return content;
@@ -316,17 +307,11 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
         config.openaiKeyIsGlobal = true;
       }
 
-      if (vars['GRAPHITI_FALKORDB_HOST']) {
-        config.graphitiFalkorDbHost = vars['GRAPHITI_FALKORDB_HOST'];
-      }
-      if (vars['GRAPHITI_FALKORDB_PORT']) {
-        config.graphitiFalkorDbPort = parseInt(vars['GRAPHITI_FALKORDB_PORT'], 10);
-      }
-      if (vars['GRAPHITI_FALKORDB_PASSWORD']) {
-        config.graphitiFalkorDbPassword = vars['GRAPHITI_FALKORDB_PASSWORD'];
-      }
       if (vars['GRAPHITI_DATABASE']) {
         config.graphitiDatabase = vars['GRAPHITI_DATABASE'];
+      }
+      if (vars['GRAPHITI_DB_PATH']) {
+        config.graphitiDbPath = vars['GRAPHITI_DB_PATH'];
       }
 
       if (vars['ENABLE_FANCY_UI']?.toLowerCase() === 'false') {
@@ -365,10 +350,9 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
           ollamaLlmModel: vars['OLLAMA_LLM_MODEL'],
           ollamaEmbeddingModel: vars['OLLAMA_EMBEDDING_MODEL'],
           ollamaEmbeddingDim: vars['OLLAMA_EMBEDDING_DIM'] ? parseInt(vars['OLLAMA_EMBEDDING_DIM'], 10) : undefined,
-          // FalkorDB
-          falkorDbHost: vars['GRAPHITI_FALKORDB_HOST'],
-          falkorDbPort: vars['GRAPHITI_FALKORDB_PORT'] ? parseInt(vars['GRAPHITI_FALKORDB_PORT'], 10) : undefined,
-          falkorDbPassword: vars['GRAPHITI_FALKORDB_PASSWORD'],
+          // LadybugDB
+          database: vars['GRAPHITI_DATABASE'],
+          dbPath: vars['GRAPHITI_DB_PATH'],
         };
       }
 

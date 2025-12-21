@@ -279,20 +279,19 @@ export interface ElectronAPI {
   checkClaudeAuth: (projectId: string) => Promise<IPCResult<ClaudeAuthResult>>;
   invokeClaudeSetup: (projectId: string) => Promise<IPCResult<ClaudeAuthResult>>;
 
-  // Docker & Infrastructure operations (for Graphiti/FalkorDB)
-  getInfrastructureStatus: (port?: number) => Promise<IPCResult<InfrastructureStatus>>;
-  startFalkorDB: (port?: number) => Promise<IPCResult<{ success: boolean; error?: string }>>;
-  stopFalkorDB: () => Promise<IPCResult<{ success: boolean; error?: string }>>;
-  openDockerDesktop: () => Promise<IPCResult<{ success: boolean; error?: string }>>;
-  getDockerDownloadUrl: () => Promise<string>;
+  // Memory Infrastructure operations (LadybugDB - no Docker required)
+  getMemoryInfrastructureStatus: (dbPath?: string) => Promise<IPCResult<InfrastructureStatus>>;
+  listMemoryDatabases: (dbPath?: string) => Promise<IPCResult<string[]>>;
+  testMemoryConnection: (dbPath?: string, database?: string) => Promise<IPCResult<GraphitiValidationResult>>;
 
   // Graphiti validation operations
-  validateFalkorDBConnection: (uri: string) => Promise<IPCResult<GraphitiValidationResult>>;
-  validateOpenAIApiKey: (apiKey: string) => Promise<IPCResult<GraphitiValidationResult>>;
-  testGraphitiConnection: (
-    falkorDbUri: string,
-    openAiApiKey: string
-  ) => Promise<IPCResult<GraphitiConnectionTestResult>>;
+  validateLLMApiKey: (provider: string, apiKey: string) => Promise<IPCResult<GraphitiValidationResult>>;
+  testGraphitiConnection: (config: {
+    dbPath?: string;
+    database?: string;
+    llmProvider: string;
+    apiKey: string;
+  }) => Promise<IPCResult<GraphitiConnectionTestResult>>;
 
   // Linear integration operations
   getLinearTeams: (projectId: string) => Promise<IPCResult<LinearTeam[]>>;
@@ -520,6 +519,36 @@ export interface ElectronAPI {
   detectMainBranch: (projectPath: string) => Promise<IPCResult<string | null>>;
   checkGitStatus: (projectPath: string) => Promise<IPCResult<GitStatus>>;
   initializeGit: (projectPath: string) => Promise<IPCResult<InitializationResult>>;
+
+  // Ollama model detection operations
+  checkOllamaStatus: (baseUrl?: string) => Promise<IPCResult<{
+    running: boolean;
+    url: string;
+    version?: string;
+    message?: string;
+  }>>;
+  listOllamaModels: (baseUrl?: string) => Promise<IPCResult<{
+    models: Array<{
+      name: string;
+      size_bytes: number;
+      size_gb: number;
+      modified_at: string;
+      is_embedding: boolean;
+      embedding_dim?: number | null;
+      description?: string;
+    }>;
+    count: number;
+  }>>;
+  listOllamaEmbeddingModels: (baseUrl?: string) => Promise<IPCResult<{
+    embedding_models: Array<{
+      name: string;
+      embedding_dim: number | null;
+      description: string;
+      size_bytes: number;
+      size_gb: number;
+    }>;
+    count: number;
+  }>>;
 }
 
 declare global {

@@ -28,8 +28,6 @@ interface SecuritySettingsProps {
   // Password visibility
   showOpenAIKey: boolean;
   setShowOpenAIKey: React.Dispatch<React.SetStateAction<boolean>>;
-  showFalkorPassword: boolean;
-  setShowFalkorPassword: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Collapsible section
   expanded: boolean;
@@ -43,8 +41,6 @@ export function SecuritySettings({
   updateEnvConfig,
   showOpenAIKey,
   setShowOpenAIKey,
-  showFalkorPassword,
-  setShowFalkorPassword,
   expanded,
   onToggle
 }: SecuritySettingsProps) {
@@ -80,7 +76,7 @@ export function SecuritySettings({
             <div className="space-y-0.5">
               <Label className="font-normal text-foreground">Use Graphiti (Recommended)</Label>
               <p className="text-xs text-muted-foreground">
-                Persistent cross-session memory using FalkorDB graph database
+                Persistent cross-session memory using LadybugDB (embedded database)
               </p>
             </div>
             <Switch
@@ -103,13 +99,6 @@ export function SecuritySettings({
 
           {envConfig.graphitiEnabled && (
             <>
-              <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
-                <p className="text-xs text-warning">
-                  Requires FalkorDB running. Start with:{' '}
-                  <code className="px-1 bg-warning/10 rounded">docker-compose up -d falkordb</code>
-                </p>
-              </div>
-
               {/* Graphiti MCP Server Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -130,19 +119,13 @@ export function SecuritySettings({
                 <div className="space-y-2 ml-6">
                   <Label className="text-sm font-medium text-foreground">Graphiti MCP Server URL</Label>
                   <p className="text-xs text-muted-foreground">
-                    URL of the Graphiti MCP server (requires Docker container)
+                    URL of the Graphiti MCP server for agent memory access
                   </p>
                   <Input
                     placeholder="http://localhost:8000/mcp/"
                     value={settings.graphitiMcpUrl || ''}
                     onChange={(e) => setSettings({ ...settings, graphitiMcpUrl: e.target.value || undefined })}
                   />
-                  <div className="rounded-lg border border-info/30 bg-info/5 p-3">
-                    <p className="text-xs text-info">
-                      Start the MCP server with:{' '}
-                      <code className="px-1 bg-info/10 rounded">docker run -d -p 8000:8000 falkordb/graphiti-knowledge-graph-mcp</code>
-                    </p>
-                  </div>
                 </div>
               )}
 
@@ -257,52 +240,27 @@ export function SecuritySettings({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-foreground">FalkorDB Host</Label>
-                  <Input
-                    placeholder="localhost"
-                    value={envConfig.graphitiFalkorDbHost || ''}
-                    onChange={(e) => updateEnvConfig({ graphitiFalkorDbHost: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-foreground">FalkorDB Port</Label>
-                  <Input
-                    type="number"
-                    placeholder="6380"
-                    value={envConfig.graphitiFalkorDbPort || ''}
-                    onChange={(e) => updateEnvConfig({ graphitiFalkorDbPort: parseInt(e.target.value) || undefined })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">FalkorDB Password (Optional)</Label>
-                <div className="relative">
-                  <Input
-                    type={showFalkorPassword ? 'text' : 'password'}
-                    placeholder="Leave empty if none"
-                    value={envConfig.graphitiFalkorDbPassword || ''}
-                    onChange={(e) => updateEnvConfig({ graphitiFalkorDbPassword: e.target.value })}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowFalkorPassword(!showFalkorPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showFalkorPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">Database Name</Label>
+                <p className="text-xs text-muted-foreground">
+                  Stored in ~/.auto-claude/graphs/
+                </p>
                 <Input
                   placeholder="auto_claude_memory"
                   value={envConfig.graphitiDatabase || ''}
                   onChange={(e) => updateEnvConfig({ graphitiDatabase: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">Database Path (Optional)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Custom storage location. Default: ~/.auto-claude/graphs/
+                </p>
+                <Input
+                  placeholder="~/.auto-claude/graphs"
+                  value={envConfig.graphitiDbPath || ''}
+                  onChange={(e) => updateEnvConfig({ graphitiDbPath: e.target.value || undefined })}
                 />
               </div>
             </>

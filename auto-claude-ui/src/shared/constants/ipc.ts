@@ -198,17 +198,19 @@ export const IPC_CHANNELS = {
   GITHUB_INVESTIGATION_COMPLETE: 'github:investigationComplete',
   GITHUB_INVESTIGATION_ERROR: 'github:investigationError',
 
-  // Docker & Infrastructure status
-  DOCKER_STATUS: 'docker:status',
-  DOCKER_START_FALKORDB: 'docker:startFalkordb',
-  DOCKER_STOP_FALKORDB: 'docker:stopFalkordb',
-  DOCKER_OPEN_DESKTOP: 'docker:openDesktop',
-  DOCKER_GET_DOWNLOAD_URL: 'docker:getDownloadUrl',
+  // Memory Infrastructure status (LadybugDB - no Docker required)
+  MEMORY_STATUS: 'memory:status',
+  MEMORY_LIST_DATABASES: 'memory:listDatabases',
+  MEMORY_TEST_CONNECTION: 'memory:testConnection',
 
   // Graphiti validation
-  GRAPHITI_VALIDATE_FALKORDB: 'graphiti:validateFalkordb',
-  GRAPHITI_VALIDATE_OPENAI: 'graphiti:validateOpenai',
+  GRAPHITI_VALIDATE_LLM: 'graphiti:validateLlm',
   GRAPHITI_TEST_CONNECTION: 'graphiti:testConnection',
+
+  // Ollama model detection
+  OLLAMA_CHECK_STATUS: 'ollama:checkStatus',
+  OLLAMA_LIST_MODELS: 'ollama:listModels',
+  OLLAMA_LIST_EMBEDDING_MODELS: 'ollama:listEmbeddingModels',
 
   // Auto Claude source updates
   AUTOBUILD_SOURCE_CHECK: 'autobuild:source:check',

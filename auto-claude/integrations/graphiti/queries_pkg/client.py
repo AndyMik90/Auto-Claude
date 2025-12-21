@@ -16,15 +16,18 @@ logger = logging.getLogger(__name__)
 
 def _apply_ladybug_monkeypatch() -> bool:
     """
-    Apply monkeypatch to use LadybugDB as Kuzu replacement.
+    Apply monkeypatch to use LadybugDB as Kuzu replacement, or use native kuzu.
 
     LadybugDB is a fork of Kuzu that provides an embedded graph database.
     Since graphiti-core has a KuzuDriver, we can use LadybugDB by making
     the 'kuzu' import point to 'real_ladybug'.
 
+    Falls back to native kuzu if LadybugDB is not available.
+
     Returns:
-        True if monkeypatch was applied successfully
+        True if kuzu (or monkeypatch) is available
     """
+    # First try LadybugDB monkeypatch
     try:
         import real_ladybug
 
@@ -32,9 +35,18 @@ def _apply_ladybug_monkeypatch() -> bool:
         logger.info("Applied LadybugDB monkeypatch (kuzu -> real_ladybug)")
         return True
     except ImportError:
+        pass
+
+    # Fall back to native kuzu
+    try:
+        import kuzu  # noqa: F401
+
+        logger.info("Using native kuzu (LadybugDB not installed)")
+        return True
+    except ImportError:
         logger.warning(
-            "LadybugDB not installed. Install with: pip install real_ladybug "
-            "(requires Python 3.12+)"
+            "Neither LadybugDB nor kuzu installed. "
+            "Install with: pip install real_ladybug (requires Python 3.12+) or pip install kuzu"
         )
         return False
 
@@ -130,11 +142,16 @@ class GraphitiClient:
                 return False
 
             try:
-                from graphiti_core.driver.kuzu_driver import KuzuDriver
+                # Use our patched KuzuDriver that properly creates FTS indexes
+                # The original graphiti-core KuzuDriver has build_indices_and_constraints()
+                # as a no-op, which causes FTS search failures
+                from integrations.graphiti.queries_pkg.kuzu_driver_patched import (
+                    PatchedKuzuDriver as KuzuDriver,
+                )
 
                 db_path = self.config.get_db_path()
                 self._driver = KuzuDriver(db=str(db_path))
-                logger.info(f"Initialized LadybugDB driver at: {db_path}")
+                logger.info(f"Initialized LadybugDB driver (patched) at: {db_path}")
             except ImportError as e:
                 logger.warning(f"KuzuDriver not available: {e}")
                 return False

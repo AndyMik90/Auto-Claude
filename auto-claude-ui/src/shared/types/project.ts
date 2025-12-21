@@ -139,33 +139,23 @@ export interface ConventionsInfo {
 export interface GraphitiMemoryStatus {
   enabled: boolean;
   available: boolean;
-  host?: string;
-  port?: number;
   database?: string;
+  dbPath?: string;
   reason?: string;
 }
 
-// Docker & Infrastructure Types
-export interface DockerStatus {
-  installed: boolean;
-  running: boolean;
-  version?: string;
-  error?: string;
-}
-
-export interface FalkorDBStatus {
-  containerExists: boolean;
-  containerRunning: boolean;
-  containerName: string;
-  port: number;
-  healthy: boolean;
+// Memory Infrastructure Types
+export interface MemoryDatabaseStatus {
+  kuzuInstalled: boolean;
+  databasePath: string;
+  databaseExists: boolean;
+  databases: string[];
   error?: string;
 }
 
 export interface InfrastructureStatus {
-  docker: DockerStatus;
-  falkordb: FalkorDBStatus;
-  ready: boolean; // True if both Docker is running and FalkorDB is healthy
+  memory: MemoryDatabaseStatus;
+  ready: boolean; // True if memory database is available
 }
 
 // Graphiti Validation Types
@@ -180,8 +170,8 @@ export interface GraphitiValidationResult {
 }
 
 export interface GraphitiConnectionTestResult {
-  falkordb: GraphitiValidationResult;
-  openai: GraphitiValidationResult;
+  database: GraphitiValidationResult;
+  llmProvider: GraphitiValidationResult;
   ready: boolean;
 }
 
@@ -241,10 +231,9 @@ export interface GraphitiProviderConfig {
   huggingfaceApiKey?: string;
   huggingfaceEmbeddingModel?: string;
 
-  // FalkorDB connection (required for all providers)
-  falkorDbHost?: string;
-  falkorDbPort?: number;
-  falkorDbPassword?: string;
+  // LadybugDB settings (embedded database - no Docker required)
+  database?: string;  // Database name (default: auto_claude_memory)
+  dbPath?: string;    // Database storage path (default: ~/.auto-claude/graphs)
 }
 
 export interface GraphitiProviderInfo {
@@ -268,7 +257,7 @@ export interface GraphitiMemoryState {
 
 export interface MemoryEpisode {
   id: string;
-  type: 'session_insight' | 'codebase_discovery' | 'codebase_map' | 'pattern' | 'gotcha';
+  type: 'session_insight' | 'codebase_discovery' | 'codebase_map' | 'pattern' | 'gotcha' | 'task_outcome';
   timestamp: string;
   content: string;
   session_number?: number;
@@ -318,16 +307,15 @@ export interface ProjectEnvConfig {
   defaultBranch?: string; // Base branch for worktree creation (e.g., 'main', 'develop')
 
   // Graphiti Memory Integration (V2 - Multi-provider support)
+  // Uses LadybugDB embedded database (no Docker required, Python 3.12+)
   graphitiEnabled: boolean;
-  graphitiProviderConfig?: GraphitiProviderConfig;  // New V2 provider configuration
+  graphitiProviderConfig?: GraphitiProviderConfig;  // Provider configuration
   // Legacy fields (still supported for backward compatibility)
   openaiApiKey?: string;
   // Indicates if the OpenAI key is from global settings (not project-specific)
   openaiKeyIsGlobal?: boolean;
-  graphitiFalkorDbHost?: string;
-  graphitiFalkorDbPort?: number;
-  graphitiFalkorDbPassword?: string;
   graphitiDatabase?: string;
+  graphitiDbPath?: string;
 
   // UI Settings
   enableFancyUi: boolean;
