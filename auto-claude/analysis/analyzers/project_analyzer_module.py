@@ -15,6 +15,25 @@ from .base import SERVICE_INDICATORS, SERVICE_ROOT_FILES, SKIP_DIRS
 from .service_analyzer import ServiceAnalyzer
 
 
+def _has_service_root_file(directory: Path) -> bool:
+    """Check if a directory has service root files, including Xcode bundles."""
+    # Check regular files
+    for f in SERVICE_ROOT_FILES:
+        if '*' in f:
+            # Skip glob patterns for now
+            continue
+        if (directory / f).exists():
+            return True
+
+    # Check for Xcode project bundles (directories that end with .xcodeproj or .xcworkspace)
+    for item in directory.iterdir():
+        if item.is_dir():
+            if item.name.endswith('.xcodeproj') or item.name.endswith('.xcworkspace'):
+                return True
+
+    return False
+
+
 class ProjectAnalyzer:
     """Analyzes an entire project, detecting monorepo structure and all services."""
 
@@ -71,7 +90,7 @@ class ProjectAnalyzer:
                 continue
 
             # Check if this directory has service root files
-            if any((item / f).exists() for f in SERVICE_ROOT_FILES):
+            if _has_service_root_file(item):
                 service_dirs_found += 1
 
         # If we have 2+ directories with service root files, it's likely a monorepo
@@ -104,7 +123,7 @@ class ProjectAnalyzer:
                         continue
 
                     # Check if this looks like a service
-                    has_root_file = any((item / f).exists() for f in SERVICE_ROOT_FILES)
+                    has_root_file = _has_service_root_file(item)
                     is_service_name = item.name.lower() in SERVICE_INDICATORS
 
                     if has_root_file or (
