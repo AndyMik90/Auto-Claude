@@ -233,8 +233,6 @@ export const createProjectAPI = (): ProjectAPI => ({
   }): Promise<IPCResult<GraphitiConnectionTestResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_TEST_CONNECTION, config),
 
-<<<<<<< HEAD:apps/frontend/src/preload/api/project-api.ts
-=======
   // Ollama Model Management
   scanOllamaModels: (baseUrl: string): Promise<IPCResult<{
     models: Array<{
@@ -261,7 +259,6 @@ export const createProjectAPI = (): ProjectAPI => ({
     return () => ipcRenderer.off(IPC_CHANNELS.OLLAMA_PULL_PROGRESS, listener);
   },
 
->>>>>>> 795c470 (feat(ollama): add real-time download progress tracking for model downloads):auto-claude-ui/src/preload/api/project-api.ts
   // Git Operations
   getGitBranches: (projectPath: string): Promise<IPCResult<string[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS.GIT_GET_BRANCHES, projectPath),
