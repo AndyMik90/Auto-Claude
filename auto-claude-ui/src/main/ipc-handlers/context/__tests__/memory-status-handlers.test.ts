@@ -196,9 +196,13 @@ GRAPHITI_ENABLED=true
     });
   });
 
-  describe('buildMemoryStatus - Ollama Provider (no API key required)', () => {
-    it('should return available:true for Ollama without any API key', async () => {
-      // Arrange: Ollama doesn't require an API key
+  /**
+   * Integration tests for subtask-5-4: Ollama Local Configuration
+   * Verifies Ollama configuration flow with no API key required
+   */
+  describe('buildMemoryStatus - Ollama Local Configuration (subtask-5-4)', () => {
+    it('should return available:true for Ollama without any API key or base URL', async () => {
+      // Arrange: Ollama doesn't require an API key (local deployment)
       writeEnvFile(`
 GRAPHITI_ENABLED=true
 GRAPHITI_LLM_PROVIDER=ollama
@@ -211,9 +215,155 @@ GRAPHITI_EMBEDDER_PROVIDER=ollama
       // Act
       const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
 
-      // Assert
+      // Assert: Ollama local deployment should be available without any credentials
       expect(status.enabled).toBe(true);
       expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
+    });
+
+    it('should return available:true for Ollama with custom base URL (no API key)', async () => {
+      // Arrange: Ollama with custom base URL, still no API key required
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=ollama
+GRAPHITI_EMBEDDER_PROVIDER=ollama
+OLLAMA_BASE_URL=http://192.168.1.100:11434
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Custom base URL should still work without API key
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
+    });
+
+    it('should return available:true for Ollama LLM with any other embedding provider when both credentials satisfied', async () => {
+      // Arrange: Ollama LLM (no key needed) + Voyage embeddings (needs key)
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=ollama
+GRAPHITI_EMBEDDER_PROVIDER=voyage
+VOYAGE_API_KEY=test-voyage-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Ollama doesn't need key, Voyage key is present
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+
+    it('should return available:false when Ollama LLM but embedding provider key is missing', async () => {
+      // Arrange: Ollama LLM (no key needed) + Voyage embeddings (missing key)
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=ollama
+GRAPHITI_EMBEDDER_PROVIDER=voyage
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Should fail for missing Voyage key, not Ollama
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(false);
+      expect(status.reason).toContain('VOYAGE_API_KEY');
+      expect(status.reason).toContain('voyage');
+      // Should NOT mention Ollama since it doesn't need credentials
+      expect(status.reason).not.toContain('OLLAMA');
+    });
+
+    it('should return available:true for any LLM provider with Ollama embeddings when LLM key is present', async () => {
+      // Arrange: Google LLM (needs key) + Ollama embeddings (no key needed)
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=google
+GRAPHITI_EMBEDDER_PROVIDER=ollama
+GOOGLE_API_KEY=test-google-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Google key present, Ollama doesn't need key
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+
+    it('should return available:false when using LLM provider that needs key with Ollama embeddings but missing LLM key', async () => {
+      // Arrange: Google LLM (missing key) + Ollama embeddings (no key needed)
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=google
+GRAPHITI_EMBEDDER_PROVIDER=ollama
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Should fail for missing Google key
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(false);
+      expect(status.reason).toContain('GOOGLE_API_KEY');
+      expect(status.reason).toContain('google');
+    });
+
+    it('should return available:true for Groq LLM with Ollama embeddings', async () => {
+      // Arrange: Groq LLM + Ollama embeddings
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=groq
+GRAPHITI_EMBEDDER_PROVIDER=ollama
+GROQ_API_KEY=test-groq-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Groq key present, Ollama doesn't need key
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+
+    it('should return available:true with Ollama using default localhost base URL', async () => {
+      // Arrange: Ollama without explicit base URL (uses default localhost:11434)
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=ollama
+GRAPHITI_EMBEDDER_PROVIDER=ollama
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Default localhost:11434 should be used
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
     });
   });
 
