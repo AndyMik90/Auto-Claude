@@ -5,9 +5,10 @@
   "license": "AGPL-3.0",
   "author": "Auto Claude Team",
   "scripts": {
-    "install:backend": "cd Apps/backend && python -m pip install -r requirements.txt",
+    "install:backend": "cd Apps/backend && python -m pip install claude-agent-sdk python-dotenv tomli google-generativeai",
     "install:frontend": "cd Apps/frontend && npm install",
     "install:all": "npm run install:backend && npm run install:frontend",
+    "install:backend:full": "cd Apps/backend && python -m pip install -r requirements.txt",
     "start": "cd Apps/frontend && npm run build && npm run start",
     "dev": "cd Apps/frontend && npm run dev",
     "build": "cd Apps/frontend && npm run build",

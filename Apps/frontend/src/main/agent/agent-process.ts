@@ -58,11 +58,13 @@ export class AgentProcessManager {
 
     // Auto-detect from app location
     const possiblePaths = [
-      // Dev mode: from dist/main -> ../../auto-claude (sibling to auto-claude-ui)
-      path.resolve(__dirname, '..', '..', '..', 'auto-claude'),
-      // Alternative: from app root
-      path.resolve(app.getAppPath(), '..', 'auto-claude'),
-      // If running from repo root
+      // Dev mode: from dist/main -> ../../backend (Apps/frontend/out/main -> Apps/backend)
+      path.resolve(__dirname, '..', '..', '..', 'backend'),
+      // Alternative: from app root -> Apps/backend
+      path.resolve(app.getAppPath(), '..', 'backend'),
+      // If running from repo root with Apps structure
+      path.resolve(process.cwd(), 'Apps', 'backend'),
+      // Legacy: auto-claude folder (for backwards compatibility)
       path.resolve(process.cwd(), 'auto-claude')
     ];
 
