@@ -144,6 +144,13 @@ export function TaskCreationWizard({
   // Drag-and-drop state for images over textarea
   const [isDragOverTextarea, setIsDragOverTextarea] = useState(false);
 
+  // Active drag data for file drop overlay
+  const [activeDragData, setActiveDragData] = useState<{
+    path: string;
+    name: string;
+    isDirectory: boolean;
+  } | null>(null);
+
   // Setup drag sensors with distance constraint to prevent accidental drags
   const sensors = useSensors(
     useSensor(PointerSensor, {
