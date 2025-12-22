@@ -1,3 +1,33 @@
+## 2.7.1 - Build Pipeline Enhancements
+
+### 🛠️ Improvements
+
+- Enhanced VirusTotal scan error handling in release workflow with graceful failure recovery and improved reporting visibility
+
+- Refactored macOS build workflow to support both Intel and ARM64 architectures with notarization for Intel builds and improved artifact handling
+
+- Streamlined CI/CD processes with updated caching strategies and enhanced error handling for external API interactions
+
+### 📚 Documentation
+
+- Clarified README documentation
+
+---
+
+## What's Changed
+
+- chore: Enhance VirusTotal scan error handling in release workflow by @AndyMik90 in d23fcd8
+
+- chore: Refactor macOS build workflow to support Intel and ARM64 architectures by @AndyMik90 in 326118b
+
+- docs: readme clarification by @AndyMik90 in 6afcc92
+
+- fix: version by @AndyMik90 in 2c93890
+
+## Thanks to all contributors
+
+@AndyMik90
+
 ## 2.7.0 - Tab Persistence & Memory System Modernization
 
 ### ✨ New Features
