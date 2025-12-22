@@ -1,6 +1,5 @@
-import { ipcMain } from 'electron';
+import { ipcMain, app } from 'electron';
 import type { BrowserWindow } from 'electron';
-import type { PythonEnvManager } from '../../python-env-manager';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { spawn } from 'child_process';
@@ -83,7 +82,6 @@ async function loadRecentMemories(
  * Register project context handlers
  */
 export function registerProjectContextHandlers(
-  pythonEnvManager: PythonEnvManager,
   _getMainWindow: () => BrowserWindow | null
 ): void {
   // Get full project context
@@ -163,7 +161,7 @@ export function registerProjectContextHandlers(
         // Get Python command directly from settings file (not pythonEnvManager which creates NEW venv)
         let pythonCmd = 'python3';
         try {
-          const settingsPath = path.join(require('electron').app.getPath('userData'), 'settings.json');
+          const settingsPath = path.join(app.getPath('userData'), 'settings.json');
           if (existsSync(settingsPath)) {
             const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
             if (settings.pythonPath && existsSync(settings.pythonPath)) {

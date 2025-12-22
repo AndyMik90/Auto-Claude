@@ -69,7 +69,7 @@ export function setupIpcHandlers(
   registerRoadmapHandlers(agentManager, getMainWindow);
 
   // Context and memory handlers
-  registerContextHandlers(pythonEnvManager, getMainWindow);
+  registerContextHandlers(getMainWindow);
 
   // Environment configuration handlers
   registerEnvHandlers(getMainWindow);
