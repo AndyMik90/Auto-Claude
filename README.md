@@ -13,8 +13,7 @@ Autonomous multi-agent coding framework that plans, builds, and validates softwa
 ### Prerequisites
 
 - **Node.js 24+** - [Download](https://nodejs.org/)
-- **Python 3.10+** - [Download](https://www.python.org/downloads/)
-- **Docker Desktop** - [Download](https://www.docker.com/products/docker-desktop/) (for Memory Layer)
+- **Python 3.12+** - [Download](https://www.python.org/downloads/) (3.12+ required for Memory Layer)
 - **Claude Code CLI** - `npm install -g @anthropic-ai/claude-code`
 - **Claude Pro/Max** subscription - [Upgrade](https://claude.ai/upgrade)
 - **Git repository** - Your project must be a git repo
@@ -38,10 +37,8 @@ npm run dev
 
 ### Memory Layer (Optional)
 
-```bash
-# Start FalkorDB for cross-session memory
-npm run docker:up
-```
+Memory Layer uses LadybugDB (embedded graph database) - no Docker required.
+Enable in settings or set `GRAPHITI_ENABLED=true` in `.env`.
 
 ### Download Pre-built
 
@@ -103,7 +100,6 @@ auto-claude/
 ├── Apps/
 │   ├── backend/           # Python backend (agents, specs, QA)
 │   └── frontend/          # Electron desktop UI
-├── docker-compose.yml     # FalkorDB for Memory Layer
 ├── guides/                # Documentation
 └── tests/                 # Test suite
 ```
@@ -148,8 +144,6 @@ Create `.env` files in `Apps/backend/` (copy from `.env.example`):
 | `npm run install:all` | Install backend + frontend dependencies |
 | `npm start` | Build and run desktop app |
 | `npm run dev` | Run in development mode |
-| `npm run docker:up` | Start Memory Layer (FalkorDB) |
-| `npm run docker:down` | Stop Memory Layer |
 | `npm run package` | Package app for distribution |
 | `npm run lint` | Run linter |
 | `npm test` | Run frontend tests |
