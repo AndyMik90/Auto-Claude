@@ -782,4 +782,302 @@ AZURE_OPENAI_API_KEY=test-azure-openai-api-key
       expect(status.available).toBe(true);
     });
   });
+
+  /**
+   * Integration tests for subtask-5-5: Backward Compatibility with OpenAI-Only Configurations
+   * Verifies that existing OpenAI-only configurations continue to work without regressions
+   */
+  describe('buildMemoryStatus - Backward Compatibility with OpenAI-Only (subtask-5-5)', () => {
+    /**
+     * Scenario: Fresh project enables Graphiti, OpenAI should be the default for both LLM and embeddings
+     */
+    it('should default to OpenAI provider when no explicit LLM provider is set', async () => {
+      // Arrange: Fresh project with GRAPHITI_ENABLED but no provider specified
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+OPENAI_API_KEY=sk-test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Should work with default OpenAI provider
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
+    });
+
+    it('should default to OpenAI provider when no explicit embedding provider is set', async () => {
+      // Arrange: Fresh project with GRAPHITI_ENABLED and LLM specified but no embedding provider
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Should work - embedding defaults to OpenAI
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+
+    it('should work with explicit openai for both providers', async () => {
+      // Arrange: Explicit OpenAI for both LLM and embeddings
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=openai
+GRAPHITI_EMBEDDER_PROVIDER=openai
+OPENAI_API_KEY=sk-test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Explicit OpenAI configuration works
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
+    });
+
+    it('should show correct error message when OPENAI_API_KEY is missing (default provider)', async () => {
+      // Arrange: Fresh project with GRAPHITI_ENABLED but no OPENAI_API_KEY
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Should fail with clear OPENAI_API_KEY error
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(false);
+      expect(status.reason).toContain('OPENAI_API_KEY');
+      expect(status.reason).toContain('openai');
+    });
+
+    it('should use global OpenAI key when project-level key is missing (backward compatible)', async () => {
+      // Arrange: Fresh project with GRAPHITI_ENABLED and global OpenAI key only
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+      `.trim());
+
+      writeGlobalSettings({
+        globalOpenAIApiKey: 'sk-global-openai-key'
+      });
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Global key fallback works
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
+    });
+
+    it('should prefer project-level OpenAI key over global key', async () => {
+      // Arrange: Both project and global OpenAI keys set
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+OPENAI_API_KEY=sk-project-specific-key
+      `.trim());
+
+      writeGlobalSettings({
+        globalOpenAIApiKey: 'sk-global-openai-key'
+      });
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Should be available (using project key)
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+
+    it('should return correct host/port/database for OpenAI-only configuration', async () => {
+      // Arrange: OpenAI-only configuration with default connection settings
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+OPENAI_API_KEY=sk-test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Default connection details are returned
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.host).toBe('localhost');
+      expect(status.port).toBe(6380);
+      expect(status.database).toBe('auto_claude_memory');
+    });
+
+    it('should return custom host/port/database when configured with OpenAI', async () => {
+      // Arrange: OpenAI configuration with custom FalkorDB settings
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+OPENAI_API_KEY=sk-test-openai-api-key
+GRAPHITI_FALKORDB_HOST=custom-host.example.com
+GRAPHITI_FALKORDB_PORT=6381
+GRAPHITI_DATABASE=custom_memory_db
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Custom connection details are returned
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.host).toBe('custom-host.example.com');
+      expect(status.port).toBe(6381);
+      expect(status.database).toBe('custom_memory_db');
+    });
+
+    it('should handle OpenAI key with special characters correctly', async () => {
+      // Arrange: OpenAI key with special characters in .env
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+OPENAI_API_KEY="sk-proj-ABC123_XYZ789-testkey"
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Key with special chars is handled correctly
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+
+    it('should not require other provider keys when using OpenAI (no key pollution)', async () => {
+      // Arrange: OpenAI-only config should NOT fail if other providers' keys are missing
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=openai
+GRAPHITI_EMBEDDER_PROVIDER=openai
+OPENAI_API_KEY=sk-test-openai-api-key
+      `.trim());
+      // Note: No GOOGLE_API_KEY, ANTHROPIC_API_KEY, etc.
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Should work without other provider keys
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      // Should NOT mention any other provider
+      expect(status.reason).toBeUndefined();
+    });
+
+    it('should return enabled:false when GRAPHITI_ENABLED is not set (even with OpenAI key)', async () => {
+      // Arrange: OpenAI key present but Graphiti not enabled
+      writeEnvFile(`
+OPENAI_API_KEY=sk-test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Graphiti is not enabled
+      expect(status.enabled).toBe(false);
+      expect(status.available).toBe(false);
+      expect(status.reason).toContain('not configured');
+    });
+
+    it('should return enabled:false when GRAPHITI_ENABLED is false', async () => {
+      // Arrange: GRAPHITI_ENABLED explicitly set to false
+      writeEnvFile(`
+GRAPHITI_ENABLED=false
+OPENAI_API_KEY=sk-test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Graphiti is disabled
+      expect(status.enabled).toBe(false);
+      expect(status.available).toBe(false);
+    });
+
+    it('should handle empty OPENAI_API_KEY as missing', async () => {
+      // Arrange: Empty OPENAI_API_KEY should be treated as missing
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+OPENAI_API_KEY=
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Empty key should fail
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(false);
+      expect(status.reason).toContain('OPENAI_API_KEY');
+    });
+
+    /**
+     * Regression test: Ensure the original hardcoded OpenAI behavior works
+     * This was the pre-multi-provider implementation that should still work
+     */
+    it('should work identically to pre-multi-provider implementation for OpenAI-only', async () => {
+      // Arrange: Simulate the original minimal configuration
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+OPENAI_API_KEY=sk-test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Original behavior is preserved
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
+      // Connection defaults are preserved
+      expect(status.host).toBe('localhost');
+      expect(status.port).toBe(6380);
+    });
+  });
 });
