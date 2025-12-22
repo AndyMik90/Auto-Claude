@@ -214,6 +214,99 @@ jobs:
           sha256sum ./* > checksums.sha256
           cat checksums.sha256
 
+      - name: Scan with VirusTotal
+        id: virustotal
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
+        env:
+          VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          if [ -z "$VT_API_KEY" ]; then
+            echo "::warning::VIRUSTOTAL_API_KEY not configured, skipping scan"
+            echo "vt_results=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "## VirusTotal Scan Results" > vt_results.md
+          echo "" >> vt_results.md
+
+          scan_failed=false
+
+          for file in release-assets/*.{exe,dmg,AppImage,deb}; do
+            [ -f "$file" ] || continue
+            filename=$(basename "$file")
+            echo "Scanning $filename..."
+
+            # Upload file to VirusTotal
+            response=$(curl -s --request POST \
+              --url "https://www.virustotal.com/api/v3/files" \
+              --header "x-apikey: $VT_API_KEY" \
+              --form "file=@$file")
+
+            # Extract analysis ID
+            analysis_id=$(echo "$response" | jq -r '.data.id // empty')
+
+            if [ -z "$analysis_id" ]; then
+              echo "::error::Failed to upload $filename to VirusTotal"
+              echo "Response: $response"
+              scan_failed=true
+              continue
+            fi
+
+            echo "Uploaded $filename, analysis ID: $analysis_id"
+
+            # Wait for analysis to complete (max 5 minutes per file)
+            for i in {1..30}; do
+              sleep 10
+              analysis=$(curl -s --request GET \
+                --url "https://www.virustotal.com/api/v3/analyses/$analysis_id" \
+                --header "x-apikey: $VT_API_KEY")
+
+              status=$(echo "$analysis" | jq -r '.data.attributes.status')
+              echo "  Status: $status (attempt $i/30)"
+
+              if [ "$status" = "completed" ]; then
+                break
+              fi
+            done
+
+            # Get file hash for permanent URL
+            file_hash=$(echo "$analysis" | jq -r '.meta.file_info.sha256 // empty')
+
+            if [ -z "$file_hash" ]; then
+              # Fallback: calculate hash locally
+              file_hash=$(sha256sum "$file" | cut -d' ' -f1)
+            fi
+
+            # Get detection stats
+            malicious=$(echo "$analysis" | jq -r '.data.attributes.stats.malicious // 0')
+            suspicious=$(echo "$analysis" | jq -r '.data.attributes.stats.suspicious // 0')
+            undetected=$(echo "$analysis" | jq -r '.data.attributes.stats.undetected // 0')
+
+            vt_url="https://www.virustotal.com/gui/file/$file_hash"
+
+            if [ "$malicious" -gt 0 ] || [ "$suspicious" -gt 0 ]; then
+              echo "::error::$filename has $malicious malicious and $suspicious suspicious detections!"
+              echo "- [$filename]($vt_url) - ⚠️ **$malicious malicious, $suspicious suspicious** detections" >> vt_results.md
+              scan_failed=true
+            else
+              echo "$filename is clean ($undetected engines, 0 detections)"
+              echo "- [$filename]($vt_url) - ✅ Clean ($undetected engines, 0 detections)" >> vt_results.md
+            fi
+          done
+
+          echo "" >> vt_results.md
+
+          # Save results for release notes
+          cat vt_results.md
+          echo "vt_results<<EOF" >> $GITHUB_OUTPUT
+          cat vt_results.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if [ "$scan_failed" = true ]; then
+            echo "::error::VirusTotal scan found issues. Review the results above."
+            exit 1
+          fi
+
       - name: Dry run summary
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
         run: |
@@ -240,7 +333,10 @@ jobs:
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
         uses: softprops/action-gh-release@v2
         with:
-          body: ${{ steps.changelog.outputs.body }}
+          body: |
+            ${{ steps.changelog.outputs.body }}
+
+            ${{ steps.virustotal.outputs.vt_results }}
           files: release-assets/*
           draft: false
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
