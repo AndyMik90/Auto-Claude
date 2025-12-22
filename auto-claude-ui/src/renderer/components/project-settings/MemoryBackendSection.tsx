@@ -7,7 +7,240 @@ import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
-import type { ProjectEnvConfig, ProjectSettings, InfrastructureStatus as InfrastructureStatusType } from '../../../shared/types';
+import type { ProjectEnvConfig, ProjectSettings, InfrastructureStatus as InfrastructureStatusType, GraphitiLLMProvider, GraphitiEmbeddingProvider, GraphitiProviderConfig } from '../../../shared/types';
+
+/**
+ * Returns unique set of providers that require credentials based on LLM and embedding provider selection.
+ * Deduplicates when same provider is used for both.
+ */
+function getRequiredCredentialProviders(
+  llmProvider: GraphitiLLMProvider,
+  embeddingProvider: GraphitiEmbeddingProvider
+): string[] {
+  const providers = new Set<string>();
+  providers.add(llmProvider);
+  providers.add(embeddingProvider);
+  return Array.from(providers);
+}
+
+/**
+ * Props for individual provider credential input sections
+ */
+interface ProviderCredentialInputsProps {
+  envConfig: ProjectEnvConfig;
+  onUpdateConfig: (updates: Partial<ProjectEnvConfig>) => void;
+}
+
+/**
+ * Renders conditional credential inputs based on selected LLM and embedding providers.
+ * Handles deduplication when same provider is used for both LLM and embeddings.
+ */
+function ProviderCredentialInputs({ envConfig, onUpdateConfig }: ProviderCredentialInputsProps) {
+  const llmProvider = envConfig.graphitiProviderConfig?.llmProvider || 'openai';
+  const embeddingProvider = envConfig.graphitiProviderConfig?.embeddingProvider || 'openai';
+  const requiredProviders = getRequiredCredentialProviders(llmProvider, embeddingProvider);
+  const providerConfig = envConfig.graphitiProviderConfig;
+
+  // Helper to update provider config with spread pattern
+  const updateProviderConfig = (updates: Partial<GraphitiProviderConfig>) => {
+    onUpdateConfig({
+      graphitiProviderConfig: {
+        ...providerConfig,
+        llmProvider,
+        embeddingProvider,
+        ...updates,
+      }
+    });
+  };
+
+  return (
+    <>
+      {/* OpenAI Credentials */}
+      {requiredProviders.includes('openai') && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium text-foreground">
+              OpenAI API Key {envConfig.openaiKeyIsGlobal ? '(Override)' : ''}
+            </Label>
+            {envConfig.openaiKeyIsGlobal && (
+              <span className="flex items-center gap-1 text-xs text-info">
+                <Globe className="h-3 w-3" />
+                Using global key
+              </span>
+            )}
+          </div>
+          {envConfig.openaiKeyIsGlobal ? (
+            <p className="text-xs text-muted-foreground">
+              Using key from App Settings. Enter a project-specific key below to override.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Required when using OpenAI as LLM or embedding provider
+            </p>
+          )}
+          <PasswordInput
+            value={envConfig.openaiKeyIsGlobal ? '' : (providerConfig?.openaiApiKey || envConfig.openaiApiKey || '')}
+            onChange={(value) => {
+              // Write to both V2 path and legacy path for backward compatibility
+              updateProviderConfig({ openaiApiKey: value || undefined });
+              onUpdateConfig({ openaiApiKey: value || undefined });
+            }}
+            placeholder={envConfig.openaiKeyIsGlobal ? 'Enter to override global key...' : 'sk-xxxxxxxx'}
+          />
+        </div>
+      )}
+
+      {/* Google AI Credentials */}
+      {requiredProviders.includes('google') && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-foreground">Google AI API Key</Label>
+          <p className="text-xs text-muted-foreground">
+            Required for Google AI (Gemini) LLM or embedding provider
+          </p>
+          <PasswordInput
+            value={providerConfig?.googleApiKey || ''}
+            onChange={(value) => updateProviderConfig({ googleApiKey: value || undefined })}
+            placeholder="AIzaxxxxxxxx"
+          />
+        </div>
+      )}
+
+      {/* Anthropic Credentials */}
+      {requiredProviders.includes('anthropic') && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-foreground">Anthropic API Key</Label>
+          <p className="text-xs text-muted-foreground">
+            Required for Anthropic (Claude) LLM provider. Note: Anthropic does not provide embeddings - use OpenAI or Voyage for embeddings.
+          </p>
+          <PasswordInput
+            value={providerConfig?.anthropicApiKey || ''}
+            onChange={(value) => updateProviderConfig({ anthropicApiKey: value || undefined })}
+            placeholder="sk-ant-xxxxxxxx"
+          />
+        </div>
+      )}
+
+      {/* Azure OpenAI Credentials */}
+      {requiredProviders.includes('azure_openai') && (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-foreground">Azure OpenAI API Key</Label>
+            <p className="text-xs text-muted-foreground">
+              Your Azure OpenAI resource key
+            </p>
+            <PasswordInput
+              value={providerConfig?.azureOpenaiApiKey || ''}
+              onChange={(value) => updateProviderConfig({ azureOpenaiApiKey: value || undefined })}
+              placeholder="xxxxxxxx"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-foreground">Azure OpenAI Base URL</Label>
+            <p className="text-xs text-muted-foreground">
+              Your Azure OpenAI endpoint URL
+            </p>
+            <Input
+              value={providerConfig?.azureOpenaiBaseUrl || ''}
+              onChange={(e) => updateProviderConfig({ azureOpenaiBaseUrl: e.target.value || undefined })}
+              placeholder="https://your-resource.openai.azure.com/"
+            />
+          </div>
+          {llmProvider === 'azure_openai' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">LLM Deployment Name</Label>
+              <p className="text-xs text-muted-foreground">
+                Name of your deployed LLM model (e.g., gpt-4o-mini)
+              </p>
+              <Input
+                value={providerConfig?.azureOpenaiLlmDeployment || ''}
+                onChange={(e) => updateProviderConfig({ azureOpenaiLlmDeployment: e.target.value || undefined })}
+                placeholder="gpt-4o-mini"
+              />
+            </div>
+          )}
+          {embeddingProvider === 'azure_openai' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">Embedding Deployment Name</Label>
+              <p className="text-xs text-muted-foreground">
+                Name of your deployed embedding model (e.g., text-embedding-3-small)
+              </p>
+              <Input
+                value={providerConfig?.azureOpenaiEmbeddingDeployment || ''}
+                onChange={(e) => updateProviderConfig({ azureOpenaiEmbeddingDeployment: e.target.value || undefined })}
+                placeholder="text-embedding-3-small"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Voyage AI Credentials */}
+      {requiredProviders.includes('voyage') && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-foreground">Voyage AI API Key</Label>
+          <p className="text-xs text-muted-foreground">
+            Required for Voyage AI embeddings. Commonly used with Anthropic for LLM.
+          </p>
+          <PasswordInput
+            value={providerConfig?.voyageApiKey || ''}
+            onChange={(value) => updateProviderConfig({ voyageApiKey: value || undefined })}
+            placeholder="pa-xxxxxxxx"
+          />
+        </div>
+      )}
+
+      {/* Groq Credentials */}
+      {requiredProviders.includes('groq') && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-foreground">Groq API Key</Label>
+          <p className="text-xs text-muted-foreground">
+            Required for Groq LLM provider
+          </p>
+          <PasswordInput
+            value={providerConfig?.groqApiKey || ''}
+            onChange={(value) => updateProviderConfig({ groqApiKey: value || undefined })}
+            placeholder="gsk_xxxxxxxx"
+          />
+        </div>
+      )}
+
+      {/* HuggingFace Credentials */}
+      {requiredProviders.includes('huggingface') && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-foreground">HuggingFace API Key</Label>
+          <p className="text-xs text-muted-foreground">
+            Required for HuggingFace embeddings
+          </p>
+          <PasswordInput
+            value={providerConfig?.huggingfaceApiKey || ''}
+            onChange={(value) => updateProviderConfig({ huggingfaceApiKey: value || undefined })}
+            placeholder="hf_xxxxxxxx"
+          />
+        </div>
+      )}
+
+      {/* Ollama Configuration (no API key, just base URL) */}
+      {requiredProviders.includes('ollama') && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-foreground">Ollama Base URL</Label>
+          <p className="text-xs text-muted-foreground">
+            URL of your local Ollama instance. No API key required.
+          </p>
+          <Input
+            value={providerConfig?.ollamaBaseUrl || ''}
+            onChange={(e) => updateProviderConfig({ ollamaBaseUrl: e.target.value || undefined })}
+            placeholder="http://localhost:11434"
+          />
+          <div className="rounded-lg border border-info/30 bg-info/5 p-3">
+            <p className="text-xs text-info">
+              Ollama runs locally and does not require an API key. Make sure Ollama is running with your chosen models pulled.
+            </p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 interface MemoryBackendSectionProps {
   isExpanded: boolean;
