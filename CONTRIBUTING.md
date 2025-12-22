@@ -25,9 +25,10 @@ Thank you for your interest in contributing to Auto Claude! This document provid
 
 Before contributing, ensure you have the following installed:
 
-- **Python 3.12** - Required for the backend framework and memory system
+- **Python 3.12+** - For the backend framework
 - **Node.js 24+** - For the Electron frontend
-- **npm** - Package manager for the frontend
+- **npm 10+** - Package manager for the frontend (comes with Node.js)
+- **uv** (recommended) or **pip** - Python package manager
 - **Git** - Version control
 
 ### Installing Python 3.12
@@ -71,7 +72,7 @@ npm start
 The project consists of two main components:
 
 1. **Python Backend** (`apps/backend/`) - The core autonomous coding framework
-2. **Electron Frontend** (`apps/frontend/`) - Desktop UI
+2. **Electron Frontend** (`apps/frontend/`) - Optional desktop UI
 
 ### Python Backend
 
@@ -104,7 +105,7 @@ cp .env.example .env
 ### Electron Frontend
 
 ```bash
-# Navigate to the UI directory
+# Navigate to the frontend directory
 cd apps/frontend
 
 # Install dependencies
@@ -128,10 +129,15 @@ If you want to run Auto Claude from source (for development or testing unrelease
 
 ```bash
 git clone https://github.com/AndyMik90/Auto-Claude.git
-cd Auto-Claude
+cd Auto-Claude/apps/backend
 
-# Install everything (recommended - works on Windows, macOS, Linux)
-npm run install:all
+# Using uv (recommended)
+uv venv && uv pip install -r requirements.txt
+
+# Or using standard Python
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
 # Set up environment
 cd apps/backend
@@ -142,13 +148,16 @@ cp .env.example .env
 ### Step 2: Run the Desktop UI
 
 ```bash
-# From the repository root:
+cd ../frontend
+
+# Install dependencies
+npm install
 
 # Development mode (hot reload)
 npm run dev
 
 # Or production build
-npm start
+npm run build && npm run start
 ```
 
 <details>
@@ -159,7 +168,7 @@ Auto Claude automatically downloads prebuilt binaries for Windows. If prebuilts 
 1. Download [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 2. Select "Desktop development with C++" workload
 3. In "Individual Components", add "MSVC v143 - VS 2022 C++ x64/x86 Spectre-mitigated libs"
-4. Restart terminal and run `npm run install:frontend` again
+4. Restart terminal and run `npm install` again
 
 </details>
 
@@ -293,7 +302,7 @@ npm run test:backend -- tests/test_security.py::test_bash_command_validation -v
 npm run test:backend -- -m "not slow"
 
 # Run with coverage
-npm run test:backend -- --cov=apps/backend --cov-report=html
+pytest tests/ --cov=apps/backend --cov-report=html
 ```
 
 Test configuration is in `tests/pytest.ini`.
@@ -357,8 +366,10 @@ Before a PR can be merged:
 ### Running CI Checks Locally
 
 ```bash
-# Python tests (from repository root)
-npm run test:backend
+# Python tests
+cd apps/backend
+source .venv/bin/activate
+pytest ../../tests/ -v
 
 # Frontend tests
 cd apps/frontend
@@ -377,10 +388,57 @@ Use descriptive branch names with a prefix indicating the type of change:
 |--------|---------|---------|
 | `feature/` | New feature | `feature/add-dark-mode` |
 | `fix/` | Bug fix | `fix/memory-leak-in-worker` |
+| `hotfix/` | Urgent production fix | `hotfix/critical-crash-fix` |
 | `docs/` | Documentation | `docs/update-readme` |
 | `refactor/` | Code refactoring | `refactor/simplify-auth-flow` |
 | `test/` | Test additions/fixes | `test/add-integration-tests` |
 | `chore/` | Maintenance tasks | `chore/update-dependencies` |
+
+### Hotfix Workflow
+
+For urgent production fixes that can't wait for the normal release cycle:
+
+**1. Create hotfix from main**
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b hotfix/150-critical-fix
+```
+
+**2. Fix the issue**
+
+```bash
+# ... make changes ...
+git commit -m "hotfix: fix critical crash on startup"
+```
+
+**3. Open PR to main (fast-track review)**
+
+```bash
+gh pr create --base main --title "hotfix: fix critical crash on startup"
+```
+
+**4. After merge to main, sync to develop**
+
+```bash
+git checkout develop
+git pull origin develop
+git merge main
+git push origin develop
+```
+
+```
+main ─────●─────●─────●─────●───── (production)
+          ↑     ↑     ↑     ↑
+develop ──●─────●─────●─────●───── (integration)
+          ↑     ↑     ↑
+feature/123 ────●
+feature/124 ──────────●
+hotfix/125 ─────────────────●───── (from main, merge to both)
+```
+
+> **Note:** Hotfixes branch FROM `main` and merge TO `main` first, then sync back to `develop` to keep branches aligned.
 
 ### Commit Messages
 
