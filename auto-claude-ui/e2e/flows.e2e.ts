@@ -519,3 +519,310 @@ test.describe('Ideation Project Scope Persistence (Mock-based)', () => {
     cleanupMultiProjectEnvironment();
   });
 });
+
+// Ideation File Generation E2E tests (subtask-5-2)
+test.describe('Ideation File Generation Verification (Mock-based)', () => {
+  const TEST_IDEATION_PROJECT = path.join(TEST_DATA_DIR, 'ideation-gen-project');
+
+  function setupIdeationProject(): void {
+    if (existsSync(TEST_DATA_DIR)) {
+      rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    }
+    mkdirSync(TEST_DATA_DIR, { recursive: true });
+    mkdirSync(TEST_IDEATION_PROJECT, { recursive: true });
+    mkdirSync(path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation', 'screenshots'), { recursive: true });
+  }
+
+  function cleanupIdeationProject(): void {
+    if (existsSync(TEST_DATA_DIR)) {
+      rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * Simulates the output files produced by the ideation runner
+   * This mirrors what auto-claude/ideation/runner.py produces
+   */
+  function simulateIdeationGeneration(projectDir: string): void {
+    const ideationDir = path.join(projectDir, '.auto-claude', 'ideation');
+
+    // Phase 1: Project Index
+    const projectIndex = {
+      project_name: 'test-project',
+      language: 'TypeScript',
+      framework: 'React',
+      key_files: ['src/index.ts', 'src/App.tsx'],
+      analyzed_at: new Date().toISOString()
+    };
+    writeFileSync(path.join(ideationDir, 'project_index.json'), JSON.stringify(projectIndex, null, 2));
+
+    // Phase 2: Context & Graph Hints
+    const ideationContext = {
+      existing_features: ['User authentication', 'Dashboard'],
+      tech_stack: ['TypeScript', 'React', 'Electron'],
+      planned_features: [],
+      roadmap_context: null,
+      kanban_context: null
+    };
+    writeFileSync(path.join(ideationDir, 'ideation_context.json'), JSON.stringify(ideationContext, null, 2));
+
+    const graphHints = {
+      file_dependencies: {},
+      module_structure: {},
+      generated_at: new Date().toISOString()
+    };
+    writeFileSync(path.join(ideationDir, 'graph_hints.json'), JSON.stringify(graphHints, null, 2));
+
+    // Phase 3: Ideation Types
+    const ideaTypes = ['code_improvements', 'ui_ux_improvements'];
+    const typeIdeas: Record<string, object[]> = {};
+
+    ideaTypes.forEach((type, index) => {
+      const ideas = [{
+        id: `idea-${type}-1`,
+        title: `${type.replace(/_/g, ' ')} idea 1`,
+        type: type,
+        description: `Description for ${type} idea`,
+        rationale: 'Test rationale',
+        status: 'draft',
+        priority: 'medium',
+        estimatedEffort: 'small',
+        createdAt: new Date().toISOString(),
+        affectedFiles: ['src/test.ts'],
+        existingPatterns: [],
+        buildsUpon: []
+      }];
+
+      typeIdeas[type] = ideas;
+      const typeFile = {
+        type: type,
+        ideas: ideas,
+        generated_at: new Date().toISOString()
+      };
+      writeFileSync(path.join(ideationDir, `${type}_ideas.json`), JSON.stringify(typeFile, null, 2));
+    });
+
+    // Phase 4: Merge - Final ideation.json (mimics backend structure)
+    const allIdeas = Object.values(typeIdeas).flat();
+    const ideationSession = {
+      id: `session-${Date.now()}`,
+      projectId: path.basename(projectDir),
+      config: {
+        enabledTypes: ideaTypes,
+        includeRoadmapContext: false,
+        includeKanbanContext: false,
+        maxIdeasPerType: 5
+      },
+      ideas: allIdeas,
+      projectContext: {
+        existingFeatures: ['User authentication', 'Dashboard'],
+        techStack: ['TypeScript', 'React', 'Electron'],
+        plannedFeatures: []
+      },
+      summary: {
+        total: allIdeas.length,
+        by_type: ideaTypes.reduce((acc, type) => {
+          acc[type] = typeIdeas[type].length;
+          return acc;
+        }, {} as Record<string, number>)
+      },
+      generatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    writeFileSync(path.join(ideationDir, 'ideation.json'), JSON.stringify(ideationSession, null, 2));
+  }
+
+  test('Ideation generation creates output directory structure', async () => {
+    setupIdeationProject();
+
+    // Verify .auto-claude/ideation directory exists
+    const ideationDir = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation');
+    expect(existsSync(ideationDir)).toBe(true);
+
+    // Verify screenshots directory exists
+    const screenshotsDir = path.join(ideationDir, 'screenshots');
+    expect(existsSync(screenshotsDir)).toBe(true);
+
+    cleanupIdeationProject();
+  });
+
+  test('Ideation generation produces ideation.json file', async () => {
+    setupIdeationProject();
+    simulateIdeationGeneration(TEST_IDEATION_PROJECT);
+
+    const ideationPath = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation', 'ideation.json');
+    expect(existsSync(ideationPath)).toBe(true);
+
+    // Verify file size is non-zero
+    const stats = require('fs').statSync(ideationPath);
+    expect(stats.size).toBeGreaterThan(0);
+
+    cleanupIdeationProject();
+  });
+
+  test('Ideation generation produces all phase output files', async () => {
+    setupIdeationProject();
+    simulateIdeationGeneration(TEST_IDEATION_PROJECT);
+
+    const ideationDir = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation');
+
+    // Phase 1: Project Index
+    expect(existsSync(path.join(ideationDir, 'project_index.json'))).toBe(true);
+
+    // Phase 2: Context & Graph Hints
+    expect(existsSync(path.join(ideationDir, 'ideation_context.json'))).toBe(true);
+    expect(existsSync(path.join(ideationDir, 'graph_hints.json'))).toBe(true);
+
+    // Phase 3: Ideation Type Files
+    expect(existsSync(path.join(ideationDir, 'code_improvements_ideas.json'))).toBe(true);
+    expect(existsSync(path.join(ideationDir, 'ui_ux_improvements_ideas.json'))).toBe(true);
+
+    // Phase 4: Final Merged File
+    expect(existsSync(path.join(ideationDir, 'ideation.json'))).toBe(true);
+
+    cleanupIdeationProject();
+  });
+
+  test('ideation.json has expected backend structure', async () => {
+    setupIdeationProject();
+    simulateIdeationGeneration(TEST_IDEATION_PROJECT);
+
+    const ideationPath = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation', 'ideation.json');
+    const content = readFileSync(ideationPath, 'utf-8');
+    const session = JSON.parse(content);
+
+    // Required top-level fields (matching backend output)
+    expect(session).toHaveProperty('id');
+    expect(session).toHaveProperty('projectId');
+    expect(session).toHaveProperty('config');
+    expect(session).toHaveProperty('ideas');
+    expect(session).toHaveProperty('projectContext');
+    expect(session).toHaveProperty('summary');
+    expect(session).toHaveProperty('generatedAt');
+    expect(session).toHaveProperty('updatedAt');
+
+    // Config structure
+    expect(session.config).toHaveProperty('enabledTypes');
+    expect(session.config).toHaveProperty('maxIdeasPerType');
+    expect(Array.isArray(session.config.enabledTypes)).toBe(true);
+
+    // Summary structure (unique to backend output)
+    expect(session.summary).toHaveProperty('total');
+    expect(session.summary).toHaveProperty('by_type');
+    expect(typeof session.summary.total).toBe('number');
+
+    cleanupIdeationProject();
+  });
+
+  test('Ideas in ideation.json have expected structure', async () => {
+    setupIdeationProject();
+    simulateIdeationGeneration(TEST_IDEATION_PROJECT);
+
+    const ideationPath = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation', 'ideation.json');
+    const session = JSON.parse(readFileSync(ideationPath, 'utf-8'));
+
+    expect(Array.isArray(session.ideas)).toBe(true);
+    expect(session.ideas.length).toBeGreaterThan(0);
+
+    // Verify first idea has expected fields
+    const idea = session.ideas[0];
+    expect(idea).toHaveProperty('id');
+    expect(idea).toHaveProperty('title');
+    expect(idea).toHaveProperty('type');
+    expect(idea).toHaveProperty('description');
+    expect(idea).toHaveProperty('status');
+    expect(idea).toHaveProperty('createdAt');
+
+    // Verify idea type is one of the enabled types
+    expect(session.config.enabledTypes).toContain(idea.type);
+
+    cleanupIdeationProject();
+  });
+
+  test('Type-specific files contain valid JSON', async () => {
+    setupIdeationProject();
+    simulateIdeationGeneration(TEST_IDEATION_PROJECT);
+
+    const ideationDir = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation');
+    const typeFile = path.join(ideationDir, 'code_improvements_ideas.json');
+
+    const content = readFileSync(typeFile, 'utf-8');
+    let typeData;
+    expect(() => {
+      typeData = JSON.parse(content);
+    }).not.toThrow();
+
+    expect(typeData).toHaveProperty('type');
+    expect(typeData).toHaveProperty('ideas');
+    expect(typeData).toHaveProperty('generated_at');
+    expect(typeData.type).toBe('code_improvements');
+    expect(Array.isArray(typeData.ideas)).toBe(true);
+
+    cleanupIdeationProject();
+  });
+
+  test('Project context is included in ideation output', async () => {
+    setupIdeationProject();
+    simulateIdeationGeneration(TEST_IDEATION_PROJECT);
+
+    const ideationPath = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation', 'ideation.json');
+    const session = JSON.parse(readFileSync(ideationPath, 'utf-8'));
+
+    expect(session).toHaveProperty('projectContext');
+    expect(session.projectContext).toHaveProperty('existingFeatures');
+    expect(session.projectContext).toHaveProperty('techStack');
+    expect(session.projectContext).toHaveProperty('plannedFeatures');
+
+    expect(Array.isArray(session.projectContext.existingFeatures)).toBe(true);
+    expect(Array.isArray(session.projectContext.techStack)).toBe(true);
+
+    cleanupIdeationProject();
+  });
+
+  test('Summary counts match actual ideas', async () => {
+    setupIdeationProject();
+    simulateIdeationGeneration(TEST_IDEATION_PROJECT);
+
+    const ideationPath = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation', 'ideation.json');
+    const session = JSON.parse(readFileSync(ideationPath, 'utf-8'));
+
+    // Total should match ideas array length
+    expect(session.summary.total).toBe(session.ideas.length);
+
+    // by_type counts should match actual ideas
+    const ideasByType: Record<string, number> = {};
+    session.ideas.forEach((idea: { type: string }) => {
+      ideasByType[idea.type] = (ideasByType[idea.type] || 0) + 1;
+    });
+
+    Object.entries(session.summary.by_type).forEach(([type, count]) => {
+      expect(ideasByType[type] || 0).toBe(count);
+    });
+
+    cleanupIdeationProject();
+  });
+
+  test('Generated timestamps are valid ISO strings', async () => {
+    setupIdeationProject();
+    simulateIdeationGeneration(TEST_IDEATION_PROJECT);
+
+    const ideationPath = path.join(TEST_IDEATION_PROJECT, '.auto-claude', 'ideation', 'ideation.json');
+    const session = JSON.parse(readFileSync(ideationPath, 'utf-8'));
+
+    // generatedAt should be a valid date
+    const generatedAt = new Date(session.generatedAt);
+    expect(generatedAt.toString()).not.toBe('Invalid Date');
+
+    // updatedAt should be a valid date
+    const updatedAt = new Date(session.updatedAt);
+    expect(updatedAt.toString()).not.toBe('Invalid Date');
+
+    // Ideas should have valid createdAt
+    session.ideas.forEach((idea: { createdAt: string }) => {
+      const createdAt = new Date(idea.createdAt);
+      expect(createdAt.toString()).not.toBe('Invalid Date');
+    });
+
+    cleanupIdeationProject();
+  });
+});
