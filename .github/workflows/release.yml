@@ -429,25 +429,17 @@ jobs:
           cat release-assets/checksums.sha256 >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-      - name: Generate changelog
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
-        id: changelog
-        uses: release-drafter/release-drafter@v6
-        with:
-          config-name: release-drafter.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Release
+      - name: Create or Update Release
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
         uses: softprops/action-gh-release@v2
         with:
+          files: release-assets/*
+          # Append VirusTotal results to existing release notes (if release exists)
+          append_body: true
           body: |
-            ${{ steps.changelog.outputs.body }}
 
             ${{ steps.virustotal.outputs.vt_results }}
-          files: release-assets/*
-          draft: false
+          fail_on_unmatched_files: true
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
