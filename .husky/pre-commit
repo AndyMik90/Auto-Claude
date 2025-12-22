@@ -82,8 +82,8 @@ if git diff --cached --name-only | grep -q "^apps/backend/.*\.py$"; then
     echo "Running ruff format..."
     $RUFF format apps/backend/
 
-    # Stage any files that were auto-fixed by ruff
-    git add apps/backend/*.py apps/backend/**/*.py 2>/dev/null || true
+    # Stage any files that were auto-fixed by ruff (POSIX-compliant)
+    find apps/backend -name "*.py" -type f -exec git add {} + 2>/dev/null || true
   else
     echo "Warning: ruff not found, skipping Python linting. Install with: uv pip install ruff"
   fi
