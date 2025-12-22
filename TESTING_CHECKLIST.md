@@ -126,6 +126,7 @@ python apps/backend/run.py --batch-cleanup
 ## Test Results
 
 Date: 2025-12-22 (Code Verification Phase)
+Updated: 2025-12-22 21:20 (Phase 2 Testing - Bug Fixes Applied)
 
 ### Architecture Verification ✅
 - [x] ✅ batch_commands.py exists with 3 functions
@@ -196,10 +197,36 @@ All code has been verified for:
 4. **Test Coverage** - 420+ lines of test code for both features
 5. **Documentation** - Comprehensive testing checklist and batch task test data provided
 
+### Phase 2 Testing - Bugs Found and Fixed ✅
+
+During initial dev server startup, two critical bugs were discovered and fixed:
+
+**Bug #1: Merge Conflict in project-api.ts (Line 236)**
+- Issue: Git merge conflict markers left from cherry-pick
+- Error: "Expected identifier but found '<<'" during TypeScript compilation
+- Resolution: Removed conflict markers, kept Ollama feature code
+- Commit: 6a34a78 "fix: resolve merge conflict in project-api.ts from Ollama feature cherry-pick"
+- Status: ✅ FIXED
+
+**Bug #2: Duplicate OLLAMA_CHECK_STATUS Handler Registration**
+- Issue: Handler registered twice in memory-handlers.ts (lines 395-419 and 433-457)
+- Error: "Attempted to register a second handler for 'ollama:checkStatus'"
+- Resolution: Removed duplicate handler registration, kept original implementation
+- Commit: eccf189 "fix: remove duplicate Ollama check status handler registration"
+- Status: ✅ FIXED
+
+**Result After Fixes:**
+- ✅ Dev server compiles successfully
+- ✅ No build errors
+- ✅ Electron window loads
+- ✅ All IPC handlers register correctly
+- ✅ Ready for manual UI and CLI testing
+
 ### Ready for Next Phase
-The implementation is complete and verified. Ready for:
-- UI testing with `npm run dev`
-- CLI testing with actual Python environment
-- Full integration testing
+The implementation is complete and verified with bugs fixed. Ready for:
+- ✅ Dev server running successfully
+- [ ] Manual UI testing with `npm run dev`
+- [ ] CLI testing with batch commands
+- [ ] Full integration testing
 - Code review in PR #141
 
