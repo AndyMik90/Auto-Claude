@@ -264,6 +264,8 @@ export function App() {
   };
 
   const handleInitialize = async () => {
+    // Prevent concurrent initializations from rapid clicks
+    if (isInitializing) return;
     if (!pendingProject) return;
 
     const projectId = pendingProject.id;
