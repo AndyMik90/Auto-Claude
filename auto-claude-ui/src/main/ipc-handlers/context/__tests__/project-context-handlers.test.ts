@@ -5,10 +5,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { tmpdir } from 'os';
 import path from 'path';
 
-// Test directories
-const TEST_DIR = '/tmp/project-context-handlers-test';
+// Test directories - use os.tmpdir() for portability
+const TEST_DIR = path.join(tmpdir(), 'project-context-handlers-test');
 const TEST_PROJECT_PATH = path.join(TEST_DIR, 'test-project');
 
 // Mock spawn to capture calls
