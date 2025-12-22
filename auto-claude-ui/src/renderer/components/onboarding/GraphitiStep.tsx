@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Brain,
   Database,
@@ -9,12 +9,8 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Server,
   Zap,
-  XCircle,
-  Search,
-  Download,
-  Sparkles
+  XCircle
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -29,7 +25,6 @@ import {
   SelectValue
 } from '../ui/select';
 import { useSettingsStore } from '../../stores/settings-store';
-import { ModelDiscoveryGrid } from '../project-settings/ModelDiscoveryGrid';
 import type { GraphitiLLMProvider, GraphitiEmbeddingProvider, AppSettings } from '../../../shared/types';
 
 interface GraphitiStepProps {
@@ -59,17 +54,17 @@ const EMBEDDING_PROVIDERS: Array<{
   description: string;
   requiresApiKey: boolean;
 }> = [
+  { id: 'ollama', name: 'Ollama', description: 'Local embeddings (free)', requiresApiKey: false },
   { id: 'openai', name: 'OpenAI', description: 'text-embedding-3-small (recommended)', requiresApiKey: true },
   { id: 'voyage', name: 'Voyage AI', description: 'voyage-3 (great with Anthropic)', requiresApiKey: true },
   { id: 'google', name: 'Google AI', description: 'Gemini text-embedding-004', requiresApiKey: true },
-  { id: 'huggingface', name: 'HuggingFace', description: 'Open source models', requiresApiKey: true },
-  { id: 'azure_openai', name: 'Azure OpenAI', description: 'Enterprise Azure embeddings', requiresApiKey: true },
-  { id: 'ollama', name: 'Ollama', description: 'Local embeddings (free)', requiresApiKey: false }
+  { id: 'azure_openai', name: 'Azure OpenAI', description: 'Enterprise Azure embeddings', requiresApiKey: true }
 ];
 
 interface GraphitiConfig {
   enabled: boolean;
-  falkorDbUri: string;
+  database: string;
+  dbPath: string;
   llmProvider: GraphitiLLMProvider;
   embeddingProvider: GraphitiEmbeddingProvider;
   // OpenAI
@@ -97,12 +92,13 @@ interface GraphitiConfig {
 }
 
 interface ValidationStatus {
-  falkordb: { tested: boolean; success: boolean; message: string } | null;
+  database: { tested: boolean; success: boolean; message: string } | null;
   provider: { tested: boolean; success: boolean; message: string } | null;
 }
 
 /**
- * Graphiti/FalkorDB configuration step for the onboarding wizard.
+ * Graphiti memory configuration step for the onboarding wizard.
+ * Uses LadybugDB (embedded database) - no Docker required.
  * Allows users to optionally configure Graphiti memory backend with multiple provider options.
  * This step is entirely optional and can be skipped.
  */
@@ -110,7 +106,8 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
   const { settings, updateSettings } = useSettingsStore();
   const [config, setConfig] = useState<GraphitiConfig>({
     enabled: false,
-    falkorDbUri: 'bolt://localhost:6380',
+    database: 'auto_claude_memory',
+    dbPath: '',
     llmProvider: 'openai',
     embeddingProvider: 'openai',
     openaiApiKey: settings.globalOpenAIApiKey || '',
@@ -132,205 +129,36 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [isCheckingDocker, setIsCheckingDocker] = useState(true);
-  const [dockerAvailable, setDockerAvailable] = useState<boolean | null>(null);
+  const [isCheckingInfra, setIsCheckingInfra] = useState(true);
+  const [kuzuAvailable, setKuzuAvailable] = useState<boolean | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
-    falkordb: null,
+    database: null,
     provider: null
   });
 
-  // Model discovery state
-  const [availableModels, setAvailableModels] = useState<Array<{
-    name: string;
-    size: number;
-    modified_at: string;
-    digest: string;
-    downloaded?: boolean;
-    downloading?: boolean;
-    progress?: number;
-  }>>([]);
-  const [isScanningModels, setIsScanningModels] = useState(false);
-  const [scanError, setScanError] = useState<string | undefined>(undefined);
-  const [showModelDiscovery, setShowModelDiscovery] = useState(false);
-
-  // Download progress tracking
-  const [downloadProgress, setDownloadProgress] = useState<{
-    [modelName: string]: {
-      percentage: number;
-      status: string;
-      completed: number;
-      total: number;
-      speed?: string;
-      timeRemaining?: string;
-      error?: string;
-    };
-  }>({});
-
-  // Track previous progress for speed calculation
-  const downloadProgressRef = useRef<{
-    [modelName: string]: {
-      lastCompleted: number;
-      lastUpdate: number;
-    };
-  }>({});
-
-  // Listen for download progress updates
+  // Check LadybugDB/Kuzu availability on mount
   useEffect(() => {
-    const handleProgress = (data: {
-      modelName: string;
-      status: string;
-      completed: number;
-      total: number;
-      percentage: number;
-    }) => {
-      const now = Date.now();
-      
-      // Initialize tracking for this model if needed
-      if (!downloadProgressRef.current[data.modelName]) {
-        downloadProgressRef.current[data.modelName] = {
-          lastCompleted: data.completed,
-          lastUpdate: now
-        };
-      }
-
-      const prevData = downloadProgressRef.current[data.modelName];
-      const timeDelta = now - prevData.lastUpdate;
-      const bytesDelta = data.completed - prevData.lastCompleted;
-
-      // Calculate speed only if we have meaningful time delta (> 100ms)
-      let speedStr = '0 B/s';
-      let timeStr = '';
-      
-      if (timeDelta > 100 && bytesDelta > 0) {
-        const speed = (bytesDelta / timeDelta) * 1000; // bytes per second
-        const remaining = data.total - data.completed;
-        const timeRemaining = speed > 0 ? Math.ceil(remaining / speed) : 0;
-        
-        // Format speed (MB/s or KB/s)
-        if (speed > 1024 * 1024) {
-          speedStr = `${(speed / (1024 * 1024)).toFixed(1)} MB/s`;
-        } else if (speed > 1024) {
-          speedStr = `${(speed / 1024).toFixed(1)} KB/s`;
-        } else if (speed > 0) {
-          speedStr = `${Math.round(speed)} B/s`;
-        }
-
-        // Format time remaining
-        if (timeRemaining > 3600) {
-          timeStr = `${Math.ceil(timeRemaining / 3600)}h remaining`;
-        } else if (timeRemaining > 60) {
-          timeStr = `${Math.ceil(timeRemaining / 60)}m remaining`;
-        } else if (timeRemaining > 0) {
-          timeStr = `${Math.ceil(timeRemaining)}s remaining`;
-        }
-      }
-
-      // Update tracking
-      downloadProgressRef.current[data.modelName] = {
-        lastCompleted: data.completed,
-        lastUpdate: now
-      };
-
-      setDownloadProgress(prev => {
-        const updated = { ...prev };
-        updated[data.modelName] = {
-          percentage: data.percentage,
-          status: data.status,
-          completed: data.completed,
-          total: data.total,
-          speed: speedStr,
-          timeRemaining: timeStr
-        };
-        return updated;
-      });
-    };
-
-    // Register the progress listener
-    if (window.electronAPI?.onDownloadProgress) {
-      window.electronAPI.onDownloadProgress(handleProgress);
-    }
-
-    return () => {
-      // Clean up listener
-      if (window.electronAPI?.offDownloadProgress) {
-        window.electronAPI.offDownloadProgress(handleProgress);
+    const checkInfrastructure = async () => {
+      setIsCheckingInfra(true);
+      try {
+        const result = await window.electronAPI.getMemoryInfrastructureStatus();
+        setKuzuAvailable(result?.success && result?.data?.memory?.kuzuInstalled ? true : false);
+      } catch {
+        setKuzuAvailable(false);
+      } finally {
+        setIsCheckingInfra(false);
       }
     };
-  }, []);
 
-  // Listen for download progress updates
-  useEffect(() => {
-    const handleProgress = (data: {
-      modelName: string;
-      status: string;
-      completed: number;
-      total: number;
-      percentage: number;
-    }) => {
-      // Calculate speed and time remaining
-      const startTime = Date.now();
-      let lastUpdate = Date.now();
-      let lastCompleted = 0;
-
-      setDownloadProgress(prev => {
-        const updated = { ...prev };
-        const speed = ((data.completed - lastCompleted) / (Date.now() - lastUpdate)) * 1000; // bytes per second
-        const remaining = data.total - data.completed;
-        const timeRemaining = speed > 0 ? Math.ceil(remaining / speed) : 0;
-        
-        // Format speed (MB/s or KB/s)
-        let speedStr = '0 B/s';
-        if (speed > 1024 * 1024) {
-          speedStr = `${(speed / (1024 * 1024)).toFixed(1)} MB/s`;
-        } else if (speed > 1024) {
-          speedStr = `${(speed / 1024).toFixed(1)} KB/s`;
-        }
-
-        // Format time remaining
-        let timeStr = '';
-        if (timeRemaining > 3600) {
-          timeStr = `${Math.ceil(timeRemaining / 3600)}h remaining`;
-        } else if (timeRemaining > 60) {
-          timeStr = `${Math.ceil(timeRemaining / 60)}m remaining`;
-        } else if (timeRemaining > 0) {
-          timeStr = `${Math.ceil(timeRemaining)}s remaining`;
-        }
-
-        updated[data.modelName] = {
-          percentage: data.percentage,
-          status: data.status,
-          completed: data.completed,
-          total: data.total,
-          speed: speedStr,
-          timeRemaining: timeStr
-        };
-
-        lastCompleted = data.completed;
-        lastUpdate = Date.now();
-
-        return updated;
-      });
-    };
-
-    // Register the progress listener
-    if (window.electronAPI?.onDownloadProgress) {
-      window.electronAPI.onDownloadProgress(handleProgress);
-    }
-
-    return () => {
-      // Clean up listener
-      if (window.electronAPI?.offDownloadProgress) {
-        window.electronAPI.offDownloadProgress(handleProgress);
-      }
-    };
+    checkInfrastructure();
   }, []);
 
   const handleToggleEnabled = (checked: boolean) => {
     setConfig(prev => ({ ...prev, enabled: checked }));
     setError(null);
     setSuccess(false);
-    setValidationStatus({ falkordb: null, provider: null });
+    setValidationStatus({ database: null, provider: null });
   };
 
   const toggleShowApiKey = (key: string) => {
@@ -367,9 +195,6 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     if (llmProvider === 'groq') {
       if (!config.groqApiKey.trim()) return 'Groq API key';
     }
-    if (embeddingProvider === 'huggingface') {
-      if (!config.huggingfaceApiKey.trim()) return 'HuggingFace API key';
-    }
     if (llmProvider === 'ollama') {
       if (!config.ollamaLlmModel.trim()) return 'Ollama LLM model name';
     }
@@ -389,57 +214,58 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
 
     setIsValidating(true);
     setError(null);
-    setValidationStatus({ falkordb: null, provider: null });
+    setValidationStatus({ database: null, provider: null });
 
     try {
-      // Determine which API key to use based on provider
-      let apiKey = '';
-      if (config.llmProvider === 'openai' || config.embeddingProvider === 'openai') {
-        apiKey = config.openaiApiKey;
-      } else if (config.llmProvider === 'anthropic') {
-        apiKey = config.anthropicApiKey;
-      } else if (config.llmProvider === 'groq') {
-        apiKey = config.groqApiKey;
-      } else if (config.llmProvider === 'google' || config.embeddingProvider === 'google') {
-        apiKey = config.googleApiKey;
-      } else if (config.llmProvider === 'azure_openai' || config.embeddingProvider === 'azure_openai') {
-        apiKey = config.azureOpenaiApiKey;
-      }
+      // Get the API key for the current LLM provider
+      const apiKey = config.llmProvider === 'openai' ? config.openaiApiKey :
+                     config.llmProvider === 'anthropic' ? config.anthropicApiKey :
+                     config.llmProvider === 'google' ? config.googleApiKey :
+                     config.llmProvider === 'groq' ? config.groqApiKey :
+                     config.llmProvider === 'azure_openai' ? config.azureOpenaiApiKey :
+                     config.llmProvider === 'ollama' ? '' :  // Ollama doesn't need API key
+                     config.embeddingProvider === 'openai' ? config.openaiApiKey : '';
 
-      const result = await window.electronAPI.testGraphitiConnection(
-        config.falkorDbUri,
-        apiKey.trim()
-      );
+      const result = await window.electronAPI.testGraphitiConnection({
+        dbPath: config.dbPath || undefined,
+        database: config.database || 'auto_claude_memory',
+        llmProvider: config.llmProvider,
+        apiKey: apiKey.trim()
+      });
 
       if (result?.success && result?.data) {
         setValidationStatus({
-          falkordb: {
+          database: {
             tested: true,
-            success: result.data.falkordb.success,
-            message: result.data.falkordb.message
+            success: result.data.database.success,
+            message: result.data.database.message
           },
           provider: {
             tested: true,
-            success: result.data.openai?.success ?? false,
-            message: result.data.openai?.success
-              ? `✓ ${config.llmProvider.charAt(0).toUpperCase() + config.llmProvider.slice(1)} LLM / ${config.embeddingProvider.charAt(0).toUpperCase() + config.embeddingProvider.slice(1)} Embedding configured`
-              : result.data.openai?.message || 'Provider configuration validated'
+            success: result.data.llmProvider.success,
+            message: result.data.llmProvider.success
+              ? `${config.llmProvider} / ${config.embeddingProvider} providers configured`
+              : result.data.llmProvider.message
           }
         });
 
-        // Show FalkorDB errors
-        if (!result.data.falkordb.success) {
-          setError(`FalkorDB Connection Failed: ${result.data.falkordb.message}`);
-        } else if (result.data.openai && !result.data.openai.success) {
-          setError(`Provider Validation: ${result.data.openai.message}`);
+        if (!result.data.ready) {
+          const errors: string[] = [];
+          if (!result.data.database.success) {
+            errors.push(`Database: ${result.data.database.message}`);
+          }
+          if (!result.data.llmProvider.success) {
+            errors.push(`Provider: ${result.data.llmProvider.message}`);
+          }
+          if (errors.length > 0) {
+            setError(errors.join('\n'));
+          }
         }
       } else {
-        const errorMsg = result?.error || 'Failed to test connection. Please check your configuration and try again.';
-        setError(errorMsg);
+        setError(result?.error || 'Failed to test connection');
       }
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred while testing connection';
-      setError(errorMsg);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setIsValidating(false);
     }
@@ -521,146 +347,6 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     setError(null);
   };
 
-  // Model discovery functions
-  const scanAvailableModels = async () => {
-    if (!config.ollamaBaseUrl.trim()) {
-      setScanError('Please enter Ollama base URL first');
-      return;
-    }
-
-    setIsScanningModels(true);
-    setScanError(undefined);
-    setAvailableModels([]);
-
-    try {
-       const result = await window.electronAPI.scanOllamaModels(config.ollamaBaseUrl.trim());
-        if (result?.success && result?.data?.models) {
-          // All models from /api/tags are already downloaded on the Ollama server
-          const modelsWithStatus = result.data.models.map((model: any) => ({
-            ...model,
-            downloaded: true  // If it's in the API response, it's already on the server
-          }));
-          setAvailableModels(modelsWithStatus);
-      } else {
-        setScanError(result?.error || 'Failed to scan models');
-      }
-    } catch (err) {
-      setScanError(err instanceof Error ? err.message : 'Failed to scan models');
-    } finally {
-      setIsScanningModels(false);
-    }
-  };
-
-  const downloadModel = async (modelName: string) => {
-    if (!config.ollamaBaseUrl.trim()) {
-      setError('Please enter Ollama base URL first');
-      return;
-    }
-
-    // Clear any previous errors for this model
-    setError(null);
-
-    // Initialize download progress
-    setDownloadProgress(prev => ({
-      ...prev,
-      [modelName]: {
-        percentage: 0,
-        status: 'Initializing download...',
-        completed: 0,
-        total: 0
-      }
-    }));
-
-    // Update model status
-    setAvailableModels(prev =>
-      prev.map(model =>
-        model.name === modelName
-          ? { ...model, downloading: true, progress: 0 }
-          : model
-      )
-    );
-
-    try {
-      const result = await window.electronAPI.downloadOllamaModel(
-        config.ollamaBaseUrl.trim(),
-        modelName
-      );
-
-      if (result?.success) {
-        // Mark as downloaded
-        setAvailableModels(prev =>
-          prev.map(model =>
-            model.name === modelName
-              ? { ...model, downloaded: true, downloading: false, progress: 100 }
-              : model
-          )
-        );
-
-        // Update progress to success
-        setDownloadProgress(prev => ({
-          ...prev,
-          [modelName]: {
-            percentage: 100,
-            status: 'Download complete',
-            completed: prev[modelName]?.total || 0,
-            total: prev[modelName]?.total || 0
-          }
-        }));
-
-        // Clear progress after 2 seconds
-        setTimeout(() => {
-          setDownloadProgress(prev => {
-            const updated = { ...prev };
-            delete updated[modelName];
-            return updated;
-          });
-        }, 2000);
-      } else {
-        // Reset download status
-        setAvailableModels(prev =>
-          prev.map(model =>
-            model.name === modelName
-              ? { ...model, downloading: false, progress: undefined }
-              : model
-          )
-        );
-
-        // Update progress with error
-        setDownloadProgress(prev => ({
-          ...prev,
-          [modelName]: {
-            ...prev[modelName],
-            error: result?.error || `Failed to download ${modelName}`
-          }
-        }));
-
-        setError(result?.error || `Failed to download ${modelName}`);
-      }
-    } catch (err) {
-      // Reset download status
-      setAvailableModels(prev =>
-        prev.map(model =>
-          model.name === modelName
-            ? { ...model, downloading: false, progress: undefined }
-            : model
-        )
-      );
-      setError(err instanceof Error ? err.message : `Failed to download ${modelName}`);
-    }
-  };
-
-  const selectModel = (modelName: string, modelType: 'llm' | 'embedding') => {
-    if (modelType === 'llm') {
-      setConfig(prev => ({ ...prev, ollamaLlmModel: modelName }));
-    } else {
-      setConfig(prev => ({ ...prev, ollamaEmbeddingModel: modelName }));
-      // Auto-set embedding dimension based on model
-      const embeddingDim = modelName.includes('nomic') ? '768' :
-                          modelName.includes('large') ? '1024' : '768';
-      setConfig(prev => ({ ...prev, ollamaEmbeddingDim: embeddingDim }));
-    }
-  };
-
   // Render provider-specific configuration fields
   const renderProviderFields = () => {
     const { llmProvider, embeddingProvider } = config;
@@ -670,7 +356,6 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     const needsVoyage = embeddingProvider === 'voyage';
     const needsGoogle = llmProvider === 'google' || embeddingProvider === 'google';
     const needsGroq = llmProvider === 'groq';
-    const needsHuggingFace = embeddingProvider === 'huggingface';
     const needsOllama = llmProvider === 'ollama' || embeddingProvider === 'ollama';
 
     return (
@@ -922,169 +607,70 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
           </div>
         )}
 
-        {/* HuggingFace API Key */}
-        {needsHuggingFace && (
-          <div className="space-y-2">
-            <Label htmlFor="huggingface-key" className="text-sm font-medium text-foreground">
-              HuggingFace API Key
-            </Label>
-            <div className="relative">
-              <Input
-                id="huggingface-key"
-                type={showApiKey['huggingface'] ? 'text' : 'password'}
-                value={config.huggingfaceApiKey}
-                onChange={(e) => setConfig(prev => ({ ...prev, huggingfaceApiKey: e.target.value }))}
-                placeholder="hf_..."
-                className="pr-10 font-mono text-sm"
-                disabled={isSaving || isValidating}
-              />
-              <button
-                type="button"
-                onClick={() => toggleShowApiKey('huggingface')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showApiKey['huggingface'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Get your key from{' '}
-              <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-                HuggingFace
-              </a>
-            </p>
-          </div>
-        )}
-
         {/* Ollama Settings */}
         {needsOllama && (
-          <div className="space-y-4">
-             {/* Ollama Configuration */}
-              <div className="space-y-3 p-4 rounded-md bg-muted/50 border border-border/50">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Ollama Settings</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Configure local model settings</p>
-                </div>
-
-               <div className="space-y-2">
-                 <Label htmlFor="ollama-url" className="text-xs text-muted-foreground">Ollama Base URL</Label>
-                 <Input
-                   id="ollama-url"
-                   type="text"
-                   value={config.ollamaBaseUrl}
-                   onChange={(e) => setConfig(prev => ({ ...prev, ollamaBaseUrl: e.target.value }))}
-                   placeholder="http://localhost:11434"
-                   className="font-mono text-sm"
-                   disabled={isSaving || isValidating}
-                 />
-                 <p className="text-xs text-muted-foreground">
-                   Ensure Ollama is running. See{' '}
-                   <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-                     ollama.ai
-                   </a>
-                 </p>
-               </div>
-
-                {llmProvider === 'ollama' && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">LLM Model</Label>
-                    {config.ollamaLlmModel ? (
-                      <div className="flex items-center justify-between px-3 py-2 rounded-md border border-success/50 bg-success/5">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
-                          <code className="font-mono text-sm text-foreground">{config.ollamaLlmModel}</code>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setConfig(prev => ({ ...prev, ollamaLlmModel: '' }))}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="px-3 py-2 rounded-md border border-border text-xs text-muted-foreground">
-                        Select from available models below
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {embeddingProvider === 'ollama' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Embedding Model</Label>
-                      {config.ollamaEmbeddingModel ? (
-                        <div className="flex items-center justify-between px-3 py-2 rounded-md border border-success/50 bg-success/5">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
-                            <code className="font-mono text-sm text-foreground">{config.ollamaEmbeddingModel}</code>
-                            <span className="text-xs text-muted-foreground">({config.ollamaEmbeddingDim}d)</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setConfig(prev => ({ ...prev, ollamaEmbeddingModel: '' }))}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            Change
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="px-3 py-2 rounded-md border border-border text-xs text-muted-foreground">
-                          Select from available models below
-                        </div>
-                      )}
-                    </div>
-                   <div className="space-y-2">
-                     <Label htmlFor="ollama-dim" className="text-xs text-muted-foreground">Embedding Dimension</Label>
-                     <Input
-                       id="ollama-dim"
-                       type="number"
-                       value={config.ollamaEmbeddingDim}
-                       onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingDim: e.target.value }))}
-                       placeholder="768"
-                       className="font-mono text-sm"
-                       disabled={isSaving || isValidating}
-                     />
-                   </div>
-                 </>
-               )}
-
-
+          <div className="space-y-3 p-3 rounded-md bg-muted/50">
+            <p className="text-sm font-medium text-foreground">Ollama Settings (Local)</p>
+            <div className="space-y-2">
+              <Label htmlFor="ollama-url" className="text-xs text-muted-foreground">Base URL</Label>
+              <Input
+                id="ollama-url"
+                type="text"
+                value={config.ollamaBaseUrl}
+                onChange={(e) => setConfig(prev => ({ ...prev, ollamaBaseUrl: e.target.value }))}
+                placeholder="http://localhost:11434"
+                className="font-mono text-sm"
+                disabled={isSaving || isValidating}
+              />
             </div>
-
-             {/* Model Discovery & Selection - Only show if we actually need models */}
-             {(llmProvider === 'ollama' || embeddingProvider === 'ollama') && (
-               <div className="border-t pt-6 mt-2">
-                 {!config.ollamaBaseUrl.trim() ? (
-                   <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
-                     <p className="text-sm text-amber-700">
-                       Please enter your Ollama Base URL above before scanning for models.
-                     </p>
-                   </div>
-                 ) : availableModels.length === 0 && !isScanningModels ? (
-                   <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-4 text-center">
-                     <p className="text-sm text-foreground mb-3">No models scanned yet</p>
-                     <p className="text-xs text-muted-foreground mb-4">
-                       Click "Scan Models" below to discover available models on your Ollama server
-                     </p>
-                   </div>
-                 ) : null}
-                 
-                  <ModelDiscoveryGrid
-                   models={availableModels}
-                   onDownloadModel={downloadModel}
-                   onSelectModel={selectModel}
-                   selectedLLM={llmProvider === 'ollama' ? config.ollamaLlmModel : undefined}
-                   selectedEmbedding={embeddingProvider === 'ollama' ? config.ollamaEmbeddingModel : undefined}
-                   isScanning={isScanningModels}
-                   scanError={scanError}
-                   onScanModels={scanAvailableModels}
-                   showLLMSection={llmProvider === 'ollama'}
-                   showEmbeddingSection={embeddingProvider === 'ollama'}
-                   downloadProgress={downloadProgress}
-                 />
+            {llmProvider === 'ollama' && (
+              <div className="space-y-2">
+                <Label htmlFor="ollama-llm" className="text-xs text-muted-foreground">LLM Model</Label>
+                <Input
+                  id="ollama-llm"
+                  type="text"
+                  value={config.ollamaLlmModel}
+                  onChange={(e) => setConfig(prev => ({ ...prev, ollamaLlmModel: e.target.value }))}
+                  placeholder="llama3.2, deepseek-r1:7b, etc."
+                  className="font-mono text-sm"
+                  disabled={isSaving || isValidating}
+                />
               </div>
-             )}
+            )}
+            {embeddingProvider === 'ollama' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="ollama-embedding" className="text-xs text-muted-foreground">Embedding Model</Label>
+                  <Input
+                    id="ollama-embedding"
+                    type="text"
+                    value={config.ollamaEmbeddingModel}
+                    onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingModel: e.target.value }))}
+                    placeholder="nomic-embed-text"
+                    className="font-mono text-sm"
+                    disabled={isSaving || isValidating}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ollama-dim" className="text-xs text-muted-foreground">Embedding Dimension</Label>
+                  <Input
+                    id="ollama-dim"
+                    type="number"
+                    value={config.ollamaEmbeddingDim}
+                    onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingDim: e.target.value }))}
+                    placeholder="768"
+                    className="font-mono text-sm"
+                    disabled={isSaving || isValidating}
+                  />
+                </div>
+              </>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Ensure Ollama is running locally. See{' '}
+              <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+                ollama.ai
+              </a>
+            </p>
           </div>
         )}
       </div>
@@ -1109,15 +695,15 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
           </p>
         </div>
 
-        {/* Loading state for Docker check */}
-        {isCheckingDocker && (
+        {/* Loading state for infrastructure check */}
+        {isCheckingInfra && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         )}
 
         {/* Main content */}
-        {!isCheckingDocker && (
+        {!isCheckingInfra && (
           <div className="space-y-6">
             {/* Success state */}
             {success && (
@@ -1166,19 +752,19 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                   </Card>
                 )}
 
-                {/* Docker warning */}
-                {dockerAvailable === false && (
-                  <Card className="border border-warning/30 bg-warning/10">
+                {/* Kuzu status notice */}
+                {kuzuAvailable === false && (
+                  <Card className="border border-info/30 bg-info/10">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                        <Info className="h-5 w-5 text-info shrink-0 mt-0.5" />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-warning">
-                            Docker not detected
+                          <p className="text-sm font-medium text-info">
+                            Database will be created automatically
                           </p>
-                          <p className="text-sm text-warning/80 mt-1">
-                            FalkorDB requires Docker to run. You can still configure Graphiti now
-                            and set up Docker later.
+                          <p className="text-sm text-info/80 mt-1">
+                            LadybugDB uses an embedded database - no Docker required.
+                            The database will be created when you first use memory features.
                           </p>
                         </div>
                       </div>
@@ -1204,6 +790,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                           <li>Persistent memory across coding sessions</li>
                           <li>Better understanding of your codebase over time</li>
                           <li>Reduces repetitive explanations</li>
+                          <li>No Docker required - uses embedded database</li>
                         </ul>
                         <button
                           onClick={handleOpenDocs}
@@ -1228,7 +815,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                             Enable Graphiti Memory
                           </Label>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Requires FalkorDB (Docker) and an LLM/embedding provider
+                            Uses LadybugDB (embedded) and an LLM/embedding provider
                           </p>
                         </div>
                       </div>
@@ -1244,42 +831,42 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                 {/* Configuration fields (shown when enabled) */}
                 {config.enabled && (
                   <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
-                    {/* FalkorDB URI */}
+                    {/* Database Settings */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Server className="h-4 w-4 text-muted-foreground" />
-                          <Label htmlFor="falkordb-uri" className="text-sm font-medium text-foreground">
-                            FalkorDB URI
+                          <Database className="h-4 w-4 text-muted-foreground" />
+                          <Label htmlFor="database-name" className="text-sm font-medium text-foreground">
+                            Database Name
                           </Label>
                         </div>
-                        {validationStatus.falkordb && (
+                        {validationStatus.database && (
                           <div className="flex items-center gap-1.5">
-                            {validationStatus.falkordb.success ? (
+                            {validationStatus.database.success ? (
                               <CheckCircle2 className="h-4 w-4 text-success" />
                             ) : (
                               <XCircle className="h-4 w-4 text-destructive" />
                             )}
-                            <span className={`text-xs ${validationStatus.falkordb.success ? 'text-success' : 'text-destructive'}`}>
-                              {validationStatus.falkordb.success ? 'Connected' : 'Failed'}
+                            <span className={`text-xs ${validationStatus.database.success ? 'text-success' : 'text-destructive'}`}>
+                              {validationStatus.database.success ? 'Ready' : 'Issue'}
                             </span>
                           </div>
                         )}
                       </div>
                       <Input
-                        id="falkordb-uri"
+                        id="database-name"
                         type="text"
-                        value={config.falkorDbUri}
+                        value={config.database}
                         onChange={(e) => {
-                          setConfig(prev => ({ ...prev, falkorDbUri: e.target.value }));
-                          setValidationStatus(prev => ({ ...prev, falkordb: null }));
+                          setConfig(prev => ({ ...prev, database: e.target.value }));
+                          setValidationStatus(prev => ({ ...prev, database: null }));
                         }}
-                        placeholder="bolt://localhost:6379"
+                        placeholder="auto_claude_memory"
                         className="font-mono text-sm"
                         disabled={isSaving || isValidating}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Auto-detected from Docker if FalkorDB is running
+                        Stored in ~/.auto-claude/graphs/
                       </p>
                     </div>
 
@@ -1347,26 +934,18 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                     {/* Provider-specific fields */}
                     {renderProviderFields()}
 
-                    {/* Test Connection Button & Feedback */}
-                    <div className="pt-4 space-y-3">
+                    {/* Test Connection Button */}
+                    <div className="pt-2">
                       <Button
+                        variant="outline"
                         onClick={handleTestConnection}
                         disabled={!!getRequiredApiKey() || isValidating || isSaving}
-                        className={`w-full ${
-                          validationStatus.falkordb?.success && validationStatus.provider?.success
-                            ? 'bg-success hover:bg-success/90 text-white'
-                            : ''
-                        }`}
+                        className="w-full"
                       >
                         {isValidating ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Validating connections...
-                          </>
-                        ) : validationStatus.falkordb?.success && validationStatus.provider?.success ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Connections Valid
+                            Testing connection...
                           </>
                         ) : (
                           <>
@@ -1375,55 +954,20 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                           </>
                         )}
                       </Button>
-
-                      {/* Success State */}
-                      {validationStatus.falkordb?.success && validationStatus.provider?.success && (
-                        <div className="rounded-md border border-success/30 bg-success/10 p-3">
-                          <div className="flex items-start gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 text-xs">
-                              <p className="font-medium text-success mb-1">All connections validated!</p>
-                              <p className="text-success/80">FalkorDB and your LLM/Embedding providers are configured correctly.</p>
-                            </div>
-                          </div>
-                        </div>
+                      {validationStatus.database?.success && validationStatus.provider?.success && (
+                        <p className="text-xs text-success text-center mt-2">
+                          All connections validated successfully!
+                        </p>
                       )}
-
-                      {/* Error State */}
-                      {error && validationStatus.falkordb !== null && (
-                        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-destructive mb-1">Connection Test Failed</p>
-                              <p className="text-xs text-destructive/80 whitespace-pre-line">{error}</p>
-                              <p className="text-xs text-muted-foreground mt-2">
-                                {config.llmProvider === 'ollama' 
-                                  ? '💡 Tip: Make sure Ollama is running on the configured URL'
-                                  : '💡 Tip: Verify your API key is correct and has the necessary permissions'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+                      {config.llmProvider !== 'openai' && config.llmProvider !== 'ollama' && (
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          Note: API key validation currently only fully supports OpenAI. Your key will be saved and used at runtime.
+                        </p>
                       )}
-
-                      {/* Help Text */}
-                      {!validationStatus.falkordb && (
-                        <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
-                          <div className="flex items-start gap-2">
-                            <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 text-xs">
-                              <p className="text-blue-900 font-medium mb-1">Connection Testing</p>
-                              <ul className="text-blue-800/80 space-y-1 list-disc list-inside">
-                                {config.falkorDbUri && <li>FalkorDB connection will be validated</li>}
-                                {(config.llmProvider === 'openai' || config.embeddingProvider === 'openai') && <li>OpenAI API will be verified</li>}
-                                {config.llmProvider === 'ollama' && <li>Ollama server reachability will be checked</li>}
-                                {config.embeddingProvider === 'ollama' && <li>Ollama embedding server will be checked</li>}
-                                {config.llmProvider === 'anthropic' && <li>Anthropic API will be validated</li>}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
+                      {config.llmProvider === 'ollama' && (
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          Note: Ollama connection will be tested by checking if the server is reachable.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -1452,7 +996,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
             </Button>
             <Button
               onClick={handleContinue}
-              disabled={isCheckingDocker || (config.enabled && !!getRequiredApiKey() && !success) || isSaving || isValidating}
+              disabled={isCheckingInfra || (config.enabled && !!getRequiredApiKey() && !success) || isSaving || isValidating}
             >
               {isSaving ? (
                 <>
