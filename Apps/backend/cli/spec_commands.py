@@ -102,8 +102,7 @@ def print_specs_list(project_dir: Path, dev_mode: bool = False, auto_create: boo
         auto_create: If True and no specs exist, automatically launch spec creation
     """
     import subprocess
-    import shutil
-    
+
     specs = list_specs(project_dir, dev_mode)
 
     if not specs:
