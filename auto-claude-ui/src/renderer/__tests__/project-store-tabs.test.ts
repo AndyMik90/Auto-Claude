@@ -1,6 +1,10 @@
 /**
  * Unit tests for Project Store Tab Management
  * Tests Zustand store for project tab state management
+ *
+ * Note: Tab state persistence is now handled via IPC (saveTabState/getTabState)
+ * rather than localStorage. The saveTabState calls are debounced, so we don't
+ * assert on them directly in these unit tests.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useProjectStore } from '../stores/project-store';
@@ -64,18 +68,6 @@ describe('Project Store Tab Management', () => {
       expect(useProjectStore.getState().openProjectIds).toContain('project-1');
       expect(useProjectStore.getState().activeProjectId).toBe('project-1');
       expect(useProjectStore.getState().tabOrder).toContain('project-1');
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'openProjectIds',
-        JSON.stringify(['project-1'])
-      );
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'projectTabOrder',
-        JSON.stringify(['project-1'])
-      );
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'activeProjectId',
-        'project-1'
-      );
     });
 
     it('should add to existing open tabs', () => {
@@ -142,14 +134,6 @@ describe('Project Store Tab Management', () => {
 
       expect(useProjectStore.getState().openProjectIds).toEqual(['project-2']);
       expect(useProjectStore.getState().tabOrder).toEqual(['project-2']);
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'openProjectIds',
-        JSON.stringify(['project-2'])
-      );
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'projectTabOrder',
-        JSON.stringify(['project-2'])
-      );
     });
 
     it('should activate first remaining tab when closing active tab', () => {
@@ -188,10 +172,6 @@ describe('Project Store Tab Management', () => {
       useProjectStore.getState().closeProjectTab('project-1');
 
       expect(useProjectStore.getState().activeProjectId).toBeNull();
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'activeProjectId',
-        ''
-      );
     });
 
     it('should not affect activeProjectId when closing non-active tab', () => {
@@ -214,10 +194,6 @@ describe('Project Store Tab Management', () => {
       useProjectStore.getState().setActiveProject('project-1');
 
       expect(useProjectStore.getState().activeProjectId).toBe('project-1');
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'activeProjectId',
-        'project-1'
-      );
     });
 
     it('should clear active project with null', () => {
@@ -226,10 +202,6 @@ describe('Project Store Tab Management', () => {
       useProjectStore.getState().setActiveProject(null);
 
       expect(useProjectStore.getState().activeProjectId).toBeNull();
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'activeProjectId',
-        ''
-      );
     });
 
     it('should also update selectedProjectId for backward compatibility', () => {
@@ -251,10 +223,6 @@ describe('Project Store Tab Management', () => {
       useProjectStore.getState().reorderTabs(2, 1);
 
       expect(useProjectStore.getState().tabOrder).toEqual(['project-1', 'project-3', 'project-2', 'project-4']);
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'projectTabOrder',
-        JSON.stringify(['project-1', 'project-3', 'project-2', 'project-4'])
-      );
     });
 
     it('should handle moving tab to the end', () => {
@@ -291,41 +259,21 @@ describe('Project Store Tab Management', () => {
   });
 
   describe('restoreTabState', () => {
-    it('should restore tab state from localStorage', () => {
-      localStorage.setItem('openProjectIds', JSON.stringify(['project-1', 'project-2']));
-      localStorage.setItem('activeProjectId', 'project-2');
-      localStorage.setItem('projectTabOrder', JSON.stringify(['project-2', 'project-1']));
+    it('should be a no-op (tab state is now loaded via IPC in loadProjects)', () => {
+      // Set up some initial state
+      useProjectStore.setState({
+        openProjectIds: ['existing'],
+        activeProjectId: 'existing',
+        tabOrder: ['existing']
+      });
 
+      // restoreTabState is now a no-op - it just logs
       useProjectStore.getState().restoreTabState();
 
-      expect(useProjectStore.getState().openProjectIds).toEqual(['project-1', 'project-2']);
-      expect(useProjectStore.getState().activeProjectId).toBe('project-2');
-      expect(useProjectStore.getState().tabOrder).toEqual(['project-2', 'project-1']);
-    });
-
-    it('should handle empty localStorage', () => {
-      useProjectStore.getState().restoreTabState();
-
-      expect(useProjectStore.getState().openProjectIds).toEqual([]);
-      expect(useProjectStore.getState().activeProjectId).toBeNull();
-      expect(useProjectStore.getState().tabOrder).toEqual([]);
-    });
-
-    it('should handle invalid JSON in localStorage', () => {
-      localStorage.setItem('openProjectIds', 'invalid-json');
-      localStorage.setItem('activeProjectId', 'project-1');
-      localStorage.setItem('projectTabOrder', 'also-invalid');
-
-      // Should handle invalid JSON gracefully and fall back to defaults
-      expect(() => {
-        useProjectStore.getState().restoreTabState();
-      }).not.toThrow();
-
-      // Should fall back to empty arrays for invalid JSON
-      expect(useProjectStore.getState().openProjectIds).toEqual([]);
-      expect(useProjectStore.getState().tabOrder).toEqual([]);
-      // activeProjectId is a simple string, not JSON, so it should still be set
-      expect(useProjectStore.getState().activeProjectId).toBe('project-1');
+      // State should remain unchanged (not modified by restoreTabState)
+      expect(useProjectStore.getState().openProjectIds).toEqual(['existing']);
+      expect(useProjectStore.getState().activeProjectId).toBe('existing');
+      expect(useProjectStore.getState().tabOrder).toEqual(['existing']);
     });
   });
 

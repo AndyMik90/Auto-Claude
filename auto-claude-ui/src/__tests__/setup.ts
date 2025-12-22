@@ -82,7 +82,13 @@ if (typeof window !== 'undefined') {
     getSettings: vi.fn(),
     saveSettings: vi.fn(),
     selectDirectory: vi.fn(),
-    getAppVersion: vi.fn()
+    getAppVersion: vi.fn(),
+    // Tab state persistence (IPC-based)
+    getTabState: vi.fn().mockResolvedValue({
+      success: true,
+      data: { openProjectIds: [], activeProjectId: null, tabOrder: [] }
+    }),
+    saveTabState: vi.fn().mockResolvedValue({ success: true })
   };
 }
 
