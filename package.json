@@ -1,0 +1,40 @@
+{
+  "name": "auto-claude",
+  "version": "2.6.5",
+  "description": "Autonomous multi-agent coding framework powered by Claude AI",
+  "license": "AGPL-3.0",
+  "author": "Auto Claude Team",
+  "scripts": {
+    "install:backend": "cd Apps/backend && python -m pip install -r requirements.txt",
+    "install:frontend": "cd Apps/frontend && npm install",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "start": "cd Apps/frontend && npm run build && npm run start",
+    "dev": "cd Apps/frontend && npm run dev",
+    "build": "cd Apps/frontend && npm run build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "lint": "cd Apps/frontend && npm run lint",
+    "test": "cd Apps/frontend && npm test",
+    "test:backend": "cd Apps/backend && python -m pytest ../tests -v",
+    "package": "cd Apps/frontend && npm run package",
+    "package:mac": "cd Apps/frontend && npm run package:mac",
+    "package:win": "cd Apps/frontend && npm run package:win",
+    "package:linux": "cd Apps/frontend && npm run package:linux"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndyMik90/Auto-Claude.git"
+  },
+  "keywords": [
+    "ai",
+    "claude",
+    "autonomous",
+    "coding",
+    "agents",
+    "electron"
+  ]
+}
