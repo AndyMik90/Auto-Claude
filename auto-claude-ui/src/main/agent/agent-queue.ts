@@ -8,7 +8,7 @@ import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
 import type { IdeationConfig } from '../../shared/types';
 import { MODEL_ID_MAP } from '../../shared/constants';
-import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
+import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv, detectAuthFailure } from '../rate-limit-detector';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { parsePythonCommand } from '../python-detector';
 
@@ -365,9 +365,9 @@ export class AgentQueueManager {
       const storedProjectPath = processInfo?.projectPath;
       this.state.deleteProcess(projectId);
 
-      // Check for rate limit if process failed
+      // Check for rate limit or auth failure if process failed
       if (code !== 0) {
-        debugLog('[Agent Queue] Checking for rate limit (non-zero exit)');
+        debugLog('[Agent Queue] Checking for rate limit or auth failure (non-zero exit)');
         const rateLimitDetection = detectRateLimit(allOutput);
         if (rateLimitDetection.isRateLimited) {
           debugLog('[Agent Queue] Rate limit detected for ideation');
@@ -375,6 +375,22 @@ export class AgentQueueManager {
             projectId
           });
           this.emitter.emit('sdk-rate-limit', rateLimitInfo);
+        } else {
+          // Not rate limited - check for authentication failure
+          const authFailureDetection = detectAuthFailure(allOutput);
+          if (authFailureDetection.isAuthFailure) {
+            debugLog('[Agent Queue] Auth failure detected for ideation:', {
+              projectId,
+              failureType: authFailureDetection.failureType,
+              message: authFailureDetection.message
+            });
+            this.emitter.emit('auth-failure', projectId, {
+              profileId: authFailureDetection.profileId,
+              failureType: authFailureDetection.failureType,
+              message: authFailureDetection.message,
+              originalError: authFailureDetection.originalError
+            });
+          }
         }
       }
 
@@ -573,9 +589,9 @@ export class AgentQueueManager {
       const storedProjectPath = processInfo?.projectPath;
       this.state.deleteProcess(projectId);
 
-      // Check for rate limit if process failed
+      // Check for rate limit or auth failure if process failed
       if (code !== 0) {
-        debugLog('[Agent Queue] Checking for rate limit (non-zero exit)');
+        debugLog('[Agent Queue] Checking for rate limit or auth failure (non-zero exit)');
         const rateLimitDetection = detectRateLimit(allRoadmapOutput);
         if (rateLimitDetection.isRateLimited) {
           debugLog('[Agent Queue] Rate limit detected for roadmap');
@@ -583,6 +599,22 @@ export class AgentQueueManager {
             projectId
           });
           this.emitter.emit('sdk-rate-limit', rateLimitInfo);
+        } else {
+          // Not rate limited - check for authentication failure
+          const authFailureDetection = detectAuthFailure(allRoadmapOutput);
+          if (authFailureDetection.isAuthFailure) {
+            debugLog('[Agent Queue] Auth failure detected for roadmap:', {
+              projectId,
+              failureType: authFailureDetection.failureType,
+              message: authFailureDetection.message
+            });
+            this.emitter.emit('auth-failure', projectId, {
+              profileId: authFailureDetection.profileId,
+              failureType: authFailureDetection.failureType,
+              message: authFailureDetection.message,
+              originalError: authFailureDetection.originalError
+            });
+          }
         }
       }
 

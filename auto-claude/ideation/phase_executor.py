@@ -14,6 +14,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from debug import debug, debug_error, debug_success
 from ui import print_key_value, print_status
 
 from .types import IdeationPhaseResult
@@ -85,16 +86,47 @@ class PhaseExecutor:
 
         if not is_graphiti_enabled():
             print_status("Graphiti not enabled, skipping graph hints", "info")
-            with open(hints_file, "w") as f:
-                json.dump(
-                    {
-                        "enabled": False,
-                        "reason": "Graphiti not configured",
-                        "hints_by_type": {},
-                        "created_at": datetime.now().isoformat(),
-                    },
-                    f,
-                    indent=2,
+            debug(
+                "phase_executor",
+                "Writing graph_hints.json (Graphiti disabled)",
+                file_path=str(hints_file),
+            )
+            try:
+                with open(hints_file, "w") as f:
+                    json.dump(
+                        {
+                            "enabled": False,
+                            "reason": "Graphiti not configured",
+                            "hints_by_type": {},
+                            "created_at": datetime.now().isoformat(),
+                        },
+                        f,
+                        indent=2,
+                    )
+                # Verify file was written
+                if not hints_file.exists():
+                    raise OSError(f"File was not created: {hints_file}")
+                debug_success(
+                    "phase_executor",
+                    "Successfully wrote graph_hints.json",
+                    file_path=str(hints_file),
+                    file_size=hints_file.stat().st_size,
+                )
+            except OSError as e:
+                debug_error(
+                    "phase_executor",
+                    "Failed to write graph_hints.json",
+                    file_path=str(hints_file),
+                    error=str(e),
+                )
+                return IdeationPhaseResult(
+                    phase="graph_hints",
+                    ideation_type=None,
+                    success=False,
+                    output_files=[],
+                    ideas_count=0,
+                    errors=[f"Failed to write graph_hints.json: {e}"],
+                    retries=0,
                 )
             return IdeationPhaseResult(
                 phase="graph_hints",
@@ -131,16 +163,50 @@ class PhaseExecutor:
                 total_hints += len(result)
 
         # Save hints
-        with open(hints_file, "w") as f:
-            json.dump(
-                {
-                    "enabled": True,
-                    "hints_by_type": hints_by_type,
-                    "total_hints": total_hints,
-                    "created_at": datetime.now().isoformat(),
-                },
-                f,
-                indent=2,
+        debug(
+            "phase_executor",
+            "Writing graph_hints.json (Graphiti enabled)",
+            file_path=str(hints_file),
+            total_hints=total_hints,
+        )
+        try:
+            with open(hints_file, "w") as f:
+                json.dump(
+                    {
+                        "enabled": True,
+                        "hints_by_type": hints_by_type,
+                        "total_hints": total_hints,
+                        "created_at": datetime.now().isoformat(),
+                    },
+                    f,
+                    indent=2,
+                )
+            # Verify file was written
+            if not hints_file.exists():
+                raise OSError(f"File was not created: {hints_file}")
+            debug_success(
+                "phase_executor",
+                "Successfully wrote graph_hints.json",
+                file_path=str(hints_file),
+                file_size=hints_file.stat().st_size,
+                total_hints=total_hints,
+            )
+        except OSError as e:
+            debug_error(
+                "phase_executor",
+                "Failed to write graph_hints.json",
+                file_path=str(hints_file),
+                error=str(e),
+            )
+            errors.append(f"Failed to write graph_hints.json: {e}")
+            return IdeationPhaseResult(
+                phase="graph_hints",
+                ideation_type=None,
+                success=False,
+                output_files=[],
+                ideas_count=0,
+                errors=errors,
+                retries=0,
             )
 
         if total_hints > 0:
@@ -200,8 +266,39 @@ class PhaseExecutor:
             "created_at": datetime.now().isoformat(),
         }
 
-        with open(context_file, "w") as f:
-            json.dump(context_data, f, indent=2)
+        debug(
+            "phase_executor",
+            "Writing ideation_context.json",
+            file_path=str(context_file),
+        )
+        try:
+            with open(context_file, "w") as f:
+                json.dump(context_data, f, indent=2)
+            # Verify file was written
+            if not context_file.exists():
+                raise OSError(f"File was not created: {context_file}")
+            debug_success(
+                "phase_executor",
+                "Successfully wrote ideation_context.json",
+                file_path=str(context_file),
+                file_size=context_file.stat().st_size,
+            )
+        except OSError as e:
+            debug_error(
+                "phase_executor",
+                "Failed to write ideation_context.json",
+                file_path=str(context_file),
+                error=str(e),
+            )
+            return IdeationPhaseResult(
+                phase="context",
+                ideation_type=None,
+                success=False,
+                output_files=[],
+                ideas_count=0,
+                errors=[f"Failed to write ideation_context.json: {e}"],
+                retries=0,
+            )
 
         print_status("Created ideation_context.json", "success")
         print_key_value("Tech Stack", ", ".join(context["tech_stack"][:5]) or "Unknown")
@@ -235,8 +332,20 @@ class PhaseExecutor:
         Returns:
             IdeationPhaseResult with ideation data
         """
+        debug(
+            "phase_executor",
+            f"Starting ideation for type: {ideation_type}",
+            ideation_type=ideation_type,
+            max_retries=max_retries,
+        )
+
         prompt_file = self.generator.get_prompt_file(ideation_type)
         if not prompt_file:
+            debug_error(
+                "phase_executor",
+                f"Unknown ideation type: {ideation_type}",
+                ideation_type=ideation_type,
+            )
             return IdeationPhaseResult(
                 phase="ideation",
                 ideation_type=ideation_type,
@@ -307,12 +416,36 @@ Output your ideas to {output_file.name}.
             additional_context=context,
         )
 
+        debug(
+            "phase_executor",
+            f"Agent run completed for {ideation_type}",
+            ideation_type=ideation_type,
+            agent_success=success,
+            output_file_exists=output_file.exists(),
+        )
+
         # Validate the output
         validation_result = self.prioritizer.validate_ideation_output(
             output_file, ideation_type
         )
 
+        debug(
+            "phase_executor",
+            f"Validation result for {ideation_type}",
+            ideation_type=ideation_type,
+            validation_success=validation_result["success"],
+            ideas_count=validation_result.get("count", 0),
+            validation_error=validation_result.get("error"),
+        )
+
         if validation_result["success"]:
+            debug_success(
+                "phase_executor",
+                f"Ideation successful for {ideation_type}",
+                ideation_type=ideation_type,
+                ideas_count=validation_result["count"],
+                output_file=str(output_file),
+            )
             print_status(
                 f"Created {output_file.name} ({validation_result['count']} ideas)",
                 "success",
@@ -327,10 +460,23 @@ Output your ideas to {output_file.name}.
                 retries=0,
             )
 
+        debug_error(
+            "phase_executor",
+            f"Initial validation failed for {ideation_type}, starting recovery",
+            ideation_type=ideation_type,
+            error=validation_result["error"],
+        )
         errors.append(validation_result["error"])
 
         # Recovery attempts: show the current state and ask AI to fix it
         for recovery_attempt in range(max_retries - 1):
+            debug(
+                "phase_executor",
+                f"Starting recovery attempt {recovery_attempt + 1} for {ideation_type}",
+                ideation_type=ideation_type,
+                attempt=recovery_attempt + 1,
+                max_attempts=max_retries - 1,
+            )
             print_status(
                 f"Running recovery agent (attempt {recovery_attempt + 1})...", "warning"
             )
@@ -342,6 +488,14 @@ Output your ideas to {output_file.name}.
                 validation_result.get("current_content", ""),
             )
 
+            debug(
+                "phase_executor",
+                f"Recovery agent completed for {ideation_type}",
+                ideation_type=ideation_type,
+                attempt=recovery_attempt + 1,
+                recovery_success=recovery_success,
+            )
+
             if recovery_success:
                 # Re-validate after recovery
                 validation_result = self.prioritizer.validate_ideation_output(
@@ -349,6 +503,13 @@ Output your ideas to {output_file.name}.
                 )
 
                 if validation_result["success"]:
+                    debug_success(
+                        "phase_executor",
+                        f"Recovery successful for {ideation_type}",
+                        ideation_type=ideation_type,
+                        attempt=recovery_attempt + 1,
+                        ideas_count=validation_result["count"],
+                    )
                     print_status(
                         f"Recovery successful: {output_file.name} ({validation_result['count']} ideas)",
                         "success",
@@ -363,12 +524,32 @@ Output your ideas to {output_file.name}.
                         retries=recovery_attempt + 1,
                     )
                 else:
+                    debug_error(
+                        "phase_executor",
+                        f"Recovery validation failed for {ideation_type}",
+                        ideation_type=ideation_type,
+                        attempt=recovery_attempt + 1,
+                        error=validation_result["error"],
+                    )
                     errors.append(
                         f"Recovery {recovery_attempt + 1}: {validation_result['error']}"
                     )
             else:
+                debug_error(
+                    "phase_executor",
+                    f"Recovery agent failed to run for {ideation_type}",
+                    ideation_type=ideation_type,
+                    attempt=recovery_attempt + 1,
+                )
                 errors.append(f"Recovery {recovery_attempt + 1}: Agent failed to run")
 
+        debug_error(
+            "phase_executor",
+            f"All recovery attempts failed for {ideation_type}",
+            ideation_type=ideation_type,
+            total_errors=len(errors),
+            errors=errors,
+        )
         return IdeationPhaseResult(
             phase="ideation",
             ideation_type=ideation_type,
@@ -385,22 +566,66 @@ Output your ideas to {output_file.name}.
         Returns:
             IdeationPhaseResult with merged data
         """
-        # Load context for metadata
-        context_data = self.formatter.load_context()
-
-        # Merge all outputs
-        ideation_file, total_ideas = self.formatter.merge_ideation_outputs(
-            self.enabled_types,
-            context_data,
-            self.append,
+        debug(
+            "phase_executor",
+            "Starting merge phase",
+            enabled_types=self.enabled_types,
+            append=self.append,
         )
 
-        return IdeationPhaseResult(
-            phase="merge",
-            ideation_type=None,
-            success=True,
-            output_files=[str(ideation_file)],
-            ideas_count=total_ideas,
-            errors=[],
-            retries=0,
-        )
+        try:
+            # Load context for metadata
+            context_data = self.formatter.load_context()
+
+            debug(
+                "phase_executor",
+                "Loaded context data for merge",
+                context_loaded=context_data is not None,
+            )
+
+            # Merge all outputs
+            ideation_file, total_ideas = self.formatter.merge_ideation_outputs(
+                self.enabled_types,
+                context_data,
+                self.append,
+            )
+
+            # Verify the merge file was created
+            if not ideation_file.exists():
+                raise OSError(f"Merge file was not created: {ideation_file}")
+
+            debug_success(
+                "phase_executor",
+                "Merge phase completed",
+                output_file=str(ideation_file),
+                file_size=ideation_file.stat().st_size,
+                total_ideas=total_ideas,
+            )
+
+            return IdeationPhaseResult(
+                phase="merge",
+                ideation_type=None,
+                success=True,
+                output_files=[str(ideation_file)],
+                ideas_count=total_ideas,
+                errors=[],
+                retries=0,
+            )
+        except Exception as e:
+            # Catch all exceptions to ensure graceful failure and proper error reporting
+            # The merge phase can fail from OSError, json.JSONDecodeError, KeyError, etc.
+            debug_error(
+                "phase_executor",
+                "Merge phase failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return IdeationPhaseResult(
+                phase="merge",
+                ideation_type=None,
+                success=False,
+                output_files=[],
+                ideas_count=0,
+                errors=[f"Merge failed: {e}"],
+                retries=0,
+            )
