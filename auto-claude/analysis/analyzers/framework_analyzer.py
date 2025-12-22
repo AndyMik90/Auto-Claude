@@ -323,10 +323,19 @@ class FrameworkAnalyzer(BaseAnalyzer):
             if not self.path.exists() or not self.path.is_dir():
                 return False
 
+            # Check current directory
             for item in self.path.iterdir():
                 if item.is_dir():
                     if item.name.endswith('.xcodeproj') or item.name.endswith('.xcworkspace'):
                         return True
+
+            # Also check parent directory (for Xcode projects where code is in ProjectName/ProjectName/)
+            parent = self.path.parent
+            if parent and parent.exists():
+                for item in parent.iterdir():
+                    if item.is_dir():
+                        if item.name.endswith('.xcodeproj') or item.name.endswith('.xcworkspace'):
+                            return True
         except (OSError, PermissionError):
             pass
         return False
