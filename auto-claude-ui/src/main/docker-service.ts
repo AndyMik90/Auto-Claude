@@ -793,20 +793,30 @@ export async function downloadOllamaModel(
         }
       };
 
-      const req = request(options, (res: IncomingMessage) => {
-        let data = '';
+       const req = request(options, (res: IncomingMessage) => {
+         let buffer = '';
 
-        res.on('data', (chunk: Buffer) => {
-          data += chunk;
-          try {
-            const progressData = JSON.parse(data);
-            if (progressData.status && progressData.completed !== undefined) {
-              onProgress?.(progressData);
-            }
-          } catch {
-            // Ignore non-JSON chunks
-          }
-        });
+         res.on('data', (chunk: Buffer) => {
+           buffer += chunk.toString();
+           
+           // Process each line (Ollama sends newline-delimited JSON)
+           const lines = buffer.split('\n');
+           // Keep the last incomplete line in buffer
+           buffer = lines.pop() || '';
+           
+           lines.forEach(line => {
+             if (line.trim()) {
+               try {
+                 const progressData = JSON.parse(line);
+                 if (progressData.status && progressData.completed !== undefined) {
+                   onProgress?.(progressData);
+                 }
+               } catch {
+                 // Ignore invalid JSON lines
+               }
+             }
+           });
+         });
 
         res.on('end', () => {
           if (res.statusCode === 200) {
