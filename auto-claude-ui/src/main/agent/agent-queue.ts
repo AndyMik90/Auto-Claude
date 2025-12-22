@@ -5,9 +5,12 @@ import { EventEmitter } from 'events';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
-import { IdeationConfig } from './types';
+import { RoadmapConfig } from './types';
+import type { IdeationConfig } from '../../shared/types';
+import { MODEL_ID_MAP } from '../../shared/constants';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
+import { parsePythonCommand } from '../python-detector';
 
 /**
  * Queue management for ideation and roadmap generation
@@ -32,18 +35,26 @@ export class AgentQueueManager {
 
   /**
    * Start roadmap generation process
+   *
+   * @param refreshCompetitorAnalysis - Force refresh competitor analysis even if it exists.
+   *   This allows refreshing competitor data independently of the general roadmap refresh.
+   *   Use when user explicitly wants new competitor research.
    */
   startRoadmapGeneration(
     projectId: string,
     projectPath: string,
     refresh: boolean = false,
-    enableCompetitorAnalysis: boolean = false
+    enableCompetitorAnalysis: boolean = false,
+    refreshCompetitorAnalysis: boolean = false,
+    config?: RoadmapConfig
   ): void {
     debugLog('[Agent Queue] Starting roadmap generation:', {
       projectId,
       projectPath,
       refresh,
-      enableCompetitorAnalysis
+      enableCompetitorAnalysis,
+      refreshCompetitorAnalysis,
+      config
     });
 
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
@@ -71,6 +82,20 @@ export class AgentQueueManager {
     // Add competitor analysis flag if enabled
     if (enableCompetitorAnalysis) {
       args.push('--competitor-analysis');
+    }
+
+    // Add refresh competitor analysis flag if user wants fresh competitor data
+    if (refreshCompetitorAnalysis) {
+      args.push('--refresh-competitor-analysis');
+    }
+
+    // Add model and thinking level from config
+    if (config?.model) {
+      const modelId = MODEL_ID_MAP[config.model] || MODEL_ID_MAP['opus'];
+      args.push('--model', modelId);
+    }
+    if (config?.thinkingLevel) {
+      args.push('--thinking-level', config.thinkingLevel);
     }
 
     debugLog('[Agent Queue] Spawning roadmap process with args:', args);
@@ -140,6 +165,15 @@ export class AgentQueueManager {
       args.push('--append');
     }
 
+    // Add model and thinking level from config
+    if (config.model) {
+      const modelId = MODEL_ID_MAP[config.model] || MODEL_ID_MAP['opus'];
+      args.push('--model', modelId);
+    }
+    if (config.thinkingLevel) {
+      args.push('--thinking-level', config.thinkingLevel);
+    }
+
     debugLog('[Agent Queue] Spawning ideation process with args:', args);
 
     // Use projectId as taskId for ideation operations
@@ -206,7 +240,9 @@ export class AgentQueueManager {
       tokenPreview: hasToken ? oauthToken?.substring(0, 20) + '...' : 'none'
     });
 
-    const childProcess = spawn(pythonPath, args, {
+    // Parse Python command to handle space-separated commands like "py -3"
+    const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
+    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
       cwd,
       env: finalEnv
     });
@@ -314,6 +350,15 @@ export class AgentQueueManager {
     // Handle process exit
     childProcess.on('exit', (code: number | null) => {
       debugLog('[Agent Queue] Ideation process exited:', { projectId, code, spawnId });
+
+      // Check if this process was intentionally stopped by the user
+      const wasIntentionallyStopped = this.state.wasSpawnKilled(spawnId);
+      if (wasIntentionallyStopped) {
+        debugLog('[Agent Queue] Ideation process was intentionally stopped, ignoring exit');
+        this.state.clearKilledSpawn(spawnId);
+        this.state.deleteProcess(projectId);
+        return;
+      }
 
       // Get the stored project path before deleting from map
       const processInfo = this.state.getProcess(projectId);
@@ -441,7 +486,9 @@ export class AgentQueueManager {
       tokenPreview: hasToken ? oauthToken?.substring(0, 20) + '...' : 'none'
     });
 
-    const childProcess = spawn(pythonPath, args, {
+    // Parse Python command to handle space-separated commands like "py -3"
+    const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
+    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
       cwd,
       env: finalEnv
     });
@@ -511,6 +558,15 @@ export class AgentQueueManager {
     // Handle process exit
     childProcess.on('exit', (code: number | null) => {
       debugLog('[Agent Queue] Roadmap process exited:', { projectId, code, spawnId });
+
+      // Check if this process was intentionally stopped by the user
+      const wasIntentionallyStopped = this.state.wasSpawnKilled(spawnId);
+      if (wasIntentionallyStopped) {
+        debugLog('[Agent Queue] Roadmap process was intentionally stopped, ignoring exit');
+        this.state.clearKilledSpawn(spawnId);
+        this.state.deleteProcess(projectId);
+        return;
+      }
 
       // Get the stored project path before deleting from map
       const processInfo = this.state.getProcess(projectId);

@@ -138,6 +138,8 @@ class EvolutionStorage:
         if baseline_path.exists():
             try:
                 return baseline_path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                return baseline_path.read_text(encoding="utf-8", errors="replace")
             except Exception as e:
                 logger.warning(f"Could not read baseline {baseline_snapshot_path}: {e}")
         return None
@@ -157,6 +159,8 @@ class EvolutionStorage:
             if not path.is_absolute():
                 path = self.project_dir / path
             return path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            return path.read_text(encoding="utf-8", errors="replace")
         except Exception as e:
             logger.warning(f"Could not read {file_path}: {e}")
             return None

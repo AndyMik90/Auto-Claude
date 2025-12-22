@@ -6,9 +6,16 @@ import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, Implemen
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 
+interface TabState {
+  openProjectIds: string[];
+  activeProjectId: string | null;
+  tabOrder: string[];
+}
+
 interface StoreData {
   projects: Project[];
   settings: Record<string, unknown>;
+  tabState?: TabState;
 }
 
 /**
@@ -68,6 +75,14 @@ export class ProjectStore {
     // Check if project already exists
     const existing = this.data.projects.find((p) => p.path === projectPath);
     if (existing) {
+      // Validate that .auto-claude folder still exists for existing project
+      // If manually deleted, reset autoBuildPath so UI prompts for reinitialization
+      if (existing.autoBuildPath && !isInitialized(existing.path)) {
+        console.warn(`[ProjectStore] .auto-claude folder was deleted for project "${existing.name}" - resetting autoBuildPath`);
+        existing.autoBuildPath = '';
+        existing.updatedAt = new Date();
+        this.save();
+      }
       return existing;
     }
 
@@ -124,6 +139,34 @@ export class ProjectStore {
    */
   getProjects(): Project[] {
     return this.data.projects;
+  }
+
+  /**
+   * Get tab state
+   */
+  getTabState(): TabState {
+    return this.data.tabState || {
+      openProjectIds: [],
+      activeProjectId: null,
+      tabOrder: []
+    };
+  }
+
+  /**
+   * Save tab state
+   */
+  saveTabState(tabState: TabState): void {
+    // Filter out any project IDs that no longer exist
+    const validProjectIds = this.data.projects.map(p => p.id);
+    this.data.tabState = {
+      openProjectIds: tabState.openProjectIds.filter(id => validProjectIds.includes(id)),
+      activeProjectId: tabState.activeProjectId && validProjectIds.includes(tabState.activeProjectId)
+        ? tabState.activeProjectId
+        : null,
+      tabOrder: tabState.tabOrder.filter(id => validProjectIds.includes(id))
+    };
+    console.log('[ProjectStore] Saving tab state:', this.data.tabState);
+    this.save();
   }
 
   /**
@@ -243,8 +286,8 @@ export class ProjectStore {
         if (existsSync(specFilePath)) {
           try {
             const content = readFileSync(specFilePath, 'utf-8');
-            // Extract first paragraph after "## Overview"
-            const overviewMatch = content.match(/## Overview\s*\n\n([^\n#]+)/);
+            // Extract first paragraph after "## Overview" - handle both with and without blank line
+            const overviewMatch = content.match(/## Overview\s*\n+([^\n#]+)/);
             if (overviewMatch) {
               description = overviewMatch[1].trim();
             }
@@ -256,6 +299,42 @@ export class ProjectStore {
         // Fallback: read description from implementation_plan.json if not found in spec.md
         if (!description && plan?.description) {
           description = plan.description;
+        }
+
+        // Fallback: read description from requirements.json if still not found
+        if (!description) {
+          const requirementsPath = path.join(specPath, AUTO_BUILD_PATHS.REQUIREMENTS);
+          if (existsSync(requirementsPath)) {
+            try {
+              const reqContent = readFileSync(requirementsPath, 'utf-8');
+              const requirements = JSON.parse(reqContent);
+              if (requirements.task_description) {
+                // Extract a clean summary from task_description (first line or first ~200 chars)
+                const taskDesc = requirements.task_description;
+                const firstLine = taskDesc.split('\n')[0].trim();
+                // If the first line is a title like "Investigate GitHub Issue #36", use the next meaningful line
+                if (firstLine.toLowerCase().startsWith('investigate') && taskDesc.includes('\n\n')) {
+                  const sections = taskDesc.split('\n\n');
+                  // Find the first paragraph that's not a title
+                  for (const section of sections) {
+                    const trimmed = section.trim();
+                    // Skip headers and short lines
+                    if (trimmed.startsWith('#') || trimmed.length < 20) continue;
+                    // Skip the "Please analyze" instruction at the end
+                    if (trimmed.startsWith('Please analyze')) continue;
+                    description = trimmed.substring(0, 200).split('\n')[0];
+                    break;
+                  }
+                }
+                // If still no description, use a shortened version of task_description
+                if (!description) {
+                  description = firstLine.substring(0, 150);
+                }
+              }
+            } catch {
+              // Ignore parse errors
+            }
+          }
         }
 
         // Try to read task metadata
@@ -298,11 +377,30 @@ export class ProjectStore {
         const stagedInMainProject = planWithStaged?.stagedInMainProject;
         const stagedAt = planWithStaged?.stagedAt;
 
+        // Determine title - check if feature looks like a spec ID (e.g., "054-something-something")
+        let title = plan?.feature || plan?.title || dir.name;
+        const looksLikeSpecId = /^\d{3}-/.test(title);
+        if (looksLikeSpecId && existsSync(specFilePath)) {
+          try {
+            const specContent = readFileSync(specFilePath, 'utf-8');
+            // Extract title from first # line, handling patterns like:
+            // "# Quick Spec: Title" -> "Title"
+            // "# Specification: Title" -> "Title"
+            // "# Title" -> "Title"
+            const titleMatch = specContent.match(/^#\s+(?:Quick Spec:|Specification:)?\s*(.+)$/m);
+            if (titleMatch && titleMatch[1]) {
+              title = titleMatch[1].trim();
+            }
+          } catch {
+            // Keep the original title on error
+          }
+        }
+
         const task = {
           id: dir.name, // Use spec directory name as ID
           specId: dir.name,
           projectId,
-          title: plan?.feature || plan?.title || dir.name,
+          title,
           description,
           status,
           reviewReason,

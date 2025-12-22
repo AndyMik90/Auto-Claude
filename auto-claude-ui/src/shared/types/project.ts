@@ -139,33 +139,23 @@ export interface ConventionsInfo {
 export interface GraphitiMemoryStatus {
   enabled: boolean;
   available: boolean;
-  host?: string;
-  port?: number;
   database?: string;
+  dbPath?: string;
   reason?: string;
 }
 
-// Docker & Infrastructure Types
-export interface DockerStatus {
-  installed: boolean;
-  running: boolean;
-  version?: string;
-  error?: string;
-}
-
-export interface FalkorDBStatus {
-  containerExists: boolean;
-  containerRunning: boolean;
-  containerName: string;
-  port: number;
-  healthy: boolean;
+// Memory Infrastructure Types
+export interface MemoryDatabaseStatus {
+  kuzuInstalled: boolean;
+  databasePath: string;
+  databaseExists: boolean;
+  databases: string[];
   error?: string;
 }
 
 export interface InfrastructureStatus {
-  docker: DockerStatus;
-  falkordb: FalkorDBStatus;
-  ready: boolean; // True if both Docker is running and FalkorDB is healthy
+  memory: MemoryDatabaseStatus;
+  ready: boolean; // True if memory database is available
 }
 
 // Graphiti Validation Types
@@ -180,41 +170,50 @@ export interface GraphitiValidationResult {
 }
 
 export interface GraphitiConnectionTestResult {
-  falkordb: GraphitiValidationResult;
-  openai: GraphitiValidationResult;
+  database: GraphitiValidationResult;
+  llmProvider: GraphitiValidationResult;
   ready: boolean;
 }
 
-// Graphiti Provider Types (Memory System V2)
-export type GraphitiProviderType = 'openai' | 'anthropic' | 'google' | 'groq' | 'ollama';
-export type GraphitiEmbeddingProvider = 'openai' | 'voyage' | 'google' | 'huggingface' | 'ollama';
+// Memory Provider Types
+// Embedding Providers: OpenAI, Voyage AI, Azure OpenAI, Ollama (local), Google
+// Note: LLM provider removed - Claude SDK handles RAG queries
+export type GraphitiEmbeddingProvider = 'openai' | 'voyage' | 'azure_openai' | 'ollama' | 'google';
+
+// Legacy type aliases for backward compatibility
+export type GraphitiLLMProvider = 'openai' | 'anthropic' | 'azure_openai' | 'ollama' | 'google' | 'groq';
+export type GraphitiProviderType = GraphitiLLMProvider;
 
 export interface GraphitiProviderConfig {
-  // LLM Provider
-  llmProvider: GraphitiProviderType;
-  llmModel?: string;  // Model name, uses provider default if not specified
-
-  // Embedding Provider
+  // Embedding Provider (LLM provider removed - Claude SDK handles RAG)
   embeddingProvider: GraphitiEmbeddingProvider;
   embeddingModel?: string;  // Embedding model, uses provider default if not specified
 
-  // Provider-specific API keys (stored securely)
+  // OpenAI Embeddings
   openaiApiKey?: string;
-  anthropicApiKey?: string;
-  googleApiKey?: string;
-  groqApiKey?: string;
-  voyageApiKey?: string;
+  openaiEmbeddingModel?: string;
 
-  // Ollama-specific config (local LLM, no API key required)
+  // Azure OpenAI Embeddings
+  azureOpenaiApiKey?: string;
+  azureOpenaiBaseUrl?: string;
+  azureOpenaiEmbeddingDeployment?: string;
+
+  // Voyage AI Embeddings
+  voyageApiKey?: string;
+  voyageEmbeddingModel?: string;
+
+  // Google AI Embeddings
+  googleApiKey?: string;
+  googleEmbeddingModel?: string;
+
+  // Ollama Embeddings (local, no API key required)
   ollamaBaseUrl?: string;  // Default: http://localhost:11434
-  ollamaLlmModel?: string;
   ollamaEmbeddingModel?: string;
   ollamaEmbeddingDim?: number;
 
-  // FalkorDB connection (required for all providers)
-  falkorDbHost?: string;
-  falkorDbPort?: number;
-  falkorDbPassword?: string;
+  // LadybugDB settings (embedded database - no Docker required)
+  database?: string;  // Database name (default: auto_claude_memory)
+  dbPath?: string;    // Database storage path (default: ~/.auto-claude/memories)
 }
 
 export interface GraphitiProviderInfo {
@@ -238,7 +237,7 @@ export interface GraphitiMemoryState {
 
 export interface MemoryEpisode {
   id: string;
-  type: 'session_insight' | 'codebase_discovery' | 'codebase_map' | 'pattern' | 'gotcha';
+  type: 'session_insight' | 'codebase_discovery' | 'codebase_map' | 'pattern' | 'gotcha' | 'task_outcome';
   timestamp: string;
   content: string;
   session_number?: number;
@@ -284,17 +283,19 @@ export interface ProjectEnvConfig {
   githubRepo?: string; // Format: owner/repo
   githubAutoSync?: boolean; // Auto-sync issues on project load
 
+  // Git/Worktree Settings
+  defaultBranch?: string; // Base branch for worktree creation (e.g., 'main', 'develop')
+
   // Graphiti Memory Integration (V2 - Multi-provider support)
+  // Uses LadybugDB embedded database (no Docker required, Python 3.12+)
   graphitiEnabled: boolean;
-  graphitiProviderConfig?: GraphitiProviderConfig;  // New V2 provider configuration
+  graphitiProviderConfig?: GraphitiProviderConfig;  // Provider configuration
   // Legacy fields (still supported for backward compatibility)
   openaiApiKey?: string;
   // Indicates if the OpenAI key is from global settings (not project-specific)
   openaiKeyIsGlobal?: boolean;
-  graphitiFalkorDbHost?: string;
-  graphitiFalkorDbPort?: number;
-  graphitiFalkorDbPassword?: string;
   graphitiDatabase?: string;
+  graphitiDbPath?: string;
 
   // UI Settings
   enableFancyUi: boolean;

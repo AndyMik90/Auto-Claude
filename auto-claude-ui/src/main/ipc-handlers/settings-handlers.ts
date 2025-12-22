@@ -10,6 +10,7 @@ import type {
 } from '../../shared/types';
 import { AgentManager } from '../agent';
 import type { BrowserWindow } from 'electron';
+import { getEffectiveVersion } from '../auto-claude-updater';
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
@@ -47,8 +48,8 @@ const detectAutoBuildSourcePath = (): string | null => {
   // Add process.cwd() as last resort on all platforms
   possiblePaths.push(path.resolve(process.cwd(), 'auto-claude'));
 
-  // Enable debug logging with AUTO_CLAUDE_DEBUG=1
-  const debug = process.env.AUTO_CLAUDE_DEBUG === '1' || process.env.AUTO_CLAUDE_DEBUG === 'true';
+  // Enable debug logging with DEBUG=1
+  const debug = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
 
   if (debug) {
     console.warn('[detectAutoBuildSourcePath] Platform:', process.platform);
@@ -75,7 +76,7 @@ const detectAutoBuildSourcePath = (): string | null => {
   }
 
   console.warn('[detectAutoBuildSourcePath] Could not auto-detect Auto Claude source path. Please configure manually in settings.');
-  console.warn('[detectAutoBuildSourcePath] Set AUTO_CLAUDE_DEBUG=1 environment variable for detailed path checking.');
+  console.warn('[detectAutoBuildSourcePath] Set DEBUG=1 environment variable for detailed path checking.');
   return null;
 };
 
@@ -93,7 +94,8 @@ export function registerSettingsHandlers(
   ipcMain.handle(
     IPC_CHANNELS.SETTINGS_GET,
     async (): Promise<IPCResult<AppSettings>> => {
-      let settings = { ...DEFAULT_APP_SETTINGS };
+      let settings: AppSettings = { ...DEFAULT_APP_SETTINGS };
+      let needsSave = false;
 
       if (existsSync(settingsPath)) {
         try {
@@ -104,11 +106,33 @@ export function registerSettingsHandlers(
         }
       }
 
+      // Migration: Set agent profile to 'auto' for users who haven't made a selection (one-time)
+      // This ensures new users get the optimized 'auto' profile as the default
+      // while preserving existing user preferences
+      if (!settings._migratedAgentProfileToAuto) {
+        // Only set 'auto' if user hasn't made a selection yet
+        if (!settings.selectedAgentProfile) {
+          settings.selectedAgentProfile = 'auto';
+        }
+        settings._migratedAgentProfileToAuto = true;
+        needsSave = true;
+      }
+
       // If no manual autoBuildPath is set, try to auto-detect
       if (!settings.autoBuildPath) {
         const detectedPath = detectAutoBuildSourcePath();
         if (detectedPath) {
           settings.autoBuildPath = detectedPath;
+        }
+      }
+
+      // Persist migration changes
+      if (needsSave) {
+        try {
+          writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        } catch (error) {
+          console.error('[SETTINGS_GET] Failed to persist migration:', error);
+          // Continue anyway - settings will be migrated in-memory for this session
         }
       }
 
@@ -264,7 +288,10 @@ export function registerSettingsHandlers(
   // ============================================
 
   ipcMain.handle(IPC_CHANNELS.APP_VERSION, async (): Promise<string> => {
-    return app.getVersion();
+    // Use effective version which accounts for source updates
+    const version = getEffectiveVersion();
+    console.log('[settings-handlers] APP_VERSION returning:', version);
+    return version;
   });
 
   // ============================================

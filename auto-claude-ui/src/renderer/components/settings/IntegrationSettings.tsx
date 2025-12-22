@@ -404,8 +404,9 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                       </div>
                       {editingProfileId !== profile.id && (
                         <div className="flex items-center gap-1">
-                          {/* Authenticate button - show if not authenticated */}
-                          {!profile.oauthToken && (
+                          {/* Authenticate button - show only if NOT authenticated */}
+                          {/* A profile is authenticated if: has OAuth token OR (is default AND has configDir) */}
+                          {!(profile.oauthToken || (profile.isDefault && profile.configDir)) ? (
                             <Button
                               variant="outline"
                               size="sm"
@@ -419,6 +420,22 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                 <LogIn className="h-3 w-3" />
                               )}
                               Authenticate
+                            </Button>
+                          ) : (
+                            /* Re-authenticate button for already authenticated profiles */
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleAuthenticateProfile(profile.id)}
+                              disabled={authenticatingProfileId === profile.id}
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              title="Re-authenticate profile"
+                            >
+                              {authenticatingProfileId === profile.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-3 w-3" />
+                              )}
                             </Button>
                           )}
                           {profile.id !== activeProfileId && (
@@ -487,7 +504,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               Run <code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">claude setup-token</code> to get your token
                             </span>
                           </div>
-                          
+
                           <div className="space-y-2">
                             <div className="relative">
                               <Input
@@ -505,7 +522,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                 {showManualToken ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                               </button>
                             </div>
-                            
+
                             <Input
                               type="email"
                               placeholder="Email (optional, for display)"
@@ -514,7 +531,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               className="text-xs h-8"
                             />
                           </div>
-                          
+
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               variant="ghost"

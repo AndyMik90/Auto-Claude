@@ -5,6 +5,23 @@
 import type { NotificationSettings } from './project';
 import type { ChangelogFormat, ChangelogAudience, ChangelogEmojiLevel } from './changelog';
 
+// Color theme types for multi-theme support
+export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest';
+
+export interface ThemePreviewColors {
+  bg: string;
+  accent: string;
+  darkBg: string;
+  darkAccent?: string;
+}
+
+export interface ColorThemeDefinition {
+  id: ColorTheme;
+  name: string;
+  description: string;
+  previewColors: ThemePreviewColors;
+}
+
 // Thinking level for Claude model (budget token allocation)
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
 
@@ -28,6 +45,20 @@ export interface PhaseThinkingConfig {
   qa: ThinkingLevel;
 }
 
+// Feature-specific model configuration (for non-pipeline features)
+export interface FeatureModelConfig {
+  insights: ModelTypeShort;    // Insights chat feature
+  ideation: ModelTypeShort;    // Ideation generation
+  roadmap: ModelTypeShort;     // Roadmap generation
+}
+
+// Feature-specific thinking level configuration
+export interface FeatureThinkingConfig {
+  insights: ThinkingLevel;
+  ideation: ThinkingLevel;
+  roadmap: ThinkingLevel;
+}
+
 // Agent profile for preset model/thinking configurations
 export interface AgentProfile {
   id: string;
@@ -44,6 +75,7 @@ export interface AgentProfile {
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
+  colorTheme?: ColorTheme;
   defaultModel: string;
   agentFramework: string;
   pythonPath?: string;
@@ -64,12 +96,20 @@ export interface AppSettings {
   onboardingCompleted?: boolean;
   // Selected agent profile for preset model/thinking configurations
   selectedAgentProfile?: string;
+  // Custom phase configuration for Auto profile (overrides defaults)
+  customPhaseModels?: PhaseModelConfig;
+  customPhaseThinking?: PhaseThinkingConfig;
+  // Feature-specific configuration (insights, ideation, roadmap)
+  featureModels?: FeatureModelConfig;
+  featureThinking?: FeatureThinkingConfig;
   // Changelog preferences
   changelogFormat?: ChangelogFormat;
   changelogAudience?: ChangelogAudience;
   changelogEmojiLevel?: ChangelogEmojiLevel;
   // Developer/Debug settings
   enableBackendLogging?: boolean;  // Show backend logs in DevTools console (default: false)
+  // Migration flags (internal use)
+  _migratedAgentProfileToAuto?: boolean;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)
@@ -109,4 +149,6 @@ export interface AutoBuildSourceUpdateProgress {
   stage: 'checking' | 'downloading' | 'extracting' | 'complete' | 'error';
   percent?: number;
   message: string;
+  /** New version after successful update - used to refresh UI */
+  newVersion?: string;
 }

@@ -1,15 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type ClipboardEvent, type DragEvent } from 'react';
-import {
-  DndContext,
-  DragOverlay,
-  useDroppable,
-  type DragEndEvent,
-  type DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors
-} from '@dnd-kit/core';
-import { Loader2, ChevronDown, ChevronUp, Image as ImageIcon, X, RotateCcw, File, Folder, FolderTree, FileDown } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp, Image as ImageIcon, X, RotateCcw, FolderTree, GitBranch } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,16 +21,15 @@ import {
   SelectValue
 } from './ui/select';
 import {
-  ImageUpload,
   generateImageId,
   blobToBase64,
   createThumbnail,
   isValidImageMimeType,
   resolveFilename
 } from './ImageUpload';
-import { ReferencedFilesSection } from './ReferencedFilesSection';
 import { TaskFileExplorerDrawer } from './TaskFileExplorerDrawer';
 import { AgentProfileSelector } from './AgentProfileSelector';
+import { FileAutocomplete } from './FileAutocomplete';
 import { parseMarkdownTask, generateRichDescription, type ParsedTask } from '../lib/markdown-task-parser';
 import { createTask, createTaskWithChildren, saveDraft, loadDraft, clearDraft, isDraftEmpty } from '../stores/task-store';
 import { useProjectStore } from '../stores/project-store';
@@ -53,7 +42,6 @@ import {
   TASK_COMPLEXITY_LABELS,
   TASK_IMPACT_LABELS,
   MAX_IMAGES_PER_TASK,
-  MAX_REFERENCED_FILES,
   ALLOWED_IMAGE_TYPES_DISPLAY,
   DEFAULT_AGENT_PROFILES,
   DEFAULT_PHASE_MODELS,
@@ -83,8 +71,16 @@ export function TaskCreationWizard({
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showImages, setShowImages] = useState(false);
   const [showFileExplorer, setShowFileExplorer] = useState(false);
+  const [showGitOptions, setShowGitOptions] = useState(false);
+
+  // Git options state
+  // Use a special value to represent "use project default" since Radix UI Select doesn't allow empty string values
+  const PROJECT_DEFAULT_BRANCH = '__project_default__';
+  const [branches, setBranches] = useState<string[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+  const [baseBranch, setBaseBranch] = useState<string>(PROJECT_DEFAULT_BRANCH);
+  const [projectDefaultBranch, setProjectDefaultBranch] = useState<string>('');
 
   // Get project path from project store
   const projects = useProjectStore((state) => state.projects);
@@ -104,11 +100,12 @@ export function TaskCreationWizard({
   const [model, setModel] = useState<ModelType | ''>(selectedProfile.model);
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel | ''>(selectedProfile.thinkingLevel);
   // Auto profile - per-phase configuration
+  // Use custom settings from app settings if available, otherwise fall back to defaults
   const [phaseModels, setPhaseModels] = useState<PhaseModelConfig | undefined>(
-    selectedProfile.phaseModels || DEFAULT_PHASE_MODELS
+    settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS
   );
   const [phaseThinking, setPhaseThinking] = useState<PhaseThinkingConfig | undefined>(
-    selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING
+    settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING
   );
 
   // Image attachments
@@ -127,15 +124,11 @@ export function TaskCreationWizard({
   const [isDraftRestored, setIsDraftRestored] = useState(false);
   const [pasteSuccess, setPasteSuccess] = useState(false);
 
-  // Drag-and-drop state for file references
-  const [activeDragData, setActiveDragData] = useState<{
-    path: string;
-    name: string;
-    isDirectory: boolean;
-  } | null>(null);
-
   // Ref for the textarea to handle paste events
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  // Ref for the form scroll container (for drag auto-scroll)
+  const formContainerRef = useRef<HTMLDivElement>(null);
 
   // Drag-and-drop state for images over textarea
   const [isDragOverTextarea, setIsDragOverTextarea] = useState(false);
@@ -152,6 +145,14 @@ export function TaskCreationWizard({
   // Determine if drop zone is at capacity
   const isAtMaxFiles = referencedFiles.length >= MAX_REFERENCED_FILES;
 
+  // @ autocomplete state
+  const [autocomplete, setAutocomplete] = useState<{
+    show: boolean;
+    query: string;
+    startPos: number;
+    position: { top: number; left: number };
+  } | null>(null);
+
   // Load draft when dialog opens, or initialize from selected profile
   useEffect(() => {
     if (open && projectId) {
@@ -167,8 +168,8 @@ export function TaskCreationWizard({
         setProfileId(draft.profileId || settings.selectedAgentProfile || 'auto');
         setModel(draft.model || selectedProfile.model);
         setThinkingLevel(draft.thinkingLevel || selectedProfile.thinkingLevel);
-        setPhaseModels(draft.phaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
-        setPhaseThinking(draft.phaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
+        setPhaseModels(draft.phaseModels || settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
+        setPhaseThinking(draft.phaseThinking || settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
         setImages(draft.images);
         setReferencedFiles(draft.referencedFiles ?? []);
         setRequireReviewBeforeCoding(draft.requireReviewBeforeCoding ?? false);
@@ -178,20 +179,61 @@ export function TaskCreationWizard({
         if (draft.category || draft.priority || draft.complexity || draft.impact) {
           setShowAdvanced(true);
         }
-        if (draft.images.length > 0) {
-          setShowImages(true);
-        }
-        // Note: Referenced Files section is always visible, no need to expand
       } else {
-        // No draft - initialize from selected profile
+        // No draft - initialize from selected profile and custom settings
         setProfileId(settings.selectedAgentProfile || 'auto');
         setModel(selectedProfile.model);
         setThinkingLevel(selectedProfile.thinkingLevel);
-        setPhaseModels(selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
-        setPhaseThinking(selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
+        setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
+        setPhaseThinking(settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
       }
     }
-  }, [open, projectId, settings.selectedAgentProfile, selectedProfile.model, selectedProfile.thinkingLevel]);
+  }, [open, projectId, settings.selectedAgentProfile, settings.customPhaseModels, settings.customPhaseThinking, selectedProfile.model, selectedProfile.thinkingLevel]);
+
+  // Fetch branches and project default branch when dialog opens
+  useEffect(() => {
+    if (open && projectPath) {
+      fetchBranches();
+      fetchProjectDefaultBranch();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, projectPath]);
+
+  const fetchBranches = async () => {
+    if (!projectPath) return;
+
+    setIsLoadingBranches(true);
+    try {
+      const result = await window.electronAPI.getGitBranches(projectPath);
+      if (result.success && result.data) {
+        setBranches(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch branches:', err);
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  };
+
+  const fetchProjectDefaultBranch = async () => {
+    if (!projectId) return;
+
+    try {
+      // Get env config to check if there's a configured default branch
+      const result = await window.electronAPI.getProjectEnv(projectId);
+      if (result.success && result.data?.defaultBranch) {
+        setProjectDefaultBranch(result.data.defaultBranch);
+      } else if (projectPath) {
+        // Fall back to auto-detect
+        const detectResult = await window.electronAPI.detectMainBranch(projectPath);
+        if (detectResult.success && detectResult.data) {
+          setProjectDefaultBranch(detectResult.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch project default branch:', err);
+    }
+  };
 
   /**
    * Get current form state as a draft
@@ -286,13 +328,127 @@ export function TaskCreationWizard({
 
     if (newImages.length > 0) {
       setImages(prev => [...prev, ...newImages]);
-      // Auto-expand images section
-      setShowImages(true);
       // Show success feedback
       setPasteSuccess(true);
       setTimeout(() => setPasteSuccess(false), 2000);
     }
   }, [images]);
+
+  /**
+   * Detect @ mention being typed and show autocomplete
+   */
+  const detectAtMention = useCallback((text: string, cursorPos: number) => {
+    const beforeCursor = text.slice(0, cursorPos);
+    // Match @ followed by optional path characters (letters, numbers, dots, dashes, slashes)
+    const match = beforeCursor.match(/@([\w\-./\\]*)$/);
+
+    if (match) {
+      return {
+        query: match[1],
+        startPos: cursorPos - match[0].length
+      };
+    }
+    return null;
+  }, []);
+
+  /**
+   * Handle description change and check for @ mentions
+   */
+  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart || 0;
+
+    setDescription(newValue);
+
+    // Check for @ mention at cursor
+    const mention = detectAtMention(newValue, cursorPos);
+
+    if (mention) {
+      // Calculate popup position based on cursor
+      const textarea = descriptionRef.current;
+      if (textarea) {
+        const rect = textarea.getBoundingClientRect();
+        const textareaStyle = window.getComputedStyle(textarea);
+        const lineHeight = parseFloat(textareaStyle.lineHeight) || 20;
+        const paddingTop = parseFloat(textareaStyle.paddingTop) || 8;
+        const paddingLeft = parseFloat(textareaStyle.paddingLeft) || 12;
+
+        // Estimate cursor position (simplified - assumes fixed-width font)
+        const textBeforeCursor = newValue.slice(0, cursorPos);
+        const lines = textBeforeCursor.split('\n');
+        const currentLineIndex = lines.length - 1;
+        const currentLineLength = lines[currentLineIndex].length;
+
+        // Calculate position relative to textarea
+        const charWidth = 8; // Approximate character width
+        const top = paddingTop + (currentLineIndex + 1) * lineHeight + 4;
+        const left = paddingLeft + Math.min(currentLineLength * charWidth, rect.width - 300);
+
+        setAutocomplete({
+          show: true,
+          query: mention.query,
+          startPos: mention.startPos,
+          position: { top, left: Math.max(0, left) }
+        });
+      }
+    } else {
+      // No @ mention at cursor, close autocomplete
+      if (autocomplete?.show) {
+        setAutocomplete(null);
+      }
+    }
+  }, [detectAtMention, autocomplete?.show]);
+
+  /**
+   * Handle autocomplete selection
+   */
+  const handleAutocompleteSelect = useCallback((filename: string) => {
+    if (!autocomplete) return;
+
+    const textarea = descriptionRef.current;
+    if (!textarea) return;
+
+    // Replace the @query with @filename
+    const beforeMention = description.slice(0, autocomplete.startPos);
+    const afterMention = description.slice(autocomplete.startPos + 1 + autocomplete.query.length);
+    const newDescription = beforeMention + '@' + filename + afterMention;
+
+    setDescription(newDescription);
+    setAutocomplete(null);
+
+    // Set cursor after the inserted mention
+    setTimeout(() => {
+      const newCursorPos = autocomplete.startPos + 1 + filename.length;
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  }, [autocomplete, description]);
+
+  /**
+   * Close autocomplete
+   */
+  const handleAutocompleteClose = useCallback(() => {
+    setAutocomplete(null);
+  }, []);
+
+  /**
+   * Handle drag over the form container to auto-scroll when dragging near edges
+   */
+  const handleContainerDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    const container = formContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const edgeThreshold = 60; // px from edge to trigger scroll
+    const scrollSpeed = 8;
+
+    // Auto-scroll when dragging near top or bottom edges
+    if (e.clientY < rect.top + edgeThreshold) {
+      container.scrollTop -= scrollSpeed;
+    } else if (e.clientY > rect.bottom - edgeThreshold) {
+      container.scrollTop += scrollSpeed;
+    }
+  }, []);
 
   /**
    * Handle drag over textarea for image drops
@@ -313,7 +469,7 @@ export function TaskCreationWizard({
   }, []);
 
   /**
-   * Handle drop on textarea for image files
+   * Handle drop on textarea for file references and images
    */
   const handleTextareaDrop = useCallback(
     async (e: DragEvent<HTMLTextAreaElement>) => {
@@ -323,6 +479,40 @@ export function TaskCreationWizard({
 
       if (isCreating) return;
 
+      // First, check for file reference drops (from the file explorer)
+      const jsonData = e.dataTransfer?.getData('application/json');
+      if (jsonData) {
+        try {
+          const data = JSON.parse(jsonData);
+          if (data.type === 'file-reference' && data.name) {
+            // Insert @mention at cursor position in the textarea
+            const textarea = descriptionRef.current;
+            if (textarea) {
+              const cursorPos = textarea.selectionStart || 0;
+              const textBefore = description.substring(0, cursorPos);
+              const textAfter = description.substring(cursorPos);
+
+              // Insert @mention at cursor position
+              const mention = `@${data.name}`;
+              const newDescription = textBefore + mention + textAfter;
+              setDescription(newDescription);
+
+              // Set cursor after the inserted mention
+              setTimeout(() => {
+                textarea.focus();
+                const newCursorPos = cursorPos + mention.length;
+                textarea.setSelectionRange(newCursorPos, newCursorPos);
+              }, 0);
+
+              return; // Don't process as image
+            }
+          }
+        } catch {
+          // Not valid JSON, continue to image handling
+        }
+      }
+
+      // Fall back to image file handling
       const files = e.dataTransfer?.files;
       if (!files || files.length === 0) return;
 
@@ -383,14 +573,12 @@ export function TaskCreationWizard({
 
       if (newImages.length > 0) {
         setImages(prev => [...prev, ...newImages]);
-        // Auto-expand images section
-        setShowImages(true);
         // Show success feedback
         setPasteSuccess(true);
         setTimeout(() => setPasteSuccess(false), 2000);
       }
     },
-    [images, isCreating]
+    [images, isCreating, description]
   );
 
   /**
@@ -633,6 +821,8 @@ export function TaskCreationWizard({
       if (images.length > 0) metadata.attachedImages = images;
       if (allReferencedFiles.length > 0) metadata.referencedFiles = allReferencedFiles;
       if (requireReviewBeforeCoding) metadata.requireReviewBeforeCoding = true;
+      // Only include baseBranch if it's not the project default placeholder
+      if (baseBranch && baseBranch !== PROJECT_DEFAULT_BRANCH) metadata.baseBranch = baseBranch;
 
       // Check if we have parsed subtasks from markdown - create hierarchical task
       if (parsedSubtasks.length > 0) {
@@ -686,20 +876,21 @@ export function TaskCreationWizard({
     setPriority('');
     setComplexity('');
     setImpact('');
-    // Reset to selected profile defaults
+    // Reset to selected profile defaults and custom settings
     setProfileId(settings.selectedAgentProfile || 'auto');
     setModel(selectedProfile.model);
     setThinkingLevel(selectedProfile.thinkingLevel);
-    setPhaseModels(selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
-    setPhaseThinking(selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
+    setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
+    setPhaseThinking(settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
     setImages([]);
     setReferencedFiles([]);
     setParsedSubtasks([]);  // Clear parsed subtasks
     setRequireReviewBeforeCoding(false);
+    setBaseBranch(PROJECT_DEFAULT_BRANCH);
     setError(null);
     setShowAdvanced(false);
-    setShowImages(false);
     setShowFileExplorer(false);
+    setShowGitOptions(false);
     setIsDraftRestored(false);
     setPasteSuccess(false);
   };
@@ -814,8 +1005,8 @@ export function TaskCreationWizard({
             <Label htmlFor="description" className="text-sm font-medium text-foreground">
               Description <span className="text-destructive">*</span>
             </Label>
-            {/* Wrap textarea in drop zone for file @mentions */}
-            <div ref={setTextareaDropRef} className="relative">
+            {/* Wrap textarea for file @mentions */}
+            <div className="relative">
               {/* Syntax highlight overlay for @mentions */}
               <div
                 className="absolute inset-0 pointer-events-none overflow-hidden rounded-md border border-transparent"
@@ -847,9 +1038,9 @@ export function TaskCreationWizard({
               <Textarea
                 ref={descriptionRef}
                 id="description"
-                placeholder="Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior."
+                placeholder="Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior. Type @ to reference files."
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={handleDescriptionChange}
                 onPaste={handlePaste}
                 onDragOver={handleTextareaDragOver}
                 onDragLeave={handleTextareaDragLeave}
@@ -858,24 +1049,67 @@ export function TaskCreationWizard({
                 disabled={isCreating}
                 className={cn(
                   "resize-y min-h-[120px] max-h-[400px] relative bg-transparent",
-                  // Image drop feedback (native drops)
-                  isDragOverTextarea && !isCreating && "border-primary bg-primary/5 ring-2 ring-primary/20",
-                  // File reference drop feedback (dnd-kit drops for @mentions)
-                  activeDragData && isOverTextarea && "border-info bg-info/5 ring-2 ring-info/20"
+                  // Visual feedback when dragging over textarea
+                  isDragOverTextarea && !isCreating && "border-primary bg-primary/5 ring-2 ring-primary/20"
                 )}
                 style={{ caretColor: 'auto' }}
               />
-              {/* Drop indicator for file references */}
-              {activeDragData && isOverTextarea && (
-                <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-info text-info-foreground text-xs font-medium shadow-sm pointer-events-none z-10">
-                  <File className="h-3 w-3" />
-                  <span>Insert @{activeDragData.name}</span>
-                </div>
+              {/* File autocomplete popup */}
+              {autocomplete?.show && projectPath && (
+                <FileAutocomplete
+                  query={autocomplete.query}
+                  projectPath={projectPath}
+                  position={autocomplete.position}
+                  onSelect={handleAutocompleteSelect}
+                  onClose={handleAutocompleteClose}
+                />
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Tip: Drag files from the explorer to insert @references, or paste screenshots with {navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V'}.
+              Files and images can be copy/pasted or dragged & dropped into the description.
             </p>
+
+            {/* Image Thumbnails - displayed inline below description */}
+            {images.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {images.map((image) => (
+                  <div
+                    key={image.id}
+                    className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                    style={{ width: '64px', height: '64px' }}
+                    onClick={() => {
+                      // Open full-size image in a new window/modal could be added here
+                    }}
+                    title={image.filename}
+                  >
+                    {image.thumbnail ? (
+                      <img
+                        src={image.thumbnail}
+                        alt={image.filename}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-muted">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    {/* Remove button */}
+                    {!isCreating && (
+                      <button
+                        type="button"
+                        className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImages(prev => prev.filter(img => img.id !== image.id));
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Title (Optional - Auto-generated if empty) */}
@@ -1043,79 +1277,6 @@ export function TaskCreationWizard({
             </div>
           )}
 
-          {/* Images Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowImages(!showImages)}
-            className={cn(
-              'flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors',
-              'w-full justify-between py-2 px-3 rounded-md hover:bg-muted/50'
-            )}
-            disabled={isCreating}
-          >
-            <span className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4" />
-              Reference Images (optional)
-              {images.length > 0 && (
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                  {images.length}
-                </span>
-              )}
-            </span>
-            {showImages ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </button>
-
-          {/* Image Upload Section */}
-          {showImages && (
-            <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">
-              <p className="text-xs text-muted-foreground">
-                Attach screenshots, mockups, or diagrams to provide visual context for the AI.
-              </p>
-              <ImageUpload
-                images={images}
-                onImagesChange={setImages}
-                disabled={isCreating}
-              />
-            </div>
-          )}
-
-          {/* Referenced Files Section - Always visible, clean list */}
-          <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">
-            {/* Header */}
-            <div className="flex items-center gap-2">
-              <FolderTree className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Referenced Files</span>
-              {referencedFiles.length > 0 && (
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                  {referencedFiles.length}/{MAX_REFERENCED_FILES}
-                </span>
-              )}
-            </div>
-
-            {/* Empty state hint */}
-            {referencedFiles.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Drag files from the file explorer anywhere onto this form to add references, or use the "Browse Files" button below.
-              </p>
-            ) : (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  These files will provide context for the AI when working on your task.
-                </p>
-                <ReferencedFilesSection
-                  files={referencedFiles}
-                  onRemove={(id) => setReferencedFiles(prev => prev.filter(f => f.id !== id))}
-                  maxFiles={MAX_REFERENCED_FILES}
-                  disabled={isCreating}
-                />
-              </>
-            )}
-          </div>
-
           {/* Review Requirement Toggle */}
           <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
             <Checkbox
@@ -1137,6 +1298,65 @@ export function TaskCreationWizard({
               </p>
             </div>
           </div>
+
+          {/* Git Options Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowGitOptions(!showGitOptions)}
+            className={cn(
+              'flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors',
+              'w-full justify-between py-2 px-3 rounded-md hover:bg-muted/50'
+            )}
+            disabled={isCreating}
+          >
+            <span className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              Git Options (optional)
+              {baseBranch && baseBranch !== PROJECT_DEFAULT_BRANCH && (
+                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                  {baseBranch}
+                </span>
+              )}
+            </span>
+            {showGitOptions ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+
+          {/* Git Options */}
+          {showGitOptions && (
+            <div className="space-y-4 p-4 rounded-lg border border-border bg-muted/30">
+              <div className="space-y-2">
+                <Label htmlFor="base-branch" className="text-sm font-medium text-foreground">
+                  Base Branch (optional)
+                </Label>
+                <Select
+                  value={baseBranch}
+                  onValueChange={setBaseBranch}
+                  disabled={isCreating || isLoadingBranches}
+                >
+                  <SelectTrigger id="base-branch" className="h-9">
+                    <SelectValue placeholder={`Use project default${projectDefaultBranch ? ` (${projectDefaultBranch})` : ''}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={PROJECT_DEFAULT_BRANCH}>
+                      Use project default{projectDefaultBranch ? ` (${projectDefaultBranch})` : ''}
+                    </SelectItem>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch} value={branch}>
+                        {branch}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Override the branch this task&apos;s worktree will be created from. Leave empty to use the project&apos;s configured default branch.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Error */}
           {error && (

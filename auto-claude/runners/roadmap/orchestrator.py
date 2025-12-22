@@ -11,6 +11,7 @@ from pathlib import Path
 from client import create_client
 from debug import debug, debug_error, debug_section, debug_success
 from init import init_auto_claude_dir
+from phase_config import get_thinking_budget
 from ui import Icons, box, icon, muted, print_section, print_status
 
 from .competitor_analyzer import CompetitorAnalyzer
@@ -27,13 +28,18 @@ class RoadmapOrchestrator:
         project_dir: Path,
         output_dir: Path | None = None,
         model: str = "claude-opus-4-5-20251101",
+        thinking_level: str = "medium",
         refresh: bool = False,
         enable_competitor_analysis: bool = False,
+        refresh_competitor_analysis: bool = False,
     ):
         self.project_dir = Path(project_dir)
         self.model = model
+        self.thinking_level = thinking_level
+        self.thinking_budget = get_thinking_budget(thinking_level)
         self.refresh = refresh
         self.enable_competitor_analysis = enable_competitor_analysis
+        self.refresh_competitor_analysis = refresh_competitor_analysis
 
         # Default output to project's .auto-claude directory (installed instance)
         # Note: auto-claude/ is source code, .auto-claude/ is the installed instance
@@ -53,14 +59,17 @@ class RoadmapOrchestrator:
             self.output_dir,
             self.model,
             create_client,
+            self.thinking_budget,
         )
 
         # Initialize phase handlers
         self.graph_hints_provider = GraphHintsProvider(
             self.output_dir, self.project_dir, self.refresh
         )
+        # Competitor analyzer refreshes if either general refresh or specific competitor refresh
+        competitor_should_refresh = self.refresh or self.refresh_competitor_analysis
         self.competitor_analyzer = CompetitorAnalyzer(
-            self.output_dir, self.refresh, self.agent_executor
+            self.output_dir, competitor_should_refresh, self.agent_executor
         )
         self.project_index_phase = ProjectIndexPhase(
             self.output_dir, self.refresh, self.script_executor

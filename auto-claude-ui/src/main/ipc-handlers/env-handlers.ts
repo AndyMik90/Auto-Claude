@@ -62,23 +62,48 @@ export function registerEnvHandlers(
     if (config.githubAutoSync !== undefined) {
       existingVars['GITHUB_AUTO_SYNC'] = config.githubAutoSync ? 'true' : 'false';
     }
+    // Git/Worktree Settings
+    if (config.defaultBranch !== undefined) {
+      existingVars['DEFAULT_BRANCH'] = config.defaultBranch;
+    }
     if (config.graphitiEnabled !== undefined) {
       existingVars['GRAPHITI_ENABLED'] = config.graphitiEnabled ? 'true' : 'false';
     }
+    // Memory Provider Configuration (embeddings only - LLM uses Claude SDK)
+    if (config.graphitiProviderConfig) {
+      const pc = config.graphitiProviderConfig;
+      // Embedding provider only (LLM provider removed - Claude SDK handles RAG)
+      if (pc.embeddingProvider) existingVars['GRAPHITI_EMBEDDER_PROVIDER'] = pc.embeddingProvider;
+      // OpenAI Embeddings
+      if (pc.openaiApiKey) existingVars['OPENAI_API_KEY'] = pc.openaiApiKey;
+      if (pc.openaiEmbeddingModel) existingVars['OPENAI_EMBEDDING_MODEL'] = pc.openaiEmbeddingModel;
+      // Azure OpenAI Embeddings
+      if (pc.azureOpenaiApiKey) existingVars['AZURE_OPENAI_API_KEY'] = pc.azureOpenaiApiKey;
+      if (pc.azureOpenaiBaseUrl) existingVars['AZURE_OPENAI_BASE_URL'] = pc.azureOpenaiBaseUrl;
+      if (pc.azureOpenaiEmbeddingDeployment) existingVars['AZURE_OPENAI_EMBEDDING_DEPLOYMENT'] = pc.azureOpenaiEmbeddingDeployment;
+      // Voyage Embeddings
+      if (pc.voyageApiKey) existingVars['VOYAGE_API_KEY'] = pc.voyageApiKey;
+      if (pc.voyageEmbeddingModel) existingVars['VOYAGE_EMBEDDING_MODEL'] = pc.voyageEmbeddingModel;
+      // Google Embeddings
+      if (pc.googleApiKey) existingVars['GOOGLE_API_KEY'] = pc.googleApiKey;
+      if (pc.googleEmbeddingModel) existingVars['GOOGLE_EMBEDDING_MODEL'] = pc.googleEmbeddingModel;
+      // Ollama Embeddings
+      if (pc.ollamaBaseUrl) existingVars['OLLAMA_BASE_URL'] = pc.ollamaBaseUrl;
+      if (pc.ollamaEmbeddingModel) existingVars['OLLAMA_EMBEDDING_MODEL'] = pc.ollamaEmbeddingModel;
+      if (pc.ollamaEmbeddingDim) existingVars['OLLAMA_EMBEDDING_DIM'] = String(pc.ollamaEmbeddingDim);
+      // LadybugDB (embedded database)
+      if (pc.dbPath) existingVars['GRAPHITI_DB_PATH'] = pc.dbPath;
+      if (pc.database) existingVars['GRAPHITI_DATABASE'] = pc.database;
+    }
+    // Legacy fields (still supported)
     if (config.openaiApiKey !== undefined) {
       existingVars['OPENAI_API_KEY'] = config.openaiApiKey;
     }
-    if (config.graphitiFalkorDbHost !== undefined) {
-      existingVars['GRAPHITI_FALKORDB_HOST'] = config.graphitiFalkorDbHost;
-    }
-    if (config.graphitiFalkorDbPort !== undefined) {
-      existingVars['GRAPHITI_FALKORDB_PORT'] = String(config.graphitiFalkorDbPort);
-    }
-    if (config.graphitiFalkorDbPassword !== undefined) {
-      existingVars['GRAPHITI_FALKORDB_PASSWORD'] = config.graphitiFalkorDbPassword;
-    }
     if (config.graphitiDatabase !== undefined) {
       existingVars['GRAPHITI_DATABASE'] = config.graphitiDatabase;
+    }
+    if (config.graphitiDbPath !== undefined) {
+      existingVars['GRAPHITI_DB_PATH'] = config.graphitiDbPath;
     }
     if (config.enableFancyUi !== undefined) {
       existingVars['ENABLE_FANCY_UI'] = config.enableFancyUi ? 'true' : 'false';
@@ -110,19 +135,51 @@ ${existingVars['GITHUB_REPO'] ? `GITHUB_REPO=${existingVars['GITHUB_REPO']}` : '
 ${existingVars['GITHUB_AUTO_SYNC'] !== undefined ? `GITHUB_AUTO_SYNC=${existingVars['GITHUB_AUTO_SYNC']}` : '# GITHUB_AUTO_SYNC=false'}
 
 # =============================================================================
+# GIT/WORKTREE SETTINGS (OPTIONAL)
+# =============================================================================
+# Default base branch for worktree creation
+# If not set, Auto Claude will auto-detect main/master, or fall back to current branch
+${existingVars['DEFAULT_BRANCH'] ? `DEFAULT_BRANCH=${existingVars['DEFAULT_BRANCH']}` : '# DEFAULT_BRANCH=main'}
+
+# =============================================================================
 # UI SETTINGS (OPTIONAL)
 # =============================================================================
 ${existingVars['ENABLE_FANCY_UI'] !== undefined ? `ENABLE_FANCY_UI=${existingVars['ENABLE_FANCY_UI']}` : '# ENABLE_FANCY_UI=true'}
 
 # =============================================================================
-# GRAPHITI MEMORY INTEGRATION (OPTIONAL)
+# MEMORY INTEGRATION
+# Embedding providers: OpenAI, Google AI, Azure OpenAI, Ollama, Voyage
 # =============================================================================
-${existingVars['GRAPHITI_ENABLED'] ? `GRAPHITI_ENABLED=${existingVars['GRAPHITI_ENABLED']}` : '# GRAPHITI_ENABLED=false'}
+${existingVars['GRAPHITI_ENABLED'] ? `GRAPHITI_ENABLED=${existingVars['GRAPHITI_ENABLED']}` : '# GRAPHITI_ENABLED=true'}
+
+# Embedding Provider (for semantic search - optional, keyword search works without)
+${existingVars['GRAPHITI_EMBEDDER_PROVIDER'] ? `GRAPHITI_EMBEDDER_PROVIDER=${existingVars['GRAPHITI_EMBEDDER_PROVIDER']}` : '# GRAPHITI_EMBEDDER_PROVIDER=ollama'}
+
+# OpenAI Embeddings
 ${existingVars['OPENAI_API_KEY'] ? `OPENAI_API_KEY=${existingVars['OPENAI_API_KEY']}` : '# OPENAI_API_KEY='}
-${existingVars['GRAPHITI_FALKORDB_HOST'] ? `GRAPHITI_FALKORDB_HOST=${existingVars['GRAPHITI_FALKORDB_HOST']}` : '# GRAPHITI_FALKORDB_HOST=localhost'}
-${existingVars['GRAPHITI_FALKORDB_PORT'] ? `GRAPHITI_FALKORDB_PORT=${existingVars['GRAPHITI_FALKORDB_PORT']}` : '# GRAPHITI_FALKORDB_PORT=6380'}
-${existingVars['GRAPHITI_FALKORDB_PASSWORD'] ? `GRAPHITI_FALKORDB_PASSWORD=${existingVars['GRAPHITI_FALKORDB_PASSWORD']}` : '# GRAPHITI_FALKORDB_PASSWORD='}
+${existingVars['OPENAI_EMBEDDING_MODEL'] ? `OPENAI_EMBEDDING_MODEL=${existingVars['OPENAI_EMBEDDING_MODEL']}` : '# OPENAI_EMBEDDING_MODEL=text-embedding-3-small'}
+
+# Azure OpenAI Embeddings
+${existingVars['AZURE_OPENAI_API_KEY'] ? `AZURE_OPENAI_API_KEY=${existingVars['AZURE_OPENAI_API_KEY']}` : '# AZURE_OPENAI_API_KEY='}
+${existingVars['AZURE_OPENAI_BASE_URL'] ? `AZURE_OPENAI_BASE_URL=${existingVars['AZURE_OPENAI_BASE_URL']}` : '# AZURE_OPENAI_BASE_URL='}
+${existingVars['AZURE_OPENAI_EMBEDDING_DEPLOYMENT'] ? `AZURE_OPENAI_EMBEDDING_DEPLOYMENT=${existingVars['AZURE_OPENAI_EMBEDDING_DEPLOYMENT']}` : '# AZURE_OPENAI_EMBEDDING_DEPLOYMENT='}
+
+# Voyage AI Embeddings
+${existingVars['VOYAGE_API_KEY'] ? `VOYAGE_API_KEY=${existingVars['VOYAGE_API_KEY']}` : '# VOYAGE_API_KEY='}
+${existingVars['VOYAGE_EMBEDDING_MODEL'] ? `VOYAGE_EMBEDDING_MODEL=${existingVars['VOYAGE_EMBEDDING_MODEL']}` : '# VOYAGE_EMBEDDING_MODEL=voyage-3'}
+
+# Google AI Embeddings
+${existingVars['GOOGLE_API_KEY'] ? `GOOGLE_API_KEY=${existingVars['GOOGLE_API_KEY']}` : '# GOOGLE_API_KEY='}
+${existingVars['GOOGLE_EMBEDDING_MODEL'] ? `GOOGLE_EMBEDDING_MODEL=${existingVars['GOOGLE_EMBEDDING_MODEL']}` : '# GOOGLE_EMBEDDING_MODEL=text-embedding-004'}
+
+# Ollama Embeddings (Local - free)
+${existingVars['OLLAMA_BASE_URL'] ? `OLLAMA_BASE_URL=${existingVars['OLLAMA_BASE_URL']}` : '# OLLAMA_BASE_URL=http://localhost:11434'}
+${existingVars['OLLAMA_EMBEDDING_MODEL'] ? `OLLAMA_EMBEDDING_MODEL=${existingVars['OLLAMA_EMBEDDING_MODEL']}` : '# OLLAMA_EMBEDDING_MODEL=embeddinggemma'}
+${existingVars['OLLAMA_EMBEDDING_DIM'] ? `OLLAMA_EMBEDDING_DIM=${existingVars['OLLAMA_EMBEDDING_DIM']}` : '# OLLAMA_EMBEDDING_DIM=768'}
+
+# LadybugDB Database (embedded - no Docker required)
 ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHITI_DATABASE']}` : '# GRAPHITI_DATABASE=auto_claude_memory'}
+${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_DB_PATH']}` : '# GRAPHITI_DB_PATH=~/.auto-claude/memories'}
 `;
 
     return content;
@@ -216,6 +273,11 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
         config.githubAutoSync = true;
       }
 
+      // Git/Worktree config
+      if (vars['DEFAULT_BRANCH']) {
+        config.defaultBranch = vars['DEFAULT_BRANCH'];
+      }
+
       if (vars['GRAPHITI_ENABLED']?.toLowerCase() === 'true') {
         config.graphitiEnabled = true;
       }
@@ -229,21 +291,44 @@ ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHIT
         config.openaiKeyIsGlobal = true;
       }
 
-      if (vars['GRAPHITI_FALKORDB_HOST']) {
-        config.graphitiFalkorDbHost = vars['GRAPHITI_FALKORDB_HOST'];
-      }
-      if (vars['GRAPHITI_FALKORDB_PORT']) {
-        config.graphitiFalkorDbPort = parseInt(vars['GRAPHITI_FALKORDB_PORT'], 10);
-      }
-      if (vars['GRAPHITI_FALKORDB_PASSWORD']) {
-        config.graphitiFalkorDbPassword = vars['GRAPHITI_FALKORDB_PASSWORD'];
-      }
       if (vars['GRAPHITI_DATABASE']) {
         config.graphitiDatabase = vars['GRAPHITI_DATABASE'];
+      }
+      if (vars['GRAPHITI_DB_PATH']) {
+        config.graphitiDbPath = vars['GRAPHITI_DB_PATH'];
       }
 
       if (vars['ENABLE_FANCY_UI']?.toLowerCase() === 'false') {
         config.enableFancyUi = false;
+      }
+
+      // Populate graphitiProviderConfig from .env file (embeddings only - no LLM provider)
+      const embeddingProvider = vars['GRAPHITI_EMBEDDER_PROVIDER'];
+      if (embeddingProvider || vars['AZURE_OPENAI_API_KEY'] ||
+          vars['VOYAGE_API_KEY'] || vars['GOOGLE_API_KEY'] || vars['OLLAMA_BASE_URL']) {
+        config.graphitiProviderConfig = {
+          embeddingProvider: (embeddingProvider as 'openai' | 'voyage' | 'azure_openai' | 'ollama' | 'google') || 'ollama',
+          // OpenAI Embeddings
+          openaiApiKey: vars['OPENAI_API_KEY'],
+          openaiEmbeddingModel: vars['OPENAI_EMBEDDING_MODEL'],
+          // Azure OpenAI Embeddings
+          azureOpenaiApiKey: vars['AZURE_OPENAI_API_KEY'],
+          azureOpenaiBaseUrl: vars['AZURE_OPENAI_BASE_URL'],
+          azureOpenaiEmbeddingDeployment: vars['AZURE_OPENAI_EMBEDDING_DEPLOYMENT'],
+          // Voyage Embeddings
+          voyageApiKey: vars['VOYAGE_API_KEY'],
+          voyageEmbeddingModel: vars['VOYAGE_EMBEDDING_MODEL'],
+          // Google Embeddings
+          googleApiKey: vars['GOOGLE_API_KEY'],
+          googleEmbeddingModel: vars['GOOGLE_EMBEDDING_MODEL'],
+          // Ollama Embeddings
+          ollamaBaseUrl: vars['OLLAMA_BASE_URL'],
+          ollamaEmbeddingModel: vars['OLLAMA_EMBEDDING_MODEL'],
+          ollamaEmbeddingDim: vars['OLLAMA_EMBEDDING_DIM'] ? parseInt(vars['OLLAMA_EMBEDDING_DIM'], 10) : undefined,
+          // LadybugDB
+          database: vars['GRAPHITI_DATABASE'],
+          dbPath: vars['GRAPHITI_DB_PATH'],
+        };
       }
 
       return { success: true, data: config };

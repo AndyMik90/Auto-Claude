@@ -1,12 +1,44 @@
-import { ipcMain } from 'electron';
+import { ipcMain, app } from 'electron';
 import type { BrowserWindow } from 'electron';
-import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../shared/constants';
-import type { IPCResult, Roadmap, RoadmapFeature, RoadmapFeatureStatus, RoadmapGenerationStatus, Task, TaskMetadata, CompetitorAnalysis } from '../../shared/types';
+import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING } from '../../shared/constants';
+import type { IPCResult, Roadmap, RoadmapFeature, RoadmapFeatureStatus, RoadmapGenerationStatus, Task, TaskMetadata, CompetitorAnalysis, AppSettings } from '../../shared/types';
+import type { RoadmapConfig } from '../agent/types';
 import path from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
 import { projectStore } from '../project-store';
 import { AgentManager } from '../agent';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
+
+/**
+ * Read feature settings from the settings file
+ */
+function getFeatureSettings(): { model?: string; thinkingLevel?: string } {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+
+  try {
+    if (existsSync(settingsPath)) {
+      const content = readFileSync(settingsPath, 'utf-8');
+      const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(content) };
+
+      // Get roadmap-specific settings
+      const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
+      const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
+
+      return {
+        model: featureModels.roadmap,
+        thinkingLevel: featureThinking.roadmap
+      };
+    }
+  } catch (error) {
+    debugError('[Roadmap Handler] Failed to read feature settings:', error);
+  }
+
+  // Return defaults if settings file doesn't exist or fails to parse
+  return {
+    model: DEFAULT_FEATURE_MODELS.roadmap,
+    thinkingLevel: DEFAULT_FEATURE_THINKING.roadmap
+  };
+}
 
 
 /**
@@ -138,7 +170,7 @@ export function registerRoadmapHandlers(
             impact: feature.impact || 'medium',
             phaseId: feature.phase_id,
             dependencies: feature.dependencies || [],
-            status: feature.status || 'idea',
+            status: feature.status || 'under_review',
             acceptanceCriteria: feature.acceptance_criteria || [],
             userStories: feature.user_stories || [],
             linkedSpecId: feature.linked_spec_id,
@@ -172,10 +204,19 @@ export function registerRoadmapHandlers(
 
   ipcMain.on(
     IPC_CHANNELS.ROADMAP_GENERATE,
-    (_, projectId: string, enableCompetitorAnalysis?: boolean) => {
+    (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => {
+      // Get feature settings for roadmap
+      const featureSettings = getFeatureSettings();
+      const config: RoadmapConfig = {
+        model: featureSettings.model,
+        thinkingLevel: featureSettings.thinkingLevel
+      };
+
       debugLog('[Roadmap Handler] Generate request:', {
         projectId,
-        enableCompetitorAnalysis
+        enableCompetitorAnalysis,
+        refreshCompetitorAnalysis,
+        config
       });
 
       const mainWindow = getMainWindow();
@@ -194,11 +235,19 @@ export function registerRoadmapHandlers(
 
       debugLog('[Roadmap Handler] Starting agent manager generation:', {
         projectId,
-        projectPath: project.path
+        projectPath: project.path,
+        config
       });
 
       // Start roadmap generation via agent manager
-      agentManager.startRoadmapGeneration(projectId, project.path, false, enableCompetitorAnalysis ?? false);
+      agentManager.startRoadmapGeneration(
+        projectId,
+        project.path,
+        false, // refresh (not a refresh operation)
+        enableCompetitorAnalysis ?? false,
+        refreshCompetitorAnalysis ?? false,
+        config
+      );
 
       // Send initial progress
       mainWindow.webContents.send(
@@ -215,7 +264,21 @@ export function registerRoadmapHandlers(
 
   ipcMain.on(
     IPC_CHANNELS.ROADMAP_REFRESH,
-    (_, projectId: string, enableCompetitorAnalysis?: boolean) => {
+    (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => {
+      // Get feature settings for roadmap
+      const featureSettings = getFeatureSettings();
+      const config: RoadmapConfig = {
+        model: featureSettings.model,
+        thinkingLevel: featureSettings.thinkingLevel
+      };
+
+      debugLog('[Roadmap Handler] Refresh request:', {
+        projectId,
+        enableCompetitorAnalysis,
+        refreshCompetitorAnalysis,
+        config
+      });
+
       const mainWindow = getMainWindow();
       if (!mainWindow) return;
 
@@ -230,7 +293,14 @@ export function registerRoadmapHandlers(
       }
 
       // Start roadmap regeneration with refresh flag
-      agentManager.startRoadmapGeneration(projectId, project.path, true, enableCompetitorAnalysis ?? false);
+      agentManager.startRoadmapGeneration(
+        projectId,
+        project.path,
+        true, // refresh (this is a refresh operation)
+        enableCompetitorAnalysis ?? false,
+        refreshCompetitorAnalysis ?? false,
+        config
+      );
 
       // Send initial progress
       mainWindow.webContents.send(
@@ -275,7 +345,7 @@ export function registerRoadmapHandlers(
     async (
       _,
       projectId: string,
-      features: RoadmapFeature[]
+      roadmapData: Roadmap
     ): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
@@ -294,10 +364,10 @@ export function registerRoadmapHandlers(
 
       try {
         const content = readFileSync(roadmapPath, 'utf-8');
-        const roadmap = JSON.parse(content);
+        const existingRoadmap = JSON.parse(content);
 
         // Transform camelCase features back to snake_case for JSON file
-        roadmap.features = features.map((feature) => ({
+        existingRoadmap.features = roadmapData.features.map((feature) => ({
           id: feature.id,
           title: feature.title,
           description: feature.description,
@@ -315,10 +385,10 @@ export function registerRoadmapHandlers(
         }));
 
         // Update metadata timestamp
-        roadmap.metadata = roadmap.metadata || {};
-        roadmap.metadata.updated_at = new Date().toISOString();
+        existingRoadmap.metadata = existingRoadmap.metadata || {};
+        existingRoadmap.metadata.updated_at = new Date().toISOString();
 
-        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+        writeFileSync(roadmapPath, JSON.stringify(existingRoadmap, null, 2));
 
         return { success: true };
       } catch (error) {

@@ -27,13 +27,15 @@ import {
   getCommits,
   getBranchDiffCommits
 } from './git-integration';
+import { findPythonCommand } from '../python-detector';
 
 /**
  * Main changelog service - orchestrates all changelog operations
  * Delegates to specialized modules for specific concerns
  */
 export class ChangelogService extends EventEmitter {
-  private pythonPath: string = 'python3';
+  // Auto-detect Python command on initialization
+  private pythonPath: string = findPythonCommand() || 'python';
   private claudePath: string = 'claude';
   private autoBuildSourcePath: string = '';
   private cachedEnv: Record<string, string> | null = null;
@@ -89,7 +91,7 @@ export class ChangelogService extends EventEmitter {
 
   /**
    * Check if debug mode is enabled
-   * Checks DEBUG from auto-claude/.env and AUTO_CLAUDE_DEBUG from process.env
+   * Checks DEBUG from auto-claude/.env and DEBUG from process.env
    */
   private isDebugEnabled(): boolean {
     // Cache the result after first check
@@ -101,8 +103,8 @@ export class ChangelogService extends EventEmitter {
     if (
       process.env.DEBUG === 'true' ||
       process.env.DEBUG === '1' ||
-      process.env.AUTO_CLAUDE_DEBUG === 'true' ||
-      process.env.AUTO_CLAUDE_DEBUG === '1'
+      process.env.DEBUG === 'true' ||
+      process.env.DEBUG === '1'
     ) {
       this.debugEnabled = true;
       return true;
@@ -115,7 +117,7 @@ export class ChangelogService extends EventEmitter {
   }
 
   /**
-   * Debug logging - only logs when DEBUG=true in auto-claude/.env or AUTO_CLAUDE_DEBUG is set
+   * Debug logging - only logs when DEBUG=true in auto-claude/.env or DEBUG is set
    */
   private debug(...args: unknown[]): void {
     if (this.isDebugEnabled()) {

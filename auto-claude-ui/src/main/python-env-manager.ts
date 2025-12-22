@@ -2,6 +2,7 @@ import { spawn, execSync } from 'child_process';
 import { existsSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
+import { app } from 'electron';
 
 export interface PythonEnvStatus {
   ready: boolean;
@@ -14,6 +15,9 @@ export interface PythonEnvStatus {
 /**
  * Manages the Python virtual environment for the auto-claude backend.
  * Automatically creates venv and installs dependencies if needed.
+ *
+ * On packaged apps (especially Linux AppImages), the bundled source is read-only,
+ * so we create the venv in userData instead of inside the source directory.
  */
 export class PythonEnvManager extends EventEmitter {
   private autoBuildSourcePath: string | null = null;
@@ -22,31 +26,45 @@ export class PythonEnvManager extends EventEmitter {
   private isReady = false;
 
   /**
+   * Get the path where the venv should be created.
+   * For packaged apps, this is in userData to avoid read-only filesystem issues.
+   * For development, this is inside the source directory.
+   */
+  private getVenvBasePath(): string | null {
+    if (!this.autoBuildSourcePath) return null;
+
+    // For packaged apps, put venv in userData (writable location)
+    // This fixes Linux AppImage where resources are read-only
+    if (app.isPackaged) {
+      return path.join(app.getPath('userData'), 'python-venv');
+    }
+
+    // Development mode - use source directory
+    return path.join(this.autoBuildSourcePath, '.venv');
+  }
+
+  /**
    * Get the path to the venv Python executable
    */
   private getVenvPythonPath(): string | null {
-    if (!this.autoBuildSourcePath) return null;
+    const venvPath = this.getVenvBasePath();
+    if (!venvPath) return null;
 
     const venvPython =
       process.platform === 'win32'
-        ? path.join(this.autoBuildSourcePath, '.venv', 'Scripts', 'python.exe')
-        : path.join(this.autoBuildSourcePath, '.venv', 'bin', 'python');
+        ? path.join(venvPath, 'Scripts', 'python.exe')
+        : path.join(venvPath, 'bin', 'python');
 
     return venvPython;
   }
 
   /**
    * Get the path to pip in the venv
+   * Returns null - we use python -m pip instead for better compatibility
+   * @deprecated Use getVenvPythonPath() with -m pip instead
    */
   private getVenvPipPath(): string | null {
-    if (!this.autoBuildSourcePath) return null;
-
-    const venvPip =
-      process.platform === 'win32'
-        ? path.join(this.autoBuildSourcePath, '.venv', 'Scripts', 'pip.exe')
-        : path.join(this.autoBuildSourcePath, '.venv', 'bin', 'pip');
-
-    return venvPip;
+    return null; // Not used - we use python -m pip
   }
 
   /**
@@ -147,10 +165,10 @@ export class PythonEnvManager extends EventEmitter {
     }
 
     this.emit('status', 'Creating Python virtual environment...');
-    console.warn('[PythonEnvManager] Creating venv with:', systemPython);
+    const venvPath = this.getVenvBasePath()!;
+    console.warn('[PythonEnvManager] Creating venv at:', venvPath, 'with:', systemPython);
 
     return new Promise((resolve) => {
-      const venvPath = path.join(this.autoBuildSourcePath!, '.venv');
       const proc = spawn(systemPython, ['-m', 'venv', venvPath], {
         cwd: this.autoBuildSourcePath!,
         stdio: 'pipe'
@@ -181,16 +199,54 @@ export class PythonEnvManager extends EventEmitter {
   }
 
   /**
-   * Install dependencies from requirements.txt
+   * Bootstrap pip in the venv using ensurepip
+   */
+  private async bootstrapPip(): Promise<boolean> {
+    const venvPython = this.getVenvPythonPath();
+    if (!venvPython || !existsSync(venvPython)) {
+      return false;
+    }
+
+    console.warn('[PythonEnvManager] Bootstrapping pip...');
+    return new Promise((resolve) => {
+      const proc = spawn(venvPython, ['-m', 'ensurepip'], {
+        cwd: this.autoBuildSourcePath!,
+        stdio: 'pipe'
+      });
+
+      let stderr = '';
+      proc.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          console.warn('[PythonEnvManager] Pip bootstrapped successfully');
+          resolve(true);
+        } else {
+          console.error('[PythonEnvManager] Failed to bootstrap pip:', stderr);
+          resolve(false);
+        }
+      });
+
+      proc.on('error', (err) => {
+        console.error('[PythonEnvManager] Error bootstrapping pip:', err);
+        resolve(false);
+      });
+    });
+  }
+
+  /**
+   * Install dependencies from requirements.txt using python -m pip
    */
   private async installDeps(): Promise<boolean> {
     if (!this.autoBuildSourcePath) return false;
 
-    const venvPip = this.getVenvPipPath();
+    const venvPython = this.getVenvPythonPath();
     const requirementsPath = path.join(this.autoBuildSourcePath, 'requirements.txt');
 
-    if (!venvPip || !existsSync(venvPip)) {
-      this.emit('error', 'Pip not found in virtual environment');
+    if (!venvPython || !existsSync(venvPython)) {
+      this.emit('error', 'Python not found in virtual environment');
       return false;
     }
 
@@ -199,11 +255,15 @@ export class PythonEnvManager extends EventEmitter {
       return false;
     }
 
+    // Bootstrap pip first if needed
+    await this.bootstrapPip();
+
     this.emit('status', 'Installing Python dependencies (this may take a minute)...');
     console.warn('[PythonEnvManager] Installing dependencies from:', requirementsPath);
 
     return new Promise((resolve) => {
-      const proc = spawn(venvPip, ['install', '-r', requirementsPath], {
+      // Use python -m pip for better compatibility across Python versions
+      const proc = spawn(venvPython, ['-m', 'pip', 'install', '-r', requirementsPath], {
         cwd: this.autoBuildSourcePath!,
         stdio: 'pipe'
       });

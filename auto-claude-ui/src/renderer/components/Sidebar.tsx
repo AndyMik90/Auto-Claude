@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-  FolderOpen,
   Plus,
   Settings,
   Trash2,
-  Moon,
-  Sun,
   LayoutGrid,
   Terminal,
   Map,
@@ -25,13 +22,6 @@ import {
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from './ui/select';
 import {
   Tooltip,
   TooltipContent,
@@ -54,13 +44,13 @@ import {
   checkProjectVersion,
   updateProjectAutoBuild
 } from '../stores/project-store';
-import { useSettingsStore, saveSettings } from '../stores/settings-store';
+import { useSettingsStore } from '../stores/settings-store';
 import { AddProjectModal } from './AddProjectModal';
 import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import type { Project, AutoBuildVersionInfo, GitStatus } from '../../shared/types';
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools' | 'agent-profiles';
+export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
 
 interface SidebarProps {
   onSettingsClick: (section?: 'updates' | 'notifications') => void;
@@ -88,8 +78,7 @@ const projectNavItems: NavItem[] = [
 
 const toolsNavItems: NavItem[] = [
   { id: 'github-issues', label: 'GitHub Issues', icon: Github, shortcut: 'G' },
-  { id: 'worktrees', label: 'Worktrees', icon: GitBranch, shortcut: 'W' },
-  { id: 'agent-profiles', label: 'Agent Profiles', icon: UserCog, shortcut: 'P' }
+  { id: 'worktrees', label: 'Worktrees', icon: GitBranch, shortcut: 'W' }
 ];
 
 export function Sidebar({
@@ -295,28 +284,6 @@ export function Sidebar({
     await removeProject(projectId);
   };
 
-  const handleProjectChange = (projectId: string) => {
-    if (projectId === '__add_new__') {
-      handleAddProject();
-    } else {
-      selectProject(projectId);
-    }
-  };
-
-  const toggleTheme = () => {
-    const newTheme = settings.theme === 'dark' ? 'light' : 'dark';
-    saveSettings({ theme: newTheme });
-
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
-  const isDark =
-    settings.theme === 'dark' ||
-    (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const handleNavClick = (view: SidebarView) => {
     onViewChange?.(view);
@@ -353,83 +320,12 @@ export function Sidebar({
     <TooltipProvider>
       <div className="flex h-full w-64 flex-col bg-sidebar border-r border-border">
         {/* Header with drag area - extra top padding for macOS traffic lights */}
-        <div className="electron-drag flex h-14 items-center justify-between px-4 pt-6">
+        <div className="electron-drag flex h-14 items-center px-4 pt-6">
           <span className="electron-no-drag text-lg font-bold text-primary">Auto Claude</span>
-          <div className="electron-no-drag flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={toggleTheme}>
-                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Toggle theme</TooltipContent>
-            </Tooltip>
-          </div>
         </div>
 
         <Separator className="mt-2" />
 
-        {/* Project Selector Dropdown */}
-        <div className="px-4 py-4">
-          <Select
-            value={selectedProjectId || ''}
-            onValueChange={handleProjectChange}
-          >
-            <SelectTrigger className="w-full [&_span]:truncate">
-              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <SelectValue placeholder="Select a project..." className="truncate min-w-0 flex-1" />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="min-w-(--radix-select-trigger-width) max-w-(--radix-select-trigger-width)">
-              {projects.length === 0 ? (
-                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                  <p>No projects yet</p>
-                </div>
-              ) : (
-                projects.map((project) => (
-                  <div key={project.id} className="relative flex items-center">
-                    <SelectItem value={project.id} className="flex-1 pr-10">
-                      <span className="truncate" title={`${project.name} - ${project.path}`}>
-                        {project.name}
-                      </span>
-                    </SelectItem>
-                    <button
-                      type="button"
-                      className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-md hover:bg-destructive/10 transition-colors"
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        removeProject(project.id);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </button>
-                  </div>
-                ))
-              )}
-              <Separator className="my-1" />
-              <SelectItem value="__add_new__">
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4 shrink-0" />
-                  <span>Add Project...</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Project path - shown when project is selected */}
-          {selectedProject && (
-            <div className="mt-2">
-              <span className="truncate block text-xs text-muted-foreground" title={selectedProject.path}>
-                {selectedProject.path}
-              </span>
-            </div>
-          )}
-        </div>
 
         <Separator />
 

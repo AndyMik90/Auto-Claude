@@ -144,24 +144,31 @@ try:
 except ImportError:
 
     def debug(*args, **kwargs):
+        """Fallback debug function when debug module is not available."""
         pass
 
     def debug_detailed(*args, **kwargs):
+        """Fallback debug_detailed function when debug module is not available."""
         pass
 
     def debug_verbose(*args, **kwargs):
+        """Fallback debug_verbose function when debug module is not available."""
         pass
 
     def debug_success(*args, **kwargs):
+        """Fallback debug_success function when debug module is not available."""
         pass
 
     def debug_error(*args, **kwargs):
+        """Fallback debug_error function when debug module is not available."""
         pass
 
     def debug_section(*args, **kwargs):
+        """Fallback debug_section function when debug module is not available."""
         pass
 
     def is_debug_enabled():
+        """Fallback is_debug_enabled function when debug module is not available."""
         return False
 
 
@@ -169,7 +176,10 @@ MODULE = "cli.workspace_commands"
 
 
 def handle_merge_command(
-    project_dir: Path, spec_name: str, no_commit: bool = False
+    project_dir: Path,
+    spec_name: str,
+    no_commit: bool = False,
+    base_branch: str | None = None,
 ) -> bool:
     """
     Handle the --merge command.
@@ -178,11 +188,90 @@ def handle_merge_command(
         project_dir: Project root directory
         spec_name: Name of the spec
         no_commit: If True, stage changes but don't commit
+        base_branch: Branch to compare against (default: auto-detect)
 
     Returns:
         True if merge succeeded, False otherwise
     """
-    return merge_existing_build(project_dir, spec_name, no_commit=no_commit)
+    success = merge_existing_build(
+        project_dir, spec_name, no_commit=no_commit, base_branch=base_branch
+    )
+
+    # Generate commit message suggestion if staging succeeded (no_commit mode)
+    if success and no_commit:
+        _generate_and_save_commit_message(project_dir, spec_name)
+
+    return success
+
+
+def _generate_and_save_commit_message(project_dir: Path, spec_name: str) -> None:
+    """
+    Generate a commit message suggestion and save it for the UI.
+
+    Args:
+        project_dir: Project root directory
+        spec_name: Name of the spec
+    """
+    try:
+        from commit_message import generate_commit_message_sync
+
+        # Get diff summary for context
+        diff_summary = ""
+        files_changed = []
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--staged", "--stat"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                diff_summary = result.stdout.strip()
+
+            # Get list of changed files
+            result = subprocess.run(
+                ["git", "diff", "--staged", "--name-only"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                files_changed = [
+                    f.strip() for f in result.stdout.strip().split("\n") if f.strip()
+                ]
+        except Exception as e:
+            debug_warning(MODULE, f"Could not get diff summary: {e}")
+
+        # Generate commit message
+        debug(MODULE, "Generating commit message suggestion...")
+        commit_message = generate_commit_message_sync(
+            project_dir=project_dir,
+            spec_name=spec_name,
+            diff_summary=diff_summary,
+            files_changed=files_changed,
+        )
+
+        if commit_message:
+            # Save to spec directory for UI to read
+            spec_dir = project_dir / ".auto-claude" / "specs" / spec_name
+            if not spec_dir.exists():
+                spec_dir = project_dir / "auto-claude" / "specs" / spec_name
+
+            if spec_dir.exists():
+                commit_msg_file = spec_dir / "suggested_commit_message.txt"
+                commit_msg_file.write_text(commit_message, encoding="utf-8")
+                debug_success(
+                    MODULE, f"Saved commit message suggestion to {commit_msg_file}"
+                )
+            else:
+                debug_warning(MODULE, f"Spec directory not found: {spec_dir}")
+        else:
+            debug_warning(MODULE, "No commit message generated")
+
+    except ImportError:
+        debug_warning(MODULE, "commit_message module not available")
+    except Exception as e:
+        debug_warning(MODULE, f"Failed to generate commit message: {e}")
 
 
 def handle_review_command(project_dir: Path, spec_name: str) -> None:
@@ -425,7 +514,11 @@ def _check_git_merge_conflicts(project_dir: Path, spec_name: str) -> dict:
     return result
 
 
-def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
+def handle_merge_preview_command(
+    project_dir: Path,
+    spec_name: str,
+    base_branch: str | None = None,
+) -> dict:
     """
     Handle the --merge-preview command.
 
@@ -440,6 +533,7 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
     Args:
         project_dir: Project root directory
         spec_name: Name of the spec
+        base_branch: Branch the task was created from (for comparison). If None, auto-detect.
 
     Returns:
         Dictionary with preview information
@@ -482,15 +576,20 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
         # First, check for git-level conflicts (diverged branches)
         git_conflicts = _check_git_merge_conflicts(project_dir, spec_name)
 
+        # Determine the task's source branch (where the task was created from)
+        # Use provided base_branch (from task metadata), or fall back to detected default
+        task_source_branch = base_branch
+        if not task_source_branch:
+            # Auto-detect the default branch (main/master) that worktrees are typically created from
+            task_source_branch = _detect_default_branch(project_dir)
+
         # Get actual changed files from git diff (this is the authoritative count)
-        # Detect the default branch (main/master) that worktrees are created from
-        # Note: git_conflicts["base_branch"] is the current project branch, not the
-        # worktree base, so we detect the default branch separately
-        default_branch = _detect_default_branch(project_dir)
-        all_changed_files = _get_changed_files_from_git(worktree_path, default_branch)
+        all_changed_files = _get_changed_files_from_git(
+            worktree_path, task_source_branch
+        )
         debug(
             MODULE,
-            f"Git diff against '{default_branch}' shows {len(all_changed_files)} changed files",
+            f"Git diff against '{task_source_branch}' shows {len(all_changed_files)} changed files",
             changed_files=all_changed_files[:10],  # Log first 10
         )
 
@@ -504,8 +603,15 @@ def handle_merge_preview_command(project_dir: Path, spec_name: str) -> dict:
         )
 
         # Refresh evolution data from the worktree
-        debug(MODULE, f"Refreshing evolution data from worktree: {worktree_path}")
-        orchestrator.evolution_tracker.refresh_from_git(spec_name, worktree_path)
+        # Compare against the task's source branch (where the task was created from)
+        debug(
+            MODULE,
+            f"Refreshing evolution data from worktree: {worktree_path}",
+            task_source_branch=task_source_branch,
+        )
+        orchestrator.evolution_tracker.refresh_from_git(
+            spec_name, worktree_path, target_branch=task_source_branch
+        )
 
         # Get merge preview (semantic conflicts between parallel tasks)
         debug(MODULE, "Generating merge preview...")

@@ -3,8 +3,15 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { SettingsSection } from './SettingsSection';
-import { AVAILABLE_MODELS } from '../../../shared/constants';
-import type { AppSettings } from '../../../shared/types';
+import { AgentProfileSettings } from './AgentProfileSettings';
+import {
+  AVAILABLE_MODELS,
+  THINKING_LEVELS,
+  DEFAULT_FEATURE_MODELS,
+  DEFAULT_FEATURE_THINKING,
+  FEATURE_LABELS
+} from '../../../shared/constants';
+import type { AppSettings, FeatureModelConfig, FeatureThinkingConfig, ModelTypeShort, ThinkingLevel } from '../../../shared/types';
 
 interface GeneralSettingsProps {
   settings: AppSettings;
@@ -18,64 +25,125 @@ interface GeneralSettingsProps {
 export function GeneralSettings({ settings, onSettingsChange, section }: GeneralSettingsProps) {
   if (section === 'agent') {
     return (
-      <SettingsSection
-        title="Default Agent Settings"
-        description="Configure defaults for new projects"
-      >
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <Label htmlFor="defaultModel" className="text-sm font-medium text-foreground">Default Model</Label>
-            <p className="text-sm text-muted-foreground">The AI model used for agent tasks</p>
-            <Select
-              value={settings.defaultModel}
-              onValueChange={(value) => onSettingsChange({ ...settings, defaultModel: value })}
-            >
-              <SelectTrigger id="defaultModel" className="w-full max-w-md">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AVAILABLE_MODELS.map((model) => (
-                  <SelectItem key={model.value} value={model.value}>
-                    {model.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-3">
-            <Label htmlFor="agentFramework" className="text-sm font-medium text-foreground">Agent Framework</Label>
-            <p className="text-sm text-muted-foreground">The coding framework used for autonomous tasks</p>
-            <Select
-              value={settings.agentFramework}
-              onValueChange={(value) => onSettingsChange({ ...settings, agentFramework: value })}
-            >
-              <SelectTrigger id="agentFramework" className="w-full max-w-md">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto-claude">Auto Claude</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between max-w-md">
+      <div className="space-y-8">
+        {/* Agent Profile Selection */}
+        <AgentProfileSettings />
+
+        {/* Other Agent Settings */}
+        <SettingsSection
+          title="Other Agent Settings"
+          description="Additional agent configuration options"
+        >
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label htmlFor="agentFramework" className="text-sm font-medium text-foreground">Agent Framework</Label>
+              <p className="text-sm text-muted-foreground">The coding framework used for autonomous tasks</p>
+              <Select
+                value={settings.agentFramework}
+                onValueChange={(value) => onSettingsChange({ ...settings, agentFramework: value })}
+              >
+                <SelectTrigger id="agentFramework" className="w-full max-w-md">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto-claude">Auto Claude</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between max-w-md">
+                <div className="space-y-1">
+                  <Label htmlFor="autoNameTerminals" className="text-sm font-medium text-foreground">
+                    AI Terminal Naming
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Automatically name terminals based on commands (uses Haiku)
+                  </p>
+                </div>
+                <Switch
+                  id="autoNameTerminals"
+                  checked={settings.autoNameTerminals}
+                  onCheckedChange={(checked) => onSettingsChange({ ...settings, autoNameTerminals: checked })}
+                />
+              </div>
+            </div>
+
+            {/* Feature Model Configuration */}
+            <div className="space-y-4 pt-4 border-t border-border">
               <div className="space-y-1">
-                <Label htmlFor="autoNameTerminals" className="text-sm font-medium text-foreground">
-                  AI Terminal Naming
-                </Label>
+                <Label className="text-sm font-medium text-foreground">Feature Model Settings</Label>
                 <p className="text-sm text-muted-foreground">
-                  Automatically name terminals based on commands (uses Haiku)
+                  Model and thinking level for Insights, Ideation, and Roadmap
                 </p>
               </div>
-              <Switch
-                id="autoNameTerminals"
-                checked={settings.autoNameTerminals}
-                onCheckedChange={(checked) => onSettingsChange({ ...settings, autoNameTerminals: checked })}
-              />
+
+              {(Object.keys(FEATURE_LABELS) as Array<keyof FeatureModelConfig>).map((feature) => {
+                const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
+                const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
+
+                return (
+                  <div key={feature} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-foreground">
+                        {FEATURE_LABELS[feature].label}
+                      </Label>
+                      <span className="text-xs text-muted-foreground">
+                        {FEATURE_LABELS[feature].description}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 max-w-md">
+                      {/* Model Select */}
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Model</Label>
+                        <Select
+                          value={featureModels[feature]}
+                          onValueChange={(value) => {
+                            const newFeatureModels = { ...featureModels, [feature]: value as ModelTypeShort };
+                            onSettingsChange({ ...settings, featureModels: newFeatureModels });
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_MODELS.map((m) => (
+                              <SelectItem key={m.value} value={m.value}>
+                                {m.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Thinking Level Select */}
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Thinking Level</Label>
+                        <Select
+                          value={featureThinking[feature]}
+                          onValueChange={(value) => {
+                            const newFeatureThinking = { ...featureThinking, [feature]: value as ThinkingLevel };
+                            onSettingsChange({ ...settings, featureThinking: newFeatureThinking });
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {THINKING_LEVELS.map((level) => (
+                              <SelectItem key={level.value} value={level.value}>
+                                {level.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      </SettingsSection>
+        </SettingsSection>
+      </div>
     );
   }
 
