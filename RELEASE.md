@@ -30,7 +30,7 @@ We provide an automated script that handles version bumping, git commits, and ta
    ```
 
    This script will:
-   - ✅ Update `auto-claude-ui/package.json` with the new version
+   - ✅ Update `Apps/frontend/package.json` with the new version
    - ✅ Create a git commit with the version change
    - ✅ Create a git tag (e.g., `v2.5.6`)
    - ⚠️  **NOT** push to remote (you control when to push)
@@ -71,7 +71,7 @@ We provide an automated script that handles version bumping, git commits, and ta
 
 If you need to create a release manually, follow these steps **carefully** to avoid version mismatches:
 
-1. **Update `auto-claude-ui/package.json`:**
+1. **Update `Apps/frontend/package.json`:**
 
    ```json
    {
@@ -82,7 +82,7 @@ If you need to create a release manually, follow these steps **carefully** to av
 2. **Commit the change:**
 
    ```bash
-   git add auto-claude-ui/package.json
+   git add Apps/frontend/package.json
    git commit -m "chore: bump version to 2.5.6"
    ```
 
