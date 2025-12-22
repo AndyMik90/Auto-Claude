@@ -9,7 +9,7 @@
  * To run: npx playwright test --config=e2e/playwright.config.ts
  */
 import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
-import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync, statSync } from 'fs';
 import path from 'path';
 
 // Test data directory
@@ -654,7 +654,7 @@ test.describe('Ideation File Generation Verification (Mock-based)', () => {
     expect(existsSync(ideationPath)).toBe(true);
 
     // Verify file size is non-zero
-    const stats = require('fs').statSync(ideationPath);
+    const stats = statSync(ideationPath);
     expect(stats.size).toBeGreaterThan(0);
 
     cleanupIdeationProject();

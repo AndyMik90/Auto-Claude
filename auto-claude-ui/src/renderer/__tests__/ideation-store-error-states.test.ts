@@ -318,21 +318,26 @@ describe('Ideation Store - Error State Handling', () => {
     it('should ignore error events for wrong project', () => {
       // Setup: Current project is A
       useIdeationStore.getState().setCurrentProjectId('project-a');
+      const initialState = useIdeationStore.getState().generationStatus;
 
-      // Simulate error state being set (as if from correct project)
-      const initialLogs = [...useIdeationStore.getState().logs];
+      // Simulate IPC validation logic (from setupIdeationListeners)
+      const eventProjectId = 'project-b'; // Wrong project
+      const currentProjectId = useIdeationStore.getState().currentProjectId;
+      const isValid = !currentProjectId || eventProjectId === currentProjectId;
 
-      // The IPC listener would validate projectId before updating
-      // If validation fails, no update happens
-      // Here we simulate successful validation
-      useIdeationStore.getState().setGenerationStatus({
-        phase: 'error',
-        progress: 0,
-        message: '',
-        error: 'test error'
-      });
+      // Only update if validation passes (simulating what the IPC listener does)
+      if (isValid) {
+        useIdeationStore.getState().setGenerationStatus({
+          phase: 'error',
+          progress: 0,
+          message: '',
+          error: 'test error'
+        });
+      }
 
-      expect(useIdeationStore.getState().generationStatus.phase).toBe('error');
+      // Assert: State was NOT updated because projectId didn't match
+      expect(useIdeationStore.getState().generationStatus.phase).toBe(initialState.phase);
+      expect(useIdeationStore.getState().generationStatus.error).toBeUndefined();
     });
   });
 
@@ -427,9 +432,9 @@ describe('Ideation Store - Error State Handling', () => {
       });
 
       // Act: Simulate what generateIdeation does for recovery
-      // Step 1: Clear logs (line 368 in ideation-store.ts)
+      // Step 1: Clear logs
       useIdeationStore.getState().clearLogs();
-      // Step 2: Clear session (line 369)
+      // Step 2: Clear session
       useIdeationStore.getState().clearSession();
       // Step 3: Initialize type states (sets enabled types to 'generating')
       useIdeationStore.getState().initializeTypeStates(['code_improvements', 'ui_ux_improvements']);

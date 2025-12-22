@@ -112,7 +112,7 @@ class PhaseExecutor:
                     file_path=str(hints_file),
                     file_size=hints_file.stat().st_size,
                 )
-            except (OSError, json.JSONDecodeError) as e:
+            except OSError as e:
                 debug_error(
                     "phase_executor",
                     "Failed to write graph_hints.json",
@@ -191,7 +191,7 @@ class PhaseExecutor:
                 file_size=hints_file.stat().st_size,
                 total_hints=total_hints,
             )
-        except (OSError, json.JSONDecodeError) as e:
+        except OSError as e:
             debug_error(
                 "phase_executor",
                 "Failed to write graph_hints.json",
@@ -283,7 +283,7 @@ class PhaseExecutor:
                 file_path=str(context_file),
                 file_size=context_file.stat().st_size,
             )
-        except (OSError, json.JSONDecodeError) as e:
+        except OSError as e:
             debug_error(
                 "phase_executor",
                 "Failed to write ideation_context.json",
