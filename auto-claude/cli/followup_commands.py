@@ -216,11 +216,92 @@ def collect_followup_task(spec_dir: Path, max_retries: int = 3) -> str | None:
     return None
 
 
+def trigger_automatic_processing(
+    project_dir: Path,
+    spec_dir: Path,
+    model: str,
+    verbose: bool = False,
+) -> bool:
+    """
+    Trigger automatic processing of follow-up tasks.
+
+    This function enhances the follow-up workflow by automatically
+    continuing to the coding phase after successful follow-up planning.
+    It integrates with the enhanced run_followup_planner to provide
+    seamless processing without manual intervention.
+
+    Args:
+        project_dir: Project root directory
+        spec_dir: Spec directory path
+        model: Model to use for processing
+        verbose: Enable verbose output
+
+    Returns:
+        True if automatic processing was triggered successfully, False otherwise
+    """
+    try:
+        # Import required modules
+        from agent import run_followup_planner
+
+        print()
+        print_status("Triggering automatic follow-up processing...", "info")
+
+        # Check if FOLLOWUP_REQUEST.md exists (indicating a follow-up is needed)
+        followup_request = spec_dir / "FOLLOWUP_REQUEST.md"
+        if not followup_request.exists():
+            print_status("No follow-up request found.", "warning")
+            return False
+
+        # Check if implementation plan exists
+        plan_file = spec_dir / "implementation_plan.json"
+        if not plan_file.exists():
+            print_status("No implementation plan found.", "error")
+            return False
+
+        # Run follow-up planner with auto_continue enabled
+        success_result = asyncio.run(
+            run_followup_planner(
+                project_dir=project_dir,
+                spec_dir=spec_dir,
+                model=model,
+                verbose=verbose,
+                auto_continue=True,  # Enable automatic continuation
+            )
+        )
+
+        if success_result:
+            print_status("Automatic follow-up processing triggered successfully.", "success")
+
+            # Show completion message
+            content = [
+                bold(f"{icon(Icons.SUCCESS)} AUTOMATIC PROCESSING TRIGGERED"),
+                "",
+                "Follow-up tasks have been added and processing has begun.",
+                "",
+                muted("The system will automatically continue with the coding phase."),
+            ]
+            print()
+            print(box(content, width=70, style="heavy"))
+
+            return True
+        else:
+            print_status("Automatic follow-up processing failed.", "error")
+            return False
+
+    except Exception as e:
+        print_status(f"Error triggering automatic processing: {e}", "error")
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        return False
+
+
 def handle_followup_command(
     project_dir: Path,
     spec_dir: Path,
     model: str,
     verbose: bool = False,
+    auto_continue: bool = False,
 ) -> None:
     """
     Handle the --followup command.
@@ -230,6 +311,7 @@ def handle_followup_command(
         spec_dir: Spec directory path
         model: Model to use
         verbose: Enable verbose output
+        auto_continue: Whether to automatically continue to coding phase after planning
     """
     # Lazy imports to avoid loading heavy modules
     from agent import run_followup_planner
@@ -335,19 +417,29 @@ def handle_followup_command(
                 spec_dir=spec_dir,
                 model=model,
                 verbose=verbose,
+                auto_continue=auto_continue,
             )
         )
 
         if success_result:
             # Show next steps after successful planning
-            content = [
-                bold(f"{icon(Icons.SUCCESS)} FOLLOW-UP PLANNING COMPLETE"),
-                "",
-                "New subtasks have been added to your implementation plan.",
-                "",
-                highlight("To continue building:"),
-                f"  python auto-claude/run.py --spec {spec_dir.name}",
-            ]
+            if auto_continue:
+                content = [
+                    bold(f"{icon(Icons.SUCCESS)} FOLLOW-UP PLANNING COMPLETE - AUTO-CONTINUING"),
+                    "",
+                    "New subtasks have been added and processing has begun automatically.",
+                    "",
+                    muted("The system will continue with the coding phase."),
+                ]
+            else:
+                content = [
+                    bold(f"{icon(Icons.SUCCESS)} FOLLOW-UP PLANNING COMPLETE"),
+                    "",
+                    "New subtasks have been added to your implementation plan.",
+                    "",
+                    highlight("To continue building:"),
+                    f"  python auto-claude/run.py --spec {spec_dir.name}",
+                ]
             print(box(content, width=70, style="heavy"))
         else:
             # Planning didn't fully succeed
