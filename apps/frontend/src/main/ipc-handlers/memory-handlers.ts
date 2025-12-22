@@ -416,47 +416,13 @@ export function registerMemoryHandlers(): void {
         };
       }
     }
-  );
-
-   // ============================================
-   // Ollama Model Discovery & Management
-   // ============================================
-
-   /**
-    * Check if Ollama service is running and accessible.
-    * Queries the Ollama API to verify connectivity and version.
-    *
-    * @async
-    * @param {string} [baseUrl] - Optional custom Ollama base URL (defaults to http://localhost:11434)
-    * @returns {Promise<IPCResult<OllamaStatus>>} Status info { running, url, version?, message? }
-    */
-   ipcMain.handle(
-     IPC_CHANNELS.OLLAMA_CHECK_STATUS,
-     async (_, baseUrl?: string): Promise<IPCResult<OllamaStatus>> => {
-       try {
-         const result = await executeOllamaDetector('check-status', baseUrl);
-
-         if (!result.success) {
-           return {
-             success: false,
-             error: result.error || 'Failed to check Ollama status',
-           };
-         }
-
-         return {
-           success: true,
-           data: result.data as OllamaStatus,
-         };
-       } catch (error) {
-         return {
-           success: false,
-           error: error instanceof Error ? error.message : 'Failed to check Ollama status',
-         };
-       }
-     }
    );
 
-   /**
+    // ============================================
+    // Ollama Model Discovery & Management
+    // ============================================
+
+    /**
     * List all available Ollama models (LLMs and embeddings).
     * Queries Ollama API to get model names, sizes, and metadata.
     *
