@@ -93,9 +93,11 @@ def list_specs(project_dir: Path, dev_mode: bool = False) -> list[dict]:
     return specs
 
 
-def print_specs_list(project_dir: Path, dev_mode: bool = False, auto_create: bool = True) -> None:
+def print_specs_list(
+    project_dir: Path, dev_mode: bool = False, auto_create: bool = True
+) -> None:
     """Print a formatted list of all specs.
-    
+
     Args:
         project_dir: Project root directory
         dev_mode: If True, use dev/auto-claude/specs/
@@ -107,42 +109,53 @@ def print_specs_list(project_dir: Path, dev_mode: bool = False, auto_create: boo
 
     if not specs:
         print("\nNo specs found.")
-        
+
         if auto_create:
             # Get the backend directory and find spec_runner.py
             backend_dir = Path(__file__).parent.parent
             spec_runner = backend_dir / "runners" / "spec_runner.py"
-            
+
             # Find Python executable - use current interpreter
             python_path = sys.executable
-            
+
             if spec_runner.exists() and python_path:
                 # Quick prompt for task description
                 print("\n" + "=" * 60)
                 print("  QUICK START")
                 print("=" * 60)
                 print("\nWhat do you want to build?")
-                print("(Enter a brief description, or press Enter for interactive mode)\n")
-                
+                print(
+                    "(Enter a brief description, or press Enter for interactive mode)\n"
+                )
+
                 try:
                     task = input("> ").strip()
                 except (EOFError, KeyboardInterrupt):
                     print("\nCancelled.")
                     return
-                
+
                 if task:
                     # Direct mode: create spec and start building
                     print(f"\nStarting build for: {task}\n")
-                    subprocess.run([
-                        python_path, str(spec_runner),
-                        "--task", task,
-                        "--complexity", "simple",
-                        "--auto-approve"
-                    ], cwd=project_dir)
+                    subprocess.run(
+                        [
+                            python_path,
+                            str(spec_runner),
+                            "--task",
+                            task,
+                            "--complexity",
+                            "simple",
+                            "--auto-approve",
+                        ],
+                        cwd=project_dir,
+                    )
                 else:
                     # Interactive mode
                     print("\nLaunching interactive mode...\n")
-                    subprocess.run([python_path, str(spec_runner), "--interactive"], cwd=project_dir)
+                    subprocess.run(
+                        [python_path, str(spec_runner), "--interactive"],
+                        cwd=project_dir,
+                    )
                 return
             else:
                 print("\nCreate your first spec:")

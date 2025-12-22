@@ -1,29 +1,39 @@
 repos:
-  # Python linting (auto-claude/)
+  # Python linting (Apps/backend/)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.3
     hooks:
       - id: ruff
         args: [--fix]
-        files: ^auto-claude/
+        files: ^Apps/backend/
       - id: ruff-format
-        files: ^auto-claude/
+        files: ^Apps/backend/
 
-  # Frontend linting (auto-claude-ui/)
+  # Python tests (Apps/backend/) - skip slow/integration tests for pre-commit speed
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Python Tests
+        entry: bash -c 'cd Apps/backend && PYTHONPATH=. python -m pytest ../../tests/ -v --tb=short -x -m "not slow and not integration" --ignore=../../tests/test_graphiti.py'
+        language: system
+        files: ^(Apps/backend/.*\.py$|tests/.*\.py$)
+        pass_filenames: false
+
+  # Frontend linting (Apps/frontend/)
   - repo: local
     hooks:
       - id: eslint
         name: ESLint
-        entry: bash -c 'cd auto-claude-ui && pnpm lint'
+        entry: bash -c 'cd Apps/frontend && npm run lint'
         language: system
-        files: ^auto-claude-ui/.*\.(ts|tsx|js|jsx)$
+        files: ^Apps/frontend/.*\.(ts|tsx|js|jsx)$
         pass_filenames: false
 
       - id: typecheck
         name: TypeScript Check
-        entry: bash -c 'cd auto-claude-ui && pnpm typecheck'
+        entry: bash -c 'cd Apps/frontend && npm run typecheck'
         language: system
-        files: ^auto-claude-ui/.*\.(ts|tsx)$
+        files: ^Apps/frontend/.*\.(ts|tsx)$
         pass_filenames: false
 
   # General checks

@@ -19,7 +19,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, AsyncMock
 
 # Add auto-claude directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "auto-claude"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "Apps" / "backend"))
 
 # Store original modules for cleanup
 _original_modules = {}

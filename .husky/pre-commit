@@ -2,6 +2,61 @@
 
 echo "Running pre-commit checks..."
 
+# =============================================================================
+# BACKEND CHECKS (Python) - Run first, before frontend
+# =============================================================================
+
+# Check if there are staged Python files in Apps/backend
+if git diff --cached --name-only | grep -q "^Apps/backend/.*\.py$"; then
+  echo "Python changes detected, running backend checks..."
+  
+  # Run ruff linting
+  echo "Running ruff lint..."
+  ruff check Apps/backend/ --fix
+  if [ $? -ne 0 ]; then
+    echo "Ruff lint failed. Please fix Python linting errors before committing."
+    exit 1
+  fi
+  
+  # Run ruff format check
+  echo "Running ruff format check..."
+  ruff format Apps/backend/ --check
+  if [ $? -ne 0 ]; then
+    echo "Ruff format check failed. Run 'ruff format Apps/backend/' to fix."
+    exit 1
+  fi
+  
+  # Run pytest (skip slow/integration tests and Windows-incompatible tests for pre-commit speed)
+  echo "Running Python tests..."
+  cd Apps/backend
+  # Tests to skip: graphiti (external deps), merge_file_tracker/service_orchestrator/worktree/workspace (Windows path/git issues)
+  IGNORE_TESTS="--ignore=../../tests/test_graphiti.py --ignore=../../tests/test_merge_file_tracker.py --ignore=../../tests/test_service_orchestrator.py --ignore=../../tests/test_worktree.py --ignore=../../tests/test_workspace.py"
+  if [ -d ".venv" ]; then
+    # Use venv if it exists
+    if [ -f ".venv/bin/pytest" ]; then
+      PYTHONPATH=. .venv/bin/pytest ../../tests/ -v --tb=short -x -m "not slow and not integration" $IGNORE_TESTS
+    elif [ -f ".venv/Scripts/pytest.exe" ]; then
+      # Windows
+      PYTHONPATH=. .venv/Scripts/pytest.exe ../../tests/ -v --tb=short -x -m "not slow and not integration" $IGNORE_TESTS
+    else
+      PYTHONPATH=. python -m pytest ../../tests/ -v --tb=short -x -m "not slow and not integration" $IGNORE_TESTS
+    fi
+  else
+    PYTHONPATH=. python -m pytest ../../tests/ -v --tb=short -x -m "not slow and not integration" $IGNORE_TESTS
+  fi
+  if [ $? -ne 0 ]; then
+    echo "Python tests failed. Please fix failing tests before committing."
+    exit 1
+  fi
+  cd ../..
+  
+  echo "Backend checks passed!"
+fi
+
+# =============================================================================
+# FRONTEND CHECKS (TypeScript/React)
+# =============================================================================
+
 # Check if there are staged files in Apps/frontend
 if git diff --cached --name-only | grep -q "^Apps/frontend/"; then
   echo "Frontend changes detected, running frontend checks..."
@@ -35,12 +90,7 @@ if git diff --cached --name-only | grep -q "^Apps/frontend/"; then
   fi
   
   cd ../..
-fi
-
-# Check if there are staged Python files in auto-claude
-if git diff --cached --name-only | grep -q "^auto-claude/.*\.py$"; then
-  echo "Python changes detected, running Python checks..."
-  # Add Python linting here if needed (ruff, etc.)
+  echo "Frontend checks passed!"
 fi
 
 echo "All pre-commit checks passed!"
