@@ -121,52 +121,52 @@ export function App() {
     loadSettings();
   }, []);
 
-  // Restore tab state and open tabs for loaded projects
+  // Restore tab state and open tabs for loaded projects.
+  // Avoid depending on computed `projectTabs` to prevent effect loops.
   useEffect(() => {
-    console.log('[App] Tab restore useEffect triggered:', {
-      projectsCount: projects.length,
-      openProjectIds,
-      activeProjectId,
-      selectedProjectId,
-      projectTabsCount: projectTabs.length,
-      projectTabIds: projectTabs.map(p => p.id)
-    });
+    if (projects.length === 0) return;
 
-    if (projects.length > 0) {
-      // Check openProjectIds (persisted state) instead of projectTabs (computed)
-      // to avoid race condition where projectTabs is empty before projects load
-      if (openProjectIds.length === 0) {
-        // No tabs persisted at all, open the first available project
-        const projectToOpen = activeProjectId || selectedProjectId || projects[0].id;
-        console.log('[App] No tabs persisted, opening project:', projectToOpen);
-        // Verify the project exists before opening
-        if (projects.some(p => p.id === projectToOpen)) {
-          openProjectTab(projectToOpen);
-          setActiveProject(projectToOpen);
-        } else {
-          // Fallback to first project if stored IDs are invalid
-          console.log('[App] Project not found, falling back to first project:', projects[0].id);
-          openProjectTab(projects[0].id);
-          setActiveProject(projects[0].id);
-        }
-        return;
-      }
-      console.log('[App] Tabs already persisted, checking active project');
-      // If there's an active project but no tabs open for it, open a tab
-      if (activeProjectId && !projectTabs.some(tab => tab.id === activeProjectId)) {
-        console.log('[App] Active project has no tab, opening:', activeProjectId);
-        openProjectTab(activeProjectId);
-      }
-      // If there's a selected project but no active project, make it active
-      else if (selectedProjectId && !activeProjectId) {
-        console.log('[App] No active project, using selected:', selectedProjectId);
-        setActiveProject(selectedProjectId);
-        openProjectTab(selectedProjectId);
+    if (openProjectIds.length === 0) {
+      const projectToOpen = activeProjectId || selectedProjectId || projects[0]?.id;
+      if (!projectToOpen) return;
+
+      if (projects.some((p) => p.id === projectToOpen)) {
+        openProjectTab(projectToOpen);
+        setActiveProject(projectToOpen);
       } else {
-        console.log('[App] Tab state is valid, no action needed');
+        openProjectTab(projects[0].id);
+        setActiveProject(projects[0].id);
+      }
+      return;
+    }
+
+    if (activeProjectId && !openProjectIds.includes(activeProjectId)) {
+      openProjectTab(activeProjectId);
+      return;
+    }
+
+    if (selectedProjectId && !activeProjectId) {
+      setActiveProject(selectedProjectId);
+      if (!openProjectIds.includes(selectedProjectId)) {
+        openProjectTab(selectedProjectId);
       }
     }
-  }, [projects, activeProjectId, selectedProjectId, openProjectIds, projectTabs, openProjectTab, setActiveProject]);
+  }, [projects, openProjectIds, activeProjectId, selectedProjectId, openProjectTab, setActiveProject]);
+
+  // Keyboard shortcut for full window reload (Cmd+Shift+R / Ctrl+Shift+R)
+  // This reloads the entire UI to pick up new builds without restarting the app.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toUpperCase() === 'R') {
+        e.preventDefault();
+        console.warn('[App] Reloading window to pick up new build...');
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Track if settings have been loaded at least once
   const [settingsHaveLoaded, setSettingsHaveLoaded] = useState(false);
@@ -564,7 +564,12 @@ export function App() {
       <div className="flex h-screen bg-background">
         {/* Sidebar */}
         <Sidebar
-          onSettingsClick={() => setIsSettingsDialogOpen(true)}
+          onSettingsClick={(section) => {
+            if (section) {
+              setSettingsInitialSection(section);
+            }
+            setIsSettingsDialogOpen(true);
+          }}
           onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
           activeView={activeView}
           onViewChange={setActiveView}
