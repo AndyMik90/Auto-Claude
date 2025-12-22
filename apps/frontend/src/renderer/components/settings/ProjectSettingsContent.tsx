@@ -159,9 +159,8 @@ function ProjectSettingsContentInner({
         open={showLinearImportModal}
         onOpenChange={setShowLinearImportModal}
         onImportComplete={(result) => {
-          console.warn('Import complete:', result);
-          // Refresh task list to show imported tasks
-          if (result.success && result.imported > 0) {
+          // Refresh task list to show imported tasks (even on partial success)
+          if (result.imported > 0) {
             loadTasks(project.id);
           }
         }}

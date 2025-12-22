@@ -216,7 +216,7 @@ describe('NDJSON Parser', () => {
       chunk = '":200}\n';
       results = parseNDJSON(chunk, bufferRef);
       expect(results).toHaveLength(1);
-      expect(results[0].other).toBe(200);
+      expect((results[0] as unknown as { other: number }).other).toBe(200);
       expect(bufferRef.current).toBe('');
     });
   });

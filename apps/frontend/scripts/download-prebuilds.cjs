@@ -12,7 +12,6 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const GITHUB_REPO = 'AndyMik90/Auto-Claude';
-const GITHUB_API = 'https://api.github.com';
 
 /**
  * Get the Electron ABI version for the installed Electron

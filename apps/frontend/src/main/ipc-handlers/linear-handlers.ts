@@ -55,16 +55,23 @@ export function registerLinearHandlers(
       body: JSON.stringify({ query, variables })
     });
 
-    const result = await response.json();
-
+    // Check response.ok first, then try to parse JSON
+    // This handles cases where the API returns non-JSON errors (e.g., 503 from proxy)
     if (!response.ok) {
-      // Try to get detailed error message from Linear's response
-      const errorMessage = result?.errors?.[0]?.message
-        || result?.error
-        || result?.message
-        || response.statusText;
+      let errorMessage = response.statusText;
+      try {
+        const errorResult = await response.json();
+        errorMessage = errorResult?.errors?.[0]?.message
+          || errorResult?.error
+          || errorResult?.message
+          || response.statusText;
+      } catch {
+        // JSON parsing failed - use status text as fallback
+      }
       throw new Error(`Linear API error: ${response.status} - ${errorMessage}`);
     }
+
+    const result = await response.json();
     if (result.errors) {
       throw new Error(result.errors[0]?.message || 'Linear API error');
     }
@@ -231,7 +238,7 @@ export function registerLinearHandlers(
 
       try {
         const query = `
-          query($teamId: String!) {
+          query($teamId: ID!) {
             team(id: $teamId) {
               projects {
                 nodes {
