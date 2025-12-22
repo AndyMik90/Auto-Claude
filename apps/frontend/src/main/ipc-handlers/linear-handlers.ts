@@ -121,7 +121,7 @@ export function registerLinearHandlers(
           teamName = data.teams.nodes[0].name;
           // Note: These queries are kept as documentation for future API reference
           const _countQuery = `
-            query($teamId: ID!) {
+            query($teamId: String!) {
               team(id: $teamId) {
                 issues {
                   totalCount: nodes { id }
@@ -231,7 +231,7 @@ export function registerLinearHandlers(
 
       try {
         const query = `
-          query($teamId: ID!) {
+          query($teamId: String!) {
             team(id: $teamId) {
               projects {
                 nodes {
