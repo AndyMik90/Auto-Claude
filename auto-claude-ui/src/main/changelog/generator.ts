@@ -29,6 +29,9 @@ export class ChangelogGenerator extends EventEmitter {
     debugEnabled: boolean
   ) {
     super();
+    if (!pythonPath || pythonPath.trim() === '') {
+      throw new Error('Python path is required but not provided. Ensure the Python environment is initialized.');
+    }
     this.debugEnabled = debugEnabled;
   }
 

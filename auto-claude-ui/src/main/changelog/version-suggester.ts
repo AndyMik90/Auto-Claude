@@ -23,6 +23,9 @@ export class VersionSuggester {
     private autoBuildSourcePath: string,
     debugEnabled: boolean
   ) {
+    if (!pythonPath || pythonPath.trim() === '') {
+      throw new Error('Python path is required but not provided. Ensure the Python environment is initialized.');
+    }
     this.debugEnabled = debugEnabled;
   }
 
