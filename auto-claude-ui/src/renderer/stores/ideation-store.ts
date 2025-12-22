@@ -326,11 +326,17 @@ export const useIdeationStore = create<IdeationState>((set) => ({
 
 // Helper functions for loading ideation
 export async function loadIdeation(projectId: string): Promise<void> {
+  const store = useIdeationStore.getState();
+
+  // Clear existing session before loading new project data
+  // This ensures we don't show stale data from a previous project
+  store.clearSession();
+
   const result = await window.electronAPI.getIdeation(projectId);
   if (result.success && result.data) {
-    useIdeationStore.getState().setSession(result.data);
+    store.setSession(result.data);
   } else {
-    useIdeationStore.getState().setSession(null);
+    store.setSession(null);
   }
 }
 
