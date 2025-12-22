@@ -58,15 +58,15 @@ export function TeamProjectSelector({
       <div className="flex-1 space-y-2">
         <Label className="text-sm font-medium text-foreground">Project (Optional)</Label>
         <Select
-          value={selectedProjectId}
-          onValueChange={onProjectChange}
+          value={selectedProjectId || '__all__'}
+          onValueChange={(value) => onProjectChange(value === '__all__' ? '' : value)}
           disabled={isLoadingProjects || !selectedTeamId}
         >
           <SelectTrigger>
             <SelectValue placeholder={isLoadingProjects ? 'Loading...' : 'All projects'} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All projects</SelectItem>
+            <SelectItem value="__all__">All projects</SelectItem>
             {projects.map(project => (
               <SelectItem key={project.id} value={project.id}>
                 {project.name}
