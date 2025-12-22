@@ -5,6 +5,7 @@ Thank you for your interest in contributing to Auto Claude! This document provid
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
 - [Development Setup](#development-setup)
   - [Python Backend](#python-backend)
   - [Electron Frontend](#electron-frontend)
@@ -24,37 +25,76 @@ Thank you for your interest in contributing to Auto Claude! This document provid
 
 Before contributing, ensure you have the following installed:
 
-- **Python 3.8+** - For the backend framework
-- **Node.js 18+** - For the Electron frontend
-- **pnpm** - Package manager for the frontend (`npm install -g pnpm`)
-- **uv** (recommended) or **pip** - Python package manager
+- **Python 3.12** - Required for the backend framework and memory system
+- **Node.js 24+** - For the Electron frontend
+- **npm** - Package manager for the frontend
 - **Git** - Version control
+
+### Installing Python 3.12
+
+**Windows:**
+```bash
+winget install Python.Python.3.12
+```
+
+**macOS:**
+```bash
+brew install python@3.12
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt install python3.12 python3.12-venv
+```
+
+## Quick Start
+
+The fastest way to get started:
+
+```bash
+# Clone the repository
+git clone https://github.com/AndyMik90/Auto-Claude.git
+cd Auto-Claude
+
+# Install all dependencies (cross-platform)
+npm run install:all
+
+# Run in development mode
+npm run dev
+
+# Or build and run production
+npm start
+```
 
 ## Development Setup
 
 The project consists of two main components:
 
-1. **Python Backend** (`auto-claude/`) - The core autonomous coding framework
-2. **Electron Frontend** (`auto-claude-ui/`) - Optional desktop UI
+1. **Python Backend** (`apps/backend/`) - The core autonomous coding framework
+2. **Electron Frontend** (`apps/frontend/`) - Desktop UI
 
 ### Python Backend
 
+The recommended way is to use `npm run install:backend`, but you can also set up manually:
+
 ```bash
-# Navigate to the auto-claude directory
-cd auto-claude
+# Navigate to the backend directory
+cd apps/backend
 
-# Create virtual environment (using uv - recommended)
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install -r requirements.txt
+# Create virtual environment
+# Windows:
+py -3.12 -m venv .venv
+.venv\Scripts\activate
 
-# Or using standard Python
-python3 -m venv .venv
+# macOS/Linux:
+python3.12 -m venv .venv
 source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 
 # Install test dependencies
-pip install -r ../tests/requirements-test.txt
+pip install -r ../../tests/requirements-test.txt
 
 # Set up environment
 cp .env.example .env
@@ -65,40 +105,36 @@ cp .env.example .env
 
 ```bash
 # Navigate to the UI directory
-cd auto-claude-ui
+cd apps/frontend
 
 # Install dependencies
-pnpm install
+npm install
 
 # Start development server
-pnpm dev
+npm run dev
 
 # Build for production
-pnpm build
+npm run build
 
 # Package for distribution
-pnpm package
+npm run package
 ```
 
 ## Running from Source
 
 If you want to run Auto Claude from source (for development or testing unreleased features), follow these steps:
 
-### Step 1: Clone and Set Up Python Backend
+### Step 1: Clone and Set Up
 
 ```bash
 git clone https://github.com/AndyMik90/Auto-Claude.git
-cd Auto-Claude/auto-claude
+cd Auto-Claude
 
-# Using uv (recommended)
-uv venv && uv pip install -r requirements.txt
-
-# Or using standard Python
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+# Install everything (recommended - works on Windows, macOS, Linux)
+npm run install:all
 
 # Set up environment
+cd apps/backend
 cp .env.example .env
 # Edit .env and add your CLAUDE_CODE_OAUTH_TOKEN (get it via: claude setup-token)
 ```
@@ -106,16 +142,13 @@ cp .env.example .env
 ### Step 2: Run the Desktop UI
 
 ```bash
-cd ../auto-claude-ui
-
-# Install dependencies
-pnpm install
+# From the repository root:
 
 # Development mode (hot reload)
-pnpm dev
+npm run dev
 
 # Or production build
-pnpm run build && pnpm run start
+npm start
 ```
 
 <details>
@@ -126,7 +159,7 @@ Auto Claude automatically downloads prebuilt binaries for Windows. If prebuilts 
 1. Download [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 2. Select "Desktop development with C++" workload
 3. In "Individual Components", add "MSVC v143 - VS 2022 C++ x64/x86 Spectre-mitigated libs"
-4. Restart terminal and run `pnpm install` again
+4. Restart terminal and run `npm run install:frontend` again
 
 </details>
 
@@ -152,10 +185,10 @@ When you commit, the following checks run automatically:
 
 | Check | Scope | Description |
 |-------|-------|-------------|
-| **ruff** | `auto-claude/` | Python linter with auto-fix |
-| **ruff-format** | `auto-claude/` | Python code formatter |
-| **eslint** | `auto-claude-ui/` | TypeScript/React linter |
-| **typecheck** | `auto-claude-ui/` | TypeScript type checking |
+| **ruff** | `apps/backend/` | Python linter with auto-fix |
+| **ruff-format** | `apps/backend/` | Python code formatter |
+| **eslint** | `apps/frontend/` | TypeScript/React linter |
+| **typecheck** | `apps/frontend/` | TypeScript type checking |
 | **trailing-whitespace** | All files | Removes trailing whitespace |
 | **end-of-file-fixer** | All files | Ensures files end with newline |
 | **check-yaml** | All files | Validates YAML syntax |
@@ -212,7 +245,7 @@ def gnc(sd):
 ### TypeScript/React
 
 - Use TypeScript strict mode
-- Follow the existing component patterns in `auto-claude-ui/src/`
+- Follow the existing component patterns in `apps/frontend/src/`
 - Use functional components with hooks
 - Prefer named exports over default exports
 - Use the UI components from `src/renderer/components/ui/`
@@ -242,20 +275,25 @@ export default function(props) {
 ### Python Tests
 
 ```bash
-# Run all tests
-pytest tests/ -v
+# Run all tests (from repository root)
+npm run test:backend
+
+# Or manually with pytest
+cd apps/backend
+.venv/Scripts/pytest.exe ../tests -v          # Windows
+.venv/bin/pytest ../tests -v                   # macOS/Linux
 
 # Run a specific test file
-pytest tests/test_security.py -v
+npm run test:backend -- tests/test_security.py -v
 
 # Run a specific test
-pytest tests/test_security.py::test_bash_command_validation -v
+npm run test:backend -- tests/test_security.py::test_bash_command_validation -v
 
 # Skip slow tests
-pytest tests/ -m "not slow"
+npm run test:backend -- -m "not slow"
 
 # Run with coverage
-pytest tests/ --cov=auto-claude --cov-report=html
+npm run test:backend -- --cov=apps/backend --cov-report=html
 ```
 
 Test configuration is in `tests/pytest.ini`.
@@ -263,26 +301,26 @@ Test configuration is in `tests/pytest.ini`.
 ### Frontend Tests
 
 ```bash
-cd auto-claude-ui
+cd apps/frontend
 
 # Run unit tests
-pnpm test
+npm test
 
 # Run tests in watch mode
-pnpm test:watch
+npm run test:watch
 
 # Run with coverage
-pnpm test:coverage
+npm run test:coverage
 
 # Run E2E tests (requires built app)
-pnpm build
-pnpm test:e2e
+npm run build
+npm run test:e2e
 
 # Run linting
-pnpm lint
+npm run lint
 
 # Run type checking
-pnpm typecheck
+npm run typecheck
 ```
 
 ### Testing Requirements
@@ -319,16 +357,14 @@ Before a PR can be merged:
 ### Running CI Checks Locally
 
 ```bash
-# Python tests
-cd auto-claude
-source .venv/bin/activate
-pytest ../tests/ -v
+# Python tests (from repository root)
+npm run test:backend
 
 # Frontend tests
-cd auto-claude-ui
-pnpm test
-pnpm lint
-pnpm typecheck
+cd apps/frontend
+npm test
+npm run lint
+npm run typecheck
 ```
 
 ## Git Workflow
@@ -384,11 +420,11 @@ git commit -m "WIP"
 
 3. **Test thoroughly**:
    ```bash
-   # Python
-   pytest tests/ -v
+   # Python (from repository root)
+   npm run test:backend
 
    # Frontend
-   cd auto-claude-ui && pnpm test && pnpm lint && pnpm typecheck
+   cd apps/frontend && npm test && npm run lint && npm run typecheck
    ```
 
 4. **Update documentation** if your changes affect:
@@ -447,7 +483,7 @@ When requesting a feature:
 
 Auto Claude consists of two main parts:
 
-### Python Backend (`auto-claude/`)
+### Python Backend (`apps/backend/`)
 
 The core autonomous coding framework:
 
@@ -457,9 +493,9 @@ The core autonomous coding framework:
 - **Memory**: `memory.py` (file-based), `graphiti_memory.py` (graph-based)
 - **QA**: `qa_loop.py`, `prompts/qa_*.md`
 
-### Electron Frontend (`auto-claude-ui/`)
+### Electron Frontend (`apps/frontend/`)
 
-Optional desktop interface:
+Desktop interface:
 
 - **Main Process**: `src/main/` - Electron main process, IPC handlers
 - **Renderer**: `src/renderer/` - React UI components
