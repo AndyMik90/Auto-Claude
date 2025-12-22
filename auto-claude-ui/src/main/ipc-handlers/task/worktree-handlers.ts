@@ -366,7 +366,7 @@ export function registerWorktreeHandlers(
         });
 
         return new Promise((resolve) => {
-          const MERGE_TIMEOUT_MS = 120000; // 2 minutes timeout for merge operations
+          const MERGE_TIMEOUT_MS = 600000; // 10 minutes timeout for AI merge operations with many files
           let timeoutId: NodeJS.Timeout | null = null;
           let resolved = false;
 
