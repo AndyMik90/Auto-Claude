@@ -440,17 +440,33 @@ class PlaneAPIClient:
     # Utility methods
     # =========================================================================
 
-    async def test_connection(self) -> dict[str, Any]:
+    async def test_connection(self, workspace_slug: str | None = None) -> dict[str, Any]:
         """
-        Test the API connection by listing projects.
+        Test the API connection by attempting to list projects.
+
+        Args:
+            workspace_slug: Workspace identifier to test against. If not provided,
+                           only validates that an API key is configured.
 
         Returns:
-            Dict with success status and details
+            Dict with connection status and details
 
         Note:
-            This requires knowing a workspace slug. For a more basic test,
-            we'd need a /me or similar endpoint which Plane may not have.
+            The Plane API doesn't have a simple /me endpoint, so full connection
+            testing requires a workspace slug to query.
         """
-        # The Plane API doesn't have a simple /me endpoint,
-        # so connection testing happens at the project list level
-        return {"connected": True, "api_key_valid": bool(self.api_key)}
+        if not self.api_key:
+            return {"connected": False, "api_key_valid": False, "error": "No API key configured"}
+
+        if not workspace_slug:
+            # Can't fully test without workspace, but API key is present
+            return {"connected": True, "api_key_valid": True, "tested": False}
+
+        try:
+            # Actually test the connection by listing projects
+            await self.list_projects(workspace_slug)
+            return {"connected": True, "api_key_valid": True, "tested": True}
+        except PlaneAPIError as e:
+            if e.status == 401:
+                return {"connected": False, "api_key_valid": False, "error": "Invalid API key"}
+            return {"connected": False, "api_key_valid": True, "error": str(e)}

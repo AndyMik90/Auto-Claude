@@ -6,6 +6,7 @@ Constants, status mappings, and configuration helpers for Plane.so integration.
 Mirrors the structure of linear/config.py for consistency.
 """
 
+import html
 import json
 import os
 from dataclasses import dataclass, field
@@ -125,8 +126,8 @@ class PlaneConfig:
         return bool(self.api_key)
 
     def is_fully_configured(self) -> bool:
-        """Check if config has all values needed for API calls."""
-        return bool(self.api_key and self.workspace_slug)
+        """Check if config has all values needed for most API calls."""
+        return bool(self.api_key and self.workspace_slug and self.project_id)
 
 
 @dataclass
@@ -188,9 +189,13 @@ class PlaneTaskState:
 
     @property
     def identifier(self) -> str | None:
-        """Get the human-readable identifier like 'PROJ-123'."""
+        """
+        Get a task identifier for display.
+
+        Returns the sequence ID (e.g., '123') if available, otherwise the task UUID.
+        Note: Does not include project prefix as that's not stored in task state.
+        """
         if self.sequence_id is not None:
-            # We don't store project identifier, so just return the sequence
             return str(self.sequence_id)
         return self.task_id
 
@@ -315,57 +320,63 @@ def format_work_item_description(subtask: dict, phase: dict | None = None) -> st
         phase: Optional phase dict for context
 
     Returns:
-        HTML-formatted description
+        HTML-formatted description (with proper escaping for security)
     """
     lines = []
 
     # Description
     if subtask.get("description"):
-        lines.append(f"<h2>Description</h2><p>{subtask['description']}</p>")
+        desc = html.escape(subtask["description"])
+        lines.append(f"<h2>Description</h2><p>{desc}</p>")
 
     # Service
     if subtask.get("service"):
-        lines.append(f"<p><strong>Service:</strong> {subtask['service']}</p>")
+        service = html.escape(subtask["service"])
+        lines.append(f"<p><strong>Service:</strong> {service}</p>")
     elif subtask.get("all_services"):
         lines.append("<p><strong>Scope:</strong> All services (integration)</p>")
 
     # Phase info
     if phase:
-        phase_name = phase.get("name", phase.get("id", "Unknown"))
+        phase_name = html.escape(phase.get("name", phase.get("id", "Unknown")))
         lines.append(f"<p><strong>Phase:</strong> {phase_name}</p>")
 
     # Files to modify
     if subtask.get("files_to_modify"):
         lines.append("<h2>Files to Modify</h2><ul>")
         for f in subtask["files_to_modify"]:
-            lines.append(f"<li><code>{f}</code></li>")
+            lines.append(f"<li><code>{html.escape(f)}</code></li>")
         lines.append("</ul>")
 
     # Files to create
     if subtask.get("files_to_create"):
         lines.append("<h2>Files to Create</h2><ul>")
         for f in subtask["files_to_create"]:
-            lines.append(f"<li><code>{f}</code></li>")
+            lines.append(f"<li><code>{html.escape(f)}</code></li>")
         lines.append("</ul>")
 
     # Patterns to follow
     if subtask.get("patterns_from"):
         lines.append("<h2>Reference Patterns</h2><ul>")
         for f in subtask["patterns_from"]:
-            lines.append(f"<li><code>{f}</code></li>")
+            lines.append(f"<li><code>{html.escape(f)}</code></li>")
         lines.append("</ul>")
 
     # Verification
     if subtask.get("verification"):
         v = subtask["verification"]
         lines.append("<h2>Verification</h2>")
-        lines.append(f"<p><strong>Type:</strong> {v.get('type', 'none')}</p>")
+        v_type = html.escape(v.get("type", "none"))
+        lines.append(f"<p><strong>Type:</strong> {v_type}</p>")
         if v.get("run"):
-            lines.append(f"<p><strong>Command:</strong> <code>{v['run']}</code></p>")
+            run_cmd = html.escape(v["run"])
+            lines.append(f"<p><strong>Command:</strong> <code>{run_cmd}</code></p>")
         if v.get("url"):
-            lines.append(f"<p><strong>URL:</strong> {v['url']}</p>")
+            url = html.escape(v["url"])
+            lines.append(f"<p><strong>URL:</strong> {url}</p>")
         if v.get("scenario"):
-            lines.append(f"<p><strong>Scenario:</strong> {v['scenario']}</p>")
+            scenario = html.escape(v["scenario"])
+            lines.append(f"<p><strong>Scenario:</strong> {scenario}</p>")
 
     # Auto-build metadata
     lines.append("<hr>")
@@ -396,7 +407,7 @@ def format_session_comment(
         git_commit: Git commit hash if any
 
     Returns:
-        HTML-formatted comment
+        HTML-formatted comment (with proper escaping for security)
     """
     status_emoji = "&#x2705;" if success else "&#x274C;"  # checkmark or X
     status_text = "Completed" if success else "In Progress"
@@ -404,22 +415,20 @@ def format_session_comment(
 
     lines = [
         f"<h2>Session #{session_num} {status_emoji}</h2>",
-        f"<p><strong>Subtask:</strong> <code>{subtask_id}</code></p>",
+        f"<p><strong>Subtask:</strong> <code>{html.escape(subtask_id)}</code></p>",
         f"<p><strong>Status:</strong> {status_text}</p>",
         f"<p><strong>Time:</strong> {timestamp}</p>",
     ]
 
     if approach:
-        lines.append(f"<p><strong>Approach:</strong> {approach}</p>")
+        lines.append(f"<p><strong>Approach:</strong> {html.escape(approach)}</p>")
 
     if git_commit:
-        lines.append(f"<p><strong>Commit:</strong> <code>{git_commit[:8]}</code></p>")
+        lines.append(f"<p><strong>Commit:</strong> <code>{html.escape(git_commit[:8])}</code></p>")
 
     if error:
-        # Escape HTML in error message
-        safe_error = (
-            error[:500].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        )
+        # Escape HTML in error message using html.escape for security
+        safe_error = html.escape(error[:500])
         lines.append(f"<p><strong>Error:</strong></p><pre>{safe_error}</pre>")
 
     return "".join(lines)
@@ -441,19 +450,19 @@ def format_stuck_comment(
         reason: Why it's stuck
 
     Returns:
-        HTML-formatted comment for escalation
+        HTML-formatted comment for escalation (with proper escaping for security)
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     lines = [
         "<h2>&#x26A0; Subtask Marked as STUCK</h2>",
-        f"<p><strong>Subtask:</strong> <code>{subtask_id}</code></p>",
+        f"<p><strong>Subtask:</strong> <code>{html.escape(subtask_id)}</code></p>",
         f"<p><strong>Attempts:</strong> {attempt_count}</p>",
         f"<p><strong>Time:</strong> {timestamp}</p>",
     ]
 
     if reason:
-        lines.append(f"<p><strong>Reason:</strong> {reason}</p>")
+        lines.append(f"<p><strong>Reason:</strong> {html.escape(reason)}</p>")
 
     # Add attempt history
     if attempts:
@@ -462,10 +471,10 @@ def format_stuck_comment(
             status = "&#x2705;" if attempt.get("success") else "&#x274C;"
             lines.append(f"<p><strong>Attempt {i}:</strong> {status}</p>")
             if attempt.get("approach"):
-                safe_approach = attempt["approach"][:200].replace("<", "&lt;")
+                safe_approach = html.escape(attempt["approach"][:200])
                 lines.append(f"<p>- Approach: {safe_approach}</p>")
             if attempt.get("error"):
-                safe_error = attempt["error"][:200].replace("<", "&lt;")
+                safe_error = html.escape(attempt["error"][:200])
                 lines.append(f"<p>- Error: {safe_error}</p>")
 
     lines.append("<h3>Recommended Actions</h3>")

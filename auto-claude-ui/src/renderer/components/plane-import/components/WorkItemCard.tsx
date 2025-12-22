@@ -59,18 +59,19 @@ export function WorkItemCard({ workItem, isSelected, projectIdentifier, onToggle
             >
               {PRIORITY_LABELS[workItem.priority] || workItem.priority}
             </Badge>
-            {workItem.labels?.slice(0, 2).map(labelId => (
+            {workItem.label_details?.slice(0, 2).map(label => (
               <Badge
-                key={labelId}
+                key={label.id}
                 variant="outline"
                 className="text-xs"
+                style={label.color ? { borderColor: label.color, color: label.color } : undefined}
               >
-                {labelId}
+                {label.name}
               </Badge>
             ))}
-            {workItem.labels && workItem.labels.length > 2 && (
+            {workItem.label_details && workItem.label_details.length > 2 && (
               <span className="text-xs text-muted-foreground">
-                +{workItem.labels.length - 2} more
+                +{workItem.label_details.length - 2} more
               </span>
             )}
           </div>

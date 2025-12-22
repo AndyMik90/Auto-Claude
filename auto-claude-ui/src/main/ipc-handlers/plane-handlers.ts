@@ -68,10 +68,10 @@ export function registerPlaneHandlers(
   const planeAPI = async <T>(
     config: PlaneConfig,
     method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-    path: string,
+    endpoint: string,
     body?: Record<string, unknown>
   ): Promise<T> => {
-    const url = `${config.baseUrl}${path}`;
+    const url = `${config.baseUrl}${endpoint}`;
 
     const response = await fetch(url, {
       method,
@@ -91,7 +91,7 @@ export function registerPlaneHandlers(
     }
 
     if (response.status === 404) {
-      throw new Error(`Resource not found: ${path}`);
+      throw new Error(`Resource not found: ${endpoint}`);
     }
 
     if (!response.ok) {

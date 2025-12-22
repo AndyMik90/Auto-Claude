@@ -19,6 +19,7 @@ Status Flow:
     +-- Task created from spec
 """
 
+import html
 import os
 from datetime import datetime
 from pathlib import Path
@@ -339,9 +340,10 @@ async def plane_subtask_failed(
     Record subtask failure as a comment.
     Called after failed coder session.
     """
-    safe_error = error_summary[:200].replace("<", "&lt;").replace(">", "&gt;")
+    safe_error = html.escape(error_summary[:200])
+    safe_subtask_id = html.escape(subtask_id)
     comment = (
-        f"<p><strong>Subtask {subtask_id} failed</strong> "
+        f"<p><strong>Subtask {safe_subtask_id} failed</strong> "
         f"(attempt {attempt}): {safe_error}</p>"
     )
     return await add_plane_comment(spec_dir, comment)
