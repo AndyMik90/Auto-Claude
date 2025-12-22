@@ -331,3 +331,191 @@ test.describe('E2E Flow Verification (Mock-based)', () => {
     cleanupTestEnvironment();
   });
 });
+
+// Ideation project scope persistence E2E tests
+test.describe('Ideation Project Scope Persistence (Mock-based)', () => {
+  // Secondary test project for multi-project scenarios
+  const TEST_PROJECT_B_DIR = path.join(TEST_DATA_DIR, 'test-project-b');
+
+  function setupMultiProjectEnvironment(): void {
+    if (existsSync(TEST_DATA_DIR)) {
+      rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    }
+    mkdirSync(TEST_DATA_DIR, { recursive: true });
+    mkdirSync(TEST_PROJECT_DIR, { recursive: true });
+    mkdirSync(TEST_PROJECT_B_DIR, { recursive: true });
+    mkdirSync(path.join(TEST_PROJECT_DIR, '.auto-claude', 'ideation'), { recursive: true });
+    mkdirSync(path.join(TEST_PROJECT_B_DIR, '.auto-claude', 'ideation'), { recursive: true });
+  }
+
+  function cleanupMultiProjectEnvironment(): void {
+    if (existsSync(TEST_DATA_DIR)) {
+      rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    }
+  }
+
+  function createIdeationData(projectDir: string, ideas: { id: string; title: string }[]): void {
+    const ideationPath = path.join(projectDir, '.auto-claude', 'ideation', 'ideation.json');
+    const session = {
+      id: `session-${Date.now()}`,
+      projectId: path.basename(projectDir),
+      config: {
+        enabledTypes: ['code_improvements', 'ui_ux_improvements'],
+        includeRoadmapContext: false,
+        includeKanbanContext: false,
+        maxIdeasPerType: 5
+      },
+      ideas: ideas.map(idea => ({
+        ...idea,
+        type: 'code_improvements',
+        description: `Description for ${idea.title}`,
+        rationale: 'Test rationale',
+        status: 'draft',
+        createdAt: new Date().toISOString(),
+        buildsUpon: [],
+        estimatedEffort: 'small',
+        affectedFiles: ['src/test.ts'],
+        existingPatterns: []
+      })),
+      projectContext: {
+        existingFeatures: ['Feature 1'],
+        techStack: ['TypeScript', 'React'],
+        plannedFeatures: []
+      },
+      generatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    writeFileSync(ideationPath, JSON.stringify(session, null, 2));
+  }
+
+  test('Project A ideation should be isolated from Project B', async () => {
+    setupMultiProjectEnvironment();
+
+    // Create ideation for Project A
+    createIdeationData(TEST_PROJECT_DIR, [
+      { id: 'idea-a-1', title: 'Project A Idea 1' },
+      { id: 'idea-a-2', title: 'Project A Idea 2' }
+    ]);
+
+    // Create ideation for Project B
+    createIdeationData(TEST_PROJECT_B_DIR, [
+      { id: 'idea-b-1', title: 'Project B Idea 1' }
+    ]);
+
+    // Verify files exist
+    const ideationPathA = path.join(TEST_PROJECT_DIR, '.auto-claude', 'ideation', 'ideation.json');
+    const ideationPathB = path.join(TEST_PROJECT_B_DIR, '.auto-claude', 'ideation', 'ideation.json');
+    expect(existsSync(ideationPathA)).toBe(true);
+    expect(existsSync(ideationPathB)).toBe(true);
+
+    // Read and verify Project A's ideation
+    const sessionA = JSON.parse(readFileSync(ideationPathA, 'utf-8'));
+    expect(sessionA.ideas).toHaveLength(2);
+    expect(sessionA.ideas[0].title).toBe('Project A Idea 1');
+    expect(sessionA.ideas[1].title).toBe('Project A Idea 2');
+
+    // Read and verify Project B's ideation
+    const sessionB = JSON.parse(readFileSync(ideationPathB, 'utf-8'));
+    expect(sessionB.ideas).toHaveLength(1);
+    expect(sessionB.ideas[0].title).toBe('Project B Idea 1');
+
+    // Verify isolation: Project A's ideas are not in Project B's file and vice versa
+    expect(sessionA.ideas.some((i: { title: string }) => i.title === 'Project B Idea 1')).toBe(false);
+    expect(sessionB.ideas.some((i: { title: string }) => i.title === 'Project A Idea 1')).toBe(false);
+
+    cleanupMultiProjectEnvironment();
+  });
+
+  test('Empty project should have no ideation file', async () => {
+    setupMultiProjectEnvironment();
+
+    // Project A has ideation
+    createIdeationData(TEST_PROJECT_DIR, [
+      { id: 'idea-a-1', title: 'Project A Idea' }
+    ]);
+
+    // Project B has no ideation (we didn't create the file)
+    // But the directory exists (created by setup)
+    const ideationPathA = path.join(TEST_PROJECT_DIR, '.auto-claude', 'ideation', 'ideation.json');
+    const ideationPathB = path.join(TEST_PROJECT_B_DIR, '.auto-claude', 'ideation', 'ideation.json');
+
+    // Clean up Project B's ideation file if it exists
+    if (existsSync(ideationPathB)) {
+      rmSync(ideationPathB);
+    }
+
+    expect(existsSync(ideationPathA)).toBe(true);
+    expect(existsSync(ideationPathB)).toBe(false);
+
+    // Verify Project A still has its ideation
+    const sessionA = JSON.parse(readFileSync(ideationPathA, 'utf-8'));
+    expect(sessionA.ideas).toHaveLength(1);
+
+    cleanupMultiProjectEnvironment();
+  });
+
+  test('Switching projects should read correct ideation.json file', async () => {
+    setupMultiProjectEnvironment();
+
+    // Create distinct ideation for each project
+    createIdeationData(TEST_PROJECT_DIR, [
+      { id: 'unique-a-1', title: 'Unique Project A Idea' }
+    ]);
+    createIdeationData(TEST_PROJECT_B_DIR, [
+      { id: 'unique-b-1', title: 'Unique Project B Idea' }
+    ]);
+
+    // Simulate app behavior: read ideation.json for the currently selected project
+    const ideationPathA = path.join(TEST_PROJECT_DIR, '.auto-claude', 'ideation', 'ideation.json');
+    const ideationPathB = path.join(TEST_PROJECT_B_DIR, '.auto-claude', 'ideation', 'ideation.json');
+
+    // "Switch" to Project A - read its ideation
+    let currentSession = JSON.parse(readFileSync(ideationPathA, 'utf-8'));
+    expect(currentSession.ideas[0].title).toBe('Unique Project A Idea');
+
+    // "Switch" to Project B - read its ideation
+    currentSession = JSON.parse(readFileSync(ideationPathB, 'utf-8'));
+    expect(currentSession.ideas[0].title).toBe('Unique Project B Idea');
+
+    // "Switch" back to Project A - should still have Project A's ideation
+    currentSession = JSON.parse(readFileSync(ideationPathA, 'utf-8'));
+    expect(currentSession.ideas[0].title).toBe('Unique Project A Idea');
+
+    cleanupMultiProjectEnvironment();
+  });
+
+  test('Ideation file should contain valid JSON with expected structure', async () => {
+    setupMultiProjectEnvironment();
+
+    createIdeationData(TEST_PROJECT_DIR, [
+      { id: 'test-idea-1', title: 'Test Idea' }
+    ]);
+
+    const ideationPath = path.join(TEST_PROJECT_DIR, '.auto-claude', 'ideation', 'ideation.json');
+    const content = readFileSync(ideationPath, 'utf-8');
+
+    // Should be valid JSON
+    let session;
+    expect(() => {
+      session = JSON.parse(content);
+    }).not.toThrow();
+
+    // Should have expected structure
+    expect(session).toHaveProperty('id');
+    expect(session).toHaveProperty('projectId');
+    expect(session).toHaveProperty('config');
+    expect(session).toHaveProperty('ideas');
+    expect(session).toHaveProperty('projectContext');
+    expect(session).toHaveProperty('generatedAt');
+    expect(session).toHaveProperty('updatedAt');
+
+    // Config should have required fields
+    expect(session.config).toHaveProperty('enabledTypes');
+    expect(session.config).toHaveProperty('maxIdeasPerType');
+
+    // Ideas should be an array
+    expect(Array.isArray(session.ideas)).toBe(true);
+
+    cleanupMultiProjectEnvironment();
+  });
+});
