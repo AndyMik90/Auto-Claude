@@ -239,4 +239,217 @@ OPENAI_API_KEY=test-openai-key
       expect(status.available).toBe(true);
     });
   });
+
+  /**
+   * Integration tests for subtask-5-2: Mixed Provider Configuration
+   * Verifies Anthropic LLM + OpenAI embeddings configuration flow
+   */
+  describe('buildMemoryStatus - Mixed Provider Configuration (Anthropic LLM + OpenAI embeddings)', () => {
+    it('should return available:true when both Anthropic and OpenAI API keys are set', async () => {
+      // Arrange: Anthropic for LLM, OpenAI for embeddings - need both keys
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=anthropic
+GRAPHITI_EMBEDDER_PROVIDER=openai
+ANTHROPIC_API_KEY=test-anthropic-api-key
+OPENAI_API_KEY=test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Both credentials present, should be available
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
+    });
+
+    it('should return available:false with ANTHROPIC_API_KEY error when only OpenAI key is set', async () => {
+      // Arrange: Anthropic for LLM, OpenAI for embeddings - missing Anthropic key
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=anthropic
+GRAPHITI_EMBEDDER_PROVIDER=openai
+OPENAI_API_KEY=test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Missing Anthropic key, should fail with specific error
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(false);
+      expect(status.reason).toContain('ANTHROPIC_API_KEY');
+      expect(status.reason).toContain('anthropic');
+      // Should NOT mention OpenAI since it's set
+      expect(status.reason).not.toContain('OPENAI_API_KEY');
+    });
+
+    it('should return available:false with OPENAI_API_KEY error when only Anthropic key is set', async () => {
+      // Arrange: Anthropic for LLM, OpenAI for embeddings - missing OpenAI key
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=anthropic
+GRAPHITI_EMBEDDER_PROVIDER=openai
+ANTHROPIC_API_KEY=test-anthropic-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Missing OpenAI key for embeddings, should fail with specific error
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(false);
+      expect(status.reason).toContain('OPENAI_API_KEY');
+      expect(status.reason).toContain('openai');
+      // Should NOT mention Anthropic since it's set
+      expect(status.reason).not.toContain('ANTHROPIC_API_KEY');
+    });
+
+    it('should use global OpenAI key for embeddings when project key is missing', async () => {
+      // Arrange: Anthropic for LLM with project key, OpenAI for embeddings with global key
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=anthropic
+GRAPHITI_EMBEDDER_PROVIDER=openai
+ANTHROPIC_API_KEY=test-anthropic-api-key
+      `.trim());
+
+      writeGlobalSettings({
+        globalOpenAIApiKey: 'global-openai-key'
+      });
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Global OpenAI key should satisfy embedding requirement
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+      expect(status.reason).toBeUndefined();
+    });
+
+    it('should return available:false when both API keys are missing', async () => {
+      // Arrange: Anthropic for LLM, OpenAI for embeddings - both keys missing
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=anthropic
+GRAPHITI_EMBEDDER_PROVIDER=openai
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Should fail with one of the missing keys
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(false);
+      // Should mention either ANTHROPIC_API_KEY or OPENAI_API_KEY
+      expect(
+        status.reason?.includes('ANTHROPIC_API_KEY') ||
+        status.reason?.includes('OPENAI_API_KEY')
+      ).toBe(true);
+    });
+  });
+
+  /**
+   * Additional mixed provider scenarios for comprehensive coverage
+   */
+  describe('buildMemoryStatus - Mixed Provider Additional Scenarios', () => {
+    it('should return available:true for Anthropic LLM + Voyage embeddings with both keys', async () => {
+      // Arrange: Anthropic for LLM, Voyage for embeddings
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=anthropic
+GRAPHITI_EMBEDDER_PROVIDER=voyage
+ANTHROPIC_API_KEY=test-anthropic-api-key
+VOYAGE_API_KEY=test-voyage-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+
+    it('should return available:false for Anthropic + Voyage when missing Voyage key', async () => {
+      // Arrange: Anthropic for LLM, Voyage for embeddings - missing Voyage key
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=anthropic
+GRAPHITI_EMBEDDER_PROVIDER=voyage
+ANTHROPIC_API_KEY=test-anthropic-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(false);
+      expect(status.reason).toContain('VOYAGE_API_KEY');
+      expect(status.reason).toContain('voyage');
+    });
+
+    it('should return available:true for Anthropic LLM + Ollama embeddings with only Anthropic key', async () => {
+      // Arrange: Anthropic for LLM, Ollama for embeddings (no API key required for Ollama)
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=anthropic
+GRAPHITI_EMBEDDER_PROVIDER=ollama
+ANTHROPIC_API_KEY=test-anthropic-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Ollama doesn't need API key, only Anthropic key required
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+
+    it('should return available:true for Ollama LLM + OpenAI embeddings with only OpenAI key', async () => {
+      // Arrange: Ollama for LLM (no API key), OpenAI for embeddings
+      writeEnvFile(`
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_PROVIDER=ollama
+GRAPHITI_EMBEDDER_PROVIDER=openai
+OPENAI_API_KEY=test-openai-api-key
+      `.trim());
+
+      // Import after mocking
+      const { buildMemoryStatus } = await import('../memory-status-handlers');
+
+      // Act
+      const status = buildMemoryStatus(TEST_PROJECT_PATH, AUTO_BUILD_PATH);
+
+      // Assert: Ollama doesn't need API key, only OpenAI key required for embeddings
+      expect(status.enabled).toBe(true);
+      expect(status.available).toBe(true);
+    });
+  });
 });
