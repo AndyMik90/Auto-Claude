@@ -21,6 +21,7 @@ import {
   buildMemoryStatus
 } from './memory-status-handlers';
 import { loadFileBasedMemories } from './memory-data-handlers';
+import { parsePythonCommand, findPythonCommand } from '../../python-detector';
 
 /**
  * Load project index from file
@@ -159,7 +160,15 @@ export function registerProjectContextHandlers(
 
         // Run analyzer
         await new Promise<void>((resolve, reject) => {
-          const proc = spawn('python', [
+          const pythonCmd = findPythonCommand();
+          if (!pythonCmd) {
+            reject(new Error('Python 3 not found. Please install Python 3 or ensure it is in your PATH.'));
+            return;
+          }
+
+          const [command, baseArgs] = parsePythonCommand(pythonCmd);
+          const proc = spawn(command, [
+            ...baseArgs,
             analyzerPath,
             '--project-dir', project.path,
             '--output', indexOutputPath
