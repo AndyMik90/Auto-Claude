@@ -44,7 +44,9 @@ function transformIssue(apiIssue: GitLabAPIIssue, projectPath: string): GitLabIs
     milestone: apiIssue.milestone ? {
       id: apiIssue.milestone.id,
       title: apiIssue.milestone.title,
-      state: apiIssue.milestone.state as 'active' | 'closed'
+      state: apiIssue.milestone.state === 'active' || apiIssue.milestone.state === 'closed'
+        ? apiIssue.milestone.state
+        : 'active' // Default to 'active' for unknown states
     } : undefined,
     createdAt: apiIssue.created_at,
     updatedAt: apiIssue.updated_at,

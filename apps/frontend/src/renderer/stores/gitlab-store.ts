@@ -115,6 +115,11 @@ export async function loadGitLabIssues(projectId: string, state?: 'opened' | 'cl
   store.setLoading(true);
   store.setError(null);
 
+  // Sync filterState with the requested state
+  if (state) {
+    store.setFilterState(state);
+  }
+
   try {
     const result = await window.electronAPI.getGitLabIssues(projectId, state);
     if (result.success && result.data) {

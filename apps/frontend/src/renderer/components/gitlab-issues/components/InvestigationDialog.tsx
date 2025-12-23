@@ -144,8 +144,16 @@ export function InvestigationDialog({
                     {notes.map((note) => (
                       <div
                         key={note.id}
+                        role="button"
+                        tabIndex={0}
                         className="flex gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
                         onClick={() => toggleNote(note.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleNote(note.id);
+                          }
+                        }}
                       >
                         <Checkbox
                           checked={selectedNoteIds.includes(note.id)}
