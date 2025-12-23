@@ -3,7 +3,7 @@
  * Handles creating task specs from GitLab issues
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, statSync } from 'fs';
 import path from 'path';
 import type { Project } from '../../../shared/types';
 import type { GitLabAPIIssue, GitLabConfig } from './types';
@@ -107,14 +107,34 @@ export async function createSpecForIssue(
     // Check if spec already exists
     if (existsSync(specDir)) {
       debugLog('Spec already exists for issue:', { iid: issue.iid, specDir });
+
+      // Read existing metadata for accurate timestamps
+      let createdAt = new Date(issue.created_at);
+      let updatedAt = createdAt;
+
+      const metadataPath = path.join(specDir, 'metadata.json');
+      if (existsSync(metadataPath)) {
+        try {
+          const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
+          if (metadata.createdAt) {
+            createdAt = new Date(metadata.createdAt);
+          }
+          // Use file modification time for updatedAt
+          const { mtimeMs } = statSync(metadataPath);
+          updatedAt = new Date(mtimeMs);
+        } catch {
+          // Fallback to issue dates if metadata read fails
+        }
+      }
+
       // Return existing task info
       return {
         id: specDirName,
         specId: specDirName,
         title: issue.title,
         description: issue.description || '',
-        createdAt: new Date(issue.created_at),
-        updatedAt: new Date()
+        createdAt,
+        updatedAt
       };
     }
 

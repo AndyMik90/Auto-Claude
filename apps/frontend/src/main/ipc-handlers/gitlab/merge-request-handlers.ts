@@ -242,11 +242,11 @@ export function registerUpdateMergeRequest(): void {
 
         const mrBody: Record<string, unknown> = {};
 
-        if (updates.title) mrBody.title = updates.title;
-        if (updates.description) mrBody.description = updates.description;
-        if (updates.targetBranch) mrBody.target_branch = updates.targetBranch;
-        if (updates.labels) mrBody.labels = updates.labels.join(',');
-        if (updates.assigneeIds) mrBody.assignee_ids = updates.assigneeIds;
+        if (updates.title !== undefined) mrBody.title = updates.title;
+        if (updates.description !== undefined) mrBody.description = updates.description;
+        if (updates.targetBranch !== undefined) mrBody.target_branch = updates.targetBranch;
+        if (updates.labels !== undefined) mrBody.labels = updates.labels.join(',');
+        if (updates.assigneeIds !== undefined) mrBody.assignee_ids = updates.assigneeIds;
 
         const apiMr = await gitlabFetch(
           config.token,

@@ -224,10 +224,15 @@ export function InvestigationDialog({
               </Button>
             </>
           )}
-          {investigationStatus.phase !== 'idle' && investigationStatus.phase !== 'complete' && (
+          {investigationStatus.phase !== 'idle' && investigationStatus.phase !== 'complete' && investigationStatus.phase !== 'error' && (
             <Button variant="outline" disabled>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Creating...
+            </Button>
+          )}
+          {investigationStatus.phase === 'error' && (
+            <Button variant="outline" onClick={onClose}>
+              Close
             </Button>
           )}
           {investigationStatus.phase === 'complete' && (
