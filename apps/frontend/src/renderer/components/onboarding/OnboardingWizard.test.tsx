@@ -69,8 +69,8 @@ describe('OnboardingWizard Integration Tests', () => {
       });
 
       // Click OAuth option
-      const oauthButton = screen.getByText(/Sign in with Anthropic/).closest('.cursor-pointer');
-      fireEvent.click(oauthButton!);
+      const oauthButton = screen.getByTestId('auth-option-oauth');
+      fireEvent.click(oauthButton);
 
       // Should navigate to oauth step
       await waitFor(() => {
@@ -107,8 +107,8 @@ describe('OnboardingWizard Integration Tests', () => {
       });
 
       // Click API Key option
-      const apiKeyButton = screen.getByText(/Use Custom API Key/).closest('.cursor-pointer');
-      fireEvent.click(apiKeyButton!);
+      const apiKeyButton = screen.getByTestId('auth-option-apikey');
+      fireEvent.click(apiKeyButton);
 
       // Profile dialog should open
       await waitFor(() => {
@@ -259,11 +259,9 @@ describe('OnboardingWizard Integration Tests', () => {
         'Done'
       ];
 
-      steps.forEach(step => {
-        // At least some step labels should be present
-        const stepElement = screen.queryByText(step);
-        // Some may not be visible depending on current step
-      });
+      // At least some step labels should be present (not all may be visible at current step)
+      const visibleSteps = steps.filter(step => screen.queryByText(step));
+      expect(visibleSteps.length).toBeGreaterThan(0);
     });
   });
 
@@ -290,8 +288,8 @@ describe('OnboardingWizard Integration Tests', () => {
         expect(screen.getByText(/Choose Your Authentication Method/)).toBeInTheDocument();
       });
 
-      const oauthButton = screen.getByText(/Sign in with Anthropic/).closest('.cursor-pointer');
-      fireEvent.click(oauthButton!);
+      const oauthButton = screen.getByTestId('auth-option-oauth');
+      fireEvent.click(oauthButton);
 
       // Should proceed to OAuth step
       await waitFor(() => {
@@ -308,8 +306,8 @@ describe('OnboardingWizard Integration Tests', () => {
         expect(screen.getByText(/Choose Your Authentication Method/)).toBeInTheDocument();
       });
 
-      const apiKeyButton = screen.getByText(/Use Custom API Key/).closest('.cursor-pointer');
-      fireEvent.click(apiKeyButton!);
+      const apiKeyButton = screen.getByTestId('auth-option-apikey');
+      fireEvent.click(apiKeyButton);
 
       // ProfileEditDialog should open
       await waitFor(() => {
