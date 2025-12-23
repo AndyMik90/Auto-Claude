@@ -60,7 +60,7 @@ export function buildIssueContext(issue: GitLabAPIIssue, projectPath: string): s
   lines.push('');
   lines.push(`**Project:** ${projectPath}`);
   lines.push(`**State:** ${issue.state}`);
-  lines.push(`**Created:** ${new Date(issue.created_at).toLocaleDateString()}`);
+  lines.push(`**Created:** ${new Date(issue.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`);
 
   if (issue.labels.length > 0) {
     lines.push(`**Labels:** ${issue.labels.join(', ')}`);
