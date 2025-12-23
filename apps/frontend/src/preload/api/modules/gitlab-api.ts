@@ -24,7 +24,7 @@ export interface GitLabAPI {
   // Issue operations
   getGitLabIssues: (projectId: string, state?: 'opened' | 'closed' | 'all') => Promise<IPCResult<GitLabIssue[]>>;
   getGitLabIssue: (projectId: string, issueIid: number) => Promise<IPCResult<GitLabIssue>>;
-  getIssueNotes: (projectId: string, issueIid: number) => Promise<IPCResult<GitLabNote[]>>;
+  getGitLabIssueNotes: (projectId: string, issueIid: number) => Promise<IPCResult<GitLabNote[]>>;
   investigateGitLabIssue: (projectId: string, issueIid: number, selectedNoteIds?: number[]) => void;
   importGitLabIssues: (projectId: string, issueIids: number[]) => Promise<IPCResult<GitLabImportResult>>;
 
@@ -116,7 +116,7 @@ export const createGitLabAPI = (): GitLabAPI => ({
   getGitLabIssue: (projectId: string, issueIid: number): Promise<IPCResult<GitLabIssue>> =>
     invokeIpc(IPC_CHANNELS.GITLAB_GET_ISSUE, projectId, issueIid),
 
-  getIssueNotes: (projectId: string, issueIid: number): Promise<IPCResult<GitLabNote[]>> =>
+  getGitLabIssueNotes: (projectId: string, issueIid: number): Promise<IPCResult<GitLabNote[]>> =>
     invokeIpc(IPC_CHANNELS.GITLAB_GET_ISSUE_NOTES, projectId, issueIid),
 
   investigateGitLabIssue: (projectId: string, issueIid: number, selectedNoteIds?: number[]): void =>

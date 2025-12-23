@@ -115,8 +115,11 @@ export function encodeProjectPath(projectPath: string): string {
   return encodeURIComponent(projectPath);
 }
 
+// Default timeout for GitLab API requests (30 seconds)
+const GITLAB_API_TIMEOUT_MS = 30000;
+
 /**
- * Make a request to the GitLab API
+ * Make a request to the GitLab API with timeout
  */
 export async function gitlabFetch(
   token: string,
@@ -130,21 +133,35 @@ export async function gitlabFetch(
     ? endpoint
     : `${baseUrl}/api/v4${endpoint}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'PRIVATE-TOKEN': token, // GitLab uses PRIVATE-TOKEN header
-      ...options.headers
+  // Create abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GITLAB_API_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'PRIVATE-TOKEN': token,
+        ...options.headers
+      }
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`GitLab API error: ${response.status} ${response.statusText} - ${errorBody}`);
     }
-  });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`GitLab API error: ${response.status} ${response.statusText} - ${errorBody}`);
+    return response.json();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`GitLab API timeout after ${GITLAB_API_TIMEOUT_MS / 1000}s: ${url}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return response.json();
 }
 
 /**

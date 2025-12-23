@@ -3,7 +3,7 @@
  * Handles creating task specs from GitLab issues
  */
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync, statSync } from 'fs';
+import { mkdir, writeFile, readFile, stat } from 'fs/promises';
 import path from 'path';
 import type { Project } from '../../../shared/types';
 import type { GitLabAPIIssue, GitLabConfig } from './types';
@@ -85,6 +85,18 @@ export function buildIssueContext(issue: GitLabAPIIssue, projectPath: string): s
 }
 
 /**
+ * Check if a path exists (async)
+ */
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await stat(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Create a task spec from a GitLab issue
  */
 export async function createSpecForIssue(
@@ -96,32 +108,31 @@ export async function createSpecForIssue(
     const specsDir = path.join(project.path, project.autoBuildPath, 'specs');
 
     // Ensure specs directory exists
-    if (!existsSync(specsDir)) {
-      mkdirSync(specsDir, { recursive: true });
-    }
+    await mkdir(specsDir, { recursive: true });
 
     // Generate spec directory name
     const specDirName = generateSpecDirName(issue.iid, issue.title);
     const specDir = path.join(specsDir, specDirName);
+    const metadataPath = path.join(specDir, 'metadata.json');
 
     // Check if spec already exists
-    if (existsSync(specDir)) {
+    if (await pathExists(specDir)) {
       debugLog('Spec already exists for issue:', { iid: issue.iid, specDir });
 
       // Read existing metadata for accurate timestamps
       let createdAt = new Date(issue.created_at);
       let updatedAt = createdAt;
 
-      const metadataPath = path.join(specDir, 'metadata.json');
-      if (existsSync(metadataPath)) {
+      if (await pathExists(metadataPath)) {
         try {
-          const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
+          const metadataContent = await readFile(metadataPath, 'utf-8');
+          const metadata = JSON.parse(metadataContent);
           if (metadata.createdAt) {
             createdAt = new Date(metadata.createdAt);
           }
           // Use file modification time for updatedAt
-          const { mtimeMs } = statSync(metadataPath);
-          updatedAt = new Date(mtimeMs);
+          const stats = await stat(metadataPath);
+          updatedAt = new Date(stats.mtimeMs);
         } catch {
           // Fallback to issue dates if metadata read fails
         }
@@ -139,11 +150,11 @@ export async function createSpecForIssue(
     }
 
     // Create spec directory
-    mkdirSync(specDir, { recursive: true });
+    await mkdir(specDir, { recursive: true });
 
     // Create TASK.md with issue context
     const taskContent = buildIssueContext(issue, config.project);
-    writeFileSync(path.join(specDir, 'TASK.md'), taskContent, 'utf-8');
+    await writeFile(path.join(specDir, 'TASK.md'), taskContent, 'utf-8');
 
     // Create metadata.json
     const metadata = {
@@ -161,7 +172,7 @@ export async function createSpecForIssue(
       createdAt: new Date().toISOString(),
       status: 'pending'
     };
-    writeFileSync(path.join(specDir, 'metadata.json'), JSON.stringify(metadata, null, 2), 'utf-8');
+    await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
 
     debugLog('Created spec for issue:', { iid: issue.iid, specDir });
 
