@@ -4,7 +4,7 @@
 
 import https from 'https';
 import { createWriteStream } from 'fs';
-import { TIMEOUTS } from './config';
+import { TIMEOUTS, GITHUB_CONFIG } from './config';
 
 /**
  * Fetch JSON from a URL using https
@@ -128,7 +128,7 @@ export function downloadFile(
             `Multiple resources found for ${url}. ` +
             `This usually means a branch and tag have the same name. ` +
             `Please download the latest version manually from: ` +
-            `https://github.com/${url.includes('AndyMik90') ? 'AndyMik90' : 'OWNER'}/Auto-Claude/releases/latest`
+            `https://github.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/releases/latest`
           ));
         });
         response.on('error', reject);

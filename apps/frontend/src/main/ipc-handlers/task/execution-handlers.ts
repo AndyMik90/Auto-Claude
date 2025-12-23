@@ -668,12 +668,13 @@ export function registerTaskExecutionHandlers(
                   // Reset in_progress subtasks to pending (they were interrupted)
                   // Keep completed subtasks as-is so run.py can resume
                   if (subtask.status === 'in_progress') {
+                    const originalStatus = subtask.status;
                     subtask.status = 'pending';
                     // Clear execution data to maintain consistency
                     delete subtask.actual_output;
                     delete subtask.started_at;
                     delete subtask.completed_at;
-                    console.log(`[Recovery] Reset stuck subtask: ${subtask.status}`);
+                    console.log(`[Recovery] Reset stuck subtask: ${originalStatus} -> pending`);
                   }
                   // Also reset failed subtasks so they can be retried
                   if (subtask.status === 'failed') {

@@ -30,7 +30,11 @@ function validateRelease(version) {
 
   // Check if branch with same name exists (locally)
   try {
-    const branches = execSync('git branch').toString();
+    const branches = execSync('git branch')
+      .toString()
+      .split('\n')
+      .map(b => b.trim().replace(/^\*\s*/, ''))
+      .filter(Boolean);
     if (branches.includes(version)) {
       console.error(`\u274C Local branch "${version}" already exists!`);
       console.error('   This will cause HTTP 300 errors during updates.');
@@ -44,7 +48,11 @@ function validateRelease(version) {
 
   // Check if branch with same name exists (remotely)
   try {
-    const remoteBranches = execSync('git branch -r').toString();
+    const remoteBranches = execSync('git branch -r')
+      .toString()
+      .split('\n')
+      .map(b => b.trim())
+      .filter(Boolean);
     if (remoteBranches.includes(`origin/${version}`) || remoteBranches.includes(`fork/${version}`)) {
       console.error(`\u274C Remote branch "${version}" already exists!`);
       console.error('   This will cause HTTP 300 errors during updates.');

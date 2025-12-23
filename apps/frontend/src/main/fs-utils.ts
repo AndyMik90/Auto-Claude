@@ -89,13 +89,19 @@ export function getWritablePath(originalPath: string, filename: string): string 
  * @param filePath - The target file path
  * @param content - The content to write
  * @returns The actual path where the file was written
+ * @throws Error if write fails (with context about the attempted path)
  */
 export function safeWriteFile(filePath: string, content: string): string {
   const filename = path.basename(filePath);
   const writablePath = getWritablePath(filePath, filename);
 
-  fs.writeFileSync(writablePath, content, 'utf-8');
-  return writablePath;
+  try {
+    fs.writeFileSync(writablePath, content, 'utf-8');
+    return writablePath;
+  } catch (error) {
+    console.error(`[fs-utils] Failed to write file ${writablePath}:`, error);
+    throw error;
+  }
 }
 
 /**

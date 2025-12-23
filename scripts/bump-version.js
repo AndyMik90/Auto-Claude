@@ -191,12 +191,8 @@ function main() {
 
   // 4. Validate release (check for branch/tag conflicts)
   info('Validating release...');
-  try {
-    exec(`node ${path.join(__dirname, 'validate-release.js')} v${newVersion}`);
-    success('Release validation passed');
-  } catch (err) {
-    error(`Release validation failed: ${err.message}`);
-  }
+  exec(`node ${path.join(__dirname, 'validate-release.js')} v${newVersion}`);
+  success('Release validation passed');
 
   // 5. Update all version files
   info('Updating package.json files...');
