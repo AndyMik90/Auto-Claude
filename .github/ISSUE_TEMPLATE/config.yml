@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Questions & Discussions
-    url: https://github.com/AndyMik90/Auto-Claude/discussions
-    about: Ask questions and discuss ideas with the community
-  - name: Documentation
-    url: https://github.com/AndyMik90/Auto-Claude#readme
-    about: Check the documentation before opening an issue
+  - name: 💡 Feature Request
+    url: https://github.com/AndyMik90/Auto-Claude/discussions/new?category=ideas
+    about: Suggest new features in GitHub Discussions
+  - name: 💬 Discord Community
+    url: https://discord.gg/KCXaPBr4Dj
+    about: Questions and discussions - join our Discord!
