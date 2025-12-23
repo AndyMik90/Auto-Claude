@@ -298,8 +298,13 @@ class OIDCService:
                 response.raise_for_status()
                 data = response.json()
 
+                # Validate 'sub' claim - required per OIDC spec
+                subject = data.get("sub")
+                if not subject:
+                    return None
+
                 return OIDCUserInfo(
-                    subject=data.get("sub", ""),
+                    subject=subject,
                     email=data.get(config.email_claim),
                     username=data.get(config.username_claim),
                     name=data.get("name"),
