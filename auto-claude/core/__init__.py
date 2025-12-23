@@ -9,6 +9,9 @@ Enterprise-grade features:
 - Logging: Structured logging with context propagation
 - Exceptions: Typed exception hierarchy for better error handling
 - Retry: Exponential backoff with configurable strategies
+- Rate Limiting: Token bucket and sliding window rate limiters
+- Metrics: Counters, gauges, histograms, and timers for observability
+- Health Checks: Service health monitoring and dependency verification
 """
 
 # Note: We use lazy imports here because the full agent module has many dependencies
@@ -47,6 +50,26 @@ __all__ = [
     "retry",
     "RetryConfig",
     "RetryResult",
+    # Rate Limiting (enterprise feature)
+    "TokenBucket",
+    "SlidingWindowRateLimiter",
+    "RateLimitManager",
+    "get_rate_limiter",
+    "rate_limited",
+    # Metrics (enterprise feature)
+    "MetricsRegistry",
+    "Counter",
+    "Gauge",
+    "Histogram",
+    "get_metrics",
+    "collect_metrics",
+    # Health Checks (enterprise feature)
+    "HealthChecker",
+    "HealthStatus",
+    "HealthCheckResult",
+    "get_health_checker",
+    "get_health_status",
+    "register_health_check",
 ]
 
 
@@ -116,5 +139,40 @@ def __getattr__(name):
         from . import retry as _retry
 
         return getattr(_retry, name)
+    # Rate Limiting
+    elif name in (
+        "TokenBucket",
+        "SlidingWindowRateLimiter",
+        "RateLimitManager",
+        "get_rate_limiter",
+        "rate_limited",
+    ):
+        from . import rate_limit as _rate_limit
+
+        return getattr(_rate_limit, name)
+    # Metrics
+    elif name in (
+        "MetricsRegistry",
+        "Counter",
+        "Gauge",
+        "Histogram",
+        "get_metrics",
+        "collect_metrics",
+    ):
+        from . import metrics as _metrics
+
+        return getattr(_metrics, name)
+    # Health Checks
+    elif name in (
+        "HealthChecker",
+        "HealthStatus",
+        "HealthCheckResult",
+        "get_health_checker",
+        "get_health_status",
+        "register_health_check",
+    ):
+        from . import health as _health
+
+        return getattr(_health, name)
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
