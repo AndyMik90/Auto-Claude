@@ -8,7 +8,11 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { spawn } from 'child_process';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
+import { getProjectConfigDir } from '../utils/config-paths';
+import { getAugmentedEnv } from '../utils/env-utils';
 
+// Global state to track ongoing auth attempts (prevents concurrent duplicates)
+const ongoingAuthAttempts = new Map<string, Promise<IPCResult<ClaudeAuthResult>>>();
 
 /**
  * Register all env-related IPC handlers
@@ -87,6 +91,11 @@ export function registerEnvHandlers(
       // Google Embeddings
       if (pc.googleApiKey) existingVars['GOOGLE_API_KEY'] = pc.googleApiKey;
       if (pc.googleEmbeddingModel) existingVars['GOOGLE_EMBEDDING_MODEL'] = pc.googleEmbeddingModel;
+      // OpenRouter (multi-provider aggregator)
+      if (pc.openrouterApiKey) existingVars['OPENROUTER_API_KEY'] = pc.openrouterApiKey;
+      if (pc.openrouterBaseUrl) existingVars['OPENROUTER_BASE_URL'] = pc.openrouterBaseUrl;
+      if (pc.openrouterLlmModel) existingVars['OPENROUTER_LLM_MODEL'] = pc.openrouterLlmModel;
+      if (pc.openrouterEmbeddingModel) existingVars['OPENROUTER_EMBEDDING_MODEL'] = pc.openrouterEmbeddingModel;
       // Ollama Embeddings
       if (pc.ollamaBaseUrl) existingVars['OLLAMA_BASE_URL'] = pc.ollamaBaseUrl;
       if (pc.ollamaEmbeddingModel) existingVars['OLLAMA_EMBEDDING_MODEL'] = pc.ollamaEmbeddingModel;
@@ -172,6 +181,12 @@ ${existingVars['VOYAGE_EMBEDDING_MODEL'] ? `VOYAGE_EMBEDDING_MODEL=${existingVar
 ${existingVars['GOOGLE_API_KEY'] ? `GOOGLE_API_KEY=${existingVars['GOOGLE_API_KEY']}` : '# GOOGLE_API_KEY='}
 ${existingVars['GOOGLE_EMBEDDING_MODEL'] ? `GOOGLE_EMBEDDING_MODEL=${existingVars['GOOGLE_EMBEDDING_MODEL']}` : '# GOOGLE_EMBEDDING_MODEL=text-embedding-004'}
 
+# OpenRouter (multi-provider aggregator)
+${existingVars['OPENROUTER_API_KEY'] ? `OPENROUTER_API_KEY=${existingVars['OPENROUTER_API_KEY']}` : '# OPENROUTER_API_KEY='}
+${existingVars['OPENROUTER_BASE_URL'] ? `OPENROUTER_BASE_URL=${existingVars['OPENROUTER_BASE_URL']}` : '# OPENROUTER_BASE_URL=https://openrouter.ai/api/v1'}
+${existingVars['OPENROUTER_LLM_MODEL'] ? `OPENROUTER_LLM_MODEL=${existingVars['OPENROUTER_LLM_MODEL']}` : '# OPENROUTER_LLM_MODEL=anthropic/claude-3.5-sonnet'}
+${existingVars['OPENROUTER_EMBEDDING_MODEL'] ? `OPENROUTER_EMBEDDING_MODEL=${existingVars['OPENROUTER_EMBEDDING_MODEL']}` : '# OPENROUTER_EMBEDDING_MODEL=openai/text-embedding-3-small'}
+
 # Ollama Embeddings (Local - free)
 ${existingVars['OLLAMA_BASE_URL'] ? `OLLAMA_BASE_URL=${existingVars['OLLAMA_BASE_URL']}` : '# OLLAMA_BASE_URL=http://localhost:11434'}
 ${existingVars['OLLAMA_EMBEDDING_MODEL'] ? `OLLAMA_EMBEDDING_MODEL=${existingVars['OLLAMA_EMBEDDING_MODEL']}` : '# OLLAMA_EMBEDDING_MODEL=embeddinggemma'}
@@ -197,7 +212,35 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         return { success: false, error: 'Project not initialized' };
       }
 
-      const envPath = path.join(project.path, project.autoBuildPath, '.env');
+      // Try project-local .env first
+      let envPath = path.join(project.path, project.autoBuildPath, '.env');
+      let vars: Record<string, string> = {};
+
+      if (existsSync(envPath)) {
+        try {
+          const content = readFileSync(envPath, 'utf-8');
+          vars = parseEnvFile(content);
+        } catch {
+          // Continue with fallback
+        }
+      }
+
+      // If project .env doesn't exist or is empty, try global config
+      if (Object.keys(vars).length === 0) {
+        const configDir = getProjectConfigDir(project.path, project.autoBuildPath);
+        if (configDir.isGlobal) {
+          const globalEnvPath = path.join(configDir.path, '.env');
+          if (existsSync(globalEnvPath)) {
+            try {
+              const content = readFileSync(globalEnvPath, 'utf-8');
+              vars = parseEnvFile(content);
+              envPath = globalEnvPath;
+            } catch {
+              // Continue with empty vars
+            }
+          }
+        }
+      }
 
       // Load global settings for fallbacks
       let globalSettings: AppSettings = { ...DEFAULT_APP_SETTINGS };
@@ -220,17 +263,6 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         claudeTokenIsGlobal: false,
         openaiKeyIsGlobal: false
       };
-
-      // Parse project-specific .env if it exists
-      let vars: Record<string, string> = {};
-      if (existsSync(envPath)) {
-        try {
-          const content = readFileSync(envPath, 'utf-8');
-          vars = parseEnvFile(content);
-        } catch {
-          // Continue with empty vars
-        }
-      }
 
       // Claude OAuth Token: project-specific takes precedence, then global
       if (vars['CLAUDE_CODE_OAUTH_TOKEN']) {
@@ -305,9 +337,9 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       // Populate graphitiProviderConfig from .env file (embeddings only - no LLM provider)
       const embeddingProvider = vars['GRAPHITI_EMBEDDER_PROVIDER'];
       if (embeddingProvider || vars['AZURE_OPENAI_API_KEY'] ||
-          vars['VOYAGE_API_KEY'] || vars['GOOGLE_API_KEY'] || vars['OLLAMA_BASE_URL']) {
+          vars['VOYAGE_API_KEY'] || vars['GOOGLE_API_KEY'] || vars['OPENROUTER_API_KEY'] || vars['OLLAMA_BASE_URL']) {
         config.graphitiProviderConfig = {
-          embeddingProvider: (embeddingProvider as 'openai' | 'voyage' | 'azure_openai' | 'ollama' | 'google') || 'ollama',
+          embeddingProvider: (embeddingProvider as 'openai' | 'voyage' | 'azure_openai' | 'ollama' | 'google' | 'openrouter') || 'ollama',
           // OpenAI Embeddings
           openaiApiKey: vars['OPENAI_API_KEY'],
           openaiEmbeddingModel: vars['OPENAI_EMBEDDING_MODEL'],
@@ -321,6 +353,11 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
           // Google Embeddings
           googleApiKey: vars['GOOGLE_API_KEY'],
           googleEmbeddingModel: vars['GOOGLE_EMBEDDING_MODEL'],
+          // OpenRouter
+          openrouterApiKey: vars['OPENROUTER_API_KEY'],
+          openrouterBaseUrl: vars['OPENROUTER_BASE_URL'],
+          openrouterLlmModel: vars['OPENROUTER_LLM_MODEL'],
+          openrouterEmbeddingModel: vars['OPENROUTER_EMBEDDING_MODEL'],
           // Ollama Embeddings
           ollamaBaseUrl: vars['OLLAMA_BASE_URL'],
           ollamaEmbeddingModel: vars['OLLAMA_EMBEDDING_MODEL'],
@@ -347,7 +384,15 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         return { success: false, error: 'Project not initialized' };
       }
 
-      const envPath = path.join(project.path, project.autoBuildPath, '.env');
+      // Get appropriate config directory (project-local or global fallback)
+      const configDir = getProjectConfigDir(project.path, project.autoBuildPath);
+      const envPath = path.join(configDir.path, '.env');
+
+      // Warn if using global config
+      if (configDir.isGlobal) {
+        console.warn(`[ENV] Using global config directory: ${envPath}`);
+        console.warn(`[ENV] Reason: ${configDir.reason}`);
+      }
 
       try {
         // Read existing content if file exists
@@ -362,7 +407,22 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         // Write to file
         writeFileSync(envPath, newContent);
 
-        return { success: true };
+        // Store metadata about config location
+        await projectStore.updateProject(projectId, {
+          envConfigPath: envPath,
+          envConfigIsGlobal: configDir.isGlobal
+        });
+
+        return {
+          success: true,
+          data: {
+            envPath,
+            isGlobal: configDir.isGlobal,
+            message: configDir.isGlobal
+              ? `Configuration saved to global directory (project is read-only): ${envPath}`
+              : undefined
+          }
+        };
       } catch (error) {
         return {
           success: false,
@@ -460,47 +520,87 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         return { success: false, error: 'Project not found' };
       }
 
-      try {
-        // Run claude setup-token which will open browser for OAuth
-        const result = await new Promise<ClaudeAuthResult>((resolve) => {
-          const proc = spawn('claude', ['setup-token'], {
-            cwd: project.path,
-            env: { ...process.env },
-            shell: true,
-            stdio: 'inherit' // This allows the terminal to handle the interactive auth
-          });
+      // Check if there's already an ongoing auth attempt for this project
+      const existingAttempt = ongoingAuthAttempts.get(projectId);
+      if (existingAttempt) {
+        console.log('[AUTH] Deduplicating concurrent auth request for project:', projectId);
+        return existingAttempt;
+      }
 
-          proc.on('close', (code: number | null) => {
-            if (code === 0) {
-              resolve({
-                success: true,
-                authenticated: true
-              });
-            } else {
+      // Create and track new auth attempt
+      const authPromise = (async () => {
+        try {
+          // Run claude setup-token with augmented environment and timeout
+          const result = await new Promise<ClaudeAuthResult>((resolve) => {
+            const env = getAugmentedEnv();
+            const proc = spawn('claude', ['setup-token'], {
+              cwd: project.path,
+              env,
+              shell: true,
+              stdio: 'inherit' // This allows the terminal to handle the interactive auth
+            });
+
+            let timeoutId: NodeJS.Timeout | null = null;
+
+            // 5-minute timeout for auth process
+            timeoutId = setTimeout(() => {
+              proc.kill();
               resolve({
                 success: false,
                 authenticated: false,
-                error: 'Setup cancelled or failed'
+                error: 'Authentication timed out after 5 minutes'
               });
-            }
-          });
+            }, 5 * 60 * 1000);
 
-          proc.on('error', (err: Error) => {
-            resolve({
-              success: false,
-              authenticated: false,
-              error: err.message
+            proc.on('close', (code: number | null) => {
+              if (timeoutId) clearTimeout(timeoutId);
+
+              if (code === 0) {
+                resolve({
+                  success: true,
+                  authenticated: true
+                });
+              } else if (code === null) {
+                resolve({
+                  success: false,
+                  authenticated: false,
+                  error: 'Process was terminated'
+                });
+              } else {
+                resolve({
+                  success: false,
+                  authenticated: false,
+                  error: `Setup exited with code ${code}`
+                });
+              }
+            });
+
+            proc.on('error', (err: Error) => {
+              if (timeoutId) clearTimeout(timeoutId);
+              resolve({
+                success: false,
+                authenticated: false,
+                error: err.message
+              });
             });
           });
-        });
 
-        return { success: true, data: result };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to invoke Claude setup'
-        };
-      }
+          return { success: result.success, data: result };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to invoke Claude setup'
+          };
+        } finally {
+          // Remove from tracking
+          ongoingAuthAttempts.delete(projectId);
+        }
+      })();
+
+      // Track this attempt
+      ongoingAuthAttempts.set(projectId, authPromise);
+
+      return authPromise;
     }
   );
 

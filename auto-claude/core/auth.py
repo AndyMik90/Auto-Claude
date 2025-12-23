@@ -147,14 +147,21 @@ def require_auth_token() -> str:
                 "To authenticate:\n"
                 "  1. Run: claude setup-token\n"
                 "  2. The token will be saved to macOS Keychain automatically\n\n"
-                "Or set CLAUDE_CODE_OAUTH_TOKEN in your .env file."
+                "Or set CLAUDE_CODE_OAUTH_TOKEN in your .env file.\n\n"
+                "If using Auto Claude UI, the app will guide you through authentication."
             )
         else:
             error_msg += (
                 "To authenticate:\n"
                 "  1. Run: claude setup-token\n"
-                "  2. Set CLAUDE_CODE_OAUTH_TOKEN in your .env file"
+                "  2. Set CLAUDE_CODE_OAUTH_TOKEN in your .env file\n\n"
+                "On Linux with AppImage/immutable filesystem:\n"
+                "  - Your .env will be stored in ~/.config/Auto-Claude/\n"
+                "  - This is normal for read-only filesystems\n\n"
+                "If using Auto Claude UI, the app will guide you through authentication."
             )
+        # Raise ValueError instead of exiting
+        # Let the caller handle the error gracefully
         raise ValueError(error_msg)
     return token
 
