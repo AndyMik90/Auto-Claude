@@ -26,6 +26,26 @@ from routes.websocket import broadcast_task_status, broadcast_task_progress
 router = APIRouter()
 
 
+def validate_task_id(task_id: str) -> None:
+    """Validate task_id doesn't contain path traversal characters.
+
+    Raises HTTPException if task_id contains dangerous characters.
+    """
+    # Check for path traversal patterns
+    if ".." in task_id or "/" in task_id or "\\" in task_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid task ID: contains path traversal characters"
+        )
+
+    # Check for null bytes which could be used for injection
+    if "\x00" in task_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid task ID: contains null bytes"
+        )
+
+
 # Dependency to get project service with user context
 def get_project_service(
     db: AsyncSession = Depends(get_db),
@@ -355,6 +375,9 @@ async def delete_task(
 ) -> dict:
     """Delete a task."""
     import shutil
+
+    # Validate task_id to prevent path traversal attacks
+    validate_task_id(task_id)
 
     project = await project_service.get_project(project_id)
     if not project:
