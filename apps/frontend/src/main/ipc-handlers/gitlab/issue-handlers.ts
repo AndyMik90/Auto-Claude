@@ -5,7 +5,8 @@
 
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import type { IPCResult, Project, GitLabIssue, GitLabNote } from '../../../shared/types';
+import type { IPCResult, GitLabIssue, GitLabNote } from '../../../shared/types';
+import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIIssue, GitLabAPINote } from './types';
 
@@ -80,8 +81,13 @@ function transformNote(apiNote: GitLabAPINote): GitLabNote {
 export function registerGetIssues(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_GET_ISSUES,
-    async (_event, project: Project, state?: 'opened' | 'closed' | 'all'): Promise<IPCResult<GitLabIssue[]>> => {
+    async (_event, projectId: string, state?: 'opened' | 'closed' | 'all'): Promise<IPCResult<GitLabIssue[]>> => {
       debugLog('getGitLabIssues handler called', { state });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {
@@ -126,8 +132,13 @@ export function registerGetIssues(): void {
 export function registerGetIssue(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_GET_ISSUE,
-    async (_event, project: Project, issueIid: number): Promise<IPCResult<GitLabIssue>> => {
+    async (_event, projectId: string, issueIid: number): Promise<IPCResult<GitLabIssue>> => {
       debugLog('getGitLabIssue handler called', { issueIid });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {
@@ -169,8 +180,13 @@ export function registerGetIssue(): void {
 export function registerGetIssueNotes(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_GET_ISSUE_NOTES,
-    async (_event, project: Project, issueIid: number): Promise<IPCResult<GitLabNote[]>> => {
+    async (_event, projectId: string, issueIid: number): Promise<IPCResult<GitLabNote[]>> => {
       debugLog('getGitLabIssueNotes handler called', { issueIid });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {

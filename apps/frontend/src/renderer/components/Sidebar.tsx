@@ -12,6 +12,7 @@ import {
   Download,
   RefreshCw,
   Github,
+  GitlabIcon,
   FileText,
   Sparkles,
   GitBranch,
@@ -48,7 +49,7 @@ import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import type { Project, AutoBuildVersionInfo, GitStatus } from '../../shared/types';
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
+export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
 
 interface SidebarProps {
   onSettingsClick: () => void;
@@ -76,6 +77,7 @@ const projectNavItems: NavItem[] = [
 
 const toolsNavItems: NavItem[] = [
   { id: 'github-issues', label: 'GitHub Issues', icon: Github, shortcut: 'G' },
+  { id: 'gitlab-issues', label: 'GitLab Issues', icon: GitlabIcon, shortcut: 'B' },
   { id: 'worktrees', label: 'Worktrees', icon: GitBranch, shortcut: 'W' }
 ];
 

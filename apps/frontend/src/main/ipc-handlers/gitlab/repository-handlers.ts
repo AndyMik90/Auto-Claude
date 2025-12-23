@@ -5,7 +5,8 @@
 
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import type { IPCResult, Project, GitLabSyncStatus } from '../../../shared/types';
+import type { IPCResult, GitLabSyncStatus } from '../../../shared/types';
+import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIProject, GitLabAPIIssue } from './types';
 
@@ -28,8 +29,13 @@ function debugLog(message: string, data?: unknown): void {
 export function registerCheckConnection(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_CHECK_CONNECTION,
-    async (_event, project: Project): Promise<IPCResult<GitLabSyncStatus>> => {
-      debugLog('checkGitLabConnection handler called', { projectId: project.id });
+    async (_event, projectId: string): Promise<IPCResult<GitLabSyncStatus>> => {
+      debugLog('checkGitLabConnection handler called', { projectId });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {
@@ -97,8 +103,13 @@ export function registerCheckConnection(): void {
 export function registerGetProjects(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_GET_PROJECTS,
-    async (_event, project: Project): Promise<IPCResult<GitLabAPIProject[]>> => {
+    async (_event, projectId: string): Promise<IPCResult<GitLabAPIProject[]>> => {
       debugLog('getGitLabProjects handler called');
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {

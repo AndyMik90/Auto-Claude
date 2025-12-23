@@ -5,7 +5,8 @@
 
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import type { IPCResult, Project, GitLabMergeRequest } from '../../../shared/types';
+import type { IPCResult, GitLabMergeRequest } from '../../../shared/types';
+import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIMergeRequest, CreateMergeRequestOptions } from './types';
 
@@ -57,8 +58,13 @@ function transformMergeRequest(apiMr: GitLabAPIMergeRequest): GitLabMergeRequest
 export function registerGetMergeRequests(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_GET_MERGE_REQUESTS,
-    async (_event, project: Project, state?: string): Promise<IPCResult<GitLabMergeRequest[]>> => {
+    async (_event, projectId: string, state?: string): Promise<IPCResult<GitLabMergeRequest[]>> => {
       debugLog('getGitLabMergeRequests handler called', { state });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {
@@ -103,8 +109,13 @@ export function registerGetMergeRequests(): void {
 export function registerGetMergeRequest(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_GET_MERGE_REQUEST,
-    async (_event, project: Project, mrIid: number): Promise<IPCResult<GitLabMergeRequest>> => {
+    async (_event, projectId: string, mrIid: number): Promise<IPCResult<GitLabMergeRequest>> => {
       debugLog('getGitLabMergeRequest handler called', { mrIid });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {
@@ -146,8 +157,13 @@ export function registerGetMergeRequest(): void {
 export function registerCreateMergeRequest(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_CREATE_MERGE_REQUEST,
-    async (_event, project: Project, options: CreateMergeRequestOptions): Promise<IPCResult<GitLabMergeRequest>> => {
+    async (_event, projectId: string, options: CreateMergeRequestOptions): Promise<IPCResult<GitLabMergeRequest>> => {
       debugLog('createGitLabMergeRequest handler called', { title: options.title });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {
@@ -223,11 +239,16 @@ export function registerUpdateMergeRequest(): void {
     IPC_CHANNELS.GITLAB_UPDATE_MERGE_REQUEST,
     async (
       _event,
-      project: Project,
+      projectId: string,
       mrIid: number,
       updates: Partial<CreateMergeRequestOptions>
     ): Promise<IPCResult<GitLabMergeRequest>> => {
       debugLog('updateGitLabMergeRequest handler called', { mrIid });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {

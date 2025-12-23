@@ -40,6 +40,7 @@ import { Context } from './components/Context';
 import { Ideation } from './components/Ideation';
 import { Insights } from './components/Insights';
 import { GitHubIssues } from './components/GitHubIssues';
+import { GitLabIssues } from './components/GitLabIssues';
 import { Changelog } from './components/Changelog';
 import { Worktrees } from './components/Worktrees';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -660,6 +661,15 @@ export function App() {
                   <GitHubIssues
                     onOpenSettings={() => {
                       setSettingsInitialProjectSection('github');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                    onNavigateToTask={handleGoToTask}
+                  />
+                )}
+                {activeView === 'gitlab-issues' && (activeProjectId || selectedProjectId) && (
+                  <GitLabIssues
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('gitlab');
                       setIsSettingsDialogOpen(true);
                     }}
                     onNavigateToTask={handleGoToTask}

@@ -5,7 +5,8 @@
 
 import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import type { Project, GitLabInvestigationStatus, GitLabInvestigationResult } from '../../../shared/types';
+import type { GitLabInvestigationStatus, GitLabInvestigationResult } from '../../../shared/types';
+import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIIssue, GitLabAPINote } from './types';
 import { buildIssueContext, createSpecForIssue } from './spec-utils';
@@ -75,12 +76,18 @@ export function registerInvestigateIssue(
 ): void {
   ipcMain.on(
     IPC_CHANNELS.GITLAB_INVESTIGATE_ISSUE,
-    async (_event, project: Project, issueIid: number, selectedNoteIds?: number[]) => {
-      debugLog('investigateGitLabIssue handler called', { issueIid, selectedNoteIds });
+    async (_event, projectId: string, issueIid: number, selectedNoteIds?: number[]) => {
+      debugLog('investigateGitLabIssue handler called', { projectId, issueIid, selectedNoteIds });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        sendError(getMainWindow, projectId, 'Project not found');
+        return;
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {
-        sendError(getMainWindow, project.id, 'GitLab not configured');
+        sendError(getMainWindow, projectId, 'GitLab not configured');
         return;
       }
 

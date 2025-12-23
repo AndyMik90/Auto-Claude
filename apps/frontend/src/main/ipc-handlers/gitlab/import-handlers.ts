@@ -5,7 +5,8 @@
 
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import type { IPCResult, Project, GitLabImportResult } from '../../../shared/types';
+import type { IPCResult, GitLabImportResult } from '../../../shared/types';
+import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIIssue } from './types';
 import { createSpecForIssue, GitLabTaskInfo } from './spec-utils';
@@ -29,8 +30,13 @@ function debugLog(message: string, data?: unknown): void {
 export function registerImportIssues(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITLAB_IMPORT_ISSUES,
-    async (_event, project: Project, issueIids: number[]): Promise<IPCResult<GitLabImportResult>> => {
+    async (_event, projectId: string, issueIids: number[]): Promise<IPCResult<GitLabImportResult>> => {
       debugLog('importGitLabIssues handler called', { issueIids });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {

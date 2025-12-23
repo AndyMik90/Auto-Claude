@@ -5,7 +5,8 @@
 
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import type { IPCResult, Project } from '../../../shared/types';
+import type { IPCResult } from '../../../shared/types';
+import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabReleaseOptions } from './types';
 
@@ -30,12 +31,17 @@ export function registerCreateRelease(): void {
     IPC_CHANNELS.GITLAB_CREATE_RELEASE,
     async (
       _event,
-      project: Project,
+      projectId: string,
       tagName: string,
       releaseNotes: string,
       options?: GitLabReleaseOptions
     ): Promise<IPCResult<{ url: string }>> => {
       debugLog('createGitLabRelease handler called', { tagName });
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
 
       const config = getGitLabConfig(project);
       if (!config) {
