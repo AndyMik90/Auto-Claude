@@ -453,7 +453,8 @@ describe('ProfileEditDialog - Test Connection Feature', () => {
     await waitFor(() => {
       expect(mockTestConnection).toHaveBeenCalledWith(
         'https://api.example.com',
-        'sk-ant-test12345678'
+        'sk-ant-test12345678',
+        expect.any(AbortSignal)
       );
     });
   });
@@ -557,14 +558,17 @@ describe('ProfileEditDialog - Test Connection Feature', () => {
       />
     );
 
-    // Leave baseUrl empty
-    const testButton = await screen.findByText('Test Connection');
-    fireEvent.click(testButton);
+    // Fill name (required to enable Test Connection button)
+    const nameInput = screen.getByLabelText(/name/i);
+    fireEvent.change(nameInput, { target: { value: 'Test Profile' } });
 
-    // Should show error for empty baseUrl
-    await waitFor(() => {
-      expect(screen.getByText('Base URL is required')).toBeInTheDocument();
-    });
+    // Fill apiKey but leave baseUrl empty
+    const keyInput = screen.getByLabelText(/api key/i);
+    fireEvent.change(keyInput, { target: { value: 'sk-ant-test12345678' } });
+
+    // Test button should still be disabled since baseUrl is empty
+    const testButton = screen.getByText('Test Connection');
+    expect(testButton).toBeDisabled();
 
     // Should NOT call testConnection
     expect(testConnectionFn).not.toHaveBeenCalled();
@@ -588,17 +592,17 @@ describe('ProfileEditDialog - Test Connection Feature', () => {
       />
     );
 
+    // Fill name (required to enable Test Connection button)
+    const nameInput = screen.getByLabelText(/name/i);
+    fireEvent.change(nameInput, { target: { value: 'Test Profile' } });
+
     // Fill baseUrl but leave apiKey empty
     const urlInput = screen.getByLabelText(/base url/i);
     fireEvent.change(urlInput, { target: { value: 'https://api.example.com' } });
 
+    // Test button should still be disabled since apiKey is empty
     const testButton = screen.getByText('Test Connection');
-    fireEvent.click(testButton);
-
-    // Should show error for empty apiKey
-    await waitFor(() => {
-      expect(screen.getByText('API Key is required')).toBeInTheDocument();
-    });
+    expect(testButton).toBeDisabled();
 
     // Should NOT call testConnection
     expect(testConnectionFn).not.toHaveBeenCalled();
@@ -629,7 +633,8 @@ describe('ProfileEditDialog - Test Connection Feature', () => {
     await waitFor(() => {
       expect(testConnectionFn).toHaveBeenCalledWith(
         'https://api.example.com',
-        'sk-ant-test12345678'
+        'sk-ant-test12345678',
+        expect.any(AbortSignal)
       );
     });
   });
