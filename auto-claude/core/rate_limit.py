@@ -82,8 +82,10 @@ class TokenBucket:
             if not blocking:
                 return False
 
+            # Calculate wait time while holding the lock
+            wait_time = (tokens - self._tokens) / self._rate
+
         # Wait for tokens to become available
-        wait_time = (tokens - self._tokens) / self._rate
         time.sleep(wait_time)
 
         with self._lock:

@@ -132,6 +132,11 @@ class Gauge:
         with self._lock:
             return [(dict(k), v) for k, v in self._values.items()]
 
+    def reset(self) -> None:
+        """Reset all gauge values."""
+        with self._lock:
+            self._values.clear()
+
 
 class Histogram:
     """
@@ -222,6 +227,11 @@ class Histogram:
 
         return bucket_counts
 
+    def reset(self) -> None:
+        """Reset all histogram values."""
+        with self._lock:
+            self._values.clear()
+
 
 class Timer:
     """
@@ -257,6 +267,10 @@ class Timer:
     def get_stats(self, **labels: str) -> dict[str, float]:
         """Get timing statistics."""
         return self._histogram.get_stats(**labels)
+
+    def reset(self) -> None:
+        """Reset all timer values."""
+        self._histogram.reset()
 
 
 class _TimerContext:
@@ -367,13 +381,16 @@ class MetricsRegistry:
         return result
 
     def reset(self) -> None:
-        """Reset all metrics."""
+        """Reset all metrics - clears values in all metric instances."""
         with self._lock:
             for counter in self._counters.values():
                 counter.reset()
-            self._gauges.clear()
-            self._histograms.clear()
-            self._timers.clear()
+            for gauge in self._gauges.values():
+                gauge.reset()
+            for histogram in self._histograms.values():
+                histogram.reset()
+            for timer in self._timers.values():
+                timer.reset()
 
 
 # Global metrics registry
