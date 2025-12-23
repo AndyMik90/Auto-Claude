@@ -5,7 +5,7 @@ expected by the frontend while internally working with specs.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Any
 
@@ -367,7 +367,7 @@ async def update_task(
             try:
                 plan = json.loads(plan_file.read_text())
                 plan["status"] = data.status
-                plan["updated_at"] = datetime.utcnow().isoformat()
+                plan["updated_at"] = datetime.now(timezone.utc).isoformat()
                 plan_file.write_text(json.dumps(plan, indent=2))
             except (json.JSONDecodeError, IOError):
                 pass
