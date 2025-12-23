@@ -187,7 +187,7 @@ export function detectGitLabProjectFromRemote(projectPath: string): { project: s
     }
 
     // HTTPS format: https://gitlab.example.com/group/project.git
-    const httpsMatch = remoteUrl.match(/^https?:\/\/([^\/]+)\/(.+?)(?:\.git)?$/);
+    const httpsMatch = remoteUrl.match(/^https?:\/\/([^/]+)\/(.+?)(?:\.git)?$/);
     if (httpsMatch) {
       instanceUrl = `https://${httpsMatch[1]}`;
       project = httpsMatch[2];

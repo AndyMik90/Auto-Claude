@@ -168,7 +168,7 @@ export type TaskCategory =
 
 export interface TaskMetadata {
   // Origin tracking
-  sourceType?: 'ideation' | 'manual' | 'imported' | 'insights' | 'roadmap' | 'linear' | 'github';
+  sourceType?: 'ideation' | 'manual' | 'imported' | 'insights' | 'roadmap' | 'linear' | 'github' | 'gitlab';
   ideationType?: string;  // e.g., 'code_improvements', 'security_hardening'
   ideaId?: string;  // Reference to original idea if converted
   featureId?: string;  // Reference to roadmap feature if from roadmap
@@ -177,6 +177,8 @@ export interface TaskMetadata {
   linearUrl?: string;  // Linear issue URL
   githubIssueNumber?: number;  // Reference to GitHub issue number if from GitHub
   githubUrl?: string;  // GitHub issue URL
+  gitlabIssueIid?: number;  // Reference to GitLab issue IID if from GitLab
+  gitlabUrl?: string;  // GitLab issue URL
 
   // Classification
   category?: TaskCategory;

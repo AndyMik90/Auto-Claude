@@ -5,10 +5,10 @@
 
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import type { IPCResult, Project, GitLabImportResult, Task } from '../../../shared/types';
+import type { IPCResult, Project, GitLabImportResult } from '../../../shared/types';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIIssue } from './types';
-import { createSpecForIssue } from './spec-utils';
+import { createSpecForIssue, GitLabTaskInfo } from './spec-utils';
 
 // Debug logging helper
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
@@ -40,7 +40,7 @@ export function registerImportIssues(): void {
         };
       }
 
-      const tasks: Task[] = [];
+      const tasks: GitLabTaskInfo[] = [];
       const errors: string[] = [];
       let imported = 0;
       let failed = 0;
@@ -81,8 +81,7 @@ export function registerImportIssues(): void {
           success: imported > 0,
           imported,
           failed,
-          errors: errors.length > 0 ? errors : undefined,
-          tasks
+          errors: errors.length > 0 ? errors : undefined
         }
       };
     }

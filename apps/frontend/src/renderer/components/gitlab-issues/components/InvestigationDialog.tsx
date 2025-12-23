@@ -40,7 +40,7 @@ export function InvestigationDialog({
       setSelectedNoteIds([]);
       setFetchNotesError(null);
 
-      window.electronAPI.getIssueNotes(projectId, selectedIssue.iid)
+      window.electronAPI.getGitLabIssueNotes(projectId, selectedIssue.iid)
         .then((result: { success: boolean; data?: GitLabNote[] }) => {
           if (!isMounted) return;
           if (result.success && result.data) {

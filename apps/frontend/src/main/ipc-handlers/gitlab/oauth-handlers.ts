@@ -415,7 +415,7 @@ export function registerDetectGitLabProject(): void {
           project = sshMatch[2];
         }
 
-        const httpsMatch = remoteUrl.match(/^https?:\/\/([^\/]+)\/(.+?)(?:\.git)?$/);
+        const httpsMatch = remoteUrl.match(/^https?:\/\/([^/]+)\/(.+?)(?:\.git)?$/);
         if (httpsMatch) {
           instanceUrl = `https://${httpsMatch[1]}`;
           project = httpsMatch[2];

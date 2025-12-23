@@ -5,8 +5,21 @@
 
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
-import type { Project, Task } from '../../../shared/types';
+import type { Project } from '../../../shared/types';
 import type { GitLabAPIIssue, GitLabConfig } from './types';
+
+/**
+ * Simplified task info returned when creating a spec from a GitLab issue.
+ * This is not a full Task object - it's just the basic info needed for the UI.
+ */
+export interface GitLabTaskInfo {
+  id: string;
+  specId: string;
+  title: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // Debug logging helper
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
@@ -78,7 +91,7 @@ export async function createSpecForIssue(
   project: Project,
   issue: GitLabAPIIssue,
   config: GitLabConfig
-): Promise<Task | null> {
+): Promise<GitLabTaskInfo | null> {
   try {
     const specsDir = path.join(project.path, project.autoBuildPath, 'specs');
 
@@ -97,19 +110,12 @@ export async function createSpecForIssue(
       // Return existing task info
       return {
         id: specDirName,
-        name: issue.title,
+        specId: specDirName,
+        title: issue.title,
         description: issue.description || '',
-        status: 'pending',
         createdAt: new Date(issue.created_at),
-        updatedAt: new Date(),
-        specDir: specDirName,
-        source: {
-          type: 'gitlab',
-          issueIid: issue.iid,
-          instanceUrl: config.instanceUrl,
-          project: config.project
-        }
-      } as Task;
+        updatedAt: new Date()
+      };
     }
 
     // Create spec directory
@@ -139,22 +145,15 @@ export async function createSpecForIssue(
 
     debugLog('Created spec for issue:', { iid: issue.iid, specDir });
 
-    // Return task object
+    // Return task info
     return {
       id: specDirName,
-      name: issue.title,
+      specId: specDirName,
+      title: issue.title,
       description: issue.description || '',
-      status: 'pending',
       createdAt: new Date(issue.created_at),
-      updatedAt: new Date(),
-      specDir: specDirName,
-      source: {
-        type: 'gitlab',
-        issueIid: issue.iid,
-        instanceUrl: config.instanceUrl,
-        project: config.project
-      }
-    } as Task;
+      updatedAt: new Date()
+    };
   } catch (error) {
     debugLog('Failed to create spec for issue:', { iid: issue.iid, error });
     return null;
