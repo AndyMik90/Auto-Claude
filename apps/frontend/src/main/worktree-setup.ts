@@ -57,6 +57,46 @@ function truncateOutput(output: string, maxLength: number = MAX_COMMAND_OUTPUT_L
   return truncatedPrefix + output.slice(-(maxLength - truncatedPrefix.length));
 }
 
+/**
+ * Validates that a worktree path is within the expected project boundaries.
+ * Prevents path traversal attacks via "../" sequences.
+ */
+function validateWorktreePath(worktreePath: string, projectPath: string): boolean {
+  const resolvedWorktree = path.resolve(worktreePath);
+  const resolvedProject = path.resolve(projectPath);
+  const worktreesDir = path.join(resolvedProject, '.worktrees');
+
+  // Worktree must be within .worktrees directory
+  return (
+    resolvedWorktree.startsWith(worktreesDir + path.sep) ||
+    resolvedWorktree === worktreesDir
+  );
+}
+
+/**
+ * Patterns that indicate sensitive data in command output.
+ * These will be redacted from logs (but kept in the actual result).
+ */
+const SENSITIVE_PATTERNS = [
+  /(?:api[_-]?key|apikey|secret|password|token|credential|auth)[=:]\s*['"]?[\w\-\.]+['"]?/gi,
+  /Bearer\s+[\w\-\.]+/gi,
+  /sk-[a-zA-Z0-9]{20,}/g,  // OpenAI API keys
+  /ghp_[a-zA-Z0-9]{36}/g,  // GitHub PATs
+  /npm_[a-zA-Z0-9]{36}/g,  // npm tokens
+];
+
+/**
+ * Redact sensitive information from output for logging purposes.
+ * The original output is preserved in the result, only console logs are sanitized.
+ */
+function sanitizeForLogging(output: string): string {
+  let sanitized = output;
+  for (const pattern of SENSITIVE_PATTERNS) {
+    sanitized = sanitized.replace(pattern, '[REDACTED]');
+  }
+  return sanitized;
+}
+
 
 
 async function executeCommand(
@@ -151,12 +191,23 @@ async function executeCommand(
       if (killTimeoutId) clearTimeout(killTimeoutId);
 
       const durationMs = Date.now() - startTime;
+
+      let errorMessage = `Failed to spawn process: ${err.message}`;
+      const nodeError = err as NodeJS.ErrnoException;
+      if (nodeError.code === 'EMFILE' || nodeError.code === 'ENFILE') {
+        errorMessage = `System file descriptor limit reached. Close other apps or increase ulimit. (${nodeError.code})`;
+      } else if (nodeError.code === 'ENOENT') {
+        errorMessage = 'Command not found. Ensure it is installed and in PATH.';
+      } else if (nodeError.code === 'EACCES') {
+        errorMessage = 'Permission denied. Check file permissions.';
+      }
+
       resolve({
         command,
         success: false,
         exitCode: null,
         stdout: truncateOutput(stdout),
-        stderr: truncateOutput(`Failed to spawn process: ${err.message}`),
+        stderr: truncateOutput(errorMessage),
         durationMs
       });
     });
@@ -211,6 +262,16 @@ export async function executeWorktreeSetup(
     };
   }
 
+  if (!validateWorktreePath(worktreePath, projectPath)) {
+    return {
+      success: false,
+      executedAt: new Date().toISOString(),
+      commands: [],
+      totalDurationMs: Date.now() - startTime,
+      error: 'Security error: Worktree path outside project boundaries'
+    };
+  }
+
   // Prepare variables for substitution
   const variables: SetupVariables = {
     ROOT_WORKTREE_PATH: rootWorktreePath,
@@ -219,9 +280,10 @@ export async function executeWorktreeSetup(
     PROJECT_PATH: projectPath
   };
 
-  // Calculate per-command timeout
   const totalTimeout = config.timeout || DEFAULT_WORKTREE_SETUP_TIMEOUT_MS;
-  const perCommandTimeout = Math.floor(totalTimeout / config.commands.length);
+  const MIN_COMMAND_TIMEOUT_MS = 30_000;
+  const calculatedPerCommand = Math.floor(totalTimeout / config.commands.length);
+  const perCommandTimeout = Math.max(calculatedPerCommand, MIN_COMMAND_TIMEOUT_MS);
 
   // Execute commands sequentially
   const commandResults: WorktreeSetupCommandResult[] = [];
@@ -240,7 +302,7 @@ export async function executeWorktreeSetup(
       console.warn(`[WorktreeSetup] Command failed: ${command}`);
       console.warn(`[WorktreeSetup] Exit code: ${result.exitCode}`);
       if (result.stderr) {
-        console.warn(`[WorktreeSetup] Stderr: ${result.stderr.substring(0, 500)}`);
+        console.warn(`[WorktreeSetup] Stderr: ${sanitizeForLogging(result.stderr).substring(0, 500)}`);
       }
     } else {
       console.log(`[WorktreeSetup] Command succeeded: ${command} (${result.durationMs}ms)`);
@@ -264,3 +326,10 @@ export async function executeWorktreeSetup(
 export function shouldExecuteSetup(config: WorktreeSetupConfig | undefined): boolean {
   return !!(config?.enabled && config.commands && config.commands.length > 0);
 }
+
+export const _testExports = {
+  truncateOutput,
+  validateWorktreePath,
+  sanitizeForLogging,
+  SENSITIVE_PATTERNS
+};

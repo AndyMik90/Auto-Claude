@@ -31,7 +31,8 @@ export function useWorktreeTemplates(projectPath: string | undefined) {
         } else {
           setTemplates(WORKTREE_TEMPLATES.filter(t => t.alwaysShow));
         }
-      } catch {
+      } catch (error) {
+        console.warn('[useWorktreeTemplates] Failed to detect templates:', error);
         if (!cancelled) {
           setTemplates(WORKTREE_TEMPLATES.filter(t => t.alwaysShow));
         }

@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'fs';
 import { IPC_CHANNELS, getSpecsDir, AUTO_BUILD_PATHS } from '../../shared/constants';
 import type {
   SDKRateLimitInfo,
@@ -18,6 +18,16 @@ import { projectStore } from '../project-store';
 import { notificationService } from '../notification-service';
 import { executeWorktreeSetup, shouldExecuteSetup } from '../worktree-setup';
 
+function atomicWriteJson(filePath: string, data: unknown): void {
+  const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+  try {
+    writeFileSync(tempPath, JSON.stringify(data, null, 2));
+    renameSync(tempPath, filePath);
+  } catch (error) {
+    try { unlinkSync(tempPath); } catch {}
+    throw error;
+  }
+}
 
 /**
  * Register all agent-events-related IPC handlers
@@ -128,7 +138,7 @@ export function registerAgenteventsHandlers(
               plan.status = newStatus;
               plan.planStatus = 'review';
               plan.updated_at = new Date().toISOString();
-              writeFileSync(planPath, JSON.stringify(plan, null, 2));
+              atomicWriteJson(planPath, plan);
               console.warn(`[Task ${taskId}] Persisted status '${newStatus}' to implementation_plan.json`);
             }
           }
@@ -179,7 +189,7 @@ export function registerAgenteventsHandlers(
                 const plan = JSON.parse(planContent);
                 plan.setupResult = setupResult;
                 plan.updated_at = new Date().toISOString();
-                writeFileSync(planPath, JSON.stringify(plan, null, 2));
+                atomicWriteJson(planPath, plan);
                 console.log(`[Task ${taskId}] Saved setup result to implementation_plan.json`);
               }
             } catch (saveError) {
@@ -212,7 +222,7 @@ export function registerAgenteventsHandlers(
                 const plan = JSON.parse(planContent);
                 plan.setupResult = errorResult;
                 plan.updated_at = new Date().toISOString();
-                writeFileSync(planPath, JSON.stringify(plan, null, 2));
+                atomicWriteJson(planPath, plan);
                 console.log(`[Task ${taskId}] Saved setup error result to implementation_plan.json`);
               }
             } catch (saveError) {
