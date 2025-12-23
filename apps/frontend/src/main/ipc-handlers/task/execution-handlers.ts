@@ -412,6 +412,13 @@ export function registerTaskExecutionHandlers(
           writeFileSync(planPath, JSON.stringify(plan, null, 2));
         }
 
+        // Auto-stop task when status changes AWAY from 'in_progress' and process IS running
+        // This handles the case where user drags a running task back to Planning/backlog
+        if (status !== 'in_progress' && agentManager.isRunning(taskId)) {
+          console.warn('[TASK_UPDATE_STATUS] Stopping task due to status change away from in_progress:', taskId);
+          agentManager.killTask(taskId);
+        }
+
         // Auto-start task when status changes to 'in_progress' and no process is running
         if (status === 'in_progress' && !agentManager.isRunning(taskId)) {
           const mainWindow = getMainWindow();
