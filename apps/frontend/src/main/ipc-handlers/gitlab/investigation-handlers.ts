@@ -85,7 +85,7 @@ export function registerInvestigateIssue(
         return;
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         sendError(getMainWindow, projectId, 'GitLab not configured');
         return;

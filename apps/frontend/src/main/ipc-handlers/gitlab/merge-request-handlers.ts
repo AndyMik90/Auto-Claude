@@ -77,7 +77,7 @@ export function registerGetMergeRequests(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,
@@ -136,7 +136,7 @@ export function registerGetMergeRequest(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,
@@ -184,7 +184,7 @@ export function registerCreateMergeRequest(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,
@@ -269,7 +269,7 @@ export function registerUpdateMergeRequest(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,

@@ -2,7 +2,7 @@
  * GitLab utility functions
  */
 
-import { existsSync, readFileSync } from 'fs';
+import { readFile, access } from 'fs/promises';
 import { execSync } from 'child_process';
 import path from 'path';
 import type { Project } from '../../../shared/types';
@@ -46,17 +46,29 @@ const GITLAB_ENV_KEYS = {
 } as const;
 
 /**
+ * Check if a file exists (async)
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Get GitLab configuration from project environment file
  * Falls back to glab CLI token if GITLAB_TOKEN not in .env
  * Returns null if GitLab is explicitly disabled via GITLAB_ENABLED=false
  */
-export function getGitLabConfig(project: Project): GitLabConfig | null {
+export async function getGitLabConfig(project: Project): Promise<GitLabConfig | null> {
   if (!project.autoBuildPath) return null;
   const envPath = path.join(project.path, project.autoBuildPath, '.env');
-  if (!existsSync(envPath)) return null;
+  if (!(await fileExists(envPath))) return null;
 
   try {
-    const content = readFileSync(envPath, 'utf-8');
+    const content = await readFile(envPath, 'utf-8');
     const vars = parseEnvFile(content);
 
     // Check if GitLab is explicitly disabled

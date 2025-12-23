@@ -38,7 +38,7 @@ export function registerImportIssues(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,

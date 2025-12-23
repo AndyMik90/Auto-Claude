@@ -101,7 +101,7 @@ export function registerGetIssues(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,
@@ -152,7 +152,7 @@ export function registerGetIssue(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,
@@ -200,7 +200,7 @@ export function registerGetIssueNotes(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,

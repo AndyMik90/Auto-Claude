@@ -37,7 +37,7 @@ export function registerCheckConnection(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         debugLog('No GitLab config found');
         return {
@@ -111,7 +111,7 @@ export function registerGetProjects(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitLabConfig(project);
+      const config = await getGitLabConfig(project);
       if (!config) {
         return {
           success: false,
