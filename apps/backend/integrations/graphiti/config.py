@@ -337,7 +337,9 @@ class GraphitiConfig:
                 errors.append("Google embedder provider requires GOOGLE_API_KEY")
         elif self.embedder_provider == "openrouter":
             if not self.openrouter_api_key:
-                errors.append("OpenRouter embedder provider requires OPENROUTER_API_KEY")
+                errors.append(
+                    "OpenRouter embedder provider requires OPENROUTER_API_KEY"
+                )
         else:
             errors.append(f"Unknown embedder provider: {self.embedder_provider}")
 
@@ -444,7 +446,14 @@ class GraphitiConfig:
             base_name = self.database
 
         # Remove existing provider suffix if present
-        for provider in ["openai", "ollama", "voyage", "google", "azure_openai", "openrouter"]:
+        for provider in [
+            "openai",
+            "ollama",
+            "voyage",
+            "google",
+            "azure_openai",
+            "openrouter",
+        ]:
             if f"_{provider}_" in base_name:
                 base_name = base_name.split(f"_{provider}_")[0]
                 break
