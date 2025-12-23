@@ -173,6 +173,7 @@ npm start
 winget install Python.Python.3.12
 winget install OpenJS.NodeJS.LTS
 ```
+
 </details>
 
 <details>
@@ -181,6 +182,7 @@ winget install OpenJS.NodeJS.LTS
 ```bash
 brew install python@3.12 node@24
 ```
+
 </details>
 
 <details>
@@ -191,6 +193,7 @@ sudo apt install python3.12 python3.12-venv
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
+
 </details>
 
 <details>
@@ -199,6 +202,7 @@ sudo apt install -y nodejs
 ```bash
 sudo dnf install python3.12 nodejs npm
 ```
+
 </details>
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development setup.

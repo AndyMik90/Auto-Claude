@@ -75,6 +75,9 @@ export function registerImportIssues(): void {
         }
       }
 
+      // Note: IPCResult.success indicates transport success (IPC call completed without system error).
+      // data.success indicates operation success (at least one issue was imported).
+      // This distinction allows the UI to differentiate between system failures and partial imports.
       return {
         success: true,
         data: {
