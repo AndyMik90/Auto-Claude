@@ -6,11 +6,13 @@ import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
-import type { IdeationConfig } from '../../shared/types';
+import type { IdeationConfig, Idea } from '../../shared/types';
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { parsePythonCommand } from '../python-detector';
+import { transformIdeaFromSnakeCase } from '../ipc-handlers/ideation/transformers';
+import type { RawIdea } from '../ipc-handlers/ideation/types';
 
 /**
  * Queue management for ideation and roadmap generation
@@ -286,7 +288,6 @@ export class AgentQueueManager {
       // Emit all log lines for the activity log
       emitLogs(log);
 
-      // Check for streaming type completion signals
       const typeCompleteMatch = log.match(/IDEATION_TYPE_COMPLETE:(\w+):(\d+)/);
       if (typeCompleteMatch) {
         const [, ideationType, ideasCount] = typeCompleteMatch;
@@ -299,8 +300,33 @@ export class AgentQueueManager {
           totalCompleted: completedTypes.size
         });
 
-        // Emit event for UI to load this type's ideas immediately
-        this.emitter.emit('ideation-type-complete', projectId, ideationType, parseInt(ideasCount, 10));
+        const typeFilePath = path.join(
+          projectPath,
+          '.auto-claude',
+          'ideation',
+          `${ideationType}_ideas.json`
+        );
+
+        let ideas: Idea[] = [];
+        if (existsSync(typeFilePath)) {
+          try {
+            const content = readFileSync(typeFilePath, 'utf-8');
+            const data = JSON.parse(content);
+            const rawIdeas: RawIdea[] = data[ideationType] || [];
+            ideas = rawIdeas.map(transformIdeaFromSnakeCase);
+            debugLog('[Agent Queue] Loaded ideas for type:', {
+              ideationType,
+              loadedCount: ideas.length,
+              filePath: typeFilePath
+            });
+          } catch (err) {
+            debugError('[Agent Queue] Failed to load ideas for type:', ideationType, err);
+          }
+        } else {
+          debugError('[Agent Queue] Ideas file not found:', typeFilePath);
+        }
+
+        this.emitter.emit('ideation-type-complete', projectId, ideationType, ideas);
       }
 
       const typeFailedMatch = log.match(/IDEATION_TYPE_FAILED:(\w+)/);

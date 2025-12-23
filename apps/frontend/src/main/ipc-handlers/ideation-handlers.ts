@@ -16,6 +16,7 @@ import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { AgentManager } from '../agent';
+import type { IdeationGenerationStatus, IdeationSession, Idea } from '../../shared/types';
 import {
   getIdeationSession,
   updateIdeaStatus,
@@ -98,4 +99,57 @@ export function registerIdeationHandlers(
     IPC_CHANNELS.IDEATION_CONVERT_TO_TASK,
     convertIdeaToTask
   );
+
+  // ============================================
+  // Ideation Agent Events → Renderer
+  // ============================================
+
+  agentManager.on('ideation-progress', (projectId: string, status: IdeationGenerationStatus) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_PROGRESS, projectId, status);
+    }
+  });
+
+  agentManager.on('ideation-log', (projectId: string, log: string) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_LOG, projectId, log);
+    }
+  });
+
+  agentManager.on('ideation-type-complete', (projectId: string, ideationType: string, ideas: Idea[]) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_TYPE_COMPLETE, projectId, ideationType, ideas);
+    }
+  });
+
+  agentManager.on('ideation-type-failed', (projectId: string, ideationType: string) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_TYPE_FAILED, projectId, ideationType);
+    }
+  });
+
+  agentManager.on('ideation-complete', (projectId: string, session: IdeationSession) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_COMPLETE, projectId, session);
+    }
+  });
+
+  agentManager.on('ideation-error', (projectId: string, error: string) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, error);
+    }
+  });
+
+  agentManager.on('ideation-stopped', (projectId: string) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_STOPPED, projectId);
+    }
+  });
 }
