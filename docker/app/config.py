@@ -2,9 +2,9 @@
 
 from pathlib import Path
 from functools import lru_cache
-from typing import Optional
+from typing import List, Optional
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     web_port: int = 8080
     debug: bool = False
 
+    # CORS Configuration
+    cors_allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+
     # Claude Authentication (system-wide defaults)
     claude_code_oauth_token: str = ""
     anthropic_api_key: str = ""
@@ -52,6 +55,15 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string or list."""
+        if isinstance(v, str):
+            # Handle comma-separated string from environment variable
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     @model_validator(mode="after")
     def validate_jwt_secret_in_production(self) -> "Settings":
