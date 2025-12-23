@@ -7,7 +7,8 @@ import type {
   Task,
   TaskStatus,
   Project,
-  ImplementationPlan
+  ImplementationPlan,
+  WorktreeSetupResult
 } from '../../shared/types';
 import { AgentManager } from '../agent';
 import type { ProcessType, ExecutionProgressData } from '../agent';
@@ -15,6 +16,7 @@ import { titleGenerator } from '../title-generator';
 import { fileWatcher } from '../file-watcher';
 import { projectStore } from '../project-store';
 import { notificationService } from '../notification-service';
+import { executeWorktreeSetup, shouldExecuteSetup } from '../worktree-setup';
 
 
 /**
@@ -153,6 +155,59 @@ export function registerAgenteventsHandlers(
         taskId,
         newStatus
       );
+
+      if (newStatus === 'human_review' && task && project) {
+        const worktreeSetupConfig = project.settings?.worktreeSetup;
+
+        if (shouldExecuteSetup(worktreeSetupConfig)) {
+          console.log(`[Task ${taskId}] Executing worktree setup commands...`);
+
+          executeWorktreeSetup({
+            projectPath: project.path,
+            specId: task.specId,
+            config: worktreeSetupConfig!
+          }).then((setupResult: WorktreeSetupResult) => {
+            console.log(`[Task ${taskId}] Worktree setup completed. Success: ${setupResult.success}`);
+
+            try {
+              const specsBaseDir = getSpecsDir(project.autoBuildPath);
+              const specDir = path.join(project.path, specsBaseDir, task.specId);
+              const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+
+              if (existsSync(planPath)) {
+                const planContent = readFileSync(planPath, 'utf-8');
+                const plan = JSON.parse(planContent);
+                plan.setupResult = setupResult;
+                plan.updated_at = new Date().toISOString();
+                writeFileSync(planPath, JSON.stringify(plan, null, 2));
+                console.log(`[Task ${taskId}] Saved setup result to implementation_plan.json`);
+              }
+            } catch (saveError) {
+              console.error(`[Task ${taskId}] Failed to save setup result:`, saveError);
+            }
+
+            const currentWindow = getMainWindow();
+            if (currentWindow) {
+              currentWindow.webContents.send(IPC_CHANNELS.TASK_SETUP_RESULT, taskId, setupResult);
+            }
+          }).catch((setupError: Error) => {
+            console.error(`[Task ${taskId}] Worktree setup failed:`, setupError);
+
+            const errorResult: WorktreeSetupResult = {
+              success: false,
+              executedAt: new Date().toISOString(),
+              commands: [],
+              totalDurationMs: 0,
+              error: setupError.message
+            };
+
+            const currentWindow = getMainWindow();
+            if (currentWindow) {
+              currentWindow.webContents.send(IPC_CHANNELS.TASK_SETUP_RESULT, taskId, errorResult);
+            }
+          });
+        }
+      }
     }
   });
 
