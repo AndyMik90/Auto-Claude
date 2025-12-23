@@ -383,8 +383,12 @@ class OIDCService:
             username = f"{base_username}{counter}"
             counter += 1
 
-        # Determine role
-        role = UserRole(config.default_role)
+        # Determine role with validation
+        try:
+            role = UserRole(config.default_role)
+        except ValueError:
+            # Invalid role value, fall back to USER role
+            role = UserRole.USER
 
         # Create the user
         user = User(
