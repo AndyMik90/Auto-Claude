@@ -36,30 +36,35 @@ function debugLog(message: string, data?: unknown): void {
 
 /**
  * Transform GitLab API MR to our format
+ * Defensively handles missing/null properties
  */
 function transformMergeRequest(apiMr: GitLabAPIMergeRequest): GitLabMergeRequest {
   return {
     id: apiMr.id,
     iid: apiMr.iid,
-    title: apiMr.title,
-    description: apiMr.description,
-    state: apiMr.state,
-    sourceBranch: apiMr.source_branch,
-    targetBranch: apiMr.target_branch,
-    author: {
-      username: apiMr.author.username,
-      avatarUrl: apiMr.author.avatar_url
-    },
-    assignees: apiMr.assignees.map(a => ({
-      username: a.username,
-      avatarUrl: a.avatar_url
-    })),
-    labels: apiMr.labels,
-    webUrl: apiMr.web_url,
-    createdAt: apiMr.created_at,
-    updatedAt: apiMr.updated_at,
-    mergedAt: apiMr.merged_at,
-    mergeStatus: apiMr.merge_status
+    title: apiMr.title || '',
+    description: apiMr.description || undefined,
+    state: apiMr.state || 'opened',
+    sourceBranch: apiMr.source_branch || '',
+    targetBranch: apiMr.target_branch || '',
+    author: apiMr.author
+      ? {
+          username: apiMr.author.username || '',
+          avatarUrl: apiMr.author.avatar_url || undefined
+        }
+      : { username: '' },
+    assignees: Array.isArray(apiMr.assignees)
+      ? apiMr.assignees.map(a => ({
+          username: a?.username || '',
+          avatarUrl: a?.avatar_url || undefined
+        }))
+      : [],
+    labels: Array.isArray(apiMr.labels) ? apiMr.labels : [],
+    webUrl: apiMr.web_url || '',
+    createdAt: apiMr.created_at || new Date().toISOString(),
+    updatedAt: apiMr.updated_at || apiMr.created_at || new Date().toISOString(),
+    mergedAt: apiMr.merged_at || undefined,
+    mergeStatus: apiMr.merge_status || ''
   };
 }
 
@@ -201,15 +206,15 @@ export function registerCreateMergeRequest(): void {
           title: options.title
         };
 
-        if (options.description) {
+        if (options.description !== undefined) {
           mrBody.description = options.description;
         }
 
-        if (options.labels) {
+        if (options.labels !== undefined) {
           mrBody.labels = options.labels.join(',');
         }
 
-        if (options.assigneeIds) {
+        if (options.assigneeIds !== undefined) {
           mrBody.assignee_ids = options.assigneeIds;
         }
 

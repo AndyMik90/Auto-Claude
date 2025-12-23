@@ -284,7 +284,7 @@ export class ProjectStore {
             const validWorktreeTasks = worktreeTasks.filter(t => mainSpecIds.has(t.specId));
             allTasks.push(...validWorktreeTasks);
             const skipped = worktreeTasks.length - validWorktreeTasks.length;
-            console.warn('[ProjectStore] Loaded', validWorktreeTasks.length, 'tasks from worktree:', worktree.name, skipped > 0 ? `(skipped ${skipped} orphaned)` : '');
+            console.debug('[ProjectStore] Loaded', validWorktreeTasks.length, 'tasks from worktree:', worktree.name, skipped > 0 ? `(skipped ${skipped} orphaned)` : '');
           }
         }
       } catch (error) {
