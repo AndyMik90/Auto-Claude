@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import path from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, promises as fsPromises } from 'fs';
 import { EventEmitter } from 'events';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
@@ -307,26 +307,29 @@ export class AgentQueueManager {
           `${ideationType}_ideas.json`
         );
 
-        let ideas: Idea[] = [];
-        if (existsSync(typeFilePath)) {
+        (async (): Promise<void> => {
           try {
-            const content = readFileSync(typeFilePath, 'utf-8');
-            const data = JSON.parse(content);
+            const content = await fsPromises.readFile(typeFilePath, 'utf-8');
+            const data: Record<string, RawIdea[]> = JSON.parse(content);
             const rawIdeas: RawIdea[] = data[ideationType] || [];
-            ideas = rawIdeas.map(transformIdeaFromSnakeCase);
+            const ideas: Idea[] = rawIdeas.map(transformIdeaFromSnakeCase);
             debugLog('[Agent Queue] Loaded ideas for type:', {
               ideationType,
               loadedCount: ideas.length,
               filePath: typeFilePath
             });
+            this.emitter.emit('ideation-type-complete', projectId, ideationType, ideas);
           } catch (err) {
-            debugError('[Agent Queue] Failed to load ideas for type:', ideationType, err);
+            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+              debugError('[Agent Queue] Ideas file not found:', typeFilePath);
+            } else {
+              debugError('[Agent Queue] Failed to load ideas for type:', ideationType, err);
+            }
+            this.emitter.emit('ideation-type-complete', projectId, ideationType, []);
           }
-        } else {
-          debugError('[Agent Queue] Ideas file not found:', typeFilePath);
-        }
-
-        this.emitter.emit('ideation-type-complete', projectId, ideationType, ideas);
+        })().catch((err: unknown) => {
+          debugError('[Agent Queue] Unhandled error in ideation-type-complete handler:', err);
+        });
       }
 
       const typeFailedMatch = log.match(/IDEATION_TYPE_FAILED:(\w+)/);

@@ -11,9 +11,43 @@ import type {
   SecurityHardeningIdea,
   PerformanceOptimizationIdea,
   CodeQualityIdea,
-  IdeationStatus
+  IdeationStatus,
+  IdeationType
 } from '../../../shared/types';
+import { debugLog } from '../../../shared/utils/debug-logger';
 import type { RawIdea } from './types';
+
+const VALID_IDEATION_TYPES: ReadonlySet<IdeationType> = new Set([
+  'code_improvements',
+  'ui_ux_improvements',
+  'documentation_gaps',
+  'security_hardening',
+  'performance_optimizations',
+  'code_quality'
+] as const);
+
+function isValidIdeationType(value: unknown): value is IdeationType {
+  return typeof value === 'string' && VALID_IDEATION_TYPES.has(value as IdeationType);
+}
+
+function validateEnabledTypes(rawTypes: unknown): IdeationType[] {
+  if (!Array.isArray(rawTypes)) {
+    return [];
+  }
+  const validTypes: IdeationType[] = [];
+  const invalidTypes: unknown[] = [];
+  for (const entry of rawTypes) {
+    if (isValidIdeationType(entry)) {
+      validTypes.push(entry);
+    } else {
+      invalidTypes.push(entry);
+    }
+  }
+  if (invalidTypes.length > 0) {
+    debugLog('[Transformers] Dropped invalid IdeationType values:', invalidTypes);
+  }
+  return validTypes;
+}
 
 /**
  * Transform an idea from snake_case (Python backend) to camelCase (TypeScript frontend)
@@ -180,7 +214,8 @@ export function transformSessionFromSnakeCase(
   rawSession: RawIdeationSession,
   projectId: string
 ): import('../../../shared/types').IdeationSession {
-  const enabledTypes = (rawSession.config?.enabled_types || rawSession.config?.enabledTypes || []) as import('../../../shared/types').IdeationType[];
+  const rawEnabledTypes = rawSession.config?.enabled_types || rawSession.config?.enabledTypes || [];
+  const enabledTypes = validateEnabledTypes(rawEnabledTypes);
 
   return {
     id: rawSession.id || `ideation-${Date.now()}`,
