@@ -74,13 +74,17 @@ export function OllamaModelSelector({
     setError(null);
 
     try {
-      // Check Ollama status first
+      // Check Ollama status first with detailed error
       const statusResult = await window.electronAPI.checkOllamaStatus();
       if (abortSignal?.aborted) return;
 
       if (!statusResult?.success || !statusResult?.data?.running) {
         setOllamaAvailable(false);
         setIsLoading(false);
+
+        // Show helpful error message
+        const suggestion = statusResult?.data?.suggestion || 'Start Ollama to use local models';
+        setError(suggestion);
         return;
       }
 
@@ -109,11 +113,15 @@ export function OllamaModelSelector({
             };
           })
         );
+      } else {
+        // Show error if API call succeeded but returned unexpected data
+        setError('Failed to retrieve model list. Check Ollama server logs.');
       }
     } catch (err) {
       if (!abortSignal?.aborted) {
         console.error('Failed to check Ollama models:', err);
-        setError('Failed to check Ollama models');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to check Ollama models';
+        setError(errorMsg);
       }
     } finally {
       if (!abortSignal?.aborted) {
@@ -168,19 +176,30 @@ export function OllamaModelSelector({
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-warning">Ollama not running</p>
+            <p className="text-sm font-medium text-warning">Ollama not detected</p>
             <p className="text-sm text-warning/80 mt-1">
-              Start Ollama to use local embedding models. Memory will still work with keyword search.
+              {error || 'Start Ollama with `ollama serve` to use local embedding models.'}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => checkInstalledModels()}
-              className="mt-3"
-            >
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-              Retry
-            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Memory will still work with keyword search if Ollama is unavailable.
+            </p>
+            <div className="flex gap-2 mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => checkInstalledModels()}
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Retry Detection
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open('https://ollama.ai/download', '_blank')}
+              >
+                Download Ollama
+              </Button>
+            </div>
           </div>
         </div>
       </div>

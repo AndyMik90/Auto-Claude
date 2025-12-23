@@ -113,8 +113,18 @@ def output_error(message: str) -> None:
     output_json(False, error=message)
 
 
-def fetch_ollama_api(base_url: str, endpoint: str, timeout: int = 5) -> dict | None:
-    """Fetch data from Ollama API."""
+def fetch_ollama_api(base_url: str, endpoint: str, timeout: int = 10) -> dict | None:
+    """
+    Fetch data from Ollama API.
+
+    Args:
+        base_url: Base URL of Ollama server
+        endpoint: API endpoint to call
+        timeout: Request timeout in seconds (default: 10)
+
+    Returns:
+        Response JSON dict or None if request fails
+    """
     url = f"{base_url.rstrip('/')}/{endpoint}"
     try:
         req = urllib.request.Request(url)
@@ -122,7 +132,7 @@ def fetch_ollama_api(base_url: str, endpoint: str, timeout: int = 5) -> dict | N
 
         with urllib.request.urlopen(req, timeout=timeout) as response:
             return json.loads(response.read().decode())
-    except urllib.error.URLError as e:
+    except urllib.error.URLError:
         return None
     except json.JSONDecodeError:
         return None
@@ -178,42 +188,44 @@ def get_embedding_description(model_name: str) -> str:
 
 
 def cmd_check_status(args) -> None:
-    """Check if Ollama is running and accessible."""
+    """
+    Check if Ollama is running and accessible.
+
+    Tries multiple API endpoints for better reliability.
+    """
     base_url = args.base_url or DEFAULT_OLLAMA_URL
 
-    # Try to get the version/health endpoint
-    result = fetch_ollama_api(base_url, "api/version")
+    # Try multiple endpoints for better reliability
+    endpoints = ["api/version", "api/tags"]
 
-    if result:
-        output_json(
-            True,
-            data={
-                "running": True,
-                "url": base_url,
-                "version": result.get("version", "unknown"),
-            },
-        )
-    else:
-        # Try alternative endpoint
-        tags = fetch_ollama_api(base_url, "api/tags")
-        if tags:
+    for endpoint in endpoints:
+        result = fetch_ollama_api(base_url, endpoint, timeout=10)
+
+        if result:
+            # Success - Ollama is running
+            version = result.get("version", "unknown")
             output_json(
                 True,
                 data={
                     "running": True,
                     "url": base_url,
-                    "version": "unknown",
+                    "version": version,
+                    "endpoint_used": endpoint,
                 },
             )
-        else:
-            output_json(
-                True,
-                data={
-                    "running": False,
-                    "url": base_url,
-                    "message": "Ollama is not running or not accessible",
-                },
-            )
+            return
+
+    # All endpoints failed
+    output_json(
+        True,
+        data={
+            "running": False,
+            "url": base_url,
+            "message": f"Ollama is not running or not accessible at {base_url}",
+            "tried_endpoints": endpoints,
+            "suggestion": "Ensure Ollama is running with: ollama serve",
+        },
+    )
 
 
 def cmd_list_models(args) -> None:
