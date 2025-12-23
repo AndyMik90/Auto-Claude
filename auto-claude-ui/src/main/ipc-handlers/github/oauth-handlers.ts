@@ -7,6 +7,7 @@ import { ipcMain, shell } from 'electron';
 import { execSync, execFileSync, spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
+import { getAugmentedEnv } from '../../utils/env-utils';
 
 // Debug logging helper
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
@@ -110,12 +111,13 @@ export function registerCheckGhCli(): void {
         const checkCmd = process.platform === 'win32' ? 'where gh' : 'which gh';
         debugLog(`Running command: ${checkCmd}`);
 
-        const whichResult = execSync(checkCmd, { encoding: 'utf-8', stdio: 'pipe' });
+        const env = getAugmentedEnv();
+        const whichResult = execSync(checkCmd, { encoding: 'utf-8', stdio: 'pipe', env });
         debugLog('gh CLI found at:', whichResult.trim());
 
         // Get version
         debugLog('Getting gh version...');
-        const versionOutput = execSync('gh --version', { encoding: 'utf-8', stdio: 'pipe' });
+        const versionOutput = execSync('gh --version', { encoding: 'utf-8', stdio: 'pipe', env });
         const version = versionOutput.trim().split('\n')[0];
         debugLog('gh version:', version);
 
@@ -145,7 +147,8 @@ export function registerCheckGhAuth(): void {
       try {
         // Check auth status
         debugLog('Running: gh auth status');
-        const authStatus = execSync('gh auth status', { encoding: 'utf-8', stdio: 'pipe' });
+        const env = getAugmentedEnv();
+        const authStatus = execSync('gh auth status', { encoding: 'utf-8', stdio: 'pipe', env });
         debugLog('Auth status output:', authStatus);
 
         // Get username if authenticated
@@ -153,7 +156,8 @@ export function registerCheckGhAuth(): void {
           debugLog('Getting username via: gh api user --jq .login');
           const username = execSync('gh api user --jq .login', {
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env
           }).trim();
           debugLog('Username:', username);
 
@@ -211,8 +215,10 @@ export function registerStartGhAuth(): void {
           const args = ['auth', 'login', '--web', '--scopes', 'repo'];
           debugLog('Spawning: gh', args);
 
+          const env = getAugmentedEnv();
           const ghProcess = spawn('gh', args, {
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env
           });
 
           let output = '';
@@ -363,9 +369,11 @@ export function registerGetGhToken(): void {
       debugLog('getGitHubToken handler called');
       try {
         debugLog('Running: gh auth token');
+        const env = getAugmentedEnv();
         const token = execSync('gh auth token', {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env
         }).trim();
 
         if (!token) {
@@ -402,9 +410,11 @@ export function registerGetGhUser(): void {
       debugLog('getGitHubUser handler called');
       try {
         debugLog('Running: gh api user');
+        const env = getAugmentedEnv();
         const userJson = execSync('gh api user', {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env
         });
 
         debugLog('User API response received');
@@ -596,9 +606,11 @@ export function registerCreateGitHubRepo(): void {
 
       try {
         // Get the authenticated username
+        const env = getAugmentedEnv();
         const username = execSync('gh api user --jq .login', {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env
         }).trim();
 
         // Determine the owner (personal account or organization)
@@ -625,10 +637,12 @@ export function registerCreateGitHubRepo(): void {
         args.push('--push');
 
         debugLog('Running: gh', args);
+        const env = getAugmentedEnv();
         const output = execFileSync('gh', args, {
           encoding: 'utf-8',
           cwd: options.projectPath,
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env
         });
 
         debugLog('gh repo create output:', output);
@@ -732,9 +746,11 @@ export function registerListGitHubOrgs(): void {
 
       try {
         // Get user's organizations
+        const env = getAugmentedEnv();
         const output = execSync('gh api user/orgs --jq \'.[] | {login: .login, avatarUrl: .avatar_url}\'', {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env
         });
 
         // Parse the JSON lines output

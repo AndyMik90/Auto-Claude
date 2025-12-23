@@ -11,6 +11,7 @@ import type { IPCResult, GitCommit, VersionSuggestion } from '../../../shared/ty
 import { projectStore } from '../../project-store';
 import { changelogService } from '../../changelog-service';
 import type { ReleaseOptions } from './types';
+import { getAugmentedEnv } from '../../utils/env-utils';
 
 /**
  * Check if gh CLI is installed
@@ -18,7 +19,8 @@ import type { ReleaseOptions } from './types';
 function checkGhCli(): { installed: boolean; error?: string } {
   try {
     const checkCmd = process.platform === 'win32' ? 'where gh' : 'which gh';
-    execSync(checkCmd, { encoding: 'utf-8', stdio: 'pipe' });
+    const env = getAugmentedEnv();
+    execSync(checkCmd, { encoding: 'utf-8', stdio: 'pipe', env });
     return { installed: true };
   } catch {
     return {
@@ -33,7 +35,8 @@ function checkGhCli(): { installed: boolean; error?: string } {
  */
 function checkGhAuth(projectPath: string): { authenticated: boolean; error?: string } {
   try {
-    execSync('gh auth status', { cwd: projectPath, encoding: 'utf-8', stdio: 'pipe' });
+    const env = getAugmentedEnv();
+    execSync('gh auth status', { cwd: projectPath, encoding: 'utf-8', stdio: 'pipe', env });
     return { authenticated: true };
   } catch {
     return {
@@ -95,10 +98,12 @@ export function registerCreateRelease(): void {
         const args = buildReleaseArgs(version, releaseNotes, options);
         const command = `gh ${args.map(a => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`;
 
+        const env = getAugmentedEnv();
         const output = execSync(command, {
           cwd: project.path,
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env
         }).trim();
 
         // Output is typically the release URL
