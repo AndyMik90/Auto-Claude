@@ -78,11 +78,11 @@ function validateWorktreePath(worktreePath: string, projectPath: string): boolea
  * These will be redacted from logs (but kept in the actual result).
  */
 const SENSITIVE_PATTERNS = [
-  /(?:api[_-]?key|apikey|secret|password|token|credential|auth)[=:]\s*['"]?[\w\-\.]+['"]?/gi,
-  /Bearer\s+[\w\-\.]+/gi,
-  /sk-[a-zA-Z0-9]{20,}/g,  // OpenAI API keys
-  /ghp_[a-zA-Z0-9]{36}/g,  // GitHub PATs
-  /npm_[a-zA-Z0-9]{36}/g,  // npm tokens
+  /(?:api[_-]?key|apikey|secret|password|token|credential|auth)[=:]\s*['"]?[\w\-.]+['"]?/gi,
+  /Bearer\s+[\w\-.]+/gi,
+  /sk-[a-zA-Z0-9]{20,}/g,
+  /ghp_[a-zA-Z0-9]{36}/g,
+  /npm_[a-zA-Z0-9]{36}/g,
 ];
 
 /**

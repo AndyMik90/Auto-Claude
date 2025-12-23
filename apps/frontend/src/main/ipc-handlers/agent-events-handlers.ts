@@ -24,7 +24,7 @@ function atomicWriteJson(filePath: string, data: unknown): void {
     writeFileSync(tempPath, JSON.stringify(data, null, 2));
     renameSync(tempPath, filePath);
   } catch (error) {
-    try { unlinkSync(tempPath); } catch {}
+    try { unlinkSync(tempPath); } catch (_) { void _; }
     throw error;
   }
 }
