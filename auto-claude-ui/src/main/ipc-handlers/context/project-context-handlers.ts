@@ -21,6 +21,8 @@ import {
   buildMemoryStatus
 } from './memory-status-handlers';
 import { loadFileBasedMemories } from './memory-data-handlers';
+import { agentManager } from '../../agent/agent-manager';
+import { parsePythonCommand } from '../../python-detector';
 
 /**
  * Load project index from file
@@ -157,9 +159,30 @@ export function registerProjectContextHandlers(
         const analyzerPath = path.join(autoBuildSource, 'analyzer.py');
         const indexOutputPath = path.join(project.path, AUTO_BUILD_PATHS.PROJECT_INDEX);
 
-        // Run analyzer
+        // Get Python command from agentManager (already loaded from settings at startup)
+        let pythonCmd = 'python3';  // Default fallback for macOS
+        try {
+          const configuredPath = agentManager.getPythonPath();
+          if (configuredPath) {
+            pythonCmd = configuredPath;
+            console.log('[project-context] Using configured Python:', pythonCmd);
+          } else {
+            console.warn('[project-context] No Python path configured, using default:', pythonCmd);
+          }
+        } catch (err) {
+          console.warn('[project-context] Could not get Python path from agentManager:', err);
+        }
+
+        // Parse Python command (handles "py -3", "python3", etc.)
+        const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonCmd);
+
+        // Run analyzer with proper Python resolution and logging
         await new Promise<void>((resolve, reject) => {
-          const proc = spawn('python', [
+          let stdout = '';
+          let stderr = '';
+
+          const proc = spawn(pythonCommand, [
+            ...pythonBaseArgs,
             analyzerPath,
             '--project-dir', project.path,
             '--output', indexOutputPath
@@ -168,15 +191,35 @@ export function registerProjectContextHandlers(
             env: { ...process.env }
           });
 
+          // Capture stdout for debugging
+          proc.stdout?.on('data', (data) => {
+            stdout += data.toString();
+          });
+
+          // Capture stderr for error messages
+          proc.stderr?.on('data', (data) => {
+            stderr += data.toString();
+          });
+
           proc.on('close', (code: number) => {
             if (code === 0) {
+              console.log('[project-context] Analyzer completed successfully');
+              if (stdout.trim()) {
+                console.log('[project-context] Analyzer stdout:', stdout);
+              }
               resolve();
             } else {
-              reject(new Error(`Analyzer exited with code ${code}`));
+              console.error('[project-context] Analyzer failed with code', code);
+              console.error('[project-context] Analyzer stderr:', stderr);
+              console.error('[project-context] Analyzer stdout:', stdout);
+              reject(new Error(`Analyzer exited with code ${code}: ${stderr || stdout}`));
             }
           });
 
-          proc.on('error', reject);
+          proc.on('error', (err) => {
+            console.error('[project-context] Failed to spawn analyzer:', err);
+            reject(err);
+          });
         });
 
         // Read the new index
