@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import path from 'path';
-import { existsSync, readFileSync, promises as fsPromises } from 'fs';
+import { existsSync, promises as fsPromises } from 'fs';
 import { EventEmitter } from 'events';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
@@ -434,22 +434,31 @@ export class AgentQueueManager {
             );
             debugLog('[Agent Queue] Loading ideation session from:', ideationFilePath);
             if (existsSync(ideationFilePath)) {
-              const content = readFileSync(ideationFilePath, 'utf-8');
-              const rawSession = JSON.parse(content);
-              const session = transformSessionFromSnakeCase(rawSession, projectId);
-              debugLog('[Agent Queue] Loaded ideation session:', {
-                totalIdeas: session.ideas?.length || 0
+              const loadSession = async (): Promise<void> => {
+                try {
+                  const content = await fsPromises.readFile(ideationFilePath, 'utf-8');
+                  const rawSession = JSON.parse(content);
+                  const session = transformSessionFromSnakeCase(rawSession, projectId);
+                  debugLog('[Agent Queue] Loaded ideation session:', {
+                    totalIdeas: session.ideas?.length || 0
+                  });
+                  this.emitter.emit('ideation-complete', projectId, session);
+                } catch (err) {
+                  debugError('[Ideation] Failed to load ideation session:', err);
+                  this.emitter.emit('ideation-error', projectId,
+                    `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                }
+              };
+              loadSession().catch((err: unknown) => {
+                debugError('[Agent Queue] Unhandled error loading ideation session:', err);
               });
-              this.emitter.emit('ideation-complete', projectId, session);
             } else {
               debugError('[Ideation] ideation.json not found at:', ideationFilePath);
               this.emitter.emit('ideation-error', projectId,
                 'Ideation completed but session file not found. Ideas may have been saved to individual type files.');
             }
           } catch (err) {
-            debugError('[Ideation] Failed to load ideation session:', err);
-            this.emitter.emit('ideation-error', projectId,
-              `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            debugError('[Ideation] Unexpected error in ideation completion:', err);
           }
         } else {
           debugError('[Ideation] No project path available to load session');
@@ -649,20 +658,31 @@ export class AgentQueueManager {
             );
             debugLog('[Agent Queue] Loading roadmap from:', roadmapFilePath);
             if (existsSync(roadmapFilePath)) {
-              const content = readFileSync(roadmapFilePath, 'utf-8');
-              const roadmap = JSON.parse(content);
-              debugLog('[Agent Queue] Loaded roadmap:', {
-                featuresCount: roadmap.features?.length || 0,
-                phasesCount: roadmap.phases?.length || 0
+              const loadRoadmap = async (): Promise<void> => {
+                try {
+                  const content = await fsPromises.readFile(roadmapFilePath, 'utf-8');
+                  const roadmap = JSON.parse(content);
+                  debugLog('[Agent Queue] Loaded roadmap:', {
+                    featuresCount: roadmap.features?.length || 0,
+                    phasesCount: roadmap.phases?.length || 0
+                  });
+                  this.emitter.emit('roadmap-complete', projectId, roadmap);
+                } catch (err) {
+                  debugError('[Roadmap] Failed to load roadmap:', err);
+                  this.emitter.emit('roadmap-error', projectId,
+                    `Failed to load roadmap: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                }
+              };
+              loadRoadmap().catch((err: unknown) => {
+                debugError('[Agent Queue] Unhandled error loading roadmap:', err);
               });
-              this.emitter.emit('roadmap-complete', projectId, roadmap);
             } else {
               debugError('[Roadmap] roadmap.json not found at:', roadmapFilePath);
-              console.warn('[Roadmap] roadmap.json not found at:', roadmapFilePath);
+              this.emitter.emit('roadmap-error', projectId,
+                'Roadmap completed but file not found.');
             }
           } catch (err) {
-            debugError('[Roadmap] Failed to load roadmap:', err);
-            console.error('[Roadmap] Failed to load roadmap:', err);
+            debugError('[Roadmap] Unexpected error in roadmap completion:', err);
           }
         }
       } else {
