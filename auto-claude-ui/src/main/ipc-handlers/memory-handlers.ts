@@ -78,7 +78,9 @@ async function executeOllamaDetector(
   }
 
   // Find the ollama_model_detector.py script
+  // In packaged Electron apps, process.resourcesPath points to the Resources folder
   const possiblePaths = [
+    path.resolve(process.resourcesPath || '', 'auto-claude', 'ollama_model_detector.py'),
     path.resolve(__dirname, '..', '..', '..', 'auto-claude', 'ollama_model_detector.py'),
     path.resolve(process.cwd(), 'auto-claude', 'ollama_model_detector.py'),
     path.resolve(process.cwd(), '..', 'auto-claude', 'ollama_model_detector.py'),
