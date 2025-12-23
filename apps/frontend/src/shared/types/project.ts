@@ -209,7 +209,7 @@ export interface GraphitiProviderConfig {
   // OpenRouter (multi-provider aggregator)
   openrouterApiKey?: string;
   openrouterBaseUrl?: string;  // Default: https://openrouter.ai/api/v1
-  openrouterLlmModel?: string;  // Legacy: for backward compatibility
+  openrouterLlmModel?: string;  // LLM model selection (e.g., 'anthropic/claude-3.5-sonnet')
   openrouterEmbeddingModel?: string;
 
   // Ollama Embeddings (local, no API key required)

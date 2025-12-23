@@ -125,7 +125,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     voyageApiKey: '',
     googleApiKey: settings.globalGoogleApiKey || '',
     groqApiKey: settings.globalGroqApiKey || '',
-    openrouterApiKey: '',
+    openrouterApiKey: settings.globalOpenRouterApiKey || '',
     openrouterBaseUrl: 'https://openrouter.ai/api/v1',
     openrouterLlmModel: 'anthropic/claude-3.5-sonnet',
     openrouterEmbeddingModel: 'openai/text-embedding-3-small',
@@ -330,11 +330,12 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
 
       if (result?.success) {
         // Update local settings store with API key settings
-        const storeUpdate: Partial<Pick<AppSettings, 'globalOpenAIApiKey' | 'globalAnthropicApiKey' | 'globalGoogleApiKey' | 'globalGroqApiKey' | 'ollamaBaseUrl'>> = {};
+        const storeUpdate: Partial<Pick<AppSettings, 'globalOpenAIApiKey' | 'globalAnthropicApiKey' | 'globalGoogleApiKey' | 'globalGroqApiKey' | 'globalOpenRouterApiKey' | 'ollamaBaseUrl'>> = {};
         if (config.openaiApiKey.trim()) storeUpdate.globalOpenAIApiKey = config.openaiApiKey.trim();
         if (config.anthropicApiKey.trim()) storeUpdate.globalAnthropicApiKey = config.anthropicApiKey.trim();
         if (config.googleApiKey.trim()) storeUpdate.globalGoogleApiKey = config.googleApiKey.trim();
         if (config.groqApiKey.trim()) storeUpdate.globalGroqApiKey = config.groqApiKey.trim();
+        if (config.openrouterApiKey.trim()) storeUpdate.globalOpenRouterApiKey = config.openrouterApiKey.trim();
         if (config.ollamaBaseUrl.trim()) storeUpdate.ollamaBaseUrl = config.ollamaBaseUrl.trim();
         updateSettings(storeUpdate);
         onNext();

@@ -8,8 +8,8 @@ Follows the same patterns as linear_config.py for consistency.
 Uses LadybugDB as the embedded graph database (no Docker required, requires Python 3.12+).
 
 Multi-Provider Support (V2):
-- LLM Providers: OpenAI, Anthropic, Azure OpenAI, Ollama, Google AI
-- Embedder Providers: OpenAI, Voyage AI, Azure OpenAI, Ollama, Google AI
+- LLM Providers: OpenAI, Anthropic, Azure OpenAI, Ollama, Google AI, OpenRouter
+- Embedder Providers: OpenAI, Voyage AI, Azure OpenAI, Ollama, Google AI, OpenRouter
 
 Environment Variables:
     # Core
@@ -396,6 +396,18 @@ class GraphitiConfig:
         elif self.embedder_provider == "azure_openai":
             # Depends on the deployment, default to 1536
             return 1536
+        elif self.embedder_provider == "openrouter":
+            # OpenRouter uses provider/model format
+            # Extract underlying provider to determine dimension
+            model = self.openrouter_embedding_model.lower()
+            if model.startswith("openai/"):
+                return 1536  # OpenAI text-embedding-3-small
+            elif model.startswith("voyage/"):
+                return 1024  # Voyage-3
+            elif model.startswith("google/"):
+                return 768  # Google text-embedding-004
+            # Add more providers as needed
+            return 1536  # Default for unknown OpenRouter models
         return 768  # Safe default
 
     def get_provider_signature(self) -> str:
@@ -432,7 +444,7 @@ class GraphitiConfig:
             base_name = self.database
 
         # Remove existing provider suffix if present
-        for provider in ["openai", "ollama", "voyage", "google", "azure_openai"]:
+        for provider in ["openai", "ollama", "voyage", "google", "azure_openai", "openrouter"]:
             if f"_{provider}_" in base_name:
                 base_name = base_name.split(f"_{provider}_")[0]
                 break
@@ -645,6 +657,11 @@ def get_available_providers() -> dict:
     if config.google_api_key:
         available_llm.append("google")
         available_embedder.append("google")
+
+    # Check OpenRouter
+    if config.openrouter_api_key:
+        available_llm.append("openrouter")
+        available_embedder.append("openrouter")
 
     # Check Ollama
     if config.ollama_llm_model:
