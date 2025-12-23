@@ -386,6 +386,8 @@ export class AgentQueueManager {
         debugLog('[Agent Queue] Ideation process was intentionally stopped, ignoring exit');
         this.state.clearKilledSpawn(spawnId);
         this.state.deleteProcess(projectId);
+        // Emit stopped event to ensure UI updates
+        this.emitter.emit('ideation-stopped', projectId);
         return;
       }
 
@@ -435,12 +437,18 @@ export class AgentQueueManager {
               this.emitter.emit('ideation-complete', projectId, session);
             } else {
               debugError('[Ideation] ideation.json not found at:', ideationFilePath);
-              console.warn('[Ideation] ideation.json not found at:', ideationFilePath);
+              this.emitter.emit('ideation-error', projectId,
+                'Ideation completed but session file not found. Ideas may have been saved to individual type files.');
             }
           } catch (err) {
             debugError('[Ideation] Failed to load ideation session:', err);
-            console.error('[Ideation] Failed to load ideation session:', err);
+            this.emitter.emit('ideation-error', projectId,
+              `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
           }
+        } else {
+          debugError('[Ideation] No project path available to load session');
+          this.emitter.emit('ideation-error', projectId,
+            'Ideation completed but project path unavailable');
         }
       } else {
         debugError('[Agent Queue] Ideation generation failed:', { projectId, code });

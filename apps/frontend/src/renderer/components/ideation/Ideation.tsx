@@ -83,7 +83,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
     );
   }
 
-  // Show empty state
+  // Show empty state only when no session exists (first run)
   if (!session) {
     return (
       <>
