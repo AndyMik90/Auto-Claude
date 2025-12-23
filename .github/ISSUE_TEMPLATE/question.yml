@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Before asking:** Check [Discord](https://discord.gg/KCXaPBr4Dj) - your question may already be answered there!
+        **Before asking:** Check [Discord](https://discord.gg/QhRnz9m5HE) - your question may already be answered there!
 
   - type: checkboxes
     id: checklist
