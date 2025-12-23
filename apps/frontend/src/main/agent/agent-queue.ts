@@ -1,16 +1,19 @@
 import { spawn } from 'child_process';
 import path from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, promises as fsPromises } from 'fs';
 import { EventEmitter } from 'events';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
-import type { IdeationConfig } from '../../shared/types';
+import type { IdeationConfig, Idea } from '../../shared/types';
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { parsePythonCommand } from '../python-detector';
+import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ipc-handlers/ideation/transformers';
+import { transformRoadmapFromSnakeCase } from '../ipc-handlers/roadmap/transformers';
+import type { RawIdea } from '../ipc-handlers/ideation/types';
 
 /**
  * Queue management for ideation and roadmap generation
@@ -286,7 +289,6 @@ export class AgentQueueManager {
       // Emit all log lines for the activity log
       emitLogs(log);
 
-      // Check for streaming type completion signals
       const typeCompleteMatch = log.match(/IDEATION_TYPE_COMPLETE:(\w+):(\d+)/);
       if (typeCompleteMatch) {
         const [, ideationType, ideasCount] = typeCompleteMatch;
@@ -299,8 +301,41 @@ export class AgentQueueManager {
           totalCompleted: completedTypes.size
         });
 
-        // Emit event for UI to load this type's ideas immediately
-        this.emitter.emit('ideation-type-complete', projectId, ideationType, parseInt(ideasCount, 10));
+        const typeFilePath = path.join(
+          projectPath,
+          '.auto-claude',
+          'ideation',
+          `${ideationType}_ideas.json`
+        );
+
+        const loadIdeationType = async (): Promise<void> => {
+          try {
+            const content = await fsPromises.readFile(typeFilePath, 'utf-8');
+            const data: Record<string, RawIdea[]> = JSON.parse(content);
+            const rawIdeas: RawIdea[] = data[ideationType] || [];
+            const ideas: Idea[] = rawIdeas.map(transformIdeaFromSnakeCase);
+            debugLog('[Agent Queue] Loaded ideas for type:', {
+              ideationType,
+              loadedCount: ideas.length,
+              filePath: typeFilePath
+            });
+            this.emitter.emit('ideation-type-complete', projectId, ideationType, ideas);
+          } catch (err) {
+            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+              debugError('[Agent Queue] Ideas file not found:', typeFilePath);
+            } else {
+              debugError('[Agent Queue] Failed to load ideas for type:', ideationType, err);
+            }
+            this.emitter.emit('ideation-type-complete', projectId, ideationType, []);
+          }
+        };
+        loadIdeationType().catch((err: unknown) => {
+          debugError('[Agent Queue] Unhandled error in ideation type handler (event already emitted):', {
+            ideationType,
+            projectId,
+            typeFilePath
+          }, err);
+        });
       }
 
       const typeFailedMatch = log.match(/IDEATION_TYPE_FAILED:(\w+)/);
@@ -357,6 +392,8 @@ export class AgentQueueManager {
         debugLog('[Agent Queue] Ideation process was intentionally stopped, ignoring exit');
         this.state.clearKilledSpawn(spawnId);
         this.state.deleteProcess(projectId);
+        // Emit stopped event to ensure UI updates
+        this.emitter.emit('ideation-stopped', projectId);
         return;
       }
 
@@ -397,20 +434,38 @@ export class AgentQueueManager {
             );
             debugLog('[Agent Queue] Loading ideation session from:', ideationFilePath);
             if (existsSync(ideationFilePath)) {
-              const content = readFileSync(ideationFilePath, 'utf-8');
-              const session = JSON.parse(content);
-              debugLog('[Agent Queue] Loaded ideation session:', {
-                totalIdeas: session.ideas?.length || 0
+              const loadSession = async (): Promise<void> => {
+                try {
+                  const content = await fsPromises.readFile(ideationFilePath, 'utf-8');
+                  const rawSession = JSON.parse(content);
+                  const session = transformSessionFromSnakeCase(rawSession, projectId);
+                  debugLog('[Agent Queue] Loaded ideation session:', {
+                    totalIdeas: session.ideas?.length || 0
+                  });
+                  this.emitter.emit('ideation-complete', projectId, session);
+                } catch (err) {
+                  debugError('[Ideation] Failed to load ideation session:', err);
+                  this.emitter.emit('ideation-error', projectId,
+                    `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                }
+              };
+              loadSession().catch((err: unknown) => {
+                debugError('[Agent Queue] Unhandled error loading ideation session:', err);
               });
-              this.emitter.emit('ideation-complete', projectId, session);
             } else {
               debugError('[Ideation] ideation.json not found at:', ideationFilePath);
-              console.warn('[Ideation] ideation.json not found at:', ideationFilePath);
+              this.emitter.emit('ideation-error', projectId,
+                'Ideation completed but session file not found. Ideas may have been saved to individual type files.');
             }
           } catch (err) {
-            debugError('[Ideation] Failed to load ideation session:', err);
-            console.error('[Ideation] Failed to load ideation session:', err);
+            debugError('[Ideation] Unexpected error in ideation completion:', err);
+            this.emitter.emit('ideation-error', projectId,
+              `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
           }
+        } else {
+          debugError('[Ideation] No project path available to load session');
+          this.emitter.emit('ideation-error', projectId,
+            'Ideation completed but project path unavailable');
         }
       } else {
         debugError('[Agent Queue] Ideation generation failed:', { projectId, code });
@@ -605,21 +660,38 @@ export class AgentQueueManager {
             );
             debugLog('[Agent Queue] Loading roadmap from:', roadmapFilePath);
             if (existsSync(roadmapFilePath)) {
-              const content = readFileSync(roadmapFilePath, 'utf-8');
-              const roadmap = JSON.parse(content);
-              debugLog('[Agent Queue] Loaded roadmap:', {
-                featuresCount: roadmap.features?.length || 0,
-                phasesCount: roadmap.phases?.length || 0
+              const loadRoadmap = async (): Promise<void> => {
+                try {
+                  const content = await fsPromises.readFile(roadmapFilePath, 'utf-8');
+                  const rawRoadmap = JSON.parse(content);
+                  const transformedRoadmap = transformRoadmapFromSnakeCase(rawRoadmap, projectId);
+                  debugLog('[Agent Queue] Loaded roadmap:', {
+                    featuresCount: transformedRoadmap.features?.length || 0,
+                    phasesCount: transformedRoadmap.phases?.length || 0
+                  });
+                  this.emitter.emit('roadmap-complete', projectId, transformedRoadmap);
+                } catch (err) {
+                  debugError('[Roadmap] Failed to load roadmap:', err);
+                  this.emitter.emit('roadmap-error', projectId,
+                    `Failed to load roadmap: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                }
+              };
+              loadRoadmap().catch((err: unknown) => {
+                debugError('[Agent Queue] Unhandled error loading roadmap:', err);
               });
-              this.emitter.emit('roadmap-complete', projectId, roadmap);
             } else {
               debugError('[Roadmap] roadmap.json not found at:', roadmapFilePath);
-              console.warn('[Roadmap] roadmap.json not found at:', roadmapFilePath);
+              this.emitter.emit('roadmap-error', projectId,
+                'Roadmap completed but file not found.');
             }
           } catch (err) {
-            debugError('[Roadmap] Failed to load roadmap:', err);
-            console.error('[Roadmap] Failed to load roadmap:', err);
+            debugError('[Roadmap] Unexpected error in roadmap completion:', err);
+            this.emitter.emit('roadmap-error', projectId,
+              `Unexpected error: ${err instanceof Error ? err.message : 'Unknown error'}`);
           }
+        } else {
+          debugError('[Roadmap] No project path available for roadmap completion');
+          this.emitter.emit('roadmap-error', projectId, 'Roadmap completed but project path not found.');
         }
       } else {
         debugError('[Agent Queue] Roadmap generation failed:', { projectId, code });

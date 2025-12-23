@@ -18,23 +18,89 @@ export function findPythonCommand(): string | null {
 
   for (const cmd of candidates) {
     try {
-      const version = execSync(`${cmd} --version`, {
-        stdio: 'pipe',
-        timeout: 5000,
-        windowsHide: true
-      }).toString();
-
-      if (version.includes('Python 3')) {
+      // Validate version meets minimum requirement (Python 3.10+)
+      const validation = validatePythonVersion(cmd);
+      if (validation.valid) {
+        console.log(`[Python] Found valid Python: ${cmd} (${validation.version})`);
         return cmd;
+      } else {
+        console.warn(`[Python] ${cmd} version too old: ${validation.message}`);
+        continue;
       }
     } catch {
       // Command not found or errored, try next
+      console.warn(`[Python] Command not found or errored: ${cmd}`);
       continue;
     }
   }
 
   // Fallback to platform-specific default
   return isWindows ? 'python' : 'python3';
+}
+
+/**
+ * Extract Python version from a command.
+ *
+ * @param pythonCmd - The Python command to check (e.g., "python3", "py -3")
+ * @returns The version string (e.g., "3.10.5") or null if unable to detect
+ */
+function getPythonVersion(pythonCmd: string): string | null {
+  try {
+    const version = execSync(`${pythonCmd} --version`, {
+      stdio: 'pipe',
+      timeout: 5000,
+      windowsHide: true
+    }).toString().trim();
+
+    // Extract version number from "Python 3.10.5" format
+    const match = version.match(/Python (\d+\.\d+\.\d+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate that a Python command meets minimum version requirements.
+ *
+ * @param pythonCmd - The Python command to validate
+ * @returns Validation result with status, version, and message
+ */
+function validatePythonVersion(pythonCmd: string): {
+  valid: boolean;
+  version?: string;
+  message: string;
+} {
+  const MINIMUM_VERSION = '3.10.0';
+
+  const versionStr = getPythonVersion(pythonCmd);
+  if (!versionStr) {
+    return {
+      valid: false,
+      message: 'Unable to detect Python version'
+    };
+  }
+
+  // Parse version numbers for comparison
+  const [major, minor] = versionStr.split('.').map(Number);
+  const [reqMajor, reqMinor] = MINIMUM_VERSION.split('.').map(Number);
+
+  const meetsRequirement =
+    major > reqMajor || (major === reqMajor && minor >= reqMinor);
+
+  if (!meetsRequirement) {
+    return {
+      valid: false,
+      version: versionStr,
+      message: `Python ${versionStr} is too old. Requires Python ${MINIMUM_VERSION}+ (claude-agent-sdk requirement)`
+    };
+  }
+
+  return {
+    valid: true,
+    version: versionStr,
+    message: `Python ${versionStr} meets requirements`
+  };
 }
 
 /**

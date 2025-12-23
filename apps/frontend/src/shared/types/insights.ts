@@ -18,7 +18,7 @@ export type IdeationType =
   | 'performance_optimizations'
   | 'code_quality';
 export type IdeationStatus = 'draft' | 'selected' | 'converted' | 'dismissed' | 'archived';
-export type IdeationGenerationPhase = 'idle' | 'analyzing' | 'discovering' | 'generating' | 'complete' | 'error';
+export type IdeationGenerationPhase = 'idle' | 'analyzing' | 'discovering' | 'generating' | 'finalizing' | 'complete' | 'error';
 
 export interface IdeationConfig {
   enabledTypes: IdeationType[];

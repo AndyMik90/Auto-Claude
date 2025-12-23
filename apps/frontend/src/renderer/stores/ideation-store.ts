@@ -10,7 +10,18 @@ import type {
 } from '../../shared/types';
 import { DEFAULT_IDEATION_CONFIG } from '../../shared/constants';
 
-// Tracks the state of each ideation type during parallel generation
+const GENERATION_TIMEOUT_MS = 5 * 60 * 1000;
+
+const generationTimeoutIds = new Map<string, ReturnType<typeof setTimeout>>();
+
+function clearGenerationTimeout(projectId: string): void {
+  const timeoutId = generationTimeoutIds.get(projectId);
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+    generationTimeoutIds.delete(projectId);
+  }
+}
+
 export type IdeationTypeState = 'pending' | 'generating' | 'completed' | 'failed';
 
 interface IdeationState {
@@ -19,13 +30,13 @@ interface IdeationState {
   generationStatus: IdeationGenerationStatus;
   config: IdeationConfig;
   logs: string[];
-  // Track which ideation types are pending, generating, completed, or failed
   typeStates: Record<IdeationType, IdeationTypeState>;
-  // Selection state
   selectedIds: Set<string>;
+  isGenerating: boolean;
 
   // Actions
   setSession: (session: IdeationSession | null) => void;
+  setIsGenerating: (isGenerating: boolean) => void;
   setGenerationStatus: (status: IdeationGenerationStatus) => void;
   setConfig: (config: Partial<IdeationConfig>) => void;
   updateIdeaStatus: (ideaId: string, status: IdeationStatus) => void;
@@ -46,6 +57,7 @@ interface IdeationState {
   initializeTypeStates: (types: IdeationType[]) => void;
   setTypeState: (type: IdeationType, state: IdeationTypeState) => void;
   addIdeasForType: (ideationType: string, ideas: Idea[]) => void;
+  resetGeneratingTypes: (toState: IdeationTypeState) => void;
 }
 
 const initialGenerationStatus: IdeationGenerationStatus = {
@@ -80,9 +92,12 @@ export const useIdeationStore = create<IdeationState>((set) => ({
   logs: [],
   typeStates: { ...initialTypeStates },
   selectedIds: new Set<string>(),
+  isGenerating: false,
 
   // Actions
   setSession: (session) => set({ session }),
+
+  setIsGenerating: (isGenerating) => set({ isGenerating }),
 
   setGenerationStatus: (status) => set({ generationStatus: status }),
 
@@ -281,21 +296,18 @@ export const useIdeationStore = create<IdeationState>((set) => ({
       typeStates: { ...prevState.typeStates, [type]: state }
     })),
 
-  // Add ideas for a specific type (streaming update)
   addIdeasForType: (ideationType, ideas) =>
     set((state) => {
-      // Update type state to completed
       const newTypeStates = { ...state.typeStates };
       newTypeStates[ideationType as IdeationType] = 'completed';
 
-      // If no session exists yet, create a partial one
       if (!state.session) {
         const config = state.config;
         return {
           typeStates: newTypeStates,
           session: {
             id: `session-${Date.now()}`,
-            projectId: '', // Will be set by final session
+            projectId: '',
             config,
             ideas,
             projectContext: {
@@ -309,24 +321,45 @@ export const useIdeationStore = create<IdeationState>((set) => ({
         };
       }
 
-      // Merge new ideas with existing ones (avoid duplicates by id)
-      const existingIds = new Set(state.session.ideas.map((i) => i.id));
-      const newIdeas = ideas.filter((idea) => !existingIds.has(idea.id));
+      // Replace ideas of this type (remove old ones including dismissed), keep other types
+      const otherTypeIdeas = state.session.ideas.filter(
+        (idea) => idea.type !== ideationType
+      );
 
       return {
         typeStates: newTypeStates,
         session: {
           ...state.session,
-          ideas: [...state.session.ideas, ...newIdeas],
+          ideas: [...otherTypeIdeas, ...ideas],
           updatedAt: new Date()
         }
       };
+    }),
+
+  resetGeneratingTypes: (toState: IdeationTypeState) =>
+    set((state) => {
+      const newTypeStates = { ...state.typeStates };
+      Object.entries(newTypeStates).forEach(([type, currentState]) => {
+        if (currentState === 'generating') {
+          newTypeStates[type as IdeationType] = toState;
+        }
+      });
+      return { typeStates: newTypeStates };
     })
 }));
 
-// Helper functions for loading ideation
 export async function loadIdeation(projectId: string): Promise<void> {
+  if (useIdeationStore.getState().isGenerating) {
+    return;
+  }
+
   const result = await window.electronAPI.getIdeation(projectId);
+
+  // Check again after async operation to handle race condition
+  if (useIdeationStore.getState().isGenerating) {
+    return;
+  }
+
   if (result.success && result.data) {
     useIdeationStore.getState().setSession(result.data);
   } else {
@@ -338,7 +371,6 @@ export function generateIdeation(projectId: string): void {
   const store = useIdeationStore.getState();
   const config = store.config;
 
-  // Debug logging
   if (window.DEBUG) {
     console.log('[Ideation] Starting generation:', {
       projectId,
@@ -349,8 +381,11 @@ export function generateIdeation(projectId: string): void {
     });
   }
 
+  clearGenerationTimeout(projectId);
+
   store.clearLogs();
-  store.clearSession(); // Clear existing session for fresh generation
+  store.clearSession();
+  store.setIsGenerating(true);
   store.initializeTypeStates(config.enabledTypes);
   store.addLog('Starting ideation generation in parallel...');
   store.setGenerationStatus({
@@ -358,6 +393,27 @@ export function generateIdeation(projectId: string): void {
     progress: 0,
     message: `Generating ${config.enabledTypes.length} ideation types in parallel...`
   });
+
+  const timeoutId = setTimeout(() => {
+    const currentState = useIdeationStore.getState();
+    if (currentState.generationStatus.phase === 'generating') {
+      if (window.DEBUG) {
+        console.warn('[Ideation] Generation timed out after', GENERATION_TIMEOUT_MS, 'ms');
+      }
+      clearGenerationTimeout(projectId);
+      currentState.setIsGenerating(false);
+      currentState.resetGeneratingTypes('failed');
+      currentState.setGenerationStatus({
+        phase: 'error',
+        progress: 0,
+        message: '',
+        error: 'Generation timed out. Some ideas may have been generated - check the results.'
+      });
+      currentState.addLog('⚠ Generation timed out');
+    }
+  }, GENERATION_TIMEOUT_MS);
+  generationTimeoutIds.set(projectId, timeoutId);
+
   window.electronAPI.generateIdeation(projectId, config);
 }
 
@@ -369,8 +425,7 @@ export async function stopIdeation(projectId: string): Promise<boolean> {
     console.log('[Ideation] Stop requested:', { projectId });
   }
 
-  // Always update UI state to 'idle' when user requests stop, regardless of backend response
-  // This prevents the UI from getting stuck in "generating" state if the process already ended
+  store.setIsGenerating(false);
   store.addLog('Stopping ideation generation...');
   store.setGenerationStatus({
     phase: 'idle',
@@ -399,11 +454,11 @@ export async function refreshIdeation(projectId: string): Promise<void> {
   const store = useIdeationStore.getState();
   const config = store.config;
 
-  // Stop any existing generation first
   await window.electronAPI.stopIdeation(projectId);
 
   store.clearLogs();
-  store.clearSession(); // Clear existing session for fresh generation
+  store.clearSession();
+  store.setIsGenerating(true);
   store.initializeTypeStates(config.enabledTypes);
   store.addLog('Refreshing ideation in parallel...');
   store.setGenerationStatus({
@@ -464,11 +519,9 @@ export function appendIdeation(projectId: string, typesToAdd: IdeationType[]): v
   const store = useIdeationStore.getState();
   const config = store.config;
 
-  // Don't clear existing session - we're appending
   store.clearLogs();
+  store.setIsGenerating(true);
 
-  // Only initialize states for the new types we're adding
-  // Keep existing type states as 'completed' for types we already have
   const newTypeStates = { ...store.typeStates };
   typesToAdd.forEach((type) => {
     newTypeStates[type] = 'generating';
@@ -482,7 +535,6 @@ export function appendIdeation(projectId: string, typesToAdd: IdeationType[]): v
     message: `Generating ${typesToAdd.length} additional ideation types...`
   });
 
-  // Call generate with append mode and only the new types
   const appendConfig = {
     ...config,
     enabledTypes: typesToAdd,
@@ -527,16 +579,20 @@ export function getIdeationSummary(session: IdeationSession | null): IdeationSum
     };
   }
 
+  const activeIdeas = session.ideas.filter(
+    (idea) => idea.status !== 'dismissed' && idea.status !== 'archived'
+  );
+
   const byType: Record<string, number> = {};
   const byStatus: Record<string, number> = {};
 
-  session.ideas.forEach((idea) => {
+  activeIdeas.forEach((idea) => {
     byType[idea.type] = (byType[idea.type] || 0) + 1;
     byStatus[idea.status] = (byStatus[idea.status] || 0) + 1;
   });
 
   return {
-    totalIdeas: session.ideas.length,
+    totalIdeas: activeIdeas.length,
     byType: byType as Record<IdeationType, number>,
     byStatus: byStatus as Record<IdeationStatus, number>,
     lastGenerated: session.generatedAt
@@ -625,9 +681,7 @@ export function setupIdeationListeners(): () => void {
     }
   );
 
-  // Listen for completion (final session with all data)
   const unsubComplete = window.electronAPI.onIdeationComplete((_projectId, session) => {
-    // Debug logging
     if (window.DEBUG) {
       console.log('[Ideation] Generation complete:', {
         projectId: _projectId,
@@ -639,8 +693,11 @@ export function setupIdeationListeners(): () => void {
       });
     }
 
-    // Final session replaces the partial one with complete data
+    clearGenerationTimeout(_projectId);
+
+    store().setIsGenerating(false);
     store().setSession(session);
+    store().resetGeneratingTypes('completed');
     store().setGenerationStatus({
       phase: 'complete',
       progress: 100,
@@ -649,13 +706,15 @@ export function setupIdeationListeners(): () => void {
     store().addLog('Ideation generation complete!');
   });
 
-  // Listen for errors
   const unsubError = window.electronAPI.onIdeationError((_projectId, error) => {
-    // Debug logging
     if (window.DEBUG) {
       console.error('[Ideation] Error received:', { projectId: _projectId, error });
     }
 
+    clearGenerationTimeout(_projectId);
+
+    store().setIsGenerating(false);
+    store().resetGeneratingTypes('failed');
     store().setGenerationStatus({
       phase: 'error',
       progress: 0,
@@ -665,8 +724,15 @@ export function setupIdeationListeners(): () => void {
     store().addLog(`Error: ${error}`);
   });
 
-  // Listen for stopped event
   const unsubStopped = window.electronAPI.onIdeationStopped((_projectId) => {
+    if (window.DEBUG) {
+      console.log('[Ideation] Stopped:', { projectId: _projectId });
+    }
+
+    clearGenerationTimeout(_projectId);
+
+    store().setIsGenerating(false);
+    store().resetGeneratingTypes('pending');
     store().setGenerationStatus({
       phase: 'idle',
       progress: 0,
@@ -675,8 +741,11 @@ export function setupIdeationListeners(): () => void {
     store().addLog('Ideation generation stopped');
   });
 
-  // Return cleanup function
   return () => {
+    for (const [projectId] of generationTimeoutIds) {
+      clearGenerationTimeout(projectId);
+    }
+
     unsubProgress();
     unsubLog();
     unsubTypeComplete();

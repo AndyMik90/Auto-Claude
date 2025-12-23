@@ -76,10 +76,11 @@ export function GenerationProgressScreen({
     }
   }, [logs, showLogs]);
 
-  // Get ideas for a specific type from the current session
   const getStreamingIdeasByType = (type: IdeationType): Idea[] => {
     if (!session) return [];
-    return session.ideas.filter((idea) => idea.type === type);
+    return session.ideas.filter(
+      (idea) => idea.type === type && idea.status !== 'dismissed' && idea.status !== 'archived'
+    );
   };
 
   // Count how many types are still generating

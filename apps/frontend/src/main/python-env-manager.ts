@@ -3,6 +3,7 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
+import { findPythonCommand } from './python-detector';
 
 export interface PythonEnvStatus {
   ready: boolean;
@@ -96,61 +97,29 @@ export class PythonEnvManager extends EventEmitter {
   }
 
   /**
-   * Find system Python3
+   * Find system Python 3.10+
+   * Uses the shared python-detector logic which validates version requirements.
    */
   private findSystemPython(): string | null {
-    const isWindows = process.platform === 'win32';
-
-    // Windows candidates - py launcher is handled specially
-    // Unix candidates - try python3 first, then python
-    const candidates = isWindows
-      ? ['python', 'python3']
-      : ['python3', 'python'];
-
-    // On Windows, try the py launcher first (most reliable)
-    if (isWindows) {
-      try {
-        // py -3 runs Python 3, verify it works
-        const version = execSync('py -3 --version', {
-          stdio: 'pipe',
-          timeout: 5000
-        }).toString();
-        if (version.includes('Python 3')) {
-          // Get the actual executable path
-          const pythonPath = execSync('py -3 -c "import sys; print(sys.executable)"', {
-            stdio: 'pipe',
-            timeout: 5000
-          }).toString().trim();
-          return pythonPath;
-        }
-      } catch {
-        // py launcher not available, continue with other candidates
-      }
+    const pythonCmd = findPythonCommand();
+    if (!pythonCmd) {
+      return null;
     }
 
-    for (const cmd of candidates) {
-      try {
-        const version = execSync(`${cmd} --version`, {
-          stdio: 'pipe',
-          timeout: 5000
-        }).toString();
-        if (version.includes('Python 3')) {
-          // Get the actual path
-          // On Windows, use Python itself to get the path
-          // On Unix, use 'which'
-          const pathCmd = isWindows
-            ? `${cmd} -c "import sys; print(sys.executable)"`
-            : `which ${cmd}`;
-          const pythonPath = execSync(pathCmd, { stdio: 'pipe', timeout: 5000 })
-            .toString()
-            .trim();
-          return pythonPath;
-        }
-      } catch {
-        continue;
-      }
+    try {
+      // Get the actual executable path from the command
+      // For commands like "py -3", we need to resolve to the actual executable
+      const pythonPath = execSync(`${pythonCmd} -c "import sys; print(sys.executable)"`, {
+        stdio: 'pipe',
+        timeout: 5000
+      }).toString().trim();
+
+      console.log(`[PythonEnvManager] Found Python at: ${pythonPath}`);
+      return pythonPath;
+    } catch (err) {
+      console.error(`[PythonEnvManager] Failed to get Python path for ${pythonCmd}:`, err);
+      return null;
     }
-    return null;
   }
 
   /**
@@ -161,7 +130,11 @@ export class PythonEnvManager extends EventEmitter {
 
     const systemPython = this.findSystemPython();
     if (!systemPython) {
-      this.emit('error', 'Python 3 not found. Please install Python 3.9+');
+      this.emit(
+        'error',
+        'Python 3.10+ not found. Please install Python 3.10 or higher (required by claude-agent-sdk).\n\n' +
+        'Download: https://www.python.org/downloads/'
+      );
       return false;
     }
 
