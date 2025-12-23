@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Check,
   Download,
@@ -69,7 +69,7 @@ export function OllamaModelSelector({
   const [ollamaAvailable, setOllamaAvailable] = useState(true);
 
   // Check installed models - used by both mount effect and refresh after download
-  const checkInstalledModels = async (abortSignal?: AbortSignal) => {
+  const checkInstalledModels = useCallback(async (abortSignal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
 
@@ -128,14 +128,14 @@ export function OllamaModelSelector({
         setIsLoading(false);
       }
     }
-  };
+  }, []);
 
   // Fetch installed models on mount with cleanup
   useEffect(() => {
     const controller = new AbortController();
     checkInstalledModels(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [checkInstalledModels]);
 
   const handleDownload = async (modelName: string) => {
     setIsDownloading(modelName);
@@ -188,6 +188,7 @@ export function OllamaModelSelector({
                 variant="outline"
                 size="sm"
                 onClick={() => checkInstalledModels()}
+                disabled={isLoading}
               >
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 Retry Detection
@@ -195,7 +196,7 @@ export function OllamaModelSelector({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.open('https://ollama.ai/download', '_blank')}
+                onClick={() => window.open('https://ollama.ai/download', '_blank', 'noopener,noreferrer')}
               >
                 Download Ollama
               </Button>
