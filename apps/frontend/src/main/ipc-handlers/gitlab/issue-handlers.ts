@@ -27,6 +27,24 @@ function debugLog(message: string, data?: unknown): void {
  * Transform GitLab API issue to our format
  */
 function transformIssue(apiIssue: GitLabAPIIssue, projectPath: string): GitLabIssue {
+  // Transform milestone with state validation
+  let milestone: GitLabIssue['milestone'];
+  if (apiIssue.milestone) {
+    const rawState = apiIssue.milestone.state;
+    let milestoneState: 'active' | 'closed';
+    if (rawState === 'active' || rawState === 'closed') {
+      milestoneState = rawState;
+    } else {
+      debugLog(`Unknown milestone state '${rawState}' for issue #${apiIssue.iid} (id: ${apiIssue.id}), defaulting to 'active'`);
+      milestoneState = 'active';
+    }
+    milestone = {
+      id: apiIssue.milestone.id,
+      title: apiIssue.milestone.title,
+      state: milestoneState
+    };
+  }
+
   return {
     id: apiIssue.id,
     iid: apiIssue.iid,
@@ -42,13 +60,7 @@ function transformIssue(apiIssue: GitLabAPIIssue, projectPath: string): GitLabIs
       username: apiIssue.author.username,
       avatarUrl: apiIssue.author.avatar_url
     },
-    milestone: apiIssue.milestone ? {
-      id: apiIssue.milestone.id,
-      title: apiIssue.milestone.title,
-      state: apiIssue.milestone.state === 'active' || apiIssue.milestone.state === 'closed'
-        ? apiIssue.milestone.state
-        : 'active' // Default to 'active' for unknown states
-    } : undefined,
+    milestone,
     createdAt: apiIssue.created_at,
     updatedAt: apiIssue.updated_at,
     closedAt: apiIssue.closed_at,

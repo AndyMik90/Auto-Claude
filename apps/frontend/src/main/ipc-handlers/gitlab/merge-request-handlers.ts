@@ -10,6 +10,17 @@ import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIMergeRequest, CreateMergeRequestOptions } from './types';
 
+// Valid merge request states per GitLab API
+const VALID_MR_STATES = ['opened', 'closed', 'merged', 'locked', 'all'] as const;
+type MergeRequestState = typeof VALID_MR_STATES[number];
+
+/**
+ * Validate merge request state parameter
+ */
+function isValidMrState(state: string): state is MergeRequestState {
+  return VALID_MR_STATES.includes(state as MergeRequestState);
+}
+
 // Debug logging helper
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
 
@@ -74,9 +85,17 @@ export function registerGetMergeRequests(): void {
         };
       }
 
+      // Validate state parameter
+      const stateParam = state ?? 'opened';
+      if (!isValidMrState(stateParam)) {
+        return {
+          success: false,
+          error: `Invalid merge request state: '${stateParam}'. Must be one of: ${VALID_MR_STATES.join(', ')}`
+        };
+      }
+
       try {
         const encodedProject = encodeProjectPath(config.project);
-        const stateParam = state || 'opened';
 
         const apiMrs = await gitlabFetch(
           config.token,
