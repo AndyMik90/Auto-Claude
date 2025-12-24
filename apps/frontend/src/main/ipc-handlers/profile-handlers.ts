@@ -13,7 +13,7 @@
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult } from '../../shared/types';
-import type { APIProfile, ProfileFormData, ProfilesFile, TestConnectionResult } from '@auto-claude/profile-service';
+import type { APIProfile, ProfileFormData, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from '@auto-claude/profile-service';
 import {
   loadProfilesFile,
   saveProfilesFile,
@@ -21,10 +21,13 @@ import {
   getProfilesFilePath,
   atomicModifyProfiles
 } from '@auto-claude/profile-service';
-import { createProfile, updateProfile, deleteProfile, testConnection } from '@auto-claude/profile-service';
+import { createProfile, updateProfile, deleteProfile, testConnection, discoverModels } from '@auto-claude/profile-service';
 
 // Track active test connection requests for cancellation
 const activeTestConnections = new Map<number, AbortController>();
+
+// Track active discover models requests for cancellation
+const activeDiscoverModelsRequests = new Map<number, AbortController>();
 
 /**
  * Register all profile-related IPC handlers
@@ -246,6 +249,105 @@ export function registerProfileHandlers(): void {
       if (controller) {
         controller.abort();
         activeTestConnections.delete(requestId);
+      }
+    }
+  );
+
+  /**
+   * Discover available models from API endpoint
+   * - Fetches list of models from /v1/models endpoint
+   * - Returns model IDs and display names for dropdown selection
+   * - Supports cancellation via PROFILES_DISCOVER_MODELS_CANCEL
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.PROFILES_DISCOVER_MODELS,
+    async (_event, baseUrl: string, apiKey: string, requestId: number): Promise<IPCResult<DiscoverModelsResult>> => {
+      console.log('[discoverModels] Called with:', { baseUrl, requestId });
+
+      // Create AbortController for timeout and cancellation
+      const controller = new AbortController();
+      const timeoutMs = 15000; // 15 seconds
+
+      // Track this request for cancellation
+      activeDiscoverModelsRequests.set(requestId, controller);
+
+      // Set timeout to abort the request
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, timeoutMs);
+
+      try {
+        // Validate inputs (null/empty checks)
+        if (!baseUrl || baseUrl.trim() === '') {
+          clearTimeout(timeoutId);
+          activeDiscoverModelsRequests.delete(requestId);
+          return {
+            success: false,
+            error: 'Base URL is required'
+          };
+        }
+
+        if (!apiKey || apiKey.trim() === '') {
+          clearTimeout(timeoutId);
+          activeDiscoverModelsRequests.delete(requestId);
+          return {
+            success: false,
+            error: 'API key is required'
+          };
+        }
+
+        // Call discoverModels from service layer with abort signal
+        const result = await discoverModels(baseUrl, apiKey, controller.signal);
+
+        // Clear timeout on success
+        clearTimeout(timeoutId);
+        activeDiscoverModelsRequests.delete(requestId);
+
+        return { success: true, data: result };
+      } catch (error) {
+        // Clear timeout on error
+        clearTimeout(timeoutId);
+        activeDiscoverModelsRequests.delete(requestId);
+
+        // Handle abort errors (timeout or explicit cancellation)
+        if (error instanceof Error && error.name === 'AbortError') {
+          return {
+            success: false,
+            error: 'Connection timeout. The request took too long to complete.'
+          };
+        }
+
+        // Extract error type if available
+        const errorType = (error as any).errorType;
+        const errorMessage = error instanceof Error ? error.message : 'Failed to discover models';
+
+        // Log for debugging
+        console.error('[discoverModels] Error:', {
+          name: error instanceof Error ? error.name : 'unknown',
+          message: errorMessage,
+          errorType,
+          originalError: error
+        });
+
+        // Include error type in error message for UI to handle appropriately
+        return {
+          success: false,
+          error: errorMessage
+        };
+      }
+    }
+  );
+
+  /**
+   * Cancel an active discover models request
+   */
+  ipcMain.on(
+    IPC_CHANNELS.PROFILES_DISCOVER_MODELS_CANCEL,
+    (_event, requestId: number) => {
+      const controller = activeDiscoverModelsRequests.get(requestId);
+      if (controller) {
+        controller.abort();
+        activeDiscoverModelsRequests.delete(requestId);
       }
     }
   );

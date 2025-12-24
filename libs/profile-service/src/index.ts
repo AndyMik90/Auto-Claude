@@ -10,7 +10,10 @@ export type {
   APIProfile,
   ProfilesFile,
   ProfileFormData,
-  TestConnectionResult
+  TestConnectionResult,
+  ModelInfo,
+  DiscoverModelsResult,
+  DiscoverModelsError
 } from './types/profile.js';
 
 // Profile Manager utilities
@@ -33,7 +36,8 @@ export {
   updateProfile,
   deleteProfile,
   getAPIProfileEnv,
-  testConnection
+  testConnection,
+  discoverModels
 } from './services/profile-service.js';
 
 export type { CreateProfileInput, UpdateProfileInput } from './services/profile-service.js';

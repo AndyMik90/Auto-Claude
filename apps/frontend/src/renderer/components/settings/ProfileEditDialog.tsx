@@ -27,6 +27,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useSettingsStore } from '../../stores/settings-store';
+import { ModelSearchableSelect } from './ModelSearchableSelect';
 import { useToast } from '../../hooks/use-toast';
 import { isValidUrl, isValidApiKey } from '../../lib/profile-utils';
 import type { APIProfile } from '@auto-claude/profile-service';
@@ -429,18 +430,19 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
           <div className="space-y-3 pt-2 border-t">
             <Label className="text-base">Optional: Model Name Mappings</Label>
             <p className="text-xs text-muted-foreground">
-              Map Claude models to custom provider model names. Leave blank to use defaults.
+              Select models from your API provider. Leave blank to use defaults.
             </p>
 
             <div className="space-y-2">
               <Label htmlFor="model-default" className="text-sm text-muted-foreground">
                 Default Model (Optional)
               </Label>
-              <Input
-                id="model-default"
-                placeholder="claude-3-5-sonnet-20241022"
+              <ModelSearchableSelect
                 value={defaultModel}
-                onChange={(e) => setDefaultModel(e.target.value)}
+                onChange={setDefaultModel}
+                placeholder="e.g., claude-3-5-sonnet-20241022"
+                baseUrl={baseUrl}
+                apiKey={isEditMode && !isChangingApiKey && profile ? profile.apiKey : apiKey}
               />
             </div>
 
@@ -448,11 +450,12 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
               <Label htmlFor="model-haiku" className="text-sm text-muted-foreground">
                 Haiku Model (Optional)
               </Label>
-              <Input
-                id="model-haiku"
-                placeholder="claude-3-5-haiku-20241022"
+              <ModelSearchableSelect
                 value={haikuModel}
-                onChange={(e) => setHaikuModel(e.target.value)}
+                onChange={setHaikuModel}
+                placeholder="e.g., claude-3-5-haiku-20241022"
+                baseUrl={baseUrl}
+                apiKey={isEditMode && !isChangingApiKey && profile ? profile.apiKey : apiKey}
               />
             </div>
 
@@ -460,11 +463,12 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
               <Label htmlFor="model-sonnet" className="text-sm text-muted-foreground">
                 Sonnet Model (Optional)
               </Label>
-              <Input
-                id="model-sonnet"
-                placeholder="claude-3-5-sonnet-20241022"
+              <ModelSearchableSelect
                 value={sonnetModel}
-                onChange={(e) => setSonnetModel(e.target.value)}
+                onChange={setSonnetModel}
+                placeholder="e.g., claude-3-5-sonnet-20241022"
+                baseUrl={baseUrl}
+                apiKey={isEditMode && !isChangingApiKey && profile ? profile.apiKey : apiKey}
               />
             </div>
 
@@ -472,11 +476,12 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
               <Label htmlFor="model-opus" className="text-sm text-muted-foreground">
                 Opus Model (Optional)
               </Label>
-              <Input
-                id="model-opus"
-                placeholder="claude-3-5-opus-20241022"
+              <ModelSearchableSelect
                 value={opusModel}
-                onChange={(e) => setOpusModel(e.target.value)}
+                onChange={setOpusModel}
+                placeholder="e.g., claude-3-5-opus-20241022"
+                baseUrl={baseUrl}
+                apiKey={isEditMode && !isChangingApiKey && profile ? profile.apiKey : apiKey}
               />
             </div>
           </div>

@@ -57,3 +57,26 @@ export interface TestConnectionResult {
   errorType?: 'auth' | 'network' | 'endpoint' | 'timeout' | 'unknown';
   message: string;
 }
+
+/**
+ * Model information from /v1/models endpoint
+ */
+export interface ModelInfo {
+  id: string; // Model ID (e.g., "claude-sonnet-4-20250514")
+  display_name: string; // Human-readable name (e.g., "Claude Sonnet 4")
+}
+
+/**
+ * Result from discoverModels operation
+ */
+export interface DiscoverModelsResult {
+  models: ModelInfo[];
+}
+
+/**
+ * Error from discoverModels operation
+ */
+export interface DiscoverModelsError {
+  errorType: 'auth' | 'network' | 'endpoint' | 'not_supported' | 'timeout';
+  message: string;
+}

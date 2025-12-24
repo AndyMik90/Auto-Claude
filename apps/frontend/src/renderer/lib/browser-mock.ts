@@ -152,6 +152,13 @@ const browserMockAPI: ElectronAPI = {
       success: true,
       message: 'Connection successful (mock)'
     }
+  }),
+
+  discoverModels: async (_baseUrl: string, _apiKey: string, _signal?: AbortSignal) => ({
+    success: true,
+    data: {
+      models: []
+    }
   })
 };
 

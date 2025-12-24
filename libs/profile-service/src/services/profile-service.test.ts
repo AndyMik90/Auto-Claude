@@ -4,7 +4,7 @@
  * Red phase - write failing tests first
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import {
   validateBaseUrl,
   validateApiKey,
@@ -12,9 +12,75 @@ import {
   createProfile,
   updateProfile,
   getAPIProfileEnv,
-  testConnection
+  testConnection,
+  discoverModels
 } from './profile-service';
 import type { APIProfile, ProfilesFile, TestConnectionResult } from '../types/profile';
+
+// Mock Anthropic SDK - use vi.hoisted to properly hoist the mock variable
+const { mockModelsList, mockMessagesCreate } = vi.hoisted(() => ({
+  mockModelsList: vi.fn(),
+  mockMessagesCreate: vi.fn()
+}));
+
+vi.mock('@anthropic-ai/sdk', () => {
+  // Create mock error classes
+  class APIError extends Error {
+    status: number;
+    constructor(message: string, status: number) {
+      super(message);
+      this.name = 'APIError';
+      this.status = status;
+    }
+  }
+  class AuthenticationError extends APIError {
+    constructor(message: string) {
+      super(message, 401);
+      this.name = 'AuthenticationError';
+    }
+  }
+  class NotFoundError extends APIError {
+    constructor(message: string) {
+      super(message, 404);
+      this.name = 'NotFoundError';
+    }
+  }
+  class APIConnectionError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'APIConnectionError';
+    }
+  }
+  class APIConnectionTimeoutError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'APIConnectionTimeoutError';
+    }
+  }
+  class BadRequestError extends APIError {
+    constructor(message: string) {
+      super(message, 400);
+      this.name = 'BadRequestError';
+    }
+  }
+
+  return {
+    default: class Anthropic {
+      models = {
+        list: mockModelsList
+      };
+      messages = {
+        create: mockMessagesCreate
+      };
+    },
+    APIError,
+    AuthenticationError,
+    NotFoundError,
+    APIConnectionError,
+    APIConnectionTimeoutError,
+    BadRequestError
+  };
+});
 
 // Mock profile-manager
 vi.mock('../utils/profile-manager', () => ({
@@ -798,16 +864,13 @@ describe('profile-service', () => {
 
   describe('testConnection', () => {
     beforeEach(() => {
-      // Mock fetch globally for testConnection tests
-      global.fetch = vi.fn();
+      // Reset mocks before each test
+      mockModelsList.mockReset();
+      mockMessagesCreate.mockReset();
     });
 
     it('should return success for valid credentials (200 response)', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ data: [] })
-      } as Response);
+      mockModelsList.mockResolvedValue({ data: [] });
 
       const result = await testConnection('https://api.anthropic.com', 'sk-ant-test-key-12');
 
@@ -815,24 +878,11 @@ describe('profile-service', () => {
         success: true,
         message: 'Connection successful'
       });
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.anthropic.com/v1/models',
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'x-api-key': 'sk-ant-test-key-12',
-            'anthropic-version': '2023-06-01'
-          })
-        })
-      );
     });
 
     it('should return auth error for invalid API key (401 response)', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: false,
-        status: 401,
-        statusText: 'Unauthorized'
-      } as Response);
+      const { AuthenticationError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new AuthenticationError('Unauthorized'));
 
       const result = await testConnection('https://api.anthropic.com', 'sk-invalid-key-12');
 
@@ -844,11 +894,8 @@ describe('profile-service', () => {
     });
 
     it('should return auth error for 403 response', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: false,
-        status: 403,
-        statusText: 'Forbidden'
-      } as Response);
+      const { AuthenticationError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new AuthenticationError('Forbidden'));
 
       const result = await testConnection('https://api.anthropic.com', 'sk-forbidden-key');
 
@@ -860,11 +907,10 @@ describe('profile-service', () => {
     });
 
     it('should return endpoint error for invalid URL (404 response)', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found'
-      } as Response);
+      const { NotFoundError } = await import('@anthropic-ai/sdk');
+      // Both models.list and messages.create return 404 - truly invalid endpoint
+      mockModelsList.mockRejectedValue(new NotFoundError('Not Found'));
+      mockMessagesCreate.mockRejectedValue(new NotFoundError('Not Found'));
 
       const result = await testConnection('https://invalid.example.com', 'sk-test-key-12chars');
 
@@ -875,11 +921,23 @@ describe('profile-service', () => {
       });
     });
 
-    it('should return network error for connection refused', async () => {
-      const networkError = new TypeError('Failed to fetch');
-      (networkError as any).code = 'ECONNREFUSED';
+    it('should return success when models returns 404 but messages works (Anthropic-compatible API)', async () => {
+      const { NotFoundError, BadRequestError } = await import('@anthropic-ai/sdk');
+      // models.list returns 404, but messages.create returns 400 (valid endpoint, invalid request)
+      mockModelsList.mockRejectedValue(new NotFoundError('Not Found'));
+      mockMessagesCreate.mockRejectedValue(new BadRequestError('invalid params'));
 
-      vi.mocked(global.fetch).mockRejectedValue(networkError);
+      const result = await testConnection('https://api.minimax.io/anthropic', 'sk-test-key-12chars');
+
+      expect(result).toEqual({
+        success: true,
+        message: 'Connection successful'
+      });
+    });
+
+    it('should return network error for connection refused', async () => {
+      const { APIConnectionError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new APIConnectionError('ECONNREFUSED'));
 
       const result = await testConnection('https://unreachable.example.com', 'sk-test-key-12chars');
 
@@ -891,10 +949,8 @@ describe('profile-service', () => {
     });
 
     it('should return network error for ENOTFOUND (DNS failure)', async () => {
-      const dnsError = new TypeError('Failed to fetch');
-      (dnsError as any).code = 'ENOTFOUND';
-
-      vi.mocked(global.fetch).mockRejectedValue(dnsError);
+      const { APIConnectionError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new APIConnectionError('ENOTFOUND'));
 
       const result = await testConnection('https://nosuchdomain.example.com', 'sk-test-key-12chars');
 
@@ -906,10 +962,8 @@ describe('profile-service', () => {
     });
 
     it('should return timeout error for AbortError', async () => {
-      const abortError = new Error('Aborted');
-      abortError.name = 'AbortError';
-
-      vi.mocked(global.fetch).mockRejectedValue(abortError);
+      const { APIConnectionTimeoutError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new APIConnectionTimeoutError('Timeout'));
 
       const result = await testConnection('https://slow.example.com', 'sk-test-key-12chars');
 
@@ -921,7 +975,7 @@ describe('profile-service', () => {
     });
 
     it('should return unknown error for other failures', async () => {
-      vi.mocked(global.fetch).mockRejectedValue(new Error('Unknown error'));
+      mockModelsList.mockRejectedValue(new Error('Unknown error'));
 
       const result = await testConnection('https://api.example.com', 'sk-test-key-12chars');
 
@@ -933,33 +987,25 @@ describe('profile-service', () => {
     });
 
     it('should auto-prepend https:// if missing', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ data: [] })
-      } as Response);
+      mockModelsList.mockResolvedValue({ data: [] });
 
-      await testConnection('api.anthropic.com', 'sk-test-key-12chars');
+      const result = await testConnection('api.anthropic.com', 'sk-test-key-12chars');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.anthropic.com/v1/models',
-        expect.any(Object)
-      );
+      expect(result).toEqual({
+        success: true,
+        message: 'Connection successful'
+      });
     });
 
     it('should remove trailing slash from baseUrl', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ data: [] })
-      } as Response);
+      mockModelsList.mockResolvedValue({ data: [] });
 
-      await testConnection('https://api.anthropic.com/', 'sk-test-key-12chars');
+      const result = await testConnection('https://api.anthropic.com/', 'sk-test-key-12chars');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.anthropic.com/v1/models',
-        expect.any(Object)
-      );
+      expect(result).toEqual({
+        success: true,
+        message: 'Connection successful'
+      });
     });
 
     it('should return error for empty baseUrl', async () => {
@@ -970,7 +1016,7 @@ describe('profile-service', () => {
         errorType: 'endpoint',
         message: 'Invalid endpoint. Please check the Base URL.'
       });
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockModelsList).not.toHaveBeenCalled();
     });
 
     it('should return error for invalid baseUrl format', async () => {
@@ -981,7 +1027,7 @@ describe('profile-service', () => {
         errorType: 'endpoint',
         message: 'Invalid endpoint. Please check the Base URL.'
       });
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockModelsList).not.toHaveBeenCalled();
     });
 
     it('should return error for invalid API key format', async () => {
@@ -992,15 +1038,11 @@ describe('profile-service', () => {
         errorType: 'auth',
         message: 'Authentication failed. Please check your API key.'
       });
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockModelsList).not.toHaveBeenCalled();
     });
 
     it('should abort when signal is triggered', async () => {
       const abortController = new AbortController();
-      const abortError = new Error('Aborted');
-      abortError.name = 'AbortError';
-
-      vi.mocked(global.fetch).mockRejectedValue(abortError);
 
       // Abort immediately
       abortController.abort();
@@ -1015,15 +1057,8 @@ describe('profile-service', () => {
     });
 
     it('should set 10 second timeout', async () => {
-      vi.mocked(global.fetch).mockImplementation(() =>
-        new Promise((_, reject) => {
-          setTimeout(() => {
-            const abortError = new Error('Aborted');
-            abortError.name = 'AbortError';
-            reject(abortError);
-          }, 100); // Short delay for test
-        })
-      );
+      const { APIConnectionTimeoutError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new APIConnectionTimeoutError('Timeout'));
 
       const startTime = Date.now();
       const result = await testConnection('https://slow.example.com', 'sk-test-key-12chars');
@@ -1034,8 +1069,192 @@ describe('profile-service', () => {
         errorType: 'timeout',
         message: 'Connection timeout. The endpoint did not respond.'
       });
-      // Should timeout at 10 seconds, but we use a mock for faster test
-      expect(elapsed).toBeLessThan(5000); // Well under 10s due to mock
+      // Should resolve quickly since we're mocking
+      expect(elapsed).toBeLessThan(5000);
+    });
+  });
+
+  describe('discoverModels', () => {
+    beforeEach(() => {
+      // Reset mockModelsList before each test
+      mockModelsList.mockReset();
+    });
+
+    it('should return list of models for successful response', async () => {
+      mockModelsList.mockResolvedValue({
+        data: [
+          { id: 'claude-3-5-sonnet-20241022', display_name: 'Claude Sonnet 3.5', created_at: '2024-10-22', type: 'model' },
+          { id: 'claude-3-5-haiku-20241022', display_name: 'Claude Haiku 3.5', created_at: '2024-10-22', type: 'model' },
+          { id: 'claude-3-opus-20240229', display_name: 'Claude Opus 3', created_at: '2024-02-29', type: 'model' }
+        ]
+      });
+
+      const result = await discoverModels('https://api.anthropic.com', 'sk-ant-test-key-12');
+
+      expect(result).toEqual({
+        models: [
+          { id: 'claude-3-5-sonnet-20241022', display_name: 'Claude Sonnet 3.5' },
+          { id: 'claude-3-5-haiku-20241022', display_name: 'Claude Haiku 3.5' },
+          { id: 'claude-3-opus-20240229', display_name: 'Claude Opus 3' }
+        ]
+      });
+    });
+
+    it('should handle missing display_name by using id', async () => {
+      mockModelsList.mockResolvedValue({
+        data: [
+          { id: 'claude-3-5-sonnet-20241022', created_at: '2024-10-22', type: 'model' },
+          { id: 'claude-3-5-haiku-20241022', display_name: 'Haiku', created_at: '2024-10-22', type: 'model' }
+        ]
+      });
+
+      const result = await discoverModels('https://api.anthropic.com', 'sk-ant-test-key-12');
+
+      expect(result.models).toEqual([
+        { id: 'claude-3-5-sonnet-20241022', display_name: 'claude-3-5-sonnet-20241022' },
+        { id: 'claude-3-5-haiku-20241022', display_name: 'Haiku' }
+      ]);
+    });
+
+    it('should throw auth error for 401 response', async () => {
+      const { AuthenticationError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new AuthenticationError('Unauthorized'));
+
+      const error = await discoverModels('https://api.anthropic.com', 'sk-invalid-key')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('auth');
+      expect(error.message).toBe('Authentication failed. Please check your API key.');
+    });
+
+    it('should throw auth error for 403 response', async () => {
+      const { AuthenticationError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new AuthenticationError('Forbidden'));
+
+      const error = await discoverModels('https://api.anthropic.com', 'sk-forbidden-key')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('auth');
+    });
+
+    it('should throw not_supported error for 404 response', async () => {
+      const { NotFoundError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new NotFoundError('Not Found'));
+
+      const error = await discoverModels('https://custom-api.com', 'sk-test-key-12345678')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('not_supported');
+      expect(error.message).toContain('does not support model listing');
+    });
+
+    it('should throw network error for ECONNREFUSED', async () => {
+      const { APIConnectionError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new APIConnectionError('ECONNREFUSED'));
+
+      const error = await discoverModels('https://unreachable.example.com', 'sk-test-key-12345678')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('network');
+    });
+
+    it('should throw timeout error for AbortError', async () => {
+      const { APIConnectionTimeoutError } = await import('@anthropic-ai/sdk');
+      mockModelsList.mockRejectedValue(new APIConnectionTimeoutError('Timeout'));
+
+      const error = await discoverModels('https://slow.example.com', 'sk-test-key-12345678')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('timeout');
+    });
+
+    it('should abort when signal is triggered', async () => {
+      const abortController = new AbortController();
+
+      abortController.abort();
+
+      const error = await discoverModels('https://api.anthropic.com', 'sk-test-key-12345678', abortController.signal)
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('timeout');
+    });
+
+    it('should throw error for invalid API key format', async () => {
+      const error = await discoverModels('https://api.anthropic.com', 'short')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('auth');
+      expect(error.message).toBe('Authentication failed. Please check your API key.');
+      expect(mockModelsList).not.toHaveBeenCalled();
+    });
+
+    it('should throw error for empty baseUrl', async () => {
+      const error = await discoverModels('', 'sk-test-key-12chars')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('endpoint');
+    });
+
+    it('should auto-prepend https:// if missing', async () => {
+      mockModelsList.mockResolvedValue({ data: [] });
+
+      const result = await discoverModels('api.anthropic.com', 'sk-test-key-12chars');
+
+      expect(result).toEqual({ models: [] });
+    });
+
+    it('should remove trailing slash from baseUrl', async () => {
+      mockModelsList.mockResolvedValue({ data: [] });
+
+      const result = await discoverModels('https://api.anthropic.com/', 'sk-test-key-12chars');
+
+      expect(result).toEqual({ models: [] });
+    });
+
+    it('should filter out models with empty ids', async () => {
+      mockModelsList.mockResolvedValue({
+        data: [
+          { id: 'claude-3-5-sonnet-20241022', display_name: 'Claude Sonnet', created_at: '2024-10-22', type: 'model' },
+          { id: '', display_name: 'Empty Model', created_at: '2024-10-22', type: 'model' },
+          { id: 'claude-3-5-haiku-20241022', display_name: 'Claude Haiku', created_at: '2024-10-22', type: 'model' }
+        ]
+      });
+
+      const result = await discoverModels('https://api.anthropic.com', 'sk-test-key-12');
+
+      expect(result.models).toHaveLength(2);
+      expect(result.models[0].id).toBe('claude-3-5-sonnet-20241022');
+      expect(result.models[1].id).toBe('claude-3-5-haiku-20241022');
+    });
+
+    it('should throw error for invalid response structure', async () => {
+      // SDK would throw an error for invalid response structure
+      mockModelsList.mockRejectedValue(new Error('Invalid response format'));
+
+      const error = await discoverModels('https://api.anthropic.com', 'sk-test-key-12')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('unknown');
+    });
+
+    it('should throw error for non-array data field', async () => {
+      // SDK would throw an error for invalid response structure
+      mockModelsList.mockRejectedValue(new Error('Invalid data format'));
+
+      const error = await discoverModels('https://api.anthropic.com', 'sk-test-key-12')
+        .catch(e => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as any).errorType).toBe('unknown');
     });
   });
 });

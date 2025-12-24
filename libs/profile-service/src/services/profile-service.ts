@@ -6,8 +6,15 @@
  * Uses atomic operations with file locking to prevent TOCTOU race conditions.
  */
 
+import Anthropic, {
+  AuthenticationError,
+  NotFoundError,
+  APIConnectionError,
+  APIConnectionTimeoutError
+} from '@anthropic-ai/sdk';
+
 import { loadProfilesFile, saveProfilesFile, generateProfileId, validateFilePermissions, getProfilesFilePath, atomicModifyProfiles } from '../utils/profile-manager.js';
-import type { APIProfile, TestConnectionResult } from '../types/profile.js';
+import type { APIProfile, TestConnectionResult, ModelInfo, DiscoverModelsResult } from '../types/profile.js';
 
 /**
  * Validate base URL format
@@ -292,7 +299,7 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
  * Test API profile connection
  *
  * Validates credentials by making a minimal API request to the /v1/models endpoint.
- * Returns detailed error information for different failure types.
+ * Uses the Anthropic SDK for built-in timeout, retry, and error handling.
  *
  * @param baseUrl - API base URL (will be normalized)
  * @param apiKey - API key for authentication
@@ -329,7 +336,6 @@ export async function testConnection(
   }
 
   // Ensure https:// prefix (auto-prepend if NO protocol exists)
-  // Check if URL already has a protocol (contains ://)
   if (!normalizedUrl.includes('://')) {
     normalizedUrl = `https://${normalizedUrl}`;
   }
@@ -341,21 +347,17 @@ export async function testConnection(
   const getUrlSuggestions = (url: string): string[] => {
     const suggestions: string[] = [];
 
-    // Check if URL lacks https://
     if (!url.includes('://')) {
       suggestions.push('Ensure URL starts with https://');
     }
 
-    // Check for trailing slash
     if (url.endsWith('/')) {
       suggestions.push('Remove trailing slashes from URL');
     }
 
-    // Check for suspicious domain patterns (common typos)
     const domainMatch = url.match(/:\/\/([^\/]+)/);
     if (domainMatch) {
       const domain = domainMatch[1];
-      // Check for common typos like anthropiic, ap, etc.
       if (domain.includes('anthropiic') || domain.includes('anthhropic') ||
           domain.includes('anhtropic') || domain.length < 10) {
         suggestions.push('Check for typos in domain name');
@@ -367,7 +369,6 @@ export async function testConnection(
 
   // Validate the normalized baseUrl
   if (!validateBaseUrl(normalizedUrl)) {
-    // Generate suggestions based on original URL
     const suggestions = getUrlSuggestions(originalUrl);
     const message = suggestions.length > 0
       ? `Invalid endpoint. Please check the Base URL.${suggestions.map(s => ' ' + s).join('')}`
@@ -380,79 +381,79 @@ export async function testConnection(
     };
   }
 
-  // Set timeout to 10 seconds (NFR-P3 compliance)
-  const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), 10000);
-
-  // Create a combined controller that aborts when either timeout or external signal aborts
-  const combinedController = new AbortController();
-
-  // Cleanup function for event listeners
-  const cleanup = () => {
-    clearTimeout(timeoutId);
-  };
-
-  // Listen to timeout abort
-  const onTimeoutAbort = () => {
-    cleanup();
-    combinedController.abort();
-  };
-  timeoutController.signal.addEventListener('abort', onTimeoutAbort);
-
-  // Listen to external signal abort (if provided)
-  let onExternalAbort: (() => void) | undefined;
-  if (signal) {
-    // If external signal already aborted, abort immediately
-    if (signal.aborted) {
-      cleanup();
-      timeoutController.signal.removeEventListener('abort', onTimeoutAbort);
-      return {
-        success: false,
-        errorType: 'timeout',
-        message: 'Connection timeout. The endpoint did not respond.'
-      };
-    }
-
-    // Listen to external signal abort
-    onExternalAbort = () => {
-      cleanup();
-      timeoutController.signal.removeEventListener('abort', onTimeoutAbort);
-      combinedController.abort();
+  // Check if signal already aborted
+  if (signal?.aborted) {
+    return {
+      success: false,
+      errorType: 'timeout',
+      message: 'Connection timeout. The endpoint did not respond.'
     };
-    signal.addEventListener('abort', onExternalAbort);
   }
 
-  const combinedSignal = combinedController.signal;
-
   try {
-    // Make minimal API request
-    const response = await fetch(`${normalizedUrl}/v1/models`, {
-      method: 'GET',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      signal: combinedSignal
+    // Create Anthropic client with SDK
+    const client = new Anthropic({
+      apiKey,
+      baseURL: normalizedUrl,
+      timeout: 10000, // 10 seconds
+      maxRetries: 0, // Disable retries for immediate feedback
     });
 
-    // Clear timeout on successful response
-    cleanup();
-    if (onTimeoutAbort) {
-      timeoutController.signal.removeEventListener('abort', onTimeoutAbort);
-    }
-    if (signal && onExternalAbort) {
-      signal.removeEventListener('abort', onExternalAbort);
+    // Make minimal request to test connection (pass signal for cancellation)
+    // Try models.list first, but some Anthropic-compatible APIs don't support it
+    try {
+      await client.models.list({ limit: 1 }, { signal: signal ?? undefined });
+    } catch (modelsError) {
+      // If models endpoint returns 404, try messages endpoint instead
+      // Many Anthropic-compatible APIs (e.g., MiniMax) only support /v1/messages
+      const modelsErrorName = modelsError instanceof Error ? modelsError.name : '';
+      if (modelsErrorName === 'NotFoundError' || modelsError instanceof NotFoundError) {
+        // Fall back to messages endpoint with minimal request
+        // This will fail with 400 (invalid request) but proves the endpoint is reachable
+        try {
+          await client.messages.create({
+            model: 'test',
+            max_tokens: 1,
+            messages: [{ role: 'user', content: 'test' }]
+          }, { signal: signal ?? undefined });
+        } catch (messagesError) {
+          const messagesErrorName = messagesError instanceof Error ? messagesError.name : '';
+          // 400/422 errors mean the endpoint is valid, just our test request was invalid
+          // This is expected - we're just testing connectivity
+          if (messagesErrorName === 'BadRequestError' || 
+              messagesErrorName === 'InvalidRequestError' ||
+              (messagesError instanceof Error && 'status' in messagesError && 
+               ((messagesError as { status?: number }).status === 400 || 
+                (messagesError as { status?: number }).status === 422))) {
+            // Endpoint is valid, connection successful
+            return {
+              success: true,
+              message: 'Connection successful'
+            };
+          }
+          // Re-throw other errors to be handled by outer catch
+          throw messagesError;
+        }
+        // If messages.create somehow succeeded, connection is valid
+        return {
+          success: true,
+          message: 'Connection successful'
+        };
+      }
+      // Re-throw non-404 errors to be handled by outer catch
+      throw modelsError;
     }
 
-    // Parse response and determine error type
-    if (response.status === 200 || response.status === 201) {
-      return {
-        success: true,
-        message: 'Connection successful'
-      };
-    }
-
-    if (response.status === 401 || response.status === 403) {
+    return {
+      success: true,
+      message: 'Connection successful'
+    };
+  } catch (error) {
+    // Map SDK errors to TestConnectionResult error types
+    // Use error.name for instanceof-like checks (works with mocks that set this.name)
+    const errorName = error instanceof Error ? error.name : '';
+    
+    if (errorName === 'AuthenticationError' || error instanceof AuthenticationError) {
       return {
         success: false,
         errorType: 'auth',
@@ -460,8 +461,7 @@ export async function testConnection(
       };
     }
 
-    if (response.status === 404) {
-      // Generate URL suggestions for 404 errors
+    if (errorName === 'NotFoundError' || error instanceof NotFoundError) {
       const suggestions = getUrlSuggestions(baseUrl.trim());
       const message = suggestions.length > 0
         ? `Invalid endpoint. Please check the Base URL.${suggestions.map(s => ' ' + s).join('')}`
@@ -474,51 +474,140 @@ export async function testConnection(
       };
     }
 
-    // Other HTTP errors
+    if (errorName === 'APIConnectionTimeoutError' || error instanceof APIConnectionTimeoutError) {
+      return {
+        success: false,
+        errorType: 'timeout',
+        message: 'Connection timeout. The endpoint did not respond.'
+      };
+    }
+
+    if (errorName === 'APIConnectionError' || error instanceof APIConnectionError) {
+      return {
+        success: false,
+        errorType: 'network',
+        message: 'Network error. Please check your internet connection.'
+      };
+    }
+
+    // APIError or other errors
     return {
       success: false,
       errorType: 'unknown',
       message: 'Connection test failed. Please try again.'
     };
+  }
+}
+
+/**
+ * Discover available models from API endpoint
+ *
+ * Fetches the list of available models from the Anthropic-compatible /v1/models endpoint.
+ * Uses the Anthropic SDK for built-in timeout, retry, and error handling.
+ *
+ * @param baseUrl - API base URL (will be normalized)
+ * @param apiKey - API key for authentication
+ * @param signal - Optional AbortSignal for cancelling the request (checked before request)
+ * @returns Promise<DiscoverModelsResult> List of available models
+ * @throws Error with errorType for auth/network/endpoint/timeout/not_supported failures
+ */
+export async function discoverModels(
+  baseUrl: string,
+  apiKey: string,
+  signal?: AbortSignal
+): Promise<DiscoverModelsResult> {
+  // Validate API key first
+  if (!validateApiKey(apiKey)) {
+    const error: Error & { errorType?: string } = new Error('Authentication failed. Please check your API key.');
+    error.errorType = 'auth';
+    throw error;
+  }
+
+  // Normalize baseUrl BEFORE validation
+  let normalizedUrl = baseUrl.trim();
+
+  // If empty, throw error
+  if (!normalizedUrl) {
+    const error: Error & { errorType?: string } = new Error('Invalid endpoint. Please check the Base URL.');
+    error.errorType = 'endpoint';
+    throw error;
+  }
+
+  // Ensure https:// prefix (auto-prepend if NO protocol exists)
+  if (!normalizedUrl.includes('://')) {
+    normalizedUrl = `https://${normalizedUrl}`;
+  }
+
+  // Remove trailing slash
+  normalizedUrl = normalizedUrl.replace(/\/+$/, '');
+
+  // Validate the normalized baseUrl
+  if (!validateBaseUrl(normalizedUrl)) {
+    const error: Error & { errorType?: string } = new Error('Invalid endpoint. Please check the Base URL.');
+    error.errorType = 'endpoint';
+    throw error;
+  }
+
+  // Check if signal already aborted
+  if (signal?.aborted) {
+    const error: Error & { errorType?: string } = new Error('Connection timeout. The endpoint did not respond.');
+    error.errorType = 'timeout';
+    throw error;
+  }
+
+  try {
+    // Create Anthropic client with SDK
+    const client = new Anthropic({
+      apiKey,
+      baseURL: normalizedUrl,
+      timeout: 10000, // 10 seconds
+      maxRetries: 0, // Disable retries for immediate feedback
+    });
+
+    // Fetch models with pagination (1000 limit to get all), pass signal for cancellation
+    const response = await client.models.list({ limit: 1000 }, { signal: signal ?? undefined });
+
+    // Extract model information from SDK response
+    const models: ModelInfo[] = response.data
+      .map((model) => ({
+        id: model.id || '',
+        display_name: model.display_name || model.id || ''
+      }))
+      .filter((model) => model.id.length > 0);
+
+    return { models };
   } catch (error) {
-    // Cleanup event listeners and timeout
-    cleanup();
-    if (onTimeoutAbort) {
-      timeoutController.signal.removeEventListener('abort', onTimeoutAbort);
-    }
-    if (signal && onExternalAbort) {
-      signal.removeEventListener('abort', onExternalAbort);
-    }
-
-    // Determine error type from error object
-    if (error instanceof Error) {
-      // AbortError → timeout
-      if (error.name === 'AbortError') {
-        return {
-          success: false,
-          errorType: 'timeout',
-          message: 'Connection timeout. The endpoint did not respond.'
-        };
-      }
-
-      // TypeError with ECONNREFUSED/ENOTFOUND → network error
-      if (error instanceof TypeError) {
-        const errorCode = (error as any).code;
-        if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
-          return {
-            success: false,
-            errorType: 'network',
-            message: 'Network error. Please check your internet connection.'
-          };
-        }
-      }
+    // Map SDK errors to thrown errors with errorType property
+    // Use error.name for instanceof-like checks (works with mocks that set this.name)
+    const errorName = error instanceof Error ? error.name : '';
+    
+    if (errorName === 'AuthenticationError' || error instanceof AuthenticationError) {
+      const authError: Error & { errorType?: string } = new Error('Authentication failed. Please check your API key.');
+      authError.errorType = 'auth';
+      throw authError;
     }
 
-    // Other errors
-    return {
-      success: false,
-      errorType: 'unknown',
-      message: 'Connection test failed. Please try again.'
-    };
+    if (errorName === 'NotFoundError' || error instanceof NotFoundError) {
+      const notSupportedError: Error & { errorType?: string } = new Error('This API endpoint does not support model listing. Please enter the model name manually.');
+      notSupportedError.errorType = 'not_supported';
+      throw notSupportedError;
+    }
+
+    if (errorName === 'APIConnectionTimeoutError' || error instanceof APIConnectionTimeoutError) {
+      const timeoutError: Error & { errorType?: string } = new Error('Connection timeout. The endpoint did not respond.');
+      timeoutError.errorType = 'timeout';
+      throw timeoutError;
+    }
+
+    if (errorName === 'APIConnectionError' || error instanceof APIConnectionError) {
+      const networkError: Error & { errorType?: string } = new Error('Network error. Please check your internet connection.');
+      networkError.errorType = 'network';
+      throw networkError;
+    }
+
+    // APIError or other errors
+    const unknownError: Error & { errorType?: string } = new Error('Connection test failed. Please try again.');
+    unknownError.errorType = 'unknown';
+    throw unknownError;
   }
 }
