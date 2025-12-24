@@ -462,12 +462,29 @@ class GitHubOrchestrator:
         structural_issues: list[StructuralIssue],
         ai_triages: list[AICommentTriage],
     ) -> tuple[MergeVerdict, str, list[str]]:
-        """Generate merge verdict based on all findings."""
+        """
+        Generate merge verdict based on all findings.
+
+        NEW: Strengthened to block on verification failures and redundancy issues.
+        """
         blockers = []
 
         # Count by severity
         critical = [f for f in findings if f.severity == ReviewSeverity.CRITICAL]
         high = [f for f in findings if f.severity == ReviewSeverity.HIGH]
+
+        # NEW: Verification failures are ALWAYS blockers (even if not critical severity)
+        verification_failures = [
+            f for f in findings if f.category == ReviewCategory.VERIFICATION_FAILED
+        ]
+
+        # NEW: High severity redundancy issues are blockers
+        redundancy_issues = [
+            f
+            for f in findings
+            if f.category == ReviewCategory.REDUNDANCY
+            and f.severity in (ReviewSeverity.CRITICAL, ReviewSeverity.HIGH)
+        ]
 
         # Security findings are always blockers
         security_critical = [
@@ -484,11 +501,28 @@ class GitHubOrchestrator:
         # AI comments marked critical
         ai_critical = [t for t in ai_triages if t.verdict == AICommentVerdict.CRITICAL]
 
-        # Build blockers list
+        # Build blockers list with NEW categories first
+        # NEW: Verification failures block merging
+        for f in verification_failures:
+            note = f" - {f.verification_note}" if f.verification_note else ""
+            blockers.append(f"Verification Failed: {f.title} ({f.file}:{f.line}){note}")
+
+        # NEW: Redundancy issues block merging
+        for f in redundancy_issues:
+            redundant_ref = (
+                f" (duplicates {f.redundant_with})" if f.redundant_with else ""
+            )
+            blockers.append(f"Redundancy: {f.title} ({f.file}:{f.line}){redundant_ref}")
+
+        # Existing blocker categories
         for f in security_critical:
             blockers.append(f"Security: {f.title} ({f.file}:{f.line})")
         for f in critical:
-            if f not in security_critical:
+            if (
+                f not in security_critical
+                and f not in verification_failures
+                and f not in redundancy_issues
+            ):
                 blockers.append(f"Critical: {f.title} ({f.file}:{f.line})")
         for s in structural_blockers:
             blockers.append(f"Structure: {s.title}")
@@ -500,12 +534,25 @@ class GitHubOrchestrator:
             )
             blockers.append(f"{t.tool_name}: {summary}")
 
-        # Determine verdict
+        # Determine verdict with NEW verification and redundancy checks
         if blockers:
-            if security_critical:
+            # NEW: Prioritize verification failures
+            if verification_failures:
+                verdict = MergeVerdict.BLOCKED
+                reasoning = (
+                    f"Blocked: Cannot verify {len(verification_failures)} claim(s) in PR. "
+                    "Evidence required before merge."
+                )
+            elif security_critical:
                 verdict = MergeVerdict.BLOCKED
                 reasoning = (
                     f"Blocked by {len(security_critical)} security vulnerabilities"
+                )
+            elif redundancy_issues:
+                verdict = MergeVerdict.BLOCKED
+                reasoning = (
+                    f"Blocked: {len(redundancy_issues)} redundant implementation(s) detected. "
+                    "Remove duplicates before merge."
                 )
             elif len(critical) > 0:
                 verdict = MergeVerdict.BLOCKED

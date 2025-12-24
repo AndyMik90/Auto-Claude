@@ -41,6 +41,8 @@ class ReviewCategory(str, Enum):
     DOCS = "docs"
     PATTERN = "pattern"
     PERFORMANCE = "performance"
+    VERIFICATION_FAILED = "verification_failed"  # NEW: Cannot verify requirements/paths
+    REDUNDANCY = "redundancy"  # NEW: Duplicate code/logic detected
 
 
 class ReviewPass(str, Enum):
@@ -212,6 +214,12 @@ class PRReviewFinding:
     end_line: int | None = None
     suggested_fix: str | None = None
     fixable: bool = False
+    # NEW: Support for verification and redundancy detection
+    confidence: float = 0.85  # AI's confidence in this finding (0.0-1.0)
+    verification_note: str | None = (
+        None  # What evidence is missing or couldn't be verified
+    )
+    redundant_with: str | None = None  # Reference to duplicate code (file:line)
 
     def to_dict(self) -> dict:
         return {
@@ -225,6 +233,10 @@ class PRReviewFinding:
             "end_line": self.end_line,
             "suggested_fix": self.suggested_fix,
             "fixable": self.fixable,
+            # NEW fields
+            "confidence": self.confidence,
+            "verification_note": self.verification_note,
+            "redundant_with": self.redundant_with,
         }
 
     @classmethod
@@ -240,6 +252,10 @@ class PRReviewFinding:
             end_line=data.get("end_line"),
             suggested_fix=data.get("suggested_fix"),
             fixable=data.get("fixable", False),
+            # NEW fields
+            confidence=data.get("confidence", 0.85),
+            verification_note=data.get("verification_note"),
+            redundant_with=data.get("redundant_with"),
         )
 
 

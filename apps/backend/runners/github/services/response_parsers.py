@@ -105,6 +105,10 @@ class ResponseParser:
                             end_line=f.get("end_line"),
                             suggested_fix=f.get("suggested_fix"),
                             fixable=f.get("fixable", False),
+                            # NEW: Support verification and redundancy fields
+                            confidence=confidence,
+                            verification_note=f.get("verification_note"),
+                            redundant_with=f.get("redundant_with"),
                         )
                     )
         except (json.JSONDecodeError, KeyError, ValueError) as e:

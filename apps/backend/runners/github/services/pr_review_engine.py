@@ -132,6 +132,43 @@ class PRReviewEngine:
             files_list.append(f"- ... and {len(context.changed_files) - 20} more files")
         files_str = "\n".join(files_list)
 
+        # NEW: Format related files (imports, tests, etc.)
+        related_files_str = ""
+        if context.related_files:
+            related_files_list = [f"- `{f}`" for f in context.related_files[:10]]
+            if len(context.related_files) > 10:
+                related_files_list.append(
+                    f"- ... and {len(context.related_files) - 10} more"
+                )
+            related_files_str = f"""
+### Related Files (imports, tests, configs)
+{chr(10).join(related_files_list)}
+"""
+
+        # NEW: Format commits for context
+        commits_str = ""
+        if context.commits:
+            commits_list = []
+            for commit in context.commits[:5]:  # Show last 5 commits
+                sha = commit.get("oid", "")[:7]
+                message = commit.get("messageHeadline", "")
+                commits_list.append(f"- `{sha}` {message}")
+            if len(context.commits) > 5:
+                commits_list.append(
+                    f"- ... and {len(context.commits) - 5} more commits"
+                )
+            commits_str = f"""
+### Commits in this PR
+{chr(10).join(commits_list)}
+"""
+
+        # NEW: Diff with warning if truncated
+        diff_size = len(context.diff)
+        diff_content = context.diff[:50000]
+        diff_truncated_warning = ""
+        if diff_size > 50000:
+            diff_truncated_warning = f"\n⚠️ **WARNING**: Diff truncated from {diff_size} to 50,000 characters. Review may be incomplete.\n"
+
         pr_context = f"""
 ## Pull Request #{context.pr_number}
 
@@ -145,11 +182,11 @@ class PRReviewEngine:
 
 ### Files Changed
 {files_str}
-
+{related_files_str}{commits_str}
 ### Diff
 ```diff
-{context.diff[:50000]}
-```
+{diff_content}
+```{diff_truncated_warning}
 """
 
         full_prompt = pass_prompt + "\n\n---\n\n" + pr_context

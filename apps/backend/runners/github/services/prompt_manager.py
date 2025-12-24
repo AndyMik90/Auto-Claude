@@ -33,18 +33,49 @@ class PromptManager:
         """Get the specialized prompt for each review pass."""
         prompts = {
             ReviewPass.QUICK_SCAN: """
-Quickly scan this PR to understand:
-1. What is the main purpose of these changes?
-2. Which areas need careful review (security-sensitive, complex logic)?
-3. Are there any obvious red flags?
+Quickly scan this PR with PRELIMINARY VERIFICATION:
+
+1. **What is the claimed purpose?** (from PR title/description)
+2. **Does the code match the claimed purpose?**
+   - If it claims to fix a bug, does it address the root cause?
+   - If it adds a feature, is that feature actually implemented?
+   - If it claims to add a file path, does that path appear to be valid?
+3. **Are there obvious red flags?**
+   - Adding paths that may not exist
+   - Adding dependencies without using them
+   - Duplicate code/logic already in the codebase
+   - Claims without evidence (no tests, no demonstration)
+4. **Which areas need careful review?** (security-sensitive, complex logic, external integrations)
 
 Output a brief JSON summary:
 ```json
 {
-    "purpose": "Brief description of what this PR does",
+    "purpose": "Brief description of what this PR claims to do",
+    "actual_changes": "Brief description of what the code actually does",
+    "purpose_match": true|false,
+    "purpose_match_note": "Explanation if purpose doesn't match actual changes",
     "risk_areas": ["Area 1", "Area 2"],
     "red_flags": ["Flag 1", "Flag 2"],
+    "requires_deep_verification": true|false,
     "complexity": "low|medium|high"
+}
+```
+
+**Example with Red Flags**:
+```json
+{
+    "purpose": "Fix FileNotFoundError for claude command",
+    "actual_changes": "Adds new file path to search array",
+    "purpose_match": false,
+    "purpose_match_note": "PR adds path '~/.claude/local/claude' but doesn't provide evidence this path exists or is documented. Existing correct path already present at line 75.",
+    "risk_areas": ["File path validation", "CLI detection"],
+    "red_flags": [
+        "Undocumented file path added without verification",
+        "Possible duplicate of existing path logic",
+        "No test or evidence that this path is valid"
+    ],
+    "requires_deep_verification": true,
+    "complexity": "low"
 }
 ```
 """,
@@ -79,16 +110,32 @@ Output JSON array of findings:
 ```
 """,
             ReviewPass.QUALITY: """
-You are a code quality expert. Focus ONLY on:
+You are a code quality expert. Focus on quality issues with REDUNDANCY DETECTION:
+
+**CRITICAL: REDUNDANCY & DUPLICATION CHECKS**
+Before analyzing quality, check for redundant code:
+1. **Is this code already present elsewhere?**
+   - Similar logic in other files/functions
+   - Duplicate paths, imports, or configurations
+   - Re-implementation of existing utilities
+2. **Does this duplicate existing functionality?**
+   - Check if the same problem is already solved
+   - Look for similar patterns in the codebase
+   - Verify this isn't adding a second solution to the same problem
+
+**QUALITY ANALYSIS**
+After redundancy checks, analyze:
 - Code complexity and maintainability
 - Error handling completeness
 - Test coverage for new code
 - Pattern adherence and consistency
 - Resource management (leaks, cleanup)
-- Code duplication
+- Code duplication within the PR itself
 - Performance anti-patterns
 
 Only report issues that meaningfully impact quality.
+
+**CRITICAL**: If you find redundant code that duplicates existing functionality, mark severity as "high" with category "redundancy".
 
 Output JSON array of findings:
 ```json
@@ -96,19 +143,60 @@ Output JSON array of findings:
   {
     "id": "finding-1",
     "severity": "high|medium|low",
-    "category": "quality|test|performance|pattern",
+    "category": "redundancy|quality|test|performance|pattern",
     "title": "Brief issue title",
     "description": "Detailed explanation",
     "file": "path/to/file.ts",
     "line": 42,
     "suggested_fix": "Optional code or suggestion",
-    "fixable": false
+    "fixable": false,
+    "redundant_with": "Optional: path/to/existing/code.ts:75 if redundant"
   }
 ]
 ```
+
+**Example Redundancy Finding**:
+```json
+{
+  "id": "redundancy-1",
+  "severity": "high",
+  "category": "redundancy",
+  "title": "Duplicate path already exists in codebase",
+  "description": "Adding path '~/.claude/local/claude' but similar path '~/.local/bin/claude' already exists at line 75 of the same file",
+  "file": "changelog-service.ts",
+  "line": 76,
+  "suggested_fix": "Remove duplicate path. Use existing path at line 75 instead.",
+  "fixable": true,
+  "redundant_with": "changelog-service.ts:75"
+}
+```
 """,
             ReviewPass.DEEP_ANALYSIS: """
-You are an expert software architect. Perform deep analysis:
+You are an expert software architect. Perform deep analysis with CRITICAL VERIFICATION FIRST:
+
+**PHASE 1: REQUIREMENT VERIFICATION (CRITICAL - DO NOT SKIP)**
+If this is a bug fix or feature PR, answer these questions:
+1. **Does this PR actually solve the stated problem?**
+   - For bug fixes: Would removing this change cause the bug to return?
+   - For features: Does this implement the requested functionality?
+2. **Is there evidence the solution works?**
+   - Are there tests that verify the fix/feature?
+   - Does the PR description demonstrate the solution?
+3. **Are there redundant or duplicate implementations?**
+   - Does similar code already exist elsewhere in the codebase?
+   - Is this PR adding duplicate paths, imports, or logic?
+
+**PHASE 2: PATH & DEPENDENCY VALIDATION**
+4. **Do all referenced paths actually exist?**
+   - File paths in code (especially for CLIs, configs, binaries)
+   - Import statements and module references
+   - External dependencies and packages
+5. **Are new dependencies necessary and legitimate?**
+   - Do they come from official sources?
+   - Are they actually used in the code?
+
+**PHASE 3: DEEP ANALYSIS**
+Continue with traditional deep analysis:
 - Business logic correctness
 - Edge cases and error scenarios
 - Integration with existing systems
@@ -117,7 +205,7 @@ You are an expert software architect. Perform deep analysis:
 - Data flow integrity
 - Architectural consistency
 
-Focus on subtle bugs that automated tools miss.
+**CRITICAL**: If you cannot verify requirements (Phase 1) or paths (Phase 2), mark severity as "critical" with category "verification_failed".
 
 Output JSON array of findings:
 ```json
@@ -125,16 +213,34 @@ Output JSON array of findings:
   {
     "id": "finding-1",
     "severity": "critical|high|medium|low",
-    "category": "quality|pattern|performance",
-    "confidence": 0.85,
+    "category": "verification_failed|redundancy|quality|pattern|performance",
+    "confidence": 0.0-1.0,
     "title": "Brief issue title",
     "description": "Detailed explanation of the issue",
     "file": "path/to/file.ts",
     "line": 42,
     "suggested_fix": "How to address this",
-    "fixable": false
+    "fixable": false,
+    "verification_note": "What evidence is missing or what could not be verified"
   }
 ]
+```
+
+**Example Critical Finding**:
+```json
+{
+  "id": "verify-1",
+  "severity": "critical",
+  "category": "verification_failed",
+  "confidence": 0.95,
+  "title": "Cannot verify file path exists",
+  "description": "PR adds path '~/.claude/local/claude' but this path is not documented in official Claude installation and may not exist on user systems",
+  "file": "path/to/file.ts",
+  "line": 75,
+  "suggested_fix": "Verify path exists on target systems before adding. Check official documentation.",
+  "fixable": true,
+  "verification_note": "No evidence provided that this path is valid. Existing code already has correct path at line 75."
+}
 ```
 """,
             ReviewPass.STRUCTURAL: """
