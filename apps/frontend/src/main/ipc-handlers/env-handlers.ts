@@ -8,6 +8,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { spawn } from 'child_process';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
+import { getAugmentedEnv } from '../env-utils';
 
 
 /**
@@ -385,7 +386,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         const result = await new Promise<ClaudeAuthResult>((resolve) => {
           const proc = spawn('claude', ['--version'], {
             cwd: project.path,
-            env: { ...process.env },
+            env: getAugmentedEnv(),
             shell: true
           });
 
@@ -406,7 +407,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
               // Run a simple command that requires auth
               const authCheck = spawn('claude', ['api', '--help'], {
                 cwd: project.path,
-                env: { ...process.env },
+                env: getAugmentedEnv(),
                 shell: true
               });
 
@@ -465,7 +466,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         const result = await new Promise<ClaudeAuthResult>((resolve) => {
           const proc = spawn('claude', ['setup-token'], {
             cwd: project.path,
-            env: { ...process.env },
+            env: getAugmentedEnv(),
             shell: true,
             stdio: 'inherit' // This allows the terminal to handle the interactive auth
           });

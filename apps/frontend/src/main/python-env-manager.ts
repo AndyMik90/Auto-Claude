@@ -29,19 +29,26 @@ export class PythonEnvManager extends EventEmitter {
 
   /**
    * Get the path where the venv should be created.
-   * For packaged apps, this is in userData to avoid read-only filesystem issues.
-   * For development, this is inside the source directory.
+   * For packaged apps or read-only source paths, this is in userData.
+   * For writable development directories, this is inside the source directory.
    */
   private getVenvBasePath(): string | null {
     if (!this.autoBuildSourcePath) return null;
 
-    // For packaged apps, put venv in userData (writable location)
-    // This fixes Linux AppImage where resources are read-only
+    // For packaged apps, always use userData (writable location)
     if (app.isPackaged) {
       return path.join(app.getPath('userData'), 'python-venv');
     }
 
-    // Development mode - use source directory
+    // In development mode, check if the source path is writable
+    // This handles the case where autoBuildSourcePath points to a packaged app's
+    // resources directory (e.g., /Applications/Auto-Claude.app/Contents/Resources/...)
+    // which is read-only even in dev mode
+    if (this.autoBuildSourcePath.includes('.app/Contents/Resources')) {
+      return path.join(app.getPath('userData'), 'python-venv');
+    }
+
+    // Development mode with writable source - use source directory
     return path.join(this.autoBuildSourcePath, '.venv');
   }
 

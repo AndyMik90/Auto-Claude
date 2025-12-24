@@ -226,7 +226,8 @@ export function registerStartGhAuth(): void {
           debugLog('Spawning: gh', args);
 
           const ghProcess = spawn('gh', args, {
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env: getAugmentedEnv()
           });
 
           let output = '';
