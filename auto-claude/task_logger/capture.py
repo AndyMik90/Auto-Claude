@@ -2,6 +2,8 @@
 Streaming log capture for agent sessions.
 """
 
+from __future__ import annotations
+
 from .logger import TaskLogger
 from .models import LogPhase
 

@@ -4,6 +4,8 @@ Graph query operations for Graphiti memory.
 Handles episode storage, retrieval, and filtering operations.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from datetime import datetime, timezone

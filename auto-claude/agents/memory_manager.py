@@ -7,6 +7,8 @@ Handles session memory storage using dual-layer approach:
 - FALLBACK: File-based memory - zero dependencies, always available
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

@@ -5,6 +5,8 @@ QA Acceptance Criteria Handling
 Manages acceptance criteria validation and status tracking.
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 

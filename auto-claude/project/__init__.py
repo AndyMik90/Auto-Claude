@@ -19,6 +19,8 @@ Public API:
 - VALIDATED_COMMANDS: Commands requiring validation
 """
 
+from __future__ import annotations
+
 from .analyzer import ProjectAnalyzer
 from .command_registry import BASE_COMMANDS, VALIDATED_COMMANDS
 from .models import CustomScripts, SecurityProfile, TechnologyStack

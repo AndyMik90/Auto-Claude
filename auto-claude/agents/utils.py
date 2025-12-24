@@ -5,6 +5,8 @@ Utility Functions for Agent System
 Helper functions for git operations, plan management, and file syncing.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import shutil

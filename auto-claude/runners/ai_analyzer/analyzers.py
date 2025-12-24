@@ -2,6 +2,8 @@
 Individual analyzer implementations for different aspects of code analysis.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 

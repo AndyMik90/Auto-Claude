@@ -5,6 +5,8 @@ Handles database connection, initialization, and lifecycle management.
 Uses LadybugDB as the embedded graph database (no Docker required, Python 3.12+).
 """
 
+from __future__ import annotations
+
 import logging
 import sys
 from datetime import datetime, timezone

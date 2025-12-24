@@ -4,6 +4,8 @@ Type definitions for the ideation module.
 Contains dataclasses and type definitions used throughout ideation components.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 

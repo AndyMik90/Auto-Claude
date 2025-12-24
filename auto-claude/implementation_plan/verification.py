@@ -6,6 +6,8 @@ Verification Models
 Defines how to verify that a subtask is complete.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from .enums import VerificationType

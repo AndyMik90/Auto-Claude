@@ -26,6 +26,8 @@ The context builder will:
 4. Output focused context for AI agents
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 

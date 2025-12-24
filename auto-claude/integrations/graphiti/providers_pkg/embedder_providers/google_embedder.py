@@ -6,6 +6,8 @@ Google Gemini embedder implementation for Graphiti.
 Uses the google-generativeai SDK for text embeddings.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from ..exceptions import ProviderError, ProviderNotInstalled

@@ -17,6 +17,8 @@ This module has been refactored for better maintainability:
 Public API is exported via workspace/__init__.py for backward compatibility.
 """
 
+from __future__ import annotations
+
 import subprocess
 from pathlib import Path
 

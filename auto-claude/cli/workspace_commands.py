@@ -5,6 +5,8 @@ Workspace Commands
 CLI commands for workspace management (merge, review, discard, list, cleanup)
 """
 
+from __future__ import annotations
+
 import subprocess
 import sys
 from pathlib import Path

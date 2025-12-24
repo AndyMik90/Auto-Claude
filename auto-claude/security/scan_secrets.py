@@ -15,6 +15,8 @@ Exit codes:
     2 - Error occurred during scanning
 """
 
+from __future__ import annotations
+
 import argparse
 import re
 import subprocess

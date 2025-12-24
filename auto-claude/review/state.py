@@ -6,6 +6,8 @@ Handles the persistence and validation of review approval state for specs.
 Tracks approval status, feedback, and detects changes to specs after approval.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 from dataclasses import dataclass, field

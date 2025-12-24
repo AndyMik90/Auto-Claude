@@ -10,6 +10,8 @@ context window usage. For example, Electron tools are only included for
 Electron projects, not for Next.js or CLI projects.
 """
 
+from __future__ import annotations
+
 from .models import (
     BASE_READ_TOOLS,
     BASE_WRITE_TOOLS,

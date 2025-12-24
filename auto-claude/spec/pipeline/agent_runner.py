@@ -5,6 +5,8 @@ Agent Runner
 Handles the execution of AI agents for the spec creation pipeline.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 # Configure safe encoding before any output (fixes Windows encoding errors)

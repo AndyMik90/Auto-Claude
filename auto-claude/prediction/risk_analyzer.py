@@ -3,6 +3,8 @@ Risk analysis and similarity detection for subtasks.
 Analyzes subtasks to predict issues based on work type and historical failures.
 """
 
+from __future__ import annotations
+
 import re
 
 from .models import PredictedIssue

@@ -6,6 +6,8 @@ Orchestrates project analysis to build dynamic security profiles.
 Coordinates stack detection, framework detection, and structure analysis.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 from datetime import datetime

@@ -6,6 +6,8 @@ Handles running agent sessions and post-session processing including
 memory updates, recovery tracking, and Linear integration.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

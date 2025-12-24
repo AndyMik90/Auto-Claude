@@ -8,6 +8,8 @@ Uses subtask-based implementation plans (implementation_plan.json).
 Enhanced with colored output, icons, and better visual formatting.
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 

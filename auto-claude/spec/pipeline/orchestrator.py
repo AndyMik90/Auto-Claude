@@ -5,6 +5,8 @@ Spec Orchestrator
 Main orchestration logic for spec creation with dynamic complexity adaptation.
 """
 
+from __future__ import annotations
+
 import json
 from collections.abc import Callable
 from pathlib import Path

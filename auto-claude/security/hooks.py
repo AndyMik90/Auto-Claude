@@ -6,6 +6,8 @@ Pre-tool-use hooks that validate bash commands for security.
 Main enforcement point for the security system.
 """
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Any

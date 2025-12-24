@@ -6,6 +6,8 @@ for multiple environment variables, and SDK environment variable passthrough
 for custom API endpoints.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import platform

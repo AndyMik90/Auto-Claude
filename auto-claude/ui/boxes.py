@@ -5,6 +5,8 @@ Box Drawing
 Functions for drawing boxes and dividers in terminal output.
 """
 
+from __future__ import annotations
+
 import re
 
 from .capabilities import FANCY_UI

@@ -6,6 +6,8 @@ Embedding dimensions and model constants for different providers.
 """
 
 # Known embedding dimensions by provider and model
+from __future__ import annotations
+
 EMBEDDING_DIMENSIONS = {
     # OpenAI
     "text-embedding-3-small": 1536,

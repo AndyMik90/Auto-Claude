@@ -8,6 +8,8 @@ Provides a high-level interface that delegates to specialized modules:
 - schema.py: Data structures and constants
 """
 
+from __future__ import annotations
+
 import hashlib
 import logging
 from datetime import datetime, timezone

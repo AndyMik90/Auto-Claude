@@ -7,6 +7,8 @@ Helper functions for Graphiti memory system integration.
 Handles checking if Graphiti is available and managing async operations.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from pathlib import Path

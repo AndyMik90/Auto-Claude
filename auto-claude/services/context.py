@@ -18,6 +18,8 @@ Usage:
     python auto-claude/service_context.py --service frontend --index auto-claude/project_index.json
 """
 
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
 from pathlib import Path

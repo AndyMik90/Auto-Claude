@@ -6,6 +6,8 @@ Constants, status mappings, and configuration helpers for Linear integration.
 Mirrors the approach from Linear-Coding-Agent-Harness.
 """
 
+from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass

@@ -6,6 +6,8 @@ Git Utilities
 Utility functions for git operations used in workspace management.
 """
 
+from __future__ import annotations
+
 import json
 import subprocess
 from pathlib import Path

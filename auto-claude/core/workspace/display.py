@@ -6,6 +6,8 @@ Workspace Display
 Functions for displaying workspace information and build summaries.
 """
 
+from __future__ import annotations
+
 from ui import (
     bold,
     error,

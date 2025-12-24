@@ -5,6 +5,8 @@ CLI Utilities
 Shared utility functions for the Auto Claude CLI.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 from pathlib import Path

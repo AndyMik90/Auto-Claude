@@ -5,6 +5,8 @@ Validator Registry
 Central registry mapping command names to their validation functions.
 """
 
+from __future__ import annotations
+
 from .database_validators import (
     validate_dropdb_command,
     validate_dropuser_command,

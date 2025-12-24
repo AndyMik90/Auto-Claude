@@ -7,6 +7,8 @@ Defines the complete implementation plan for a feature/task with progress
 tracking, status management, and follow-up capabilities.
 """
 
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
 from datetime import datetime

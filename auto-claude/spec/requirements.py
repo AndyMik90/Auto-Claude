@@ -5,6 +5,8 @@ Requirements Gathering Module
 Interactive and automated requirements collection from users.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import shlex

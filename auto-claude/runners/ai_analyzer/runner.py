@@ -2,6 +2,8 @@
 Main orchestrator for AI-powered project analysis.
 """
 
+from __future__ import annotations
+
 import time
 from datetime import datetime
 from pathlib import Path

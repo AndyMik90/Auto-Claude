@@ -15,6 +15,8 @@ Key Features:
 - Progress tracking via META issue
 """
 
+from __future__ import annotations
+
 import json
 import os
 from datetime import datetime

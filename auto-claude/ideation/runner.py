@@ -8,6 +8,8 @@ Orchestrates the ideation creation process through multiple phases:
 4. Merge - Combine all outputs
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import sys

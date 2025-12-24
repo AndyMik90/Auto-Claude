@@ -6,6 +6,8 @@ Handles model and thinking level configuration for different execution phases.
 Reads configuration from task_metadata.json and provides resolved model IDs.
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 from typing import Literal, TypedDict

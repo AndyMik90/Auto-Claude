@@ -6,6 +6,8 @@ Optional cross-encoder/reranker for improved search quality.
 Primarily useful for Ollama setups.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Any
 

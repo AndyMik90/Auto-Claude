@@ -10,6 +10,8 @@ Uses Claude agents to generate ideas of different types:
 - Code quality
 """
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 

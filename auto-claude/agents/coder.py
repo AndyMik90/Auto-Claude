@@ -5,6 +5,8 @@ Coder Agent Module
 Main autonomous agent loop that runs the coder agent to implement subtasks.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from pathlib import Path

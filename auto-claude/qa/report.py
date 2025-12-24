@@ -6,6 +6,8 @@ Handles iteration history tracking, recurring issue detection,
 and report generation.
 """
 
+from __future__ import annotations
+
 import json
 from collections import Counter
 from datetime import datetime, timezone

@@ -55,6 +55,8 @@ Environment Variables:
     OLLAMA_EMBEDDING_DIM: Override dimension (optional if using known model)
 """
 
+from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass, field

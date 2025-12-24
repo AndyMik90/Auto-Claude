@@ -6,6 +6,8 @@ Main review checkpoint logic including interactive menu, user prompts,
 and file editing capabilities.
 """
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys

@@ -6,6 +6,8 @@ Manages security profiles for projects, including caching and validation.
 Uses project_analyzer to create dynamic security profiles based on detected stacks.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from project_analyzer import (

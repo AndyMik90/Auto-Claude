@@ -6,6 +6,8 @@ Runs QA validation sessions to review implementation against
 acceptance criteria.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient

@@ -6,6 +6,8 @@ Workspace Finalization
 Functions for finalizing workspaces and handling user choices after build completion.
 """
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 

@@ -2,6 +2,8 @@
 Execution layer for agents and scripts in the roadmap generation process.
 """
 
+from __future__ import annotations
+
 import subprocess
 import sys
 from pathlib import Path

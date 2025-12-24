@@ -4,6 +4,8 @@ Configuration management for ideation generation.
 Handles initialization of directories, component setup, and configuration validation.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from init import init_auto_claude_dir

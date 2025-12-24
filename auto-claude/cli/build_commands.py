@@ -5,6 +5,8 @@ Build Commands
 CLI commands for building specs and handling the main build flow.
 """
 
+from __future__ import annotations
+
 import asyncio
 import sys
 from pathlib import Path

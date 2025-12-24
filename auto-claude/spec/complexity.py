@@ -6,6 +6,8 @@ AI and heuristic-based task complexity analysis.
 Determines which phases should run based on task scope.
 """
 
+from __future__ import annotations
+
 import json
 import re
 from dataclasses import dataclass, field

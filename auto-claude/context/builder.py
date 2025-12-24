@@ -5,6 +5,8 @@ Context Builder
 Main builder class that orchestrates context building for tasks.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 from dataclasses import asdict

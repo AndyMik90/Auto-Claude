@@ -12,6 +12,8 @@ This approach:
 - Moves bookkeeping to Python orchestration
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
