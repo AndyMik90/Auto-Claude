@@ -200,10 +200,10 @@ describe('Subprocess Spawn Integration', () => {
 
       manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Simulate stdout data
-      mockStdout.emit('data', Buffer.from('Test log output'));
+      // Simulate stdout data (must include newline for buffered output processing)
+      mockStdout.emit('data', Buffer.from('Test log output\n'));
 
-      expect(logHandler).toHaveBeenCalledWith('task-1', 'Test log output');
+      expect(logHandler).toHaveBeenCalledWith('task-1', 'Test log output\n');
     });
 
     it('should emit log events from stderr', async () => {
@@ -216,10 +216,10 @@ describe('Subprocess Spawn Integration', () => {
 
       manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Simulate stderr data (Python progress output often goes here)
-      mockStderr.emit('data', Buffer.from('Progress: 50%'));
+      // Simulate stderr data (must include newline for buffered output processing)
+      mockStderr.emit('data', Buffer.from('Progress: 50%\n'));
 
-      expect(logHandler).toHaveBeenCalledWith('task-1', 'Progress: 50%');
+      expect(logHandler).toHaveBeenCalledWith('task-1', 'Progress: 50%\n');
     });
 
     it('should emit exit event when process exits', async () => {
