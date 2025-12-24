@@ -56,6 +56,14 @@ export interface IssueListHeaderProps {
   onSearchChange: (query: string) => void;
   onFilterChange: (state: FilterState) => void;
   onRefresh: () => void;
+  // Auto-fix toggle (reactive - for new issues)
+  autoFixEnabled?: boolean;
+  autoFixRunning?: boolean;
+  autoFixProcessing?: number; // Number of issues being processed
+  onAutoFixToggle?: (enabled: boolean) => void;
+  // Analyze & Group (proactive - for existing issues)
+  onAnalyzeAndGroup?: () => void;
+  isAnalyzing?: boolean;
 }
 
 export interface IssueListProps {

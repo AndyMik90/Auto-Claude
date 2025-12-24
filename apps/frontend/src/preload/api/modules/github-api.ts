@@ -41,10 +41,88 @@ export interface AutoFixQueueItem {
  * Auto-fix progress status
  */
 export interface AutoFixProgress {
-  phase: 'checking' | 'fetching' | 'analyzing' | 'creating_spec' | 'building' | 'qa_review' | 'creating_pr' | 'complete';
+  phase: 'checking' | 'fetching' | 'analyzing' | 'batching' | 'creating_spec' | 'building' | 'qa_review' | 'creating_pr' | 'complete';
   issueNumber: number;
   progress: number;
   message: string;
+}
+
+/**
+ * Issue batch for grouped fixing
+ */
+export interface IssueBatch {
+  batchId: string;
+  repo: string;
+  primaryIssue: number;
+  issues: Array<{
+    issueNumber: number;
+    title: string;
+    similarityToPrimary: number;
+  }>;
+  commonThemes: string[];
+  status: 'pending' | 'analyzing' | 'creating_spec' | 'building' | 'qa_review' | 'pr_created' | 'completed' | 'failed';
+  specId?: string;
+  prNumber?: number;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Batch progress status
+ */
+export interface BatchProgress {
+  phase: 'analyzing' | 'batching' | 'creating_specs' | 'complete';
+  progress: number;
+  message: string;
+  totalIssues: number;
+  batchCount: number;
+}
+
+/**
+ * Analyze preview progress (proactive workflow)
+ */
+export interface AnalyzePreviewProgress {
+  phase: 'analyzing' | 'complete';
+  progress: number;
+  message: string;
+}
+
+/**
+ * Proposed batch from analyze-preview
+ */
+export interface ProposedBatch {
+  primaryIssue: number;
+  issues: Array<{
+    issueNumber: number;
+    title: string;
+    labels: string[];
+    similarityToPrimary: number;
+  }>;
+  issueCount: number;
+  commonThemes: string[];
+  validated: boolean;
+  confidence: number;
+  reasoning: string;
+  theme: string;
+}
+
+/**
+ * Analyze preview result (proactive batch workflow)
+ */
+export interface AnalyzePreviewResult {
+  success: boolean;
+  totalIssues: number;
+  analyzedIssues: number;
+  alreadyBatched: number;
+  proposedBatches: ProposedBatch[];
+  singleIssues: Array<{
+    issueNumber: number;
+    title: string;
+    labels: string[];
+  }>;
+  message: string;
+  error?: string;
 }
 
 /**
@@ -108,6 +186,10 @@ export interface GitHubAPI {
   checkAutoFixLabels: (projectId: string) => Promise<number[]>;
   startAutoFix: (projectId: string, issueNumber: number) => void;
 
+  // Batch auto-fix operations
+  batchAutoFix: (projectId: string, issueNumbers?: number[]) => void;
+  getBatches: (projectId: string) => Promise<IssueBatch[]>;
+
   // Auto-fix event listeners
   onAutoFixProgress: (
     callback: (projectId: string, progress: AutoFixProgress) => void
@@ -119,10 +201,36 @@ export interface GitHubAPI {
     callback: (projectId: string, error: { issueNumber: number; error: string }) => void
   ) => IpcListenerCleanup;
 
+  // Batch auto-fix event listeners
+  onBatchProgress: (
+    callback: (projectId: string, progress: BatchProgress) => void
+  ) => IpcListenerCleanup;
+  onBatchComplete: (
+    callback: (projectId: string, batches: IssueBatch[]) => void
+  ) => IpcListenerCleanup;
+  onBatchError: (
+    callback: (projectId: string, error: { error: string }) => void
+  ) => IpcListenerCleanup;
+
+  // Analyze & Group Issues (proactive batch workflow)
+  analyzeIssuesPreview: (projectId: string, issueNumbers?: number[], maxIssues?: number) => void;
+  approveBatches: (projectId: string, approvedBatches: ProposedBatch[]) => Promise<{ success: boolean; batches?: IssueBatch[]; error?: string }>;
+
+  // Analyze preview event listeners
+  onAnalyzePreviewProgress: (
+    callback: (projectId: string, progress: AnalyzePreviewProgress) => void
+  ) => IpcListenerCleanup;
+  onAnalyzePreviewComplete: (
+    callback: (projectId: string, result: AnalyzePreviewResult) => void
+  ) => IpcListenerCleanup;
+  onAnalyzePreviewError: (
+    callback: (projectId: string, error: { error: string }) => void
+  ) => IpcListenerCleanup;
+
   // PR operations
   listPRs: (projectId: string) => Promise<PRData[]>;
   runPRReview: (projectId: string, prNumber: number) => void;
-  postPRReview: (projectId: string, prNumber: number) => Promise<boolean>;
+  postPRReview: (projectId: string, prNumber: number, selectedFindingIds?: string[]) => Promise<boolean>;
   getPRReview: (projectId: string, prNumber: number) => Promise<PRReviewResult | null>;
 
   // PR event listeners
@@ -313,6 +421,13 @@ export const createGitHubAPI = (): GitHubAPI => ({
   startAutoFix: (projectId: string, issueNumber: number): void =>
     sendIpc(IPC_CHANNELS.GITHUB_AUTOFIX_START, projectId, issueNumber),
 
+  // Batch auto-fix operations
+  batchAutoFix: (projectId: string, issueNumbers?: number[]): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_AUTOFIX_BATCH, projectId, issueNumbers),
+
+  getBatches: (projectId: string): Promise<IssueBatch[]> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_AUTOFIX_GET_BATCHES, projectId),
+
   // Auto-fix event listeners
   onAutoFixProgress: (
     callback: (projectId: string, progress: AutoFixProgress) => void
@@ -329,6 +444,45 @@ export const createGitHubAPI = (): GitHubAPI => ({
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.GITHUB_AUTOFIX_ERROR, callback),
 
+  // Batch auto-fix event listeners
+  onBatchProgress: (
+    callback: (projectId: string, progress: BatchProgress) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_PROGRESS, callback),
+
+  onBatchComplete: (
+    callback: (projectId: string, batches: IssueBatch[]) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_COMPLETE, callback),
+
+  onBatchError: (
+    callback: (projectId: string, error: { error: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_ERROR, callback),
+
+  // Analyze & Group Issues (proactive batch workflow)
+  analyzeIssuesPreview: (projectId: string, issueNumbers?: number[], maxIssues?: number): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW, projectId, issueNumbers, maxIssues),
+
+  approveBatches: (projectId: string, approvedBatches: ProposedBatch[]): Promise<{ success: boolean; batches?: IssueBatch[]; error?: string }> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_AUTOFIX_APPROVE_BATCHES, projectId, approvedBatches),
+
+  // Analyze preview event listeners
+  onAnalyzePreviewProgress: (
+    callback: (projectId: string, progress: AnalyzePreviewProgress) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_PROGRESS, callback),
+
+  onAnalyzePreviewComplete: (
+    callback: (projectId: string, result: AnalyzePreviewResult) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_COMPLETE, callback),
+
+  onAnalyzePreviewError: (
+    callback: (projectId: string, error: { error: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_ERROR, callback),
+
   // PR operations
   listPRs: (projectId: string): Promise<PRData[]> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_LIST, projectId),
@@ -336,8 +490,8 @@ export const createGitHubAPI = (): GitHubAPI => ({
   runPRReview: (projectId: string, prNumber: number): void =>
     sendIpc(IPC_CHANNELS.GITHUB_PR_REVIEW, projectId, prNumber),
 
-  postPRReview: (projectId: string, prNumber: number): Promise<boolean> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_PR_POST_REVIEW, projectId, prNumber),
+  postPRReview: (projectId: string, prNumber: number, selectedFindingIds?: string[]): Promise<boolean> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_PR_POST_REVIEW, projectId, prNumber, selectedFindingIds),
 
   getPRReview: (projectId: string, prNumber: number): Promise<PRReviewResult | null> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_GET_REVIEW, projectId, prNumber),

@@ -59,12 +59,14 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
     reviewResult,
     reviewProgress,
     isReviewing,
+    activePRReviews,
     selectPR,
     runReview,
     postReview,
     refresh,
     isConnected,
     repoFullName,
+    getReviewStateForPR,
   } = useGitHubPRs(selectedProject?.id);
 
   const selectedPR = prs.find(pr => pr.number === selectedPRNumber);
@@ -75,9 +77,9 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
     }
   }, [selectedPRNumber, runReview]);
 
-  const handlePostReview = useCallback(() => {
+  const handlePostReview = useCallback((selectedFindingIds?: string[]) => {
     if (selectedPRNumber && reviewResult) {
-      postReview(selectedPRNumber);
+      postReview(selectedPRNumber, selectedFindingIds);
     }
   }, [selectedPRNumber, reviewResult, postReview]);
 
@@ -129,6 +131,8 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
             selectedPRNumber={selectedPRNumber}
             isLoading={isLoading}
             error={error}
+            activePRReviews={activePRReviews}
+            getReviewStateForPR={getReviewStateForPR}
             onSelectPR={selectPR}
           />
         </div>

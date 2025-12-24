@@ -4,15 +4,23 @@ GitHub Automation Data Models
 
 Data structures for GitHub automation features.
 Stored in .auto-claude/github/pr/ and .auto-claude/github/issues/
+
+All save() operations use file locking to prevent corruption in concurrent scenarios.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+
+try:
+    from .file_lock import locked_json_update, locked_json_write
+except ImportError:
+    from file_lock import locked_json_update, locked_json_write
 
 
 class ReviewSeverity(str, Enum):
@@ -36,6 +44,36 @@ class ReviewCategory(str, Enum):
     PERFORMANCE = "performance"
 
 
+class ReviewPass(str, Enum):
+    """Multi-pass review stages."""
+
+    QUICK_SCAN = "quick_scan"
+    SECURITY = "security"
+    QUALITY = "quality"
+    DEEP_ANALYSIS = "deep_analysis"
+    STRUCTURAL = "structural"  # Feature creep, architecture, PR structure
+    AI_COMMENT_TRIAGE = "ai_comment_triage"  # Verify other AI tool comments
+
+
+class MergeVerdict(str, Enum):
+    """Clear verdict for whether PR can be merged."""
+
+    READY_TO_MERGE = "ready_to_merge"  # No blockers, good to go
+    MERGE_WITH_CHANGES = "merge_with_changes"  # Minor issues, fix before merge
+    NEEDS_REVISION = "needs_revision"  # Significant issues, needs rework
+    BLOCKED = "blocked"  # Critical issues, cannot merge
+
+
+class AICommentVerdict(str, Enum):
+    """Verdict on AI tool comments (CodeRabbit, Cursor, Greptile, etc.)."""
+
+    CRITICAL = "critical"  # Must be addressed before merge
+    IMPORTANT = "important"  # Should be addressed
+    NICE_TO_HAVE = "nice_to_have"  # Optional improvement
+    TRIVIAL = "trivial"  # Can be ignored
+    FALSE_POSITIVE = "false_positive"  # AI was wrong
+
+
 class TriageCategory(str, Enum):
     """Issue triage categories."""
 
@@ -51,14 +89,114 @@ class TriageCategory(str, Enum):
 class AutoFixStatus(str, Enum):
     """Status for auto-fix operations."""
 
+    # Initial states
     PENDING = "pending"
     ANALYZING = "analyzing"
+
+    # Spec creation states
     CREATING_SPEC = "creating_spec"
+    WAITING_APPROVAL = "waiting_approval"  # P1-3: Human review gate
+
+    # Build states
     BUILDING = "building"
     QA_REVIEW = "qa_review"
+
+    # PR states
     PR_CREATED = "pr_created"
+    MERGE_CONFLICT = "merge_conflict"  # P1-3: Conflict resolution needed
+
+    # Terminal states
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"  # P1-3: User cancelled
+
+    # Special states
+    STALE = "stale"  # P1-3: Issue updated after spec creation
+    RATE_LIMITED = "rate_limited"  # P1-3: Waiting for rate limit reset
+
+    @classmethod
+    def terminal_states(cls) -> set[AutoFixStatus]:
+        """States that represent end of workflow."""
+        return {cls.COMPLETED, cls.FAILED, cls.CANCELLED}
+
+    @classmethod
+    def recoverable_states(cls) -> set[AutoFixStatus]:
+        """States that can be recovered from."""
+        return {cls.FAILED, cls.STALE, cls.RATE_LIMITED, cls.MERGE_CONFLICT}
+
+    @classmethod
+    def active_states(cls) -> set[AutoFixStatus]:
+        """States that indicate work in progress."""
+        return {
+            cls.PENDING,
+            cls.ANALYZING,
+            cls.CREATING_SPEC,
+            cls.BUILDING,
+            cls.QA_REVIEW,
+            cls.PR_CREATED,
+        }
+
+    def can_transition_to(self, new_state: AutoFixStatus) -> bool:
+        """Check if transition to new_state is valid."""
+        valid_transitions = {
+            AutoFixStatus.PENDING: {
+                AutoFixStatus.ANALYZING,
+                AutoFixStatus.CANCELLED,
+            },
+            AutoFixStatus.ANALYZING: {
+                AutoFixStatus.CREATING_SPEC,
+                AutoFixStatus.FAILED,
+                AutoFixStatus.CANCELLED,
+                AutoFixStatus.RATE_LIMITED,
+            },
+            AutoFixStatus.CREATING_SPEC: {
+                AutoFixStatus.WAITING_APPROVAL,
+                AutoFixStatus.BUILDING,
+                AutoFixStatus.FAILED,
+                AutoFixStatus.CANCELLED,
+                AutoFixStatus.STALE,
+            },
+            AutoFixStatus.WAITING_APPROVAL: {
+                AutoFixStatus.BUILDING,
+                AutoFixStatus.CANCELLED,
+                AutoFixStatus.STALE,
+            },
+            AutoFixStatus.BUILDING: {
+                AutoFixStatus.QA_REVIEW,
+                AutoFixStatus.FAILED,
+                AutoFixStatus.CANCELLED,
+                AutoFixStatus.RATE_LIMITED,
+            },
+            AutoFixStatus.QA_REVIEW: {
+                AutoFixStatus.PR_CREATED,
+                AutoFixStatus.BUILDING,  # Fix loop
+                AutoFixStatus.FAILED,
+                AutoFixStatus.CANCELLED,
+            },
+            AutoFixStatus.PR_CREATED: {
+                AutoFixStatus.COMPLETED,
+                AutoFixStatus.MERGE_CONFLICT,
+                AutoFixStatus.FAILED,
+            },
+            AutoFixStatus.MERGE_CONFLICT: {
+                AutoFixStatus.BUILDING,  # Retry after conflict resolution
+                AutoFixStatus.FAILED,
+                AutoFixStatus.CANCELLED,
+            },
+            AutoFixStatus.STALE: {
+                AutoFixStatus.ANALYZING,  # Re-analyze with new issue content
+                AutoFixStatus.CANCELLED,
+            },
+            AutoFixStatus.RATE_LIMITED: {
+                AutoFixStatus.PENDING,  # Resume after rate limit
+                AutoFixStatus.CANCELLED,
+            },
+            # Terminal states - no transitions
+            AutoFixStatus.COMPLETED: set(),
+            AutoFixStatus.FAILED: {AutoFixStatus.PENDING},  # Allow retry
+            AutoFixStatus.CANCELLED: set(),
+        }
+        return new_state in valid_transitions.get(self, set())
 
 
 @dataclass
@@ -107,6 +245,75 @@ class PRReviewFinding:
 
 
 @dataclass
+class AICommentTriage:
+    """Triage result for an AI tool comment (CodeRabbit, Cursor, Greptile, etc.)."""
+
+    comment_id: int
+    tool_name: str  # "CodeRabbit", "Cursor", "Greptile", etc.
+    original_comment: str
+    verdict: AICommentVerdict
+    reasoning: str
+    response_comment: str | None = None  # Comment to post in reply
+
+    def to_dict(self) -> dict:
+        return {
+            "comment_id": self.comment_id,
+            "tool_name": self.tool_name,
+            "original_comment": self.original_comment,
+            "verdict": self.verdict.value,
+            "reasoning": self.reasoning,
+            "response_comment": self.response_comment,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> AICommentTriage:
+        return cls(
+            comment_id=data["comment_id"],
+            tool_name=data["tool_name"],
+            original_comment=data["original_comment"],
+            verdict=AICommentVerdict(data["verdict"]),
+            reasoning=data["reasoning"],
+            response_comment=data.get("response_comment"),
+        )
+
+
+@dataclass
+class StructuralIssue:
+    """Structural issue with the PR (feature creep, architecture, etc.)."""
+
+    id: str
+    issue_type: str  # "feature_creep", "scope_creep", "architecture_violation", "poor_structure"
+    severity: ReviewSeverity
+    title: str
+    description: str
+    impact: str  # Why this matters
+    suggestion: str  # How to fix
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "issue_type": self.issue_type,
+            "severity": self.severity.value,
+            "title": self.title,
+            "description": self.description,
+            "impact": self.impact,
+            "suggestion": self.suggestion,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> StructuralIssue:
+        return cls(
+            id=data["id"],
+            issue_type=data["issue_type"],
+            severity=ReviewSeverity(data["severity"]),
+            title=data["title"],
+            description=data["description"],
+            impact=data["impact"],
+            suggestion=data["suggestion"],
+        )
+
+
+@dataclass
 class PRReviewResult:
     """Complete result of a PR review."""
 
@@ -120,6 +327,27 @@ class PRReviewResult:
     reviewed_at: str = field(default_factory=lambda: datetime.now().isoformat())
     error: str | None = None
 
+    # NEW: Enhanced verdict system
+    verdict: MergeVerdict = MergeVerdict.READY_TO_MERGE
+    verdict_reasoning: str = ""
+    blockers: list[str] = field(default_factory=list)  # Issues that MUST be fixed
+
+    # NEW: Risk assessment
+    risk_assessment: dict = field(
+        default_factory=lambda: {
+            "complexity": "low",  # low, medium, high
+            "security_impact": "none",  # none, low, medium, critical
+            "scope_coherence": "good",  # good, mixed, poor
+        }
+    )
+
+    # NEW: Structural issues and AI comment triages
+    structural_issues: list[StructuralIssue] = field(default_factory=list)
+    ai_comment_triages: list[AICommentTriage] = field(default_factory=list)
+
+    # NEW: Quick scan summary preserved
+    quick_scan_summary: dict = field(default_factory=dict)
+
     def to_dict(self) -> dict:
         return {
             "pr_number": self.pr_number,
@@ -131,6 +359,14 @@ class PRReviewResult:
             "review_id": self.review_id,
             "reviewed_at": self.reviewed_at,
             "error": self.error,
+            # NEW fields
+            "verdict": self.verdict.value,
+            "verdict_reasoning": self.verdict_reasoning,
+            "blockers": self.blockers,
+            "risk_assessment": self.risk_assessment,
+            "structural_issues": [s.to_dict() for s in self.structural_issues],
+            "ai_comment_triages": [t.to_dict() for t in self.ai_comment_triages],
+            "quick_scan_summary": self.quick_scan_summary,
         }
 
     @classmethod
@@ -145,54 +381,77 @@ class PRReviewResult:
             review_id=data.get("review_id"),
             reviewed_at=data.get("reviewed_at", datetime.now().isoformat()),
             error=data.get("error"),
+            # NEW fields
+            verdict=MergeVerdict(data.get("verdict", "ready_to_merge")),
+            verdict_reasoning=data.get("verdict_reasoning", ""),
+            blockers=data.get("blockers", []),
+            risk_assessment=data.get(
+                "risk_assessment",
+                {
+                    "complexity": "low",
+                    "security_impact": "none",
+                    "scope_coherence": "good",
+                },
+            ),
+            structural_issues=[
+                StructuralIssue.from_dict(s) for s in data.get("structural_issues", [])
+            ],
+            ai_comment_triages=[
+                AICommentTriage.from_dict(t) for t in data.get("ai_comment_triages", [])
+            ],
+            quick_scan_summary=data.get("quick_scan_summary", {}),
         )
 
     def save(self, github_dir: Path) -> None:
-        """Save review result to .auto-claude/github/pr/"""
+        """Save review result to .auto-claude/github/pr/ with file locking."""
         pr_dir = github_dir / "pr"
         pr_dir.mkdir(parents=True, exist_ok=True)
 
         review_file = pr_dir / f"review_{self.pr_number}.json"
-        with open(review_file, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
 
-        # Update index
+        # Atomic locked write
+        asyncio.run(locked_json_write(review_file, self.to_dict(), timeout=5.0))
+
+        # Update index with locking
         self._update_index(pr_dir)
 
     def _update_index(self, pr_dir: Path) -> None:
-        """Update the PR review index."""
+        """Update the PR review index with file locking."""
         index_file = pr_dir / "index.json"
 
-        if index_file.exists():
-            with open(index_file) as f:
-                index = json.load(f)
-        else:
-            index = {"reviews": [], "last_updated": None}
+        def update_index(current_data):
+            """Update function for atomic index update."""
+            if current_data is None:
+                current_data = {"reviews": [], "last_updated": None}
 
-        # Update or add entry
-        reviews = index.get("reviews", [])
-        existing = next((r for r in reviews if r["pr_number"] == self.pr_number), None)
+            # Update or add entry
+            reviews = current_data.get("reviews", [])
+            existing = next(
+                (r for r in reviews if r["pr_number"] == self.pr_number), None
+            )
 
-        entry = {
-            "pr_number": self.pr_number,
-            "repo": self.repo,
-            "overall_status": self.overall_status,
-            "findings_count": len(self.findings),
-            "reviewed_at": self.reviewed_at,
-        }
+            entry = {
+                "pr_number": self.pr_number,
+                "repo": self.repo,
+                "overall_status": self.overall_status,
+                "findings_count": len(self.findings),
+                "reviewed_at": self.reviewed_at,
+            }
 
-        if existing:
-            reviews = [
-                entry if r["pr_number"] == self.pr_number else r for r in reviews
-            ]
-        else:
-            reviews.append(entry)
+            if existing:
+                reviews = [
+                    entry if r["pr_number"] == self.pr_number else r for r in reviews
+                ]
+            else:
+                reviews.append(entry)
 
-        index["reviews"] = reviews
-        index["last_updated"] = datetime.now().isoformat()
+            current_data["reviews"] = reviews
+            current_data["last_updated"] = datetime.now().isoformat()
 
-        with open(index_file, "w") as f:
-            json.dump(index, f, indent=2)
+            return current_data
+
+        # Atomic locked update
+        asyncio.run(locked_json_update(index_file, update_index, timeout=5.0))
 
     @classmethod
     def load(cls, github_dir: Path, pr_number: int) -> PRReviewResult | None:
@@ -262,13 +521,14 @@ class TriageResult:
         )
 
     def save(self, github_dir: Path) -> None:
-        """Save triage result to .auto-claude/github/issues/"""
+        """Save triage result to .auto-claude/github/issues/ with file locking."""
         issues_dir = github_dir / "issues"
         issues_dir.mkdir(parents=True, exist_ok=True)
 
         triage_file = issues_dir / f"triage_{self.issue_number}.json"
-        with open(triage_file, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
+
+        # Atomic locked write
+        asyncio.run(locked_json_write(triage_file, self.to_dict(), timeout=5.0))
 
     @classmethod
     def load(cls, github_dir: Path, issue_number: int) -> TriageResult | None:
@@ -337,54 +597,61 @@ class AutoFixState:
         self.updated_at = datetime.now().isoformat()
 
     def save(self, github_dir: Path) -> None:
-        """Save auto-fix state to .auto-claude/github/issues/"""
+        """Save auto-fix state to .auto-claude/github/issues/ with file locking."""
         issues_dir = github_dir / "issues"
         issues_dir.mkdir(parents=True, exist_ok=True)
 
         autofix_file = issues_dir / f"autofix_{self.issue_number}.json"
-        with open(autofix_file, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
 
-        # Update index
+        # Atomic locked write
+        asyncio.run(locked_json_write(autofix_file, self.to_dict(), timeout=5.0))
+
+        # Update index with locking
         self._update_index(issues_dir)
 
     def _update_index(self, issues_dir: Path) -> None:
-        """Update the issues index with auto-fix queue."""
+        """Update the issues index with auto-fix queue using file locking."""
         index_file = issues_dir / "index.json"
 
-        if index_file.exists():
-            with open(index_file) as f:
-                index = json.load(f)
-        else:
-            index = {"triaged": [], "auto_fix_queue": [], "last_updated": None}
+        def update_index(current_data):
+            """Update function for atomic index update."""
+            if current_data is None:
+                current_data = {
+                    "triaged": [],
+                    "auto_fix_queue": [],
+                    "last_updated": None,
+                }
 
-        # Update auto-fix queue
-        queue = index.get("auto_fix_queue", [])
-        existing = next(
-            (q for q in queue if q["issue_number"] == self.issue_number), None
-        )
+            # Update auto-fix queue
+            queue = current_data.get("auto_fix_queue", [])
+            existing = next(
+                (q for q in queue if q["issue_number"] == self.issue_number), None
+            )
 
-        entry = {
-            "issue_number": self.issue_number,
-            "repo": self.repo,
-            "status": self.status.value,
-            "spec_id": self.spec_id,
-            "pr_number": self.pr_number,
-            "updated_at": self.updated_at,
-        }
+            entry = {
+                "issue_number": self.issue_number,
+                "repo": self.repo,
+                "status": self.status.value,
+                "spec_id": self.spec_id,
+                "pr_number": self.pr_number,
+                "updated_at": self.updated_at,
+            }
 
-        if existing:
-            queue = [
-                entry if q["issue_number"] == self.issue_number else q for q in queue
-            ]
-        else:
-            queue.append(entry)
+            if existing:
+                queue = [
+                    entry if q["issue_number"] == self.issue_number else q
+                    for q in queue
+                ]
+            else:
+                queue.append(entry)
 
-        index["auto_fix_queue"] = queue
-        index["last_updated"] = datetime.now().isoformat()
+            current_data["auto_fix_queue"] = queue
+            current_data["last_updated"] = datetime.now().isoformat()
 
-        with open(index_file, "w") as f:
-            json.dump(index, f, indent=2)
+            return current_data
+
+        # Atomic locked update
+        asyncio.run(locked_json_update(index_file, update_index, timeout=5.0))
 
     @classmethod
     def load(cls, github_dir: Path, issue_number: int) -> AutoFixState | None:
@@ -411,6 +678,12 @@ class GitHubRunnerConfig:
     auto_fix_labels: list[str] = field(default_factory=lambda: ["auto-fix"])
     require_human_approval: bool = True
 
+    # Permission settings
+    auto_fix_allowed_roles: list[str] = field(
+        default_factory=lambda: ["OWNER", "MEMBER", "COLLABORATOR"]
+    )
+    allow_external_contributors: bool = False
+
     # Triage settings
     triage_enabled: bool = False
     duplicate_threshold: float = 0.80
@@ -422,6 +695,7 @@ class GitHubRunnerConfig:
     pr_review_enabled: bool = False
     auto_post_reviews: bool = False
     allow_fix_commits: bool = True
+    review_own_prs: bool = False  # Whether bot can review its own PRs
 
     # Model settings
     model: str = "claude-sonnet-4-20250514"
@@ -435,12 +709,15 @@ class GitHubRunnerConfig:
             "auto_fix_enabled": self.auto_fix_enabled,
             "auto_fix_labels": self.auto_fix_labels,
             "require_human_approval": self.require_human_approval,
+            "auto_fix_allowed_roles": self.auto_fix_allowed_roles,
+            "allow_external_contributors": self.allow_external_contributors,
             "triage_enabled": self.triage_enabled,
             "duplicate_threshold": self.duplicate_threshold,
             "spam_threshold": self.spam_threshold,
             "feature_creep_threshold": self.feature_creep_threshold,
             "enable_triage_comments": self.enable_triage_comments,
             "pr_review_enabled": self.pr_review_enabled,
+            "review_own_prs": self.review_own_prs,
             "auto_post_reviews": self.auto_post_reviews,
             "allow_fix_commits": self.allow_fix_commits,
             "model": self.model,
@@ -480,12 +757,19 @@ class GitHubRunnerConfig:
             auto_fix_enabled=settings.get("auto_fix_enabled", False),
             auto_fix_labels=settings.get("auto_fix_labels", ["auto-fix"]),
             require_human_approval=settings.get("require_human_approval", True),
+            auto_fix_allowed_roles=settings.get(
+                "auto_fix_allowed_roles", ["OWNER", "MEMBER", "COLLABORATOR"]
+            ),
+            allow_external_contributors=settings.get(
+                "allow_external_contributors", False
+            ),
             triage_enabled=settings.get("triage_enabled", False),
             duplicate_threshold=settings.get("duplicate_threshold", 0.80),
             spam_threshold=settings.get("spam_threshold", 0.75),
             feature_creep_threshold=settings.get("feature_creep_threshold", 0.70),
             enable_triage_comments=settings.get("enable_triage_comments", False),
             pr_review_enabled=settings.get("pr_review_enabled", False),
+            review_own_prs=settings.get("review_own_prs", False),
             auto_post_reviews=settings.get("auto_post_reviews", False),
             allow_fix_commits=settings.get("allow_fix_commits", True),
             model=settings.get("model", "claude-sonnet-4-20250514"),

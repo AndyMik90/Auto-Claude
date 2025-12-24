@@ -5,3 +5,4 @@ export { EmptyState, NotConnectedState } from './EmptyStates';
 export { IssueListHeader } from './IssueListHeader';
 export { IssueList } from './IssueList';
 export { AutoFixButton } from './AutoFixButton';
+export { BatchReviewWizard } from './BatchReviewWizard';

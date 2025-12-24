@@ -1,14 +1,23 @@
-import { GitPullRequest, User, Clock, FileDiff } from 'lucide-react';
+import { GitPullRequest, User, Clock, FileDiff, Loader2, CheckCircle2 } from 'lucide-react';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Badge } from '../../ui/badge';
 import { cn } from '../../../lib/utils';
-import type { PRData } from '../hooks/useGitHubPRs';
+import type { PRData, PRReviewProgress, PRReviewResult } from '../hooks/useGitHubPRs';
+
+interface PRReviewInfo {
+  isReviewing: boolean;
+  progress: PRReviewProgress | null;
+  result: PRReviewResult | null;
+  error: string | null;
+}
 
 interface PRListProps {
   prs: PRData[];
   selectedPRNumber: number | null;
   isLoading: boolean;
   error: string | null;
+  activePRReviews: number[];
+  getReviewStateForPR: (prNumber: number) => PRReviewInfo | null;
   onSelectPR: (prNumber: number) => void;
 }
 
@@ -32,7 +41,7 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-export function PRList({ prs, selectedPRNumber, isLoading, error, onSelectPR }: PRListProps) {
+export function PRList({ prs, selectedPRNumber, isLoading, error, activePRReviews, getReviewStateForPR, onSelectPR }: PRListProps) {
   if (isLoading && prs.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -68,44 +77,63 @@ export function PRList({ prs, selectedPRNumber, isLoading, error, onSelectPR }: 
   return (
     <ScrollArea className="flex-1">
       <div className="divide-y divide-border">
-        {prs.map((pr) => (
-          <button
-            key={pr.number}
-            onClick={() => onSelectPR(pr.number)}
-            className={cn(
-              'w-full p-4 text-left transition-colors hover:bg-accent/50',
-              selectedPRNumber === pr.number && 'bg-accent'
-            )}
-          >
-            <div className="flex items-start gap-3">
-              <GitPullRequest className="h-5 w-5 mt-0.5 text-success shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm text-muted-foreground">#{pr.number}</span>
-                  <Badge variant="outline" className="text-xs">
-                    {pr.headRefName}
-                  </Badge>
-                </div>
-                <h3 className="font-medium text-sm truncate">{pr.title}</h3>
-                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    {pr.author.login}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatDate(pr.updatedAt)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <FileDiff className="h-3 w-3" />
-                    <span className="text-success">+{pr.additions}</span>
-                    <span className="text-destructive">-{pr.deletions}</span>
-                  </span>
+        {prs.map((pr) => {
+          const reviewState = getReviewStateForPR(pr.number);
+          const isReviewingPR = reviewState?.isReviewing ?? false;
+          const hasReviewResult = reviewState?.result !== null && reviewState?.result !== undefined;
+
+          return (
+            <button
+              key={pr.number}
+              onClick={() => onSelectPR(pr.number)}
+              className={cn(
+                'w-full p-4 text-left transition-colors hover:bg-accent/50',
+                selectedPRNumber === pr.number && 'bg-accent'
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <GitPullRequest className="h-5 w-5 mt-0.5 text-success shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm text-muted-foreground">#{pr.number}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {pr.headRefName}
+                    </Badge>
+                    {/* Review status indicator */}
+                    {isReviewingPR && (
+                      <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Reviewing
+                      </Badge>
+                    )}
+                    {!isReviewingPR && hasReviewResult && (
+                      <Badge variant="outline" className="text-xs flex items-center gap-1 text-success border-success/50">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Reviewed
+                      </Badge>
+                    )}
+                  </div>
+                  <h3 className="font-medium text-sm truncate">{pr.title}</h3>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {pr.author.login}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDate(pr.updatedAt)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FileDiff className="h-3 w-3" />
+                      <span className="text-success">+{pr.additions}</span>
+                      <span className="text-destructive">-{pr.deletions}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </ScrollArea>
   );

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   PRData,
   PRReviewResult,
   PRReviewProgress
 } from '../../../../preload/api/modules/github-api';
+import { usePRReviewStore, startPRReview as storeStartPRReview } from '../../../stores/github';
 
 // Re-export types for consumers
 export type { PRData, PRReviewResult, PRReviewProgress };
@@ -20,10 +21,12 @@ interface UseGitHubPRsResult {
   isReviewing: boolean;
   isConnected: boolean;
   repoFullName: string | null;
+  activePRReviews: number[]; // PR numbers currently being reviewed
   selectPR: (prNumber: number | null) => void;
   refresh: () => Promise<void>;
   runReview: (prNumber: number) => Promise<void>;
-  postReview: (prNumber: number) => Promise<boolean>;
+  postReview: (prNumber: number, selectedFindingIds?: string[]) => Promise<boolean>;
+  getReviewStateForPR: (prNumber: number) => { isReviewing: boolean; progress: PRReviewProgress | null; result: PRReviewResult | null; error: string | null } | null;
 }
 
 export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
@@ -31,11 +34,43 @@ export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPRNumber, setSelectedPRNumber] = useState<number | null>(null);
-  const [reviewResult, setReviewResult] = useState<PRReviewResult | null>(null);
-  const [reviewProgress, setReviewProgress] = useState<PRReviewProgress | null>(null);
-  const [isReviewing, setIsReviewing] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [repoFullName, setRepoFullName] = useState<string | null>(null);
+
+  // Get PR review state from the global store
+  const prReviews = usePRReviewStore((state) => state.prReviews);
+  const getPRReviewState = usePRReviewStore((state) => state.getPRReviewState);
+  const getActivePRReviews = usePRReviewStore((state) => state.getActivePRReviews);
+
+  // Get review state for the selected PR from the store
+  const selectedPRReviewState = useMemo(() => {
+    if (!projectId || selectedPRNumber === null) return null;
+    return getPRReviewState(projectId, selectedPRNumber);
+  }, [projectId, selectedPRNumber, prReviews, getPRReviewState]);
+
+  // Derive values from store state
+  const reviewResult = selectedPRReviewState?.result ?? null;
+  const reviewProgress = selectedPRReviewState?.progress ?? null;
+  const isReviewing = selectedPRReviewState?.isReviewing ?? false;
+
+  // Get list of PR numbers currently being reviewed
+  const activePRReviews = useMemo(() => {
+    if (!projectId) return [];
+    return getActivePRReviews(projectId).map(review => review.prNumber);
+  }, [projectId, prReviews, getActivePRReviews]);
+
+  // Helper to get review state for any PR
+  const getReviewStateForPR = useCallback((prNumber: number) => {
+    if (!projectId) return null;
+    const state = getPRReviewState(projectId, prNumber);
+    if (!state) return null;
+    return {
+      isReviewing: state.isReviewing,
+      progress: state.progress,
+      result: state.result,
+      error: state.error
+    };
+  }, [projectId, prReviews, getPRReviewState]);
 
   const selectedPR = prs.find(pr => pr.number === selectedPRNumber) || null;
 
@@ -77,58 +112,27 @@ export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
     fetchPRs();
   }, [fetchPRs]);
 
-  // Listen for review progress events
-  useEffect(() => {
-    if (!projectId) return;
-
-    const cleanupProgress = window.electronAPI.github.onPRReviewProgress(
-      (pid: string, progress: PRReviewProgress) => {
-        if (pid === projectId) {
-          setReviewProgress(progress);
-        }
-      }
-    );
-
-    const cleanupComplete = window.electronAPI.github.onPRReviewComplete(
-      (pid: string, result: PRReviewResult) => {
-        if (pid === projectId) {
-          setReviewResult(result);
-          setReviewProgress(null);
-          setIsReviewing(false);
-        }
-      }
-    );
-
-    const cleanupError = window.electronAPI.github.onPRReviewError(
-      (pid: string, data: { prNumber: number; error: string }) => {
-        if (pid === projectId) {
-          setError(data.error);
-          setReviewProgress(null);
-          setIsReviewing(false);
-        }
-      }
-    );
-
-    return () => {
-      cleanupProgress();
-      cleanupComplete();
-      cleanupError();
-    };
-  }, [projectId]);
+  // No need for local IPC listeners - they're handled globally in github-store
 
   const selectPR = useCallback((prNumber: number | null) => {
     setSelectedPRNumber(prNumber);
-    setReviewResult(null);
+    // Note: Don't reset review result - it comes from the store now
+    // and persists across navigation
 
-    // Load existing review if available
+    // Load existing review from disk if not already in store
     if (prNumber && projectId) {
-      window.electronAPI.github.getPRReview(projectId, prNumber).then(result => {
-        if (result) {
-          setReviewResult(result);
-        }
-      });
+      const existingState = getPRReviewState(projectId, prNumber);
+      // Only fetch from disk if we don't have a result in the store
+      if (!existingState?.result) {
+        window.electronAPI.github.getPRReview(projectId, prNumber).then(result => {
+          if (result) {
+            // Update store with the loaded result
+            usePRReviewStore.getState().setPRReviewResult(projectId, result);
+          }
+        });
+      }
     }
-  }, [projectId]);
+  }, [projectId, getPRReviewState]);
 
   const refresh = useCallback(async () => {
     await fetchPRs();
@@ -137,18 +141,15 @@ export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
   const runReview = useCallback(async (prNumber: number) => {
     if (!projectId) return;
 
-    setIsReviewing(true);
-    setError(null);
-    setReviewResult(null);
-
-    window.electronAPI.github.runPRReview(projectId, prNumber);
+    // Use the store function which handles both state and IPC
+    storeStartPRReview(projectId, prNumber);
   }, [projectId]);
 
-  const postReview = useCallback(async (prNumber: number): Promise<boolean> => {
+  const postReview = useCallback(async (prNumber: number, selectedFindingIds?: string[]): Promise<boolean> => {
     if (!projectId) return false;
 
     try {
-      return await window.electronAPI.github.postPRReview(projectId, prNumber);
+      return await window.electronAPI.github.postPRReview(projectId, prNumber, selectedFindingIds);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to post review');
       return false;
@@ -166,9 +167,11 @@ export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
     isReviewing,
     isConnected,
     repoFullName,
+    activePRReviews,
     selectPR,
     refresh,
     runReview,
     postReview,
+    getReviewStateForPR,
   };
 }

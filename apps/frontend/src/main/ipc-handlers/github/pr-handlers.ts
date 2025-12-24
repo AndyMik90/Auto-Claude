@@ -10,26 +10,26 @@
 
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
-import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import { IPC_CHANNELS } from '../../../shared/constants';
-import { projectStore } from '../../project-store';
+import { IPC_CHANNELS, MODEL_ID_MAP, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING } from '../../../shared/constants';
 import { getGitHubConfig, githubFetch } from './utils';
-import type { Project } from '../../../shared/types';
+import { readSettingsFile } from '../../settings-utils';
+import type { Project, AppSettings, FeatureModelConfig, FeatureThinkingConfig } from '../../../shared/types';
+import { createContextLogger } from './utils/logger';
+import { withProjectOrNull, withProjectSyncOrNull } from './utils/project-middleware';
+import { createIPCCommunicators } from './utils/ipc-communicator';
+import {
+  runPythonSubprocess,
+  getBackendPath,
+  getPythonPath,
+  getRunnerPath,
+  validateRunner,
+  buildRunnerArgs,
+} from './utils/subprocess-runner';
 
-// Debug logging helper
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
-
-function debugLog(message: string, data?: unknown): void {
-  if (DEBUG) {
-    if (data !== undefined) {
-      console.warn(`[GitHub PR] ${message}`, data);
-    } else {
-      console.warn(`[GitHub PR] ${message}`);
-    }
-  }
-}
+// Debug logging
+const { debug: debugLog } = createContextLogger('GitHub PR');
 
 /**
  * PR review finding from AI analysis
@@ -143,70 +143,31 @@ function getReviewResult(project: Project, prNumber: number): PRReviewResult | n
   return null;
 }
 
-/**
- * Send progress update to renderer
- */
-function sendProgress(
-  mainWindow: BrowserWindow,
-  projectId: string,
-  status: PRReviewProgress
-): void {
-  mainWindow.webContents.send(
-    IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
-    projectId,
-    status
-  );
-}
+// IPC communication helpers removed - using createIPCCommunicators instead
 
 /**
- * Send error to renderer
+ * Get GitHub PR model and thinking settings from app settings
  */
-function sendError(
-  mainWindow: BrowserWindow,
-  projectId: string,
-  prNumber: number,
-  error: string
-): void {
-  mainWindow.webContents.send(
-    IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
-    projectId,
-    { prNumber, error }
-  );
+function getGitHubPRSettings(): { model: string; thinkingLevel: string } {
+  const rawSettings = readSettingsFile() as Partial<AppSettings> | undefined;
+
+  // Get feature models/thinking with defaults
+  const featureModels = rawSettings?.featureModels ?? DEFAULT_FEATURE_MODELS;
+  const featureThinking = rawSettings?.featureThinking ?? DEFAULT_FEATURE_THINKING;
+
+  // Get PR-specific settings (with fallback to defaults)
+  const modelShort = featureModels.githubPrs ?? DEFAULT_FEATURE_MODELS.githubPrs;
+  const thinkingLevel = featureThinking.githubPrs ?? DEFAULT_FEATURE_THINKING.githubPrs;
+
+  // Convert model short name to full model ID
+  const model = MODEL_ID_MAP[modelShort] ?? MODEL_ID_MAP['opus'];
+
+  debugLog('GitHub PR settings', { modelShort, model, thinkingLevel });
+
+  return { model, thinkingLevel };
 }
 
-/**
- * Send completion to renderer
- */
-function sendComplete(
-  mainWindow: BrowserWindow,
-  projectId: string,
-  result: PRReviewResult
-): void {
-  mainWindow.webContents.send(
-    IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
-    projectId,
-    result
-  );
-}
-
-/**
- * Get the auto-claude backend path
- */
-function getBackendPath(project: Project): string | null {
-  // The autoBuildPath is the relative path to .auto-claude from project root
-  // For mono-repo style projects, the actual backend is in apps/backend
-  const autoBuildPath = project.autoBuildPath;
-  if (!autoBuildPath) return null;
-
-  // Check if this is a development repo (has apps/backend structure)
-  const appsBackendPath = path.join(project.path, 'apps', 'backend');
-  if (fs.existsSync(path.join(appsBackendPath, 'runners', 'github', 'runner.py'))) {
-    return appsBackendPath;
-  }
-
-  // Otherwise, GitHub runner isn't installed
-  return null;
-}
+// getBackendPath function removed - using subprocess-runner utility instead
 
 /**
  * Run the Python PR reviewer
@@ -216,96 +177,65 @@ async function runPRReview(
   prNumber: number,
   mainWindow: BrowserWindow
 ): Promise<PRReviewResult> {
-  return new Promise((resolve, reject) => {
-    const backendPath = getBackendPath(project);
-    if (!backendPath) {
-      reject(new Error('GitHub runner not found. Make sure the GitHub automation module is installed.'));
-      return;
-    }
+  const backendPath = getBackendPath(project);
+  const validation = validateRunner(backendPath);
 
-    const runnerPath = path.join(backendPath, 'runners', 'github', 'runner.py');
-    if (!fs.existsSync(runnerPath)) {
-      reject(new Error('GitHub runner not found at: ' + runnerPath));
-      return;
-    }
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
 
-    const pythonPath = path.join(backendPath, '.venv', 'bin', 'python');
+  const { sendProgress } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
+    mainWindow,
+    {
+      progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
+      error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
+      complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
+    },
+    project.id
+  );
 
-    const args = [
-      runnerPath,
-      '--project', project.path,
-      'review-pr',
-      prNumber.toString(),
-    ];
+  const { model, thinkingLevel } = getGitHubPRSettings();
+  const args = buildRunnerArgs(
+    getRunnerPath(backendPath!),
+    project.path,
+    'review-pr',
+    [prNumber.toString()],
+    { model, thinkingLevel }
+  );
 
-    debugLog('Spawning PR review process', {
-      pythonPath,
-      args,
-      cwd: backendPath,
-    });
+  debugLog('Spawning PR review process', { args, model, thinkingLevel });
 
-    const child = spawn(pythonPath, args, {
-      cwd: backendPath,
-      env: {
-        ...process.env,
-        PYTHONPATH: backendPath,
-      },
-    });
-
-    debugLog('Process spawned', { pid: child.pid });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout.on('data', (data: Buffer) => {
-      const text = data.toString();
-      stdout += text;
-      debugLog('STDOUT:', text.trim());
-      // Parse progress updates
-      const lines = text.split('\n');
-      for (const line of lines) {
-        const match = line.match(/\[(\d+)%\]\s*(.+)/);
-        if (match) {
-          debugLog('Progress update detected', { percent: match[1], message: match[2] });
-          sendProgress(mainWindow, project.id, {
-            phase: 'analyzing',
-            prNumber,
-            progress: parseInt(match[1], 10),
-            message: match[2],
-          });
-        }
+  const result = await runPythonSubprocess<PRReviewResult>({
+    pythonPath: getPythonPath(backendPath!),
+    args,
+    cwd: backendPath!,
+    onProgress: (percent, message) => {
+      debugLog('Progress update', { percent, message });
+      sendProgress({
+        phase: 'analyzing',
+        prNumber,
+        progress: percent,
+        message,
+      });
+    },
+    onStdout: (line) => debugLog('STDOUT:', line),
+    onStderr: (line) => debugLog('STDERR:', line),
+    onComplete: () => {
+      // Load the result from disk
+      const reviewResult = getReviewResult(project, prNumber);
+      if (!reviewResult) {
+        throw new Error('Review completed but result not found');
       }
-    });
-
-    child.stderr.on('data', (data: Buffer) => {
-      const text = data.toString();
-      stderr += text;
-      debugLog('STDERR:', text.trim());
-    });
-
-    child.on('close', (code: number) => {
-      debugLog('Process exited', { code, stdoutLength: stdout.length, stderrLength: stderr.length });
-      if (code === 0) {
-        // Try to load the result from disk
-        const result = getReviewResult(project, prNumber);
-        if (result) {
-          debugLog('Review result loaded successfully', { findingsCount: result.findings.length });
-          resolve(result);
-        } else {
-          debugLog('Review result not found on disk');
-          reject(new Error('Review completed but result not found'));
-        }
-      } else {
-        debugLog('Process failed', { code, stderr: stderr.substring(0, 500) });
-        reject(new Error(stderr || `Review failed with code ${code}`));
-      }
-    });
-
-    child.on('error', (err: Error) => {
-      debugLog('Process error', { error: err.message });
-      reject(err);
-    });
+      debugLog('Review result loaded', { findingsCount: reviewResult.findings.length });
+      return reviewResult;
+    },
   });
+
+  if (!result.success) {
+    throw new Error(result.error ?? 'Review failed');
+  }
+
+  return result.data!;
 }
 
 /**
@@ -321,59 +251,56 @@ export function registerPRHandlers(
     IPC_CHANNELS.GITHUB_PR_LIST,
     async (_, projectId: string): Promise<PRData[]> => {
       debugLog('listPRs handler called', { projectId });
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        debugLog('Project not found', { projectId });
-        return [];
-      }
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const config = getGitHubConfig(project);
+        if (!config) {
+          debugLog('No GitHub config found for project');
+          return [];
+        }
 
-      const config = getGitHubConfig(project);
-      if (!config) {
-        debugLog('No GitHub config found for project');
-        return [];
-      }
+        try {
+          const prs = await githubFetch(
+            config.token,
+            `/repos/${config.repo}/pulls?state=open&per_page=50`
+          ) as Array<{
+            number: number;
+            title: string;
+            body?: string;
+            state: string;
+            user: { login: string };
+            head: { ref: string };
+            base: { ref: string };
+            additions: number;
+            deletions: number;
+            changed_files: number;
+            created_at: string;
+            updated_at: string;
+            html_url: string;
+          }>;
 
-      try {
-        const prs = await githubFetch(
-          config.token,
-          `/repos/${config.repo}/pulls?state=open&per_page=50`
-        ) as Array<{
-          number: number;
-          title: string;
-          body?: string;
-          state: string;
-          user: { login: string };
-          head: { ref: string };
-          base: { ref: string };
-          additions: number;
-          deletions: number;
-          changed_files: number;
-          created_at: string;
-          updated_at: string;
-          html_url: string;
-        }>;
-
-        debugLog('Fetched PRs', { count: prs.length });
-        return prs.map(pr => ({
-          number: pr.number,
-          title: pr.title,
-          body: pr.body ?? '',
-          state: pr.state,
-          author: { login: pr.user.login },
-          headRefName: pr.head.ref,
-          baseRefName: pr.base.ref,
-          additions: pr.additions,
-          deletions: pr.deletions,
-          changedFiles: pr.changed_files,
-          files: [],
-          createdAt: pr.created_at,
-          updatedAt: pr.updated_at,
-          htmlUrl: pr.html_url,
-        }));
-      } catch (error) {
-        debugLog('Failed to fetch PRs', { error: error instanceof Error ? error.message : error });
-        return [];
-      }
+          debugLog('Fetched PRs', { count: prs.length });
+          return prs.map(pr => ({
+            number: pr.number,
+            title: pr.title,
+            body: pr.body ?? '',
+            state: pr.state,
+            author: { login: pr.user.login },
+            headRefName: pr.head.ref,
+            baseRefName: pr.base.ref,
+            additions: pr.additions,
+            deletions: pr.deletions,
+            changedFiles: pr.changed_files,
+            files: [],
+            createdAt: pr.created_at,
+            updatedAt: pr.updated_at,
+            htmlUrl: pr.html_url,
+          }));
+        } catch (error) {
+          debugLog('Failed to fetch PRs', { error: error instanceof Error ? error.message : error });
+          return [];
+        }
+      });
+      return result ?? [];
     }
   );
 
@@ -382,66 +309,65 @@ export function registerPRHandlers(
     IPC_CHANNELS.GITHUB_PR_GET,
     async (_, projectId: string, prNumber: number): Promise<PRData | null> => {
       debugLog('getPR handler called', { projectId, prNumber });
-      const project = projectStore.getProject(projectId);
-      if (!project) return null;
+      return withProjectOrNull(projectId, async (project) => {
+        const config = getGitHubConfig(project);
+        if (!config) return null;
 
-      const config = getGitHubConfig(project);
-      if (!config) return null;
+        try {
+          const pr = await githubFetch(
+            config.token,
+            `/repos/${config.repo}/pulls/${prNumber}`
+          ) as {
+            number: number;
+            title: string;
+            body?: string;
+            state: string;
+            user: { login: string };
+            head: { ref: string };
+            base: { ref: string };
+            additions: number;
+            deletions: number;
+            changed_files: number;
+            created_at: string;
+            updated_at: string;
+            html_url: string;
+          };
 
-      try {
-        const pr = await githubFetch(
-          config.token,
-          `/repos/${config.repo}/pulls/${prNumber}`
-        ) as {
-          number: number;
-          title: string;
-          body?: string;
-          state: string;
-          user: { login: string };
-          head: { ref: string };
-          base: { ref: string };
-          additions: number;
-          deletions: number;
-          changed_files: number;
-          created_at: string;
-          updated_at: string;
-          html_url: string;
-        };
+          const files = await githubFetch(
+            config.token,
+            `/repos/${config.repo}/pulls/${prNumber}/files`
+          ) as Array<{
+            filename: string;
+            additions: number;
+            deletions: number;
+            status: string;
+          }>;
 
-        const files = await githubFetch(
-          config.token,
-          `/repos/${config.repo}/pulls/${prNumber}/files`
-        ) as Array<{
-          filename: string;
-          additions: number;
-          deletions: number;
-          status: string;
-        }>;
-
-        return {
-          number: pr.number,
-          title: pr.title,
-          body: pr.body ?? '',
-          state: pr.state,
-          author: { login: pr.user.login },
-          headRefName: pr.head.ref,
-          baseRefName: pr.base.ref,
-          additions: pr.additions,
-          deletions: pr.deletions,
-          changedFiles: pr.changed_files,
-          files: files.map(f => ({
-            path: f.filename,
-            additions: f.additions,
-            deletions: f.deletions,
-            status: f.status,
-          })),
-          createdAt: pr.created_at,
-          updatedAt: pr.updated_at,
-          htmlUrl: pr.html_url,
-        };
-      } catch {
-        return null;
-      }
+          return {
+            number: pr.number,
+            title: pr.title,
+            body: pr.body ?? '',
+            state: pr.state,
+            author: { login: pr.user.login },
+            headRefName: pr.head.ref,
+            baseRefName: pr.base.ref,
+            additions: pr.additions,
+            deletions: pr.deletions,
+            changedFiles: pr.changed_files,
+            files: files.map(f => ({
+              path: f.filename,
+              additions: f.additions,
+              deletions: f.deletions,
+              status: f.status,
+            })),
+            createdAt: pr.created_at,
+            updatedAt: pr.updated_at,
+            htmlUrl: pr.html_url,
+          };
+        } catch {
+          return null;
+        }
+      });
     }
   );
 
@@ -449,23 +375,21 @@ export function registerPRHandlers(
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_PR_GET_DIFF,
     async (_, projectId: string, prNumber: number): Promise<string | null> => {
-      const project = projectStore.getProject(projectId);
-      if (!project) return null;
+      return withProjectOrNull(projectId, async (project) => {
+        const config = getGitHubConfig(project);
+        if (!config) return null;
 
-      const config = getGitHubConfig(project);
-      if (!config) return null;
-
-      try {
-        // Use gh CLI to get diff
-        const { execSync } = await import('child_process');
-        const diff = execSync(`gh pr diff ${prNumber}`, {
-          cwd: project.path,
-          encoding: 'utf-8',
-        });
-        return diff;
-      } catch {
-        return null;
-      }
+        try {
+          const { execSync } = await import('child_process');
+          const diff = execSync(`gh pr diff ${prNumber}`, {
+            cwd: project.path,
+            encoding: 'utf-8',
+          });
+          return diff;
+        } catch {
+          return null;
+        }
+      });
     }
   );
 
@@ -473,9 +397,9 @@ export function registerPRHandlers(
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_PR_GET_REVIEW,
     async (_, projectId: string, prNumber: number): Promise<PRReviewResult | null> => {
-      const project = projectStore.getProject(projectId);
-      if (!project) return null;
-      return getReviewResult(project, prNumber);
+      return withProjectOrNull(projectId, async (project) => {
+        return getReviewResult(project, prNumber);
+      });
     }
   );
 
@@ -490,41 +414,50 @@ export function registerPRHandlers(
         return;
       }
 
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        debugLog('Project not found', { projectId });
-        sendError(mainWindow, projectId, prNumber, 'Project not found');
-        return;
-      }
-
       try {
-        debugLog('Starting PR review', { prNumber });
-        sendProgress(mainWindow, projectId, {
-          phase: 'fetching',
-          prNumber,
-          progress: 10,
-          message: 'Fetching PR data...',
+        await withProjectOrNull(projectId, async (project) => {
+          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
+            mainWindow,
+            {
+              progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
+              error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
+              complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
+            },
+            projectId
+          );
+
+          debugLog('Starting PR review', { prNumber });
+          sendProgress({
+            phase: 'fetching',
+            prNumber,
+            progress: 10,
+            message: 'Fetching PR data...',
+          });
+
+          const result = await runPRReview(project, prNumber, mainWindow);
+
+          debugLog('PR review completed', { prNumber, findingsCount: result.findings.length });
+          sendProgress({
+            phase: 'complete',
+            prNumber,
+            progress: 100,
+            message: 'Review complete!',
+          });
+
+          sendComplete(result);
         });
-
-        const result = await runPRReview(project, prNumber, mainWindow);
-
-        debugLog('PR review completed', { prNumber, findingsCount: result.findings.length });
-        sendProgress(mainWindow, projectId, {
-          phase: 'complete',
-          prNumber,
-          progress: 100,
-          message: 'Review complete!',
-        });
-
-        sendComplete(mainWindow, projectId, result);
       } catch (error) {
         debugLog('PR review failed', { prNumber, error: error instanceof Error ? error.message : error });
-        sendError(
+        const { sendError } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
           mainWindow,
-          projectId,
-          prNumber,
-          error instanceof Error ? error.message : 'Failed to run PR review'
+          {
+            progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
+            error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
+            complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
+          },
+          projectId
         );
+        sendError(error instanceof Error ? error.message : 'Failed to run PR review');
       }
     }
   );
@@ -532,56 +465,77 @@ export function registerPRHandlers(
   // Post review to GitHub
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_PR_POST_REVIEW,
-    async (_, projectId: string, prNumber: number): Promise<boolean> => {
-      debugLog('postPRReview handler called', { projectId, prNumber });
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        debugLog('Project not found', { projectId });
-        return false;
-      }
-
-      const result = getReviewResult(project, prNumber);
-      if (!result) {
-        debugLog('No review result found', { prNumber });
-        return false;
-      }
-
-      try {
-        const { execSync } = await import('child_process');
-
-        // Build review body
-        let body = `## 🤖 AI Code Review\n\n${result.summary}\n\n`;
-
-        if (result.findings.length > 0) {
-          body += `### Findings (${result.findings.length} total)\n\n`;
-          for (const f of result.findings) {
-            const emoji = { critical: '🔴', high: '🟠', medium: '🟡', low: '🔵' }[f.severity] || '⚪';
-            body += `#### ${emoji} [${f.severity.toUpperCase()}] ${f.title}\n`;
-            body += `📁 \`${f.file}:${f.line}\`\n\n`;
-            body += `${f.description}\n\n`;
-            if (f.suggestedFix) {
-              body += `**Suggested fix:**\n\`\`\`\n${f.suggestedFix}\n\`\`\`\n\n`;
-            }
-          }
+    async (_, projectId: string, prNumber: number, selectedFindingIds?: string[]): Promise<boolean> => {
+      debugLog('postPRReview handler called', { projectId, prNumber, selectedCount: selectedFindingIds?.length });
+      const postResult = await withProjectOrNull(projectId, async (project) => {
+        const result = getReviewResult(project, prNumber);
+        if (!result) {
+          debugLog('No review result found', { prNumber });
+          return false;
         }
 
-        body += `---\n*This review was generated by AutoCloud AI.*`;
+        try {
+          const { execSync } = await import('child_process');
 
-        // Post review
-        const eventFlag = result.overallStatus === 'approve' ? '--approve' :
-          result.overallStatus === 'request_changes' ? '--request-changes' : '--comment';
+          // Filter findings if selection provided
+          const selectedSet = selectedFindingIds ? new Set(selectedFindingIds) : null;
+          const findings = selectedSet
+            ? result.findings.filter(f => selectedSet.has(f.id))
+            : result.findings;
 
-        debugLog('Posting review to GitHub', { prNumber, status: result.overallStatus });
-        execSync(`gh pr review ${prNumber} ${eventFlag} --body "${body.replace(/"/g, '\\"')}"`, {
-          cwd: project.path,
-        });
+          debugLog('Posting findings', { total: result.findings.length, selected: findings.length });
 
-        debugLog('Review posted successfully', { prNumber });
-        return true;
-      } catch (error) {
-        debugLog('Failed to post review', { prNumber, error: error instanceof Error ? error.message : error });
-        return false;
-      }
+          // Build review body
+          let body = `## 🤖 Auto Claude PR Review\n\n${result.summary}\n\n`;
+
+          if (findings.length > 0) {
+            // Show selected count vs total if filtered
+            const countText = selectedSet
+              ? `${findings.length} selected of ${result.findings.length} total`
+              : `${findings.length} total`;
+            body += `### Findings (${countText})\n\n`;
+
+            for (const f of findings) {
+              const emoji = { critical: '🔴', high: '🟠', medium: '🟡', low: '🔵' }[f.severity] || '⚪';
+              body += `#### ${emoji} [${f.severity.toUpperCase()}] ${f.title}\n`;
+              body += `📁 \`${f.file}:${f.line}\`\n\n`;
+              body += `${f.description}\n\n`;
+              // Only show suggested fix if it has actual content
+              const suggestedFix = f.suggestedFix?.trim();
+              if (suggestedFix) {
+                body += `**Suggested fix:**\n\`\`\`\n${suggestedFix}\n\`\`\`\n\n`;
+              }
+            }
+          } else {
+            body += `*No findings selected for this review.*\n\n`;
+          }
+
+          body += `---\n*This review was generated by Auto Claude.*`;
+
+          // Determine review status based on selected findings
+          let overallStatus = result.overallStatus;
+          if (selectedSet) {
+            const hasBlocker = findings.some(f => f.severity === 'critical' || f.severity === 'high');
+            overallStatus = hasBlocker ? 'request_changes' : (findings.length > 0 ? 'comment' : 'approve');
+          }
+
+          // Post review
+          const eventFlag = overallStatus === 'approve' ? '--approve' :
+            overallStatus === 'request_changes' ? '--request-changes' : '--comment';
+
+          debugLog('Posting review to GitHub', { prNumber, status: overallStatus, findingsCount: findings.length });
+          execSync(`gh pr review ${prNumber} ${eventFlag} --body "${body.replace(/"/g, '\\"')}"`, {
+            cwd: project.path,
+          });
+
+          debugLog('Review posted successfully', { prNumber });
+          return true;
+        } catch (error) {
+          debugLog('Failed to post review', { prNumber, error: error instanceof Error ? error.message : error });
+          return false;
+        }
+      });
+      return postResult ?? false;
     }
   );
 

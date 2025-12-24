@@ -10,27 +10,27 @@
 
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
-import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { IPC_CHANNELS } from '../../../shared/constants';
-import { projectStore } from '../../project-store';
 import { getGitHubConfig, githubFetch } from './utils';
 import { createSpecForIssue, buildIssueContext, buildInvestigationTask } from './spec-utils';
 import type { Project } from '../../../shared/types';
+import { createContextLogger } from './utils/logger';
+import { withProjectOrNull, withProjectSyncOrNull } from './utils/project-middleware';
+import { createIPCCommunicators } from './utils/ipc-communicator';
+import {
+  runPythonSubprocess,
+  getBackendPath,
+  getPythonPath,
+  getRunnerPath,
+  validateRunner,
+  buildRunnerArgs,
+  parseJSONFromOutput,
+} from './utils/subprocess-runner';
 
-// Debug logging helper
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
-
-function debugLog(message: string, data?: unknown): void {
-  if (DEBUG) {
-    if (data !== undefined) {
-      console.warn(`[GitHub AutoFix] ${message}`, data);
-    } else {
-      console.warn(`[GitHub AutoFix] ${message}`);
-    }
-  }
-}
+// Debug logging
+const { debug: debugLog } = createContextLogger('GitHub AutoFix');
 
 /**
  * Auto-fix configuration stored in .auto-claude/github/config.json
@@ -62,10 +62,42 @@ export interface AutoFixQueueItem {
  * Progress status for auto-fix operations
  */
 export interface AutoFixProgress {
-  phase: 'checking' | 'fetching' | 'analyzing' | 'creating_spec' | 'building' | 'qa_review' | 'creating_pr' | 'complete';
+  phase: 'checking' | 'fetching' | 'analyzing' | 'batching' | 'creating_spec' | 'building' | 'qa_review' | 'creating_pr' | 'complete';
   issueNumber: number;
   progress: number;
   message: string;
+}
+
+/**
+ * Issue batch for grouped fixing
+ */
+export interface IssueBatch {
+  batchId: string;
+  repo: string;
+  primaryIssue: number;
+  issues: Array<{
+    issueNumber: number;
+    title: string;
+    similarityToPrimary: number;
+  }>;
+  commonThemes: string[];
+  status: 'pending' | 'analyzing' | 'creating_spec' | 'building' | 'qa_review' | 'pr_created' | 'completed' | 'failed';
+  specId?: string;
+  prNumber?: number;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Batch progress status
+ */
+export interface BatchProgress {
+  phase: 'analyzing' | 'batching' | 'creating_specs' | 'complete';
+  progress: number;
+  message: string;
+  totalIssues: number;
+  batchCount: number;
 }
 
 /**
@@ -173,51 +205,7 @@ function getAutoFixQueue(project: Project): AutoFixQueueItem[] {
   return queue.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-/**
- * Send progress update to renderer
- */
-function sendProgress(
-  mainWindow: BrowserWindow,
-  projectId: string,
-  status: AutoFixProgress
-): void {
-  mainWindow.webContents.send(
-    IPC_CHANNELS.GITHUB_AUTOFIX_PROGRESS,
-    projectId,
-    status
-  );
-}
-
-/**
- * Send error to renderer
- */
-function sendError(
-  mainWindow: BrowserWindow,
-  projectId: string,
-  issueNumber: number,
-  error: string
-): void {
-  mainWindow.webContents.send(
-    IPC_CHANNELS.GITHUB_AUTOFIX_ERROR,
-    projectId,
-    { issueNumber, error }
-  );
-}
-
-/**
- * Send completion to renderer
- */
-function sendComplete(
-  mainWindow: BrowserWindow,
-  projectId: string,
-  result: AutoFixQueueItem
-): void {
-  mainWindow.webContents.send(
-    IPC_CHANNELS.GITHUB_AUTOFIX_COMPLETE,
-    projectId,
-    result
-  );
-}
+// IPC communication helpers removed - using createIPCCommunicators instead
 
 /**
  * Check for issues with auto-fix labels
@@ -278,25 +266,25 @@ async function startAutoFix(
   issueNumber: number,
   mainWindow: BrowserWindow
 ): Promise<void> {
+  const { sendProgress, sendComplete } = createIPCCommunicators<AutoFixProgress, AutoFixQueueItem>(
+    mainWindow,
+    {
+      progress: IPC_CHANNELS.GITHUB_AUTOFIX_PROGRESS,
+      error: IPC_CHANNELS.GITHUB_AUTOFIX_ERROR,
+      complete: IPC_CHANNELS.GITHUB_AUTOFIX_COMPLETE,
+    },
+    project.id
+  );
+
   const ghConfig = getGitHubConfig(project);
   if (!ghConfig) {
     throw new Error('No GitHub configuration found');
   }
 
-  const config = getAutoFixConfig(project);
-
-  sendProgress(mainWindow, project.id, {
-    phase: 'fetching',
-    issueNumber,
-    progress: 10,
-    message: `Fetching issue #${issueNumber}...`,
-  });
+  sendProgress({ phase: 'fetching', issueNumber, progress: 10, message: `Fetching issue #${issueNumber}...` });
 
   // Fetch the issue
-  const issue = await githubFetch(
-    ghConfig.token,
-    `/repos/${ghConfig.repo}/issues/${issueNumber}`
-  ) as {
+  const issue = await githubFetch(ghConfig.token, `/repos/${ghConfig.repo}/issues/${issueNumber}`) as {
     number: number;
     title: string;
     body?: string;
@@ -305,17 +293,13 @@ async function startAutoFix(
   };
 
   // Fetch comments
-  const comments = await githubFetch(
-    ghConfig.token,
-    `/repos/${ghConfig.repo}/issues/${issueNumber}/comments`
-  ) as Array<{ id: number; body: string; user: { login: string } }>;
+  const comments = await githubFetch(ghConfig.token, `/repos/${ghConfig.repo}/issues/${issueNumber}/comments`) as Array<{
+    id: number;
+    body: string;
+    user: { login: string };
+  }>;
 
-  sendProgress(mainWindow, project.id, {
-    phase: 'analyzing',
-    issueNumber,
-    progress: 30,
-    message: 'Analyzing issue...',
-  });
+  sendProgress({ phase: 'analyzing', issueNumber, progress: 30, message: 'Analyzing issue...' });
 
   // Build context
   const labels = issue.labels.map(l => l.name);
@@ -334,28 +318,11 @@ async function startAutoFix(
     }))
   );
 
-  sendProgress(mainWindow, project.id, {
-    phase: 'creating_spec',
-    issueNumber,
-    progress: 50,
-    message: 'Creating spec from issue...',
-  });
+  sendProgress({ phase: 'creating_spec', issueNumber, progress: 50, message: 'Creating spec from issue...' });
 
   // Create spec
-  const taskDescription = buildInvestigationTask(
-    issue.number,
-    issue.title,
-    issueContext
-  );
-
-  const specData = await createSpecForIssue(
-    project,
-    issue.number,
-    issue.title,
-    taskDescription,
-    issue.html_url,
-    labels
-  );
+  const taskDescription = buildInvestigationTask(issue.number, issue.title, issueContext);
+  const specData = await createSpecForIssue(project, issue.number, issue.title, taskDescription, issue.html_url, labels);
 
   // Save auto-fix state
   const issuesDir = path.join(getGitHubDir(project), 'issues');
@@ -382,14 +349,42 @@ async function startAutoFix(
     }, null, 2)
   );
 
-  sendProgress(mainWindow, project.id, {
-    phase: 'complete',
-    issueNumber,
-    progress: 100,
-    message: 'Spec created. Ready to start build.',
-  });
+  sendProgress({ phase: 'complete', issueNumber, progress: 100, message: 'Spec created. Ready to start build.' });
+  sendComplete(state);
+}
 
-  sendComplete(mainWindow, project.id, state);
+/**
+ * Convert analyze-preview Python result to camelCase
+ */
+function convertAnalyzePreviewResult(result: Record<string, unknown>): AnalyzePreviewResult {
+  return {
+    success: result.success as boolean,
+    totalIssues: result.total_issues as number ?? 0,
+    analyzedIssues: result.analyzed_issues as number ?? 0,
+    alreadyBatched: result.already_batched as number ?? 0,
+    proposedBatches: (result.proposed_batches as Array<Record<string, unknown>> ?? []).map((b) => ({
+      primaryIssue: b.primary_issue as number,
+      issues: (b.issues as Array<Record<string, unknown>>).map((i) => ({
+        issueNumber: i.issue_number as number,
+        title: i.title as string,
+        labels: i.labels as string[] ?? [],
+        similarityToPrimary: i.similarity_to_primary as number ?? 0,
+      })),
+      issueCount: b.issue_count as number ?? 0,
+      commonThemes: b.common_themes as string[] ?? [],
+      validated: b.validated as boolean ?? false,
+      confidence: b.confidence as number ?? 0,
+      reasoning: b.reasoning as string ?? '',
+      theme: b.theme as string ?? '',
+    })),
+    singleIssues: (result.single_issues as Array<Record<string, unknown>> ?? []).map((i) => ({
+      issueNumber: i.issue_number as number,
+      title: i.title as string,
+      labels: i.labels as string[] ?? [],
+    })),
+    message: result.message as string ?? '',
+    error: result.error as string,
+  };
 }
 
 /**
@@ -405,14 +400,11 @@ export function registerAutoFixHandlers(
     IPC_CHANNELS.GITHUB_AUTOFIX_GET_CONFIG,
     async (_, projectId: string): Promise<AutoFixConfig | null> => {
       debugLog('getAutoFixConfig handler called', { projectId });
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        debugLog('Project not found', { projectId });
-        return null;
-      }
-      const config = getAutoFixConfig(project);
-      debugLog('AutoFix config loaded', { enabled: config.enabled, labels: config.labels });
-      return config;
+      return withProjectOrNull(projectId, async (project) => {
+        const config = getAutoFixConfig(project);
+        debugLog('AutoFix config loaded', { enabled: config.enabled, labels: config.labels });
+        return config;
+      });
     }
   );
 
@@ -421,14 +413,12 @@ export function registerAutoFixHandlers(
     IPC_CHANNELS.GITHUB_AUTOFIX_SAVE_CONFIG,
     async (_, projectId: string, config: AutoFixConfig): Promise<boolean> => {
       debugLog('saveAutoFixConfig handler called', { projectId, enabled: config.enabled });
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        debugLog('Project not found', { projectId });
-        return false;
-      }
-      saveAutoFixConfig(project, config);
-      debugLog('AutoFix config saved');
-      return true;
+      const result = await withProjectOrNull(projectId, async (project) => {
+        saveAutoFixConfig(project, config);
+        debugLog('AutoFix config saved');
+        return true;
+      });
+      return result ?? false;
     }
   );
 
@@ -437,14 +427,12 @@ export function registerAutoFixHandlers(
     IPC_CHANNELS.GITHUB_AUTOFIX_GET_QUEUE,
     async (_, projectId: string): Promise<AutoFixQueueItem[]> => {
       debugLog('getAutoFixQueue handler called', { projectId });
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        debugLog('Project not found', { projectId });
-        return [];
-      }
-      const queue = getAutoFixQueue(project);
-      debugLog('AutoFix queue loaded', { count: queue.length });
-      return queue;
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const queue = getAutoFixQueue(project);
+        debugLog('AutoFix queue loaded', { count: queue.length });
+        return queue;
+      });
+      return result ?? [];
     }
   );
 
@@ -453,14 +441,12 @@ export function registerAutoFixHandlers(
     IPC_CHANNELS.GITHUB_AUTOFIX_CHECK_LABELS,
     async (_, projectId: string): Promise<number[]> => {
       debugLog('checkAutoFixLabels handler called', { projectId });
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        debugLog('Project not found', { projectId });
-        return [];
-      }
-      const issues = await checkAutoFixLabels(project);
-      debugLog('Issues with auto-fix labels', { count: issues.length, issues });
-      return issues;
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const issues = await checkAutoFixLabels(project);
+        debugLog('Issues with auto-fix labels', { count: issues.length, issues });
+        return issues;
+      });
+      return result ?? [];
     }
   );
 
@@ -475,28 +461,357 @@ export function registerAutoFixHandlers(
         return;
       }
 
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        debugLog('Project not found', { projectId });
-        sendError(mainWindow, projectId, issueNumber, 'Project not found');
-        return;
-      }
-
       try {
-        debugLog('Starting auto-fix for issue', { issueNumber });
-        await startAutoFix(project, issueNumber, mainWindow);
-        debugLog('Auto-fix completed for issue', { issueNumber });
+        await withProjectOrNull(projectId, async (project) => {
+          debugLog('Starting auto-fix for issue', { issueNumber });
+          await startAutoFix(project, issueNumber, mainWindow);
+          debugLog('Auto-fix completed for issue', { issueNumber });
+        });
       } catch (error) {
         debugLog('Auto-fix failed', { issueNumber, error: error instanceof Error ? error.message : error });
-        sendError(
+        const { sendError } = createIPCCommunicators<AutoFixProgress, AutoFixQueueItem>(
           mainWindow,
-          projectId,
-          issueNumber,
-          error instanceof Error ? error.message : 'Failed to start auto-fix'
+          {
+            progress: IPC_CHANNELS.GITHUB_AUTOFIX_PROGRESS,
+            error: IPC_CHANNELS.GITHUB_AUTOFIX_ERROR,
+            complete: IPC_CHANNELS.GITHUB_AUTOFIX_COMPLETE,
+          },
+          projectId
         );
+        sendError(error instanceof Error ? error.message : 'Failed to start auto-fix');
       }
     }
   );
 
+  // Batch auto-fix for multiple issues
+  ipcMain.on(
+    IPC_CHANNELS.GITHUB_AUTOFIX_BATCH,
+    async (_, projectId: string, issueNumbers?: number[]) => {
+      debugLog('batchAutoFix handler called', { projectId, issueNumbers });
+      const mainWindow = getMainWindow();
+      if (!mainWindow) {
+        debugLog('No main window available');
+        return;
+      }
+
+      try {
+        await withProjectOrNull(projectId, async (project) => {
+          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<BatchProgress, IssueBatch[]>(
+            mainWindow,
+            {
+              progress: IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_PROGRESS,
+              error: IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_ERROR,
+              complete: IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_COMPLETE,
+            },
+            projectId
+          );
+
+          debugLog('Starting batch auto-fix');
+          sendProgress({
+            phase: 'analyzing',
+            progress: 10,
+            message: 'Analyzing issues for similarity...',
+            totalIssues: issueNumbers?.length ?? 0,
+            batchCount: 0,
+          });
+
+          const backendPath = getBackendPath(project);
+          const validation = validateRunner(backendPath);
+          if (!validation.valid) {
+            throw new Error(validation.error);
+          }
+
+          const additionalArgs = issueNumbers && issueNumbers.length > 0 ? issueNumbers.map(n => n.toString()) : [];
+          const args = buildRunnerArgs(getRunnerPath(backendPath!), project.path, 'batch-issues', additionalArgs);
+
+          debugLog('Spawning batch process', { args });
+
+          const result = await runPythonSubprocess<IssueBatch[]>({
+            pythonPath: getPythonPath(backendPath!),
+            args,
+            cwd: backendPath!,
+            onProgress: (percent, message) => {
+              sendProgress({
+                phase: 'batching',
+                progress: percent,
+                message,
+                totalIssues: issueNumbers?.length ?? 0,
+                batchCount: 0,
+              });
+            },
+            onStdout: (line) => debugLog('STDOUT:', line),
+            onStderr: (line) => debugLog('STDERR:', line),
+            onComplete: () => {
+              const batches = getBatches(project);
+              debugLog('Batch auto-fix completed', { batchCount: batches.length });
+              sendProgress({
+                phase: 'complete',
+                progress: 100,
+                message: `Created ${batches.length} batches`,
+                totalIssues: issueNumbers?.length ?? 0,
+                batchCount: batches.length,
+              });
+              return batches;
+            },
+          });
+
+          if (!result.success) {
+            throw new Error(result.error ?? 'Failed to batch issues');
+          }
+
+          sendComplete(result.data!);
+        });
+      } catch (error) {
+        debugLog('Batch auto-fix failed', { error: error instanceof Error ? error.message : error });
+        const { sendError } = createIPCCommunicators<BatchProgress, IssueBatch[]>(
+          mainWindow,
+          {
+            progress: IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_PROGRESS,
+            error: IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_ERROR,
+            complete: IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_COMPLETE,
+          },
+          projectId
+        );
+        sendError(error instanceof Error ? error.message : 'Failed to batch issues');
+      }
+    }
+  );
+
+  // Get batches for a project
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_AUTOFIX_GET_BATCHES,
+    async (_, projectId: string): Promise<IssueBatch[]> => {
+      debugLog('getBatches handler called', { projectId });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const batches = getBatches(project);
+        debugLog('Batches loaded', { count: batches.length });
+        return batches;
+      });
+      return result ?? [];
+    }
+  );
+
+  // Analyze issues and preview proposed batches (proactive workflow)
+  ipcMain.on(
+    IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW,
+    async (_, projectId: string, issueNumbers?: number[], maxIssues?: number) => {
+      debugLog('analyzePreview handler called', { projectId, issueNumbers, maxIssues });
+      const mainWindow = getMainWindow();
+      if (!mainWindow) {
+        debugLog('No main window available');
+        return;
+      }
+
+      try {
+        await withProjectOrNull(projectId, async (project) => {
+          interface AnalyzePreviewProgress {
+            phase: 'analyzing';
+            progress: number;
+            message: string;
+          }
+
+          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<
+            AnalyzePreviewProgress,
+            AnalyzePreviewResult
+          >(
+            mainWindow,
+            {
+              progress: IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_PROGRESS,
+              error: IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_ERROR,
+              complete: IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_COMPLETE,
+            },
+            projectId
+          );
+
+          debugLog('Starting analyze-preview');
+          sendProgress({ phase: 'analyzing', progress: 10, message: 'Fetching issues for analysis...' });
+
+          const backendPath = getBackendPath(project);
+          const validation = validateRunner(backendPath);
+          if (!validation.valid) {
+            throw new Error(validation.error);
+          }
+
+          const additionalArgs = ['--json'];
+          if (maxIssues) {
+            additionalArgs.push('--max-issues', maxIssues.toString());
+          }
+          if (issueNumbers && issueNumbers.length > 0) {
+            additionalArgs.push(...issueNumbers.map(n => n.toString()));
+          }
+
+          const args = buildRunnerArgs(getRunnerPath(backendPath!), project.path, 'analyze-preview', additionalArgs);
+          debugLog('Spawning analyze-preview process', { args });
+
+          const result = await runPythonSubprocess<AnalyzePreviewResult>({
+            pythonPath: getPythonPath(backendPath!),
+            args,
+            cwd: backendPath!,
+            onProgress: (percent, message) => {
+              sendProgress({ phase: 'analyzing', progress: percent, message });
+            },
+            onStdout: (line) => debugLog('STDOUT:', line),
+            onStderr: (line) => debugLog('STDERR:', line),
+            onComplete: (stdout) => {
+              const rawResult = parseJSONFromOutput<Record<string, unknown>>(stdout);
+              const convertedResult = convertAnalyzePreviewResult(rawResult);
+              debugLog('Analyze preview completed', { batchCount: convertedResult.proposedBatches.length });
+              return convertedResult;
+            },
+          });
+
+          if (!result.success) {
+            throw new Error(result.error ?? 'Failed to analyze issues');
+          }
+
+          sendComplete(result.data!);
+        });
+      } catch (error) {
+        debugLog('Analyze preview failed', { error: error instanceof Error ? error.message : error });
+        const { sendError } = createIPCCommunicators<{ phase: 'analyzing'; progress: number; message: string }, AnalyzePreviewResult>(
+          mainWindow,
+          {
+            progress: IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_PROGRESS,
+            error: IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_ERROR,
+            complete: IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_COMPLETE,
+          },
+          projectId
+        );
+        sendError(error instanceof Error ? error.message : 'Failed to analyze issues');
+      }
+    }
+  );
+
+  // Approve and execute selected batches
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_AUTOFIX_APPROVE_BATCHES,
+    async (_, projectId: string, approvedBatches: Array<Record<string, unknown>>): Promise<{ success: boolean; batches?: IssueBatch[]; error?: string }> => {
+      debugLog('approveBatches handler called', { projectId, batchCount: approvedBatches.length });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        try {
+          const tempFile = path.join(getGitHubDir(project), 'temp_approved_batches.json');
+
+          // Convert camelCase to snake_case for Python
+          const pythonBatches = approvedBatches.map(b => ({
+            primary_issue: b.primaryIssue,
+            issues: (b.issues as Array<Record<string, unknown>>).map((i: Record<string, unknown>) => ({
+              issue_number: i.issueNumber,
+              title: i.title,
+              labels: i.labels ?? [],
+              similarity_to_primary: i.similarityToPrimary ?? 1.0,
+            })),
+            common_themes: b.commonThemes ?? [],
+            validated: b.validated ?? true,
+            confidence: b.confidence ?? 1.0,
+            reasoning: b.reasoning ?? 'User approved',
+            theme: b.theme ?? '',
+          }));
+
+          fs.writeFileSync(tempFile, JSON.stringify(pythonBatches, null, 2));
+
+          const backendPath = getBackendPath(project);
+          const validation = validateRunner(backendPath);
+          if (!validation.valid) {
+            throw new Error(validation.error);
+          }
+
+          const { execSync } = await import('child_process');
+          execSync(
+            `"${getPythonPath(backendPath!)}" "${getRunnerPath(backendPath!)}" --project "${project.path}" approve-batches "${tempFile}"`,
+            { cwd: backendPath!, encoding: 'utf-8' }
+          );
+
+          fs.unlinkSync(tempFile);
+
+          const batches = getBatches(project);
+          debugLog('Batches approved and created', { count: batches.length });
+
+          return { success: true, batches };
+        } catch (error) {
+          debugLog('Approve batches failed', { error: error instanceof Error ? error.message : error });
+          return { success: false, error: error instanceof Error ? error.message : 'Failed to approve batches' };
+        }
+      });
+      return result ?? { success: false, error: 'Project not found' };
+    }
+  );
+
   debugLog('AutoFix handlers registered');
+}
+
+// getBackendPath function removed - using subprocess-runner utility instead
+
+/**
+ * Preview result for analyze-preview command
+ */
+export interface AnalyzePreviewResult {
+  success: boolean;
+  totalIssues: number;
+  analyzedIssues: number;
+  alreadyBatched: number;
+  proposedBatches: Array<{
+    primaryIssue: number;
+    issues: Array<{
+      issueNumber: number;
+      title: string;
+      labels: string[];
+      similarityToPrimary: number;
+    }>;
+    issueCount: number;
+    commonThemes: string[];
+    validated: boolean;
+    confidence: number;
+    reasoning: string;
+    theme: string;
+  }>;
+  singleIssues: Array<{
+    issueNumber: number;
+    title: string;
+    labels: string[];
+  }>;
+  message: string;
+  error?: string;
+}
+
+/**
+ * Get batches from disk
+ */
+function getBatches(project: Project): IssueBatch[] {
+  const batchesDir = path.join(getGitHubDir(project), 'batches');
+
+  if (!fs.existsSync(batchesDir)) {
+    return [];
+  }
+
+  const batches: IssueBatch[] = [];
+  const files = fs.readdirSync(batchesDir);
+
+  for (const file of files) {
+    if (file.startsWith('batch_') && file.endsWith('.json')) {
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(batchesDir, file), 'utf-8'));
+        batches.push({
+          batchId: data.batch_id,
+          repo: data.repo,
+          primaryIssue: data.primary_issue,
+          issues: data.issues.map((i: Record<string, unknown>) => ({
+            issueNumber: i.issue_number,
+            title: i.title,
+            similarityToPrimary: i.similarity_to_primary,
+          })),
+          commonThemes: data.common_themes ?? [],
+          status: data.status,
+          specId: data.spec_id,
+          prNumber: data.pr_number,
+          error: data.error,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        });
+      } catch {
+        // Skip invalid files
+      }
+    }
+  }
+
+  return batches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }

@@ -8,41 +8,67 @@ Main coordinator for all GitHub automation workflows:
 - Issue Auto-Fix: Automatic spec creation and execution
 
 This is a STANDALONE system - does not modify existing task execution pipeline.
+
+REFACTORED: Service layer architecture - orchestrator delegates to specialized services.
 """
 
 from __future__ import annotations
 
-import json
-import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 try:
     # When imported as part of package
+    from .bot_detection import BotDetector
+    from .context_gatherer import PRContext, PRContextGatherer
+    from .gh_client import GHClient
     from .models import (
+        AICommentTriage,
+        AICommentVerdict,
         AutoFixState,
-        AutoFixStatus,
         GitHubRunnerConfig,
+        MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
         ReviewCategory,
         ReviewSeverity,
-        TriageCategory,
+        StructuralIssue,
         TriageResult,
+    )
+    from .permissions import GitHubPermissionChecker
+    from .rate_limiter import RateLimiter
+    from .services import (
+        AutoFixProcessor,
+        BatchProcessor,
+        PRReviewEngine,
+        TriageEngine,
     )
 except ImportError:
     # When imported directly (runner.py adds github dir to path)
+    from bot_detection import BotDetector
+    from context_gatherer import PRContext, PRContextGatherer
+    from gh_client import GHClient
     from models import (
+        AICommentTriage,
+        AICommentVerdict,
         AutoFixState,
-        AutoFixStatus,
         GitHubRunnerConfig,
+        MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
         ReviewCategory,
         ReviewSeverity,
-        TriageCategory,
+        StructuralIssue,
         TriageResult,
+    )
+    from permissions import GitHubPermissionChecker
+    from rate_limiter import RateLimiter
+    from services import (
+        AutoFixProcessor,
+        BatchProcessor,
+        PRReviewEngine,
+        TriageEngine,
     )
 
 
@@ -60,6 +86,12 @@ class ProgressCallback:
 class GitHubOrchestrator:
     """
     Orchestrates all GitHub automation workflows.
+
+    This is a thin coordinator that delegates to specialized service classes:
+    - PRReviewEngine: Multi-pass code review
+    - TriageEngine: Issue classification
+    - AutoFixProcessor: Automatic issue fixing
+    - BatchProcessor: Batch issue processing
 
     Usage:
         orchestrator = GitHubOrchestrator(
@@ -91,6 +123,61 @@ class GitHubOrchestrator:
         self.github_dir = self.project_dir / ".auto-claude" / "github"
         self.github_dir.mkdir(parents=True, exist_ok=True)
 
+        # Initialize GH client with timeout protection
+        self.gh_client = GHClient(
+            project_dir=self.project_dir,
+            default_timeout=30.0,
+            max_retries=3,
+            enable_rate_limiting=True,
+        )
+
+        # Initialize bot detector for preventing infinite loops
+        self.bot_detector = BotDetector(
+            state_dir=self.github_dir,
+            bot_token=config.bot_token,
+            review_own_prs=config.review_own_prs,
+        )
+
+        # Initialize permission checker for auto-fix authorization
+        self.permission_checker = GitHubPermissionChecker(
+            gh_client=self.gh_client,
+            repo=config.repo,
+            allowed_roles=config.auto_fix_allowed_roles,
+            allow_external_contributors=config.allow_external_contributors,
+        )
+
+        # Initialize rate limiter singleton
+        self.rate_limiter = RateLimiter.get_instance()
+
+        # Initialize service layer
+        self.pr_review_engine = PRReviewEngine(
+            project_dir=self.project_dir,
+            github_dir=self.github_dir,
+            config=self.config,
+            progress_callback=self.progress_callback,
+        )
+
+        self.triage_engine = TriageEngine(
+            project_dir=self.project_dir,
+            github_dir=self.github_dir,
+            config=self.config,
+            progress_callback=self.progress_callback,
+        )
+
+        self.autofix_processor = AutoFixProcessor(
+            github_dir=self.github_dir,
+            config=self.config,
+            permission_checker=self.permission_checker,
+            progress_callback=self.progress_callback,
+        )
+
+        self.batch_processor = BatchProcessor(
+            project_dir=self.project_dir,
+            github_dir=self.github_dir,
+            config=self.config,
+            progress_callback=self.progress_callback,
+        )
+
     def _report_progress(
         self,
         phase: str,
@@ -111,173 +198,82 @@ class GitHubOrchestrator:
                 )
             )
 
+    # =========================================================================
+    # GitHub API Helpers
+    # =========================================================================
+
     async def _fetch_pr_data(self, pr_number: int) -> dict:
         """Fetch PR data from GitHub API via gh CLI."""
-        result = subprocess.run(
-            [
-                "gh",
-                "pr",
-                "view",
-                str(pr_number),
-                "--json",
-                "number,title,body,state,headRefName,baseRefName,author,files,additions,deletions,changedFiles",
-            ],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to fetch PR #{pr_number}: {result.stderr}")
-
-        return json.loads(result.stdout)
+        return await self.gh_client.pr_get(pr_number)
 
     async def _fetch_pr_diff(self, pr_number: int) -> str:
         """Fetch PR diff from GitHub."""
-        result = subprocess.run(
-            ["gh", "pr", "diff", str(pr_number)],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to fetch PR diff #{pr_number}: {result.stderr}")
-
-        return result.stdout
+        return await self.gh_client.pr_diff(pr_number)
 
     async def _fetch_issue_data(self, issue_number: int) -> dict:
         """Fetch issue data from GitHub API via gh CLI."""
-        result = subprocess.run(
-            [
-                "gh",
-                "issue",
-                "view",
-                str(issue_number),
-                "--json",
-                "number,title,body,state,labels,author,comments,createdAt,updatedAt",
-            ],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-        )
+        return await self.gh_client.issue_get(issue_number)
 
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Failed to fetch issue #{issue_number}: {result.stderr}"
-            )
-
-        return json.loads(result.stdout)
-
-    async def _fetch_open_issues(self, limit: int = 100) -> list[dict]:
-        """Fetch all open issues from the repository."""
-        result = subprocess.run(
-            [
-                "gh",
-                "issue",
-                "list",
-                "--state",
-                "open",
-                "--limit",
-                str(limit),
-                "--json",
-                "number,title,body,labels,author,createdAt,updatedAt,comments",
-            ],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to fetch open issues: {result.stderr}")
-
-        return json.loads(result.stdout)
+    async def _fetch_open_issues(self, limit: int = 200) -> list[dict]:
+        """Fetch all open issues from the repository (up to 200)."""
+        return await self.gh_client.issue_list(state="open", limit=limit)
 
     async def _post_pr_review(
         self,
         pr_number: int,
         body: str,
-        event: str = "COMMENT",  # APPROVE, REQUEST_CHANGES, COMMENT
-        comments: list[dict] | None = None,
+        event: str = "COMMENT",
     ) -> int:
         """Post a review to a PR."""
-        # Build the gh command
-        cmd = ["gh", "pr", "review", str(pr_number)]
-
-        if event == "APPROVE":
-            cmd.append("--approve")
-        elif event == "REQUEST_CHANGES":
-            cmd.append("--request-changes")
-        else:
-            cmd.append("--comment")
-
-        cmd.extend(["--body", body])
-
-        result = subprocess.run(
-            cmd,
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
+        return await self.gh_client.pr_review(
+            pr_number=pr_number,
+            body=body,
+            event=event.lower(),
         )
-
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to post PR review: {result.stderr}")
-
-        # TODO: Parse review ID from response
-        return 0
 
     async def _post_issue_comment(self, issue_number: int, body: str) -> None:
         """Post a comment to an issue."""
-        result = subprocess.run(
-            ["gh", "issue", "comment", str(issue_number), "--body", body],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to post issue comment: {result.stderr}")
+        await self.gh_client.issue_comment(issue_number, body)
 
     async def _add_issue_labels(self, issue_number: int, labels: list[str]) -> None:
         """Add labels to an issue."""
-        if not labels:
-            return
-
-        result = subprocess.run(
-            ["gh", "issue", "edit", str(issue_number), "--add-label", ",".join(labels)],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to add labels: {result.stderr}")
+        await self.gh_client.issue_add_labels(issue_number, labels)
 
     async def _remove_issue_labels(self, issue_number: int, labels: list[str]) -> None:
         """Remove labels from an issue."""
-        if not labels:
-            return
+        await self.gh_client.issue_remove_labels(issue_number, labels)
 
-        result = subprocess.run(
-            [
-                "gh",
-                "issue",
-                "edit",
-                str(issue_number),
-                "--remove-label",
-                ",".join(labels),
-            ],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-        )
+    async def _post_ai_triage_replies(
+        self, pr_number: int, triages: list[AICommentTriage]
+    ) -> None:
+        """Post replies to AI tool comments based on triage results."""
+        for triage in triages:
+            if not triage.response_comment:
+                continue
 
-        # Don't fail if labels don't exist
-        if result.returncode != 0 and "not found" not in result.stderr.lower():
-            raise RuntimeError(f"Failed to remove labels: {result.stderr}")
+            # Skip trivial verdicts
+            if triage.verdict == AICommentVerdict.TRIVIAL:
+                continue
+
+            try:
+                # Post as inline comment reply
+                await self.gh_client.pr_comment_reply(
+                    pr_number=pr_number,
+                    comment_id=triage.comment_id,
+                    body=triage.response_comment,
+                )
+                print(
+                    f"[AI TRIAGE] Posted reply to {triage.tool_name} comment {triage.comment_id}",
+                    flush=True,
+                )
+            except Exception as e:
+                print(
+                    f"[AI TRIAGE] Failed to post reply to comment {triage.comment_id}: {e}",
+                    flush=True,
+                )
 
     # =========================================================================
-    # PR REVIEW
+    # PR REVIEW WORKFLOW
     # =========================================================================
 
     async def review_pr(self, pr_number: int) -> PRReviewResult:
@@ -295,59 +291,108 @@ class GitHubOrchestrator:
         )
 
         self._report_progress(
-            "fetching", 10, f"Fetching PR #{pr_number}...", pr_number=pr_number
+            "gathering_context",
+            10,
+            f"Gathering context for PR #{pr_number}...",
+            pr_number=pr_number,
         )
 
         try:
-            # Fetch PR data and diff
-            print("[DEBUG orchestrator] Fetching PR data...", flush=True)
-            pr_data = await self._fetch_pr_data(pr_number)
+            # Gather PR context
+            print("[DEBUG orchestrator] Creating context gatherer...", flush=True)
+            gatherer = PRContextGatherer(self.project_dir, pr_number)
+
+            print("[DEBUG orchestrator] Gathering PR context...", flush=True)
+            pr_context = await gatherer.gather()
             print(
-                f"[DEBUG orchestrator] PR data fetched: {pr_data.get('title', 'untitled')}",
+                f"[DEBUG orchestrator] Context gathered: {pr_context.title} "
+                f"({len(pr_context.changed_files)} files, {len(pr_context.related_files)} related)",
                 flush=True,
             )
 
-            print("[DEBUG orchestrator] Fetching PR diff...", flush=True)
-            pr_diff = await self._fetch_pr_diff(pr_number)
+            # Bot detection check
+            pr_data = {"author": {"login": pr_context.author}}
+            should_skip, skip_reason = self.bot_detector.should_skip_pr_review(
+                pr_number=pr_number,
+                pr_data=pr_data,
+                commits=pr_context.commits,
+            )
+
+            if should_skip:
+                print(
+                    f"[BOT DETECTION] Skipping PR #{pr_number}: {skip_reason}",
+                    flush=True,
+                )
+                result = PRReviewResult(
+                    pr_number=pr_number,
+                    repo=self.config.repo,
+                    success=True,
+                    findings=[],
+                    summary=f"Skipped review: {skip_reason}",
+                    overall_status="comment",
+                )
+                result.save(self.github_dir)
+                return result
+
+            self._report_progress(
+                "analyzing", 30, "Running multi-pass review...", pr_number=pr_number
+            )
+
+            # Delegate to PR Review Engine
+            print("[DEBUG orchestrator] Running multi-pass review...", flush=True)
+            (
+                findings,
+                structural_issues,
+                ai_triages,
+                quick_scan,
+            ) = await self.pr_review_engine.run_multi_pass_review(pr_context)
             print(
-                f"[DEBUG orchestrator] PR diff fetched: {len(pr_diff)} chars",
+                f"[DEBUG orchestrator] Multi-pass review complete: "
+                f"{len(findings)} findings, {len(structural_issues)} structural, {len(ai_triages)} AI triages",
                 flush=True,
             )
 
             self._report_progress(
-                "analyzing", 30, "Analyzing code changes...", pr_number=pr_number
+                "generating",
+                70,
+                "Generating verdict and summary...",
+                pr_number=pr_number,
             )
 
-            # Run AI review
-            print("[DEBUG orchestrator] Running AI review agent...", flush=True)
-            findings = await self._run_pr_review_agent(pr_data, pr_diff)
+            # Generate verdict
+            verdict, verdict_reasoning, blockers = self._generate_verdict(
+                findings, structural_issues, ai_triages
+            )
             print(
-                f"[DEBUG orchestrator] AI review complete: {len(findings)} findings",
+                f"[DEBUG orchestrator] Verdict: {verdict.value} - {verdict_reasoning}",
                 flush=True,
             )
 
-            self._report_progress(
-                "generating", 70, "Generating review summary...", pr_number=pr_number
+            # Calculate risk assessment
+            risk_assessment = self._calculate_risk_assessment(
+                pr_context, findings, structural_issues
             )
 
-            # Determine overall status
-            critical_count = sum(
-                1 for f in findings if f.severity == ReviewSeverity.CRITICAL
-            )
-            high_count = sum(1 for f in findings if f.severity == ReviewSeverity.HIGH)
-
-            if critical_count > 0:
+            # Map verdict to overall_status for backward compatibility
+            if verdict == MergeVerdict.BLOCKED:
                 overall_status = "request_changes"
-                summary = f"Found {critical_count} critical and {high_count} high-severity issues that need to be addressed."
-            elif high_count > 0:
+            elif verdict == MergeVerdict.NEEDS_REVISION:
                 overall_status = "request_changes"
-                summary = f"Found {high_count} high-severity issues. Please review the suggestions."
-            elif findings:
+            elif verdict == MergeVerdict.MERGE_WITH_CHANGES:
                 overall_status = "comment"
-                summary = f"Found {len(findings)} suggestions for improvement."
             else:
                 overall_status = "approve"
-                summary = "Looks good! No significant issues found."
+
+            # Generate summary
+            summary = self._generate_enhanced_summary(
+                verdict=verdict,
+                verdict_reasoning=verdict_reasoning,
+                blockers=blockers,
+                findings=findings,
+                structural_issues=structural_issues,
+                ai_triages=ai_triages,
+                risk_assessment=risk_assessment,
+            )
 
             # Create result
             result = PRReviewResult(
@@ -357,9 +402,16 @@ class GitHubOrchestrator:
                 findings=findings,
                 summary=summary,
                 overall_status=overall_status,
+                verdict=verdict,
+                verdict_reasoning=verdict_reasoning,
+                blockers=blockers,
+                risk_assessment=risk_assessment,
+                structural_issues=structural_issues,
+                ai_comment_triages=ai_triages,
+                quick_scan_summary=quick_scan,
             )
 
-            # Optionally post review
+            # Post review if configured
             if self.config.auto_post_reviews:
                 self._report_progress(
                     "posting", 90, "Posting review to GitHub...", pr_number=pr_number
@@ -371,8 +423,23 @@ class GitHubOrchestrator:
                 )
                 result.review_id = review_id
 
+                # Post AI triage replies
+                if ai_triages:
+                    self._report_progress(
+                        "posting",
+                        95,
+                        "Posting AI triage replies...",
+                        pr_number=pr_number,
+                    )
+                    await self._post_ai_triage_replies(pr_number, ai_triages)
+
             # Save result
             result.save(self.github_dir)
+
+            # Mark as reviewed
+            head_sha = self.bot_detector.get_last_commit_sha(pr_context.commits)
+            if head_sha:
+                self.bot_detector.mark_reviewed(pr_number, head_sha)
 
             self._report_progress(
                 "complete", 100, "Review complete!", pr_number=pr_number
@@ -389,277 +456,216 @@ class GitHubOrchestrator:
             result.save(self.github_dir)
             return result
 
-    async def _run_pr_review_agent(
-        self, pr_data: dict, pr_diff: str
-    ) -> list[PRReviewFinding]:
-        """Run the AI agent to review PR code."""
-        print("[DEBUG agent] _run_pr_review_agent() starting...", flush=True)
+    def _generate_verdict(
+        self,
+        findings: list[PRReviewFinding],
+        structural_issues: list[StructuralIssue],
+        ai_triages: list[AICommentTriage],
+    ) -> tuple[MergeVerdict, str, list[str]]:
+        """Generate merge verdict based on all findings."""
+        blockers = []
 
-        from core.client import create_client
+        # Count by severity
+        critical = [f for f in findings if f.severity == ReviewSeverity.CRITICAL]
+        high = [f for f in findings if f.severity == ReviewSeverity.HIGH]
 
-        # Load prompt
-        prompt_file = (
-            Path(__file__).parent.parent.parent
-            / "prompts"
-            / "github"
-            / "pr_reviewer.md"
-        )
-        if not prompt_file.exists():
-            # Use inline prompt if file doesn't exist yet
-            print(
-                f"[DEBUG agent] Using default prompt (file not found: {prompt_file})",
-                flush=True,
+        # Security findings are always blockers
+        security_critical = [
+            f for f in critical if f.category == ReviewCategory.SECURITY
+        ]
+
+        # Structural blockers
+        structural_blockers = [
+            s
+            for s in structural_issues
+            if s.severity in (ReviewSeverity.CRITICAL, ReviewSeverity.HIGH)
+        ]
+
+        # AI comments marked critical
+        ai_critical = [t for t in ai_triages if t.verdict == AICommentVerdict.CRITICAL]
+
+        # Build blockers list
+        for f in security_critical:
+            blockers.append(f"Security: {f.title} ({f.file}:{f.line})")
+        for f in critical:
+            if f not in security_critical:
+                blockers.append(f"Critical: {f.title} ({f.file}:{f.line})")
+        for s in structural_blockers:
+            blockers.append(f"Structure: {s.title}")
+        for t in ai_critical:
+            summary = (
+                t.original_comment[:50] + "..."
+                if len(t.original_comment) > 50
+                else t.original_comment
             )
-            prompt = self._get_default_pr_review_prompt()
+            blockers.append(f"{t.tool_name}: {summary}")
+
+        # Determine verdict
+        if blockers:
+            if security_critical:
+                verdict = MergeVerdict.BLOCKED
+                reasoning = (
+                    f"Blocked by {len(security_critical)} security vulnerabilities"
+                )
+            elif len(critical) > 0:
+                verdict = MergeVerdict.BLOCKED
+                reasoning = f"Blocked by {len(critical)} critical issues"
+            else:
+                verdict = MergeVerdict.NEEDS_REVISION
+                reasoning = f"{len(blockers)} issues must be addressed"
+        elif high:
+            verdict = MergeVerdict.MERGE_WITH_CHANGES
+            reasoning = f"{len(high)} high-priority issues to address"
         else:
-            print(f"[DEBUG agent] Loading prompt from {prompt_file}", flush=True)
-            prompt = prompt_file.read_text()
+            verdict = MergeVerdict.READY_TO_MERGE
+            reasoning = "No blocking issues found"
 
-        # Build context
-        context = f"""
-## Pull Request #{pr_data["number"]}
+        return verdict, reasoning, blockers
 
-**Title:** {pr_data["title"]}
-**Author:** {pr_data["author"]["login"]}
-**Base:** {pr_data["baseRefName"]} ← **Head:** {pr_data["headRefName"]}
-**Changes:** {pr_data["additions"]} additions, {pr_data["deletions"]} deletions across {pr_data["changedFiles"]} files
+    def _calculate_risk_assessment(
+        self,
+        context: PRContext,
+        findings: list[PRReviewFinding],
+        structural_issues: list[StructuralIssue],
+    ) -> dict:
+        """Calculate risk assessment for the PR."""
+        total_changes = context.total_additions + context.total_deletions
 
-### Description
-{pr_data.get("body", "No description provided.")}
+        # Complexity
+        if total_changes > 500:
+            complexity = "high"
+        elif total_changes > 200:
+            complexity = "medium"
+        else:
+            complexity = "low"
 
-### Files Changed
-{self._format_files_changed(pr_data.get("files", []))}
+        # Security impact
+        security_findings = [
+            f for f in findings if f.category == ReviewCategory.SECURITY
+        ]
+        if any(f.severity == ReviewSeverity.CRITICAL for f in security_findings):
+            security_impact = "critical"
+        elif any(f.severity == ReviewSeverity.HIGH for f in security_findings):
+            security_impact = "medium"
+        elif security_findings:
+            security_impact = "low"
+        else:
+            security_impact = "none"
 
-### Diff
-```diff
-{pr_diff[:50000]}  # Limit diff size
-```
-"""
+        # Scope coherence
+        scope_issues = [
+            s
+            for s in structural_issues
+            if s.issue_type in ("feature_creep", "scope_creep")
+        ]
+        if any(
+            s.severity in (ReviewSeverity.CRITICAL, ReviewSeverity.HIGH)
+            for s in scope_issues
+        ):
+            scope_coherence = "poor"
+        elif scope_issues:
+            scope_coherence = "mixed"
+        else:
+            scope_coherence = "good"
 
-        full_prompt = prompt + "\n\n---\n\n" + context
-        print(f"[DEBUG agent] Full prompt length: {len(full_prompt)} chars", flush=True)
+        return {
+            "complexity": complexity,
+            "security_impact": security_impact,
+            "scope_coherence": scope_coherence,
+        }
 
-        # Create client with appropriate tools
-        print(
-            f"[DEBUG agent] Creating Claude client (model={self.config.model})...",
-            flush=True,
-        )
-        client = create_client(
-            project_dir=self.project_dir,
-            spec_dir=self.github_dir,
-            model=self.config.model,
-            agent_type="qa_reviewer",  # Similar tool permissions
-        )
-        print(f"[DEBUG agent] Client created: {type(client).__name__}", flush=True)
+    def _generate_enhanced_summary(
+        self,
+        verdict: MergeVerdict,
+        verdict_reasoning: str,
+        blockers: list[str],
+        findings: list[PRReviewFinding],
+        structural_issues: list[StructuralIssue],
+        ai_triages: list[AICommentTriage],
+        risk_assessment: dict,
+    ) -> str:
+        """Generate enhanced summary with verdict, risk, and actionable next steps."""
+        verdict_emoji = {
+            MergeVerdict.READY_TO_MERGE: "✅",
+            MergeVerdict.MERGE_WITH_CHANGES: "🟡",
+            MergeVerdict.NEEDS_REVISION: "🟠",
+            MergeVerdict.BLOCKED: "🔴",
+        }
 
-        findings = []
-
-        try:
-            print("[DEBUG agent] Entering async context manager...", flush=True)
-            async with client:
-                print("[DEBUG agent] Sending query to Claude...", flush=True)
-                await client.query(full_prompt)
-                print("[DEBUG agent] Query sent, waiting for response...", flush=True)
-
-                response_text = ""
-                msg_count = 0
-                async for msg in client.receive_response():
-                    msg_count += 1
-                    msg_type = type(msg).__name__
-                    print(f"\n[AI] === Message {msg_count}: {msg_type} ===", flush=True)
-
-                    if msg_type == "AssistantMessage" and hasattr(msg, "content"):
-                        for i, block in enumerate(msg.content):
-                            block_type = type(block).__name__
-                            if hasattr(block, "text"):
-                                response_text += block.text
-                                # Show first 500 chars of text
-                                preview = (
-                                    block.text[:500] + "..."
-                                    if len(block.text) > 500
-                                    else block.text
-                                )
-                                print(f"[AI] TextBlock {i}: {preview}", flush=True)
-                            elif hasattr(block, "name"):
-                                # Tool use block
-                                tool_name = getattr(block, "name", "unknown")
-                                tool_input = getattr(block, "input", {})
-                                print(f"[AI] ToolUse: {tool_name}", flush=True)
-                                # Print tool input (truncated if too long)
-                                input_str = str(tool_input)
-                                if len(input_str) > 300:
-                                    input_str = input_str[:300] + "..."
-                                print(f"[AI]   Input: {input_str}", flush=True)
-                            else:
-                                print(f"[AI] Block {i}: {block_type}", flush=True)
-
-                    elif msg_type == "UserMessage" and hasattr(msg, "content"):
-                        # Tool results come back as user messages
-                        for i, block in enumerate(msg.content):
-                            block_type = type(block).__name__
-                            if hasattr(block, "tool_use_id"):
-                                result_content = getattr(block, "content", "")
-                                if isinstance(result_content, str):
-                                    preview = (
-                                        result_content[:300] + "..."
-                                        if len(result_content) > 300
-                                        else result_content
-                                    )
-                                else:
-                                    preview = str(result_content)[:300]
-                                print(f"[AI] ToolResult: {preview}", flush=True)
-
-                print("\n[AI] === Response complete ===", flush=True)
-                print(
-                    f"[AI] Total: {len(response_text)} chars, {msg_count} messages",
-                    flush=True,
-                )
-                print(
-                    f"[AI] Full response text:\n{response_text[:2000]}{'...' if len(response_text) > 2000 else ''}",
-                    flush=True,
-                )
-
-                # Parse findings from response
-                findings = self._parse_review_findings(response_text)
-                print(f"[AI] Parsed {len(findings)} findings from response", flush=True)
-
-        except Exception as e:
-            # Return empty findings on error - main function will catch
-            import traceback
-
-            print(f"[DEBUG agent] PR review agent error: {e}", flush=True)
-            print(f"[DEBUG agent] Traceback: {traceback.format_exc()}", flush=True)
-
-        return findings
-
-    def _format_files_changed(self, files: list[dict]) -> str:
-        """Format the files changed list."""
-        if not files:
-            return "No files information available."
-
-        lines = []
-        for f in files[:20]:  # Limit to 20 files
-            path = f.get("path", "unknown")
-            additions = f.get("additions", 0)
-            deletions = f.get("deletions", 0)
-            lines.append(f"- `{path}` (+{additions}/-{deletions})")
-
-        if len(files) > 20:
-            lines.append(f"- ... and {len(files) - 20} more files")
-
-        return "\n".join(lines)
-
-    def _parse_review_findings(self, response_text: str) -> list[PRReviewFinding]:
-        """Parse findings from AI response."""
-        findings = []
-
-        # Try to find JSON block in response
-        try:
-            import re
-
-            json_match = re.search(
-                r"```json\s*(\[.*?\])\s*```", response_text, re.DOTALL
-            )
-            if json_match:
-                findings_data = json.loads(json_match.group(1))
-                for i, f in enumerate(findings_data):
-                    findings.append(
-                        PRReviewFinding(
-                            id=f.get("id", f"finding-{i + 1}"),
-                            severity=ReviewSeverity(
-                                f.get("severity", "medium").lower()
-                            ),
-                            category=ReviewCategory(
-                                f.get("category", "quality").lower()
-                            ),
-                            title=f.get("title", "Finding"),
-                            description=f.get("description", ""),
-                            file=f.get("file", "unknown"),
-                            line=f.get("line", 1),
-                            end_line=f.get("end_line"),
-                            suggested_fix=f.get("suggested_fix"),
-                            fixable=f.get("fixable", False),
-                        )
-                    )
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
-            print(f"Failed to parse findings: {e}")
-
-        return findings
-
-    def _format_review_body(self, result: PRReviewResult) -> str:
-        """Format the review body for posting to GitHub."""
         lines = [
-            "## 🤖 AI Code Review",
+            f"### Merge Verdict: {verdict_emoji.get(verdict, '⚪')} {verdict.value.upper().replace('_', ' ')}",
+            verdict_reasoning,
             "",
-            result.summary,
+            "### Risk Assessment",
+            "| Factor | Level | Notes |",
+            "|--------|-------|-------|",
+            f"| Complexity | {risk_assessment['complexity'].capitalize()} | Based on lines changed |",
+            f"| Security Impact | {risk_assessment['security_impact'].capitalize()} | Based on security findings |",
+            f"| Scope Coherence | {risk_assessment['scope_coherence'].capitalize()} | Based on structural review |",
             "",
         ]
 
-        if result.findings:
-            lines.append(f"### Findings ({len(result.findings)} total)")
+        # Blockers
+        if blockers:
+            lines.append("### 🚨 Blocking Issues (Must Fix)")
+            for blocker in blockers:
+                lines.append(f"- {blocker}")
             lines.append("")
 
-            for f in result.findings:
-                emoji = {
-                    "critical": "🔴",
-                    "high": "🟠",
-                    "medium": "🟡",
-                    "low": "🔵",
-                }.get(f.severity.value, "⚪")
-                lines.append(f"#### {emoji} [{f.severity.value.upper()}] {f.title}")
-                lines.append(f"📁 `{f.file}:{f.line}`")
-                lines.append("")
-                lines.append(f.description)
+        # Findings summary
+        if findings:
+            by_severity = {}
+            for f in findings:
+                severity = f.severity.value
+                if severity not in by_severity:
+                    by_severity[severity] = []
+                by_severity[severity].append(f)
 
-                if f.suggested_fix:
-                    lines.append("")
-                    lines.append("**Suggested fix:**")
-                    lines.append(f"```\n{f.suggested_fix}\n```")
+            lines.append("### Findings Summary")
+            for severity in ["critical", "high", "medium", "low"]:
+                if severity in by_severity:
+                    count = len(by_severity[severity])
+                    lines.append(f"- **{severity.capitalize()}**: {count} issue(s)")
+            lines.append("")
 
+        # Structural issues
+        if structural_issues:
+            lines.append("### 🏗️ Structural Issues")
+            for issue in structural_issues[:5]:
+                lines.append(f"- **{issue.title}**: {issue.description}")
+            if len(structural_issues) > 5:
+                lines.append(f"- ... and {len(structural_issues) - 5} more")
+            lines.append("")
+
+        # AI triages summary
+        if ai_triages:
+            critical_ai = [
+                t for t in ai_triages if t.verdict == AICommentVerdict.CRITICAL
+            ]
+            important_ai = [
+                t for t in ai_triages if t.verdict == AICommentVerdict.IMPORTANT
+            ]
+            if critical_ai or important_ai:
+                lines.append("### 🤖 AI Tool Comments Review")
+                if critical_ai:
+                    lines.append(f"- **Critical**: {len(critical_ai)} validated issues")
+                if important_ai:
+                    lines.append(
+                        f"- **Important**: {len(important_ai)} recommended fixes"
+                    )
                 lines.append("")
 
         lines.append("---")
-        lines.append(
-            "*This review was generated by AutoCloud AI. Human review is still recommended.*"
-        )
+        lines.append("_Generated by Auto Claude PR Review_")
 
         return "\n".join(lines)
 
-    def _get_default_pr_review_prompt(self) -> str:
-        """Default PR review prompt if file doesn't exist."""
-        return """# PR Review Agent
-
-You are an AI code reviewer. Analyze the provided pull request and identify:
-
-1. **Security Issues** - vulnerabilities, injection risks, auth problems
-2. **Code Quality** - complexity, duplication, error handling
-3. **Style Issues** - naming, formatting, patterns
-4. **Test Coverage** - missing tests, edge cases
-5. **Documentation** - missing/outdated docs
-
-For each finding, output a JSON array:
-
-```json
-[
-  {
-    "id": "finding-1",
-    "severity": "critical|high|medium|low",
-    "category": "security|quality|style|test|docs|pattern|performance",
-    "title": "Brief issue title",
-    "description": "Detailed explanation",
-    "file": "path/to/file.ts",
-    "line": 42,
-    "suggested_fix": "Optional code or suggestion",
-    "fixable": true
-  }
-]
-```
-
-Be specific and actionable. Focus on significant issues, not nitpicks.
-"""
+    def _format_review_body(self, result: PRReviewResult) -> str:
+        """Format the review body for posting to GitHub."""
+        return result.summary
 
     # =========================================================================
-    # ISSUE TRIAGE
+    # ISSUE TRIAGE WORKFLOW
     # =========================================================================
 
     async def triage_issues(
@@ -702,7 +708,8 @@ Be specific and actionable. Focus on significant issues, not nitpicks.
                 issue_number=issue["number"],
             )
 
-            result = await self._triage_single_issue(issue, issues)
+            # Delegate to triage engine
+            result = await self.triage_engine.triage_single_issue(issue, issues)
             results.append(result)
 
             # Apply labels if requested
@@ -721,272 +728,143 @@ Be specific and actionable. Focus on significant issues, not nitpicks.
         self._report_progress("complete", 100, f"Triaged {len(results)} issues")
         return results
 
-    async def _triage_single_issue(
-        self, issue: dict, all_issues: list[dict]
-    ) -> TriageResult:
-        """Triage a single issue using AI."""
-        from core.client import create_client
-
-        # Build context with issue and potential duplicates
-        context = self._build_triage_context(issue, all_issues)
-
-        # Load prompt
-        prompt_file = (
-            Path(__file__).parent.parent.parent
-            / "prompts"
-            / "github"
-            / "issue_triager.md"
-        )
-        if not prompt_file.exists():
-            prompt = self._get_default_triage_prompt()
-        else:
-            prompt = prompt_file.read_text()
-
-        full_prompt = prompt + "\n\n---\n\n" + context
-
-        # Run AI
-        client = create_client(
-            project_dir=self.project_dir,
-            spec_dir=self.github_dir,
-            model=self.config.model,
-            agent_type="qa_reviewer",
-        )
-
-        try:
-            async with client:
-                await client.query(full_prompt)
-
-                response_text = ""
-                async for msg in client.receive_response():
-                    msg_type = type(msg).__name__
-                    if msg_type == "AssistantMessage" and hasattr(msg, "content"):
-                        for block in msg.content:
-                            if hasattr(block, "text"):
-                                response_text += block.text
-
-                return self._parse_triage_result(issue, response_text)
-
-        except Exception as e:
-            print(f"Triage error for #{issue['number']}: {e}")
-            return TriageResult(
-                issue_number=issue["number"],
-                repo=self.config.repo,
-                category=TriageCategory.FEATURE,
-                confidence=0.0,
-            )
-
-    def _build_triage_context(self, issue: dict, all_issues: list[dict]) -> str:
-        """Build context for triage including potential duplicates."""
-        # Find potential duplicates by title similarity
-        potential_dupes = []
-        for other in all_issues:
-            if other["number"] == issue["number"]:
-                continue
-            # Simple word overlap check
-            title_words = set(issue["title"].lower().split())
-            other_words = set(other["title"].lower().split())
-            overlap = len(title_words & other_words) / max(len(title_words), 1)
-            if overlap > 0.3:
-                potential_dupes.append(other)
-
-        lines = [
-            f"## Issue #{issue['number']}",
-            f"**Title:** {issue['title']}",
-            f"**Author:** {issue['author']['login']}",
-            f"**Created:** {issue['createdAt']}",
-            f"**Labels:** {', '.join(label['name'] for label in issue.get('labels', []))}",
-            "",
-            "### Body",
-            issue.get("body", "No description"),
-            "",
-        ]
-
-        if potential_dupes:
-            lines.append("### Potential Duplicates (similar titles)")
-            for d in potential_dupes[:5]:
-                lines.append(f"- #{d['number']}: {d['title']}")
-            lines.append("")
-
-        return "\n".join(lines)
-
-    def _parse_triage_result(self, issue: dict, response_text: str) -> TriageResult:
-        """Parse triage result from AI response."""
-        import re
-
-        # Default result
-        result = TriageResult(
-            issue_number=issue["number"],
-            repo=self.config.repo,
-            category=TriageCategory.FEATURE,
-            confidence=0.5,
-        )
-
-        try:
-            json_match = re.search(
-                r"```json\s*(\{.*?\})\s*```", response_text, re.DOTALL
-            )
-            if json_match:
-                data = json.loads(json_match.group(1))
-
-                category_str = data.get("category", "feature").lower()
-                if category_str in [c.value for c in TriageCategory]:
-                    result.category = TriageCategory(category_str)
-
-                result.confidence = float(data.get("confidence", 0.5))
-                result.labels_to_add = data.get("labels_to_add", [])
-                result.labels_to_remove = data.get("labels_to_remove", [])
-                result.is_duplicate = data.get("is_duplicate", False)
-                result.duplicate_of = data.get("duplicate_of")
-                result.is_spam = data.get("is_spam", False)
-                result.is_feature_creep = data.get("is_feature_creep", False)
-                result.suggested_breakdown = data.get("suggested_breakdown", [])
-                result.priority = data.get("priority", "medium")
-                result.comment = data.get("comment")
-
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
-            print(f"Failed to parse triage result: {e}")
-
-        return result
-
-    def _get_default_triage_prompt(self) -> str:
-        """Default triage prompt if file doesn't exist."""
-        return """# Issue Triage Agent
-
-You are an issue triage assistant. Analyze the GitHub issue and classify it.
-
-Determine:
-1. **Category**: bug, feature, documentation, question, duplicate, spam, feature_creep
-2. **Priority**: high, medium, low
-3. **Is Duplicate?**: Check against potential duplicates list
-4. **Is Spam?**: Check for promotional content, gibberish, abuse
-5. **Is Feature Creep?**: Multiple unrelated features in one issue
-
-Output JSON:
-
-```json
-{
-  "category": "bug|feature|documentation|question|duplicate|spam|feature_creep",
-  "confidence": 0.0-1.0,
-  "priority": "high|medium|low",
-  "labels_to_add": ["type:bug", "priority:high"],
-  "labels_to_remove": [],
-  "is_duplicate": false,
-  "duplicate_of": null,
-  "is_spam": false,
-  "is_feature_creep": false,
-  "suggested_breakdown": ["Suggested issue 1", "Suggested issue 2"],
-  "comment": "Optional bot comment"
-}
-```
-"""
-
     # =========================================================================
-    # AUTO-FIX
+    # AUTO-FIX WORKFLOW
     # =========================================================================
 
-    async def auto_fix_issue(self, issue_number: int) -> AutoFixState:
+    async def auto_fix_issue(
+        self,
+        issue_number: int,
+        trigger_label: str | None = None,
+    ) -> AutoFixState:
         """
         Automatically fix an issue by creating a spec and running the build pipeline.
 
-        This creates a spec from the issue and queues it for execution.
-        The actual build runs through the normal spec execution pipeline.
-
         Args:
             issue_number: The issue number to fix
+            trigger_label: Label that triggered this auto-fix (for permission checks)
 
         Returns:
             AutoFixState tracking the fix progress
+
+        Raises:
+            PermissionError: If the user who added the trigger label isn't authorized
         """
-        self._report_progress(
-            "fetching",
-            10,
-            f"Fetching issue #{issue_number}...",
+        # Fetch issue data
+        issue = await self._fetch_issue_data(issue_number)
+
+        # Delegate to autofix processor
+        return await self.autofix_processor.process_issue(
             issue_number=issue_number,
+            issue=issue,
+            trigger_label=trigger_label,
         )
-
-        # Load or create state
-        state = AutoFixState.load(self.github_dir, issue_number)
-        if state and state.status not in [
-            AutoFixStatus.FAILED,
-            AutoFixStatus.COMPLETED,
-        ]:
-            # Already in progress
-            return state
-
-        try:
-            # Fetch issue
-            issue = await self._fetch_issue_data(issue_number)
-
-            state = AutoFixState(
-                issue_number=issue_number,
-                issue_url=f"https://github.com/{self.config.repo}/issues/{issue_number}",
-                repo=self.config.repo,
-                status=AutoFixStatus.ANALYZING,
-            )
-            state.save(self.github_dir)
-
-            self._report_progress(
-                "analyzing", 30, "Analyzing issue...", issue_number=issue_number
-            )
-
-            # This would normally call the spec creation process
-            # For now, we just create the state and let the frontend handle spec creation
-            # via the existing investigation flow
-
-            state.update_status(AutoFixStatus.CREATING_SPEC)
-            state.save(self.github_dir)
-
-            self._report_progress(
-                "complete", 100, "Ready for spec creation", issue_number=issue_number
-            )
-            return state
-
-        except Exception as e:
-            if state:
-                state.status = AutoFixStatus.FAILED
-                state.error = str(e)
-                state.save(self.github_dir)
-            raise
 
     async def get_auto_fix_queue(self) -> list[AutoFixState]:
         """Get all issues in the auto-fix queue."""
-        issues_dir = self.github_dir / "issues"
-        if not issues_dir.exists():
-            return []
+        return await self.autofix_processor.get_queue()
 
-        queue = []
-        for f in issues_dir.glob("autofix_*.json"):
-            try:
-                issue_number = int(f.stem.replace("autofix_", ""))
-                state = AutoFixState.load(self.github_dir, issue_number)
-                if state:
-                    queue.append(state)
-            except (ValueError, json.JSONDecodeError):
-                continue
-
-        return sorted(queue, key=lambda s: s.created_at, reverse=True)
-
-    async def check_auto_fix_labels(self) -> list[int]:
+    async def check_auto_fix_labels(
+        self, verify_permissions: bool = True
+    ) -> list[dict]:
         """
-        Check for issues with auto-fix labels and return their numbers.
+        Check for issues with auto-fix labels and return their details.
 
-        This is used by the frontend to detect new issues that should be auto-fixed.
+        Args:
+            verify_permissions: Whether to verify who added the trigger label
+
+        Returns:
+            List of dicts with issue_number, trigger_label, and authorized status
         """
-        if not self.config.auto_fix_enabled:
-            return []
-
         issues = await self._fetch_open_issues()
-        auto_fix_issues = []
+        return await self.autofix_processor.check_labeled_issues(
+            all_issues=issues,
+            verify_permissions=verify_permissions,
+        )
 
-        for issue in issues:
-            labels = [label["name"].lower() for label in issue.get("labels", [])]
-            if any(lbl.lower() in labels for lbl in self.config.auto_fix_labels):
-                # Check if not already in queue
-                state = AutoFixState.load(self.github_dir, issue["number"])
-                if not state or state.status in [
-                    AutoFixStatus.FAILED,
-                    AutoFixStatus.COMPLETED,
-                ]:
-                    auto_fix_issues.append(issue["number"])
+    # =========================================================================
+    # BATCH AUTO-FIX WORKFLOW
+    # =========================================================================
 
-        return auto_fix_issues
+    async def batch_and_fix_issues(
+        self,
+        issue_numbers: list[int] | None = None,
+    ) -> list:
+        """
+        Batch similar issues and create combined specs for each batch.
+
+        Args:
+            issue_numbers: Specific issues to batch, or None for all open issues
+
+        Returns:
+            List of IssueBatch objects that were created
+        """
+        # Fetch issues
+        if issue_numbers:
+            issues = []
+            for num in issue_numbers:
+                issue = await self._fetch_issue_data(num)
+                issues.append(issue)
+        else:
+            issues = await self._fetch_open_issues()
+
+        # Delegate to batch processor
+        return await self.batch_processor.batch_and_fix_issues(
+            issues=issues,
+            fetch_issue_callback=self._fetch_issue_data,
+        )
+
+    async def analyze_issues_preview(
+        self,
+        issue_numbers: list[int] | None = None,
+        max_issues: int = 200,
+    ) -> dict:
+        """
+        Analyze issues and return a PREVIEW of proposed batches without executing.
+
+        Args:
+            issue_numbers: Specific issues to analyze, or None for all open issues
+            max_issues: Maximum number of issues to analyze (default 200)
+
+        Returns:
+            Dict with proposed batches and statistics for user review
+        """
+        # Fetch issues
+        if issue_numbers:
+            issues = []
+            for num in issue_numbers[:max_issues]:
+                issue = await self._fetch_issue_data(num)
+                issues.append(issue)
+        else:
+            issues = await self._fetch_open_issues(limit=max_issues)
+
+        # Delegate to batch processor
+        return await self.batch_processor.analyze_issues_preview(
+            issues=issues,
+            max_issues=max_issues,
+        )
+
+    async def approve_and_execute_batches(
+        self,
+        approved_batches: list[dict],
+    ) -> list:
+        """
+        Execute approved batches after user review.
+
+        Args:
+            approved_batches: List of batch dicts from analyze_issues_preview
+
+        Returns:
+            List of created IssueBatch objects
+        """
+        return await self.batch_processor.approve_and_execute_batches(
+            approved_batches=approved_batches,
+        )
+
+    async def get_batch_status(self) -> dict:
+        """Get status of all batches."""
+        return await self.batch_processor.get_batch_status()
+
+    async def process_pending_batches(self) -> int:
+        """Process all pending batches."""
+        return await self.batch_processor.process_pending_batches()

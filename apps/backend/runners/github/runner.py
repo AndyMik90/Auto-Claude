@@ -7,6 +7,7 @@ CLI interface for GitHub automation features:
 - PR Review: AI-powered code review
 - Issue Triage: Classification, duplicate/spam detection
 - Issue Auto-Fix: Automatic spec creation from issues
+- Issue Batching: Group similar issues and create combined specs
 
 Usage:
     # Review a specific PR
@@ -26,6 +27,15 @@ Usage:
 
     # Show auto-fix queue
     python runner.py queue
+
+    # Batch similar issues and create combined specs
+    python runner.py batch-issues
+
+    # Batch specific issues
+    python runner.py batch-issues 1 2 3 4 5
+
+    # Show batch status
+    python runner.py batch-status
 """
 
 from __future__ import annotations
@@ -292,6 +302,171 @@ async def cmd_queue(args) -> int:
     return 0
 
 
+async def cmd_batch_issues(args) -> int:
+    """Batch similar issues and create combined specs."""
+    config = get_config(args)
+    config.auto_fix_enabled = True
+    orchestrator = GitHubOrchestrator(
+        project_dir=args.project,
+        config=config,
+        progress_callback=print_progress,
+    )
+
+    issue_numbers = args.issues if args.issues else None
+    batches = await orchestrator.batch_and_fix_issues(issue_numbers)
+
+    print(f"\n{'=' * 60}")
+    print(f"Created {len(batches)} batches from similar issues")
+    print(f"{'=' * 60}")
+
+    if not batches:
+        print("No batches created. Either no issues found or all issues are unique.")
+        return 0
+
+    for batch in batches:
+        issue_nums = ", ".join(f"#{i.issue_number}" for i in batch.issues)
+        print(f"\n  Batch: {batch.batch_id}")
+        print(f"    Issues: {issue_nums}")
+        print(f"    Theme: {batch.theme}")
+        print(f"    Status: {batch.status.value}")
+        if batch.spec_id:
+            print(f"    Spec: {batch.spec_id}")
+
+    return 0
+
+
+async def cmd_batch_status(args) -> int:
+    """Show batch status."""
+    config = get_config(args)
+    orchestrator = GitHubOrchestrator(
+        project_dir=args.project,
+        config=config,
+    )
+
+    status = await orchestrator.get_batch_status()
+
+    print(f"\n{'=' * 60}")
+    print("Batch Status")
+    print(f"{'=' * 60}")
+    print(f"Total batches: {status.get('total_batches', 0)}")
+    print(f"Pending: {status.get('pending', 0)}")
+    print(f"Processing: {status.get('processing', 0)}")
+    print(f"Completed: {status.get('completed', 0)}")
+    print(f"Failed: {status.get('failed', 0)}")
+
+    return 0
+
+
+async def cmd_analyze_preview(args) -> int:
+    """
+    Analyze issues and preview proposed batches without executing.
+
+    This is the "proactive" workflow for reviewing issue groupings before action.
+    """
+    import json
+
+    config = get_config(args)
+    orchestrator = GitHubOrchestrator(
+        project_dir=args.project,
+        config=config,
+        progress_callback=print_progress,
+    )
+
+    issue_numbers = args.issues if args.issues else None
+    max_issues = getattr(args, "max_issues", 200)
+
+    result = await orchestrator.analyze_issues_preview(
+        issue_numbers=issue_numbers,
+        max_issues=max_issues,
+    )
+
+    if not result.get("success"):
+        print(f"Error: {result.get('error', 'Unknown error')}")
+        return 1
+
+    print(f"\n{'=' * 60}")
+    print("Issue Analysis Preview")
+    print(f"{'=' * 60}")
+    print(f"Total issues: {result.get('total_issues', 0)}")
+    print(f"Analyzed: {result.get('analyzed_issues', 0)}")
+    print(f"Already batched: {result.get('already_batched', 0)}")
+    print(f"Proposed batches: {len(result.get('proposed_batches', []))}")
+    print(f"Single issues: {len(result.get('single_issues', []))}")
+
+    proposed_batches = result.get("proposed_batches", [])
+    if proposed_batches:
+        print(f"\n{'=' * 60}")
+        print("Proposed Batches (for human review)")
+        print(f"{'=' * 60}")
+
+        for i, batch in enumerate(proposed_batches, 1):
+            confidence = batch.get("confidence", 0)
+            validated = "" if batch.get("validated") else "[NEEDS REVIEW] "
+            print(
+                f"\n  Batch {i}: {validated}{batch.get('theme', 'No theme')} ({confidence:.0%} confidence)"
+            )
+            print(f"    Primary issue: #{batch.get('primary_issue')}")
+            print(f"    Issue count: {batch.get('issue_count', 0)}")
+            print(f"    Reasoning: {batch.get('reasoning', 'N/A')}")
+            print("    Issues:")
+            for item in batch.get("issues", []):
+                similarity = item.get("similarity_to_primary", 0)
+                print(
+                    f"      - #{item['issue_number']}: {item.get('title', '?')} ({similarity:.0%})"
+                )
+
+    # Output JSON for programmatic use
+    if getattr(args, "json", False):
+        print(f"\n{'=' * 60}")
+        print("JSON Output")
+        print(f"{'=' * 60}")
+        print(json.dumps(result, indent=2))
+
+    return 0
+
+
+async def cmd_approve_batches(args) -> int:
+    """
+    Approve and execute batches from a JSON file.
+
+    Usage: runner.py approve-batches approved_batches.json
+    """
+    import json
+
+    config = get_config(args)
+    orchestrator = GitHubOrchestrator(
+        project_dir=args.project,
+        config=config,
+        progress_callback=print_progress,
+    )
+
+    # Load approved batches from file
+    try:
+        with open(args.batch_file) as f:
+            approved_batches = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        print(f"Error loading batch file: {e}")
+        return 1
+
+    if not approved_batches:
+        print("No batches in file to approve.")
+        return 0
+
+    print(f"Approving and executing {len(approved_batches)} batches...")
+
+    created_batches = await orchestrator.approve_and_execute_batches(approved_batches)
+
+    print(f"\n{'=' * 60}")
+    print(f"Created {len(created_batches)} batches")
+    print(f"{'=' * 60}")
+
+    for batch in created_batches:
+        issue_nums = ", ".join(f"#{i.issue_number}" for i in batch.issues)
+        print(f"  {batch.batch_id}: {issue_nums}")
+
+    return 0
+
+
 def main():
     """CLI entry point."""
     import argparse
@@ -374,6 +549,54 @@ def main():
     # queue command
     subparsers.add_parser("queue", help="Show auto-fix queue")
 
+    # batch-issues command
+    batch_parser = subparsers.add_parser(
+        "batch-issues", help="Batch similar issues and create combined specs"
+    )
+    batch_parser.add_argument(
+        "issues",
+        type=int,
+        nargs="*",
+        help="Specific issue numbers (or all open if none)",
+    )
+
+    # batch-status command
+    subparsers.add_parser("batch-status", help="Show batch status")
+
+    # analyze-preview command (proactive workflow)
+    analyze_parser = subparsers.add_parser(
+        "analyze-preview",
+        help="Analyze issues and preview proposed batches without executing",
+    )
+    analyze_parser.add_argument(
+        "issues",
+        type=int,
+        nargs="*",
+        help="Specific issue numbers (or all open if none)",
+    )
+    analyze_parser.add_argument(
+        "--max-issues",
+        type=int,
+        default=200,
+        help="Maximum number of issues to analyze (default: 200)",
+    )
+    analyze_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output JSON for programmatic use",
+    )
+
+    # approve-batches command
+    approve_parser = subparsers.add_parser(
+        "approve-batches",
+        help="Approve and execute batches from a JSON file",
+    )
+    approve_parser.add_argument(
+        "batch_file",
+        type=Path,
+        help="JSON file containing approved batches",
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -387,6 +610,10 @@ def main():
         "auto-fix": cmd_auto_fix,
         "check-auto-fix-labels": cmd_check_labels,
         "queue": cmd_queue,
+        "batch-issues": cmd_batch_issues,
+        "batch-status": cmd_batch_status,
+        "analyze-preview": cmd_analyze_preview,
+        "approve-batches": cmd_approve_batches,
     }
 
     handler = commands.get(args.command)

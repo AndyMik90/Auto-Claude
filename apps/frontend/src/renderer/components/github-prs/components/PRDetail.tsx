@@ -1,3 +1,4 @@
+import { useState, useEffect, useMemo } from 'react';
 import {
   ExternalLink,
   User,
@@ -6,9 +7,7 @@ import {
   FileDiff,
   Sparkles,
   Send,
-  CheckCircle,
   XCircle,
-  AlertCircle,
   Loader2
 } from 'lucide-react';
 import { Badge } from '../../ui/badge';
@@ -16,6 +15,7 @@ import { Button } from '../../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Progress } from '../../ui/progress';
+import { ReviewFindings } from './ReviewFindings';
 import type { PRData, PRReviewResult, PRReviewProgress, PRReviewFinding } from '../hooks/useGitHubPRs';
 
 interface PRDetailProps {
@@ -24,7 +24,7 @@ interface PRDetailProps {
   reviewProgress: PRReviewProgress | null;
   isReviewing: boolean;
   onRunReview: () => void;
-  onPostReview: () => void;
+  onPostReview: (selectedFindingIds?: string[]) => void;
 }
 
 function formatDate(dateString: string): string {
@@ -35,35 +35,6 @@ function formatDate(dateString: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function getSeverityColor(severity: PRReviewFinding['severity']): string {
-  switch (severity) {
-    case 'critical':
-      return 'bg-red-500/20 text-red-500 border-red-500/50';
-    case 'high':
-      return 'bg-orange-500/20 text-orange-500 border-orange-500/50';
-    case 'medium':
-      return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50';
-    case 'low':
-      return 'bg-blue-500/20 text-blue-500 border-blue-500/50';
-    default:
-      return 'bg-muted';
-  }
-}
-
-function getSeverityIcon(severity: PRReviewFinding['severity']) {
-  switch (severity) {
-    case 'critical':
-    case 'high':
-      return <XCircle className="h-4 w-4" />;
-    case 'medium':
-      return <AlertCircle className="h-4 w-4" />;
-    case 'low':
-      return <CheckCircle className="h-4 w-4" />;
-    default:
-      return null;
-  }
 }
 
 function getStatusColor(status: PRReviewResult['overallStatus']): string {
@@ -85,6 +56,32 @@ export function PRDetail({
   onRunReview,
   onPostReview,
 }: PRDetailProps) {
+  // Selection state for findings
+  const [selectedFindingIds, setSelectedFindingIds] = useState<Set<string>>(new Set());
+
+  // Auto-select critical and high findings when review completes
+  useEffect(() => {
+    if (reviewResult?.success && reviewResult.findings.length > 0) {
+      const importantFindings = reviewResult.findings
+        .filter(f => f.severity === 'critical' || f.severity === 'high')
+        .map(f => f.id);
+      setSelectedFindingIds(new Set(importantFindings));
+    }
+  }, [reviewResult]);
+
+  // Count selected findings by type for the button label
+  const selectedCount = selectedFindingIds.size;
+  const hasImportantSelected = useMemo(() => {
+    if (!reviewResult?.findings) return false;
+    return reviewResult.findings
+      .filter(f => f.severity === 'critical' || f.severity === 'high')
+      .some(f => selectedFindingIds.has(f.id));
+  }, [reviewResult?.findings, selectedFindingIds]);
+
+  const handlePostReview = () => {
+    onPostReview(Array.from(selectedFindingIds));
+  };
+
   return (
     <ScrollArea className="flex-1">
       <div className="p-4 space-y-4">
@@ -151,10 +148,10 @@ export function PRDetail({
               </>
             )}
           </Button>
-          {reviewResult && reviewResult.success && (
-            <Button onClick={onPostReview} variant="secondary">
+          {reviewResult && reviewResult.success && selectedCount > 0 && (
+            <Button onClick={handlePostReview} variant="secondary">
               <Send className="h-4 w-4 mr-2" />
-              Post to GitHub
+              Post {selectedCount} Finding{selectedCount !== 1 ? 's' : ''}
             </Button>
           )}
         </div>
@@ -190,47 +187,15 @@ export function PRDetail({
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">{reviewResult.summary}</p>
+            <CardContent className="space-y-4 overflow-hidden">
+              <p className="text-sm text-muted-foreground break-words">{reviewResult.summary}</p>
 
-              {reviewResult.findings.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">
-                    Findings ({reviewResult.findings.length})
-                  </h4>
-                  {reviewResult.findings.map((finding) => (
-                    <div
-                      key={finding.id}
-                      className="rounded-lg border p-3 space-y-2"
-                    >
-                      <div className="flex items-start gap-2">
-                        <Badge
-                          variant="outline"
-                          className={`${getSeverityColor(finding.severity)} shrink-0`}
-                        >
-                          {getSeverityIcon(finding.severity)}
-                          <span className="ml-1 uppercase text-xs">{finding.severity}</span>
-                        </Badge>
-                        <span className="font-medium text-sm">{finding.title}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{finding.description}</p>
-                      <div className="text-xs text-muted-foreground">
-                        <code className="bg-muted px-1 py-0.5 rounded">
-                          {finding.file}:{finding.line}
-                        </code>
-                      </div>
-                      {finding.suggestedFix && (
-                        <div className="text-xs">
-                          <span className="text-muted-foreground">Suggested fix:</span>
-                          <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">
-                            {finding.suggestedFix}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Interactive Findings with Selection */}
+              <ReviewFindings
+                findings={reviewResult.findings}
+                selectedIds={selectedFindingIds}
+                onSelectionChange={setSelectedFindingIds}
+              />
 
               {reviewResult.reviewedAt && (
                 <p className="text-xs text-muted-foreground">
@@ -258,9 +223,9 @@ export function PRDetail({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Description</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {pr.body ? (
-              <pre className="whitespace-pre-wrap text-sm text-muted-foreground font-sans">
+              <pre className="whitespace-pre-wrap text-sm text-muted-foreground font-sans break-words max-w-full overflow-hidden">
                 {pr.body}
               </pre>
             ) : (
