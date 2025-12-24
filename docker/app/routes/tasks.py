@@ -5,6 +5,7 @@ expected by the frontend while internally working with specs.
 """
 
 import json
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Any
@@ -215,7 +216,7 @@ async def spec_to_task(spec: Any, project_path: str) -> dict:
 # Routes
 @router.get("/{project_id}/tasks")
 async def get_tasks(
-    project_id: str,
+    project_id: uuid.UUID,
     include_drafts: bool = False,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -247,7 +248,7 @@ async def get_tasks(
 
 @router.post("/{project_id}/tasks")
 async def create_task(
-    project_id: str,
+    project_id: uuid.UUID,
     data: TaskCreate,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -327,7 +328,7 @@ async def create_task(
 
 @router.get("/{project_id}/tasks/{task_id}")
 async def get_task(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -347,7 +348,7 @@ async def get_task(
 
 @router.patch("/{project_id}/tasks/{task_id}")
 async def update_task(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     data: TaskUpdate,
     project_service: ProjectService = Depends(get_project_service),
@@ -383,7 +384,7 @@ async def update_task(
 
 @router.delete("/{project_id}/tasks/{task_id}")
 async def delete_task(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -413,7 +414,7 @@ async def delete_task(
 
 @router.post("/{project_id}/tasks/{task_id}/start")
 async def start_task(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     options: Optional[TaskStartOptions] = None,
     project_service: ProjectService = Depends(get_project_service),
@@ -439,7 +440,7 @@ async def start_task(
 
 @router.post("/{project_id}/tasks/{task_id}/stop")
 async def stop_task(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -460,7 +461,7 @@ async def stop_task(
 
 @router.post("/{project_id}/tasks/{task_id}/retry")
 async def retry_task(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -475,7 +476,7 @@ async def retry_task(
 
 @router.get("/{project_id}/tasks/{task_id}/plan")
 async def get_task_plan(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -494,7 +495,7 @@ async def get_task_plan(
 
 @router.get("/{project_id}/tasks/{task_id}/logs")
 async def get_task_logs(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -510,7 +511,7 @@ async def get_task_logs(
 
 @router.post("/{project_id}/tasks/{task_id}/approve")
 async def approve_task(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     project_service: ProjectService = Depends(get_project_service),
     settings: Settings = Depends(get_settings),
@@ -532,7 +533,7 @@ async def approve_task(
 
 @router.post("/{project_id}/tasks/{task_id}/reject")
 async def reject_task(
-    project_id: str,
+    project_id: uuid.UUID,
     task_id: str,
     reason: dict,
     project_service: ProjectService = Depends(get_project_service),
@@ -555,7 +556,7 @@ async def reject_task(
 
 @router.get("/{project_id}/tasks/archived")
 async def get_archived_tasks(
-    project_id: str,
+    project_id: uuid.UUID,
     settings: Settings = Depends(get_settings),
 ) -> list[dict]:
     """Get archived tasks for a project."""
