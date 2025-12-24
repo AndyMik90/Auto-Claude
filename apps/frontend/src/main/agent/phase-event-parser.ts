@@ -3,34 +3,15 @@
  * Protocol: __EXEC_PHASE__:{"phase":"coding","message":"Starting"}
  */
 
-import type { ExecutionPhase } from '../../shared/types/task';
+import { PHASE_MARKER_PREFIX } from '../../shared/constants/phase-protocol';
+import { validatePhaseEvent, type PhaseEventPayload } from './phase-event-schema';
 
-export const PHASE_MARKER_PREFIX = '__EXEC_PHASE__:';
+export { PHASE_MARKER_PREFIX };
+export type { PhaseEventPayload as PhaseEvent };
+
 const DEBUG = process.env.DEBUG?.toLowerCase() === 'true' || process.env.DEBUG === '1';
 
-/** Payload structure matching apps/backend/core/phase_event.py */
-export interface PhaseEvent {
-  phase: ExecutionPhase;
-  message: string;
-  progress?: number;
-  subtask?: string;
-}
-
-/** Must stay in sync with apps/backend/core/phase_event.py ExecutionPhase enum */
-const VALID_PHASES: readonly string[] = [
-  'planning',
-  'coding',
-  'qa_review',
-  'qa_fixing',
-  'complete',
-  'failed'
-] as const;
-
-/**
- * Parse a log line for structured phase event.
- * @returns PhaseEvent if line contains valid phase marker, null otherwise
- */
-export function parsePhaseEvent(line: string): PhaseEvent | null {
+export function parsePhaseEvent(line: string): PhaseEventPayload | null {
   const markerIndex = line.indexOf(PHASE_MARKER_PREFIX);
   if (markerIndex === -1) {
     return null;
@@ -61,33 +42,21 @@ export function parsePhaseEvent(line: string): PhaseEvent | null {
   }
 
   try {
-    const payload = JSON.parse(jsonStr) as Record<string, unknown>;
+    const rawPayload = JSON.parse(jsonStr) as unknown;
+    const result = validatePhaseEvent(rawPayload);
 
-    if (typeof payload.phase !== 'string' || !VALID_PHASES.includes(payload.phase)) {
+    if (!result.success) {
       if (DEBUG) {
-        console.log('[phase-event-parser] Invalid phase:', payload.phase, 'valid phases:', VALID_PHASES);
+        console.log('[phase-event-parser] Validation failed:', result.error.format());
       }
       return null;
     }
 
-    const event: PhaseEvent = {
-      phase: payload.phase as ExecutionPhase,
-      message: typeof payload.message === 'string' ? payload.message : ''
-    };
-
-    if (typeof payload.progress === 'number') {
-      event.progress = payload.progress;
-    }
-
-    if (typeof payload.subtask === 'string') {
-      event.subtask = payload.subtask;
-    }
-
     if (DEBUG) {
-      console.log('[phase-event-parser] Successfully parsed event:', event);
+      console.log('[phase-event-parser] Successfully parsed event:', result.data);
     }
 
-    return event;
+    return result.data;
   } catch (e) {
     if (DEBUG) {
       console.log('[phase-event-parser] JSON parse FAILED for:', jsonStr);

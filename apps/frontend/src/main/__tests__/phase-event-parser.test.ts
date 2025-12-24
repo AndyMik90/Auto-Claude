@@ -173,10 +173,10 @@ describe('Phase Event Parser', () => {
         expect(result?.message).toBe('path\\to\\file');
       });
 
-      it('should convert non-string message to empty string', () => {
+      it('should reject non-string message', () => {
         const line = '__EXEC_PHASE__:{"phase":"coding","message":123}';
         const result = parsePhaseEvent(line);
-        expect(result?.message).toBe('');
+        expect(result).toBeNull();
       });
     });
 
@@ -205,10 +205,28 @@ describe('Phase Event Parser', () => {
         expect(result?.progress).toBe(100);
       });
 
-      it('should ignore non-numeric progress', () => {
+      it('should reject non-numeric progress', () => {
         const line = '__EXEC_PHASE__:{"phase":"coding","message":"Working","progress":"50%"}';
         const result = parsePhaseEvent(line);
-        expect(result?.progress).toBeUndefined();
+        expect(result).toBeNull();
+      });
+
+      it('should reject progress below 0', () => {
+        const line = '__EXEC_PHASE__:{"phase":"coding","message":"Working","progress":-1}';
+        const result = parsePhaseEvent(line);
+        expect(result).toBeNull();
+      });
+
+      it('should reject progress above 100', () => {
+        const line = '__EXEC_PHASE__:{"phase":"coding","message":"Working","progress":101}';
+        const result = parsePhaseEvent(line);
+        expect(result).toBeNull();
+      });
+
+      it('should reject non-integer progress', () => {
+        const line = '__EXEC_PHASE__:{"phase":"coding","message":"Working","progress":50.5}';
+        const result = parsePhaseEvent(line);
+        expect(result).toBeNull();
       });
 
       it('should extract subtask when present', () => {
@@ -229,10 +247,10 @@ describe('Phase Event Parser', () => {
         expect(result?.subtask).toBe('feat/add-login#123');
       });
 
-      it('should ignore non-string subtask', () => {
+      it('should reject non-string subtask', () => {
         const line = '__EXEC_PHASE__:{"phase":"coding","message":"Working","subtask":123}';
         const result = parsePhaseEvent(line);
-        expect(result?.subtask).toBeUndefined();
+        expect(result).toBeNull();
       });
 
       it('should handle all optional fields together', () => {
@@ -247,8 +265,7 @@ describe('Phase Event Parser', () => {
         const result = parsePhaseEvent(line);
         expect(result).not.toBeNull();
         expect(result?.phase).toBe('coding');
-        // Unknown fields should not break parsing
-        expect((result as Record<string, unknown>)['unknown']).toBeUndefined();
+        expect(result).not.toHaveProperty('unknown');
       });
     });
 
