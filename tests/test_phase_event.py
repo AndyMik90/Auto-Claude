@@ -467,7 +467,7 @@ class TestIntegration:
 
         # Verify we had two QA reviews
         phases = [
-            json.loads(l.replace(PHASE_MARKER_PREFIX, ""))["phase"] for l in lines
+            json.loads(line.replace(PHASE_MARKER_PREFIX, ""))["phase"] for line in lines
         ]
         assert phases.count("qa_review") == 2
         assert phases.count("qa_fixing") == 1

@@ -113,18 +113,18 @@ function extractJsonObject(str: string): string | null {
 
   let depth = 0;
   let inString = false;
-  let escape = false;
+  let isEscaped = false;
 
   for (let i = firstBrace; i < str.length; i++) {
     const char = str[i];
 
-    if (escape) {
-      escape = false;
+    if (isEscaped) {
+      isEscaped = false;
       continue;
     }
 
     if (char === '\\' && inString) {
-      escape = true;
+      isEscaped = true;
       continue;
     }
 
