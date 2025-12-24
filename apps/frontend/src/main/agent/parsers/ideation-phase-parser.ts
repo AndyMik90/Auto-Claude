@@ -56,12 +56,17 @@ export class IdeationPhaseParser extends BasePhaseParser<IdeationPhase> {
    * @returns Phase result with progress, or null if no phase detected
    */
   parse(log: string, context: IdeationParserContext): IdeationParseResult | null {
+    // Terminal states cannot be changed
+    if (context.isTerminal || context.currentPhase === 'complete') {
+      return null;
+    }
+
     const result = this.parsePhaseFromLog(log);
 
     if (!result) {
       // No phase change, but calculate progress if in generating phase
       if (context.currentPhase === 'generating' && context.completedTypes.size > 0) {
-        const progress = 30 + Math.floor((context.completedTypes.size / context.totalTypes) * 60);
+        const progress = this.calculateGeneratingProgress(context.completedTypes.size, context.totalTypes);
         return {
           phase: 'generating',
           progress
@@ -73,13 +78,24 @@ export class IdeationPhaseParser extends BasePhaseParser<IdeationPhase> {
     // Calculate progress for the detected phase
     let progress = result.progress;
     if (result.phase === 'generating' && context.completedTypes.size > 0) {
-      progress = 30 + Math.floor((context.completedTypes.size / context.totalTypes) * 60);
+      progress = this.calculateGeneratingProgress(context.completedTypes.size, context.totalTypes);
     }
 
     return {
       ...result,
       progress
     };
+  }
+
+  /**
+   * Calculate progress during generating phase with division-by-zero protection.
+   * Progress ranges from 30% to 90% based on completed types.
+   */
+  private calculateGeneratingProgress(completedCount: number, totalTypes: number): number {
+    if (totalTypes <= 0) {
+      return 90; // Max generating progress fallback
+    }
+    return 30 + Math.floor((completedCount / totalTypes) * 60);
   }
 
   /**
