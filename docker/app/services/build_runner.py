@@ -180,9 +180,9 @@ class BuildRunner:
 
         active_build.build.completed_at = datetime.now(timezone.utc)
 
-        # Remove from active builds (check first to avoid race condition with stop_build)
-        if build_key in self.active_builds:
-            del self.active_builds[build_key]
+        # Remove from active builds using atomic pop() to avoid race condition with stop_build
+        removed = self.active_builds.pop(build_key, None)
+        if removed:
             logger.info(f"Removed from active builds: {build_key}")
 
     async def stop_build(self, project_path: str, spec_id: str) -> bool:
@@ -203,9 +203,8 @@ class BuildRunner:
         active_build.build.status = BuildStatus.CANCELLED
         active_build.build.completed_at = datetime.now(timezone.utc)
 
-        # Check first to avoid race condition with _stream_logs
-        if build_key in self.active_builds:
-            del self.active_builds[build_key]
+        # Use atomic pop() to avoid race condition with _stream_logs
+        self.active_builds.pop(build_key, None)
         return True
 
     def subscribe(
