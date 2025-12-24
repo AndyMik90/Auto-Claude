@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Any
 
+import aiofiles
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,7 +112,9 @@ async def load_implementation_plan(project_path: str, spec_id: str) -> Optional[
 
     if plan_file.exists():
         try:
-            return json.loads(plan_file.read_text())
+            async with aiofiles.open(plan_file, mode='r') as f:
+                content = await f.read()
+            return json.loads(content)
         except json.JSONDecodeError:
             return None
     return None
@@ -124,7 +127,9 @@ async def load_task_logs(project_path: str, spec_id: str) -> Optional[dict]:
 
     if logs_file.exists():
         try:
-            return json.loads(logs_file.read_text())
+            async with aiofiles.open(logs_file, mode='r') as f:
+                content = await f.read()
+            return json.loads(content)
         except json.JSONDecodeError:
             return None
     return None
