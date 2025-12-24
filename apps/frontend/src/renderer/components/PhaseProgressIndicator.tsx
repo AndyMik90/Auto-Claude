@@ -49,6 +49,7 @@ export function PhaseProgressIndicator({
   className,
 }: PhaseProgressIndicatorProps) {
   const { t } = useTranslation('tasks');
+  const phase = rawPhase || 'idle';
 
   // Calculate subtask-based progress (for coding phase)
   const completedSubtasks = subtasks.filter((c) => c.status === 'completed').length;
