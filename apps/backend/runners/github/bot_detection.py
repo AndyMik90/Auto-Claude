@@ -88,13 +88,13 @@ class BotDetector:
         - bot_token: str | None (separate bot account token)
 
     Automatic safeguards:
-        - 10-minute cooling off period between reviews of same PR
+        - 1-minute cooling off period between reviews of same PR (for testing)
         - Tracks reviewed commit SHAs to avoid duplicate reviews
         - Identifies bot user from token to skip bot-authored content
     """
 
-    # Cooling off period in minutes
-    COOLING_OFF_MINUTES = 10
+    # Cooling off period in minutes (reduced to 1 for testing large PRs)
+    COOLING_OFF_MINUTES = 1
 
     def __init__(
         self,
