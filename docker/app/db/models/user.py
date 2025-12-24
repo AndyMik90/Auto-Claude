@@ -1,7 +1,7 @@
 """User-related database models."""
 
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 import uuid
 
@@ -63,14 +63,14 @@ class User(Base):
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
     last_login: Mapped[Optional[datetime]] = mapped_column(
@@ -152,8 +152,8 @@ class RefreshToken(Base):
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
     revoked_at: Mapped[Optional[datetime]] = mapped_column(
@@ -178,7 +178,7 @@ class RefreshToken(Base):
     @property
     def is_expired(self) -> bool:
         """Check if token is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     @property
     def is_revoked(self) -> bool:
@@ -228,8 +228,8 @@ class Invitation(Base):
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
     expires_at: Mapped[datetime] = mapped_column(
@@ -264,7 +264,7 @@ class Invitation(Base):
     @property
     def is_expired(self) -> bool:
         """Check if invitation is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     @property
     def is_used(self) -> bool:
