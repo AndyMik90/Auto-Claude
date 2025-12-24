@@ -21,7 +21,7 @@ try:
     from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 
     CLAUDE_SDK_AVAILABLE = True
-except ImportError:
+except (ImportError, ValueError, SystemError):
     CLAUDE_SDK_AVAILABLE = False
 
 # Default model and thinking configuration

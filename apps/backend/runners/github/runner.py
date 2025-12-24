@@ -41,6 +41,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import sys
 from pathlib import Path
@@ -263,6 +264,24 @@ async def cmd_check_labels(args) -> int:
     return 0
 
 
+async def cmd_check_new(args) -> int:
+    """Check for new issues not yet in the auto-fix queue."""
+    config = get_config(args)
+    config.auto_fix_enabled = True
+    orchestrator = GitHubOrchestrator(
+        project_dir=args.project,
+        config=config,
+        progress_callback=print_progress,
+    )
+
+    issues = await orchestrator.check_new_issues()
+
+    print("JSON Output")
+    print(json.dumps(issues))
+
+    return 0
+
+
 async def cmd_queue(args) -> int:
     """Show auto-fix queue."""
     config = get_config(args)
@@ -420,7 +439,8 @@ async def cmd_analyze_preview(args) -> int:
         print(f"\n{'=' * 60}")
         print("JSON Output")
         print(f"{'=' * 60}")
-        print(json.dumps(result, indent=2))
+        # Print JSON on single line to avoid corruption from line-by-line stdout prefixes
+        print(json.dumps(result))
 
     return 0
 
@@ -546,6 +566,11 @@ def main():
         "check-auto-fix-labels", help="Check for issues with auto-fix labels"
     )
 
+    # check-new command
+    subparsers.add_parser(
+        "check-new", help="Check for new issues not yet in auto-fix queue"
+    )
+
     # queue command
     subparsers.add_parser("queue", help="Show auto-fix queue")
 
@@ -609,6 +634,7 @@ def main():
         "triage": cmd_triage,
         "auto-fix": cmd_auto_fix,
         "check-auto-fix-labels": cmd_check_labels,
+        "check-new": cmd_check_new,
         "queue": cmd_queue,
         "batch-issues": cmd_batch_issues,
         "batch-status": cmd_batch_status,
@@ -628,8 +654,11 @@ def main():
         print("\nInterrupted.")
         sys.exit(1)
     except Exception as e:
+        import traceback
+
         debug_error("github_runner", "Command failed", error=str(e))
         print(f"Error: {e}")
+        traceback.print_exc()
         sys.exit(1)
 
 

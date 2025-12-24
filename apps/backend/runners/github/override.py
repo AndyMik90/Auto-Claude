@@ -22,7 +22,7 @@ from typing import Any
 try:
     from .audit import ActorType, AuditLogger
     from .file_lock import locked_json_update
-except ImportError:
+except (ImportError, ValueError, SystemError):
     from audit import ActorType, AuditLogger
     from file_lock import locked_json_update
 

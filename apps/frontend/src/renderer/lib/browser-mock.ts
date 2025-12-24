@@ -139,6 +139,7 @@ const browserMockAPI: ElectronAPI = {
     saveAutoFixConfig: async () => true,
     getAutoFixQueue: async () => [],
     checkAutoFixLabels: async () => [],
+    checkNewIssues: async () => [],
     startAutoFix: () => {},
     onAutoFixProgress: () => () => {},
     onAutoFixComplete: () => () => {},

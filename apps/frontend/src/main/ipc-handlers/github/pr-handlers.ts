@@ -25,11 +25,25 @@ import {
   getPythonPath,
   getRunnerPath,
   validateRunner,
+  validateGitHubModule,
   buildRunnerArgs,
 } from './utils/subprocess-runner';
 
 // Debug logging
 const { debug: debugLog } = createContextLogger('GitHub PR');
+
+/**
+ * Registry of running PR review processes
+ * Key format: `${projectId}:${prNumber}`
+ */
+const runningReviews = new Map<string, import('child_process').ChildProcess>();
+
+/**
+ * Get the registry key for a PR review
+ */
+function getReviewKey(projectId: string, prNumber: number): string {
+  return `${projectId}:${prNumber}`;
+}
 
 /**
  * PR review finding from AI analysis
@@ -178,12 +192,14 @@ async function runPRReview(
   prNumber: number,
   mainWindow: BrowserWindow
 ): Promise<PRReviewResult> {
-  const backendPath = getBackendPath(project);
-  const validation = validateRunner(backendPath);
+  // Comprehensive validation of GitHub module
+  const validation = await validateGitHubModule(project);
 
   if (!validation.valid) {
     throw new Error(validation.error);
   }
+
+  const backendPath = validation.backendPath!;
 
   const { sendProgress } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
     mainWindow,
@@ -197,7 +213,7 @@ async function runPRReview(
 
   const { model, thinkingLevel } = getGitHubPRSettings();
   const args = buildRunnerArgs(
-    getRunnerPath(backendPath!),
+    getRunnerPath(backendPath),
     project.path,
     'review-pr',
     [prNumber.toString()],
@@ -206,10 +222,10 @@ async function runPRReview(
 
   debugLog('Spawning PR review process', { args, model, thinkingLevel });
 
-  const result = await runPythonSubprocess<PRReviewResult>({
-    pythonPath: getPythonPath(backendPath!),
+  const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
+    pythonPath: getPythonPath(backendPath),
     args,
-    cwd: backendPath!,
+    cwd: backendPath,
     onProgress: (percent, message) => {
       debugLog('Progress update', { percent, message });
       sendProgress({
@@ -232,11 +248,25 @@ async function runPRReview(
     },
   });
 
-  if (!result.success) {
-    throw new Error(result.error ?? 'Review failed');
-  }
+  // Register the running process
+  const reviewKey = getReviewKey(project.id, prNumber);
+  runningReviews.set(reviewKey, childProcess);
+  debugLog('Registered review process', { reviewKey, pid: childProcess.pid });
 
-  return result.data!;
+  try {
+    // Wait for the process to complete
+    const result = await promise;
+
+    if (!result.success) {
+      throw new Error(result.error ?? 'Review failed');
+    }
+
+    return result.data!;
+  } finally {
+    // Clean up the registry when done (success or error)
+    runningReviews.delete(reviewKey);
+    debugLog('Unregistered review process', { reviewKey });
+  }
 }
 
 /**
@@ -748,6 +778,42 @@ export function registerPRHandlers(
         }
       });
       return assignResult ?? false;
+    }
+  );
+
+  // Cancel PR review
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_PR_REVIEW_CANCEL,
+    async (_, projectId: string, prNumber: number): Promise<boolean> => {
+      debugLog('cancelPRReview handler called', { projectId, prNumber });
+      const reviewKey = getReviewKey(projectId, prNumber);
+      const childProcess = runningReviews.get(reviewKey);
+
+      if (!childProcess) {
+        debugLog('No running review found to cancel', { reviewKey });
+        return false;
+      }
+
+      try {
+        debugLog('Killing review process', { reviewKey, pid: childProcess.pid });
+        childProcess.kill('SIGTERM');
+
+        // Give it a moment to terminate gracefully, then force kill if needed
+        setTimeout(() => {
+          if (!childProcess.killed) {
+            debugLog('Force killing review process', { reviewKey, pid: childProcess.pid });
+            childProcess.kill('SIGKILL');
+          }
+        }, 1000);
+
+        // Clean up the registry
+        runningReviews.delete(reviewKey);
+        debugLog('Review process cancelled', { reviewKey });
+        return true;
+      } catch (error) {
+        debugLog('Failed to cancel review', { reviewKey, error: error instanceof Error ? error.message : error });
+        return false;
+      }
     }
   );
 

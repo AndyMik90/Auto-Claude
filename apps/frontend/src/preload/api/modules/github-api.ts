@@ -184,6 +184,7 @@ export interface GitHubAPI {
   saveAutoFixConfig: (projectId: string, config: AutoFixConfig) => Promise<boolean>;
   getAutoFixQueue: (projectId: string) => Promise<AutoFixQueueItem[]>;
   checkAutoFixLabels: (projectId: string) => Promise<number[]>;
+  checkNewIssues: (projectId: string) => Promise<Array<{number: number}>>;
   startAutoFix: (projectId: string, issueNumber: number) => void;
 
   // Batch auto-fix operations
@@ -423,6 +424,9 @@ export const createGitHubAPI = (): GitHubAPI => ({
   checkAutoFixLabels: (projectId: string): Promise<number[]> =>
     invokeIpc(IPC_CHANNELS.GITHUB_AUTOFIX_CHECK_LABELS, projectId),
 
+  checkNewIssues: (projectId: string): Promise<Array<{number: number}>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_AUTOFIX_CHECK_NEW, projectId),
+
   startAutoFix: (projectId: string, issueNumber: number): void =>
     sendIpc(IPC_CHANNELS.GITHUB_AUTOFIX_START, projectId, issueNumber),
 
@@ -494,6 +498,9 @@ export const createGitHubAPI = (): GitHubAPI => ({
 
   runPRReview: (projectId: string, prNumber: number): void =>
     sendIpc(IPC_CHANNELS.GITHUB_PR_REVIEW, projectId, prNumber),
+
+  cancelPRReview: (projectId: string, prNumber: number): Promise<boolean> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_PR_REVIEW_CANCEL, projectId, prNumber),
 
   postPRReview: (projectId: string, prNumber: number, selectedFindingIds?: string[]): Promise<boolean> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_POST_REVIEW, projectId, prNumber, selectedFindingIds),

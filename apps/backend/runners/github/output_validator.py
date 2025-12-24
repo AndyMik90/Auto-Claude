@@ -14,7 +14,7 @@ from typing import Any
 
 try:
     from .models import PRReviewFinding, ReviewSeverity
-except ImportError:
+except (ImportError, ValueError, SystemError):
     # For direct module loading in tests
     from models import PRReviewFinding, ReviewSeverity
 

@@ -42,7 +42,7 @@ from typing import Any
 # Import providers
 try:
     from .providers.protocol import LabelData
-except ImportError:
+except (ImportError, ValueError, SystemError):
 
     @dataclass
     class LabelData:

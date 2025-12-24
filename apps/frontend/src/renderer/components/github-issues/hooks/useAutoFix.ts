@@ -148,7 +148,7 @@ export function useAutoFix(projectId: string | undefined) {
     [projectId]
   );
 
-  // Toggle auto-fix enabled and optionally start batching
+  // Toggle auto-fix enabled (polling will handle new issues)
   const toggleAutoFix = useCallback(
     async (enabled: boolean) => {
       if (!config || !projectId) return false;
@@ -156,14 +156,12 @@ export function useAutoFix(projectId: string | undefined) {
       const newConfig = { ...config, enabled };
       const success = await saveConfig(newConfig);
 
-      if (success && enabled) {
-        // When enabling, start batch analysis
-        startBatchAutoFix();
-      }
+      // When enabled, the polling useEffect will automatically start checking
+      // for new issues with auto-fix labels every 5 minutes
 
       return success;
     },
-    [config, projectId, saveConfig, startBatchAutoFix]
+    [config, projectId, saveConfig]
   );
 
   // Auto-fix polling when enabled
@@ -180,14 +178,16 @@ export function useAutoFix(projectId: string | undefined) {
     const pollInterval = 5 * 60 * 1000; // 5 minutes
 
     autoFixIntervalRef.current = setInterval(async () => {
-      if (isBatchRunning) return; // Don't start new batch while one is running
-
       try {
-        // Check for new issues with auto-fix labels
-        const newIssues = await window.electronAPI.github.checkAutoFixLabels(projectId);
+        // Check for new issues (no labels required)
+        const newIssues = await window.electronAPI.github.checkNewIssues(projectId);
         if (newIssues.length > 0) {
-          console.log(`[AutoFix] Found ${newIssues.length} new issues with auto-fix labels`);
-          startBatchAutoFix(newIssues);
+          console.log(`[AutoFix] Found ${newIssues.length} new issues`);
+          // Start individual auto-fix for each new issue (not batching)
+          for (const issue of newIssues) {
+            console.log(`[AutoFix] Starting auto-fix for issue #${issue.number}`);
+            window.electronAPI.github.startAutoFix(projectId, issue.number);
+          }
         }
       } catch (error) {
         console.error('[AutoFix] Error checking for new issues:', error);
@@ -200,7 +200,26 @@ export function useAutoFix(projectId: string | undefined) {
         autoFixIntervalRef.current = null;
       }
     };
-  }, [projectId, config?.enabled, isBatchRunning, startBatchAutoFix]);
+  }, [projectId, config?.enabled]);
+
+  // Manually check for new issues (no labels required)
+  const checkForNewIssues = useCallback(async () => {
+    if (!projectId || !config?.enabled) return;
+
+    try {
+      const newIssues = await window.electronAPI.github.checkNewIssues(projectId);
+      if (newIssues.length > 0) {
+        console.log(`[AutoFix] Found ${newIssues.length} new issues`);
+        // Start individual auto-fix for each new issue
+        for (const issue of newIssues) {
+          console.log(`[AutoFix] Starting auto-fix for issue #${issue.number}`);
+          window.electronAPI.github.startAutoFix(projectId, issue.number);
+        }
+      }
+    } catch (error) {
+      console.error('[AutoFix] Error checking for new issues:', error);
+    }
+  }, [projectId, config?.enabled]);
 
   // Count active batches being processed
   const activeBatchCount = batches.filter(
@@ -219,6 +238,7 @@ export function useAutoFix(projectId: string | undefined) {
     saveConfig,
     toggleAutoFix,
     startBatchAutoFix,
+    checkForNewIssues,
     refresh: loadData,
   };
 }

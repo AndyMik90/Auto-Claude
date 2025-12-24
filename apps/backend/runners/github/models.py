@@ -18,7 +18,7 @@ from pathlib import Path
 
 try:
     from .file_lock import locked_json_update, locked_json_write
-except ImportError:
+except (ImportError, ValueError, SystemError):
     from file_lock import locked_json_update, locked_json_write
 
 
@@ -591,10 +591,17 @@ class AutoFixState:
 
     @classmethod
     def from_dict(cls, data: dict) -> AutoFixState:
+        issue_number = data["issue_number"]
+        repo = data["repo"]
+        # Construct issue_url if missing (for backwards compatibility with old state files)
+        issue_url = (
+            data.get("issue_url") or f"https://github.com/{repo}/issues/{issue_number}"
+        )
+
         return cls(
-            issue_number=data["issue_number"],
-            issue_url=data["issue_url"],
-            repo=data["repo"],
+            issue_number=issue_number,
+            issue_url=issue_url,
+            repo=repo,
             status=AutoFixStatus(data.get("status", "pending")),
             spec_id=data.get("spec_id"),
             spec_dir=data.get("spec_dir"),

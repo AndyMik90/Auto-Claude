@@ -14,7 +14,7 @@ import path from 'path';
 import fs from 'fs';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import { getGitHubConfig, githubFetch } from './utils';
-import { createSpecForIssue, buildIssueContext, buildInvestigationTask } from './spec-utils';
+import { createSpecForIssue, buildIssueContext, buildInvestigationTask, updateImplementationPlanStatus } from './spec-utils';
 import type { Project } from '../../../shared/types';
 import { createContextLogger } from './utils/logger';
 import { withProjectOrNull, withProjectSyncOrNull } from './utils/project-middleware';
@@ -25,9 +25,11 @@ import {
   getPythonPath,
   getRunnerPath,
   validateRunner,
+  validateGitHubModule,
   buildRunnerArgs,
   parseJSONFromOutput,
 } from './utils/subprocess-runner';
+import { AgentManager } from '../../agent/agent-manager';
 
 // Debug logging
 const { debug: debugLog } = createContextLogger('GitHub AutoFix');
@@ -259,12 +261,49 @@ async function checkAutoFixLabels(project: Project): Promise<number[]> {
 }
 
 /**
+ * Check for NEW issues not yet in the auto-fix queue (no labels required)
+ */
+async function checkNewIssues(project: Project): Promise<Array<{number: number}>> {
+  const config = getAutoFixConfig(project);
+  if (!config.enabled) {
+    return [];
+  }
+
+  // Validate GitHub module
+  const validation = await validateGitHubModule(project);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  const backendPath = validation.backendPath!;
+  const args = buildRunnerArgs(getRunnerPath(backendPath), project.path, 'check-new');
+
+  const { promise } = runPythonSubprocess<Array<{number: number}>>({
+    pythonPath: getPythonPath(backendPath),
+    args,
+    cwd: backendPath,
+    onComplete: (stdout) => {
+      return parseJSONFromOutput<Array<{number: number}>>(stdout);
+    },
+  });
+
+  const result = await promise;
+
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to check for new issues');
+  }
+
+  return result.data;
+}
+
+/**
  * Start auto-fix for an issue
  */
 async function startAutoFix(
   project: Project,
   issueNumber: number,
-  mainWindow: BrowserWindow
+  mainWindow: BrowserWindow,
+  agentManager: AgentManager
 ): Promise<void> {
   const { sendProgress, sendComplete } = createIPCCommunicators<AutoFixProgress, AutoFixQueueItem>(
     mainWindow,
@@ -346,11 +385,35 @@ async function startAutoFix(
       spec_id: state.specId,
       created_at: state.createdAt,
       updated_at: state.updatedAt,
+      issue_url: issue.html_url,
     }, null, 2)
   );
 
-  sendProgress({ phase: 'complete', issueNumber, progress: 100, message: 'Spec created. Ready to start build.' });
-  sendComplete(state);
+  sendProgress({ phase: 'creating_spec', issueNumber, progress: 70, message: 'Starting spec creation...' });
+
+  // Automatically start spec creation using the robust spec_runner.py system
+  try {
+    // Start spec creation - spec_runner.py will create a proper detailed spec
+    // After spec creation completes, the normal flow will handle implementation
+    agentManager.startSpecCreation(
+      specData.specId,
+      project.path,
+      specData.taskDescription,
+      specData.specDir,
+      specData.metadata
+    );
+
+    // Immediately update the plan status to 'planning' so the frontend shows the task as "In Progress"
+    // This provides instant feedback to the user while spec_runner.py is starting up
+    updateImplementationPlanStatus(specData.specDir, 'planning');
+
+    sendProgress({ phase: 'complete', issueNumber, progress: 100, message: 'Auto-fix spec creation started!' });
+    sendComplete(state);
+  } catch (error) {
+    debugLog('Failed to start spec creation', { error });
+    sendProgress({ phase: 'complete', issueNumber, progress: 100, message: 'Spec directory created. Click Start to begin.' });
+    sendComplete(state);
+  }
 }
 
 /**
@@ -391,6 +454,7 @@ function convertAnalyzePreviewResult(result: Record<string, unknown>): AnalyzePr
  * Register auto-fix related handlers
  */
 export function registerAutoFixHandlers(
+  agentManager: AgentManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
   debugLog('Registering AutoFix handlers');
@@ -450,6 +514,20 @@ export function registerAutoFixHandlers(
     }
   );
 
+  // Check for NEW issues not yet in auto-fix queue (no labels required)
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_AUTOFIX_CHECK_NEW,
+    async (_, projectId: string): Promise<Array<{number: number}>> => {
+      debugLog('checkNewIssues handler called', { projectId });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const issues = await checkNewIssues(project);
+        debugLog('New issues found', { count: issues.length, issues });
+        return issues;
+      });
+      return result ?? [];
+    }
+  );
+
   // Start auto-fix for an issue
   ipcMain.on(
     IPC_CHANNELS.GITHUB_AUTOFIX_START,
@@ -464,7 +542,7 @@ export function registerAutoFixHandlers(
       try {
         await withProjectOrNull(projectId, async (project) => {
           debugLog('Starting auto-fix for issue', { issueNumber });
-          await startAutoFix(project, issueNumber, mainWindow);
+          await startAutoFix(project, issueNumber, mainWindow, agentManager);
           debugLog('Auto-fix completed for issue', { issueNumber });
         });
       } catch (error) {
@@ -515,21 +593,22 @@ export function registerAutoFixHandlers(
             batchCount: 0,
           });
 
-          const backendPath = getBackendPath(project);
-          const validation = validateRunner(backendPath);
+          // Comprehensive validation of GitHub module
+          const validation = await validateGitHubModule(project);
           if (!validation.valid) {
             throw new Error(validation.error);
           }
 
+          const backendPath = validation.backendPath!;
           const additionalArgs = issueNumbers && issueNumbers.length > 0 ? issueNumbers.map(n => n.toString()) : [];
-          const args = buildRunnerArgs(getRunnerPath(backendPath!), project.path, 'batch-issues', additionalArgs);
+          const args = buildRunnerArgs(getRunnerPath(backendPath), project.path, 'batch-issues', additionalArgs);
 
           debugLog('Spawning batch process', { args });
 
-          const result = await runPythonSubprocess<IssueBatch[]>({
-            pythonPath: getPythonPath(backendPath!),
+          const { promise } = runPythonSubprocess<IssueBatch[]>({
+            pythonPath: getPythonPath(backendPath),
             args,
-            cwd: backendPath!,
+            cwd: backendPath,
             onProgress: (percent, message) => {
               sendProgress({
                 phase: 'batching',
@@ -554,6 +633,8 @@ export function registerAutoFixHandlers(
               return batches;
             },
           });
+
+          const result = await promise;
 
           if (!result.success) {
             throw new Error(result.error ?? 'Failed to batch issues');
@@ -626,12 +707,13 @@ export function registerAutoFixHandlers(
           debugLog('Starting analyze-preview');
           sendProgress({ phase: 'analyzing', progress: 10, message: 'Fetching issues for analysis...' });
 
-          const backendPath = getBackendPath(project);
-          const validation = validateRunner(backendPath);
+          // Comprehensive validation of GitHub module
+          const validation = await validateGitHubModule(project);
           if (!validation.valid) {
             throw new Error(validation.error);
           }
 
+          const backendPath = validation.backendPath!;
           const additionalArgs = ['--json'];
           if (maxIssues) {
             additionalArgs.push('--max-issues', maxIssues.toString());
@@ -640,13 +722,13 @@ export function registerAutoFixHandlers(
             additionalArgs.push(...issueNumbers.map(n => n.toString()));
           }
 
-          const args = buildRunnerArgs(getRunnerPath(backendPath!), project.path, 'analyze-preview', additionalArgs);
+          const args = buildRunnerArgs(getRunnerPath(backendPath), project.path, 'analyze-preview', additionalArgs);
           debugLog('Spawning analyze-preview process', { args });
 
-          const result = await runPythonSubprocess<AnalyzePreviewResult>({
-            pythonPath: getPythonPath(backendPath!),
+          const { promise } = runPythonSubprocess<AnalyzePreviewResult>({
+            pythonPath: getPythonPath(backendPath),
             args,
-            cwd: backendPath!,
+            cwd: backendPath,
             onProgress: (percent, message) => {
               sendProgress({ phase: 'analyzing', progress: percent, message });
             },
@@ -659,6 +741,8 @@ export function registerAutoFixHandlers(
               return convertedResult;
             },
           });
+
+          const result = await promise;
 
           if (!result.success) {
             throw new Error(result.error ?? 'Failed to analyze issues');
@@ -677,7 +761,20 @@ export function registerAutoFixHandlers(
           },
           projectId
         );
-        sendError(error instanceof Error ? error.message : 'Failed to analyze issues');
+
+        // Provide user-friendly error messages
+        let userMessage = 'Failed to analyze issues';
+        if (error instanceof Error) {
+          if (error.message.includes('JSON')) {
+            userMessage = 'Analysis completed, but there was an error processing the results. Please try again.';
+          } else if (error.message.includes('No JSON found')) {
+            userMessage = 'No analysis results returned. Please check your GitHub connection and try again.';
+          } else {
+            userMessage = error.message;
+          }
+        }
+
+        sendError(userMessage);
       }
     }
   );
@@ -709,16 +806,17 @@ export function registerAutoFixHandlers(
 
           fs.writeFileSync(tempFile, JSON.stringify(pythonBatches, null, 2));
 
-          const backendPath = getBackendPath(project);
-          const validation = validateRunner(backendPath);
+          // Comprehensive validation of GitHub module
+          const validation = await validateGitHubModule(project);
           if (!validation.valid) {
             throw new Error(validation.error);
           }
 
+          const backendPath = validation.backendPath!;
           const { execSync } = await import('child_process');
           execSync(
-            `"${getPythonPath(backendPath!)}" "${getRunnerPath(backendPath!)}" --project "${project.path}" approve-batches "${tempFile}"`,
-            { cwd: backendPath!, encoding: 'utf-8' }
+            `"${getPythonPath(backendPath)}" "${getRunnerPath(backendPath)}" --project "${project.path}" approve-batches "${tempFile}"`,
+            { cwd: backendPath, encoding: 'utf-8' }
           );
 
           fs.unlinkSync(tempFile);

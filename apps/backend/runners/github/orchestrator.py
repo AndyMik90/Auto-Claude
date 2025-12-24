@@ -829,6 +829,29 @@ class GitHubOrchestrator:
             verify_permissions=verify_permissions,
         )
 
+    async def check_new_issues(self) -> list[dict]:
+        """
+        Check for NEW issues that aren't already in the auto-fix queue.
+
+        Returns:
+            List of dicts with just the issue number: [{"number": 123}, ...]
+        """
+        # Get all open issues
+        issues = await self._fetch_open_issues()
+
+        # Get current queue to filter out issues already being processed
+        queue = await self.get_auto_fix_queue()
+        queued_issue_numbers = {state.issue_number for state in queue}
+
+        # Return just the issue numbers (not full issue objects to avoid huge JSON)
+        new_issues = [
+            {"number": issue["number"]}
+            for issue in issues
+            if issue["number"] not in queued_issue_numbers
+        ]
+
+        return new_issues
+
     # =========================================================================
     # BATCH AUTO-FIX WORKFLOW
     # =========================================================================

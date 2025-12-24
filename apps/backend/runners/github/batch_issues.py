@@ -21,13 +21,197 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Import duplicates detector
+# Import validators
 try:
     from .batch_validator import BatchValidator
-    from .duplicates import SIMILAR_THRESHOLD, DuplicateDetector
-except ImportError:
+    from .duplicates import SIMILAR_THRESHOLD
+except (ImportError, ValueError, SystemError):
     from batch_validator import BatchValidator
-    from duplicates import SIMILAR_THRESHOLD, DuplicateDetector
+    from duplicates import SIMILAR_THRESHOLD
+
+
+class ClaudeSimilarityDetector:
+    """
+    Claude-based similarity detection for GitHub issues.
+    Uses Claude Haiku 4.5 for fast semantic similarity comparison.
+    """
+
+    def __init__(self, project_dir: Path | None = None):
+        """Initialize Claude similarity detector."""
+        self.project_dir = project_dir or Path.cwd()
+        print(
+            f"[SIMILARITY] Initialized with project_dir: {self.project_dir}", flush=True
+        )
+
+    async def compare_issues(
+        self,
+        repo: str,
+        issue_a: dict[str, Any],
+        issue_b: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Compare two issues for similarity using Claude SDK.
+
+        Returns:
+            Dict with is_similar (bool) and overall_score (float 0-1)
+        """
+        try:
+            # Import auth utilities
+            import sys
+
+            from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
+
+            backend_path = Path(__file__).parent.parent.parent
+            sys.path.insert(0, str(backend_path))
+            from core.auth import ensure_claude_code_oauth_token
+        except ImportError as e:
+            logger.error(f"claude-agent-sdk not available: {e}")
+            return {
+                "is_similar": False,
+                "overall_score": 0.0,
+                "reasoning": "Claude SDK not available",
+            }
+
+        prompt = f"""Compare these two GitHub issues and determine if they are similar enough to be fixed together in a single batch.
+
+Issue A (#{issue_a["number"]}):
+Title: {issue_a.get("title", "")}
+Body: {issue_a.get("body", "")}
+
+Issue B (#{issue_b["number"]}):
+Title: {issue_b.get("title", "")}
+Body: {issue_b.get("body", "")}
+
+Are these issues similar enough to fix together? Consider:
+- Do they affect the same feature/component?
+- Do they share a common root cause?
+- Would fixing them together make sense?
+
+Respond with JSON only:
+{{
+  "is_similar": true/false,
+  "similarity_score": 0.0-1.0,
+  "reasoning": "brief explanation"
+}}"""
+
+        try:
+            # Ensure Claude Code OAuth token is available
+            ensure_claude_code_oauth_token()
+
+            print("[SIMILARITY] Creating Claude SDK client...", flush=True)
+            print(f"[SIMILARITY] CWD: {self.project_dir.resolve()}", flush=True)
+
+            # Using Haiku 4.5 - fast and cost-effective for similarity detection
+            client = ClaudeSDKClient(
+                options=ClaudeAgentOptions(
+                    model="claude-haiku-4-5-20251001",
+                    system_prompt="You are an expert at analyzing GitHub issues. Respond ONLY with valid JSON. Do NOT use any tools. Do NOT write explanatory text. ONLY return the JSON object requested.",
+                    allowed_tools=[],
+                    max_turns=1,
+                    cwd=str(self.project_dir.resolve()),
+                )
+            )
+
+            print("[SIMILARITY] Claude SDK client created successfully", flush=True)
+
+            async with client:
+                await client.query(prompt)
+                response_text = await self._collect_response(client)
+
+            print(
+                f"[SIMILARITY] Received response: {response_text[:200] if response_text else 'EMPTY'}",
+                flush=True,
+            )
+            logger.info(
+                f"[SIMILARITY] Received response: {response_text[:200] if response_text else 'EMPTY'}"
+            )
+
+            # Parse JSON response
+            import json
+
+            content = response_text.strip()
+
+            if not content:
+                logger.error("[SIMILARITY] Empty response from Claude SDK")
+                raise ValueError("Empty response from Claude SDK")
+
+            # Extract JSON from markdown code blocks if present
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            else:
+                # Look for JSON object in the response (handle preamble text)
+                if "{" in content:
+                    start = content.find("{")
+                    # Find matching closing brace
+                    brace_count = 0
+                    for i, char in enumerate(content[start:], start):
+                        if char == "{":
+                            brace_count += 1
+                        elif char == "}":
+                            brace_count -= 1
+                            if brace_count == 0:
+                                content = content[start : i + 1]
+                                break
+
+            logger.info(f"[SIMILARITY] Parsing JSON: {content[:200]}")
+            result = json.loads(content)
+
+            return {
+                "is_similar": result.get("is_similar", False),
+                "overall_score": result.get("similarity_score", 0.0),
+                "reasoning": result.get("reasoning", ""),
+            }
+
+        except Exception as e:
+            logger.error(f"Claude similarity comparison error: {e}")
+            import traceback
+
+            traceback.print_exc()
+            # If Claude fails, assume not similar (conservative approach)
+            return {
+                "is_similar": False,
+                "overall_score": 0.0,
+                "reasoning": f"Error during comparison: {e}",
+            }
+
+    async def _collect_response(self, client: Any) -> str:
+        """Collect text response from Claude client - matches insights_runner pattern."""
+        response_text = ""
+        message_count = 0
+
+        print("[SIMILARITY] Starting to collect response...", flush=True)
+
+        async for msg in client.receive_response():
+            message_count += 1
+            msg_type = type(msg).__name__
+            print(
+                f"[SIMILARITY] Received message #{message_count}, type: {msg_type}",
+                flush=True,
+            )
+
+            if msg_type == "AssistantMessage" and hasattr(msg, "content"):
+                for block in msg.content:
+                    block_type = type(block).__name__
+                    print(f"[SIMILARITY] Block type: {block_type}", flush=True)
+                    if block_type == "TextBlock" and hasattr(block, "text"):
+                        text = block.text
+                        print(
+                            f"[SIMILARITY] Found text: {text[:100] if text else 'EMPTY'}",
+                            flush=True,
+                        )
+                        response_text += text
+
+        print(
+            f"[SIMILARITY] Finished collecting. Total messages: {message_count}, Response length: {len(response_text)}",
+            flush=True,
+        )
+        return response_text
+
+    async def precompute_embeddings(self, repo: str, issues: list[dict]) -> int:
+        """No-op for compatibility with DuplicateDetector interface."""
+        return 0
 
 
 class BatchStatus(str, Enum):
@@ -196,7 +380,6 @@ class IssueBatcher:
         similarity_threshold: float = SIMILAR_THRESHOLD,
         min_batch_size: int = 1,
         max_batch_size: int = 5,
-        embedding_provider: str = "openai",
         api_key: str | None = None,
         # AI validation settings
         validate_batches: bool = True,
@@ -213,13 +396,8 @@ class IssueBatcher:
         self.max_batch_size = max_batch_size
         self.validate_batches_enabled = validate_batches
 
-        # Initialize duplicate detector for similarity
-        self.detector = DuplicateDetector(
-            cache_dir=github_dir / "embeddings",
-            embedding_provider=embedding_provider,
-            api_key=api_key,
-            similar_threshold=similarity_threshold,
-        )
+        # Initialize Claude-based similarity detector
+        self.detector = ClaudeSimilarityDetector(project_dir=self.project_dir)
 
         # Initialize batch validator (uses Claude SDK with OAuth token)
         self.validator = (
@@ -270,14 +448,16 @@ class IssueBatcher:
     async def _build_similarity_matrix(
         self,
         issues: list[dict[str, Any]],
-    ) -> dict[tuple[int, int], float]:
+    ) -> tuple[dict[tuple[int, int], float], dict[int, dict[int, str]]]:
         """
         Build similarity matrix for all issues.
 
-        Returns dict mapping (issue_a, issue_b) to similarity score.
-        Only includes pairs above the similarity threshold.
+        Returns tuple of (similarity_matrix, reasoning_dict) where:
+        - similarity_matrix: dict mapping (issue_a, issue_b) -> similarity_score
+        - reasoning_dict: dict mapping issue_number -> {other_issue_number: reasoning}
         """
         matrix = {}
+        reasoning = {}  # Store Claude's reasoning for ALL comparisons
         n = len(issues)
 
         # Precompute embeddings
@@ -294,13 +474,24 @@ class IssueBatcher:
                     issues[j],
                 )
 
-                if result.is_similar:
-                    issue_a = issues[i]["number"]
-                    issue_b = issues[j]["number"]
-                    matrix[(issue_a, issue_b)] = result.overall_score
-                    matrix[(issue_b, issue_a)] = result.overall_score
+                issue_a = issues[i]["number"]
+                issue_b = issues[j]["number"]
 
-        return matrix
+                # Store reasoning from Claude for ALL pairs (not just similar ones)
+                if issue_a not in reasoning:
+                    reasoning[issue_a] = {}
+                if issue_b not in reasoning:
+                    reasoning[issue_b] = {}
+
+                claude_reasoning = result.get("reasoning", "No reasoning provided")
+                reasoning[issue_a][issue_b] = claude_reasoning
+                reasoning[issue_b][issue_a] = claude_reasoning
+
+                if result.get("is_similar", False):
+                    matrix[(issue_a, issue_b)] = result.get("overall_score", 0.0)
+                    matrix[(issue_b, issue_a)] = result.get("overall_score", 0.0)
+
+        return matrix, reasoning
 
     def _cluster_issues(
         self,
@@ -432,7 +623,7 @@ class IssueBatcher:
         logger.info(f"Analyzing {len(available_issues)} issues for batching...")
 
         # Build similarity matrix
-        similarity_matrix = await self._build_similarity_matrix(available_issues)
+        similarity_matrix, _ = await self._build_similarity_matrix(available_issues)
 
         # Cluster issues
         clusters = self._cluster_issues(available_issues, similarity_matrix)

@@ -251,7 +251,9 @@ class EmbeddingProvider:
             return response.data[0].embedding
         except Exception as e:
             logger.error(f"OpenAI embedding error: {e}")
-            return self._fallback_embedding(text)
+            raise Exception(
+                f"OpenAI embeddings required but failed: {e}. Configure OPENAI_API_KEY or use 'local' provider."
+            )
 
     async def _voyage_embedding(self, text: str) -> list[float]:
         """Get embedding from Voyage AI."""
@@ -271,7 +273,9 @@ class EmbeddingProvider:
                 return data["data"][0]["embedding"]
         except Exception as e:
             logger.error(f"Voyage embedding error: {e}")
-            return self._fallback_embedding(text)
+            raise Exception(
+                f"Voyage embeddings required but failed: {e}. Configure VOYAGE_API_KEY or use 'local' provider."
+            )
 
     async def _local_embedding(self, text: str) -> list[float]:
         """Get embedding from local model."""
@@ -283,26 +287,9 @@ class EmbeddingProvider:
             return embedding.tolist()
         except Exception as e:
             logger.error(f"Local embedding error: {e}")
-            return self._fallback_embedding(text)
-
-    def _fallback_embedding(self, text: str) -> list[float]:
-        """Simple fallback embedding using TF-IDF-like approach."""
-        # Create a simple bag-of-words hash-based embedding
-        words = text.lower().split()
-        embedding = [0.0] * 384  # Standard small embedding size
-
-        for i, word in enumerate(words[:100]):
-            # Hash word to embedding indices
-            h = int(hashlib.md5(word.encode()).hexdigest(), 16)
-            idx = h % 384
-            embedding[idx] += 1.0
-
-        # Normalize
-        magnitude = sum(x * x for x in embedding) ** 0.5
-        if magnitude > 0:
-            embedding = [x / magnitude for x in embedding]
-
-        return embedding
+            raise Exception(
+                f"Local embeddings required but failed: {e}. Install sentence-transformers: pip install sentence-transformers"
+            )
 
 
 class DuplicateDetector:

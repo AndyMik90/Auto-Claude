@@ -62,6 +62,8 @@ export function BatchReviewWizard({
 }: BatchReviewWizardProps) {
   // Track which batches are selected for approval
   const [selectedBatchIds, setSelectedBatchIds] = useState<Set<number>>(new Set());
+  // Track which single issues are selected for approval
+  const [selectedSingleIssueNumbers, setSelectedSingleIssueNumbers] = useState<Set<number>>(new Set());
   // Track which batches are expanded
   const [expandedBatchIds, setExpandedBatchIds] = useState<Set<number>>(new Set());
   // Current wizard step
@@ -71,6 +73,7 @@ export function BatchReviewWizard({
   useEffect(() => {
     if (isOpen) {
       setSelectedBatchIds(new Set());
+      setSelectedSingleIssueNumbers(new Set());
       setExpandedBatchIds(new Set());
       setStep('intro');
     }
@@ -89,6 +92,13 @@ export function BatchReviewWizard({
           .map((_, idx) => idx)
       );
       setSelectedBatchIds(validatedIds);
+      // If no batches, auto-select all single issues
+      if (analysisResult.proposedBatches.length === 0 && analysisResult.singleIssues.length > 0) {
+        const singleIssueNumbers = new Set(
+          analysisResult.singleIssues.map(issue => issue.issueNumber)
+        );
+        setSelectedSingleIssueNumbers(singleIssueNumbers);
+      }
     } else if (analysisError) {
       setStep('intro');
     }
@@ -113,6 +123,18 @@ export function BatchReviewWizard({
     });
   }, []);
 
+  const toggleSingleIssueSelection = useCallback((issueNumber: number) => {
+    setSelectedSingleIssueNumbers(prev => {
+      const next = new Set(prev);
+      if (next.has(issueNumber)) {
+        next.delete(issueNumber);
+      } else {
+        next.add(issueNumber);
+      }
+      return next;
+    });
+  }, []);
+
   const toggleBatchExpanded = useCallback((batchIndex: number) => {
     setExpandedBatchIds(prev => {
       const next = new Set(prev);
@@ -129,20 +151,48 @@ export function BatchReviewWizard({
     if (!analysisResult) return;
     const allIds = new Set(analysisResult.proposedBatches.map((_, idx) => idx));
     setSelectedBatchIds(allIds);
+    const allSingleIssues = new Set(analysisResult.singleIssues.map(issue => issue.issueNumber));
+    setSelectedSingleIssueNumbers(allSingleIssues);
   }, [analysisResult]);
 
   const deselectAllBatches = useCallback(() => {
     setSelectedBatchIds(new Set());
+    setSelectedSingleIssueNumbers(new Set());
   }, []);
 
   const handleApprove = useCallback(async () => {
     if (!analysisResult) return;
+
+    // Get selected batches
     const selectedBatches = analysisResult.proposedBatches.filter(
       (_, idx) => selectedBatchIds.has(idx)
     );
-    await onApproveBatches(selectedBatches);
+
+    // Convert selected single issues into batches (each single issue becomes a batch of 1)
+    const selectedSingleIssueBatches: ProposedBatch[] = analysisResult.singleIssues
+      .filter(issue => selectedSingleIssueNumbers.has(issue.issueNumber))
+      .map(issue => ({
+        primaryIssue: issue.issueNumber,
+        issues: [{
+          issueNumber: issue.issueNumber,
+          title: issue.title,
+          labels: issue.labels,
+          similarityToPrimary: 1.0
+        }],
+        issueCount: 1,
+        commonThemes: [],
+        validated: true,
+        confidence: 1.0,
+        reasoning: 'Single issue - not grouped with others',
+        theme: issue.title
+      }));
+
+    // Combine batches and single issues
+    const allBatches = [...selectedBatches, ...selectedSingleIssueBatches];
+
+    await onApproveBatches(allBatches);
     setStep('done');
-  }, [analysisResult, selectedBatchIds, onApproveBatches]);
+  }, [analysisResult, selectedBatchIds, selectedSingleIssueNumbers, onApproveBatches]);
 
   const renderIntro = () => (
     <div className="flex flex-col items-center justify-center py-8 space-y-6">
@@ -249,8 +299,19 @@ export function BatchReviewWizard({
                 {singleIssues.slice(0, 10).map((issue) => (
                   <div
                     key={issue.issueNumber}
-                    className="p-2 rounded border border-border text-sm truncate"
+                    onClick={() => toggleSingleIssueSelection(issue.issueNumber)}
+                    className={`p-2 rounded border text-sm truncate cursor-pointer transition-colors ${
+                      selectedSingleIssueNumbers.has(issue.issueNumber)
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:bg-accent'
+                    }`}
                   >
+                    <Checkbox
+                      checked={selectedSingleIssueNumbers.has(issue.issueNumber)}
+                      className="inline-block mr-2"
+                      onClick={(e) => e.stopPropagation()}
+                      onCheckedChange={() => toggleSingleIssueSelection(issue.issueNumber)}
+                    />
                     <span className="text-muted-foreground">#{issue.issueNumber}</span>{' '}
                     {issue.title}
                   </div>
@@ -269,6 +330,9 @@ export function BatchReviewWizard({
         <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
           <div className="text-sm text-muted-foreground">
             {selectedCount} batch{selectedCount !== 1 ? 'es' : ''} selected ({totalIssuesInSelected} issues)
+            {selectedSingleIssueNumbers.size > 0 && (
+              <> + {selectedSingleIssueNumbers.size} single issue{selectedSingleIssueNumbers.size !== 1 ? 's' : ''}</>
+            )}
           </div>
         </div>
       </div>
@@ -336,7 +400,7 @@ export function BatchReviewWizard({
             </Button>
             <Button
               onClick={handleApprove}
-              disabled={selectedBatchIds.size === 0 || isApproving}
+              disabled={(selectedBatchIds.size === 0 && selectedSingleIssueNumbers.size === 0) || isApproving}
             >
               {isApproving ? (
                 <>
@@ -346,7 +410,7 @@ export function BatchReviewWizard({
               ) : (
                 <>
                   <Play className="h-4 w-4 mr-2" />
-                  Approve & Create ({selectedBatchIds.size} batches)
+                  Approve & Create ({selectedBatchIds.size + selectedSingleIssueNumbers.size} {selectedBatchIds.size + selectedSingleIssueNumbers.size === 1 ? 'batch' : 'batches'})
                 </>
               )}
             </Button>

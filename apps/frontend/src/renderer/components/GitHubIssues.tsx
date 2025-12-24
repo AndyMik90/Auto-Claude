@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useProjectStore } from '../stores/project-store';
 import { useTaskStore } from '../stores/task-store';
 import { useGitHubIssues, useGitHubInvestigation, useIssueFiltering, useAutoFix } from './github-issues/hooks';
@@ -12,6 +12,7 @@ import {
   InvestigationDialog,
   BatchReviewWizard
 } from './github-issues/components';
+import { GitHubSetupModal } from './GitHubSetupModal';
 import type { GitHubIssue } from '../../shared/types';
 import type { GitHubIssuesProps } from './github-issues/types';
 
@@ -50,6 +51,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     isBatchRunning,
     batchProgress,
     toggleAutoFix,
+    checkForNewIssues,
   } = useAutoFix(selectedProject?.id);
 
   // Analyze & Group Issues (proactive workflow)
@@ -68,6 +70,14 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
 
   const [showInvestigateDialog, setShowInvestigateDialog] = useState(false);
   const [selectedIssueForInvestigation, setSelectedIssueForInvestigation] = useState<GitHubIssue | null>(null);
+  const [showGitHubSetup, setShowGitHubSetup] = useState(false);
+
+  // Show GitHub setup modal when module is not installed
+  useEffect(() => {
+    if (analysisError?.includes('GitHub automation module not installed')) {
+      setShowGitHubSetup(true);
+    }
+  }, [analysisError]);
 
   // Build a map of GitHub issue numbers to task IDs for quick lookup
   const issueToTaskMap = useMemo(() => {
@@ -79,6 +89,15 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     }
     return map;
   }, [tasks]);
+
+  // Enhanced refresh that also checks for new auto-fix issues
+  const handleRefreshWithAutoFix = useCallback(() => {
+    handleRefresh();
+    // Also check for new auto-fix issues if enabled
+    if (autoFixConfig?.enabled) {
+      checkForNewIssues();
+    }
+  }, [handleRefresh, autoFixConfig?.enabled, checkForNewIssues]);
 
   const handleInvestigate = useCallback((issue: GitHubIssue) => {
     setSelectedIssueForInvestigation(issue);
@@ -119,7 +138,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         filterState={filterState}
         onSearchChange={setSearchQuery}
         onFilterChange={handleFilterChange}
-        onRefresh={handleRefresh}
+        onRefresh={handleRefreshWithAutoFix}
         autoFixEnabled={autoFixConfig?.enabled}
         autoFixRunning={isBatchRunning}
         autoFixProcessing={batchProgress?.totalIssues}
@@ -189,6 +208,22 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         isAnalyzing={isAnalyzing}
         isApproving={isApproving}
       />
+
+      {/* GitHub Setup Modal - shown when GitHub module is not configured */}
+      {selectedProject && (
+        <GitHubSetupModal
+          open={showGitHubSetup}
+          onOpenChange={setShowGitHubSetup}
+          project={selectedProject}
+          onComplete={() => {
+            setShowGitHubSetup(false);
+            // Retry the analysis after setup is complete
+            openWizard();
+            startAnalysis();
+          }}
+          onSkip={() => setShowGitHubSetup(false)}
+        />
+      )}
     </div>
   );
 }

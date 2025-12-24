@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -120,7 +121,8 @@ class BotDetector:
         self.bot_username = self._get_bot_username()
 
         print(
-            f"[BotDetector] Initialized: bot_user={self.bot_username}, review_own_prs={review_own_prs}"
+            f"[BotDetector] Initialized: bot_user={self.bot_username}, review_own_prs={review_own_prs}",
+            file=sys.stderr,
         )
 
     def _get_bot_username(self) -> str | None:
@@ -131,7 +133,10 @@ class BotDetector:
             Bot username or None if token not provided or invalid
         """
         if not self.bot_token:
-            print("[BotDetector] No bot token provided, cannot identify bot user")
+            print(
+                "[BotDetector] No bot token provided, cannot identify bot user",
+                file=sys.stderr,
+            )
             return None
 
         try:

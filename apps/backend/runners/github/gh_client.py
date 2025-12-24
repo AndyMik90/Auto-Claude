@@ -22,7 +22,7 @@ from typing import Any
 
 try:
     from .rate_limiter import RateLimiter, RateLimitExceeded
-except ImportError:
+except (ImportError, ValueError, SystemError):
     from rate_limiter import RateLimiter, RateLimitExceeded
 
 # Configure logger

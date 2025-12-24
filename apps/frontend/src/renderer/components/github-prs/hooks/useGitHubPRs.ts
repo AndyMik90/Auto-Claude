@@ -25,6 +25,7 @@ interface UseGitHubPRsResult {
   selectPR: (prNumber: number | null) => void;
   refresh: () => Promise<void>;
   runReview: (prNumber: number) => Promise<void>;
+  cancelReview: (prNumber: number) => Promise<boolean>;
   postReview: (prNumber: number, selectedFindingIds?: string[]) => Promise<boolean>;
   postComment: (prNumber: number, body: string) => Promise<boolean>;
   mergePR: (prNumber: number, mergeMethod?: 'merge' | 'squash' | 'rebase') => Promise<boolean>;
@@ -162,6 +163,22 @@ export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
     storeStartPRReview(projectId, prNumber);
   }, [projectId]);
 
+  const cancelReview = useCallback(async (prNumber: number): Promise<boolean> => {
+    if (!projectId) return false;
+
+    try {
+      const success = await window.electronAPI.github.cancelPRReview(projectId, prNumber);
+      if (success) {
+        // Update store to mark review as cancelled
+        usePRReviewStore.getState().setPRReviewError(projectId, prNumber, 'Review cancelled by user');
+      }
+      return success;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel review');
+      return false;
+    }
+  }, [projectId]);
+
   const postReview = useCallback(async (prNumber: number, selectedFindingIds?: string[]): Promise<boolean> => {
     if (!projectId) return false;
 
@@ -231,6 +248,7 @@ export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
     selectPR,
     refresh,
     runReview,
+    cancelReview,
     postReview,
     postComment,
     mergePR,

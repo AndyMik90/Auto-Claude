@@ -24,6 +24,7 @@ import {
   getPythonPath,
   getRunnerPath,
   validateRunner,
+  validateGitHubModule,
   buildRunnerArgs,
 } from './utils/subprocess-runner';
 
@@ -222,12 +223,14 @@ async function runTriage(
   applyLabels: boolean,
   mainWindow: BrowserWindow
 ): Promise<TriageResult[]> {
-  const backendPath = getBackendPath(project);
-  const validation = validateRunner(backendPath);
+  // Comprehensive validation of GitHub module
+  const validation = await validateGitHubModule(project);
 
   if (!validation.valid) {
     throw new Error(validation.error);
   }
+
+  const backendPath = validation.backendPath!;
 
   const { sendProgress } = createIPCCommunicators<TriageProgress, TriageResult[]>(
     mainWindow,
@@ -246,7 +249,7 @@ async function runTriage(
   }
 
   const args = buildRunnerArgs(
-    getRunnerPath(backendPath!),
+    getRunnerPath(backendPath),
     project.path,
     'triage',
     additionalArgs,
@@ -255,10 +258,10 @@ async function runTriage(
 
   debugLog('Spawning triage process', { args, model, thinkingLevel });
 
-  const result = await runPythonSubprocess<TriageResult[]>({
-    pythonPath: getPythonPath(backendPath!),
+  const { promise } = runPythonSubprocess<TriageResult[]>({
+    pythonPath: getPythonPath(backendPath),
     args,
-    cwd: backendPath!,
+    cwd: backendPath,
     onProgress: (percent, message) => {
       debugLog('Progress update', { percent, message });
       sendProgress({
@@ -278,6 +281,8 @@ async function runTriage(
       return results;
     },
   });
+
+  const result = await promise;
 
   if (!result.success) {
     throw new Error(result.error ?? 'Triage failed');

@@ -16,7 +16,7 @@ from typing import Any
 # Import from parent package or direct import
 try:
     from ..gh_client import GHClient
-except ImportError:
+except (ImportError, ValueError, SystemError):
     from gh_client import GHClient
 
 from .protocol import (

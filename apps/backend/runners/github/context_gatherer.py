@@ -24,7 +24,7 @@ from pathlib import Path
 
 try:
     from .gh_client import GHClient
-except ImportError:
+except (ImportError, ValueError, SystemError):
     from gh_client import GHClient
 
 

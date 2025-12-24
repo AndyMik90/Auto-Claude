@@ -67,7 +67,10 @@ class BatchProcessor:
         Returns:
             List of IssueBatch objects that were created
         """
-        from ..batch_issues import BatchStatus, IssueBatcher
+        try:
+            from ..batch_issues import BatchStatus, IssueBatcher
+        except (ImportError, ValueError, SystemError):
+            from batch_issues import BatchStatus, IssueBatcher
 
         self._report_progress("batching", 10, "Analyzing issues for batching...")
 
@@ -182,7 +185,10 @@ class BatchProcessor:
         Returns:
             Dict with proposed batches and statistics for user review
         """
-        from ..batch_issues import IssueBatcher
+        try:
+            from ..batch_issues import IssueBatcher
+        except (ImportError, ValueError, SystemError):
+            from batch_issues import IssueBatcher
 
         self._report_progress("analyzing", 10, "Fetching issues for analysis...")
 
@@ -236,7 +242,9 @@ class BatchProcessor:
                     "message": "All issues are already in batches",
                 }
 
-            similarity_matrix = await batcher._build_similarity_matrix(available_issues)
+            similarity_matrix, reasoning_dict = await batcher._build_similarity_matrix(
+                available_issues
+            )
 
             self._report_progress("analyzing", 60, "Clustering issues by similarity...")
 
@@ -257,14 +265,27 @@ class BatchProcessor:
                 if len(cluster) == 1:
                     # Single issue - no batch needed
                     issue = cluster_issues[0]
+                    issue_num = issue["number"]
+
+                    # Get Claude's actual reasoning from comparisons
+                    claude_reasoning = "No similar issues found."
+                    if issue_num in reasoning_dict and reasoning_dict[issue_num]:
+                        # Get reasoning from any comparison
+                        other_issues = list(reasoning_dict[issue_num].keys())
+                        if other_issues:
+                            claude_reasoning = reasoning_dict[issue_num][
+                                other_issues[0]
+                            ]
+
                     single_issues.append(
                         {
-                            "issue_number": issue["number"],
+                            "issue_number": issue_num,
                             "title": issue.get("title", ""),
                             "labels": [
                                 label.get("name", "")
                                 for label in issue.get("labels", [])
                             ],
+                            "reasoning": claude_reasoning,
                         }
                     )
                     continue
@@ -381,7 +402,20 @@ class BatchProcessor:
         Returns:
             List of created IssueBatch objects
         """
-        from ..batch_issues import BatchStatus, IssueBatch, IssueBatcher, IssueBatchItem
+        try:
+            from ..batch_issues import (
+                BatchStatus,
+                IssueBatch,
+                IssueBatcher,
+                IssueBatchItem,
+            )
+        except (ImportError, ValueError, SystemError):
+            from batch_issues import (
+                BatchStatus,
+                IssueBatch,
+                IssueBatcher,
+                IssueBatchItem,
+            )
 
         if not approved_batches:
             return []
@@ -419,16 +453,20 @@ class BatchProcessor:
             ]
 
             batch = IssueBatch(
-                batch_id=batcher._generate_batch_id(),
+                batch_id=batcher._generate_batch_id(primary),
                 primary_issue=primary,
-                items=items,
+                issues=items,
                 common_themes=batch_data.get("common_themes", []),
                 repo=self.config.repo,
                 status=BatchStatus.ANALYZING,
             )
 
+            # Update index
+            for item in batch.issues:
+                batcher._batch_index[item.issue_number] = batch.batch_id
+
+            # Save batch
             batch.save(self.github_dir)
-            batcher._update_index(batch)
             created_batches.append(batch)
 
             # Create AutoFixState for primary issue
@@ -438,7 +476,10 @@ class BatchProcessor:
                 repo=self.config.repo,
                 status=AutoFixStatus.ANALYZING,
             )
-            primary_state.save(self.github_dir)
+            await primary_state.save(self.github_dir)
+
+        # Save batch index
+        batcher._save_batch_index()
 
         self._report_progress(
             "complete",
@@ -450,7 +491,10 @@ class BatchProcessor:
 
     async def get_batch_status(self) -> dict:
         """Get status of all batches."""
-        from ..batch_issues import IssueBatcher
+        try:
+            from ..batch_issues import IssueBatcher
+        except (ImportError, ValueError, SystemError):
+            from batch_issues import IssueBatcher
 
         batcher = IssueBatcher(
             github_dir=self.github_dir,
@@ -480,7 +524,10 @@ class BatchProcessor:
 
     async def process_pending_batches(self) -> int:
         """Process all pending batches."""
-        from ..batch_issues import BatchStatus, IssueBatcher
+        try:
+            from ..batch_issues import BatchStatus, IssueBatcher
+        except (ImportError, ValueError, SystemError):
+            from batch_issues import BatchStatus, IssueBatcher
 
         batcher = IssueBatcher(
             github_dir=self.github_dir,

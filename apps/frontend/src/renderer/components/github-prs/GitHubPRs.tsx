@@ -62,6 +62,7 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
     activePRReviews,
     selectPR,
     runReview,
+    cancelReview,
     postReview,
     postComment,
     mergePR,
@@ -79,6 +80,12 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
       runReview(selectedPRNumber);
     }
   }, [selectedPRNumber, runReview]);
+
+  const handleCancelReview = useCallback(() => {
+    if (selectedPRNumber) {
+      cancelReview(selectedPRNumber);
+    }
+  }, [selectedPRNumber, cancelReview]);
 
   const handlePostReview = useCallback((selectedFindingIds?: string[]) => {
     if (selectedPRNumber && reviewResult) {
@@ -167,6 +174,7 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
               reviewProgress={reviewProgress}
               isReviewing={isReviewing}
               onRunReview={handleRunReview}
+              onCancelReview={handleCancelReview}
               onPostReview={handlePostReview}
               onPostComment={handlePostComment}
               onMergePR={handleMergePR}

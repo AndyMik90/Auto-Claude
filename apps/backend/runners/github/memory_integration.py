@@ -56,7 +56,7 @@ try:
     from memory.graphiti_helpers import is_graphiti_memory_enabled
 
     GRAPHITI_AVAILABLE = True
-except ImportError:
+except (ImportError, ValueError, SystemError):
     GRAPHITI_AVAILABLE = False
 
     def is_graphiti_enabled() -> bool:

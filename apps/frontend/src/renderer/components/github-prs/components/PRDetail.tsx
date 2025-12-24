@@ -27,6 +27,7 @@ interface PRDetailProps {
   reviewProgress: PRReviewProgress | null;
   isReviewing: boolean;
   onRunReview: () => void;
+  onCancelReview: () => void;
   onPostReview: (selectedFindingIds?: string[]) => void;
   onPostComment: (body: string) => void;
   onMergePR: (mergeMethod?: 'merge' | 'squash' | 'rebase') => void;
@@ -60,6 +61,7 @@ export function PRDetail({
   reviewProgress,
   isReviewing,
   onRunReview,
+  onCancelReview,
   onPostReview,
   onPostComment,
   onMergePR,
@@ -196,7 +198,13 @@ export function PRDetail({
                 </>
               )}
             </Button>
-            {reviewResult && reviewResult.success && selectedCount > 0 && (
+            {isReviewing && (
+              <Button onClick={onCancelReview} variant="destructive">
+                <XCircle className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            )}
+            {reviewResult && reviewResult.success && selectedCount > 0 && !isReviewing && (
               <Button onClick={handlePostReview} variant="secondary">
                 <Send className="h-4 w-4 mr-2" />
                 Post {selectedCount} Finding{selectedCount !== 1 ? 's' : ''}

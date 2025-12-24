@@ -5,11 +5,14 @@
  * with progress tracking, error handling, and result parsing.
  */
 
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
 import type { ChildProcess } from 'child_process';
+import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
 import type { Project } from '../../../../shared/types';
+
+const execAsync = promisify(exec);
 
 /**
  * Options for running a Python subprocess
@@ -36,25 +39,26 @@ export interface SubprocessResult<T = unknown> {
   stderr: string;
   data?: T;
   error?: string;
+  process?: ChildProcess;
 }
 
 /**
  * Run a Python subprocess with progress tracking
  *
  * @param options - Subprocess configuration
- * @returns Promise resolving to the subprocess result
+ * @returns Object containing the child process and a promise resolving to the result
  */
 export function runPythonSubprocess<T = unknown>(
   options: SubprocessOptions
-): Promise<SubprocessResult<T>> {
-  return new Promise((resolve) => {
-    const child = spawn(options.pythonPath, options.args, {
-      cwd: options.cwd,
-      env: {
-        ...process.env,
-        PYTHONPATH: options.cwd,
-      },
-    });
+): { process: ChildProcess; promise: Promise<SubprocessResult<T>> } {
+  // Don't set PYTHONPATH - let runner.py manage its own import paths
+  // Setting PYTHONPATH can interfere with runner.py's sys.path manipulation
+  const child = spawn(options.pythonPath, options.args, {
+    cwd: options.cwd,
+    env: process.env,
+  });
+
+  const promise = new Promise<SubprocessResult<T>>((resolve) => {
 
     let stdout = '';
     let stderr = '';
@@ -97,6 +101,12 @@ export function runPythonSubprocess<T = unknown>(
 
     child.on('close', (code: number) => {
       const exitCode = code ?? 0;
+
+      // Debug: log raw stdout and stderr
+      console.log('[DEBUG] Process exited with code:', exitCode);
+      console.log('[DEBUG] Raw stdout length:', stdout.length);
+      console.log('[DEBUG] Raw stdout (first 1000 chars):', stdout.substring(0, 1000));
+      console.log('[DEBUG] Raw stderr (first 500 chars):', stderr.substring(0, 500));
 
       if (exitCode === 0) {
         try {
@@ -143,6 +153,8 @@ export function runPythonSubprocess<T = unknown>(
       });
     });
   });
+
+  return { process: child, promise };
 }
 
 /**
@@ -161,10 +173,20 @@ export function getRunnerPath(backendPath: string): string {
 
 /**
  * Get the auto-claude backend path for a project
+ *
+ * Auto-detects the backend location using multiple strategies:
+ * 1. Development repo structure (apps/backend)
+ * 2. Electron app bundle location
+ * 3. Current working directory
  */
 export function getBackendPath(project: Project): string | null {
-  const autoBuildPath = project.autoBuildPath;
-  if (!autoBuildPath) return null;
+  // Import app module for production path detection
+  let app: any;
+  try {
+    app = require('electron').app;
+  } catch {
+    // Electron not available in tests
+  }
 
   // Check if this is a development repo (has apps/backend structure)
   const appsBackendPath = path.join(project.path, 'apps', 'backend');
@@ -172,11 +194,43 @@ export function getBackendPath(project: Project): string | null {
     return appsBackendPath;
   }
 
+  // Auto-detect from app location (same logic as agent-process.ts)
+  const possiblePaths = [
+    // Dev mode: from dist/main -> ../../backend (apps/frontend/out/main -> apps/backend)
+    path.resolve(__dirname, '..', '..', '..', '..', '..', 'backend'),
+    // Alternative: from app root -> apps/backend
+    app ? path.resolve(app.getAppPath(), '..', 'backend') : null,
+    // If running from repo root with apps structure
+    path.resolve(process.cwd(), 'apps', 'backend'),
+  ].filter((p): p is string => p !== null);
+
+  for (const backendPath of possiblePaths) {
+    // Check for runner.py as marker
+    const runnerPath = path.join(backendPath, 'runners', 'github', 'runner.py');
+    if (fs.existsSync(runnerPath)) {
+      return backendPath;
+    }
+  }
+
   return null;
 }
 
 /**
- * Validate that the GitHub runner exists
+ * Comprehensive validation result for GitHub module
+ */
+export interface GitHubModuleValidation {
+  valid: boolean;
+  runnerAvailable: boolean;
+  ghCliInstalled: boolean;
+  ghAuthenticated: boolean;
+  pythonEnvValid: boolean;
+  error?: string;
+  backendPath?: string;
+}
+
+/**
+ * Validate that the GitHub runner exists (synchronous, legacy)
+ * @deprecated Use validateGitHubModule() for comprehensive async validation
  */
 export function validateRunner(backendPath: string | null): { valid: boolean; error?: string } {
   if (!backendPath) {
@@ -198,15 +252,148 @@ export function validateRunner(backendPath: string | null): { valid: boolean; er
 }
 
 /**
+ * Comprehensive async validation of GitHub automation module
+ *
+ * Checks:
+ * 1. runner.py exists (dev repo or production install)
+ * 2. gh CLI is installed
+ * 3. gh CLI is authenticated
+ * 4. Python virtual environment is set up
+ *
+ * @param project - The project to validate
+ * @returns Detailed validation result with specific error messages
+ */
+export async function validateGitHubModule(project: Project): Promise<GitHubModuleValidation> {
+  const result: GitHubModuleValidation = {
+    valid: false,
+    runnerAvailable: false,
+    ghCliInstalled: false,
+    ghAuthenticated: false,
+    pythonEnvValid: false,
+  };
+
+  // 1. Check runner.py location
+  const backendPath = getBackendPath(project);
+  if (!backendPath) {
+    result.error = 'GitHub automation module not installed. This project does not have the GitHub runner configured.';
+    return result;
+  }
+
+  result.backendPath = backendPath;
+
+  const runnerPath = getRunnerPath(backendPath);
+  result.runnerAvailable = fs.existsSync(runnerPath);
+
+  if (!result.runnerAvailable) {
+    result.error = `GitHub runner script not found at: ${runnerPath}`;
+    return result;
+  }
+
+  // 2. Check gh CLI installation
+  try {
+    await execAsync('which gh');
+    result.ghCliInstalled = true;
+  } catch {
+    result.ghCliInstalled = false;
+    result.error = 'GitHub CLI (gh) is not installed. Install it with:\n  macOS: brew install gh\n  Linux: See https://cli.github.com/';
+    return result;
+  }
+
+  // 3. Check gh authentication
+  try {
+    await execAsync('gh auth status 2>&1');
+    result.ghAuthenticated = true;
+  } catch (error: any) {
+    // gh auth status returns non-zero when not authenticated
+    // Check the output to determine if it's an auth issue
+    const output = error.stdout || error.stderr || '';
+    if (output.includes('not logged in') || output.includes('not authenticated')) {
+      result.ghAuthenticated = false;
+      result.error = 'GitHub CLI is not authenticated. Run:\n  gh auth login';
+      return result;
+    }
+    // If it's some other error, still consider it authenticated (might be network issue)
+    result.ghAuthenticated = true;
+  }
+
+  // 4. Check Python virtual environment
+  const venvPath = path.join(backendPath, '.venv', 'bin', 'python');
+  result.pythonEnvValid = fs.existsSync(venvPath);
+
+  if (!result.pythonEnvValid) {
+    result.error = `Python virtual environment not found. Run setup:\n  cd ${backendPath}\n  uv venv && uv pip install -r requirements.txt`;
+    return result;
+  }
+
+  // All checks passed
+  result.valid = true;
+  return result;
+}
+
+/**
  * Parse JSON from stdout (finds JSON block in output)
  */
 export function parseJSONFromOutput<T>(stdout: string): T {
-  const jsonStart = stdout.indexOf('{');
-  const jsonEnd = stdout.lastIndexOf('}');
+  // Look for JSON after the "JSON Output" marker to avoid debug output
+  const jsonMarker = 'JSON Output';
+  const markerIndex = stdout.lastIndexOf(jsonMarker);
+  const searchStart = markerIndex >= 0 ? markerIndex : 0;
+
+  // Try to find JSON array first, then object
+  const arrayStart = stdout.indexOf('[', searchStart);
+  const objectStart = stdout.indexOf('{', searchStart);
+
+  let jsonStart = -1;
+  let jsonEnd = -1;
+
+  // Determine if it's an array or object (whichever comes first)
+  if (arrayStart >= 0 && (objectStart < 0 || arrayStart < objectStart)) {
+    // It's an array
+    jsonStart = arrayStart;
+    jsonEnd = stdout.lastIndexOf(']');
+  } else if (objectStart >= 0) {
+    // It's an object
+    jsonStart = objectStart;
+    jsonEnd = stdout.lastIndexOf('}');
+  }
 
   if (jsonStart >= 0 && jsonEnd > jsonStart) {
-    const jsonStr = stdout.substring(jsonStart, jsonEnd + 1);
-    return JSON.parse(jsonStr);
+    let jsonStr = stdout.substring(jsonStart, jsonEnd + 1);
+
+    // Clean up debug output prefixes and markdown code blocks
+    jsonStr = jsonStr
+      .split('\n')
+      .map(line => {
+        // Remove common debug prefixes
+        const debugPrefixes = [
+          /^\[GitHub AutoFix\] STDOUT:\s*/,
+          /^\[GitHub AutoFix\] STDERR:\s*/,
+          /^\[[A-Za-z][^\]]*\]\s*/,  // Any other bracketed prefix (must start with letter to avoid matching JSON arrays)
+        ];
+
+        let cleaned = line;
+        for (const prefix of debugPrefixes) {
+          cleaned = cleaned.replace(prefix, '');
+        }
+        return cleaned;
+      })
+      .filter(line => {
+        // Remove markdown code block markers
+        const trimmed = line.trim();
+        return trimmed !== '```json' && trimmed !== '```';
+      })
+      .join('\n');
+
+    try {
+      // Debug: log the exact string we're trying to parse
+      console.log('[DEBUG] Attempting to parse JSON:', jsonStr.substring(0, 200) + '...');
+      return JSON.parse(jsonStr);
+    } catch (parseError) {
+      // Provide a more helpful error message with details
+      console.error('[DEBUG] JSON parse failed:', parseError);
+      console.error('[DEBUG] JSON string (first 500 chars):', jsonStr.substring(0, 500));
+      throw new Error('Failed to parse JSON response from backend. The analysis completed but the response format was invalid.');
+    }
   }
 
   throw new Error('No JSON found in output');
