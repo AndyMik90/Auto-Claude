@@ -53,14 +53,118 @@
     "preview": "Les changements sont prévisualisés immédiatement. Cliquez sur Enregistrer pour les conserver."
   },
   "general": {
+    "otherAgentSettings": "Autres paramètres de l'agent",
+    "otherAgentSettingsDescription": "Options de configuration supplémentaires de l'agent",
     "agentFramework": "Framework de l'agent",
-    "trioAutoPath": "Chemin Auto Claude",
+    "agentFrameworkDescription": "Le framework de codage utilisé pour les tâches autonomes",
+    "agentFrameworkAutoClaude": "Auto Claude",
+    "aiTerminalNaming": "Nommage IA des terminaux",
+    "aiTerminalNamingDescription": "Nommer automatiquement les terminaux en fonction des commandes (utilise Haiku)",
+    "featureModelSettings": "Paramètres du modèle de fonctionnalité",
+    "featureModelSettingsDescription": "Modèle et niveau de réflexion pour Insights, Idéation et Roadmap",
+    "model": "Modèle",
+    "thinkingLevel": "Niveau de réflexion",
+    "paths": "Chemins",
+    "pathsDescription": "Configurer les chemins des exécutables et du framework",
     "pythonPath": "Chemin Python",
+    "pythonPathDescription": "Chemin vers l'exécutable Python (laisser vide pour la valeur par défaut)",
+    "pythonPathPlaceholder": "python3 (par défaut)",
+    "autoClaudePath": "Chemin Auto Claude",
+    "autoClaudePathDescription": "Chemin relatif vers le répertoire auto-claude dans les projets",
+    "autoClaudePathPlaceholder": "auto-claude (par défaut)",
     "autoNameTerminals": "Nommer automatiquement les terminaux",
     "autoNameTerminalsDescription": "Utiliser l'IA pour générer des noms descriptifs pour les onglets de terminal en fonction de leur activité"
+  },
+  "theme": {
+    "title": "Apparence",
+    "description": "Personnalisez l'apparence de Auto Claude",
+    "mode": "Mode",
+    "modeDescription": "Choisir entre les thèmes clair et sombre",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système",
+    "colorTheme": "Thème de couleur",
+    "colorThemeDescription": "Choisissez votre palette de couleurs préférée"
+  },
+  "updates": {
+    "title": "Mises à jour",
+    "description": "Gérer les mises à jour de Auto Claude",
+    "appUpdateReady": "Mise à jour de l'app prête",
+    "newVersion": "Nouvelle version",
+    "released": "Publiée le",
+    "downloading": "Téléchargement...",
+    "updateDownloaded": "Mise à jour téléchargée ! Cliquez sur Installer pour redémarrer et appliquer la mise à jour.",
+    "installAndRestart": "Installer et redémarrer",
+    "downloadUpdate": "Télécharger la mise à jour",
+    "version": "Version",
+    "loading": "Chargement...",
+    "checkingForUpdates": "Vérification des mises à jour...",
+    "newVersionAvailable": "Nouvelle version disponible :",
+    "latestVersion": "Vous utilisez la dernière version.",
+    "viewRelease": "Voir la version complète sur GitHub",
+    "unableToCheck": "Impossible de vérifier les mises à jour",
+    "checkForUpdates": "Vérifier les mises à jour",
+    "autoUpdateProjects": "Mise à jour automatique des projets",
+    "autoUpdateProjectsDescription": "Mettre à jour automatiquement Auto Claude dans les projets quand une nouvelle version est disponible",
+    "betaUpdates": "Mises à jour bêta",
+    "betaUpdatesDescription": "Recevoir les versions bêta pré-release avec de nouvelles fonctionnalités (peut être moins stable)"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Configurer les préférences de notification par défaut",
+    "onTaskComplete": "À la fin d'une tâche",
+    "onTaskCompleteDescription": "Notifier quand une tâche se termine avec succès",
+    "onTaskFailed": "En cas d'échec",
+    "onTaskFailedDescription": "Notifier quand une tâche rencontre une erreur",
+    "onReviewNeeded": "Révision requise",
+    "onReviewNeededDescription": "Notifier quand le QA nécessite votre révision",
+    "sound": "Son",
+    "soundDescription": "Jouer un son avec les notifications"
   },
   "actions": {
     "save": "Enregistrer les paramètres",
     "rerunWizard": "Relancer l'assistant de configuration"
+  },
+  "agentProfile": {
+    "label": "Profil d'agent",
+    "custom": "Personnalisé",
+    "customConfiguration": "Configuration personnalisée",
+    "customDescription": "Choisir le modèle et le niveau de réflexion",
+    "phaseConfiguration": "Configuration par phase",
+    "clickToCustomize": "Cliquer pour personnaliser",
+    "model": "Modèle",
+    "thinking": "Réflexion",
+    "selectModel": "Sélectionner un modèle",
+    "selectThinkingLevel": "Sélectionner un niveau de réflexion",
+    "perPhaseOptimization": "(optimisation par phase)",
+    "phases": {
+      "spec": {
+        "label": "Création de spec",
+        "description": "Découverte, exigences, collecte de contexte"
+      },
+      "planning": {
+        "label": "Planification",
+        "description": "Planification de l'implémentation et architecture"
+      },
+      "coding": {
+        "label": "Codage",
+        "description": "Implémentation du code"
+      },
+      "qa": {
+        "label": "Révision QA",
+        "description": "Assurance qualité et validation"
+      }
+    }
+  },
+  "workspace": {
+    "roles": {
+      "backend": "Backend",
+      "frontend": "Frontend",
+      "mobile": "Mobile",
+      "shared": "Partagé",
+      "apiGateway": "Passerelle API",
+      "worker": "Worker",
+      "other": "Autre"
+    }
   }
 }

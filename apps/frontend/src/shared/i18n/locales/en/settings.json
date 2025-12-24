@@ -53,14 +53,118 @@
     "preview": "Changes preview immediately. Click Save Settings to persist."
   },
   "general": {
+    "otherAgentSettings": "Other Agent Settings",
+    "otherAgentSettingsDescription": "Additional agent configuration options",
     "agentFramework": "Agent Framework",
-    "trioAutoPath": "Auto Claude Path",
+    "agentFrameworkDescription": "The coding framework used for autonomous tasks",
+    "agentFrameworkAutoClaude": "Auto Claude",
+    "aiTerminalNaming": "AI Terminal Naming",
+    "aiTerminalNamingDescription": "Automatically name terminals based on commands (uses Haiku)",
+    "featureModelSettings": "Feature Model Settings",
+    "featureModelSettingsDescription": "Model and thinking level for Insights, Ideation, and Roadmap",
+    "model": "Model",
+    "thinkingLevel": "Thinking Level",
+    "paths": "Paths",
+    "pathsDescription": "Configure executable and framework paths",
     "pythonPath": "Python Path",
+    "pythonPathDescription": "Path to Python executable (leave empty for default)",
+    "pythonPathPlaceholder": "python3 (default)",
+    "autoClaudePath": "Auto Claude Path",
+    "autoClaudePathDescription": "Relative path to auto-claude directory in projects",
+    "autoClaudePathPlaceholder": "auto-claude (default)",
     "autoNameTerminals": "Automatically name terminals",
     "autoNameTerminalsDescription": "Use AI to generate descriptive names for terminal tabs based on their activity"
+  },
+  "theme": {
+    "title": "Appearance",
+    "description": "Customize how Auto Claude looks",
+    "mode": "Mode",
+    "modeDescription": "Choose between light and dark themes",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "colorTheme": "Color Theme",
+    "colorThemeDescription": "Choose your preferred color palette"
+  },
+  "updates": {
+    "title": "Updates",
+    "description": "Manage Auto Claude updates",
+    "appUpdateReady": "App Update Ready",
+    "newVersion": "New Version",
+    "released": "Released",
+    "downloading": "Downloading...",
+    "updateDownloaded": "Update downloaded! Click Install to restart and apply the update.",
+    "installAndRestart": "Install and Restart",
+    "downloadUpdate": "Download Update",
+    "version": "Version",
+    "loading": "Loading...",
+    "checkingForUpdates": "Checking for updates...",
+    "newVersionAvailable": "New version available:",
+    "latestVersion": "You're running the latest version.",
+    "viewRelease": "View full release on GitHub",
+    "unableToCheck": "Unable to check for updates",
+    "checkForUpdates": "Check for Updates",
+    "autoUpdateProjects": "Auto-Update Projects",
+    "autoUpdateProjectsDescription": "Automatically update Auto Claude in projects when a new version is available",
+    "betaUpdates": "Beta Updates",
+    "betaUpdatesDescription": "Receive pre-release beta versions with new features (may be less stable)"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Configure default notification preferences",
+    "onTaskComplete": "On Task Complete",
+    "onTaskCompleteDescription": "Notify when a task finishes successfully",
+    "onTaskFailed": "On Task Failed",
+    "onTaskFailedDescription": "Notify when a task encounters an error",
+    "onReviewNeeded": "On Review Needed",
+    "onReviewNeededDescription": "Notify when QA requires your review",
+    "sound": "Sound",
+    "soundDescription": "Play sound with notifications"
   },
   "actions": {
     "save": "Save Settings",
     "rerunWizard": "Re-run Setup Wizard"
+  },
+  "agentProfile": {
+    "label": "Agent Profile",
+    "custom": "Custom",
+    "customConfiguration": "Custom Configuration",
+    "customDescription": "Choose model & thinking level",
+    "phaseConfiguration": "Phase Configuration",
+    "clickToCustomize": "Click to customize",
+    "model": "Model",
+    "thinking": "Thinking",
+    "selectModel": "Select model",
+    "selectThinkingLevel": "Select thinking level",
+    "perPhaseOptimization": "(per-phase optimization)",
+    "phases": {
+      "spec": {
+        "label": "Spec Creation",
+        "description": "Discovery, requirements, context gathering"
+      },
+      "planning": {
+        "label": "Planning",
+        "description": "Implementation planning and architecture"
+      },
+      "coding": {
+        "label": "Coding",
+        "description": "Actual code implementation"
+      },
+      "qa": {
+        "label": "QA Review",
+        "description": "Quality assurance and validation"
+      }
+    }
+  },
+  "workspace": {
+    "roles": {
+      "backend": "Backend",
+      "frontend": "Frontend",
+      "mobile": "Mobile",
+      "shared": "Shared",
+      "apiGateway": "API Gateway",
+      "worker": "Worker",
+      "other": "Other"
+    }
   }
 }
