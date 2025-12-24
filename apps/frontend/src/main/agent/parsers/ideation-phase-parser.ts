@@ -57,7 +57,7 @@ export class IdeationPhaseParser extends BasePhaseParser<IdeationPhase> {
    */
   parse(log: string, context: IdeationParserContext): IdeationParseResult | null {
     // Terminal states cannot be changed
-    if (context.isTerminal || context.currentPhase === 'complete') {
+    if (context.isTerminal) {
       return null;
     }
 

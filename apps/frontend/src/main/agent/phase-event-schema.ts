@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BACKEND_PHASES, type BackendPhase } from '../../shared/constants/phase-protocol';
+import { BACKEND_PHASES } from '../../shared/constants/phase-protocol';
 
 const BackendPhaseSchema = z.enum(BACKEND_PHASES as unknown as [string, ...string[]]);
 
@@ -10,12 +10,7 @@ export const PhaseEventSchema = z.object({
   subtask: z.string().optional()
 });
 
-export interface PhaseEventPayload {
-  phase: BackendPhase;
-  message: string;
-  progress?: number;
-  subtask?: string;
-}
+export type PhaseEventPayload = z.infer<typeof PhaseEventSchema>;
 
 export interface ValidationResult {
   success: true;

@@ -8,8 +8,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parsePhaseEvent,
   hasPhaseMarker,
-  PHASE_MARKER_PREFIX,
-  type PhaseEvent
+  PHASE_MARKER_PREFIX
 } from '../agent/phase-event-parser';
 
 describe('Phase Event Parser', () => {

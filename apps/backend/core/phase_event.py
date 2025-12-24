@@ -41,6 +41,8 @@ def emit_phase(
     }
 
     if progress is not None:
+        if not (0 <= progress <= 100):
+            progress = max(0, min(100, progress))
         payload["progress"] = progress
 
     if subtask is not None:

@@ -46,7 +46,14 @@ export class RoadmapPhaseParser extends BasePhaseParser<RoadmapPhase> {
       return null;
     }
 
-    return this.parsePhaseFromLog(log);
+    const result = this.parsePhaseFromLog(log);
+
+    // Prevent backwards transitions
+    if (result && this.wouldRegress(context.currentPhase, result.phase)) {
+      return null;
+    }
+
+    return result;
   }
 
   /**
