@@ -119,6 +119,8 @@ export const IPC_CHANNELS = {
   PROFILES_SET_ACTIVE: 'profiles:setActive',
   PROFILES_TEST_CONNECTION: 'profiles:test-connection',
   PROFILES_TEST_CONNECTION_CANCEL: 'profiles:test-connection-cancel',
+  PROFILES_DISCOVER_MODELS: 'profiles:discover-models',
+  PROFILES_DISCOVER_MODELS_CANCEL: 'profiles:discover-models-cancel',
 
   // Dialogs
   DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',

@@ -154,6 +154,13 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
+  discoverModels: async (_baseUrl: string, _apiKey: string, _signal?: AbortSignal) => ({
+    success: true,
+    data: {
+      models: []
+    }
+  }),
+
   // GitHub API
   github: {
     getGitHubRepositories: async () => ({ success: true, data: [] }),

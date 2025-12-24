@@ -123,7 +123,7 @@ import type {
   GitLabMRReviewProgress,
   GitLabNewCommitsCheck
 } from './integrations';
-import type { APIProfile, ProfilesFile, TestConnectionResult } from './profile';
+import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
 
 // Electron API exposed via contextBridge
 // Tab state interface (persisted in main process)
@@ -271,6 +271,7 @@ export interface ElectronAPI {
   deleteAPIProfile: (profileId: string) => Promise<IPCResult>;
   setActiveAPIProfile: (profileId: string | null) => Promise<IPCResult>;
   testConnection: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<IPCResult<TestConnectionResult>>;
+  discoverModels: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<IPCResult<DiscoverModelsResult>>;
 
   // Dialog operations
   selectDirectory: () => Promise<string | null>;

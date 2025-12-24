@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
-import type { APIProfile, ProfileFormData, TestConnectionResult } from '@auto-claude/profile-service';
+import type { APIProfile, ProfileFormData, TestConnectionResult, DiscoverModelsResult, ModelInfo } from '@auto-claude/profile-service';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 
@@ -19,6 +19,11 @@ interface SettingsState {
   isTestingConnection: boolean;
   testConnectionResult: TestConnectionResult | null;
 
+  // Model discovery state
+  modelsLoading: boolean;
+  modelsError: string | null;
+  discoveredModels: Map<string, ModelInfo[]>; // Cache key -> models mapping
+
   // Actions
   setSettings: (settings: AppSettings) => void;
   updateSettings: (updates: Partial<AppSettings>) => void;
@@ -34,6 +39,7 @@ interface SettingsState {
   deleteProfile: (profileId: string) => Promise<boolean>;
   setActiveProfile: (profileId: string | null) => Promise<boolean>;
   testConnection: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<TestConnectionResult | null>;
+  discoverModels: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<ModelInfo[] | null>;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -50,6 +56,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   // Test connection state
   isTestingConnection: false,
   testConnectionResult: null,
+
+  // Model discovery state
+  modelsLoading: false,
+  modelsError: null,
+  discoveredModels: new Map<string, ModelInfo[]>(),
 
   setSettings: (settings) => set({ settings }),
 
@@ -189,20 +200,73 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         return result.data;
       }
 
-      // Error from IPC layer
-      set({ isTestingConnection: false });
+      // Error from IPC layer - set testConnectionResult for inline display
+      const errorResult: TestConnectionResult = {
+        success: false,
+        errorType: 'unknown',
+        message: result.error || 'Failed to test connection'
+      };
+      set({ testConnectionResult: errorResult, isTestingConnection: false });
       toast({
         variant: 'destructive',
         title: 'Connection test failed',
         description: result.error || 'Failed to test connection'
       });
-      return null;
+      return errorResult;
     } catch (error) {
-      set({ isTestingConnection: false });
+      // Unexpected error - set testConnectionResult for inline display
+      const errorResult: TestConnectionResult = {
+        success: false,
+        errorType: 'unknown',
+        message: error instanceof Error ? error.message : 'Failed to test connection'
+      };
+      set({ testConnectionResult: errorResult, isTestingConnection: false });
       toast({
         variant: 'destructive',
         title: 'Connection test failed',
         description: error instanceof Error ? error.message : 'Failed to test connection'
+      });
+      return errorResult;
+    }
+  },
+
+  discoverModels: async (baseUrl: string, apiKey: string, signal?: AbortSignal): Promise<ModelInfo[] | null> => {
+    console.log('[settings-store] discoverModels called with:', { baseUrl, apiKey: `${apiKey.slice(-4)}` });
+    // Generate cache key from baseUrl and apiKey (last 4 chars)
+    const cacheKey = `${baseUrl}::${apiKey.slice(-4)}`;
+
+    // Check cache first
+    const state = useSettingsStore.getState();
+    const cached = state.discoveredModels.get(cacheKey);
+    if (cached) {
+      console.log('[settings-store] Returning cached models');
+      return cached;
+    }
+
+    // Fetch from API
+    set({ modelsLoading: true, modelsError: null });
+    try {
+      console.log('[settings-store] Calling window.electronAPI.discoverModels...');
+      const result = await window.electronAPI.discoverModels(baseUrl, apiKey, signal);
+      console.log('[settings-store] discoverModels result:', result);
+
+      if (result.success && result.data) {
+        const models = result.data.models;
+        // Cache the results
+        set((state) => ({
+          discoveredModels: new Map(state.discoveredModels).set(cacheKey, models),
+          modelsLoading: false
+        }));
+        return models;
+      }
+
+      // Error from IPC layer
+      set({ modelsError: result.error || 'Failed to discover models', modelsLoading: false });
+      return null;
+    } catch (error) {
+      set({
+        modelsError: error instanceof Error ? error.message : 'Failed to discover models',
+        modelsLoading: false
       });
       return null;
     }
