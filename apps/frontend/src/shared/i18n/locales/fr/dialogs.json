@@ -38,7 +38,7 @@
     "branchDescription": "Choisissez quelle branche Auto Claude doit utiliser comme base pour créer les branches de tâches.",
     "whyBranch": "Pourquoi sélectionner une branche ?",
     "branchExplanation": "Auto Claude crée des espaces de travail isolés pour chaque tâche. Sélectionner la bonne branche de base garantit que vos tâches démarrent avec le code le plus récent de votre ligne de développement principale.",
-    "ready": "Auto Claude est prêt à l'emploi ! Vous pouvez maintenant créer des tâches qui seront automatiquement basées sur"
+    "ready": "Auto Claude est prêt à l'emploi ! Vous pouvez maintenant créer des tâches qui seront automatiquement basées sur la branche {{branchName}}."
   },
   "worktrees": {
     "title": "Worktrees",

@@ -38,7 +38,7 @@
     "branchDescription": "Choose which branch Auto Claude should use as the base for creating task branches.",
     "whyBranch": "Why select a branch?",
     "branchExplanation": "Auto Claude creates isolated workspaces for each task. Selecting the right base branch ensures your tasks start with the latest code from your main development line.",
-    "ready": "Auto Claude is ready to use! You can now create tasks that will be automatically based on"
+    "ready": "Auto Claude is ready to use! You can now create tasks that will be automatically based on the {{branchName}} branch."
   },
   "worktrees": {
     "title": "Worktrees",
