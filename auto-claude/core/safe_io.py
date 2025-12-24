@@ -3,20 +3,27 @@ Safe I/O Utilities
 ==================
 
 Provides secure file operations with:
-- Atomic writes (crash-safe)
+- Atomic writes on POSIX (crash-safe via os.replace)
+- Best-effort writes on Windows (see note below)
 - Explicit UTF-8 encoding (cross-platform)
 - Proper error handling
+
+Platform Notes:
+    On POSIX systems, writes are truly atomic using os.replace().
+    On Windows, os.replace() is attempted first. If it fails (e.g., file locked),
+    falls back to unlink-then-rename which is NOT atomic and can lose the
+    destination file if a crash occurs between unlink and rename.
 
 Usage:
     from core.safe_io import safe_write_json, safe_read_json, safe_write_text
 
-    # Atomic JSON write
+    # Atomic JSON write (POSIX) / best-effort write (Windows)
     safe_write_json(path, data)
 
     # Safe JSON read with encoding
     data = safe_read_json(path)
 
-    # Atomic text write
+    # Atomic text write (POSIX) / best-effort write (Windows)
     safe_write_text(path, content)
 """
 
@@ -36,10 +43,16 @@ def safe_write_text(
     encoding: str = "utf-8",
 ) -> None:
     """
-    Write text to file atomically.
+    Write text to file atomically (POSIX) or best-effort (Windows).
 
     Uses write-to-temp-then-rename pattern to prevent corruption
     if the process is interrupted mid-write.
+
+    Note:
+        On POSIX, the rename is atomic via os.replace().
+        On Windows, if os.replace() fails (e.g., file locked), falls back to
+        unlink-then-rename which is NOT atomic. A crash between unlink and
+        rename can result in loss of the destination file.
 
     Args:
         path: Target file path
@@ -84,9 +97,15 @@ def safe_write_json(
     encoding: str = "utf-8",
 ) -> None:
     """
-    Write JSON to file atomically.
+    Write JSON to file atomically (POSIX) or best-effort (Windows).
 
     Uses write-to-temp-then-rename pattern to prevent corruption.
+
+    Note:
+        On POSIX, the rename is atomic via os.replace().
+        On Windows, if os.replace() fails (e.g., file locked), falls back to
+        unlink-then-rename which is NOT atomic. A crash between unlink and
+        rename can result in loss of the destination file.
 
     Args:
         path: Target file path
