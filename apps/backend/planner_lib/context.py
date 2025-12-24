@@ -64,6 +64,7 @@ class ContextLoader:
         3. spec.md explicit declaration - Spec writer's declaration
         4. Keyword-based detection - Last resort fallback
         """
+
         def _normalize_workflow_type(value: str) -> str:
             normalized = (value or "").strip().lower()
             return normalized.replace("_", "")
