@@ -76,6 +76,25 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def validate_credential_encryption_key(self) -> "Settings":
+        """Validate CREDENTIAL_ENCRYPTION_KEY is set in production.
+
+        In production (debug=False), credential encryption key is required
+        for secure storage of user credentials. In development mode, the
+        key is optional but a warning is issued if not set.
+        """
+        if not self.credential_encryption_key:
+            if not self.debug:
+                raise ValueError(
+                    "CREDENTIAL_ENCRYPTION_KEY must be set in production. "
+                    "Generate a secure Fernet key using: "
+                    "python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())' "
+                    "Set DEBUG=true for development without encryption."
+                )
+            # In debug mode, key is optional but features requiring encryption won't work
+        return self
+
     @property
     def projects_dir(self) -> Path:
         """Alias for repos_dir for backward compatibility."""
