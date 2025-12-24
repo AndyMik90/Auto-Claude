@@ -91,13 +91,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         let status: TaskStatus = t.status;
         let reviewReason: ReviewReason | undefined = t.reviewReason;
 
-        if (allCompleted) {
-          status = 'ai_review';
-        } else if (anyFailed) {
-          status = 'human_review';
-          reviewReason = 'errors';
-        } else if (anyInProgress || anyCompleted) {
-          status = 'in_progress';
+        // RACE CONDITION FIX: Don't let stale plan data override status during active execution
+        const activePhases: ExecutionPhase[] = ['planning', 'coding', 'qa_review', 'qa_fixing'];
+        const isInActivePhase = t.executionProgress?.phase && activePhases.includes(t.executionProgress.phase);
+
+        if (!isInActivePhase) {
+          if (allCompleted) {
+            status = 'ai_review';
+          } else if (anyFailed) {
+            status = 'human_review';
+            reviewReason = 'errors';
+          } else if (anyInProgress || anyCompleted) {
+            status = 'in_progress';
+          }
         }
 
         return {
