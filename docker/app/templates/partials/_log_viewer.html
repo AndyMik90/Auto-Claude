@@ -1,8 +1,6 @@
 <div
     id="log-viewer-{{ project_id }}-{{ spec_id }}"
     class="log-viewer bg-gray-900 rounded-lg p-4 h-96 overflow-auto text-green-400 font-mono text-sm"
-    hx-ext="ws"
-    ws-connect="/ws/logs/{{ project_id }}/{{ spec_id }}"
 >
     <div class="text-gray-500">Connecting to log stream...</div>
 </div>
