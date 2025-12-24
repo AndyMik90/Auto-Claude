@@ -83,14 +83,21 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           }))
         );
 
+        const allCompleted = subtasks.every((s) => s.status === 'completed');
         const anyFailed = subtasks.some((s) => s.status === 'failed');
+        const anyInProgress = subtasks.some((s) => s.status === 'in_progress');
+        const anyCompleted = subtasks.some((s) => s.status === 'completed');
 
         let status: TaskStatus = t.status;
         let reviewReason: ReviewReason | undefined = t.reviewReason;
 
-        if (anyFailed) {
+        if (allCompleted) {
+          status = 'ai_review';
+        } else if (anyFailed) {
           status = 'human_review';
           reviewReason = 'errors';
+        } else if (anyInProgress || anyCompleted) {
+          status = 'in_progress';
         }
 
         return {
