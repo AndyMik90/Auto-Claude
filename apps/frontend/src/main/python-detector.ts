@@ -11,10 +11,19 @@ export function findPythonCommand(): string | null {
   const isWindows = process.platform === 'win32';
 
   // On Windows, try py launcher first (most reliable), then python, then python3
-  // On Unix, try python3 first, then python
+  // On Unix, try Homebrew paths FIRST (to avoid old system Python), then python3, then python
   const candidates = isWindows
     ? ['py -3', 'python', 'python3', 'py']
-    : ['python3', 'python'];
+    : [
+        // Homebrew Python (Intel and Apple Silicon) - PRIORITY
+        '/opt/homebrew/bin/python3',        // Apple Silicon (M1/M2/M3)
+        '/opt/homebrew/bin/python3.12',
+        '/usr/local/bin/python3',           // Intel Mac
+        '/usr/local/bin/python3.12',
+        // PATH-based (may find old system Python)
+        'python3',
+        'python'
+      ];
 
   for (const cmd of candidates) {
     try {
@@ -34,8 +43,18 @@ export function findPythonCommand(): string | null {
     }
   }
 
-  // Fallback to platform-specific default
-  return isWindows ? 'python' : 'python3';
+  // Fallback to platform-specific default (prefer Homebrew on macOS)
+  if (isWindows) {
+    return 'python';
+  }
+  // On macOS, prefer Homebrew Python over system Python
+  if (existsSync('/opt/homebrew/bin/python3')) {
+    return '/opt/homebrew/bin/python3';
+  }
+  if (existsSync('/usr/local/bin/python3')) {
+    return '/usr/local/bin/python3';
+  }
+  return 'python3';
 }
 
 /**
@@ -110,7 +129,17 @@ function validatePythonVersion(pythonCmd: string): {
  * @returns The default Python command for this platform
  */
 export function getDefaultPythonCommand(): string {
-  return process.platform === 'win32' ? 'python' : 'python3';
+  if (process.platform === 'win32') {
+    return 'python';
+  }
+  // On macOS, prefer Homebrew Python over system Python
+  if (existsSync('/opt/homebrew/bin/python3')) {
+    return '/opt/homebrew/bin/python3';
+  }
+  if (existsSync('/usr/local/bin/python3')) {
+    return '/usr/local/bin/python3';
+  }
+  return 'python3';
 }
 
 /**
