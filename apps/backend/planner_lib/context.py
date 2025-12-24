@@ -10,6 +10,17 @@ from implementation_plan import WorkflowType
 
 from .models import PlannerContext
 
+
+def _normalize_workflow_type(value: str) -> str:
+    """Normalize workflow type strings for consistent mapping.
+
+    Strips whitespace, lowercases the value and removes underscores so variants
+    like 'bug_fix' or 'BugFix' map to the same key.
+    """
+    normalized = (value or "").strip().lower()
+    return normalized.replace("_", "")
+
+
 _WORKFLOW_TYPE_MAPPING: dict[str, WorkflowType] = {
     "feature": WorkflowType.FEATURE,
     "refactor": WorkflowType.REFACTOR,
