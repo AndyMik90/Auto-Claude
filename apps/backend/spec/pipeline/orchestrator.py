@@ -57,7 +57,7 @@ class SpecOrchestrator:
         spec_name: str | None = None,
         spec_dir: Path
         | None = None,  # Use existing spec directory (for UI integration)
-        model: str = "claude-sonnet-4-5-20250929",
+        model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
         thinking_level: str = "medium",  # Thinking level for extended thinking
         complexity_override: str | None = None,  # Force a specific complexity
         use_ai_assessment: bool = True,  # Use AI for complexity assessment (vs heuristics)
