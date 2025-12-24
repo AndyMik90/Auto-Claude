@@ -59,8 +59,7 @@ export class AgentEvents {
     }
 
     // Run.py phase detection
-    // Planner agent running
-    if (lowerLog.includes('planner agent') || lowerLog.includes('creating implementation plan')) {
+    if (!wouldRegress('planning') && (lowerLog.includes('planner agent') || lowerLog.includes('creating implementation plan'))) {
       return { phase: 'planning', message: 'Creating implementation plan...' };
     }
 

@@ -400,10 +400,12 @@ export class AgentProcessManager {
         }
       }
 
-      // Only emit 'failed' phase on non-zero exit code.
+      // Only emit 'failed' phase on non-zero exit code AND if we haven't
+      // already received a terminal phase from structured events.
       // Don't emit 'complete' here - that should only come from Python's
       // emit_phase(COMPLETE) when QA actually approves the build.
-      if (code !== 0) {
+      // Also don't overwrite 'complete' with 'failed' - the structured event is authoritative.
+      if (code !== 0 && currentPhase !== 'complete' && currentPhase !== 'failed') {
         this.emitter.emit('execution-progress', taskId, {
           phase: 'failed',
           phaseProgress: 0,

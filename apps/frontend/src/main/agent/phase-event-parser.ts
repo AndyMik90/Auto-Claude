@@ -40,10 +40,18 @@ export function parsePhaseEvent(line: string): PhaseEvent | null {
     console.log('[phase-event-parser] Found marker at index', markerIndex, 'in line:', line.substring(0, 200));
   }
 
-  const jsonStr = line.slice(markerIndex + PHASE_MARKER_PREFIX.length).trim();
-  if (!jsonStr) {
+  const rawJsonStr = line.slice(markerIndex + PHASE_MARKER_PREFIX.length).trim();
+  if (!rawJsonStr) {
     if (DEBUG) {
       console.log('[phase-event-parser] Empty JSON string after marker');
+    }
+    return null;
+  }
+
+  const jsonStr = extractJsonObject(rawJsonStr);
+  if (!jsonStr) {
+    if (DEBUG) {
+      console.log('[phase-event-parser] Could not extract JSON object from:', rawJsonStr.substring(0, 200));
     }
     return null;
   }
@@ -91,4 +99,53 @@ export function parsePhaseEvent(line: string): PhaseEvent | null {
 
 export function hasPhaseMarker(line: string): boolean {
   return line.includes(PHASE_MARKER_PREFIX);
+}
+
+/**
+ * Extract a JSON object from a string that may have trailing garbage.
+ * Finds the matching closing brace for the first opening brace.
+ */
+function extractJsonObject(str: string): string | null {
+  const firstBrace = str.indexOf('{');
+  if (firstBrace === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = firstBrace; i < str.length; i++) {
+    const char = str[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (char === '{') {
+      depth++;
+    } else if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return str.slice(firstBrace, i + 1);
+      }
+    }
+  }
+
+  return null;
 }
