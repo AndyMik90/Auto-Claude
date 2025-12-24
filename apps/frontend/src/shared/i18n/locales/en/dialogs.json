@@ -51,7 +51,8 @@
     "deleteDescription": "This will permanently delete the worktree and all uncommitted changes. This action cannot be undone."
   },
   "update": {
-    "title": "A new version of Auto Claude is ready to download"
+    "title": "Auto Claude",
+    "projectInitialized": "Project is initialized."
   },
   "addFeature": {
     "title": "Add Feature",

@@ -127,16 +127,23 @@
   },
   "agentProfile": {
     "label": "Agent Profile",
+    "title": "Default Agent Profile",
+    "sectionDescription": "Select a preset configuration for model and thinking level",
+    "profilesInfo": "Agent profiles provide preset configurations for Claude model and thinking level. When you create a new task, these settings will be used as defaults. You can always override them in the task creation wizard.",
     "custom": "Custom",
     "customConfiguration": "Custom Configuration",
     "customDescription": "Choose model & thinking level",
     "phaseConfiguration": "Phase Configuration",
+    "phaseConfigurationDescription": "Customize model and thinking level for each phase",
     "clickToCustomize": "Click to customize",
     "model": "Model",
     "thinking": "Thinking",
+    "thinkingLevel": "Thinking Level",
     "selectModel": "Select model",
     "selectThinkingLevel": "Select thinking level",
     "perPhaseOptimization": "(per-phase optimization)",
+    "resetToDefaults": "Reset to defaults",
+    "phaseConfigNote": "These settings will be used as defaults when creating new tasks with the Auto profile. You can override them per-task in the task creation wizard.",
     "phases": {
       "spec": {
         "label": "Spec Creation",

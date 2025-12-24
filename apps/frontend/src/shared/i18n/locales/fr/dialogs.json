@@ -51,7 +51,8 @@
     "deleteDescription": "Ceci supprimera définitivement le worktree et toutes les modifications non committées. Cette action est irréversible."
   },
   "update": {
-    "title": "Une nouvelle version de Auto Claude est prête à être téléchargée"
+    "title": "Auto Claude",
+    "projectInitialized": "Le projet est initialisé."
   },
   "addFeature": {
     "title": "Ajouter une fonctionnalité",

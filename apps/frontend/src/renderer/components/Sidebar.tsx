@@ -86,7 +86,7 @@ export function Sidebar({
   activeView = 'kanban',
   onViewChange
 }: SidebarProps) {
-  const { t } = useTranslation('navigation');
+  const { t } = useTranslation(['navigation', 'dialogs', 'common']);
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectProject = useProjectStore((state) => state.selectProject);
@@ -384,19 +384,19 @@ export function Sidebar({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Download className="h-5 w-5" />
-              Initialize Auto Claude
+              {t('dialogs:initialize.title')}
             </DialogTitle>
             <DialogDescription>
-              This project doesn't have Auto Claude initialized. Would you like to set it up now?
+              {t('dialogs:initialize.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="font-medium mb-2">This will:</p>
+              <p className="font-medium mb-2">{t('dialogs:initialize.willDo')}</p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Create a <code className="text-xs bg-background px-1 py-0.5 rounded">.auto-claude</code> folder in your project</li>
-                <li>Copy the Auto Claude framework files</li>
-                <li>Set up the specs directory for your tasks</li>
+                <li>{t('dialogs:initialize.createFolder')}</li>
+                <li>{t('dialogs:initialize.copyFramework')}</li>
+                <li>{t('dialogs:initialize.setupSpecs')}</li>
               </ul>
             </div>
             {!settings.autoBuildPath && (
@@ -404,9 +404,9 @@ export function Sidebar({
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-medium text-warning">Source path not configured</p>
+                    <p className="font-medium text-warning">{t('dialogs:initialize.sourcePathNotConfigured')}</p>
                     <p className="text-muted-foreground mt-1">
-                      Please set the Auto Claude source path in App Settings before initializing.
+                      {t('dialogs:initialize.sourcePathNotConfiguredDescription')}
                     </p>
                   </div>
                 </div>
@@ -415,7 +415,7 @@ export function Sidebar({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleSkipInit} disabled={isInitializing}>
-              Skip
+              {t('common:buttons.skip')}
             </Button>
             <Button
               onClick={handleInitialize}
@@ -424,12 +424,12 @@ export function Sidebar({
               {isInitializing ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Initializing...
+                  {t('common:labels.initializing')}
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  Initialize
+                  {t('common:buttons.initialize')}
                 </>
               )}
             </Button>
@@ -443,15 +443,15 @@ export function Sidebar({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
-              Auto Claude
+              {t('dialogs:update.title')}
             </DialogTitle>
             <DialogDescription>
-              Project is initialized.
+              {t('dialogs:update.projectInitialized')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowUpdateDialog(false)}>
-              Close
+              {t('common:buttons.close')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -127,16 +127,23 @@
   },
   "agentProfile": {
     "label": "Profil d'agent",
+    "title": "Profil d'agent par défaut",
+    "sectionDescription": "Sélectionnez une configuration prédéfinie pour le modèle et le niveau de réflexion",
+    "profilesInfo": "Les profils d'agent fournissent des configurations prédéfinies pour le modèle Claude et le niveau de réflexion. Quand vous créez une nouvelle tâche, ces paramètres seront utilisés par défaut. Vous pouvez toujours les modifier dans l'assistant de création de tâche.",
     "custom": "Personnalisé",
     "customConfiguration": "Configuration personnalisée",
     "customDescription": "Choisir le modèle et le niveau de réflexion",
     "phaseConfiguration": "Configuration par phase",
+    "phaseConfigurationDescription": "Personnaliser le modèle et le niveau de réflexion pour chaque phase",
     "clickToCustomize": "Cliquer pour personnaliser",
     "model": "Modèle",
     "thinking": "Réflexion",
+    "thinkingLevel": "Niveau de réflexion",
     "selectModel": "Sélectionner un modèle",
     "selectThinkingLevel": "Sélectionner un niveau de réflexion",
     "perPhaseOptimization": "(optimisation par phase)",
+    "resetToDefaults": "Réinitialiser par défaut",
+    "phaseConfigNote": "Ces paramètres seront utilisés par défaut lors de la création de nouvelles tâches avec le profil Auto. Vous pouvez les modifier par tâche dans l'assistant de création.",
     "phases": {
       "spec": {
         "label": "Création de spec",
