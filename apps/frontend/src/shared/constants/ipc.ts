@@ -299,5 +299,15 @@ export const IPC_CHANNELS = {
   RELEASE_GET_VERSIONS: 'release:getVersions',
 
   // Release events (main -> renderer)
-  RELEASE_PROGRESS: 'release:progress'
+  RELEASE_PROGRESS: 'release:progress',
+
+  // Unity operations
+  UNITY_DETECT_PROJECT: 'unity:detectProject',
+  UNITY_DISCOVER_EDITORS: 'unity:discoverEditors',
+  UNITY_GET_SETTINGS: 'unity:getSettings',
+  UNITY_SAVE_SETTINGS: 'unity:saveSettings',
+  UNITY_RUN_EDITMODE_TESTS: 'unity:runEditModeTests',
+  UNITY_RUN_BUILD: 'unity:runBuild',
+  UNITY_LOAD_RUNS: 'unity:loadRuns',
+  UNITY_OPEN_PATH: 'unity:openPath'
 } as const;
