@@ -23,6 +23,7 @@ from ui import (
 )
 
 from .build_commands import handle_build_command
+from .debug_commands import handle_debug_command
 from .followup_commands import handle_followup_command
 from .qa_commands import (
     handle_qa_command,
@@ -72,6 +73,10 @@ Examples:
   # Status checks
   python auto-claude/run.py --spec 001 --review-status  # Check human review status
   python auto-claude/run.py --spec 001 --qa-status      # Check QA validation status
+
+  # Debugging
+  python auto-claude/run.py --spec 001 --debug          # Run BUGFINDER-X debugging agent
+  python auto-claude/run.py --spec 001 --debug --bug "Login fails with 500 error"
 
 Prerequisites:
   1. Create a spec first: claude /spec
@@ -182,6 +187,19 @@ Environment Variables:
         "--skip-qa",
         action="store_true",
         help="Skip automatic QA validation after build completes",
+    )
+
+    # Debug options
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Run BUGFINDER-X debugging agent to identify and fix bugs",
+    )
+    parser.add_argument(
+        "--bug",
+        type=str,
+        default=None,
+        help="Bug description for BUGFINDER-X (optional, can also edit BUG_REPORT.md)",
     )
 
     # Follow-up options
@@ -355,6 +373,17 @@ def main() -> None:
             project_dir=project_dir,
             spec_dir=spec_dir,
             model=model,
+            verbose=args.verbose,
+        )
+        return
+
+    # Handle --debug command
+    if args.debug:
+        handle_debug_command(
+            project_dir=project_dir,
+            spec_dir=spec_dir,
+            model=model,
+            bug_description=args.bug,
             verbose=args.verbose,
         )
         return

@@ -58,6 +58,30 @@ python auto-claude/run.py --spec 001 --qa
 python auto-claude/run.py --spec 001 --qa-status
 ```
 
+### Debugging (BUGFINDER-X)
+```bash
+# Run BUGFINDER-X debugging agent
+python auto-claude/run.py --spec 001 --debug
+
+# Run with inline bug description
+python auto-claude/run.py --spec 001 --debug --bug "Login fails with 500 error"
+
+# Or edit BUG_REPORT.md in spec directory manually, then run
+python auto-claude/run.py --spec 001 --debug
+```
+
+BUGFINDER-X is an autonomous debugging agent that:
+- Identifies root causes through hypothesis-driven investigation
+- Creates minimal reproductions and instrumentation
+- Fixes bugs with regression tests and guardrails
+- Documents findings in `DEBUG_REPORT.md`
+
+Debug artifacts are stored in:
+- `specs/{spec-name}/BUG_REPORT.md` - Initial bug report
+- `specs/{spec-name}/DEBUG_REPORT.md` - Final debug findings
+- `debug/harness/` - Minimal reproduction harnesses
+- `debug/fixtures/` - Frozen input data
+
 ### Testing
 ```bash
 # Install test dependencies (required first time)
@@ -131,6 +155,7 @@ See [RELEASE.md](RELEASE.md) for detailed release process documentation.
 | coder_recovery.md | Recovers from stuck/failed subtasks |
 | qa_reviewer.md | Validates acceptance criteria |
 | qa_fixer.md | Fixes QA-reported issues |
+| bugfinder.md | BUGFINDER-X debugging agent - identifies root causes, creates fixes with regression tests |
 | spec_gatherer.md | Collects user requirements |
 | spec_researcher.md | Validates external integrations |
 | spec_writer.md | Creates spec.md document |
@@ -146,6 +171,8 @@ Each spec in `auto-claude/specs/XXX-name/` contains:
 - `implementation_plan.json` - Subtask-based plan with status tracking
 - `qa_report.md` - QA validation results
 - `QA_FIX_REQUEST.md` - Issues to fix (when rejected)
+- `BUG_REPORT.md` - Bug description for BUGFINDER-X (optional)
+- `DEBUG_REPORT.md` - BUGFINDER-X debug findings (optional)
 
 ### Branching & Worktree Strategy
 

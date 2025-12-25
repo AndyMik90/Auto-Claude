@@ -424,3 +424,53 @@ The project root is: `{project_dir}`
 
 """
     return spec_context + base_prompt
+
+
+def get_bugfinder_prompt(spec_dir: Path, project_dir: Path) -> str:
+    """
+    Load the BUGFINDER-X debugging agent prompt with spec paths injected.
+
+    BUGFINDER-X is an autonomous debugging agent that:
+    - Identifies root causes through hypothesis-driven investigation
+    - Creates minimal reproductions and instrumentation
+    - Fixes bugs with regression tests and guardrails
+
+    Args:
+        spec_dir: Directory containing the spec files
+        project_dir: Root directory of the project
+
+    Returns:
+        The BUGFINDER-X prompt content with paths injected
+    """
+    base_prompt = _load_prompt_file("bugfinder.md")
+
+    spec_context = f"""## SPEC LOCATION
+
+Your spec and debug files are located at:
+- Spec: `{spec_dir}/spec.md`
+- Implementation plan: `{spec_dir}/implementation_plan.json`
+- Debug report output: `{spec_dir}/DEBUG_REPORT.md`
+- Debug harnesses: `{project_dir}/debug/harness/`
+
+The project root is: `{project_dir}`
+
+---
+
+## DEBUG SESSION CONTEXT
+
+You are running a focused debugging session. Your task is to:
+1. Analyze the bug report or failing test
+2. Generate and test hypotheses systematically
+3. Identify root cause with evidence
+4. Create minimal fix with regression test
+5. Document findings in DEBUG_REPORT.md
+
+**Memory files available:**
+- Codebase map: `{spec_dir}/memory/codebase_map.json`
+- Known patterns: `{spec_dir}/memory/patterns.md`
+- Known gotchas: `{spec_dir}/memory/gotchas.md`
+
+---
+
+"""
+    return spec_context + base_prompt

@@ -88,6 +88,15 @@ def get_allowed_tools(
                 TOOL_RECORD_GOTCHA,
             ],
         },
+        "bugfinder": {
+            "base": BASE_READ_TOOLS + BASE_WRITE_TOOLS,
+            "auto_claude": [
+                TOOL_GET_BUILD_PROGRESS,
+                TOOL_GET_SESSION_CONTEXT,
+                TOOL_RECORD_DISCOVERY,
+                TOOL_RECORD_GOTCHA,
+            ],
+        },
     }
 
     if agent_type not in tool_mappings:
