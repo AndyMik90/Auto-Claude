@@ -188,24 +188,21 @@ export class AgentProcessManager {
       spawnId
     });
 
-    // Track execution progress
     let currentPhase: ExecutionProgressData['phase'] = isSpecRunner ? 'planning' : 'planning';
     let phaseProgress = 0;
     let currentSubtask: string | undefined;
     let lastMessage: string | undefined;
-    // Collect all output for rate limit detection
     let allOutput = '';
-    
-    // Line buffers to handle split chunks (Node.js data events don't guarantee complete lines)
     let stdoutBuffer = '';
     let stderrBuffer = '';
+    let sequenceNumber = 0;
 
-    // Emit initial progress
     this.emitter.emit('execution-progress', taskId, {
       phase: currentPhase,
       phaseProgress: 0,
       overallProgress: this.events.calculateOverallProgress(currentPhase, 0),
-      message: isSpecRunner ? 'Starting spec creation...' : 'Starting build process...'
+      message: isSpecRunner ? 'Starting spec creation...' : 'Starting build process...',
+      sequenceNumber: ++sequenceNumber
     });
 
     const isDebug = ['true', '1', 'yes', 'on'].includes(process.env.DEBUG?.toLowerCase() ?? '');
@@ -257,7 +254,8 @@ export class AgentProcessManager {
           phaseProgress,
           overallProgress,
           currentSubtask,
-          message: lastMessage
+          message: lastMessage,
+          sequenceNumber: ++sequenceNumber
         });
       }
     };
@@ -414,7 +412,8 @@ export class AgentProcessManager {
           phase: 'failed',
           phaseProgress: 0,
           overallProgress: this.events.calculateOverallProgress(currentPhase, phaseProgress),
-          message: `Process exited with code ${code}`
+          message: `Process exited with code ${code}`,
+          sequenceNumber: ++sequenceNumber
         });
       }
 
@@ -430,7 +429,8 @@ export class AgentProcessManager {
         phase: 'failed',
         phaseProgress: 0,
         overallProgress: 0,
-        message: `Error: ${err.message}`
+        message: `Error: ${err.message}`,
+        sequenceNumber: ++sequenceNumber
       });
 
       this.emitter.emit('error', taskId, err.message);

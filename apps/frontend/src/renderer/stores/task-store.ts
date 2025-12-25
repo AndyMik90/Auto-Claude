@@ -122,12 +122,18 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       tasks: state.tasks.map((t) => {
         if (t.id !== taskId && t.specId !== taskId) return t;
 
-        // Merge with existing progress
         const existingProgress = t.executionProgress || {
           phase: 'idle' as ExecutionPhase,
           phaseProgress: 0,
-          overallProgress: 0
+          overallProgress: 0,
+          sequenceNumber: 0
         };
+
+        const incomingSeq = progress.sequenceNumber ?? 0;
+        const currentSeq = existingProgress.sequenceNumber ?? 0;
+        if (incomingSeq > 0 && currentSeq > 0 && incomingSeq < currentSeq) {
+          return t;
+        }
 
         return {
           ...t,

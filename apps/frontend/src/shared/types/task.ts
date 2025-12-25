@@ -26,6 +26,7 @@ export interface ExecutionProgress {
   currentSubtask?: string;  // Current subtask being processed
   message?: string;  // Current status message
   startedAt?: Date;
+  sequenceNumber?: number;  // Monotonically increasing counter to detect stale updates
 }
 
 export interface Subtask {
