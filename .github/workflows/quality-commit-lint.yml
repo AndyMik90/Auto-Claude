@@ -56,7 +56,7 @@ jobs:
               errorMsg += '| `chore` | Maintenance tasks |\n';
               errorMsg += '| `revert` | Reverting changes |\n\n';
               errorMsg += '### Examples\n\n';
-              errorMsg += '```\nfeat(auth): add OAuth2 login support\nfix(api): handle null response correctly\ndocs: update README installation steps\nci: add automated release workflow\n```\n\n';
+              errorMsg += '```\nfeat(auth): add OAuth2 login support\nfix(api/users): handle null response correctly\nfix(package.json): update dependencies\ndocs: update README installation steps\nci: add automated release workflow\n```\n\n';
               errorMsg += '### How to Fix\n\n';
               errorMsg += 'Edit your PR title to follow the format above.\n';
 
