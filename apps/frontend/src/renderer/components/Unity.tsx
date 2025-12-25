@@ -682,7 +682,10 @@ export function Unity({ projectId }: UnityProps) {
                                       className="h-7 text-xs w-full justify-start"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        window.electronAPI.openPath(run.artifactPaths.log);
+                                        const logPath = run.artifactPaths.log;
+                                        if (logPath) {
+                                          window.electronAPI.openPath(logPath);
+                                        }
                                       }}
                                     >
                                       <TerminalIcon className="h-3 w-3 mr-1" />
@@ -696,7 +699,10 @@ export function Unity({ projectId }: UnityProps) {
                                       className="h-7 text-xs w-full justify-start"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        window.electronAPI.openPath(run.artifactPaths.testResults);
+                                        const testResultsPath = run.artifactPaths.testResults;
+                                        if (testResultsPath) {
+                                          window.electronAPI.openPath(testResultsPath);
+                                        }
                                       }}
                                     >
                                       <ChevronRight className="h-3 w-3 mr-1" />
