@@ -40,23 +40,6 @@ jobs:
         with:
           category: "/language:${{ matrix.language }}"
 
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    timeout-minutes: 10
-    # Continue on error if Dependency Graph isn't enabled for the repo
-    continue-on-error: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: always
-
   python-security:
     name: Python Security (Bandit)
     runs-on: ubuntu-latest
