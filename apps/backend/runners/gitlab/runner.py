@@ -53,7 +53,9 @@ def get_config(args) -> GitLabRunnerConfig:
     """Build config from CLI args and environment."""
     token = args.token or os.environ.get("GITLAB_TOKEN", "")
     project = args.project or os.environ.get("GITLAB_PROJECT", "")
-    instance_url = args.instance or os.environ.get("GITLAB_INSTANCE_URL", "https://gitlab.com")
+    instance_url = args.instance or os.environ.get(
+        "GITLAB_INSTANCE_URL", "https://gitlab.com"
+    )
 
     if not token:
         # Try to get from glab CLI
@@ -90,11 +92,15 @@ def get_config(args) -> GitLabRunnerConfig:
                 print(f"Warning: Failed to read GitLab config: {exc}", file=sys.stderr)
 
     if not token:
-        print("Error: No GitLab token found. Set GITLAB_TOKEN or configure in project settings.")
+        print(
+            "Error: No GitLab token found. Set GITLAB_TOKEN or configure in project settings."
+        )
         sys.exit(1)
 
     if not project:
-        print("Error: No GitLab project found. Set GITLAB_PROJECT or configure in project settings.")
+        print(
+            "Error: No GitLab project found. Set GITLAB_PROJECT or configure in project settings."
+        )
         sys.exit(1)
 
     return GitLabRunnerConfig(
@@ -119,7 +125,10 @@ async def cmd_review_mr(args) -> int:
 
     print("[DEBUG] Building config...", flush=True)
     config = get_config(args)
-    print(f"[DEBUG] Config built: project={config.project}, model={config.model}", flush=True)
+    print(
+        f"[DEBUG] Config built: project={config.project}, model={config.model}",
+        flush=True,
+    )
 
     print("[DEBUG] Creating orchestrator...", flush=True)
     orchestrator = GitLabOrchestrator(
@@ -168,7 +177,10 @@ async def cmd_followup_review_mr(args) -> int:
 
     print("[DEBUG] Building config...", flush=True)
     config = get_config(args)
-    print(f"[DEBUG] Config built: project={config.project}, model={config.model}", flush=True)
+    print(
+        f"[DEBUG] Config built: project={config.project}, model={config.model}",
+        flush=True,
+    )
 
     print("[DEBUG] Creating orchestrator...", flush=True)
     orchestrator = GitLabOrchestrator(
@@ -178,7 +190,9 @@ async def cmd_followup_review_mr(args) -> int:
     )
     print("[DEBUG] Orchestrator created", flush=True)
 
-    print(f"[DEBUG] Calling orchestrator.followup_review_mr({args.mr_iid})...", flush=True)
+    print(
+        f"[DEBUG] Calling orchestrator.followup_review_mr({args.mr_iid})...", flush=True
+    )
 
     try:
         result = await orchestrator.followup_review_mr(args.mr_iid)
@@ -200,7 +214,9 @@ async def cmd_followup_review_mr(args) -> int:
         if result.unresolved_findings:
             print(f"Still Open: {len(result.unresolved_findings)} finding(s)")
         if result.new_findings_since_last_review:
-            print(f"New Issues: {len(result.new_findings_since_last_review)} finding(s)")
+            print(
+                f"New Issues: {len(result.new_findings_since_last_review)} finding(s)"
+            )
 
         print(f"\nSummary:\n{result.summary[:500]}...")
 

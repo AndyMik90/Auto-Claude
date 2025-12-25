@@ -246,9 +246,7 @@ class GitLabOrchestrator:
             # Save result
             result.save(self.gitlab_dir)
 
-            self._report_progress(
-                "complete", 100, "Review complete!", mr_iid=mr_iid
-            )
+            self._report_progress("complete", 100, "Review complete!", mr_iid=mr_iid)
 
             return result
 

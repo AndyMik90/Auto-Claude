@@ -154,7 +154,7 @@ Provide your review in the following JSON format:
 **Changes:** {context.total_additions} additions, {context.total_deletions} deletions across {len(context.changed_files)} files
 
 ### Description
-{context.description or 'No description provided.'}
+{context.description or "No description provided."}
 
 ### Files Changed
 {files_str}
@@ -248,7 +248,9 @@ Provide your review in the following JSON format:
 
                         # Track blockers
                         if severity in (ReviewSeverity.CRITICAL, ReviewSeverity.HIGH):
-                            blockers.append(f"{finding.title} ({finding.file}:{finding.line})")
+                            blockers.append(
+                                f"{finding.title} ({finding.file}:{finding.line})"
+                            )
                     except (ValueError, KeyError) as e:
                         print(f"[AI] Skipping invalid finding: {e}", flush=True)
 
