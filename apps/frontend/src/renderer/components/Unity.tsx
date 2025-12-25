@@ -314,8 +314,9 @@ export function Unity({ projectId }: UnityProps) {
           buildExecuteMethod
         });
         if (result.success) {
-          // Re-detect Unity project with new path
+          // Re-detect Unity project with new path and refresh editors
           await detectUnityProject();
+          await loadUnityEditors();
         }
       }
     } catch (err) {
