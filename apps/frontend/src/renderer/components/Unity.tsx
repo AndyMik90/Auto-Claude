@@ -415,7 +415,7 @@ export function Unity({ projectId }: UnityProps) {
                           </SelectItem>
                         ))}
                         {editors.length === 0 && !isDiscovering && (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="__none__" disabled>
                             No editors found
                           </SelectItem>
                         )}
