@@ -4,62 +4,128 @@ on:
   pull_request:
     branches: [main, develop]
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   check:
     name: Conventional Commits
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Validate commit messages
         uses: actions/github-script@v7
         with:
+          retries: 3
           script: |
-            const pattern = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?: .{1,100}$/;
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
 
+            console.log(`::group::PR #${prNumber} - Validating commit messages`);
+
+            // Conventional Commits pattern
+            // type(scope)?: description (max 100 chars)
+            // Optional ! for breaking changes: feat!: or feat(scope)!:
+            const pattern = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .{1,100}$/;
+
+            // Fetch all commits in this PR
             const { data: commits } = await github.rest.pulls.listCommits({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number
+              owner,
+              repo,
+              pull_number: prNumber,
+              per_page: 100
             });
 
-            const invalid = [];
+            console.log(`Found ${commits.length} commits to validate`);
+            console.log('');
+
+            const results = [];
+            let hasInvalid = false;
 
             for (const commit of commits) {
               const message = commit.commit.message.split('\n')[0];
+              const sha = commit.sha.substring(0, 7);
 
-              // Skip merge and revert commits
-              if (message.startsWith('Merge ') || message.startsWith('Revert ')) {
+              // Skip merge commits
+              if (message.startsWith('Merge ')) {
+                results.push({ sha, message, status: '⏭️ Skipped (merge)', valid: true });
                 continue;
               }
 
-              if (!pattern.test(message)) {
-                invalid.push({
-                  sha: commit.sha.substring(0, 7),
-                  message: message
-                });
+              // Skip revert commits
+              if (message.startsWith('Revert "')) {
+                results.push({ sha, message, status: '⏭️ Skipped (revert)', valid: true });
+                continue;
+              }
+
+              // Skip dependabot commits
+              if (commit.author?.login === 'dependabot[bot]') {
+                results.push({ sha, message, status: '⏭️ Skipped (dependabot)', valid: true });
+                continue;
+              }
+
+              // Validate
+              if (pattern.test(message)) {
+                results.push({ sha, message, status: '✅ Valid', valid: true });
+              } else {
+                results.push({ sha, message, status: '❌ Invalid', valid: false });
+                hasInvalid = true;
               }
             }
 
-            if (invalid.length > 0) {
-              let errorMsg = '## Commit Message Validation Failed\n\n';
-              errorMsg += 'The following commits do not follow Conventional Commits format:\n\n';
+            // Print results
+            console.log('Validation Results:');
+            console.log('─'.repeat(80));
+            for (const r of results) {
+              const truncatedMsg = r.message.length > 60 ? r.message.substring(0, 57) + '...' : r.message;
+              console.log(`  ${r.status.padEnd(20)} ${r.sha}  ${truncatedMsg}`);
+            }
+            console.log('─'.repeat(80));
+            console.log('::endgroup::');
+
+            if (hasInvalid) {
+              const invalid = results.filter(r => !r.valid);
+
+              // Build error message
+              let errorMsg = '## ❌ Commit Message Validation Failed\n\n';
+              errorMsg += `Found ${invalid.length} commit(s) that do not follow [Conventional Commits](https://www.conventionalcommits.org/) format:\n\n`;
 
               for (const commit of invalid) {
-                errorMsg += `- \`${commit.sha}\`: ${commit.message}\n`;
+                errorMsg += `- \`${commit.sha}\`: \`${commit.message}\`\n`;
               }
 
               errorMsg += '\n### Expected Format\n\n';
               errorMsg += '```\ntype(scope): description\n```\n\n';
-              errorMsg += '**Valid types:** feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert\n\n';
-              errorMsg += '**Examples:**\n';
-              errorMsg += '- `feat(tasks): add drag and drop support`\n';
-              errorMsg += '- `fix(terminal): resolve scroll position issue`\n';
+              errorMsg += '| Type | Description |\n';
+              errorMsg += '|------|-------------|\n';
+              errorMsg += '| `feat` | New feature |\n';
+              errorMsg += '| `fix` | Bug fix |\n';
+              errorMsg += '| `docs` | Documentation only |\n';
+              errorMsg += '| `style` | Code style (formatting, etc.) |\n';
+              errorMsg += '| `refactor` | Code refactoring |\n';
+              errorMsg += '| `perf` | Performance improvement |\n';
+              errorMsg += '| `test` | Adding/updating tests |\n';
+              errorMsg += '| `build` | Build system changes |\n';
+              errorMsg += '| `ci` | CI/CD changes |\n';
+              errorMsg += '| `chore` | Maintenance tasks |\n';
+              errorMsg += '| `revert` | Reverting changes |\n\n';
+              errorMsg += '### Examples\n\n';
+              errorMsg += '```\nfeat(auth): add OAuth2 login support\nfix(api): handle null response correctly\ndocs: update README installation steps\nci: add automated release workflow\n```\n\n';
+              errorMsg += '### How to Fix\n\n';
+              errorMsg += 'You can amend your commit message with:\n';
+              errorMsg += '```bash\ngit commit --amend -m "type(scope): your message"\ngit push --force-with-lease\n```\n';
 
-              core.setFailed(errorMsg);
+              // Write to job summary
+              core.summary.addRaw(errorMsg);
+              await core.summary.write();
+
+              core.setFailed(`${invalid.length} commit(s) do not follow Conventional Commits format`);
             } else {
-              console.log('All commit messages follow Conventional Commits format');
+              console.log(`✅ All ${commits.length} commits follow Conventional Commits format`);
+
+              core.summary
+                .addHeading('✅ Commit Lint Passed', 3)
+                .addRaw(`All ${commits.length} commits follow Conventional Commits format.`);
+              await core.summary.write();
             }
