@@ -543,10 +543,9 @@ class FollowupReviewer:
         Returns parsed AI response with finding resolutions and new findings,
         or None if AI review fails.
         """
-        try:
-            from ...core.client import create_client
-        except ImportError:
-            from core.client import create_client
+        # Use raw Anthropic client for simple message API calls
+        # (ClaudeSDKClient is for agent sessions, not direct message calls)
+        import anthropic
 
         self._report_progress(
             "analyzing", 65, "Running AI-powered review...", context.pr_number
@@ -624,16 +623,13 @@ Please analyze this follow-up review context and provide your response in the JS
 """
 
         try:
-            # Create client and run the review
-            client = create_client(
-                project_dir=self.project_dir,
-                spec_dir=self.github_dir,
-                model=self.config.model or "claude-sonnet-4-5-20250929",
-                agent_type="qa_reviewer",
-            )
+            # Create Anthropic client for simple message API call
+            # Note: For agent sessions with tools, use ClaudeSDKClient instead
+            client = anthropic.AsyncAnthropic()
+            model = self.config.model or "claude-sonnet-4-5-20250929"
 
             response = await client.messages.create(
-                model=self.config.model or "claude-sonnet-4-5-20250929",
+                model=model,
                 max_tokens=4096,
                 messages=[{"role": "user", "content": user_message}],
             )
