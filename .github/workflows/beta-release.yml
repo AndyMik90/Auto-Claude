@@ -36,6 +36,8 @@ jobs:
     name: Update package.json version
     needs: validate-version
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
