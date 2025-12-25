@@ -373,9 +373,29 @@ export function Unity({ projectId }: UnityProps) {
                 </div>
                 {projectInfo.isUnityProject && (
                   <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Unity Version</span>
-                      <span className="text-sm font-mono">{projectInfo.version || 'Unknown'}</span>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-sm text-muted-foreground shrink-0">Unity Editor</span>
+                      <Select
+                        value={selectedEditorPath}
+                        onValueChange={setSelectedEditorPath}
+                        disabled={isDiscovering || editors.length === 0}
+                      >
+                        <SelectTrigger className="h-8 text-xs font-mono max-w-[200px]">
+                          <SelectValue placeholder={isDiscovering ? 'Loading...' : 'No editors'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {editors.map((editor) => (
+                            <SelectItem key={editor.path} value={editor.path} className="text-xs font-mono">
+                              {editor.version}
+                            </SelectItem>
+                          ))}
+                          {editors.length === 0 && !isDiscovering && (
+                            <SelectItem value="__none__" disabled className="text-xs">
+                              Configure in Settings
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex items-start justify-between">
                       <span className="text-sm text-muted-foreground">Project Path</span>
@@ -404,65 +424,6 @@ export function Unity({ projectId }: UnityProps) {
                   <li>Packages/manifest.json</li>
                 </ul>
               </div>
-            )}
-
-            {/* Unity Editor Card */}
-            {projectInfo.isUnityProject && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Unity Editor
-                  </CardTitle>
-                  <CardDescription>
-                    Select or specify the Unity Editor executable path
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="editor-select">Detected Editors</Label>
-                    <Select value={selectedEditorPath} onValueChange={setSelectedEditorPath} disabled={isDiscovering}>
-                      <SelectTrigger id="editor-select">
-                        <SelectValue placeholder={isDiscovering ? 'Discovering...' : 'Select Unity Editor'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {editors.map((editor) => (
-                          <SelectItem key={editor.path} value={editor.path}>
-                            {editor.version} - {editor.path}
-                          </SelectItem>
-                        ))}
-                        {editors.length === 0 && !isDiscovering && (
-                          <SelectItem value="__none__" disabled>
-                            No editors found
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {!effectiveEditorPath && (
-                    <div className="rounded-lg border border-muted bg-muted/50 p-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-warning" />
-                        <span className="font-medium">No Editor Configured</span>
-                      </div>
-                      <p className="text-muted-foreground mt-1">
-                        Set a Unity Editor path in Settings → Paths, or select one from the dropdown above.
-                      </p>
-                    </div>
-                  )}
-
-                  {effectiveEditorPath && (
-                    <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-success" />
-                        <span className="font-medium">Active Editor:</span>
-                      </div>
-                      <p className="font-mono text-xs mt-1 break-all">{effectiveEditorPath}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             )}
 
             {/* Actions Card */}
