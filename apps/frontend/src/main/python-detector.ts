@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { existsSync, accessSync, constants } from 'fs';
 import path from 'path';
 
@@ -201,7 +201,7 @@ export interface PythonPathValidation {
  * Shell metacharacters that could be used for command injection.
  * These are dangerous in spawn() context and must be rejected.
  */
-const DANGEROUS_SHELL_CHARS = /[;|`$()&<>{}[\]!#*?~]/;
+const DANGEROUS_SHELL_CHARS = /[;|`$()&<>{}[\]!#*?~\n\r]/;
 
 /**
  * Allowlist patterns for valid Python paths.
@@ -251,11 +251,9 @@ const SAFE_PYTHON_COMMANDS = new Set([
   'py -3',
 ]);
 
-/**
- * Check if a string is a known safe Python command (not a path).
- */
 function isSafePythonCommand(cmd: string): boolean {
-  return SAFE_PYTHON_COMMANDS.has(cmd.toLowerCase().trim());
+  const normalized = cmd.replace(/\s+/g, ' ').trim().toLowerCase();
+  return SAFE_PYTHON_COMMANDS.has(normalized);
 }
 
 /**
@@ -281,13 +279,16 @@ function isExecutable(filePath: string): boolean {
 
 /**
  * Verify that a command/path actually runs Python by checking --version output.
+ * Uses execFileSync to avoid shell injection risks with paths containing spaces.
  */
 function verifyIsPython(pythonCmd: string): boolean {
   try {
-    const output = execSync(`${pythonCmd} --version`, {
+    const [cmd, args] = parsePythonCommand(pythonCmd);
+    const output = execFileSync(cmd, [...args, '--version'], {
       stdio: 'pipe',
       timeout: 5000,
-      windowsHide: true
+      windowsHide: true,
+      shell: false
     }).toString().trim();
     
     // Must output "Python X.Y.Z"
@@ -398,4 +399,18 @@ export function validatePythonPath(pythonPath: string): PythonPathValidation {
     valid: false, 
     reason: 'Unrecognized Python path format' 
   };
+}
+
+export function getValidatedPythonPath(providedPath: string | undefined, serviceName: string): string {
+  if (!providedPath) {
+    return findPythonCommand() || 'python';
+  }
+  
+  const validation = validatePythonPath(providedPath);
+  if (validation.valid) {
+    return validation.sanitizedPath || providedPath;
+  }
+  
+  console.error(`[${serviceName}] Invalid Python path rejected: ${validation.reason}`);
+  return findPythonCommand() || 'python';
 }

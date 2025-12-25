@@ -27,7 +27,7 @@ import {
   getCommits,
   getBranchDiffCommits
 } from './git-integration';
-import { findPythonCommand, validatePythonPath } from '../python-detector';
+import { findPythonCommand, getValidatedPythonPath } from '../python-detector';
 
 /**
  * Main changelog service - orchestrates all changelog operations
@@ -127,13 +127,7 @@ export class ChangelogService extends EventEmitter {
 
   configure(pythonPath?: string, autoBuildSourcePath?: string): void {
     if (pythonPath) {
-      const validation = validatePythonPath(pythonPath);
-      if (validation.valid) {
-        this.pythonPath = validation.sanitizedPath || pythonPath;
-      } else {
-        console.error(`[ChangelogService] Invalid Python path rejected: ${validation.reason}`);
-        this.pythonPath = findPythonCommand() || 'python';
-      }
+      this.pythonPath = getValidatedPythonPath(pythonPath, 'ChangelogService');
     }
     if (autoBuildSourcePath) {
       this.autoBuildSourcePath = autoBuildSourcePath;

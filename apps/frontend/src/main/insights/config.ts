@@ -2,7 +2,7 @@ import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { app } from 'electron';
 import { getProfileEnv } from '../rate-limit-detector';
-import { findPythonCommand, validatePythonPath } from '../python-detector';
+import { findPythonCommand, getValidatedPythonPath } from '../python-detector';
 
 /**
  * Configuration manager for insights service
@@ -15,13 +15,7 @@ export class InsightsConfig {
 
   configure(pythonPath?: string, autoBuildSourcePath?: string): void {
     if (pythonPath) {
-      const validation = validatePythonPath(pythonPath);
-      if (validation.valid) {
-        this.pythonPath = validation.sanitizedPath || pythonPath;
-      } else {
-        console.error(`[InsightsConfig] Invalid Python path rejected: ${validation.reason}`);
-        this.pythonPath = findPythonCommand() || 'python';
-      }
+      this.pythonPath = getValidatedPythonPath(pythonPath, 'InsightsConfig');
     }
     if (autoBuildSourcePath) {
       this.autoBuildSourcePath = autoBuildSourcePath;
