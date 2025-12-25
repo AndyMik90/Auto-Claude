@@ -245,6 +245,17 @@ class OrchestratorReviewer:
                                     f"[Orchestrator] Tool returned test result: {test_result.get('passed', 'unknown')}"
                                 )
 
+                    # Track token usage from response
+                    if hasattr(msg, "usage"):
+                        usage = msg.usage
+                        tokens_used = getattr(usage, "input_tokens", 0) + getattr(
+                            usage, "output_tokens", 0
+                        )
+                        self.total_tokens += tokens_used
+                        logger.debug(
+                            f"[Orchestrator] Token usage: +{tokens_used} (total: {self.total_tokens})"
+                        )
+
                     # Collect final orchestrator output
                     if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                         for block in msg.content:

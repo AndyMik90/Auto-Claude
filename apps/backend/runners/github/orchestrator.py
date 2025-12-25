@@ -451,11 +451,22 @@ class GitHubOrchestrator:
             return result
 
         except Exception as e:
+            import traceback
+
+            # Log full exception details for debugging
+            error_details = f"{type(e).__name__}: {e}"
+            full_traceback = traceback.format_exc()
+            print(
+                f"[ERROR orchestrator] PR review failed for #{pr_number}: {error_details}",
+                flush=True,
+            )
+            print(f"[ERROR orchestrator] Full traceback:\n{full_traceback}", flush=True)
+
             result = PRReviewResult(
                 pr_number=pr_number,
                 repo=self.config.repo,
                 success=False,
-                error=str(e),
+                error=f"{error_details}\n\nTraceback:\n{full_traceback}",
             )
             await result.save(self.github_dir)
             return result

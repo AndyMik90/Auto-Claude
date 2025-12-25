@@ -251,15 +251,17 @@ class PRReviewEngine:
                 return self.parser.parse_review_findings(result_text)
 
         except Exception as e:
+            import logging
             import traceback
 
-            print(f"[AI] Review pass {review_pass.value} error: {e}", flush=True)
-            print(f"[AI] Traceback: {traceback.format_exc()}", flush=True)
+            logger = logging.getLogger(__name__)
+            error_msg = f"Review pass {review_pass.value} failed: {e}"
+            logger.error(error_msg)
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            print(f"[AI] ERROR: {error_msg}", flush=True)
 
-            if review_pass == ReviewPass.QUICK_SCAN:
-                return {"purpose": "Unknown", "risk_areas": [], "red_flags": []}
-            else:
-                return []
+            # Re-raise to allow caller to handle or track partial failures
+            raise RuntimeError(error_msg) from e
 
     async def run_multi_pass_review(
         self, context: PRContext

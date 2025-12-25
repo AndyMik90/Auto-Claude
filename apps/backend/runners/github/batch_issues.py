@@ -25,9 +25,11 @@ logger = logging.getLogger(__name__)
 try:
     from .batch_validator import BatchValidator
     from .duplicates import SIMILAR_THRESHOLD
+    from .file_lock import locked_json_write
 except (ImportError, ValueError, SystemError):
     from batch_validator import BatchValidator
     from duplicates import SIMILAR_THRESHOLD
+    from file_lock import locked_json_write
 
 
 class ClaudeSimilarityDetector:
@@ -321,8 +323,8 @@ class IssueBatch:
             theme=data.get("theme", ""),
         )
 
-    def save(self, github_dir: Path) -> None:
-        """Save batch to disk."""
+    async def save(self, github_dir: Path) -> None:
+        """Save batch to disk atomically with file locking."""
         batches_dir = github_dir / "batches"
         batches_dir.mkdir(parents=True, exist_ok=True)
 
@@ -330,8 +332,7 @@ class IssueBatch:
         self.updated_at = datetime.now(timezone.utc).isoformat()
 
         batch_file = batches_dir / f"batch_{self.batch_id}.json"
-        with open(batch_file, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
+        await locked_json_write(batch_file, self.to_dict(), timeout=5.0)
 
     @classmethod
     def load(cls, github_dir: Path, batch_id: str) -> IssueBatch | None:
