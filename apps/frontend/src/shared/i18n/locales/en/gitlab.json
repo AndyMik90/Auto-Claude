@@ -101,5 +101,98 @@
     "branchFromNote": "All new tasks will branch from",
     "autoSyncOnLoad": "Auto-Sync on Load",
     "autoSyncDescription": "Automatically fetch issues when the project loads"
+  },
+  "mergeRequests": {
+    "title": "GitLab Merge Requests",
+    "newMR": "New Merge Request",
+    "selectMR": "Select a merge request to view details",
+    "states": {
+      "opened": "Open",
+      "closed": "Closed",
+      "merged": "Merged",
+      "locked": "Locked"
+    },
+    "filters": {
+      "opened": "Open",
+      "closed": "Closed",
+      "merged": "Merged",
+      "all": "All"
+    }
+  },
+  "mrReview": {
+    "runReview": "Run AI Review",
+    "reviewing": "Reviewing...",
+    "followupReview": "Follow-up Review",
+    "newCommits": "new commit",
+    "newCommitsPlural": "new commits",
+    "cancel": "Cancel",
+    "postFindings": "Post Findings",
+    "posting": "Posting...",
+    "postedTo": "Posted to GitLab",
+    "approve": "Approve",
+    "approving": "Approving...",
+    "merge": "Merge MR",
+    "merging": "Merging...",
+    "aiReviewResult": "AI Review Result",
+    "followupReviewResult": "Follow-up Review",
+    "description": "Description",
+    "noDescription": "No description provided.",
+    "labels": "Labels",
+    "status": {
+      "notReviewed": "Not Reviewed",
+      "notReviewedDesc": "Run an AI review to analyze this MR",
+      "reviewComplete": "Review Complete",
+      "reviewCompleteDesc": "finding(s) found. Select and post to GitLab.",
+      "waitingForChanges": "Waiting for Changes",
+      "waitingForChangesDesc": "finding(s) posted. Waiting for contributor to address issues.",
+      "readyToMerge": "Ready to Merge",
+      "readyToMergeDesc": "No blocking issues found. This MR can be merged.",
+      "needsAttention": "Needs Attention",
+      "needsAttentionDesc": "finding(s) need to be posted to GitLab.",
+      "readyForFollowup": "Ready for Follow-up",
+      "readyForFollowupDesc": "since review. Run follow-up to check if issues are resolved.",
+      "blockingIssues": "Blocking Issues",
+      "blockingIssuesDesc": "blocking issue(s) still open."
+    },
+    "overallStatus": {
+      "approve": "Approve",
+      "requestChanges": "Changes Requested",
+      "comment": "Comment"
+    },
+    "resolution": {
+      "resolved": "resolved",
+      "stillOpen": "still open",
+      "newIssue": "new issue",
+      "newIssues": "new issues"
+    }
+  },
+  "findings": {
+    "summary": "selected",
+    "selectCriticalHigh": "Select Critical/High",
+    "selectAll": "Select All",
+    "clear": "Clear",
+    "noIssues": "No issues found! The code looks good.",
+    "suggestedFix": "Suggested fix:",
+    "posted": "Posted",
+    "severity": {
+      "critical": "Critical",
+      "criticalDesc": "Must fix before merge",
+      "high": "High",
+      "highDesc": "Should fix before merge",
+      "medium": "Medium",
+      "mediumDesc": "Consider fixing",
+      "low": "Low",
+      "lowDesc": "Nice to have"
+    },
+    "category": {
+      "security": "Security",
+      "quality": "Quality",
+      "style": "Style",
+      "test": "Test",
+      "docs": "Documentation",
+      "pattern": "Pattern",
+      "performance": "Performance",
+      "logic": "Logic"
+    }
   }
 }

@@ -360,6 +360,42 @@ export interface GitLabBatchProgress {
   totalIssues?: number;
 }
 
+export interface GitLabAutoFixProgress {
+  phase: 'checking' | 'fetching' | 'analyzing' | 'batching' | 'creating_spec' | 'building' | 'qa_review' | 'creating_mr' | 'complete';
+  issueIid: number;
+  progress: number;
+  message: string;
+}
+
+export interface GitLabAnalyzePreviewResult {
+  success: boolean;
+  totalIssues: number;
+  analyzedIssues: number;
+  alreadyBatched: number;
+  proposedBatches: Array<{
+    primaryIssue: number;
+    issues: Array<{
+      iid: number;
+      title: string;
+      labels: string[];
+      similarityToPrimary: number;
+    }>;
+    issueCount: number;
+    commonThemes: string[];
+    validated: boolean;
+    confidence: number;
+    reasoning: string;
+    theme: string;
+  }>;
+  singleIssues: Array<{
+    iid: number;
+    title: string;
+    labels: string[];
+  }>;
+  message: string;
+  error?: string;
+}
+
 // ============================================
 // GitLab Triage Types
 // ============================================

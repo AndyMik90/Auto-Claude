@@ -101,5 +101,98 @@
     "branchFromNote": "Toutes les nouvelles tâches partiront de",
     "autoSyncOnLoad": "Sync auto au chargement",
     "autoSyncDescription": "Récupérer automatiquement les issues au chargement du projet"
+  },
+  "mergeRequests": {
+    "title": "Merge Requests GitLab",
+    "newMR": "Nouvelle Merge Request",
+    "selectMR": "Sélectionnez une merge request pour voir les détails",
+    "states": {
+      "opened": "Ouverte",
+      "closed": "Fermée",
+      "merged": "Fusionnée",
+      "locked": "Verrouillée"
+    },
+    "filters": {
+      "opened": "Ouvertes",
+      "closed": "Fermées",
+      "merged": "Fusionnées",
+      "all": "Toutes"
+    }
+  },
+  "mrReview": {
+    "runReview": "Lancer la revue IA",
+    "reviewing": "Analyse en cours...",
+    "followupReview": "Revue de suivi",
+    "newCommits": "nouveau commit",
+    "newCommitsPlural": "nouveaux commits",
+    "cancel": "Annuler",
+    "postFindings": "Publier les résultats",
+    "posting": "Publication...",
+    "postedTo": "Publié sur GitLab",
+    "approve": "Approuver",
+    "approving": "Approbation...",
+    "merge": "Fusionner la MR",
+    "merging": "Fusion...",
+    "aiReviewResult": "Résultat de la revue IA",
+    "followupReviewResult": "Revue de suivi",
+    "description": "Description",
+    "noDescription": "Aucune description fournie.",
+    "labels": "Labels",
+    "status": {
+      "notReviewed": "Non analysée",
+      "notReviewedDesc": "Lancez une revue IA pour analyser cette MR",
+      "reviewComplete": "Revue terminée",
+      "reviewCompleteDesc": "problème(s) trouvé(s). Sélectionnez et publiez sur GitLab.",
+      "waitingForChanges": "En attente de modifications",
+      "waitingForChangesDesc": "résultat(s) publié(s). En attente des corrections du contributeur.",
+      "readyToMerge": "Prête à fusionner",
+      "readyToMergeDesc": "Aucun problème bloquant. Cette MR peut être fusionnée.",
+      "needsAttention": "Attention requise",
+      "needsAttentionDesc": "résultat(s) à publier sur GitLab.",
+      "readyForFollowup": "Prête pour suivi",
+      "readyForFollowupDesc": "depuis la revue. Lancez un suivi pour vérifier si les problèmes sont résolus.",
+      "blockingIssues": "Problèmes bloquants",
+      "blockingIssuesDesc": "problème(s) bloquant(s) encore ouvert(s)."
+    },
+    "overallStatus": {
+      "approve": "Approuver",
+      "requestChanges": "Modifications demandées",
+      "comment": "Commentaire"
+    },
+    "resolution": {
+      "resolved": "résolu(s)",
+      "stillOpen": "encore ouvert(s)",
+      "newIssue": "nouveau problème",
+      "newIssues": "nouveaux problèmes"
+    }
+  },
+  "findings": {
+    "summary": "sélectionné(s)",
+    "selectCriticalHigh": "Sélectionner Critique/Élevé",
+    "selectAll": "Tout sélectionner",
+    "clear": "Effacer",
+    "noIssues": "Aucun problème trouvé ! Le code est bon.",
+    "suggestedFix": "Correction suggérée :",
+    "posted": "Publié",
+    "severity": {
+      "critical": "Critique",
+      "criticalDesc": "À corriger avant fusion",
+      "high": "Élevé",
+      "highDesc": "Devrait être corrigé avant fusion",
+      "medium": "Moyen",
+      "mediumDesc": "À considérer",
+      "low": "Faible",
+      "lowDesc": "Optionnel"
+    },
+    "category": {
+      "security": "Sécurité",
+      "quality": "Qualité",
+      "style": "Style",
+      "test": "Test",
+      "docs": "Documentation",
+      "pattern": "Pattern",
+      "performance": "Performance",
+      "logic": "Logique"
+    }
   }
 }
