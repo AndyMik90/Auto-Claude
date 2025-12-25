@@ -12,7 +12,8 @@ import {
   Clock,
   Terminal as TerminalIcon,
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
@@ -95,15 +96,15 @@ export function Unity({ projectId }: UnityProps) {
   }, [projectInfo?.version, editors]);
 
   // Detect Unity project
-  const detectUnityProject = useCallback(async () => {
+  const detectUnityProject = useCallback(async (overridePath?: string) => {
     if (!selectedProject) return;
 
     setIsDetecting(true);
     setDetectError(null);
 
     try {
-      // Use custom Unity path if set, otherwise use project root
-      const pathToCheck = customUnityPath || selectedProject.path;
+      // Use override path, custom Unity path if set, or project root
+      const pathToCheck = overridePath || customUnityPath || selectedProject.path;
       const result = await window.electronAPI.detectUnityProject(pathToCheck);
       if (result.success && result.data) {
         setProjectInfo(result.data);
@@ -317,7 +318,8 @@ export function Unity({ projectId }: UnityProps) {
         });
         if (result.success) {
           // Re-detect Unity project with new path and refresh editors
-          await detectUnityProject();
+          // Pass the path directly to avoid stale state
+          await detectUnityProject(path);
           await loadUnityEditors();
         }
       }
@@ -341,6 +343,20 @@ export function Unity({ projectId }: UnityProps) {
       }
     } catch (err) {
       setRunError(err instanceof Error ? err.message : t('errors.updateVersion'));
+    }
+  };
+
+  // Handle opening Unity project
+  const handleOpenUnityProject = async () => {
+    if (!selectedProject || !effectiveEditorPath) return;
+
+    try {
+      const result = await window.electronAPI.openUnityProject(selectedProject.id, effectiveEditorPath);
+      if (!result.success) {
+        setRunError(result.error || 'Failed to open Unity project');
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to open Unity project');
     }
   };
 
@@ -445,6 +461,18 @@ export function Unity({ projectId }: UnityProps) {
                               )}
                             </SelectContent>
                           </Select>
+                          {projectEditorInstalled && effectiveEditorPath && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-3"
+                              onClick={handleOpenUnityProject}
+                              title={t('project.openProject')}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                              {t('project.openProject')}
+                            </Button>
+                          )}
                         </div>
                       </div>
 
