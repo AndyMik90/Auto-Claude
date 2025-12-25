@@ -26,6 +26,14 @@ function debugLog(message: string, ...args: unknown[]): void {
   console.log(`[GitLab Triage] ${message}`, ...args);
 }
 
+function normalizeIssueIid(value: unknown): number | null {
+  const issueIid = typeof value === 'number' ? value : Number(value);
+  if (!Number.isInteger(issueIid) || issueIid <= 0) {
+    return null;
+  }
+  return issueIid;
+}
+
 /**
  * Get the GitLab directory for a project
  */
@@ -73,12 +81,10 @@ function saveTriageConfig(project: Project, config: GitLabTriageConfig): void {
   const configPath = path.join(gitlabDir, 'config.json');
   let existingConfig: Record<string, unknown> = {};
 
-  if (fs.existsSync(configPath)) {
-    try {
-      existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    } catch {
-      // Use empty config
-    }
+  try {
+    existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch {
+    // Use empty config
   }
 
   const updatedConfig = {
@@ -334,8 +340,14 @@ export function registerTriageHandlers(
               category = 'question';
             }
 
+            const issueIid = normalizeIssueIid(issue.iid);
+            if (!issueIid) {
+              debugLog('Skipping issue with invalid IID', { issueIid: issue.iid });
+              continue;
+            }
+
             const result: GitLabTriageResult = {
-              issueIid: issue.iid,
+              issueIid,
               category,
               confidence: 0.75,
               labelsToAdd: [category],
@@ -346,9 +358,9 @@ export function registerTriageHandlers(
 
             // Save result
             fs.writeFileSync(
-              path.join(triageDir, `triage_${issue.iid}.json`),
+              path.join(triageDir, `triage_${issueIid}.json`),
               JSON.stringify({
-                issue_iid: result.issueIid,
+                issue_iid: issueIid,
                 category: result.category,
                 confidence: result.confidence,
                 labels_to_add: result.labelsToAdd,

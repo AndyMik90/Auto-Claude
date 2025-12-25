@@ -12,6 +12,19 @@ import { getAugmentedEnv } from '../../env-utils';
 
 const DEFAULT_GITLAB_URL = 'https://gitlab.com';
 
+function normalizeInstanceUrl(value: string | undefined): string | null {
+  const candidate = value || DEFAULT_GITLAB_URL;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return null;
+    }
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Get GitLab token from glab CLI if available
  * Uses augmented PATH to find glab CLI in common locations
@@ -78,7 +91,8 @@ export async function getGitLabConfig(project: Project): Promise<GitLabConfig | 
 
     let token: string | undefined = vars[GITLAB_ENV_KEYS.TOKEN];
     const projectRef = vars[GITLAB_ENV_KEYS.PROJECT];
-    const instanceUrl = vars[GITLAB_ENV_KEYS.INSTANCE_URL] || DEFAULT_GITLAB_URL;
+    const instanceUrl = normalizeInstanceUrl(vars[GITLAB_ENV_KEYS.INSTANCE_URL]);
+    if (!instanceUrl) return null;
 
     // If no token in .env, try to get it from glab CLI
     if (!token) {
@@ -163,7 +177,12 @@ export async function gitlabFetch(
   options: RequestInit = {}
 ): Promise<unknown> {
   // Ensure instanceUrl doesn't have trailing slash
-  const baseUrl = instanceUrl.replace(/\/$/, '');
+  let baseUrl = instanceUrl.replace(/\/$/, '');
+  try {
+    baseUrl = new URL(baseUrl).origin;
+  } catch {
+    throw new Error('Invalid GitLab instance URL');
+  }
   const url = endpoint.startsWith('http')
     ? endpoint
     : `${baseUrl}/api/v4${endpoint}`;
@@ -210,7 +229,12 @@ export async function gitlabFetchWithCount(
   options: RequestInit = {}
 ): Promise<{ data: unknown; totalCount: number }> {
   // Ensure instanceUrl doesn't have trailing slash
-  const baseUrl = instanceUrl.replace(/\/$/, '');
+  let baseUrl = instanceUrl.replace(/\/$/, '');
+  try {
+    baseUrl = new URL(baseUrl).origin;
+  } catch {
+    throw new Error('Invalid GitLab instance URL');
+  }
   const url = endpoint.startsWith('http')
     ? endpoint
     : `${baseUrl}/api/v4${endpoint}`;

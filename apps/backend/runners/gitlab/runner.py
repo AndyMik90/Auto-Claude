@@ -86,8 +86,8 @@ def get_config(args) -> GitLabRunnerConfig:
                     instance_url = data.get("instance_url", instance_url)
                     if not token:
                         token = data.get("token", "")
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"Warning: Failed to read GitLab config: {exc}", file=sys.stderr)
 
     if not token:
         print("Error: No GitLab token found. Set GITLAB_TOKEN or configure in project settings.")

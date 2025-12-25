@@ -14,24 +14,20 @@ from dataclasses import dataclass
 from pathlib import Path
 
 try:
-    from .glab_client import GitLabClient, GitLabConfig, load_gitlab_config
+    from .glab_client import GitLabClient, GitLabConfig
     from .models import (
-        FollowupMRContext,
         GitLabRunnerConfig,
         MergeVerdict,
         MRContext,
-        MRReviewFinding,
         MRReviewResult,
     )
     from .services import MRReviewEngine
 except (ImportError, ValueError, SystemError):
-    from glab_client import GitLabClient, GitLabConfig, load_gitlab_config
+    from glab_client import GitLabClient, GitLabConfig
     from models import (
-        FollowupMRContext,
         GitLabRunnerConfig,
         MergeVerdict,
         MRContext,
-        MRReviewFinding,
         MRReviewResult,
     )
     from services import MRReviewEngine

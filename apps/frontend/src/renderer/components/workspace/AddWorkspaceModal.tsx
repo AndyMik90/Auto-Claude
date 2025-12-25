@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, Layers } from 'lucide-react';
+import { X, Layers } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,6 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { Badge } from '../ui/badge';
 import {
   Select,
   SelectContent,

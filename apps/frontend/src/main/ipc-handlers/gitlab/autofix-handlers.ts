@@ -30,6 +30,18 @@ function debugLog(message: string, ...args: unknown[]): void {
   console.log(`[GitLab AutoFix] ${message}`, ...args);
 }
 
+function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
+  if (typeof rawUrl !== 'string') return '';
+  try {
+    const parsedUrl = new URL(rawUrl);
+    const expectedHost = new URL(instanceUrl).host;
+    if (parsedUrl.host !== expectedHost) return '';
+    return parsedUrl.toString();
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Get the GitLab directory for a project
  */
@@ -77,12 +89,10 @@ function saveAutoFixConfig(project: Project, config: GitLabAutoFixConfig): void 
   const configPath = path.join(gitlabDir, 'config.json');
   let existingConfig: Record<string, unknown> = {};
 
-  if (fs.existsSync(configPath)) {
-    try {
-      existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    } catch {
-      // Use empty config
-    }
+  try {
+    existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch {
+    // Use empty config
   }
 
   const updatedConfig = {
@@ -333,9 +343,6 @@ async function startAutoFix(
     system: boolean;
   }>;
 
-  // Filter out system notes
-  const comments = notes.filter(n => !n.system);
-
   sendProgress(mainWindow, project.id, {
     phase: 'analyzing',
     issueIid,
@@ -362,15 +369,19 @@ async function startAutoFix(
     updatedAt: new Date().toISOString(),
   };
 
+  // Validate and sanitize network data before writing to file
+  const sanitizedIssueUrl = sanitizeIssueUrl(issue.web_url, glConfig.instanceUrl);
+  const sanitizedProject = typeof glConfig.project === 'string' ? glConfig.project : '';
+
   fs.writeFileSync(
     path.join(issuesDir, `autofix_${issueIid}.json`),
     JSON.stringify({
       issue_iid: state.issueIid,
-      project: state.project,
+      project: sanitizedProject,
       status: state.status,
       created_at: state.createdAt,
       updated_at: state.updatedAt,
-      issue_url: issue.web_url,
+      issue_url: sanitizedIssueUrl,
     }, null, 2)
   );
 

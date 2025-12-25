@@ -320,7 +320,7 @@ export function registerMRReviewHandlers(
 
       try {
         await withProjectOrNull(projectId, async (project) => {
-          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<MRReviewProgress, MRReviewResult>(
+          const { sendProgress, sendComplete } = createIPCCommunicators<MRReviewProgress, MRReviewResult>(
             mainWindow,
             {
               progress: IPC_CHANNELS.GITLAB_MR_REVIEW_PROGRESS,
@@ -467,18 +467,16 @@ export function registerMRReviewHandlers(
 
           // Update the stored review result with posted findings
           const reviewPath = path.join(getGitLabDir(project), 'mr', `review_${mrIid}.json`);
-          if (fs.existsSync(reviewPath)) {
-            try {
-              const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
-              data.has_posted_findings = true;
-              const newPostedIds = findings.map(f => f.id);
-              const existingPostedIds = data.posted_finding_ids || [];
-              data.posted_finding_ids = [...new Set([...existingPostedIds, ...newPostedIds])];
-              fs.writeFileSync(reviewPath, JSON.stringify(data, null, 2), 'utf-8');
-              debugLog('Updated review result with posted findings', { mrIid, postedCount: newPostedIds.length });
-            } catch (error) {
-              debugLog('Failed to update review result file', { error: error instanceof Error ? error.message : error });
-            }
+          try {
+            const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
+            data.has_posted_findings = true;
+            const newPostedIds = findings.map(f => f.id);
+            const existingPostedIds = data.posted_finding_ids || [];
+            data.posted_finding_ids = [...new Set([...existingPostedIds, ...newPostedIds])];
+            fs.writeFileSync(reviewPath, JSON.stringify(data, null, 2), 'utf-8');
+            debugLog('Updated review result with posted findings', { mrIid, postedCount: newPostedIds.length });
+          } catch (error) {
+            debugLog('Failed to update review result file', { error: error instanceof Error ? error.message : error });
           }
 
           return true;

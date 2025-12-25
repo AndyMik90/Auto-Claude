@@ -100,11 +100,9 @@ export function MRDetail({
   const [postedFindingIds, setPostedFindingIds] = useState<Set<string>>(new Set());
   const [isPostingFindings, setIsPostingFindings] = useState(false);
   const [postSuccess, setPostSuccess] = useState<{ count: number; timestamp: number } | null>(null);
-  const [isPosting, setIsPosting] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [newCommitsCheck, setNewCommitsCheck] = useState<GitLabNewCommitsCheck | null>(null);
-  const [isCheckingNewCommits, setIsCheckingNewCommits] = useState(false);
 
   // Auto-select critical and high findings when review completes (excluding already posted)
   useEffect(() => {
@@ -123,12 +121,11 @@ export function MRDetail({
   const checkForNewCommits = useCallback(async () => {
     // Only check for new commits if we have a review AND findings have been posted
     if (reviewResult?.success && reviewResult.reviewedCommitSha && hasPostedFindings) {
-      setIsCheckingNewCommits(true);
       try {
         const result = await onCheckNewCommits();
         setNewCommitsCheck(result);
       } finally {
-        setIsCheckingNewCommits(false);
+        // No additional state to clean up
       }
     } else {
       // Clear any existing new commits check if we haven't posted yet
@@ -150,12 +147,6 @@ export function MRDetail({
 
   // Count selected findings by type for the button label
   const selectedCount = selectedFindingIds.size;
-  const hasImportantSelected = useMemo(() => {
-    if (!reviewResult?.findings) return false;
-    return reviewResult.findings
-      .filter(f => f.severity === 'critical' || f.severity === 'high')
-      .some(f => selectedFindingIds.has(f.id));
-  }, [reviewResult?.findings, selectedFindingIds]);
 
   // Check if MR is ready to merge based on review
   const isReadyToMerge = useMemo(() => {
