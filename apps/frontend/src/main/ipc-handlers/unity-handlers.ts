@@ -688,7 +688,15 @@ export function registerUnityHandlers(): void {
     IPC_CHANNELS.UNITY_OPEN_PATH,
     async (_, path: string): Promise<IPCResult<void>> => {
       try {
-        await shell.openPath(path);
+        const result = await shell.openPath(path);
+
+        if (result) {
+          return {
+            success: false,
+            error: result
+          };
+        }
+
         return { success: true, data: undefined };
       } catch (error) {
         return {
