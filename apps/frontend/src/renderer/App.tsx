@@ -42,6 +42,7 @@ import { Ideation } from './components/Ideation';
 import { Insights } from './components/Insights';
 import { GitHubIssues } from './components/GitHubIssues';
 import { GitLabIssues } from './components/GitLabIssues';
+import { GitHubPRs } from './components/github-prs';
 import { Changelog } from './components/Changelog';
 import { Worktrees } from './components/Worktrees';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -56,6 +57,7 @@ import { useProjectStore, loadProjects, addProject, initializeProject } from './
 import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings } from './stores/settings-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
+import { initializeGitHubListeners } from './stores/github';
 import { useIpcListeners } from './hooks/useIpc';
 import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
 import type { Task, Project, ColorTheme } from '../shared/types';
@@ -120,6 +122,8 @@ export function App() {
   useEffect(() => {
     loadProjects();
     loadSettings();
+    // Initialize global GitHub listeners (PR reviews, etc.) so they persist across navigation
+    initializeGitHubListeners();
   }, []);
 
   // Restore tab state and open tabs for loaded projects
@@ -682,6 +686,14 @@ export function App() {
                       setIsSettingsDialogOpen(true);
                     }}
                     onNavigateToTask={handleGoToTask}
+                  />
+                )}
+                {activeView === 'github-prs' && (activeProjectId || selectedProjectId) && (
+                  <GitHubPRs
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('github');
+                      setIsSettingsDialogOpen(true);
+                    }}
                   />
                 )}
                 {activeView === 'changelog' && (activeProjectId || selectedProjectId) && (
