@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createTask } from '../../../stores/task-store';
 import type {
   AnalyzePreviewResult,
   AnalyzePreviewProgress,
   ProposedBatch,
 } from '../../../../preload/api/modules/github-api';
+import type { TaskMetadata } from '../../../../shared/types';
 
 interface UseAnalyzePreviewProps {
   projectId: string;
@@ -109,6 +111,38 @@ export function useAnalyzePreview({ projectId }: UseAnalyzePreviewProps): UseAna
       const result = await window.electronAPI.github.approveBatches(projectId, batches);
       if (!result.success) {
         throw new Error(result.error || 'Failed to approve batches');
+      }
+
+      // Create tasks for each approved batch
+      for (const batch of batches) {
+        const issueNumbers = batch.issues.map(i => i.issueNumber);
+        const isSingleIssue = issueNumbers.length === 1;
+
+        // Build task title
+        const title = batch.theme ||
+          (isSingleIssue
+            ? `GitHub Issue #${issueNumbers[0]}: ${batch.issues[0].title}`
+            : `GitHub Issues: ${batch.theme || issueNumbers.map(n => `#${n}`).join(', ')}`);
+
+        // Build task description
+        const issueList = batch.issues
+          .map(i => `- #${i.issueNumber}: ${i.title}`)
+          .join('\n');
+
+        const description = isSingleIssue
+          ? batch.issues[0].title
+          : `**Issues in this batch:**\n${issueList}\n\n**Common themes:** ${batch.commonThemes.join(', ') || 'N/A'}\n\n**Reasoning:** ${batch.reasoning}`;
+
+        // Build metadata
+        const metadata: TaskMetadata = {
+          sourceType: 'github',
+          githubIssueNumbers: issueNumbers,
+          githubIssueNumber: isSingleIssue ? issueNumbers[0] : undefined,
+          githubBatchTheme: batch.theme,
+        };
+
+        // Create the task
+        await createTask(projectId, title, description, metadata);
       }
     } catch (error) {
       setAnalysisError(error instanceof Error ? error.message : 'Failed to approve batches');

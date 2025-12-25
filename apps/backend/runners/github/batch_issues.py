@@ -32,33 +32,57 @@ except (ImportError, ValueError, SystemError):
     from file_lock import locked_json_write
 
 
-class ClaudeSimilarityDetector:
+class ClaudeBatchAnalyzer:
     """
-    Claude-based similarity detection for GitHub issues.
-    Uses Claude Haiku 4.5 for fast semantic similarity comparison.
+    Claude-based batch analyzer for GitHub issues.
+
+    Instead of doing O(n²) pairwise comparisons, this uses a single Claude call
+    to analyze a group of issues and suggest optimal batching.
     """
 
     def __init__(self, project_dir: Path | None = None):
-        """Initialize Claude similarity detector."""
+        """Initialize Claude batch analyzer."""
         self.project_dir = project_dir or Path.cwd()
-        print(
-            f"[SIMILARITY] Initialized with project_dir: {self.project_dir}", flush=True
+        logger.info(
+            f"[BATCH_ANALYZER] Initialized with project_dir: {self.project_dir}"
         )
 
-    async def compare_issues(
+    async def analyze_and_batch_issues(
         self,
-        repo: str,
-        issue_a: dict[str, Any],
-        issue_b: dict[str, Any],
-    ) -> dict[str, Any]:
+        issues: list[dict[str, Any]],
+        max_batch_size: int = 5,
+    ) -> list[dict[str, Any]]:
         """
-        Compare two issues for similarity using Claude SDK.
+        Analyze a group of issues and suggest optimal batches.
+
+        Uses a SINGLE Claude call to analyze all issues and group them intelligently.
+
+        Args:
+            issues: List of issues to analyze
+            max_batch_size: Maximum issues per batch
 
         Returns:
-            Dict with is_similar (bool) and overall_score (float 0-1)
+            List of batch suggestions, each containing:
+            - issue_numbers: list of issue numbers in this batch
+            - theme: common theme/description
+            - reasoning: why these should be batched
+            - confidence: 0.0-1.0
         """
+        if not issues:
+            return []
+
+        if len(issues) == 1:
+            # Single issue = single batch
+            return [
+                {
+                    "issue_numbers": [issues[0]["number"]],
+                    "theme": issues[0].get("title", "Single issue"),
+                    "reasoning": "Single issue in group",
+                    "confidence": 1.0,
+                }
+            ]
+
         try:
-            # Import auth utilities
             import sys
 
             from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
@@ -68,151 +92,175 @@ class ClaudeSimilarityDetector:
             from core.auth import ensure_claude_code_oauth_token
         except ImportError as e:
             logger.error(f"claude-agent-sdk not available: {e}")
-            return {
-                "is_similar": False,
-                "overall_score": 0.0,
-                "reasoning": "Claude SDK not available",
-            }
+            # Fallback: each issue is its own batch
+            return [
+                {
+                    "issue_numbers": [issue["number"]],
+                    "theme": issue.get("title", ""),
+                    "reasoning": "Claude SDK not available",
+                    "confidence": 0.5,
+                }
+                for issue in issues
+            ]
 
-        prompt = f"""Compare these two GitHub issues and determine if they are similar enough to be fixed together in a single batch.
+        # Build issue list for the prompt
+        issue_list = "\n".join(
+            [
+                f"- #{issue['number']}: {issue.get('title', 'No title')}"
+                f"\n  Labels: {', '.join(label.get('name', '') for label in issue.get('labels', [])) or 'none'}"
+                f"\n  Body: {(issue.get('body', '') or '')[:200]}..."
+                for issue in issues
+            ]
+        )
 
-Issue A (#{issue_a["number"]}):
-Title: {issue_a.get("title", "")}
-Body: {issue_a.get("body", "")}
+        prompt = f"""Analyze these GitHub issues and group them into batches that should be fixed together.
 
-Issue B (#{issue_b["number"]}):
-Title: {issue_b.get("title", "")}
-Body: {issue_b.get("body", "")}
+ISSUES TO ANALYZE:
+{issue_list}
 
-Are these issues similar enough to fix together? Consider:
-- Do they affect the same feature/component?
-- Do they share a common root cause?
-- Would fixing them together make sense?
+RULES:
+1. Group issues that share a common root cause or affect the same component
+2. Maximum {max_batch_size} issues per batch
+3. Issues that are unrelated should be in separate batches (even single-issue batches)
+4. Be conservative - only batch issues that clearly belong together
 
 Respond with JSON only:
 {{
-  "is_similar": true/false,
-  "similarity_score": 0.0-1.0,
-  "reasoning": "brief explanation"
+  "batches": [
+    {{
+      "issue_numbers": [1, 2, 3],
+      "theme": "Authentication issues",
+      "reasoning": "All related to login flow",
+      "confidence": 0.85
+    }},
+    {{
+      "issue_numbers": [4],
+      "theme": "UI bug",
+      "reasoning": "Unrelated to other issues",
+      "confidence": 0.95
+    }}
+  ]
 }}"""
 
         try:
-            # Ensure Claude Code OAuth token is available
             ensure_claude_code_oauth_token()
 
-            print("[SIMILARITY] Creating Claude SDK client...", flush=True)
-            print(f"[SIMILARITY] CWD: {self.project_dir.resolve()}", flush=True)
+            logger.info(
+                f"[BATCH_ANALYZER] Analyzing {len(issues)} issues in single call"
+            )
 
-            # Using Haiku 4.5 - fast and cost-effective for similarity detection
+            # Using Sonnet for better analysis (still just 1 call)
             client = ClaudeSDKClient(
                 options=ClaudeAgentOptions(
-                    model="claude-haiku-4-5-20251001",
-                    system_prompt="You are an expert at analyzing GitHub issues. Respond ONLY with valid JSON. Do NOT use any tools. Do NOT write explanatory text. ONLY return the JSON object requested.",
+                    model="claude-sonnet-4-20250514",
+                    system_prompt="You are an expert at analyzing GitHub issues and grouping related ones. Respond ONLY with valid JSON. Do NOT use any tools.",
                     allowed_tools=[],
                     max_turns=1,
                     cwd=str(self.project_dir.resolve()),
                 )
             )
 
-            print("[SIMILARITY] Claude SDK client created successfully", flush=True)
-
             async with client:
                 await client.query(prompt)
                 response_text = await self._collect_response(client)
 
-            print(
-                f"[SIMILARITY] Received response: {response_text[:200] if response_text else 'EMPTY'}",
-                flush=True,
-            )
             logger.info(
-                f"[SIMILARITY] Received response: {response_text[:200] if response_text else 'EMPTY'}"
+                f"[BATCH_ANALYZER] Received response: {len(response_text)} chars"
             )
 
             # Parse JSON response
-            import json
+            result = self._parse_json_response(response_text)
 
-            content = response_text.strip()
-
-            if not content:
-                logger.error("[SIMILARITY] Empty response from Claude SDK")
-                raise ValueError("Empty response from Claude SDK")
-
-            # Extract JSON from markdown code blocks if present
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
+            if "batches" in result:
+                return result["batches"]
             else:
-                # Look for JSON object in the response (handle preamble text)
-                if "{" in content:
-                    start = content.find("{")
-                    # Find matching closing brace
-                    brace_count = 0
-                    for i, char in enumerate(content[start:], start):
-                        if char == "{":
-                            brace_count += 1
-                        elif char == "}":
-                            brace_count -= 1
-                            if brace_count == 0:
-                                content = content[start : i + 1]
-                                break
-
-            logger.info(f"[SIMILARITY] Parsing JSON: {content[:200]}")
-            result = json.loads(content)
-
-            return {
-                "is_similar": result.get("is_similar", False),
-                "overall_score": result.get("similarity_score", 0.0),
-                "reasoning": result.get("reasoning", ""),
-            }
+                logger.warning(
+                    "[BATCH_ANALYZER] No batches in response, using fallback"
+                )
+                return self._fallback_batches(issues)
 
         except Exception as e:
-            logger.error(f"Claude similarity comparison error: {e}")
+            logger.error(f"[BATCH_ANALYZER] Error: {e}")
             import traceback
 
             traceback.print_exc()
-            # If Claude fails, assume not similar (conservative approach)
-            return {
-                "is_similar": False,
-                "overall_score": 0.0,
-                "reasoning": f"Error during comparison: {e}",
+            return self._fallback_batches(issues)
+
+    def _parse_json_response(self, response_text: str) -> dict[str, Any]:
+        """Parse JSON from Claude response, handling various formats."""
+        content = response_text.strip()
+
+        if not content:
+            raise ValueError("Empty response")
+
+        # Extract JSON from markdown code blocks if present
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+        else:
+            # Look for JSON object
+            if "{" in content:
+                start = content.find("{")
+                brace_count = 0
+                for i, char in enumerate(content[start:], start):
+                    if char == "{":
+                        brace_count += 1
+                    elif char == "}":
+                        brace_count -= 1
+                        if brace_count == 0:
+                            content = content[start : i + 1]
+                            break
+
+        return json.loads(content)
+
+    def _fallback_batches(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Fallback: each issue is its own batch."""
+        return [
+            {
+                "issue_numbers": [issue["number"]],
+                "theme": issue.get("title", ""),
+                "reasoning": "Fallback: individual batch",
+                "confidence": 0.5,
             }
+            for issue in issues
+        ]
 
     async def _collect_response(self, client: Any) -> str:
-        """Collect text response from Claude client - matches insights_runner pattern."""
+        """Collect text response from Claude client."""
         response_text = ""
-        message_count = 0
-
-        print("[SIMILARITY] Starting to collect response...", flush=True)
 
         async for msg in client.receive_response():
-            message_count += 1
             msg_type = type(msg).__name__
-            print(
-                f"[SIMILARITY] Received message #{message_count}, type: {msg_type}",
-                flush=True,
-            )
-
             if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                 for block in msg.content:
-                    block_type = type(block).__name__
-                    print(f"[SIMILARITY] Block type: {block_type}", flush=True)
-                    if block_type == "TextBlock" and hasattr(block, "text"):
-                        text = block.text
-                        print(
-                            f"[SIMILARITY] Found text: {text[:100] if text else 'EMPTY'}",
-                            flush=True,
-                        )
-                        response_text += text
+                    if type(block).__name__ == "TextBlock" and hasattr(block, "text"):
+                        response_text += block.text
 
-        print(
-            f"[SIMILARITY] Finished collecting. Total messages: {message_count}, Response length: {len(response_text)}",
-            flush=True,
-        )
         return response_text
 
+
+# Keep old class for backwards compatibility but mark as deprecated
+class ClaudeSimilarityDetector(ClaudeBatchAnalyzer):
+    """DEPRECATED: Use ClaudeBatchAnalyzer instead."""
+
+    async def compare_issues(
+        self,
+        repo: str,
+        issue_a: dict[str, Any],
+        issue_b: dict[str, Any],
+    ) -> dict[str, Any]:
+        """DEPRECATED: Pairwise comparison. Use analyze_and_batch_issues instead."""
+        logger.warning("ClaudeSimilarityDetector.compare_issues is deprecated")
+        # Simple fallback for any code still using this
+        return {
+            "is_similar": False,
+            "overall_score": 0.0,
+            "reasoning": "DEPRECATED: Use ClaudeBatchAnalyzer.analyze_and_batch_issues",
+        }
+
     async def precompute_embeddings(self, repo: str, issues: list[dict]) -> int:
-        """No-op for compatibility with DuplicateDetector interface."""
+        """No-op for compatibility."""
         return 0
 
 
@@ -398,8 +446,11 @@ class IssueBatcher:
         self.max_batch_size = max_batch_size
         self.validate_batches_enabled = validate_batches
 
-        # Initialize Claude-based similarity detector
-        self.detector = ClaudeSimilarityDetector(project_dir=self.project_dir)
+        # Initialize Claude batch analyzer (replaces pairwise similarity detector)
+        self.analyzer = ClaudeBatchAnalyzer(project_dir=self.project_dir)
+
+        # Keep detector for backwards compatibility (deprecated)
+        self.detector = self.analyzer
 
         # Initialize batch validator (uses Claude SDK with OAuth token)
         self.validator = (
@@ -447,51 +498,252 @@ class IssueBatcher:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         return f"{primary_issue}_{timestamp}"
 
+    def _pre_group_by_labels_and_keywords(
+        self,
+        issues: list[dict[str, Any]],
+    ) -> list[list[dict[str, Any]]]:
+        """
+        Fast O(n) pre-grouping by labels and title keywords.
+
+        This dramatically reduces the number of Claude API calls needed
+        by only comparing issues within the same pre-group.
+
+        Returns list of pre-groups (each group is a list of issues).
+        """
+        # Priority labels that strongly indicate grouping
+        grouping_labels = {
+            "bug",
+            "feature",
+            "enhancement",
+            "documentation",
+            "refactor",
+            "performance",
+            "security",
+            "ui",
+            "ux",
+            "frontend",
+            "backend",
+            "api",
+            "database",
+            "testing",
+            "infrastructure",
+            "ci/cd",
+            "high priority",
+            "low priority",
+            "critical",
+            "blocker",
+        }
+
+        # Group issues by their primary label
+        label_groups: dict[str, list[dict[str, Any]]] = {}
+        no_label_issues: list[dict[str, Any]] = []
+
+        for issue in issues:
+            labels = [
+                label.get("name", "").lower() for label in issue.get("labels", [])
+            ]
+
+            # Find the first grouping label
+            primary_label = None
+            for label in labels:
+                if label in grouping_labels:
+                    primary_label = label
+                    break
+
+            if primary_label:
+                if primary_label not in label_groups:
+                    label_groups[primary_label] = []
+                label_groups[primary_label].append(issue)
+            else:
+                no_label_issues.append(issue)
+
+        # For issues without grouping labels, try keyword-based grouping
+        keyword_groups = self._group_by_title_keywords(no_label_issues)
+
+        # Combine all pre-groups
+        pre_groups = list(label_groups.values()) + keyword_groups
+
+        # Log pre-grouping results
+        total_issues = sum(len(g) for g in pre_groups)
+        logger.info(
+            f"Pre-grouped {total_issues} issues into {len(pre_groups)} groups "
+            f"(label groups: {len(label_groups)}, keyword groups: {len(keyword_groups)})"
+        )
+
+        return pre_groups
+
+    def _group_by_title_keywords(
+        self,
+        issues: list[dict[str, Any]],
+    ) -> list[list[dict[str, Any]]]:
+        """
+        Group issues by common keywords in their titles.
+
+        Returns list of groups.
+        """
+        if not issues:
+            return []
+
+        # Extract keywords from titles
+        keyword_map: dict[str, list[dict[str, Any]]] = {}
+        ungrouped: list[dict[str, Any]] = []
+
+        # Keywords that indicate related issues
+        grouping_keywords = {
+            "login",
+            "auth",
+            "authentication",
+            "oauth",
+            "session",
+            "api",
+            "endpoint",
+            "request",
+            "response",
+            "database",
+            "db",
+            "query",
+            "connection",
+            "ui",
+            "display",
+            "render",
+            "css",
+            "style",
+            "error",
+            "exception",
+            "crash",
+            "fail",
+            "performance",
+            "slow",
+            "memory",
+            "leak",
+            "test",
+            "coverage",
+            "mock",
+            "config",
+            "settings",
+            "env",
+            "build",
+            "deploy",
+            "ci",
+        }
+
+        for issue in issues:
+            title = issue.get("title", "").lower()
+
+            # Find matching keywords
+            matched_keyword = None
+            for keyword in grouping_keywords:
+                if keyword in title:
+                    matched_keyword = keyword
+                    break
+
+            if matched_keyword:
+                if matched_keyword not in keyword_map:
+                    keyword_map[matched_keyword] = []
+                keyword_map[matched_keyword].append(issue)
+            else:
+                ungrouped.append(issue)
+
+        # Collect groups
+        groups = list(keyword_map.values())
+
+        # Add ungrouped issues as individual "groups" of 1
+        for issue in ungrouped:
+            groups.append([issue])
+
+        return groups
+
+    async def _analyze_issues_with_agents(
+        self,
+        issues: list[dict[str, Any]],
+    ) -> list[list[int]]:
+        """
+        Analyze issues using Claude agents to suggest batches.
+
+        Uses a two-phase approach:
+        1. Fast O(n) pre-grouping by labels and keywords (no AI calls)
+        2. One Claude call PER PRE-GROUP to analyze and suggest sub-batches
+
+        For 51 issues, this might result in ~5-10 Claude calls instead of 1275.
+
+        Returns list of clusters (each cluster is a list of issue numbers).
+        """
+        n = len(issues)
+
+        # Phase 1: Pre-group by labels and keywords (O(n), no AI calls)
+        pre_groups = self._pre_group_by_labels_and_keywords(issues)
+
+        # Calculate stats
+        total_api_calls_naive = n * (n - 1) // 2
+        total_api_calls_new = len([g for g in pre_groups if len(g) > 1])
+
+        logger.info(
+            f"Agent-based batching: {total_api_calls_new} Claude calls "
+            f"(was {total_api_calls_naive} with pairwise, saved {total_api_calls_naive - total_api_calls_new})"
+        )
+
+        # Phase 2: Use Claude agent to analyze each pre-group
+        all_batches: list[list[int]] = []
+
+        for group in pre_groups:
+            if len(group) == 1:
+                # Single issue = single batch, no AI needed
+                all_batches.append([group[0]["number"]])
+                continue
+
+            # Use Claude to analyze this group and suggest batches
+            logger.info(f"Analyzing pre-group of {len(group)} issues with Claude agent")
+
+            batch_suggestions = await self.analyzer.analyze_and_batch_issues(
+                issues=group,
+                max_batch_size=self.max_batch_size,
+            )
+
+            # Convert suggestions to clusters
+            for suggestion in batch_suggestions:
+                issue_numbers = suggestion.get("issue_numbers", [])
+                if issue_numbers:
+                    all_batches.append(issue_numbers)
+                    logger.info(
+                        f"  Batch: {issue_numbers} - {suggestion.get('theme', 'No theme')} "
+                        f"(confidence: {suggestion.get('confidence', 0):.0%})"
+                    )
+
+        logger.info(f"Created {len(all_batches)} batches from {n} issues")
+
+        return all_batches
+
     async def _build_similarity_matrix(
         self,
         issues: list[dict[str, Any]],
     ) -> tuple[dict[tuple[int, int], float], dict[int, dict[int, str]]]:
         """
-        Build similarity matrix for all issues.
+        DEPRECATED: Use _analyze_issues_with_agents instead.
 
-        Returns tuple of (similarity_matrix, reasoning_dict) where:
-        - similarity_matrix: dict mapping (issue_a, issue_b) -> similarity_score
-        - reasoning_dict: dict mapping issue_number -> {other_issue_number: reasoning}
+        This method is kept for backwards compatibility but now uses
+        the agent-based approach internally.
         """
+        # Use the new agent-based approach
+        clusters = await self._analyze_issues_with_agents(issues)
+
+        # Build a synthetic similarity matrix from the clusters
+        # (for backwards compatibility with _cluster_issues)
         matrix = {}
-        reasoning = {}  # Store Claude's reasoning for ALL comparisons
-        n = len(issues)
+        reasoning = {}
 
-        # Precompute embeddings
-        logger.info(f"Precomputing embeddings for {n} issues...")
-        await self.detector.precompute_embeddings(self.repo, issues)
-
-        # Compare all pairs
-        logger.info(f"Computing similarity matrix for {n * (n - 1) // 2} pairs...")
-        for i in range(n):
-            for j in range(i + 1, n):
-                result = await self.detector.compare_issues(
-                    self.repo,
-                    issues[i],
-                    issues[j],
-                )
-
-                issue_a = issues[i]["number"]
-                issue_b = issues[j]["number"]
-
-                # Store reasoning from Claude for ALL pairs (not just similar ones)
+        for cluster in clusters:
+            # Issues in the same cluster are considered similar
+            for i, issue_a in enumerate(cluster):
                 if issue_a not in reasoning:
                     reasoning[issue_a] = {}
-                if issue_b not in reasoning:
-                    reasoning[issue_b] = {}
-
-                claude_reasoning = result.get("reasoning", "No reasoning provided")
-                reasoning[issue_a][issue_b] = claude_reasoning
-                reasoning[issue_b][issue_a] = claude_reasoning
-
-                if result.get("is_similar", False):
-                    matrix[(issue_a, issue_b)] = result.get("overall_score", 0.0)
-                    matrix[(issue_b, issue_a)] = result.get("overall_score", 0.0)
+                for issue_b in cluster[i + 1 :]:
+                    if issue_b not in reasoning:
+                        reasoning[issue_b] = {}
+                    # Mark as similar (high score)
+                    matrix[(issue_a, issue_b)] = 0.85
+                    matrix[(issue_b, issue_a)] = 0.85
+                    reasoning[issue_a][issue_b] = "Grouped by Claude agent analysis"
+                    reasoning[issue_b][issue_a] = "Grouped by Claude agent analysis"
 
         return matrix, reasoning
 
