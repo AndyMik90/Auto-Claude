@@ -12,18 +12,16 @@ import type { BrowserWindow } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { IPC_CHANNELS, MODEL_ID_MAP, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING } from '../../../shared/constants';
-import { getGitHubConfig, githubFetch } from './utils';
+import { getGitHubConfig } from './utils';
 import { readSettingsFile } from '../../settings-utils';
 import type { Project, AppSettings } from '../../../shared/types';
 import { createContextLogger } from './utils/logger';
-import { withProjectOrNull, withProjectSyncOrNull } from './utils/project-middleware';
+import { withProjectOrNull } from './utils/project-middleware';
 import { createIPCCommunicators } from './utils/ipc-communicator';
 import {
   runPythonSubprocess,
-  getBackendPath,
   getPythonPath,
   getRunnerPath,
-  validateRunner,
   validateGitHubModule,
   buildRunnerArgs,
 } from './utils/subprocess-runner';
@@ -353,7 +351,7 @@ export function registerTriageHandlers(
 
       try {
         await withProjectOrNull(projectId, async (project) => {
-          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<TriageProgress, TriageResult[]>(
+          const { sendProgress, sendError: _sendError, sendComplete } = createIPCCommunicators<TriageProgress, TriageResult[]>(
             mainWindow,
             {
               progress: IPC_CHANNELS.GITHUB_TRIAGE_PROGRESS,

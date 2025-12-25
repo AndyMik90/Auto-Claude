@@ -15,16 +15,14 @@ import fs from 'fs';
 import { IPC_CHANNELS, MODEL_ID_MAP, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING } from '../../../shared/constants';
 import { getGitHubConfig, githubFetch } from './utils';
 import { readSettingsFile } from '../../settings-utils';
-import type { Project, AppSettings, FeatureModelConfig, FeatureThinkingConfig } from '../../../shared/types';
+import type { Project, AppSettings } from '../../../shared/types';
 import { createContextLogger } from './utils/logger';
-import { withProjectOrNull, withProjectSyncOrNull } from './utils/project-middleware';
+import { withProjectOrNull } from './utils/project-middleware';
 import { createIPCCommunicators } from './utils/ipc-communicator';
 import {
   runPythonSubprocess,
-  getBackendPath,
   getPythonPath,
   getRunnerPath,
-  validateRunner,
   validateGitHubModule,
   buildRunnerArgs,
 } from './utils/subprocess-runner';
@@ -486,7 +484,7 @@ export function registerPRHandlers(
 
       try {
         await withProjectOrNull(projectId, async (project) => {
-          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
+          const { sendProgress, sendError: _sendError, sendComplete } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
             mainWindow,
             {
               progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
@@ -632,7 +630,6 @@ export function registerPRHandlers(
 
           // Post review via GitHub API to capture review ID
           let reviewResponse: { id: number };
-          let actualEvent = event;
           try {
             reviewResponse = await githubFetch(
               config.token,
@@ -652,7 +649,6 @@ export function registerPRHandlers(
             if (errorMsg.includes('Can not request changes on your own pull request') ||
                 errorMsg.includes('Can not approve your own pull request')) {
               debugLog('Cannot use REQUEST_CHANGES/APPROVE on own PR, falling back to COMMENT', { prNumber });
-              actualEvent = 'COMMENT';
               reviewResponse = await githubFetch(
                 config.token,
                 `/repos/${config.repo}/pulls/${prNumber}/reviews`,
@@ -674,20 +670,19 @@ export function registerPRHandlers(
 
           // Update the stored review result with the review ID and posted findings
           const reviewPath = path.join(getGitHubDir(project), 'pr', `review_${prNumber}.json`);
-          if (fs.existsSync(reviewPath)) {
-            try {
-              const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
-              data.review_id = reviewId;
-              // Track posted findings to enable follow-up review
-              data.has_posted_findings = true;
-              const newPostedIds = findings.map(f => f.id);
-              const existingPostedIds = data.posted_finding_ids || [];
-              data.posted_finding_ids = [...new Set([...existingPostedIds, ...newPostedIds])];
-              fs.writeFileSync(reviewPath, JSON.stringify(data, null, 2), 'utf-8');
-              debugLog('Updated review result with review ID and posted findings', { prNumber, reviewId, postedCount: newPostedIds.length });
-            } catch (error) {
-              debugLog('Failed to update review result file', { error: error instanceof Error ? error.message : error });
-            }
+          try {
+            const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
+            data.review_id = reviewId;
+            // Track posted findings to enable follow-up review
+            data.has_posted_findings = true;
+            const newPostedIds = findings.map(f => f.id);
+            const existingPostedIds = data.posted_finding_ids || [];
+            data.posted_finding_ids = [...new Set([...existingPostedIds, ...newPostedIds])];
+            fs.writeFileSync(reviewPath, JSON.stringify(data, null, 2), 'utf-8');
+            debugLog('Updated review result with review ID and posted findings', { prNumber, reviewId, postedCount: newPostedIds.length });
+          } catch {
+            // File doesn't exist or couldn't be read - this is expected for new reviews
+            debugLog('Review result file not found or unreadable, skipping update', { prNumber });
           }
 
           return true;
@@ -779,15 +774,14 @@ export function registerPRHandlers(
 
           // Clear the review ID from the stored result
           const reviewPath = path.join(getGitHubDir(project), 'pr', `review_${prNumber}.json`);
-          if (fs.existsSync(reviewPath)) {
-            try {
-              const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
-              delete data.review_id;
-              fs.writeFileSync(reviewPath, JSON.stringify(data, null, 2), 'utf-8');
-              debugLog('Cleared review ID from result file', { prNumber });
-            } catch (error) {
-              debugLog('Failed to update review result file', { error: error instanceof Error ? error.message : error });
-            }
+          try {
+            const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
+            delete data.review_id;
+            fs.writeFileSync(reviewPath, JSON.stringify(data, null, 2), 'utf-8');
+            debugLog('Cleared review ID from result file', { prNumber });
+          } catch {
+            // File doesn't exist or couldn't be read - this is expected if review wasn't saved
+            debugLog('Review result file not found or unreadable, skipping update', { prNumber });
           }
 
           return true;

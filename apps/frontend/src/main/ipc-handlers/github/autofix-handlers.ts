@@ -17,14 +17,12 @@ import { getGitHubConfig, githubFetch } from './utils';
 import { createSpecForIssue, buildIssueContext, buildInvestigationTask, updateImplementationPlanStatus } from './spec-utils';
 import type { Project } from '../../../shared/types';
 import { createContextLogger } from './utils/logger';
-import { withProjectOrNull, withProjectSyncOrNull } from './utils/project-middleware';
+import { withProjectOrNull } from './utils/project-middleware';
 import { createIPCCommunicators } from './utils/ipc-communicator';
 import {
   runPythonSubprocess,
-  getBackendPath,
   getPythonPath,
   getRunnerPath,
-  validateRunner,
   validateGitHubModule,
   buildRunnerArgs,
   parseJSONFromOutput,
@@ -574,7 +572,7 @@ export function registerAutoFixHandlers(
 
       try {
         await withProjectOrNull(projectId, async (project) => {
-          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<BatchProgress, IssueBatch[]>(
+          const { sendProgress, sendError: _sendError, sendComplete } = createIPCCommunicators<BatchProgress, IssueBatch[]>(
             mainWindow,
             {
               progress: IPC_CHANNELS.GITHUB_AUTOFIX_BATCH_PROGRESS,
@@ -691,7 +689,7 @@ export function registerAutoFixHandlers(
             message: string;
           }
 
-          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<
+          const { sendProgress, sendError: _sendError, sendComplete } = createIPCCommunicators<
             AnalyzePreviewProgress,
             AnalyzePreviewResult
           >(

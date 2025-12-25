@@ -75,7 +75,7 @@ export function PRDetail({
   onPostReview,
   onPostComment,
   onMergePR,
-  onAssignPR,
+  onAssignPR: _onAssignPR,
 }: PRDetailProps) {
   // Selection state for findings
   const [selectedFindingIds, setSelectedFindingIds] = useState<Set<string>>(new Set());
@@ -85,7 +85,7 @@ export function PRDetail({
   const [isPosting, setIsPosting] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [newCommitsCheck, setNewCommitsCheck] = useState<NewCommitsCheck | null>(null);
-  const [isCheckingNewCommits, setIsCheckingNewCommits] = useState(false);
+  const [_isCheckingNewCommits, setIsCheckingNewCommits] = useState(false);
 
   // Auto-select critical and high findings when review completes (excluding already posted)
   useEffect(() => {
@@ -131,7 +131,7 @@ export function PRDetail({
 
   // Count selected findings by type for the button label
   const selectedCount = selectedFindingIds.size;
-  const hasImportantSelected = useMemo(() => {
+  const _hasImportantSelected = useMemo(() => {
     if (!reviewResult?.findings) return false;
     return reviewResult.findings
       .filter(f => f.severity === 'critical' || f.severity === 'high')
