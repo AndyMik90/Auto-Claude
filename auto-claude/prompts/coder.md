@@ -55,50 +55,71 @@ cat "$SPEC_DIR/build-progress.txt" 2>/dev/null || echo "No previous progress"
 # 9. Check recent git history
 git log --oneline -10
 
-# 10. Count progress
-echo "Completed subtasks: $(grep -c '"status": "completed"' "$SPEC_DIR/implementation_plan.json" 2>/dev/null || echo 0)"
-echo "Pending subtasks: $(grep -c '"status": "pending"' "$SPEC_DIR/implementation_plan.json" 2>/dev/null || echo 0)"
-
-# 11. READ SESSION MEMORY (CRITICAL - Learn from past sessions)
-echo "=== SESSION MEMORY ==="
+# 10. READ SESSION MEMORY FIRST (MANDATORY - Learn from past sessions)
+echo "=== SESSION MEMORY (MANDATORY READ) ==="
 
 # Read codebase map (what files do what)
 if [ -f "$SPEC_DIR/memory/codebase_map.json" ]; then
-  echo "Codebase Map:"
+  echo "✓ Codebase Map:"
   cat "$SPEC_DIR/memory/codebase_map.json"
 else
-  echo "No codebase map yet (first session)"
+  echo "⚠️  No codebase map yet (first session) - you'll create one at session end"
 fi
 
-# Read patterns to follow
+# Read patterns to follow (CRITICAL - prevents anti-patterns)
 if [ -f "$SPEC_DIR/memory/patterns.md" ]; then
-  echo -e "\nCode Patterns to Follow:"
+  echo -e "\n✓ Code Patterns to Follow:"
   cat "$SPEC_DIR/memory/patterns.md"
 else
-  echo "No patterns documented yet"
+  echo "⚠️  No patterns documented yet - you'll document them at session end"
 fi
 
-# Read gotchas to avoid
+# Read gotchas to avoid (CRITICAL - prevents repeating mistakes)
 if [ -f "$SPEC_DIR/memory/gotchas.md" ]; then
-  echo -e "\nGotchas to Avoid:"
+  echo -e "\n✓ Gotchas to Avoid:"
   cat "$SPEC_DIR/memory/gotchas.md"
 else
-  echo "No gotchas documented yet"
+  echo "⚠️  No gotchas documented yet - you'll document any you find"
 fi
 
 # Read recent session insights (last 3 sessions)
 if [ -d "$SPEC_DIR/memory/session_insights" ]; then
-  echo -e "\nRecent Session Insights:"
+  echo -e "\n✓ Recent Session Insights:"
   ls -t "$SPEC_DIR/memory/session_insights/session_*.json" 2>/dev/null | head -3 | while read file; do
     echo "--- $file ---"
     cat "$file"
   done
 else
-  echo "No session insights yet (first session)"
+  echo "⚠️  No session insights yet (first session)"
 fi
 
-echo "=== END SESSION MEMORY ==="
+# Check for recovery context (CRITICAL if retrying a subtask)
+if [ -f "$SPEC_DIR/memory/attempt_history.json" ]; then
+  echo -e "\n⚠️⚠️⚠️ RECOVERY CONTEXT EXISTS ⚠️⚠️⚠️"
+  cat "$SPEC_DIR/memory/attempt_history.json"
+
+  stuck_count=$(jq '.stuck_subtasks | length' "$SPEC_DIR/memory/attempt_history.json" 2>/dev/null || echo 0)
+  if [ "$stuck_count" -gt 0 ]; then
+    echo -e "\n🚨 WARNING: Some subtasks are stuck and need different approaches!"
+    jq '.stuck_subtasks' "$SPEC_DIR/memory/attempt_history.json"
+  fi
+else
+  echo "✓ No attempt history - all subtasks are first attempts"
+fi
+
+echo "=== END SESSION MEMORY ===\n"
+
+# 11. Count progress
+echo "Completed subtasks: $(grep -c '"status": "completed"' "$SPEC_DIR/implementation_plan.json" 2>/dev/null || echo 0)"
+echo "Pending subtasks: $(grep -c '"status": "pending"' "$SPEC_DIR/implementation_plan.json" 2>/dev/null || echo 0)"
 ```
+
+**CHECKPOINT**: Before proceeding, verify you have:
+- ✅ Read ALL memory files (patterns, gotchas, insights)
+- ✅ Checked for recovery context (attempt_history.json)
+- ✅ Read implementation_plan.json and spec.md
+
+**If you skipped any of these, STOP and read them now. Memory is NOT optional.**
 
 ---
 
@@ -365,34 +386,65 @@ Update `implementation_plan.json`:
 "status": "in_progress"
 ```
 
-### Using Subagents for Complex Work (Optional)
+### Using Subagents for Parallel Work
 
-**For complex subtasks**, you can spawn subagents to work in parallel. Subagents are lightweight Claude Code instances that:
-- Have their own isolated context windows
-- Can work on different parts of the subtask simultaneously
-- Report back to you (the orchestrator)
+Subagents are lightweight Claude Code instances with their own context windows that work in parallel.
 
-**When to use subagents:**
-- Implementing multiple independent files in a subtask
-- Research/exploration of different parts of the codebase
-- Running different types of verification in parallel
-- Large subtasks that can be logically divided
+**Decision Framework: When to use subagents**
+
+| Situation | Use Subagent? | Reason |
+|-----------|---------------|--------|
+| 5+ independent files to modify | ✅ YES | Parallel file edits save time |
+| Research + Implementation | ✅ YES | Research in parallel while coding |
+| Multiple test suites to run | ✅ YES | Verification in parallel |
+| Same file, multiple sections | ❌ NO | Merge conflicts, use sequential |
+| < 3 files in subtask | ❌ NO | Overhead not worth it |
+| Files depend on each other | ❌ NO | Sequential order required |
+| Learning new codebase patterns | ❌ NO | Stay in context to learn |
+
+**Good subagent use (Parallel independent work):**
+```
+✅ Subtask: "Add analytics to 3 services"
+   Subagent 1: "Implement analytics in backend/api.py"
+   Subagent 2: "Implement analytics in worker/tasks.py"
+   Subagent 3: "Implement analytics in frontend/Dashboard.tsx"
+   → Files are independent, saves 3x time
+
+✅ Subtask: "Research Stripe integration and setup"
+   Subagent 1: "Research Stripe API patterns using Context7"
+   Main agent: "Set up Stripe config and env vars"
+   → Research completes while you set up infrastructure
+```
+
+**Bad subagent use (Creates more problems):**
+```
+❌ Subtask: "Update UserService.ts to add caching"
+   → Single file, sequential work is clearer
+
+❌ Subtask: "Add auth to routes.ts"
+   Subagent 1: "Add auth middleware"
+   Subagent 2: "Add auth to routes"
+   → Files depend on each other, sequential is required
+
+❌ Subtask: "Fix bug in payment.ts"
+   → Debugging requires full context, don't split
+```
 
 **How to spawn subagents:**
 ```
-Use the Task tool to spawn a subagent:
-"Implement the database schema changes in models.py"
-"Research how authentication is handled in the existing codebase"
-"Run tests for the API endpoints while I work on the frontend"
+Use the Task tool with clear, bounded tasks:
+"Implement analytics tracking in backend/services/analytics.py"
+"Research Context7 for Stripe payment intents API usage"
+"Run integration test suite for auth endpoints"
 ```
 
 **Best practices:**
-- Let Claude Code decide the parallelism level (don't specify batch sizes)
-- Subagents work best on disjoint tasks (different files/modules)
-- Each subagent has its own context window - use this for large codebases
-- You can spawn up to 10 concurrent subagents
+- **Max 3-4 subagents** at once (diminishing returns after that)
+- **Disjoint files only** - no shared file modifications
+- **Clear boundaries** - each subagent gets a specific deliverable
+- **Rejoin context** - review subagent results before proceeding
 
-**Note:** For simple subtasks, sequential implementation is usually sufficient. Subagents add value when there's genuinely parallel work to be done.
+**Default: Sequential**. Use subagents only when parallelism is genuinely beneficial.
 
 ### Implementation Rules
 
@@ -727,9 +779,11 @@ Continue with next pending subtask. Return to Step 5.
 
 ---
 
-## STEP 12: WRITE SESSION INSIGHTS (OPTIONAL)
+## STEP 12: WRITE SESSION INSIGHTS (MANDATORY)
 
-**BEFORE ending your session, document what you learned for the next session.**
+**CRITICAL**: You MUST document what you learned. The next session is stateless and depends on this.
+
+**BEFORE ending your session, you MUST document what you learned for the next session.**
 
 Use Python to write insights:
 

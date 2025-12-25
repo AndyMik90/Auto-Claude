@@ -219,9 +219,14 @@ DATABASE VERIFICATION:
 #### When to Use Context7 for Validation
 
 Use Context7 when the implementation:
-- Calls external APIs (Stripe, Auth0, etc.)
-- Uses third-party libraries (React Query, Prisma, etc.)
-- Integrates with SDKs (AWS SDK, Firebase, etc.)
+- Calls external APIs (Stripe, Auth0, Twilio, SendGrid)
+- Uses third-party libraries (React Query, Prisma, Axios, Lodash)
+- Integrates with SDKs (AWS SDK, Firebase, OpenAI, Anthropic)
+
+**Skip Context7 if:**
+- Only using standard library (Python `os`, Node.js `fs`)
+- Using well-known patterns already in codebase
+- No external dependencies added
 
 #### How to Validate with Context7
 
@@ -229,43 +234,114 @@ Use Context7 when the implementation:
 ```bash
 # Check imports in modified files
 grep -rh "^import\|^from\|require(" [modified-files] | sort -u
+
+# Or look for new dependencies
+git diff main -- package.json requirements.txt Cargo.toml
 ```
 
-**Step 2: Look up each library in Context7**
-```
-Tool: mcp__context7__resolve-library-id
-Input: { "libraryName": "[library name]" }
+**Step 2-4: Validate each library (Example workflows)**
+
+**Example 1: Stripe Payment Implementation**
+
+```bash
+# Found in code: import Stripe from 'stripe'
 ```
 
-**Step 3: Verify API usage matches documentation**
-```
-Tool: mcp__context7__get-library-docs
-Input: {
-  "context7CompatibleLibraryID": "[library-id]",
-  "topic": "[relevant topic - e.g., the function being used]",
-  "mode": "code"
-}
+Validate:
+1. **Resolve library**: `mcp__context7__resolve-library-id` with `{"libraryName": "stripe"}`
+   → Returns `/stripe/stripe-node` or similar
+
+2. **Get payment intents docs**: `mcp__context7__get-library-docs` with:
+   ```json
+   {
+     "context7CompatibleLibraryID": "/stripe/stripe-node",
+     "topic": "payment intents",
+     "mode": "code"
+   }
+   ```
+
+3. **Verify implementation**:
+   - ✅ Uses `stripe.paymentIntents.create()` with correct params
+   - ✅ Includes `amount`, `currency`, `payment_method` (required fields)
+   - ✅ Handles webhook signatures properly
+   - ❌ **ISSUE**: Missing `idempotency_key` for safety
+   - ❌ **ISSUE**: Not handling 3D Secure properly
+
+**Example 2: Prisma ORM Usage**
+
+```bash
+# Found in code: import { PrismaClient } from '@prisma/client'
 ```
 
-**Step 4: Check for:**
-- ✓ Correct function signatures (parameters, return types)
-- ✓ Proper initialization/setup patterns
-- ✓ Required configuration or environment variables
-- ✓ Error handling patterns recommended in docs
-- ✓ Deprecated methods being avoided
+Validate:
+1. Resolve: `{"libraryName": "prisma"}`
+2. Get docs: topic="query methods", mode="code"
+3. Check:
+   - ✅ Uses `findUnique` for single records (not `findFirst`)
+   - ✅ Includes proper error handling for `NotFoundError`
+   - ❌ **ISSUE**: Using `delete` without checking existence first
+   - ✅ Transaction handling correct
+
+**Example 3: OpenAI API**
+
+```bash
+# Found in code: from openai import OpenAI
+```
+
+Validate:
+1. Resolve: `{"libraryName": "openai"}`
+2. Get docs: topic="chat completions", mode="code"
+3. Check:
+   - ✅ Using correct model name `gpt-4o` (not deprecated `gpt-4`)
+   - ✅ Proper message format `[{"role": "user", "content": "..."}]`
+   - ❌ **ISSUE**: No retry logic for rate limits
+   - ❌ **ISSUE**: Not using streaming for long responses
+
+#### Validation Checklist
+
+For each library, verify:
+
+- ✅ **Function signatures match docs** (parameters, types, return values)
+- ✅ **Initialization pattern correct** (API keys, config setup)
+- ✅ **Required fields present** (no missing params)
+- ✅ **Error handling per docs** (specific exceptions handled)
+- ✅ **No deprecated methods** (using latest API patterns)
+- ✅ **Environment variables set** (API keys in .env.example)
+- ✅ **Rate limiting handled** (if applicable)
+- ✅ **Retry logic present** (for network calls)
 
 #### Document Findings
 
 ```
 THIRD-PARTY API VALIDATION:
-- [Library Name]: PASS/FAIL
-  - Function signatures: ✓/✗
-  - Initialization: ✓/✗
-  - Error handling: ✓/✗
-  - Issues found: [list or "None"]
+
+1. Stripe (v12.0.0):
+   - ✅ Function signatures: Correct
+   - ✅ Initialization: API key from env
+   - ❌ Error handling: Missing idempotency_key
+   - ❌ Webhooks: Signature verification incomplete
+   - Issues: Add idempotency_key for payment intents, verify webhook signatures
+
+2. Prisma (v5.0.0):
+   - ✅ Function signatures: Correct
+   - ✅ Query patterns: Following best practices
+   - ❌ Delete operations: Not checking existence first
+   - Issues: Add existence check before delete operations
+
+VERDICT: FAIL - Critical issues in Stripe integration
 ```
 
-If issues are found, add them to the QA report as they indicate the implementation doesn't follow the library's documented patterns.
+**Common Validation Failures:**
+
+| Issue | What to Look For | How to Fix |
+|-------|------------------|------------|
+| Wrong function name | `stripe.payment_intents.create()` instead of `stripe.paymentIntents.create()` | Check Context7 for correct API |
+| Missing required params | Payment amount not provided | Add all required fields from docs |
+| Deprecated API | Using `gpt-3.5-turbo` in 2025 | Update to current recommended model |
+| Wrong error handling | Catching generic `Exception` | Catch specific library exceptions |
+| Missing API key | Hardcoded or missing `STRIPE_SECRET_KEY` | Add to .env and use `os.getenv()` |
+
+If issues are found, add them to the QA report. Third-party API misuse is a **critical failure** - implementation must be corrected.
 
 ### 6.1: Security Review
 

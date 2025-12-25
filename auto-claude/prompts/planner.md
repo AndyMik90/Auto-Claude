@@ -365,13 +365,52 @@ Use ONLY these values for the `type` field in phases:
 
 ### Verification Types
 
-| Type | When to Use | Format |
-|------|-------------|--------|
-| `command` | CLI verification | `{"type": "command", "command": "...", "expected": "..."}` |
-| `api` | REST endpoint testing | `{"type": "api", "method": "GET/POST", "url": "...", "expected_status": 200}` |
-| `browser` | UI rendering checks | `{"type": "browser", "url": "...", "checks": [...]}` |
-| `e2e` | Full flow verification | `{"type": "e2e", "steps": [...]}` |
-| `manual` | Requires human judgment | `{"type": "manual", "instructions": "..."}` |
+Choose the RIGHT verification type for each subtask. Good verification catches bugs; bad verification wastes time.
+
+**Verification Type Decision Tree:**
+
+```
+What does this subtask modify?
+│
+├─► Backend function/module → `command`
+│   Example: "python -c 'from auth import verify_token; print(verify_token(\"test\"))'"
+│
+├─► API endpoint → `api`
+│   Example: {"method": "POST", "url": "http://localhost:5000/api/login", "expected_status": 200}
+│
+├─► UI component → `browser`
+│   Example: {"url": "http://localhost:3000/dashboard", "checks": ["Dashboard renders", "No console errors"]}
+│
+├─► Multi-service flow → `e2e`
+│   Example: {"steps": ["User logs in", "Creates item", "Item appears in database"]}
+│
+└─► Investigation/research → `manual`
+    Example: {"instructions": "Review DEBUG_REPORT.md for root cause and proposed fix"}
+```
+
+**Verification Type Reference:**
+
+| Type | When to Use | Good Example | Bad Example |
+|------|-------------|--------------|-------------|
+| `command` | Backend logic, CLI tools, imports | ✅ `pytest tests/test_auth.py::test_login` | ❌ `python manage.py runserver` (doesn't verify anything) |
+| `api` | REST/GraphQL endpoints | ✅ `POST /api/users` expects 201 | ❌ No expected_status field |
+| `browser` | UI components, pages | ✅ Check "No console errors" | ❌ Just "Check if it looks good" |
+| `e2e` | Full user workflows | ✅ Login → Create → Verify in DB | ❌ Only frontend checks (not end-to-end) |
+| `manual` | Investigation, research, judgment | ✅ "Review investigation findings" | ❌ "Test it manually" (too vague) |
+
+**Good Verification Criteria:**
+
+✅ **Specific**: "User table has 1 new row with correct email"
+✅ **Automated**: Can be run by coder agent without human
+✅ **Fast**: Completes in < 30 seconds
+✅ **Deterministic**: Same input → same result
+
+**Bad Verification Criteria:**
+
+❌ **Vague**: "Make sure it works"
+❌ **Manual only**: "Open browser and click around"
+❌ **Slow**: "Run full test suite (10 minutes)"
+❌ **Non-deterministic**: "Sometimes returns 200, sometimes 500"
 
 ### Special Subtask Types
 
@@ -537,20 +576,104 @@ If complexity_assessment indicates `skip_validation: true` (documentation-only c
 
 ## PHASE 4: ANALYZE PARALLELISM OPPORTUNITIES
 
-After creating the phases, analyze which can run in parallel:
+After creating the phases, analyze which can run in parallel. **Default to sequential (1 worker)** unless parallelism provides clear benefit.
 
-### Parallelism Rules
+### Parallelism Decision Framework
 
-Two phases can run in parallel if:
-1. They have **the same dependencies** (or compatible dependency sets)
-2. They **don't modify the same files**
-3. They are in **different services** (e.g., frontend vs worker)
+**When to recommend parallel execution:**
+
+| Scenario | Recommended Workers | Speedup Benefit |
+|----------|---------------------|-----------------|
+| 2+ phases with same dependencies, different services | 2 workers | ~1.5x faster |
+| 3+ independent service implementations | 3 workers | ~2x faster |
+| All phases sequential (depend on previous) | 1 worker | None (adds complexity) |
+| Shared file modifications across phases | 1 worker | Parallel would cause conflicts |
+| Learning new codebase (first few specs) | 1 worker | Sequential builds understanding |
+
+**Parallelism Rules (ALL must be true):**
+
+Two phases can run in parallel ONLY if:
+1. ✅ They have **identical `depends_on` arrays** (same dependencies)
+2. ✅ They have **NO overlapping files** in `files_to_modify` or `files_to_create`
+3. ✅ They are in **different services** (e.g., frontend vs worker vs backend)
+
+If ANY rule fails → sequential execution required.
+
+### Good Parallelism Example
+
+```json
+{
+  "phases": [
+    {
+      "id": "phase-1-database",
+      "depends_on": [],
+      "subtasks": [{"files_to_modify": ["models/user.py"]}]
+    },
+    {
+      "id": "phase-2-api",
+      "depends_on": ["phase-1-database"],
+      "subtasks": [{"files_to_modify": ["api/users.py"]}]
+    },
+    {
+      "id": "phase-3-frontend",
+      "depends_on": ["phase-1-database"],  // ✅ Same as phase-2
+      "subtasks": [{"files_to_modify": ["components/UserList.tsx"]}]  // ✅ Different files
+    }
+  ],
+  "parallelism": {
+    "parallel_groups": [
+      {
+        "phases": ["phase-2-api", "phase-3-frontend"],
+        "reason": "Both depend only on phase-1, different file sets, different services",
+        "safe": true
+      }
+    ],
+    "recommended_workers": 2,
+    "speedup_estimate": "1.5x faster (2 phases in parallel)"
+  }
+}
+```
+
+### Bad Parallelism Example (Don't Do This)
+
+```json
+{
+  "phases": [
+    {
+      "id": "phase-1-auth",
+      "depends_on": [],
+      "subtasks": [{"files_to_modify": ["auth/middleware.py"]}]
+    },
+    {
+      "id": "phase-2-routes",
+      "depends_on": ["phase-1-auth"],  // ✅ Same dependencies
+      "subtasks": [{"files_to_modify": ["routes/users.py", "auth/middleware.py"]}]  // ❌ CONFLICT!
+    },
+    {
+      "id": "phase-3-tests",
+      "depends_on": ["phase-1-auth"],
+      "subtasks": [{"files_to_modify": ["tests/test_auth.py"]}]
+    }
+  ],
+  "parallelism": {
+    "recommended_workers": 1,  // ✅ Correct - phase-2 and phase-3 CANNOT run in parallel
+    "reason": "phase-2 modifies auth/middleware.py which phase-3 depends on"
+  }
+}
+```
 
 ### Analysis Steps
 
-1. **Find parallel groups**: Phases with identical `depends_on` arrays
-2. **Check file conflicts**: Ensure no overlapping `files_to_modify` or `files_to_create`
-3. **Count max parallel workers**: Maximum parallelizable phases at any point
+1. **Find candidates**: Phases with identical `depends_on` arrays
+2. **Check file conflicts**: Use this check:
+   ```python
+   files_2 = set(phase2_files_to_modify + phase2_files_to_create)
+   files_3 = set(phase3_files_to_modify + phase3_files_to_create)
+   if files_2 & files_3:  # Intersection exists
+       parallel_safe = False  # File conflict!
+   ```
+3. **Count maximum parallel phases** at any dependency level
+4. **Conservative default**: If unsure, recommend 1 worker
 
 ### Add to Summary
 
