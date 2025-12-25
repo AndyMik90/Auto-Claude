@@ -322,6 +322,8 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       expect(envArg.ANTHROPIC_AUTH_TOKEN).toBe('sk-profile-active');
       expect(envArg.ANTHROPIC_BASE_URL).toBe('https://active-profile.com');
     });
+=======
+>>>>>>> 8fd2fe1637a9169566fb053b7840f5822f379c4b
   });
 
   describe('AC4: No API Key Logging', () => {
