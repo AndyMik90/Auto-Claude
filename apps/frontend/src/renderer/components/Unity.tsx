@@ -13,7 +13,11 @@ import {
   Terminal as TerminalIcon,
   ChevronRight,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  RotateCcw,
+  Ban,
+  FileText
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
@@ -53,16 +57,36 @@ interface UnityRun {
   startedAt: string;
   endedAt?: string;
   durationMs?: number;
-  status: 'running' | 'success' | 'failed';
+  status: 'running' | 'success' | 'failed' | 'canceled';
   exitCode?: number;
   command: string;
+  pid?: number;
+  actionId?: string;
+  params?: {
+    editorPath: string;
+    projectPath: string;
+    executeMethod?: string;
+    testPlatform?: string;
+  };
   artifactPaths: {
     runDir: string;
     log?: string;
     testResults?: string;
     stdout?: string;
     stderr?: string;
+    errorDigest?: string;
   };
+  testsSummary?: {
+    passed: number;
+    failed: number;
+    skipped: number;
+    durationSeconds?: number;
+  };
+  errorSummary?: {
+    errorCount: number;
+    firstErrorLine?: string;
+  };
+  canceledReason?: string;
 }
 
 export function Unity({ projectId }: UnityProps) {
@@ -280,12 +304,89 @@ export function Unity({ projectId }: UnityProps) {
         return <CheckCircle className="h-4 w-4 text-success" />;
       case 'failed':
         return <XCircle className="h-4 w-4 text-destructive" />;
+      case 'canceled':
+        return <Ban className="h-4 w-4 text-yellow-600" />;
       case 'running':
         return <Loader2 className="h-4 w-4 animate-spin text-info" />;
       default:
         return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
+
+  // Format test summary
+  const formatTestSummary = (summary: UnityRun['testsSummary']) => {
+    if (!summary) return null;
+    const parts: string[] = [];
+    if (summary.passed > 0) parts.push(`✅ ${summary.passed}`);
+    if (summary.failed > 0) parts.push(`❌ ${summary.failed}`);
+    if (summary.skipped > 0) parts.push(`⏭ ${summary.skipped}`);
+    return parts.join(' / ') || 'No tests';
+  };
+
+  // Cancel a running Unity run
+  const cancelRun = async (runId: string) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.cancelUnityRun(selectedProject.id, runId);
+      if (result.success) {
+        // Refresh runs
+        await loadRuns();
+      } else {
+        setRunError(result.error || 'Failed to cancel run');
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to cancel run');
+    }
+  };
+
+  // Re-run a Unity run
+  const rerun = async (runId: string) => {
+    if (!selectedProject) return;
+
+    setIsRunning(true);
+    setRunError(null);
+
+    try {
+      const result = await window.electronAPI.rerunUnity(selectedProject.id, runId);
+      if (result.success) {
+        // Refresh runs
+        await loadRuns();
+      } else {
+        setRunError(result.error || 'Failed to re-run');
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to re-run');
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = async (text: string) => {
+    try {
+      await window.electronAPI.copyToClipboard(text);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  // Check if there's a version mismatch
+  const hasVersionMismatch = useMemo(() => {
+    if (!projectInfo?.version || !effectiveEditorPath) return false;
+
+    // Try to extract version from editor path
+    const editorVersionMatch = effectiveEditorPath.match(/(\d+\.\d+\.\d+[a-z]\d+)/i);
+    if (!editorVersionMatch) return false;
+
+    const editorVersion = editorVersionMatch[1];
+    return projectInfo.version !== editorVersion;
+  }, [projectInfo?.version, effectiveEditorPath]);
+
+  // Check if there's a running run
+  const hasRunningRun = useMemo(() => {
+    return runs.some(run => run.status === 'running');
+  }, [runs]);
 
   if (!selectedProject) {
     return (
@@ -295,7 +396,7 @@ export function Unity({ projectId }: UnityProps) {
     );
   }
 
-  const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunning;
+  const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunning && !hasRunningRun;
   const canRunBuild = canRunTests && buildExecuteMethod;
 
   // Check if project's required editor is installed
@@ -505,6 +606,21 @@ export function Unity({ projectId }: UnityProps) {
               </CardContent>
             </Card>
 
+            {/* Version Mismatch Warning */}
+            {projectInfo.isUnityProject && hasVersionMismatch && (
+              <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium text-yellow-700 dark:text-yellow-400">Version Mismatch Warning</p>
+                    <p className="text-yellow-600 dark:text-yellow-500 mt-1">
+                      Project targets Unity {projectInfo.version} but selected editor version may differ. This could cause import/recompile issues.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Not a Unity project - show empty state */}
             {!projectInfo.isUnityProject && (
               <div className="flex flex-col items-center justify-center text-center py-12">
@@ -653,96 +769,249 @@ export function Unity({ projectId }: UnityProps) {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {runs.map((run) => (
-                        <button
-                          key={run.id}
-                          onClick={() => setSelectedRun(selectedRun?.id === run.id ? null : run)}
-                          className="w-full text-left p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(run.status)}
-                              <span className="text-sm font-medium">
-                                {t(`history.actionLabels.${run.action}`)}
-                              </span>
-                              <Badge variant="outline" className="text-xs">
-                                {run.status}
-                              </Badge>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDuration(run.durationMs)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            {new Date(run.startedAt).toLocaleString()}
-                          </div>
+                      {runs.map((run) => {
+                        const testSummary = formatTestSummary(run.testsSummary);
+                        const hasErrors = run.errorSummary && run.errorSummary.errorCount > 0;
 
-                          {/* Expanded details */}
-                          {selectedRun?.id === run.id && (
-                            <div className="mt-4 pt-4 border-t border-border space-y-3">
-                              <div>
-                                <p className="text-xs font-medium mb-1">{t('history.command')}</p>
-                                <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
-                                  {run.command}
-                                </pre>
+                        return (
+                          <div
+                            key={run.id}
+                            className="rounded-lg border border-border overflow-hidden"
+                          >
+                            <button
+                              onClick={() => setSelectedRun(selectedRun?.id === run.id ? null : run)}
+                              className="w-full text-left p-3 hover:bg-accent/50 transition-colors"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {getStatusIcon(run.status)}
+                                  <span className="text-sm font-medium">
+                                    {t(`history.actionLabels.${run.action}`)}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {run.status}
+                                  </Badge>
+                                  {testSummary && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {testSummary}
+                                    </span>
+                                  )}
+                                  {hasErrors && (
+                                    <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/30">
+                                      ⚠️ {run.errorSummary!.errorCount} error{run.errorSummary!.errorCount > 1 ? 's' : ''}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDuration(run.durationMs)}
+                                </span>
                               </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {new Date(run.startedAt).toLocaleString()}
+                              </div>
+                            </button>
 
-                              <div>
-                                <p className="text-xs font-medium mb-1">{t('history.artifacts')}</p>
-                                <div className="space-y-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-xs w-full justify-start"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      window.electronAPI.openPath(run.artifactPaths.runDir);
-                                    }}
-                                  >
-                                    <FolderOpen className="h-3 w-3 mr-1" />
-                                    {t('history.openRunDirectory')}
-                                  </Button>
-                                  {run.artifactPaths.log && (
+                            {/* Expanded details */}
+                            {selectedRun?.id === run.id && (
+                              <div className="px-3 pb-3 pt-1 border-t border-border space-y-3">
+                                {/* Action buttons */}
+                                <div className="flex gap-2">
+                                  {run.status === 'running' && (
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
-                                      className="h-7 text-xs w-full justify-start"
+                                      className="h-7 text-xs"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        const logPath = run.artifactPaths.log;
-                                        if (logPath) {
-                                          window.electronAPI.openPath(logPath);
-                                        }
+                                        cancelRun(run.id);
                                       }}
                                     >
-                                      <TerminalIcon className="h-3 w-3 mr-1" />
-                                      {t('history.unityLog')}
+                                      <Ban className="h-3 w-3 mr-1" />
+                                      Cancel
                                     </Button>
                                   )}
-                                  {run.artifactPaths.testResults && (
+                                  {run.status !== 'running' && (
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
-                                      className="h-7 text-xs w-full justify-start"
+                                      className="h-7 text-xs"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        const testResultsPath = run.artifactPaths.testResults;
-                                        if (testResultsPath) {
-                                          window.electronAPI.openPath(testResultsPath);
-                                        }
+                                        rerun(run.id);
                                       }}
+                                      disabled={!run.params}
                                     >
-                                      <ChevronRight className="h-3 w-3 mr-1" />
-                                      {t('history.testResults')}
+                                      <RotateCcw className="h-3 w-3 mr-1" />
+                                      Re-run
                                     </Button>
                                   )}
                                 </div>
+
+                                {/* Test summary details */}
+                                {run.testsSummary && (
+                                  <div>
+                                    <p className="text-xs font-medium mb-1">Tests</p>
+                                    <div className="text-xs bg-muted p-2 rounded space-y-1">
+                                      <div>Passed: {run.testsSummary.passed}</div>
+                                      <div>Failed: {run.testsSummary.failed}</div>
+                                      <div>Skipped: {run.testsSummary.skipped}</div>
+                                      {run.testsSummary.durationSeconds && (
+                                        <div>Duration: {run.testsSummary.durationSeconds.toFixed(2)}s</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Error digest */}
+                                {hasErrors && run.artifactPaths.errorDigest && (
+                                  <div>
+                                    <p className="text-xs font-medium mb-1">Error Digest</p>
+                                    <div className="space-y-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs w-full justify-start"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          window.electronAPI.openPath(run.artifactPaths.errorDigest!);
+                                        }}
+                                      >
+                                        <FileText className="h-3 w-3 mr-1" />
+                                        Open Error Digest
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs w-full justify-start"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          copyToClipboard(run.artifactPaths.errorDigest!);
+                                        }}
+                                      >
+                                        <Copy className="h-3 w-3 mr-1" />
+                                        Copy Error Digest Path
+                                      </Button>
+                                      {run.errorSummary?.firstErrorLine && (
+                                        <div className="text-xs bg-destructive/10 p-2 rounded text-destructive">
+                                          {run.errorSummary.firstErrorLine}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Command */}
+                                <div>
+                                  <p className="text-xs font-medium mb-1">{t('history.command')}</p>
+                                  <div className="relative">
+                                    <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
+                                      {run.command}
+                                    </pre>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="absolute top-1 right-1 h-6 w-6 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        copyToClipboard(run.command);
+                                      }}
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Artifacts */}
+                                <div>
+                                  <p className="text-xs font-medium mb-1">{t('history.artifacts')}</p>
+                                  <div className="space-y-1">
+                                    <div className="flex gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs flex-1 justify-start"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          window.electronAPI.openPath(run.artifactPaths.runDir);
+                                        }}
+                                      >
+                                        <FolderOpen className="h-3 w-3 mr-1" />
+                                        {t('history.openRunDirectory')}
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          copyToClipboard(run.artifactPaths.runDir);
+                                        }}
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    {run.artifactPaths.log && (
+                                      <div className="flex gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 text-xs flex-1 justify-start"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.electronAPI.openPath(run.artifactPaths.log!);
+                                          }}
+                                        >
+                                          <TerminalIcon className="h-3 w-3 mr-1" />
+                                          {t('history.unityLog')}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            copyToClipboard(run.artifactPaths.log!);
+                                          }}
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                    {run.artifactPaths.testResults && (
+                                      <div className="flex gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 text-xs flex-1 justify-start"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.electronAPI.openPath(run.artifactPaths.testResults!);
+                                          }}
+                                        >
+                                          <ChevronRight className="h-3 w-3 mr-1" />
+                                          {t('history.testResults')}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            copyToClipboard(run.artifactPaths.testResults!);
+                                          }}
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </button>
-                      ))}
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
