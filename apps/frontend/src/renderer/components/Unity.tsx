@@ -85,6 +85,13 @@ export function Unity({ projectId }: UnityProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
 
+  // Get the effective editor path based on project version
+  const effectiveEditorPath = useMemo(() => {
+    if (!projectInfo?.version) return '';
+    const matchingEditor = editors.find(e => e.version === projectInfo.version);
+    return matchingEditor?.path || '';
+  }, [projectInfo?.version, editors]);
+
   // Detect Unity project
   const detectUnityProject = useCallback(async () => {
     if (!selectedProject) return;
@@ -138,15 +145,16 @@ export function Unity({ projectId }: UnityProps) {
     try {
       const result = await window.electronAPI.getUnitySettings(selectedProject.id);
       if (result.success && result.data) {
-        if (result.data.unityProjectPath) {
-          setCustomUnityPath(result.data.unityProjectPath);
-        }
-        if (result.data.buildExecuteMethod) {
-          setBuildExecuteMethod(result.data.buildExecuteMethod);
-        }
+        setCustomUnityPath(result.data.unityProjectPath ?? '');
+        setBuildExecuteMethod(result.data.buildExecuteMethod ?? '');
+      } else {
+        setCustomUnityPath('');
+        setBuildExecuteMethod('');
       }
     } catch (err) {
       console.error('Failed to load Unity settings:', err);
+      setCustomUnityPath('');
+      setBuildExecuteMethod('');
     }
   }, [selectedProject]);
 
@@ -283,13 +291,6 @@ export function Unity({ projectId }: UnityProps) {
       </div>
     );
   }
-
-  // Get the effective editor path based on project version
-  const effectiveEditorPath = useMemo(() => {
-    if (!projectInfo?.version) return '';
-    const matchingEditor = editors.find(e => e.version === projectInfo.version);
-    return matchingEditor?.path || '';
-  }, [projectInfo?.version, editors]);
 
   const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunning;
   const canRunBuild = canRunTests && buildExecuteMethod;
