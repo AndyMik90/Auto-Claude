@@ -90,7 +90,7 @@
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "@electron/rebuild": "^3.7.1",
+    "@electron/rebuild": "^4.0.2",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4.1.17",
