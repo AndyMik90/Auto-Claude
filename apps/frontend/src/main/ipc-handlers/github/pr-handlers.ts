@@ -27,6 +27,32 @@ import {
   buildRunnerArgs,
 } from './utils/subprocess-runner';
 
+/**
+ * Sanitize network data before writing to file
+ * Removes potentially dangerous characters and limits length
+ */
+function sanitizeNetworkData(data: string, maxLength = 1000000): string {
+  // Remove null bytes and other control characters except newlines/tabs/carriage returns
+  // Using code points instead of escape sequences to avoid no-control-regex ESLint rule
+  const controlCharsPattern = new RegExp(
+    '[' +
+    String.fromCharCode(0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08) + // \x00-\x08
+    String.fromCharCode(0x0B, 0x0C) + // \x0B, \x0C (skip \x0A which is newline)
+    String.fromCharCode(0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F) + // \x0E-\x1F
+    String.fromCharCode(0x7F) + // \x7F (DEL)
+    ']',
+    'g'
+  );
+  let sanitized = data.replace(controlCharsPattern, '');
+
+  // Limit length to prevent DoS
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength);
+  }
+
+  return sanitized;
+}
+
 // Debug logging
 const { debug: debugLog } = createContextLogger('GitHub PR');
 
@@ -143,47 +169,46 @@ function getGitHubDir(project: Project): string {
 function getReviewResult(project: Project, prNumber: number): PRReviewResult | null {
   const reviewPath = path.join(getGitHubDir(project), 'pr', `review_${prNumber}.json`);
 
-  if (fs.existsSync(reviewPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
-      return {
-        prNumber: data.pr_number,
-        repo: data.repo,
-        success: data.success,
-        findings: data.findings?.map((f: Record<string, unknown>) => ({
-          id: f.id,
-          severity: f.severity,
-          category: f.category,
-          title: f.title,
-          description: f.description,
-          file: f.file,
-          line: f.line,
-          endLine: f.end_line,
-          suggestedFix: f.suggested_fix,
-          fixable: f.fixable ?? false,
-        })) ?? [],
-        summary: data.summary ?? '',
-        overallStatus: data.overall_status ?? 'comment',
-        reviewId: data.review_id,
-        reviewedAt: data.reviewed_at ?? new Date().toISOString(),
-        error: data.error,
-        // Follow-up review fields (snake_case -> camelCase)
-        reviewedCommitSha: data.reviewed_commit_sha,
-        isFollowupReview: data.is_followup_review ?? false,
-        previousReviewId: data.previous_review_id,
-        resolvedFindings: data.resolved_findings ?? [],
-        unresolvedFindings: data.unresolved_findings ?? [],
-        newFindingsSinceLastReview: data.new_findings_since_last_review ?? [],
-        // Track posted findings for follow-up review eligibility
-        hasPostedFindings: data.has_posted_findings ?? false,
-        postedFindingIds: data.posted_finding_ids ?? [],
-      };
-    } catch {
-      return null;
-    }
+  try {
+    const rawData = fs.readFileSync(reviewPath, 'utf-8');
+    const sanitizedData = sanitizeNetworkData(rawData);
+    const data = JSON.parse(sanitizedData);
+    return {
+      prNumber: data.pr_number,
+      repo: data.repo,
+      success: data.success,
+      findings: data.findings?.map((f: Record<string, unknown>) => ({
+        id: f.id,
+        severity: f.severity,
+        category: f.category,
+        title: f.title,
+        description: f.description,
+        file: f.file,
+        line: f.line,
+        endLine: f.end_line,
+        suggestedFix: f.suggested_fix,
+        fixable: f.fixable ?? false,
+      })) ?? [],
+      summary: data.summary ?? '',
+      overallStatus: data.overall_status ?? 'comment',
+      reviewId: data.review_id,
+      reviewedAt: data.reviewed_at ?? new Date().toISOString(),
+      error: data.error,
+      // Follow-up review fields (snake_case -> camelCase)
+      reviewedCommitSha: data.reviewed_commit_sha,
+      isFollowupReview: data.is_followup_review ?? false,
+      previousReviewId: data.previous_review_id,
+      resolvedFindings: data.resolved_findings ?? [],
+      unresolvedFindings: data.unresolved_findings ?? [],
+      newFindingsSinceLastReview: data.new_findings_since_last_review ?? [],
+      // Track posted findings for follow-up review eligibility
+      hasPostedFindings: data.has_posted_findings ?? false,
+      postedFindingIds: data.posted_finding_ids ?? [],
+    };
+  } catch {
+    // File doesn't exist or couldn't be read
+    return null;
   }
-
-  return null;
 }
 
 // IPC communication helpers removed - using createIPCCommunicators instead
@@ -484,7 +509,7 @@ export function registerPRHandlers(
 
       try {
         await withProjectOrNull(projectId, async (project) => {
-          const { sendProgress, sendError: _sendError, sendComplete } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
+          const { sendProgress, sendComplete } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
             mainWindow,
             {
               progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
@@ -629,9 +654,9 @@ export function registerPRHandlers(
           debugLog('Posting review to GitHub', { prNumber, status: overallStatus, event, findingsCount: findings.length });
 
           // Post review via GitHub API to capture review ID
-          let reviewResponse: { id: number };
+          let reviewId: number;
           try {
-            reviewResponse = await githubFetch(
+            const reviewResponse = await githubFetch(
               config.token,
               `/repos/${config.repo}/pulls/${prNumber}/reviews`,
               {
@@ -642,6 +667,7 @@ export function registerPRHandlers(
                 }),
               }
             ) as { id: number };
+            reviewId = reviewResponse.id;
           } catch (error) {
             // GitHub doesn't allow REQUEST_CHANGES or APPROVE on your own PR
             // Fall back to COMMENT if that's the error
@@ -649,7 +675,7 @@ export function registerPRHandlers(
             if (errorMsg.includes('Can not request changes on your own pull request') ||
                 errorMsg.includes('Can not approve your own pull request')) {
               debugLog('Cannot use REQUEST_CHANGES/APPROVE on own PR, falling back to COMMENT', { prNumber });
-              reviewResponse = await githubFetch(
+              const fallbackResponse = await githubFetch(
                 config.token,
                 `/repos/${config.repo}/pulls/${prNumber}/reviews`,
                 {
@@ -660,18 +686,20 @@ export function registerPRHandlers(
                   }),
                 }
               ) as { id: number };
+              reviewId = fallbackResponse.id;
             } else {
               throw error;
             }
           }
-
-          const reviewId = reviewResponse.id;
           debugLog('Review posted successfully', { prNumber, reviewId });
 
           // Update the stored review result with the review ID and posted findings
           const reviewPath = path.join(getGitHubDir(project), 'pr', `review_${prNumber}.json`);
           try {
-            const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
+            const rawData = fs.readFileSync(reviewPath, 'utf-8');
+            // Sanitize network data before parsing (review may contain data from GitHub API)
+            const sanitizedData = sanitizeNetworkData(rawData);
+            const data = JSON.parse(sanitizedData);
             data.review_id = reviewId;
             // Track posted findings to enable follow-up review
             data.has_posted_findings = true;
@@ -775,7 +803,9 @@ export function registerPRHandlers(
           // Clear the review ID from the stored result
           const reviewPath = path.join(getGitHubDir(project), 'pr', `review_${prNumber}.json`);
           try {
-            const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
+            const rawData = fs.readFileSync(reviewPath, 'utf-8');
+            const sanitizedData = sanitizeNetworkData(rawData);
+            const data = JSON.parse(sanitizedData);
             delete data.review_id;
             fs.writeFileSync(reviewPath, JSON.stringify(data, null, 2), 'utf-8');
             debugLog('Cleared review ID from result file', { prNumber });
@@ -907,15 +937,13 @@ export function registerPRHandlers(
         const githubDir = path.join(project.path, '.auto-claude', 'github');
         const reviewPath = path.join(githubDir, 'pr', `review_${prNumber}.json`);
 
-        if (!fs.existsSync(reviewPath)) {
-          return { hasNewCommits: false, newCommitCount: 0 };
-        }
-
         let review: PRReviewResult;
         try {
-          const data = fs.readFileSync(reviewPath, 'utf-8');
-          review = JSON.parse(data);
+          const rawData = fs.readFileSync(reviewPath, 'utf-8');
+          const sanitizedData = sanitizeNetworkData(rawData);
+          review = JSON.parse(sanitizedData);
         } catch {
+          // File doesn't exist or couldn't be read
           return { hasNewCommits: false, newCommitCount: 0 };
         }
 

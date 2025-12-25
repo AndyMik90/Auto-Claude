@@ -90,19 +90,17 @@ function getGitHubDir(project: Project): string {
 function getTriageConfig(project: Project): TriageConfig {
   const configPath = path.join(getGitHubDir(project), 'config.json');
 
-  if (fs.existsSync(configPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      return {
-        enabled: data.triage_enabled ?? false,
-        duplicateThreshold: data.duplicate_threshold ?? 0.80,
-        spamThreshold: data.spam_threshold ?? 0.75,
-        featureCreepThreshold: data.feature_creep_threshold ?? 0.70,
-        enableComments: data.enable_triage_comments ?? false,
-      };
-    } catch {
-      // Return defaults
-    }
+  try {
+    const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    return {
+      enabled: data.triage_enabled ?? false,
+      duplicateThreshold: data.duplicate_threshold ?? 0.80,
+      spamThreshold: data.spam_threshold ?? 0.75,
+      featureCreepThreshold: data.feature_creep_threshold ?? 0.70,
+      enableComments: data.enable_triage_comments ?? false,
+    };
+  } catch {
+    // Return defaults if file doesn't exist or is invalid
   }
 
   return {
@@ -124,12 +122,10 @@ function saveTriageConfig(project: Project, config: TriageConfig): void {
   const configPath = path.join(githubDir, 'config.json');
   let existingConfig: Record<string, unknown> = {};
 
-  if (fs.existsSync(configPath)) {
-    try {
-      existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    } catch {
-      // Use empty config
-    }
+  try {
+    existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch {
+    // Use empty config if file doesn't exist or is invalid
   }
 
   const updatedConfig = {
@@ -149,38 +145,39 @@ function saveTriageConfig(project: Project, config: TriageConfig): void {
  */
 function getTriageResults(project: Project): TriageResult[] {
   const issuesDir = path.join(getGitHubDir(project), 'issues');
-
-  if (!fs.existsSync(issuesDir)) {
-    return [];
-  }
-
   const results: TriageResult[] = [];
-  const files = fs.readdirSync(issuesDir);
 
-  for (const file of files) {
-    if (file.startsWith('triage_') && file.endsWith('.json')) {
-      try {
-        const data = JSON.parse(fs.readFileSync(path.join(issuesDir, file), 'utf-8'));
-        results.push({
-          issueNumber: data.issue_number,
-          repo: data.repo,
-          category: data.category,
-          confidence: data.confidence,
-          labelsToAdd: data.labels_to_add ?? [],
-          labelsToRemove: data.labels_to_remove ?? [],
-          isDuplicate: data.is_duplicate ?? false,
-          duplicateOf: data.duplicate_of,
-          isSpam: data.is_spam ?? false,
-          isFeatureCreep: data.is_feature_creep ?? false,
-          suggestedBreakdown: data.suggested_breakdown ?? [],
-          priority: data.priority ?? 'medium',
-          comment: data.comment,
-          triagedAt: data.triaged_at ?? new Date().toISOString(),
-        });
-      } catch {
-        // Skip invalid files
+  try {
+    const files = fs.readdirSync(issuesDir);
+
+    for (const file of files) {
+      if (file.startsWith('triage_') && file.endsWith('.json')) {
+        try {
+          const data = JSON.parse(fs.readFileSync(path.join(issuesDir, file), 'utf-8'));
+          results.push({
+            issueNumber: data.issue_number,
+            repo: data.repo,
+            category: data.category,
+            confidence: data.confidence,
+            labelsToAdd: data.labels_to_add ?? [],
+            labelsToRemove: data.labels_to_remove ?? [],
+            isDuplicate: data.is_duplicate ?? false,
+            duplicateOf: data.duplicate_of,
+            isSpam: data.is_spam ?? false,
+            isFeatureCreep: data.is_feature_creep ?? false,
+            suggestedBreakdown: data.suggested_breakdown ?? [],
+            priority: data.priority ?? 'medium',
+            comment: data.comment,
+            triagedAt: data.triaged_at ?? new Date().toISOString(),
+          });
+        } catch {
+          // Skip invalid files
+        }
       }
     }
+  } catch {
+    // Return empty array if directory doesn't exist
+    return [];
   }
 
   return results.sort((a, b) => new Date(b.triagedAt).getTime() - new Date(a.triagedAt).getTime());

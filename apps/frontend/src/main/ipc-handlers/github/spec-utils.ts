@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { Project, TaskMetadata } from '../../../shared/types';
 import { withSpecNumberLock } from '../../utils/spec-number-lock';
+import { debugLog } from './utils/logger';
 
 export interface SpecCreationData {
   specId: string;
@@ -216,8 +217,11 @@ export function updateImplementationPlanStatus(specDir: string, status: string):
     plan.status = status;
     plan.updated_at = new Date().toISOString();
     writeFileSync(planPath, JSON.stringify(plan, null, 2));
-  } catch {
+  } catch (error) {
     // File doesn't exist or couldn't be read - this is expected for new specs
-    // Silently ignore as the plan will be created later
+    // Log legitimate errors (malformed JSON, disk write failures, permission errors)
+    if (error instanceof Error && error.message && !error.message.includes('ENOENT')) {
+      debugLog('spec-utils', `Failed to update implementation plan status: ${error.message}`);
+    }
   }
 }
