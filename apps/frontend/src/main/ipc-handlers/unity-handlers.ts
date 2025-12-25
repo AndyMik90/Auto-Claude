@@ -1,7 +1,7 @@
 import { ipcMain, shell, clipboard } from 'electron';
 import { existsSync, readFileSync, readdirSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult } from '../../shared/types';
 import { projectStore } from '../project-store';
