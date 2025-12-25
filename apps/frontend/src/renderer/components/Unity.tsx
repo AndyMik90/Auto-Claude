@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box,
   RefreshCw,
@@ -73,7 +73,6 @@ export function Unity({ projectId }: UnityProps) {
   const [detectError, setDetectError] = useState<string | null>(null);
 
   const [editors, setEditors] = useState<UnityEditorInfo[]>([]);
-  const [selectedEditorPath, setSelectedEditorPath] = useState<string>('');
   const [isDiscovering, setIsDiscovering] = useState(false);
 
   const [buildExecuteMethod, setBuildExecuteMethod] = useState<string>('');
@@ -122,26 +121,12 @@ export function Unity({ projectId }: UnityProps) {
       }
 
       setEditors(editorsList);
-
-      // Auto-match project version with editors
-      if (projectInfo && projectInfo.version && editorsList.length > 0) {
-        const matchingEditor = editorsList.find(e => e.version === projectInfo.version);
-        if (matchingEditor && !selectedEditorPath) {
-          setSelectedEditorPath(matchingEditor.path);
-          return; // Early return after auto-matching
-        }
-      }
-
-      // Fallback: Auto-select first editor if none selected
-      if (editorsList.length > 0 && !selectedEditorPath) {
-        setSelectedEditorPath(editorsList[0].path);
-      }
     } catch (err) {
       console.error('Failed to load Unity editors:', err);
     } finally {
       setIsDiscovering(false);
     }
-  }, [settings.unityEditorsFolder, projectInfo, selectedEditorPath]);
+  }, [settings.unityEditorsFolder]);
 
   // Load Unity settings for this project
   const loadSettings = useCallback(async () => {
@@ -292,8 +277,13 @@ export function Unity({ projectId }: UnityProps) {
     );
   }
 
-  // Use global settings path first, then fallback to selected from dropdown
-  const effectiveEditorPath = settings.unityEditorPath || selectedEditorPath;
+  // Get the effective editor path based on project version
+  const effectiveEditorPath = useMemo(() => {
+    if (!projectInfo?.version) return '';
+    const matchingEditor = editors.find(e => e.version === projectInfo.version);
+    return matchingEditor?.path || '';
+  }, [projectInfo?.version, editors]);
+
   const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunning;
   const canRunBuild = canRunTests && buildExecuteMethod;
 
@@ -301,6 +291,24 @@ export function Unity({ projectId }: UnityProps) {
   const projectEditorInstalled = projectInfo?.version
     ? editors.some(e => e.version === projectInfo.version)
     : true;
+
+  // Handle editor version change
+  const handleEditorVersionChange = async (newVersion: string) => {
+    if (!selectedProject || !projectInfo) return;
+
+    try {
+      // Update ProjectVersion.txt
+      const result = await window.electronAPI.updateUnityProjectVersion(selectedProject.id, newVersion);
+      if (result.success) {
+        // Refresh project info to show new version
+        await detectUnityProject();
+      } else {
+        setRunError(result.error || 'Failed to update Unity version');
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to update Unity version');
+    }
+  };
 
   return (
     <div className="flex h-full flex-col p-6">
@@ -383,18 +391,17 @@ export function Unity({ projectId }: UnityProps) {
                         <span className="text-sm text-muted-foreground shrink-0">Unity Editor</span>
                         <div className="flex items-center gap-2">
                           <Select
-                            value={selectedEditorPath}
-                            onValueChange={setSelectedEditorPath}
+                            value={projectInfo.version || ''}
+                            onValueChange={handleEditorVersionChange}
                             disabled={isDiscovering || editors.length === 0}
                           >
-                            <SelectTrigger className="h-8 text-xs font-mono w-[180px]">
+                            <SelectTrigger className="h-8 text-xs font-mono w-[180px] text-left">
                               <SelectValue placeholder={isDiscovering ? 'Loading...' : 'No editors'} />
                             </SelectTrigger>
                             <SelectContent>
                               {editors.map((editor) => (
-                                <SelectItem key={editor.path} value={editor.path} className="text-xs font-mono">
+                                <SelectItem key={editor.path} value={editor.version} className="text-xs font-mono">
                                   {editor.version}
-                                  {editor.version === projectInfo.version && ' (Required)'}
                                 </SelectItem>
                               ))}
                               {editors.length === 0 && !isDiscovering && (
@@ -411,7 +418,7 @@ export function Unity({ projectId }: UnityProps) {
                         <div className="flex items-center gap-2">
                           <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 shrink-0" />
                           <span className="text-xs text-muted-foreground">
-                            Project requires Unity {projectInfo.version}
+                            Editor not installed
                           </span>
                           <Button
                             variant="outline"
@@ -419,7 +426,7 @@ export function Unity({ projectId }: UnityProps) {
                             className="h-6 text-xs px-2 ml-auto bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400"
                             onClick={() => window.electronAPI.openExternal(`https://unity.com/releases/editor/archive`)}
                           >
-                            Install
+                            Install {projectInfo.version}
                           </Button>
                         </div>
                       )}

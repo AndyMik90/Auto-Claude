@@ -39,6 +39,7 @@ interface UnityRun {
 export interface UnityAPI {
   // Unity project detection
   detectUnityProject: (projectPath: string) => Promise<IPCResult<UnityProjectInfo>>;
+  updateUnityProjectVersion: (projectId: string, newVersion: string) => Promise<IPCResult<void>>;
 
   // Unity Editor discovery
   discoverUnityEditors: () => Promise<IPCResult<{ editors: UnityEditorInfo[] }>>;
@@ -64,6 +65,9 @@ export interface UnityAPI {
 export const createUnityAPI = (): UnityAPI => ({
   detectUnityProject: (projectPath: string): Promise<IPCResult<UnityProjectInfo>> =>
     ipcRenderer.invoke(IPC_CHANNELS.UNITY_DETECT_PROJECT, projectPath),
+
+  updateUnityProjectVersion: (projectId: string, newVersion: string): Promise<IPCResult<void>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.UNITY_UPDATE_PROJECT_VERSION, projectId, newVersion),
 
   discoverUnityEditors: (): Promise<IPCResult<{ editors: UnityEditorInfo[] }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.UNITY_DISCOVER_EDITORS),

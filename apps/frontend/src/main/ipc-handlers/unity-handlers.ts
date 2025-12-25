@@ -83,6 +83,29 @@ function detectUnityProject(projectPath: string): UnityProjectInfo {
 }
 
 /**
+ * Update Unity project version in ProjectSettings/ProjectVersion.txt
+ */
+function updateUnityProjectVersion(projectPath: string, newVersion: string): void {
+  const projectVersionPath = join(projectPath, 'ProjectSettings', 'ProjectVersion.txt');
+
+  if (!existsSync(projectVersionPath)) {
+    throw new Error('ProjectVersion.txt not found');
+  }
+
+  try {
+    const content = readFileSync(projectVersionPath, 'utf-8');
+    const updatedContent = content.replace(
+      /m_EditorVersion:\s*.+/,
+      `m_EditorVersion: ${newVersion}`
+    );
+    writeFileSync(projectVersionPath, updatedContent, 'utf-8');
+  } catch (error) {
+    console.error('Failed to update Unity version:', error);
+    throw error;
+  }
+}
+
+/**
  * Auto-detect Unity Hub path on the system
  */
 function autoDetectUnityHub(): string | null {
@@ -525,6 +548,26 @@ export function registerUnityHandlers(): void {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to detect Unity project'
+        };
+      }
+    }
+  );
+
+  // Update Unity project version
+  ipcMain.handle(
+    IPC_CHANNELS.UNITY_UPDATE_PROJECT_VERSION,
+    async (_, projectId: string, newVersion: string): Promise<IPCResult<void>> => {
+      try {
+        const project = projectStore.getProject(projectId);
+        if (!project) {
+          throw new Error('Project not found');
+        }
+        updateUnityProjectVersion(project.path, newVersion);
+        return { success: true, data: undefined };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to update Unity project version'
         };
       }
     }

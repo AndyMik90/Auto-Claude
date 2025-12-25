@@ -303,6 +303,7 @@ export const IPC_CHANNELS = {
 
   // Unity operations
   UNITY_DETECT_PROJECT: 'unity:detectProject',
+  UNITY_UPDATE_PROJECT_VERSION: 'unity:updateProjectVersion',
   UNITY_DISCOVER_EDITORS: 'unity:discoverEditors',
   UNITY_AUTO_DETECT_HUB: 'unity:autoDetectHub',
   UNITY_AUTO_DETECT_EDITORS_FOLDER: 'unity:autoDetectEditorsFolder',
