@@ -297,6 +297,11 @@ export function Unity({ projectId }: UnityProps) {
   const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunning;
   const canRunBuild = canRunTests && buildExecuteMethod;
 
+  // Check if project's required editor is installed
+  const projectEditorInstalled = projectInfo?.version
+    ? editors.some(e => e.version === projectInfo.version)
+    : true;
+
   return (
     <div className="flex h-full flex-col p-6">
       {/* Header */}
@@ -373,30 +378,53 @@ export function Unity({ projectId }: UnityProps) {
                 </div>
                 {projectInfo.isUnityProject && (
                   <>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-sm text-muted-foreground shrink-0">Unity Editor</span>
-                      <Select
-                        value={selectedEditorPath}
-                        onValueChange={setSelectedEditorPath}
-                        disabled={isDiscovering || editors.length === 0}
-                      >
-                        <SelectTrigger className="h-8 text-xs font-mono max-w-[200px]">
-                          <SelectValue placeholder={isDiscovering ? 'Loading...' : 'No editors'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {editors.map((editor) => (
-                            <SelectItem key={editor.path} value={editor.path} className="text-xs font-mono">
-                              {editor.version}
-                            </SelectItem>
-                          ))}
-                          {editors.length === 0 && !isDiscovering && (
-                            <SelectItem value="__none__" disabled className="text-xs">
-                              Configure in Settings
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm text-muted-foreground shrink-0">Unity Editor</span>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={selectedEditorPath}
+                            onValueChange={setSelectedEditorPath}
+                            disabled={isDiscovering || editors.length === 0}
+                          >
+                            <SelectTrigger className="h-8 text-xs font-mono w-[180px]">
+                              <SelectValue placeholder={isDiscovering ? 'Loading...' : 'No editors'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {editors.map((editor) => (
+                                <SelectItem key={editor.path} value={editor.path} className="text-xs font-mono">
+                                  {editor.version}
+                                  {editor.version === projectInfo.version && ' (Required)'}
+                                </SelectItem>
+                              ))}
+                              {editors.length === 0 && !isDiscovering && (
+                                <SelectItem value="__none__" disabled className="text-xs">
+                                  Configure in Settings
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {projectInfo.version && !projectEditorInstalled && (
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 shrink-0" />
+                          <span className="text-xs text-muted-foreground">
+                            Project requires Unity {projectInfo.version}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-xs px-2 ml-auto bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400"
+                            onClick={() => window.electronAPI.openExternal(`https://unity.com/releases/editor/archive`)}
+                          >
+                            Install
+                          </Button>
+                        </div>
+                      )}
                     </div>
+
                     <div className="flex items-start justify-between">
                       <span className="text-sm text-muted-foreground">Project Path</span>
                       <span className="text-sm font-mono text-right break-all max-w-[60%]">
