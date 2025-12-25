@@ -42,6 +42,9 @@ export interface UnityAPI {
 
   // Unity Editor discovery
   discoverUnityEditors: () => Promise<IPCResult<{ editors: UnityEditorInfo[] }>>;
+  autoDetectUnityHub: () => Promise<IPCResult<{ path: string | null }>>;
+  autoDetectUnityEditorsFolder: () => Promise<IPCResult<{ path: string | null }>>;
+  scanUnityEditorsFolder: (editorsFolder: string) => Promise<IPCResult<{ editors: UnityEditorInfo[] }>>;
 
   // Unity settings
   getUnitySettings: (projectId: string) => Promise<IPCResult<UnitySettings>>;
@@ -64,6 +67,15 @@ export const createUnityAPI = (): UnityAPI => ({
 
   discoverUnityEditors: (): Promise<IPCResult<{ editors: UnityEditorInfo[] }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.UNITY_DISCOVER_EDITORS),
+
+  autoDetectUnityHub: (): Promise<IPCResult<{ path: string | null }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.UNITY_AUTO_DETECT_HUB),
+
+  autoDetectUnityEditorsFolder: (): Promise<IPCResult<{ path: string | null }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.UNITY_AUTO_DETECT_EDITORS_FOLDER),
+
+  scanUnityEditorsFolder: (editorsFolder: string): Promise<IPCResult<{ editors: UnityEditorInfo[] }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.UNITY_SCAN_EDITORS_FOLDER, editorsFolder),
 
   getUnitySettings: (projectId: string): Promise<IPCResult<UnitySettings>> =>
     ipcRenderer.invoke(IPC_CHANNELS.UNITY_GET_SETTINGS, projectId),

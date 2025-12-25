@@ -304,6 +304,9 @@ export const IPC_CHANNELS = {
   // Unity operations
   UNITY_DETECT_PROJECT: 'unity:detectProject',
   UNITY_DISCOVER_EDITORS: 'unity:discoverEditors',
+  UNITY_AUTO_DETECT_HUB: 'unity:autoDetectHub',
+  UNITY_AUTO_DETECT_EDITORS_FOLDER: 'unity:autoDetectEditorsFolder',
+  UNITY_SCAN_EDITORS_FOLDER: 'unity:scanEditorsFolder',
   UNITY_GET_SETTINGS: 'unity:getSettings',
   UNITY_SAVE_SETTINGS: 'unity:saveSettings',
   UNITY_RUN_EDITMODE_TESTS: 'unity:runEditModeTests',

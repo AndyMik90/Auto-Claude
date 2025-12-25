@@ -83,37 +83,50 @@ function detectUnityProject(projectPath: string): UnityProjectInfo {
 }
 
 /**
- * Discover Unity Editor installations on the system
+ * Auto-detect Unity Hub path on the system
  */
-function discoverUnityEditors(): UnityEditorInfo[] {
-  const editors: UnityEditorInfo[] = [];
+function autoDetectUnityHub(): string | null {
   const platform = process.platform;
 
   try {
     if (platform === 'win32') {
-      // Windows: C:\Program Files\Unity\Hub\Editor\*\Editor\Unity.exe
-      const hubPath = 'C:\\Program Files\\Unity\\Hub\\Editor';
-      if (existsSync(hubPath)) {
-        const versions = readdirSync(hubPath);
-        for (const version of versions) {
-          const editorPath = join(hubPath, version, 'Editor', 'Unity.exe');
-          if (existsSync(editorPath)) {
-            editors.push({ version, path: editorPath });
-          }
-        }
-      }
+      const hubPath = 'C:\\Program Files\\Unity Hub\\Unity Hub.exe';
+      if (existsSync(hubPath)) return hubPath;
     } else if (platform === 'darwin') {
-      // macOS: /Applications/Unity/Hub/Editor/*/Unity.app/Contents/MacOS/Unity
-      const hubPath = '/Applications/Unity/Hub/Editor';
-      if (existsSync(hubPath)) {
-        const versions = readdirSync(hubPath);
-        for (const version of versions) {
-          const editorPath = join(hubPath, version, 'Unity.app', 'Contents', 'MacOS', 'Unity');
-          if (existsSync(editorPath)) {
-            editors.push({ version, path: editorPath });
-          }
-        }
+      const hubPath = '/Applications/Unity Hub.app';
+      if (existsSync(hubPath)) return hubPath;
+    } else if (platform === 'linux') {
+      // Linux: Try common paths
+      const possiblePaths = [
+        join(process.env.HOME || '', 'Unity Hub', 'unityhub'),
+        '/usr/bin/unityhub',
+        '/usr/local/bin/unityhub'
+      ];
+
+      for (const path of possiblePaths) {
+        if (existsSync(path)) return path;
       }
+    }
+  } catch (error) {
+    console.error('Failed to auto-detect Unity Hub:', error);
+  }
+
+  return null;
+}
+
+/**
+ * Auto-detect Unity Editors folder on the system
+ */
+function autoDetectUnityEditorsFolder(): string | null {
+  const platform = process.platform;
+
+  try {
+    if (platform === 'win32') {
+      const editorsPath = 'C:\\Program Files\\Unity\\Hub\\Editor';
+      if (existsSync(editorsPath)) return editorsPath;
+    } else if (platform === 'darwin') {
+      const editorsPath = '/Applications/Unity/Hub/Editor';
+      if (existsSync(editorsPath)) return editorsPath;
     } else if (platform === 'linux') {
       // Linux: Try common paths
       const possiblePaths = [
@@ -121,23 +134,64 @@ function discoverUnityEditors(): UnityEditorInfo[] {
         join(process.env.HOME || '', '.local', 'share', 'Unity', 'Hub', 'Editor')
       ];
 
-      for (const hubPath of possiblePaths) {
-        if (existsSync(hubPath)) {
-          const versions = readdirSync(hubPath);
-          for (const version of versions) {
-            const editorPath = join(hubPath, version, 'Editor', 'Unity');
-            if (existsSync(editorPath)) {
-              editors.push({ version, path: editorPath });
-            }
-          }
-        }
+      for (const path of possiblePaths) {
+        if (existsSync(path)) return path;
       }
     }
   } catch (error) {
-    console.error('Failed to discover Unity editors:', error);
+    console.error('Failed to auto-detect Unity Editors folder:', error);
+  }
+
+  return null;
+}
+
+/**
+ * Scan Unity Editors folder and return all editor installations
+ */
+function scanUnityEditorsFolder(editorsFolder: string): UnityEditorInfo[] {
+  const editors: UnityEditorInfo[] = [];
+  const platform = process.platform;
+
+  try {
+    if (!existsSync(editorsFolder)) {
+      return editors;
+    }
+
+    const versions = readdirSync(editorsFolder);
+
+    for (const version of versions) {
+      let editorPath: string;
+
+      if (platform === 'win32') {
+        editorPath = join(editorsFolder, version, 'Editor', 'Unity.exe');
+      } else if (platform === 'darwin') {
+        editorPath = join(editorsFolder, version, 'Unity.app', 'Contents', 'MacOS', 'Unity');
+      } else {
+        // Linux
+        editorPath = join(editorsFolder, version, 'Editor', 'Unity');
+      }
+
+      if (existsSync(editorPath)) {
+        editors.push({ version, path: editorPath });
+      }
+    }
+  } catch (error) {
+    console.error('Failed to scan Unity editors folder:', error);
   }
 
   return editors;
+}
+
+/**
+ * Discover Unity Editor installations on the system
+ * @deprecated Use scanUnityEditorsFolder with the editors folder from settings
+ */
+function discoverUnityEditors(): UnityEditorInfo[] {
+  const editorsFolder = autoDetectUnityEditorsFolder();
+  if (!editorsFolder) {
+    return [];
+  }
+  return scanUnityEditorsFolder(editorsFolder);
 }
 
 /**
@@ -583,6 +637,54 @@ export function registerUnityHandlers(): void {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to open path'
+        };
+      }
+    }
+  );
+
+  // Auto-detect Unity Hub
+  ipcMain.handle(
+    IPC_CHANNELS.UNITY_AUTO_DETECT_HUB,
+    async (): Promise<IPCResult<{ path: string | null }>> => {
+      try {
+        const path = autoDetectUnityHub();
+        return { success: true, data: { path } };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to auto-detect Unity Hub'
+        };
+      }
+    }
+  );
+
+  // Auto-detect Unity Editors folder
+  ipcMain.handle(
+    IPC_CHANNELS.UNITY_AUTO_DETECT_EDITORS_FOLDER,
+    async (): Promise<IPCResult<{ path: string | null }>> => {
+      try {
+        const path = autoDetectUnityEditorsFolder();
+        return { success: true, data: { path } };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to auto-detect Unity Editors folder'
+        };
+      }
+    }
+  );
+
+  // Scan Unity Editors folder
+  ipcMain.handle(
+    IPC_CHANNELS.UNITY_SCAN_EDITORS_FOLDER,
+    async (_, editorsFolder: string): Promise<IPCResult<{ editors: UnityEditorInfo[] }>> => {
+      try {
+        const editors = scanUnityEditorsFolder(editorsFolder);
+        return { success: true, data: { editors } };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to scan Unity Editors folder'
         };
       }
     }

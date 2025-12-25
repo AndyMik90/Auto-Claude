@@ -106,25 +106,42 @@ export function Unity({ projectId }: UnityProps) {
     }
   }, [selectedProject]);
 
-  // Discover Unity editors
-  const discoverUnityEditors = useCallback(async () => {
+  // Load Unity editors from settings or scan from folder
+  const loadUnityEditors = useCallback(async () => {
     setIsDiscovering(true);
 
     try {
-      const result = await window.electronAPI.discoverUnityEditors();
-      if (result.success && result.data) {
-        setEditors(result.data.editors || []);
-        // Auto-select first editor if none selected and no global setting
-        if (result.data.editors.length > 0 && !selectedEditorPath && !settings.unityEditorPath) {
-          setSelectedEditorPath(result.data.editors[0].path);
+      let editorsList: UnityEditorInfo[] = [];
+
+      // If we have a Unity Editors folder in settings, scan it
+      if (settings.unityEditorsFolder) {
+        const result = await window.electronAPI.scanUnityEditorsFolder(settings.unityEditorsFolder);
+        if (result.success && result.data) {
+          editorsList = result.data.editors || [];
         }
       }
+
+      setEditors(editorsList);
+
+      // Auto-match project version with editors
+      if (projectInfo && projectInfo.version && editorsList.length > 0) {
+        const matchingEditor = editorsList.find(e => e.version === projectInfo.version);
+        if (matchingEditor && !selectedEditorPath) {
+          setSelectedEditorPath(matchingEditor.path);
+          return; // Early return after auto-matching
+        }
+      }
+
+      // Fallback: Auto-select first editor if none selected
+      if (editorsList.length > 0 && !selectedEditorPath) {
+        setSelectedEditorPath(editorsList[0].path);
+      }
     } catch (err) {
-      console.error('Failed to discover Unity editors:', err);
+      console.error('Failed to load Unity editors:', err);
     } finally {
       setIsDiscovering(false);
     }
-  }, [selectedEditorPath, settings.unityEditorPath]);
+  }, [settings.unityEditorsFolder, projectInfo, selectedEditorPath]);
 
   // Load Unity settings for this project
   const loadSettings = useCallback(async () => {
@@ -163,10 +180,14 @@ export function Unity({ projectId }: UnityProps) {
   // Initial load
   useEffect(() => {
     detectUnityProject();
-    discoverUnityEditors();
     loadSettings();
     loadRuns();
-  }, [detectUnityProject, discoverUnityEditors, loadSettings, loadRuns]);
+  }, [detectUnityProject, loadSettings, loadRuns]);
+
+  // Load editors when project info or settings change
+  useEffect(() => {
+    loadUnityEditors();
+  }, [loadUnityEditors]);
 
   // Save Unity settings
   const saveSettings = async () => {
@@ -294,7 +315,7 @@ export function Unity({ projectId }: UnityProps) {
           size="sm"
           onClick={() => {
             detectUnityProject();
-            discoverUnityEditors();
+            loadUnityEditors();
             loadRuns();
           }}
           disabled={isDetecting || isDiscovering}

@@ -80,7 +80,9 @@ export interface AppSettings {
   agentFramework: string;
   pythonPath?: string;
   autoBuildPath?: string;
-  unityEditorPath?: string;
+  unityHubPath?: string;
+  unityEditorsFolder?: string;
+  unityEditorPaths?: string[];  // Cached editor installation paths
   autoUpdateAutoBuild: boolean;
   autoNameTerminals: boolean;
   notifications: NotificationSettings;
