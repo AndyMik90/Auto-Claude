@@ -342,8 +342,8 @@ export class ProjectStore {
         if (existsSync(specFilePath)) {
           try {
             const content = readFileSync(specFilePath, 'utf-8');
-            // Extract first paragraph after "## Overview" - handle both with and without blank line
-            const overviewMatch = content.match(/## Overview\s*\n+([^\n#]+)/);
+            // Extract full Overview section until next heading or end of file
+            const overviewMatch = content.match(/## Overview\s*\n+([\s\S]*?)(?=\n## |\n#|$)/);
             if (overviewMatch) {
               description = overviewMatch[1].trim();
             }

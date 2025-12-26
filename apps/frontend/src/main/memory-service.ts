@@ -93,17 +93,12 @@ export function getDefaultDbPath(): string {
  * Get the path to the query_memory.py script
  */
 function getQueryScriptPath(): string | null {
-  // Look for the script in backend directory (new apps structure)
+  // Look for the script in backend directory
   const possiblePaths = [
-    // New apps structure: from dist/main -> apps/backend
+    // Apps structure: from dist/main -> apps/backend
     path.resolve(__dirname, '..', '..', '..', 'backend', 'query_memory.py'),
     path.resolve(app.getAppPath(), '..', 'backend', 'query_memory.py'),
-    path.resolve(process.cwd(), 'apps', 'backend', 'query_memory.py'),
-    // Legacy paths for backwards compatibility
-    path.resolve(__dirname, '..', '..', '..', 'auto-claude', 'query_memory.py'),
-    path.resolve(app.getAppPath(), '..', 'auto-claude', 'query_memory.py'),
-    path.resolve(process.cwd(), 'auto-claude', 'query_memory.py'),
-    path.resolve(process.cwd(), '..', 'auto-claude', 'query_memory.py'),
+    path.resolve(process.cwd(), 'apps', 'backend', 'query_memory.py')
   ];
 
   for (const p of possiblePaths) {
