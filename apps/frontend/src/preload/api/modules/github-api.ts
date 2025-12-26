@@ -155,6 +155,17 @@ export interface GitHubAPI {
   getGitHubUser: () => Promise<IPCResult<{ username: string; name?: string }>>;
   listGitHubUserRepos: () => Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>>;
 
+  // OAuth event listeners (for device flow streaming)
+  onGitHubAuthDeviceCode: (
+    callback: (data: { deviceCode: string; authUrl: string; browserOpened: boolean }) => void
+  ) => IpcListenerCleanup;
+  onGitHubAuthComplete: (
+    callback: (data: { success: boolean; message?: string }) => void
+  ) => IpcListenerCleanup;
+  onGitHubAuthError: (
+    callback: (data: { error: string }) => void
+  ) => IpcListenerCleanup;
+
   // Repository detection and management
   detectGitHubRepo: (projectPath: string) => Promise<IPCResult<string>>;
   getGitHubBranches: (repo: string, token: string) => Promise<IPCResult<string[]>>;
@@ -397,6 +408,22 @@ export const createGitHubAPI = (): GitHubAPI => ({
 
   listGitHubUserRepos: (): Promise<IPCResult<{ repos: Array<{ fullName: string; description: string | null; isPrivate: boolean }> }>> =>
     invokeIpc(IPC_CHANNELS.GITHUB_LIST_USER_REPOS),
+
+  // OAuth event listeners (for device flow streaming)
+  onGitHubAuthDeviceCode: (
+    callback: (data: { deviceCode: string; authUrl: string; browserOpened: boolean }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTH_DEVICE_CODE, callback),
+
+  onGitHubAuthComplete: (
+    callback: (data: { success: boolean; message?: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTH_COMPLETE, callback),
+
+  onGitHubAuthError: (
+    callback: (data: { error: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTH_ERROR, callback),
 
   // Repository detection and management
   detectGitHubRepo: (projectPath: string): Promise<IPCResult<string>> =>

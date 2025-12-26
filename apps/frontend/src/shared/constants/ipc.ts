@@ -204,6 +204,11 @@ export const IPC_CHANNELS = {
   GITHUB_ADD_REMOTE: 'github:addRemote',
   GITHUB_LIST_ORGS: 'github:listOrgs',
 
+  // GitHub OAuth events (main -> renderer for device flow)
+  GITHUB_AUTH_DEVICE_CODE: 'github:authDeviceCode',
+  GITHUB_AUTH_COMPLETE: 'github:authComplete',
+  GITHUB_AUTH_ERROR: 'github:authError',
+
   // GitHub events (main -> renderer)
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',
   GITHUB_INVESTIGATION_COMPLETE: 'github:investigationComplete',

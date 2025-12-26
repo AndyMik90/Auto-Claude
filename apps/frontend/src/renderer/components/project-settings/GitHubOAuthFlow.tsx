@@ -74,6 +74,38 @@ export function GitHubOAuthFlow({ onSuccess, onCancel }: GitHubOAuthFlowProps) {
     }
   }, []);
 
+  // Subscribe to streaming device code events from main process
+  // This allows us to show the device code immediately without waiting for auth to complete
+  useEffect(() => {
+    debugLog('Setting up device code stream listener');
+
+    const cleanupDeviceCode = window.electronAPI.github.onGitHubAuthDeviceCode((data: { deviceCode: string; authUrl: string; browserOpened: boolean }) => {
+      debugLog('Received device code event:', { ...data, deviceCode: '[REDACTED]' });
+      setDeviceCode(data.deviceCode);
+      setAuthUrl(data.authUrl);
+      setBrowserOpened(data.browserOpened);
+    });
+
+    const cleanupAuthComplete = window.electronAPI.github.onGitHubAuthComplete((data: { success: boolean; message?: string }) => {
+      debugLog('Received auth complete event:', data);
+      // Auth complete will be handled by the promise resolution in handleStartAuth
+      // This is just for logging/debugging
+    });
+
+    const cleanupAuthError = window.electronAPI.github.onGitHubAuthError((data: { error: string }) => {
+      debugLog('Received auth error event:', data);
+      // Auth error will be handled by the promise resolution in handleStartAuth
+      // This is just for logging/debugging
+    });
+
+    return () => {
+      debugLog('Cleaning up device code stream listeners');
+      cleanupDeviceCode();
+      cleanupAuthComplete();
+      cleanupAuthError();
+    };
+  }, []);
+
   // Cleanup copy feedback timeouts on unmount
   useEffect(() => {
     return () => {

@@ -132,6 +132,10 @@ const browserMockAPI: ElectronAPI = {
     createGitHubRepo: async () => ({ success: true, data: { fullName: '', url: '' } }),
     addGitRemote: async () => ({ success: true, data: { remoteUrl: '' } }),
     listGitHubOrgs: async () => ({ success: true, data: { orgs: [] } }),
+    // OAuth event listeners (device flow streaming)
+    onGitHubAuthDeviceCode: () => () => {},
+    onGitHubAuthComplete: () => () => {},
+    onGitHubAuthError: () => () => {},
     onGitHubInvestigationProgress: () => () => {},
     onGitHubInvestigationComplete: () => () => {},
     onGitHubInvestigationError: () => () => {},

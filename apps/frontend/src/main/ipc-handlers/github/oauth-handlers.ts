@@ -4,10 +4,14 @@
  */
 
 import { ipcMain, shell } from 'electron';
+import type { BrowserWindow } from 'electron';
 import { execSync, execFileSync, spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
 import { getAugmentedEnv, findExecutable } from '../../env-utils';
+
+// Module-level variable to store getMainWindow function
+let getMainWindowFn: (() => BrowserWindow | null) | null = null;
 
 // Debug logging helper
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
@@ -20,6 +24,58 @@ function debugLog(message: string, data?: unknown): void {
       console.warn(`[GitHub OAuth] ${message}`);
     }
   }
+}
+
+/**
+ * Device code info sent to renderer during auth flow
+ */
+interface DeviceCodeEvent {
+  deviceCode: string;
+  authUrl: string;
+  browserOpened: boolean;
+}
+
+/**
+ * Send device code to renderer immediately when extracted
+ */
+function sendDeviceCode(deviceCode: string, authUrl: string, browserOpened: boolean): void {
+  const mainWindow = getMainWindowFn?.();
+  if (!mainWindow) {
+    debugLog('No main window available to send device code');
+    return;
+  }
+  debugLog('Sending device code to renderer (code redacted for security)');
+  mainWindow.webContents.send(IPC_CHANNELS.GITHUB_AUTH_DEVICE_CODE, {
+    deviceCode,
+    authUrl,
+    browserOpened
+  } as DeviceCodeEvent);
+}
+
+/**
+ * Send auth complete event to renderer
+ */
+function sendAuthComplete(success: boolean, message?: string): void {
+  const mainWindow = getMainWindowFn?.();
+  if (!mainWindow) {
+    debugLog('No main window available to send auth complete');
+    return;
+  }
+  debugLog('Sending auth complete to renderer:', { success, message });
+  mainWindow.webContents.send(IPC_CHANNELS.GITHUB_AUTH_COMPLETE, { success, message });
+}
+
+/**
+ * Send auth error event to renderer
+ */
+function sendAuthError(error: string): void {
+  const mainWindow = getMainWindowFn?.();
+  if (!mainWindow) {
+    debugLog('No main window available to send auth error');
+    return;
+  }
+  debugLog('Sending auth error to renderer:', error);
+  mainWindow.webContents.send(IPC_CHANNELS.GITHUB_AUTH_ERROR, { error });
 }
 
 // Regex pattern to validate GitHub repository format (owner/repo)
@@ -265,6 +321,10 @@ export function registerStartGhAuth(): void {
                 browserOpenedSuccessfully = false;
                 // Don't fail here - we'll return the device code so user can manually navigate
               }
+
+              // IMMEDIATELY send device code to renderer so user can see it
+              // This is critical - don't wait for the process to complete
+              sendDeviceCode(extractedDeviceCode, extractedAuthUrl, browserOpenedSuccessfully);
 
               // Extraction complete - mutex flag stays true to prevent re-extraction
               // The deviceCodeExtracted flag will prevent future attempts
@@ -787,8 +847,14 @@ export function registerListGitHubOrgs(): void {
 
 /**
  * Register all GitHub OAuth handlers
+ * @param getMainWindow - Function to get the main BrowserWindow for sending events
  */
-export function registerGithubOAuthHandlers(): void {
+export function registerGithubOAuthHandlers(
+  getMainWindow: () => BrowserWindow | null
+): void {
+  // Store the getMainWindow function for use in event sending
+  getMainWindowFn = getMainWindow;
+
   debugLog('Registering GitHub OAuth handlers');
   registerCheckGhCli();
   registerCheckGhAuth();
