@@ -8,16 +8,18 @@
  * - API key authentication middleware
  *
  * Plugin Registration Order (critical):
- * 1. Swagger (before routes for OpenAPI generation)
- * 2. Swagger UI
- * 3. WebSocket
- * 4. Routes (registered last before listen)
+ * 1. CORS (first, before any routes)
+ * 2. Swagger (before routes for OpenAPI generation)
+ * 3. Swagger UI
+ * 4. WebSocket
+ * 5. Routes (registered last before listen)
  */
 
 import Fastify, { FastifyInstance, FastifyServerOptions, FastifyError } from 'fastify';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import fastifyWebsocket from '@fastify/websocket';
+import fastifyCors from '@fastify/cors';
 
 import { loadApiKeys } from './middleware/auth';
 import { apiKeySecurityScheme } from './schemas';
@@ -34,6 +36,22 @@ export interface ApiServerConfig {
   logger: boolean;
   /** Application version for OpenAPI info */
   version: string;
+  /** CORS origins (default: ['*'] or API_CORS_ORIGINS env var) */
+  corsOrigins: string[];
+}
+
+/**
+ * Parse CORS origins from environment variable
+ */
+function parseCorsOrigins(): string[] {
+  const envOrigins = process.env.API_CORS_ORIGINS;
+  if (!envOrigins) {
+    return ['*']; // Allow all origins by default (configurable)
+  }
+  return envOrigins
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(origin => origin.length > 0);
 }
 
 /**
@@ -44,6 +62,7 @@ const defaultConfig: ApiServerConfig = {
   host: process.env.API_HOST || '0.0.0.0',
   logger: true,
   version: '1.0.0',
+  corsOrigins: parseCorsOrigins(),
 };
 
 /**
@@ -109,6 +128,20 @@ export async function createApiServer(
   };
 
   const fastify = Fastify(fastifyOptions);
+
+  // ============================================
+  // Register CORS Plugin (FIRST, before any routes)
+  // ============================================
+
+  await fastify.register(fastifyCors, {
+    // Allow all origins if '*' is in the list, otherwise use specific origins
+    origin: mergedConfig.corsOrigins.includes('*') ? true : mergedConfig.corsOrigins,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-api-key', 'Authorization'],
+    credentials: true,
+    // Preflight cache for 24 hours
+    maxAge: 86400,
+  });
 
   // ============================================
   // Register Swagger Plugin (BEFORE routes)
