@@ -625,7 +625,16 @@ Please analyze this follow-up review context and provide your response in the JS
         try:
             # Create Anthropic client for simple message API call
             # Note: For agent sessions with tools, use ClaudeSDKClient instead
-            client = anthropic.AsyncAnthropic()
+            # Must use OAuth token from core.auth (not ANTHROPIC_API_KEY)
+            from core.auth import get_auth_token
+
+            auth_token = get_auth_token()
+            if not auth_token:
+                logger.warning("No auth token available for AI review")
+                print("AI review failed: No OAuth token found", flush=True)
+                return None
+
+            client = anthropic.AsyncAnthropic(auth_token=auth_token)
             model = self.config.model or "claude-sonnet-4-5-20250929"
 
             response = await client.messages.create(
