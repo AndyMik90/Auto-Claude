@@ -10,6 +10,7 @@ export interface UseTaskDetailOptions {
 export function useTaskDetail({ task }: UseTaskDetailOptions) {
   const [feedback, setFeedback] = useState('');
   const [feedbackImages, setFeedbackImages] = useState<ImageAttachment[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
@@ -257,6 +258,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     // State
     feedback,
     feedbackImages,
+    imageError,
     isSubmitting,
     activeTab,
     isUserScrolledUp,
@@ -299,6 +301,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     // Setters
     setFeedback,
     setFeedbackImages,
+    setImageError,
     setIsSubmitting,
     setActiveTab,
     setIsUserScrolledUp,
