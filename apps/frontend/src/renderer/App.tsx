@@ -504,6 +504,7 @@ export function App() {
     githubToken: string;
     githubRepo: string;
     mainBranch: string;
+    githubAuthMethod?: 'oauth' | 'pat';
   }) => {
     if (!gitHubSetupProject) return;
 
@@ -518,7 +519,8 @@ export function App() {
       await window.electronAPI.updateProjectEnv(gitHubSetupProject.id, {
         githubEnabled: true,
         githubToken: settings.githubToken, // GitHub token for repo access
-        githubRepo: settings.githubRepo
+        githubRepo: settings.githubRepo,
+        githubAuthMethod: settings.githubAuthMethod // Track how user authenticated
       });
 
       // Update project settings with mainBranch
