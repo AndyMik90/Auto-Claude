@@ -257,16 +257,14 @@ function extractTarGz(archivePath, destDir) {
 
   const isWindows = os.platform() === 'win32';
 
-  // On Windows, use PowerShell to extract tar.gz (most reliable cross-platform)
-  // This avoids all the path escaping issues with tar command
+  // On Windows, use Windows' built-in bsdtar (not Git Bash tar which has path issues)
+  // Git Bash's /usr/bin/tar interprets D: as a remote host, causing extraction to fail
+  // Windows Server 2019+ and Windows 10+ have bsdtar at C:\Windows\System32\tar.exe
   if (isWindows) {
-    // PowerShell can extract tar.gz natively on Windows 10+
-    const psCommand = `
-      $ErrorActionPreference = 'Stop'
-      tar -xzf "${archivePath}" -C "${destDir}"
-    `;
+    // Use explicit path to Windows tar to avoid Git Bash's /usr/bin/tar
+    const windowsTar = 'C:\\Windows\\System32\\tar.exe';
 
-    const result = spawnSync('powershell', ['-NoProfile', '-Command', psCommand], {
+    const result = spawnSync(windowsTar, ['-xzf', archivePath, '-C', destDir], {
       stdio: 'inherit',
     });
 
@@ -275,7 +273,7 @@ function extractTarGz(archivePath, destDir) {
     }
 
     if (result.status !== 0) {
-      throw new Error(`Failed to extract archive: PowerShell exited with code ${result.status}`);
+      throw new Error(`Failed to extract archive: Windows tar exited with code ${result.status}`);
     }
   } else {
     // Unix: use tar directly
