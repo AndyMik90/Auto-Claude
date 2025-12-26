@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask } from '../shared/types';
+import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, ExecutionProgress, ExecutionPhase } from '../shared/types';
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 
@@ -369,6 +369,45 @@ export class ProjectStore {
         const stagedInMainProject = planWithStaged?.stagedInMainProject;
         const stagedAt = planWithStaged?.stagedAt;
 
+        // Determine execution progress by checking active phase from task logs
+        let executionProgress: ExecutionProgress | undefined;
+        const taskLogPath = path.join(specPath, 'task_log.json');
+        const worktreeLogPath = path.join(specPath, '.worktrees', dir.name, 'task_log.json');
+
+        // Check worktree logs first (coding/validation runs in worktree)
+        let activePhase: 'planning' | 'coding' | 'validation' | null = null;
+        for (const logPath of [worktreeLogPath, taskLogPath]) {
+          if (existsSync(logPath)) {
+            try {
+              const taskLog = JSON.parse(readFileSync(logPath, 'utf-8'));
+              const phases = ['planning', 'coding', 'validation'] as const;
+              for (const phase of phases) {
+                if (taskLog?.phases?.[phase]?.status === 'active') {
+                  activePhase = phase;
+                  break;
+                }
+              }
+              if (activePhase) break;
+            } catch {
+              // Ignore read/parse errors
+            }
+          }
+        }
+
+        // Map task log phase to execution phase
+        if (activePhase) {
+          const phaseMap: Record<typeof activePhase, ExecutionPhase> = {
+            'planning': 'planning',
+            'coding': 'coding',
+            'validation': 'qa_review'
+          };
+          executionProgress = {
+            phase: phaseMap[activePhase],
+            phaseProgress: 0,
+            overallProgress: 0
+          };
+        }
+
         // Determine title - check if feature looks like a spec ID (e.g., "054-something-something")
         let title = plan?.feature || plan?.title || dir.name;
         const looksLikeSpecId = /^\d{3}-/.test(title);
@@ -401,6 +440,7 @@ export class ProjectStore {
           metadata,
           stagedInMainProject,
           stagedAt,
+          executionProgress,
           createdAt: new Date(plan?.created_at || Date.now()),
           updatedAt: new Date(plan?.updated_at || Date.now())
         });
