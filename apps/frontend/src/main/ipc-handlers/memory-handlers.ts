@@ -550,7 +550,11 @@ export function registerMemoryHandlers(): void {
 
         // Find the ollama_model_detector.py script
         const possiblePaths = [
-          // Apps structure
+          // Packaged app paths (check FIRST for packaged builds)
+          ...(app.isPackaged
+            ? [path.join(process.resourcesPath, 'backend', 'ollama_model_detector.py')]
+            : []),
+          // Development paths
           path.resolve(__dirname, '..', '..', '..', 'backend', 'ollama_model_detector.py'),
           path.resolve(process.cwd(), 'apps', 'backend', 'ollama_model_detector.py')
         ];

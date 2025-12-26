@@ -114,7 +114,12 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
     setError(null);
     try {
       const profileName = newProfileName.trim();
-      const profileSlug = profileName.toLowerCase().replace(/\s+/g, '-');
+      // Sanitize slug: only allow alphanumeric and dashes, remove leading/trailing dashes
+      const profileSlug = profileName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
 
       const result = await window.electronAPI.saveClaudeProfile({
         id: `profile-${Date.now()}`,

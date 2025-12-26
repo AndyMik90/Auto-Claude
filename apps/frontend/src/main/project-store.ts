@@ -343,7 +343,9 @@ export class ProjectStore {
           try {
             const content = readFileSync(specFilePath, 'utf-8');
             // Extract full Overview section until next heading or end of file
-            const overviewMatch = content.match(/## Overview\s*\n+([\s\S]*?)(?=\n## |\n#|$)/);
+            // Use \n#{1,6}\s to match valid markdown headings (# to ######) with required space
+            // This avoids truncating at # in code blocks (e.g., Python comments)
+            const overviewMatch = content.match(/## Overview\s*\n+([\s\S]*?)(?=\n#{1,6}\s|$)/);
             if (overviewMatch) {
               description = overviewMatch[1].trim();
             }

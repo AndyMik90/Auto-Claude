@@ -39,8 +39,11 @@ interface TerminalGridProps {
 export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: TerminalGridProps) {
   const allTerminals = useTerminalStore((state) => state.terminals);
   // Filter terminals to show only those belonging to the current project
+  // Also include legacy terminals without projectPath (created before this change)
   const terminals = useMemo(() =>
-    projectPath ? allTerminals.filter(t => t.projectPath === projectPath) : allTerminals,
+    projectPath
+      ? allTerminals.filter(t => t.projectPath === projectPath || !t.projectPath)
+      : allTerminals,
     [allTerminals, projectPath]
   );
   const activeTerminalId = useTerminalStore((state) => state.activeTerminalId);
