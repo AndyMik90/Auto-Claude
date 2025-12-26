@@ -60,7 +60,6 @@ if (pythonResource) {
 
 // Check 3: Test venv creation simulation
 console.log('\n3. Checking venv creation capability...');
-const testVenvPath = path.join(FRONTEND_DIR, '.test-venv-check');
 try {
   // Find system Python for testing
   let pythonCmd = process.platform === 'win32' ? 'python' : 'python3';

@@ -9,7 +9,6 @@
 
 import { spawn } from 'child_process';
 import * as path from 'path';
-import * as os from 'os';
 import * as fs from 'fs';
 import { app } from 'electron';
 import { findPythonCommand, parsePythonCommand } from './python-detector';
