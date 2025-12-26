@@ -92,9 +92,10 @@ function TaskDetailModalContent({ open, task, onOpenChange }: { open: boolean; t
       return;
     }
     state.setIsSubmitting(true);
-    await submitReview(task.id, false, state.feedback);
+    await submitReview(task.id, false, state.feedback, state.feedbackImages);
     state.setIsSubmitting(false);
     state.setFeedback('');
+    state.setFeedbackImages([]);
   };
 
   const handleDelete = async () => {
@@ -399,6 +400,10 @@ function TaskDetailModalContent({ open, task, onOpenChange }: { open: boolean; t
                             isLoadingPreview={state.isLoadingPreview}
                             showConflictDialog={state.showConflictDialog}
                             onFeedbackChange={state.setFeedback}
+                            images={state.feedbackImages}
+                            onImagesChange={state.setFeedbackImages}
+                            imageError={state.imageError}
+                            onImageError={state.setImageError}
                             onReject={handleReject}
                             onMerge={handleMerge}
                             onDiscard={handleDiscard}
