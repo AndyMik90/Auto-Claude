@@ -993,7 +993,8 @@ export const updateProjectSettingsSchema: RouteSchema = {
 export const healthSchema: RouteSchema = {
   tags: ['Monitoring'],
   summary: 'Health check',
-  description: 'Returns the health status of the API server',
+  description: 'Returns the health status of the API server. This endpoint is publicly accessible (no authentication required).',
+  security: [], // Public endpoint - no auth required
   response: {
     200: healthCheckResponseSchema
   }
@@ -1005,7 +1006,8 @@ export const healthSchema: RouteSchema = {
 export const versionSchema: RouteSchema = {
   tags: ['Monitoring'],
   summary: 'API version',
-  description: 'Returns version information for the API',
+  description: 'Returns version information for the API. This endpoint is publicly accessible (no authentication required).',
+  security: [], // Public endpoint - no auth required
   response: {
     200: versionResponseSchema
   }
