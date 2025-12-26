@@ -12,6 +12,7 @@ export interface UnityErrorSummary {
 
 interface ErrorBlock {
   lineNumber: number;
+  startLineNumber: number;
   lines: string[];
 }
 
@@ -187,6 +188,7 @@ function buildErrorBlocks(
 
     blocks.push({
       lineNumber: errorIdx,
+      startLineNumber: startIdx,
       lines: blockLines
     });
   }
@@ -202,12 +204,12 @@ function buildErrorBlocks(
     }
 
     // Check if this block overlaps with current block
-    const currentEndLine = currentBlock.lineNumber + currentBlock.lines.length - 1;
-    const blockStartLine = Math.max(0, block.lineNumber - contextBefore);
+    const currentEndLine = currentBlock.startLineNumber + currentBlock.lines.length - 1;
+    const blockStartLine = block.startLineNumber;
 
     if (blockStartLine <= currentEndLine + 1) {
       // Merge blocks
-      const linesToAdd = block.lines.slice(currentEndLine - block.lineNumber + 1);
+      const linesToAdd = block.lines.slice(currentEndLine - block.startLineNumber + 1);
       currentBlock.lines.push(...linesToAdd);
     } else {
       // No overlap, save current and start new
