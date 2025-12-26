@@ -36,7 +36,7 @@ jobs:
             // To find check names: Go to PR → Checks tab → copy exact name
             // To update: Edit this list when workflow jobs are added/renamed/removed
             //
-            // Last validated: 2024-12-26
+            // Last validated: 2025-12-26
             // ═══════════════════════════════════════════════════════════════════════
             const requiredChecks = [
               // CI workflow (ci.yml) - 3 checks
