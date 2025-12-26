@@ -1,9 +1,10 @@
 """
 File Locking for Concurrent Operations
-======================================
+=====================================
 
 Thread-safe and process-safe file locking utilities for GitHub automation.
-Uses fcntl.flock() on Unix systems for proper cross-process locking.
+Uses fcntl.flock() on Unix systems and msvcrt.locking() on Windows for proper
+cross-process locking.
 
 Example Usage:
     # Simple file locking
@@ -14,6 +15,7 @@ Example Usage:
     # Atomic write with locking
     async with locked_write("path/to/file.json", timeout=5.0) as f:
         json.dump(data, f)
+
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 _IS_WINDOWS = os.name == "nt"
+_WINDOWS_LOCK_SIZE = 1024 * 1024
 
 try:
     import fcntl  # type: ignore
@@ -44,8 +47,14 @@ def _try_lock(fd: int, exclusive: bool) -> None:
     if _IS_WINDOWS:
         if msvcrt is None:
             raise FileLockError("msvcrt is required for file locking on Windows")
-        del exclusive
-        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        if not exclusive:
+            import warnings
+
+            warnings.warn(
+                "Shared file locks are not supported on Windows; using exclusive lock",
+                RuntimeWarning,
+            )
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, _WINDOWS_LOCK_SIZE)
         return
 
     if fcntl is None:
@@ -58,11 +67,19 @@ def _try_lock(fd: int, exclusive: bool) -> None:
 def _unlock(fd: int) -> None:
     if _IS_WINDOWS:
         if msvcrt is None:
+            import warnings
+
+            warnings.warn(
+                "msvcrt unavailable; cannot unlock file descriptor", RuntimeWarning
+            )
             return
-        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, _WINDOWS_LOCK_SIZE)
         return
 
     if fcntl is None:
+        import warnings
+
+        warnings.warn("fcntl unavailable; cannot unlock file descriptor", RuntimeWarning)
         return
     fcntl.flock(fd, fcntl.LOCK_UN)
 
@@ -81,7 +98,8 @@ class FileLockTimeout(FileLockError):
 
 class FileLock:
     """
-    Cross-process file lock using fcntl.flock().
+    Cross-process file lock using platform-specific locking (fcntl.flock on Unix,
+    msvcrt.locking on Windows).
 
     Supports both sync and async context managers for flexible usage.
 

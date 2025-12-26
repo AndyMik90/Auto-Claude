@@ -9,6 +9,7 @@ This patched driver fixes both issues for LadybugDB compatibility.
 """
 
 import logging
+import re
 from typing import Any
 
 # Import kuzu (might be real_ladybug via monkeypatch)
@@ -105,13 +106,12 @@ def create_patched_kuzu_driver(db: str = ":memory:", max_concurrent_queries: int
                         if delete_existing:
                             # Extract index name from query
                             # Format: CALL CREATE_FTS_INDEX('TableName', 'index_name', [...])
-                            parts = query.split("'")
-                            if len(parts) >= 4:
-                                table_name = parts[1]
-                                index_name = parts[3]
-                                drop_query = (
-                                    f"CALL DROP_FTS_INDEX('{table_name}', '{index_name}')"
-                                )
+                            match = re.search(
+                                r"CREATE_FTS_INDEX\('([^']+)',\s*'([^']+)'", query
+                            )
+                            if match:
+                                table_name, index_name = match.groups()
+                                drop_query = f"CALL DROP_FTS_INDEX('{table_name}', '{index_name}')"
                                 try:
                                     conn.execute(drop_query)
                                     logger.debug(
