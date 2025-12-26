@@ -136,6 +136,30 @@ export function Unity({ projectId }: UnityProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
 
+  // M2: Profiles state
+  const [profileSettings, setProfileSettings] = useState<UnityProfileSettings | null>(null);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<UnityProfile | null>(null);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+
+  // M2: Pipeline state
+  const [pipelines, setPipelines] = useState<UnityPipelineRun[]>([]);
+  const [isLoadingPipelines, setIsLoadingPipelines] = useState(false);
+  const [isRunningPipeline, setIsRunningPipeline] = useState(false);
+  const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>([
+    { type: 'validate', enabled: true },
+    { type: 'editmode-tests', enabled: true },
+    { type: 'playmode-tests', enabled: true },
+    { type: 'build', enabled: false },
+    { type: 'collect-artifacts', enabled: false }
+  ]);
+  const [continueOnFail, setContinueOnFail] = useState(false);
+
+  // M2: PlayMode parameters
+  const [playModeBuildTarget, setPlayModeBuildTarget] = useState<string>('');
+  const [playModeTestFilter, setPlayModeTestFilter] = useState<string>('');
+
   // Get the effective editor path based on project version
   const effectiveEditorPath = useMemo(() => {
     if (!projectInfo?.version) return '';
@@ -232,7 +256,9 @@ export function Unity({ projectId }: UnityProps) {
     detectUnityProject();
     loadSettings();
     loadRuns();
-  }, [detectUnityProject, loadSettings, loadRuns]);
+    loadProfiles(); // M2
+    loadPipelines(); // M2
+  }, [detectUnityProject, loadSettings, loadRuns, loadProfiles, loadPipelines]);
 
   // Load editors when project info or settings change
   useEffect(() => {
@@ -306,6 +332,164 @@ export function Unity({ projectId }: UnityProps) {
       setRunError(err instanceof Error ? err.message : t('errors.runBuild'));
     } finally {
       setIsRunning(false);
+    }
+  };
+
+  // M2: Load profiles
+  const loadProfiles = useCallback(async () => {
+    if (!selectedProject) return;
+
+    setIsLoadingProfiles(true);
+
+    try {
+      const result = await window.electronAPI.getUnityProfiles(selectedProject.id);
+      if (result.success && result.data) {
+        setProfileSettings(result.data);
+        // Update PlayMode defaults from active profile
+        const activeProfile = result.data.profiles.find(p => p.id === result.data.activeProfileId);
+        if (activeProfile?.testDefaults?.playModeBuildTarget) {
+          setPlayModeBuildTarget(activeProfile.testDefaults.playModeBuildTarget);
+        }
+        if (activeProfile?.testDefaults?.testFilter) {
+          setPlayModeTestFilter(activeProfile.testDefaults.testFilter);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load Unity profiles:', err);
+    } finally {
+      setIsLoadingProfiles(false);
+    }
+  }, [selectedProject]);
+
+  // M2: Load pipelines
+  const loadPipelines = useCallback(async () => {
+    if (!selectedProject) return;
+
+    setIsLoadingPipelines(true);
+
+    try {
+      const result = await window.electronAPI.loadUnityPipelines(selectedProject.id);
+      if (result.success && result.data) {
+        setPipelines(result.data.pipelines || []);
+      }
+    } catch (err) {
+      console.error('Failed to load Unity pipelines:', err);
+    } finally {
+      setIsLoadingPipelines(false);
+    }
+  }, [selectedProject]);
+
+  // M2: Run PlayMode tests
+  const runPlayModeTests = async () => {
+    if (!selectedProject || !effectiveEditorPath) return;
+
+    setIsRunning(true);
+    setRunError(null);
+
+    try {
+      const result = await window.electronAPI.runUnityPlayModeTests(
+        selectedProject.id,
+        effectiveEditorPath,
+        {
+          buildTarget: playModeBuildTarget || undefined,
+          testFilter: playModeTestFilter || undefined
+        }
+      );
+      if (result.success) {
+        // Refresh runs
+        await loadRuns();
+      } else {
+        setRunError(result.error || 'Failed to run PlayMode tests');
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to run PlayMode tests');
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // M2: Run pipeline
+  const runPipeline = async () => {
+    if (!selectedProject || !profileSettings) return;
+
+    setIsRunningPipeline(true);
+
+    try {
+      const result = await window.electronAPI.runUnityPipeline(selectedProject.id, {
+        profileId: profileSettings.activeProfileId,
+        steps: pipelineSteps,
+        continueOnFail
+      });
+      if (result.success) {
+        // Refresh runs and pipelines
+        await loadRuns();
+        await loadPipelines();
+      } else {
+        console.error('Failed to run pipeline:', result.error);
+      }
+    } catch (err) {
+      console.error('Failed to run pipeline:', err);
+    } finally {
+      setIsRunningPipeline(false);
+    }
+  };
+
+  // M2: Set active profile
+  const setActiveProfile = async (profileId: string) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.setActiveUnityProfile(selectedProject.id, profileId);
+      if (result.success) {
+        await loadProfiles();
+      }
+    } catch (err) {
+      console.error('Failed to set active profile:', err);
+    }
+  };
+
+  // M2: Create profile
+  const createProfile = async (profile: Omit<UnityProfile, 'id'>) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.createUnityProfile(selectedProject.id, profile);
+      if (result.success) {
+        await loadProfiles();
+        setIsProfileDialogOpen(false);
+      }
+    } catch (err) {
+      console.error('Failed to create profile:', err);
+    }
+  };
+
+  // M2: Update profile
+  const updateProfile = async (profileId: string, updates: Partial<Omit<UnityProfile, 'id'>>) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.updateUnityProfile(selectedProject.id, profileId, updates);
+      if (result.success) {
+        await loadProfiles();
+        setIsProfileDialogOpen(false);
+        setEditingProfile(null);
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+    }
+  };
+
+  // M2: Delete profile
+  const deleteProfile = async (profileId: string) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.deleteUnityProfile(selectedProject.id, profileId);
+      if (result.success) {
+        await loadProfiles();
+      }
+    } catch (err) {
+      console.error('Failed to delete profile:', err);
     }
   };
 
