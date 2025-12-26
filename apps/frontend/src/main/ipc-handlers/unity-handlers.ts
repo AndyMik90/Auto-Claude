@@ -197,11 +197,13 @@ function autoDetectUnityEditorsFolder(): string | null {
 
 /**
  * Properly quote and escape a string for shell display.
- * Escapes internal quotes and wraps the string in quotes if it contains spaces or special characters.
+ * Escapes internal backslashes and quotes, and wraps the string in quotes if it contains spaces or special characters.
  */
 function quoteShellArg(arg: string): string {
-  // Escape internal quotes
-  const escaped = arg.replace(/"/g, '\\"');
+  // First escape backslashes, then escape internal quotes
+  const escaped = arg
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
   // Quote if contains spaces or special characters
   if (/[\s&|<>()$`\\"]/.test(arg)) {
     return `"${escaped}"`;
