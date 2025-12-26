@@ -1258,31 +1258,6 @@ function savePipelineRecord(projectId: string, pipeline: UnityPipelineRun): void
   writeFileSync(pipelineJsonPath, JSON.stringify(pipeline, null, 2), 'utf-8');
 }
 
-/**
- * Load a single pipeline record from disk
- */
-function loadPipelineRecord(projectId: string, pipelineId: string): UnityPipelineRun | null {
-  try {
-    const project = projectStore.getProject(projectId);
-    if (!project) {
-      throw new Error('Project not found');
-    }
-
-    const pipelinesDir = join(project.path, '.auto-claude', 'unity-runs', 'pipelines');
-    const pipelineJsonPath = join(pipelinesDir, pipelineId, 'pipeline.json');
-
-    if (!existsSync(pipelineJsonPath)) {
-      return null;
-    }
-
-    const content = readFileSync(pipelineJsonPath, 'utf-8');
-    return JSON.parse(content) as UnityPipelineRun;
-  } catch (error) {
-    console.error(`Failed to load pipeline record ${pipelineId}:`, error);
-    return null;
-  }
-}
-
 // Track running pipelines for cancellation
 const runningPipelines = new Map<string, { canceled: boolean; currentRunId?: string }>();
 
