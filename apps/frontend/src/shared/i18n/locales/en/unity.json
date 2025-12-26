@@ -69,7 +69,9 @@
       "developmentBuild": "Development Build",
       "confirmDelete": "Are you sure you want to delete the profile '{{name}}'?",
       "confirmDeleteTitle": "Delete Profile",
-      "deleteButton": "Delete Profile"
+      "deleteButton": "Delete Profile",
+      "profileNameRequired": "Profile name is required",
+      "saveFailed": "Failed to save profile. Please try again."
     }
   },
   "actions": {

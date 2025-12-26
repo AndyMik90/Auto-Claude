@@ -294,7 +294,7 @@ export function Unity({ projectId }: UnityProps) {
     loadRuns();
     loadProfiles(); // M2
     loadPipelines(); // M2
-  }, [selectedProject, detectUnityProject, loadSettings, loadRuns, loadProfiles, loadPipelines]);
+  }, [detectUnityProject, loadSettings, loadRuns, loadProfiles, loadPipelines]);
 
   // Load editors when project info or settings change
   useEffect(() => {
@@ -448,10 +448,10 @@ export function Unity({ projectId }: UnityProps) {
       const result = await window.electronAPI.createUnityProfile(selectedProject.id, profile);
       if (result.success) {
         await loadProfiles();
-        setIsProfileDialogOpen(false);
       }
     } catch (err) {
       console.error('Failed to create profile:', err);
+      throw err; // Re-throw to let caller handle
     }
   };
 
@@ -463,11 +463,10 @@ export function Unity({ projectId }: UnityProps) {
       const result = await window.electronAPI.updateUnityProfile(selectedProject.id, profileId, updates);
       if (result.success) {
         await loadProfiles();
-        setIsProfileDialogOpen(false);
-        setEditingProfile(null);
       }
     } catch (err) {
       console.error('Failed to update profile:', err);
+      throw err; // Re-throw to let caller handle
     }
   };
 
@@ -1601,7 +1600,7 @@ export function Unity({ projectId }: UnityProps) {
                       // Validate profile name
                       const trimmedName = profileFormName.trim();
                       if (!trimmedName) {
-                        setProfileFormError('Profile name is required');
+                        setProfileFormError(t('profiles.dialog.profileNameRequired'));
                         return;
                       }
 
@@ -1620,15 +1619,16 @@ export function Unity({ projectId }: UnityProps) {
                         } else {
                           await createProfile(profileData);
                         }
-                        // Only reset form on success
+                        // Reset form and close dialog only on success
                         setIsCreatingProfile(false);
                         setEditingProfile(null);
                         setProfileFormName('');
                         setProfileFormBuildMethod('');
                         setProfileFormError('');
+                        setIsProfileDialogOpen(false);
                       } catch (error) {
                         console.error('Failed to save profile:', error);
-                        setProfileFormError('Failed to save profile. Please try again.');
+                        setProfileFormError(t('profiles.dialog.saveFailed'));
                         // Keep form open on error
                       }
                     }}
