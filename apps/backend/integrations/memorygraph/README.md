@@ -161,15 +161,14 @@ python3 -m pytest tests/integrations/memorygraph/ -v
 ```
 
 **Test Coverage:**
-- Configuration: 8 tests ✅
-- MCP Client: 5 tests ✅
-- Context Formatting: 4 tests ✅
-- Context Retrieval: 2 tests ✅
-- Insight Extraction: 18 tests ✅
+- MCP Client: 18 tests ✅ (including UUID support, timeout config, process cleanup)
+- Context Retrieval: 7 tests ✅
+- Context Formatting: 12 tests ✅
+- Insight Extraction: 20 tests ✅
 - Relationship Inference: 5 tests ✅
 - Storage Integration: 6 tests ✅
 
-**Total: 48 tests passing**
+**Total: 68 tests passing**
 
 ## Integration with memory_manager.py
 

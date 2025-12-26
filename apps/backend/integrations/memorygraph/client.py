@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 import re
-from typing import Any, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +26,17 @@ class MemoryGraphClient:
     exceptions.
     """
 
-    def __init__(self):
-        """Initialize the client."""
+    # Default timeout for MCP calls (seconds)
+    DEFAULT_TIMEOUT = 10.0
+
+    def __init__(self, timeout: Optional[float] = None):
+        """Initialize the client.
+
+        Args:
+            timeout: Timeout in seconds for MCP calls (default: 10.0)
+        """
         self._request_id = 0
+        self._timeout = timeout or self.DEFAULT_TIMEOUT
 
     def _next_id(self) -> int:
         """Get next request ID."""
@@ -99,8 +107,8 @@ class MemoryGraphClient:
 
             memory = {}
 
-            # Extract ID from (ID: xxx)
-            id_match = re.search(r"\(ID:\s*([a-zA-Z0-9]+)\)", section)
+            # Extract ID from (ID: xxx) - supports UUIDs with hyphens
+            id_match = re.search(r"\(ID:\s*([a-zA-Z0-9-]+)\)", section)
             if id_match:
                 memory["id"] = id_match.group(1)
 
@@ -160,6 +168,7 @@ class MemoryGraphClient:
         Returns:
             Tool result dict or None on error
         """
+        proc = None
         try:
             # Build MCP request
             request = {
@@ -181,11 +190,11 @@ class MemoryGraphClient:
                 stderr=asyncio.subprocess.PIPE
             )
 
-            # Send request
+            # Send request with configurable timeout
             request_json = json.dumps(request) + "\n"
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(request_json.encode()),
-                timeout=5.0
+                timeout=self._timeout
             )
 
             # Parse response
@@ -204,11 +213,26 @@ class MemoryGraphClient:
             logger.debug("MemoryGraph command not found - is it installed?")
             return None
         except asyncio.TimeoutError:
-            logger.debug("MemoryGraph request timeout")
+            logger.debug(f"MemoryGraph request timeout after {self._timeout}s")
+            # Kill the process on timeout
+            if proc is not None:
+                try:
+                    proc.kill()
+                    await proc.wait()
+                except ProcessLookupError:
+                    pass  # Process already terminated
             return None
         except Exception as e:
             logger.debug(f"MemoryGraph client error: {e}")
             return None
+        finally:
+            # Ensure process is cleaned up
+            if proc is not None and proc.returncode is None:
+                try:
+                    proc.kill()
+                    await proc.wait()
+                except ProcessLookupError:
+                    pass  # Process already terminated
 
     async def recall(self, query: str, limit: int = 5) -> list[dict]:
         """
@@ -266,7 +290,8 @@ class MemoryGraphClient:
             if isinstance(content, list) and content:
                 text = content[0].get("text", "")
                 # Look for "Memory stored successfully with ID: xxx" or similar
-                match = re.search(r"ID:\s*([a-zA-Z0-9]+)", text)
+                # Supports UUIDs with hyphens
+                match = re.search(r"ID:\s*([a-zA-Z0-9-]+)", text)
                 if match:
                     return match.group(1)
 

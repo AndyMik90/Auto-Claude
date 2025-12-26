@@ -1,10 +1,5 @@
 """Tests for InsightExtractor."""
 import pytest
-from pathlib import Path
-import sys
-
-# Add auto-claude to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "apps" / "backend"))
 
 from integrations.memorygraph.extractor import InsightExtractor
 

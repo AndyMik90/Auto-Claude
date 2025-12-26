@@ -7,7 +7,6 @@ Configuration for MemoryGraph MCP server integration.
 
 import os
 from dataclasses import dataclass
-from typing import Literal
 
 
 @dataclass
