@@ -420,6 +420,10 @@ export class ProjectStore {
    * This method calculates the correct status from subtask progress and QA state,
    * providing backwards compatibility for existing tasks with incorrect status.
    *
+   * CRITICAL FIX: Now checks validation phase status before setting to human_review.
+   * Tasks must NOT transition to human_review (which allows merge) while validation
+   * is still running. They should remain in ai_review until validation completes.
+   *
    * Review reasons:
    * - 'completed': All subtasks done, QA passed - ready for merge
    * - 'errors': Subtasks failed during execution - needs attention
@@ -436,22 +440,54 @@ export class ProjectStore {
     let calculatedStatus: TaskStatus = 'backlog';
     let reviewReason: ReviewReason | undefined;
 
+    // Check validation phase status from task logs (check both main and worktree logs)
+    const taskLogPath = path.join(specPath, 'task_log.json');
+    let validationPhaseActive = false;
+
+    // First check worktree logs (validation runs in worktree)
+    const worktreeLogPath = path.join(specPath, '.worktrees', path.basename(specPath), 'task_log.json');
+    if (existsSync(worktreeLogPath)) {
+      try {
+        const worktreeLog = JSON.parse(readFileSync(worktreeLogPath, 'utf-8'));
+        validationPhaseActive = worktreeLog?.phases?.validation?.status === 'active';
+      } catch {
+        // Ignore read errors
+      }
+    }
+
+    // Fallback to main task log if worktree log doesn't exist or validation not active there
+    if (!validationPhaseActive && existsSync(taskLogPath)) {
+      try {
+        const taskLog = JSON.parse(readFileSync(taskLogPath, 'utf-8'));
+        validationPhaseActive = taskLog?.phases?.validation?.status === 'active';
+      } catch {
+        // Ignore read errors
+      }
+    }
+
     if (allSubtasks.length > 0) {
       const completed = allSubtasks.filter((s) => s.status === 'completed').length;
       const inProgress = allSubtasks.filter((s) => s.status === 'in_progress').length;
       const failed = allSubtasks.filter((s) => s.status === 'failed').length;
 
       if (completed === allSubtasks.length) {
-        // All subtasks completed - check QA status
-        const qaSignoff = (plan as unknown as Record<string, unknown>)?.qa_signoff as { status?: string } | undefined;
-        if (qaSignoff?.status === 'approved') {
-          calculatedStatus = 'human_review';
-          reviewReason = 'completed';
+        // All subtasks completed - check validation phase status first
+        if (validationPhaseActive) {
+          // CRITICAL: Validation is still running - keep in ai_review status to prevent premature merge
+          // The task should NOT be in human_review (which allows merge) until validation completes
+          calculatedStatus = 'ai_review';
         } else {
-          // Manual tasks skip AI review and go directly to human review
-          calculatedStatus = metadata?.sourceType === 'manual' ? 'human_review' : 'ai_review';
-          if (metadata?.sourceType === 'manual') {
+          // Validation complete - check QA status
+          const qaSignoff = (plan as unknown as Record<string, unknown>)?.qa_signoff as { status?: string } | undefined;
+          if (qaSignoff?.status === 'approved') {
+            calculatedStatus = 'human_review';
             reviewReason = 'completed';
+          } else {
+            // Manual tasks skip AI review and go directly to human review
+            calculatedStatus = metadata?.sourceType === 'manual' ? 'human_review' : 'ai_review';
+            if (metadata?.sourceType === 'manual') {
+              reviewReason = 'completed';
+            }
           }
         }
       } else if (failed > 0) {
