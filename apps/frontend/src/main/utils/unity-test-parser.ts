@@ -61,8 +61,8 @@ export async function parseUnityTestResults(xmlPath: string): Promise<UnityTestS
       }
     }
 
-    // Try alternative formats
-    if (parsed['test-results']) {
+    // Try alternative formats (only if no values were extracted from test-run)
+    if (parsed['test-results'] && result.passed === 0 && result.failed === 0 && result.skipped === 0) {
       const testResults = parsed['test-results'];
       if (testResults.$) {
         const attrs = testResults.$;
