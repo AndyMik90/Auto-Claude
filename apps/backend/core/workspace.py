@@ -995,10 +995,108 @@ def _resolve_git_conflicts_with_ai(
         if f not in conflicting_files and s != "A"  # Skip new files, already copied
     ]
 
+    # Separate files that need AI merge (path-mapped) from simple copies
+    path_mapped_files: list[ParallelMergeTask] = []
+    simple_copy_files: list[
+        tuple[str, str, str]
+    ] = []  # (file_path, target_path, status)
+
     for file_path, status in non_conflicting:
         # Apply path mapping for renamed/moved files
         target_file_path = _apply_path_mapping(file_path, path_mappings)
 
+        if target_file_path != file_path and status != "D":
+            # File was renamed/moved - needs AI merge to incorporate changes
+            # Get content from worktree (old path) and target branch (new path)
+            worktree_content = _get_file_content_from_ref(
+                project_dir, spec_branch, file_path
+            )
+            target_content = _get_file_content_from_ref(
+                project_dir, base_branch, target_file_path
+            )
+            base_content = None
+            if merge_base:
+                base_content = _get_file_content_from_ref(
+                    project_dir, merge_base, file_path
+                )
+
+            if worktree_content and target_content:
+                # Both exist - need AI merge
+                path_mapped_files.append(
+                    ParallelMergeTask(
+                        file_path=target_file_path,
+                        main_content=target_content,
+                        worktree_content=worktree_content,
+                        base_content=base_content,
+                        spec_name=spec_name,
+                    )
+                )
+                debug(
+                    MODULE,
+                    f"Path-mapped file needs AI merge: {file_path} -> {target_file_path}",
+                )
+            elif worktree_content:
+                # Only exists in worktree - simple copy to new path
+                simple_copy_files.append((file_path, target_file_path, status))
+        else:
+            # No path mapping or deletion - simple operation
+            simple_copy_files.append((file_path, target_file_path, status))
+
+    # Process path-mapped files with AI merge
+    if path_mapped_files:
+        print()
+        print_status(
+            f"Merging {len(path_mapped_files)} path-mapped file(s) with AI...",
+            "progress",
+        )
+
+        import time
+
+        start_time = time.time()
+
+        # Run parallel merges for path-mapped files
+        path_mapped_results = asyncio.run(
+            _run_parallel_merges(
+                tasks=path_mapped_files,
+                project_dir=project_dir,
+                max_concurrent=MAX_PARALLEL_AI_MERGES,
+            )
+        )
+
+        elapsed = time.time() - start_time
+
+        for result in path_mapped_results:
+            if result.success:
+                target_path = project_dir / result.file_path
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                target_path.write_text(result.merged_content, encoding="utf-8")
+                subprocess.run(
+                    ["git", "add", result.file_path],
+                    cwd=project_dir,
+                    capture_output=True,
+                )
+                resolved_files.append(result.file_path)
+
+                if result.was_auto_merged:
+                    auto_merged_count += 1
+                    print(success(f"    ✓ {result.file_path} (auto-merged)"))
+                else:
+                    ai_merged_count += 1
+                    print(success(f"    ✓ {result.file_path} (AI merged)"))
+            else:
+                print(error(f"    ✗ {result.file_path}: {result.error}"))
+                remaining_conflicts.append(
+                    {
+                        "file": result.file_path,
+                        "reason": result.error or "AI could not merge path-mapped file",
+                        "severity": "high",
+                    }
+                )
+
+        print(muted(f"  Path-mapped merge completed in {elapsed:.1f}s"))
+
+    # Process simple copy/delete files
+    for file_path, target_file_path, status in simple_copy_files:
         try:
             if status == "D":
                 # Deleted in worktree - delete from target path
@@ -1011,7 +1109,7 @@ def _resolve_git_conflicts_with_ai(
                         capture_output=True,
                     )
             else:
-                # Modified - get content from worktree (original path), write to target (mapped path)
+                # Modified without path change - simple copy
                 content = _get_file_content_from_ref(
                     project_dir, spec_branch, file_path
                 )
