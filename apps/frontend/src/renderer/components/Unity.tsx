@@ -142,6 +142,7 @@ export function Unity({ projectId }: UnityProps) {
   const [deleteConfirmProfile, setDeleteConfirmProfile] = useState<UnityProfile | null>(null);
   const [profileFormName, setProfileFormName] = useState<string>('');
   const [profileFormBuildMethod, setProfileFormBuildMethod] = useState<string>('');
+  const [profileFormError, setProfileFormError] = useState<string>('');
 
   // M2: Pipeline state
   const [, setPipelines] = useState<UnityPipelineRun[]>([]);
@@ -1526,6 +1527,7 @@ export function Unity({ projectId }: UnityProps) {
                           setEditingProfile(profile);
                           setProfileFormName(profile.name);
                           setProfileFormBuildMethod(profile.buildExecuteMethod || '');
+                          setProfileFormError('');
                         }}
                       >
                         <Edit2 className="h-3 w-3 mr-1" />
@@ -1554,6 +1556,7 @@ export function Unity({ projectId }: UnityProps) {
                   setIsCreatingProfile(true);
                   setProfileFormName('');
                   setProfileFormBuildMethod('');
+                  setProfileFormError('');
                 }}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1564,13 +1567,21 @@ export function Unity({ projectId }: UnityProps) {
             {/* Profile Form (Create or Edit) */}
             {(isCreatingProfile || editingProfile) && (
               <div className="space-y-4 p-4 border rounded-lg">
+                {profileFormError && (
+                  <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                    {profileFormError}
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="profile-name">{t('profiles.dialog.nameLabel')}</Label>
                   <Input
                     id="profile-name"
                     placeholder={t('profiles.dialog.namePlaceholder')}
                     value={profileFormName}
-                    onChange={(e) => setProfileFormName(e.target.value)}
+                    onChange={(e) => {
+                      setProfileFormName(e.target.value);
+                      setProfileFormError(''); // Clear error on input
+                    }}
                     className="mt-1"
                   />
                 </div>
@@ -1590,7 +1601,7 @@ export function Unity({ projectId }: UnityProps) {
                       // Validate profile name
                       const trimmedName = profileFormName.trim();
                       if (!trimmedName) {
-                        // TODO: Show validation error in UI
+                        setProfileFormError('Profile name is required');
                         return;
                       }
 
@@ -1614,8 +1625,10 @@ export function Unity({ projectId }: UnityProps) {
                         setEditingProfile(null);
                         setProfileFormName('');
                         setProfileFormBuildMethod('');
+                        setProfileFormError('');
                       } catch (error) {
                         console.error('Failed to save profile:', error);
+                        setProfileFormError('Failed to save profile. Please try again.');
                         // Keep form open on error
                       }
                     }}
@@ -1629,6 +1642,7 @@ export function Unity({ projectId }: UnityProps) {
                       setEditingProfile(null);
                       setProfileFormName('');
                       setProfileFormBuildMethod('');
+                      setProfileFormError('');
                     }}
                   >
                     {t('profiles.dialog.cancel')}

@@ -127,6 +127,20 @@ interface UnityPipelineRun {
 const DEFAULT_CANCELED_REASON = 'canceled (reason unknown)';
 
 /**
+ * Parse ISO timestamp for use in IDs (includes milliseconds for uniqueness)
+ * Converts "2024-12-26T14:30:45.123Z" to "20241226-143045123"
+ */
+function parseTimestampForId(now: Date): string {
+  const iso = now.toISOString();
+  const parts = iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z/);
+  if (!parts) {
+    throw new Error(`Failed to parse ISO timestamp format: expected YYYY-MM-DDTHH:MM:SS.sssZ, got ${iso}`);
+  }
+  const [, y, m, d, hh, mm, ss, ms] = parts;
+  return `${y}${m}${d}-${hh}${mm}${ss}${ms}`;
+}
+
+/**
  * Detect if a directory is a Unity project and extract version info
  */
 function detectUnityProject(projectPath: string): UnityProjectInfo {
@@ -408,13 +422,7 @@ function createRunDir(projectId: string, action: 'editmode-tests' | 'playmode-te
 
   // Generate run ID: YYYYMMDD-HHMMSSmmm_action (includes milliseconds for uniqueness)
   const now = new Date();
-  const iso = now.toISOString();
-  const parts = iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z/);
-  if (!parts) {
-    throw new Error('Failed to parse timestamp');
-  }
-  const [, y, m, d, hh, mm, ss, ms] = parts;
-  const timestamp = `${y}${m}${d}-${hh}${mm}${ss}${ms}`;
+  const timestamp = parseTimestampForId(now);
   const id = `${timestamp}_${action}`;
   const runDir = join(runsDir, id);
 
@@ -441,13 +449,7 @@ function createPipelineDir(projectId: string): { id: string; dir: string } {
 
   // Generate pipeline ID: YYYYMMDD-HHMMSSmmm_pipeline (includes milliseconds for uniqueness)
   const now = new Date();
-  const iso = now.toISOString();
-  const parts = iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z/);
-  if (!parts) {
-    throw new Error('Failed to parse timestamp');
-  }
-  const [, y, m, d, hh, mm, ss, ms] = parts;
-  const timestamp = `${y}${m}${d}-${hh}${mm}${ss}${ms}`;
+  const timestamp = parseTimestampForId(now);
   const id = `${timestamp}_pipeline`;
   const pipelineDir = join(pipelinesDir, id);
 
