@@ -1,4 +1,4 @@
-import { FileCode, Check, Clock, AlertTriangle } from 'lucide-react';
+import { FileCode, Check, AlertTriangle } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import type { FileConflict } from '../../../../../shared/types';
 
