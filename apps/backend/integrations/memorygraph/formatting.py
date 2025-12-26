@@ -5,8 +5,6 @@ Context Formatting for MemoryGraph
 Format memories into readable context for agent prompts.
 """
 
-from typing import Optional
-
 
 def format_context(memories: list[dict], solutions: list[dict]) -> str:
     """
@@ -46,7 +44,7 @@ def format_context(memories: list[dict], solutions: list[dict]) -> str:
     # Gotchas to avoid
     problems = [
         m for m in memories
-        if m.get("type") == "problem" and "gotcha" in m.get("tags", [])
+        if m.get("type") == "problem" and "gotcha" in (m.get("tags") or [])
     ]
     if problems:
         sections.append("\n### Watch out for\n")

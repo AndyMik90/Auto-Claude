@@ -1,12 +1,7 @@
 """Tests for MemoryGraph MCP client."""
 import json
 import pytest
-from pathlib import Path
-import sys
-from unittest.mock import AsyncMock, Mock, patch
-
-# Add auto-claude to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "apps" / "backend"))
+from unittest.mock import AsyncMock, patch
 
 from integrations.memorygraph.client import MemoryGraphClient
 
@@ -138,6 +133,9 @@ NPE on login"""
             ("Stored memory ID: def456", "def456"),
             ("Created with ID:xyz789", "xyz789"),
             ("Memory ID: 123abc456def", "123abc456def"),
+            # UUID-style IDs with hyphens
+            ("Memory ID: 550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000"),
+            ("Created with ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890", "a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
         ]
 
         for message, expected_id in test_cases:
@@ -330,3 +328,58 @@ NPE on login"""
             result = await client._call_tool("invalid_tool", {})
 
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_configurable_timeout(self):
+        """Client accepts configurable timeout."""
+        # Default timeout
+        client1 = MemoryGraphClient()
+        assert client1._timeout == 10.0
+
+        # Custom timeout
+        client2 = MemoryGraphClient(timeout=30.0)
+        assert client2._timeout == 30.0
+
+    @pytest.mark.asyncio
+    async def test_parses_uuid_with_hyphens_in_text(self):
+        """Parses memory IDs that are UUIDs with hyphens from text response."""
+        client = MemoryGraphClient()
+
+        formatted_text = """**1. Fixed auth bug** (ID: 550e8400-e29b-41d4-a716-446655440000)
+Type: solution | Importance: 0.8
+Tags: auth, bugfix
+
+Added null check"""
+
+        mock_result = {
+            "content": [{"type": "text", "text": formatted_text}]
+        }
+
+        with patch.object(client, '_call_tool', return_value=mock_result):
+            memories = await client.recall("auth bug", limit=5)
+
+        assert len(memories) == 1
+        assert memories[0]["id"] == "550e8400-e29b-41d4-a716-446655440000"
+
+    @pytest.mark.asyncio
+    async def test_process_cleanup_on_timeout(self):
+        """Ensures process is killed on timeout."""
+        import asyncio
+        from unittest.mock import Mock
+
+        client = MemoryGraphClient(timeout=0.001)  # Very short timeout
+
+        mock_proc = AsyncMock()
+        mock_proc.returncode = None  # Process still running
+        # kill() is a regular method, not async
+        mock_proc.kill = Mock()
+        mock_proc.wait = AsyncMock()
+        # Simulate slow response
+        mock_proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
+
+        with patch('asyncio.create_subprocess_exec', return_value=mock_proc):
+            result = await client._call_tool("slow_tool", {})
+
+        assert result is None
+        # Should have attempted to kill the process
+        mock_proc.kill.assert_called()

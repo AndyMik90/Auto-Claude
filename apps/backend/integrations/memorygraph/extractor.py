@@ -56,10 +56,10 @@ class InsightExtractor:
                 importance=0.7
             ))
 
-        # Extract from errors
+        # Extract from errors - use "error" type for actual errors
         for error in session_output.get("errors", []):
             problems.append(self._create_memory(
-                "problem",
+                "error",
                 error,
                 importance=0.8  # Errors are more important
             ))

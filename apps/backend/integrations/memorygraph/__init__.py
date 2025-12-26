@@ -12,9 +12,19 @@ from .config import (
 )
 
 __all__ = [
+    # Config (eagerly loaded)
     "is_memorygraph_enabled",
     "get_memorygraph_config",
     "MemoryGraphConfig",
+    # Client (lazy loaded)
+    "MemoryGraphClient",
+    # Context retrieval (lazy loaded)
+    "get_context_for_subtask",
+    "format_context",
+    # Storage (lazy loaded)
+    "save_to_memorygraph",
+    "InsightExtractor",
+    "infer_relationships",
 ]
 
 

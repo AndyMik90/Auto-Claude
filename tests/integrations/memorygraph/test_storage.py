@@ -1,11 +1,7 @@
 """Tests for storage integration."""
 import pytest
 from pathlib import Path
-import sys
 from unittest.mock import AsyncMock, patch
-
-# Add auto-claude to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "apps" / "backend"))
 
 from integrations.memorygraph.storage import save_to_memorygraph
 

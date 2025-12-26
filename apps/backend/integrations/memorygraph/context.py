@@ -7,7 +7,6 @@ Retrieve relevant context from MemoryGraph for subtasks.
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from .client import MemoryGraphClient
 from .formatting import format_context
