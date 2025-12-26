@@ -89,7 +89,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Commit version changes
-          git add apps/frontend/package.json package.json apps/backend/__init__.py
+          git add apps/frontend/package.json package.json
+          if [ -f "apps/backend/__init__.py" ]; then
+            git add apps/backend/__init__.py
+          fi
           git commit -m "chore: bump version to $VERSION for beta release"
 
           # Create annotated tag
