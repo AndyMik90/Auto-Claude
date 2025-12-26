@@ -1,9 +1,16 @@
-import { useEffect } from 'react';
+import { useState, useCallback, type ClipboardEvent, type DragEvent } from 'react';
 import { AlertCircle, RotateCcw, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Textarea } from '../../ui/textarea';
-import { useImagePaste } from '../../../hooks/useImagePaste';
+import {
+  generateImageId,
+  blobToBase64,
+  createThumbnail,
+  isValidImageMimeType,
+  resolveFilename
+} from '../../ImageUpload';
 import { cn } from '../../../lib/utils';
+import { MAX_IMAGES_PER_TASK, ALLOWED_IMAGE_TYPES_DISPLAY } from '../../../../shared/constants';
 import type { ImageAttachment } from '../../../../shared/types';
 
 interface QAFeedbackSectionProps {
@@ -30,45 +37,173 @@ export function QAFeedbackSection({
   imageError,
   onImageError
 }: QAFeedbackSectionProps) {
-  // Use shared image paste/drop hook
-  // The hook manages its own state - we sync to parent for persistence but render hook's images directly
-  const {
-    images: localImages,
-    setImages: setLocalImages,
-    error: localError,
-    isDragOver,
-    handlePaste,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
-    removeImage
-  } = useImagePaste({
-    initialImages: images,
-    disabled: isSubmitting
-  });
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  // Sync hook images to parent state (for persistence when submitting)
-  useEffect(() => {
-    // Only update parent if images actually changed
-    if (JSON.stringify(localImages) !== JSON.stringify(images)) {
-      onImagesChange(localImages);
-    }
-  }, [localImages, images, onImagesChange]);
+  /**
+   * Handle paste event for screenshot support
+   */
+  const handlePaste = useCallback(async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (isSubmitting) return;
 
-  // Sync parent images to hook when parent changes externally (e.g., on clear)
-  useEffect(() => {
-    // Only sync if parent has fewer images (deletion from parent) or is empty (reset)
-    if (images.length < localImages.length || (images.length === 0 && localImages.length > 0)) {
-      setLocalImages(images);
-    }
-  }, [images, localImages, setLocalImages]);
+    const clipboardItems = e.clipboardData?.items;
+    if (!clipboardItems) return;
 
-  // Sync error state with parent
-  useEffect(() => {
-    if (localError !== imageError) {
-      onImageError(localError);
+    // Find image items in clipboard
+    const imageItems: DataTransferItem[] = [];
+    for (let i = 0; i < clipboardItems.length; i++) {
+      const item = clipboardItems[i];
+      if (item.type.startsWith('image/')) {
+        imageItems.push(item);
+      }
     }
-  }, [localError, imageError, onImageError]);
+
+    // If no images, allow normal paste behavior
+    if (imageItems.length === 0) return;
+
+    // Prevent default paste when we have images
+    e.preventDefault();
+
+    // Check if we can add more images
+    const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
+    if (remainingSlots <= 0) {
+      onImageError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+      return;
+    }
+
+    onImageError(null);
+
+    // Convert DataTransferItems to Files and process
+    const newImages: ImageAttachment[] = [];
+    const existingFilenames = images.map(img => img.filename);
+
+    for (const item of imageItems.slice(0, remainingSlots)) {
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      if (!isValidImageMimeType(file.type)) {
+        onImageError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+        continue;
+      }
+
+      try {
+        const dataUrl = await blobToBase64(file);
+        const thumbnail = await createThumbnail(dataUrl);
+
+        const extension = file.type.split('/')[1] || 'png';
+        const baseFilename = file.name || `screenshot-${Date.now()}.${extension}`;
+        const resolvedFilename = resolveFilename(baseFilename, [
+          ...existingFilenames,
+          ...newImages.map(img => img.filename)
+        ]);
+
+        newImages.push({
+          id: generateImageId(),
+          filename: resolvedFilename,
+          mimeType: file.type,
+          size: file.size,
+          data: dataUrl.split(',')[1],
+          thumbnail
+        });
+      } catch {
+        onImageError('Failed to process screenshot');
+      }
+    }
+
+    if (newImages.length > 0) {
+      onImagesChange([...images, ...newImages]);
+    }
+  }, [isSubmitting, images, onImagesChange, onImageError]);
+
+  /**
+   * Handle drag over
+   */
+  const handleDragOver = useCallback((e: DragEvent<HTMLTextAreaElement>) => {
+    if (isSubmitting) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, [isSubmitting]);
+
+  /**
+   * Handle drag leave
+   */
+  const handleDragLeave = useCallback((e: DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  /**
+   * Handle drop for image files
+   */
+  const handleDrop = useCallback(async (e: DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (isSubmitting) return;
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    // Filter for image files
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    // Check if we can add more images
+    const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
+    if (remainingSlots <= 0) {
+      onImageError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+      return;
+    }
+
+    onImageError(null);
+
+    const newImages: ImageAttachment[] = [];
+    const existingFilenames = images.map(img => img.filename);
+
+    for (const file of imageFiles.slice(0, remainingSlots)) {
+      if (!isValidImageMimeType(file.type)) {
+        onImageError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+        continue;
+      }
+
+      try {
+        const dataUrl = await blobToBase64(file);
+        const thumbnail = await createThumbnail(dataUrl);
+
+        const extension = file.type.split('/')[1] || 'png';
+        const baseFilename = file.name || `dropped-image-${Date.now()}.${extension}`;
+        const resolvedFilename = resolveFilename(baseFilename, [
+          ...existingFilenames,
+          ...newImages.map(img => img.filename)
+        ]);
+
+        newImages.push({
+          id: generateImageId(),
+          filename: resolvedFilename,
+          mimeType: file.type,
+          size: file.size,
+          data: dataUrl.split(',')[1],
+          thumbnail
+        });
+      } catch {
+        onImageError('Failed to process image');
+      }
+    }
+
+    if (newImages.length > 0) {
+      onImagesChange([...images, ...newImages]);
+    }
+  }, [isSubmitting, images, onImagesChange, onImageError]);
+
+  /**
+   * Remove an image by ID
+   */
+  const removeImage = useCallback((imageId: string) => {
+    onImagesChange(images.filter(img => img.id !== imageId));
+    onImageError(null);
+  }, [images, onImagesChange, onImageError]);
 
   return (
     <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
@@ -98,9 +233,9 @@ export function QAFeedbackSection({
       </p>
 
       {/* Image Thumbnails - displayed inline below textarea */}
-      {localImages.length > 0 && (
+      {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2 mb-3">
-          {localImages.map((image) => (
+          {images.map((image) => (
             <div
               key={image.id}
               className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
@@ -145,7 +280,7 @@ export function QAFeedbackSection({
       )}
 
       {/* Spacing when no images */}
-      {localImages.length === 0 && !imageError && <div className="mb-3" />}
+      {images.length === 0 && !imageError && <div className="mb-3" />}
 
       <Button
         variant="warning"
