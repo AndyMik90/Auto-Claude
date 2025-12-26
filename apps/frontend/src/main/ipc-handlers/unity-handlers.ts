@@ -64,6 +64,9 @@ interface UnityRun {
   canceledReason?: string;
 }
 
+// Constants
+const DEFAULT_CANCELED_REASON = 'unknown';
+
 /**
  * Detect if a directory is a Unity project and extract version info
  */
@@ -494,7 +497,7 @@ async function runEditModeTests(projectId: string, editorPath: string): Promise<
       } else {
         // Preserve cancellation status and reason from disk
         run.status = 'canceled';
-        run.canceledReason = diskRun.canceledReason ?? 'unknown';
+        run.canceledReason = diskRun.canceledReason ?? DEFAULT_CANCELED_REASON;
       }
 
       // Parse test results if available
@@ -647,7 +650,7 @@ async function runBuild(projectId: string, editorPath: string, executeMethod: st
       } else {
         // Preserve cancellation status and reason from disk
         run.status = 'canceled';
-        run.canceledReason = diskRun.canceledReason ?? 'unknown';
+        run.canceledReason = diskRun.canceledReason ?? DEFAULT_CANCELED_REASON;
       }
 
       // Build error digest
