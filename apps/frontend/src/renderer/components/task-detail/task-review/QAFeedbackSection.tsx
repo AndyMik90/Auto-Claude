@@ -232,6 +232,9 @@ export function QAFeedbackSection({
         )}
         rows={3}
       />
+      <p className="text-xs text-muted-foreground mt-1">
+        Screenshots can be copy/pasted or dragged & dropped into the feedback.
+      </p>
 
       {/* Image Thumbnails - displayed inline below textarea */}
       {images.length > 0 && (
