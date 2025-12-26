@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type DragEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, ChevronDown, ChevronUp, Image as ImageIcon, X, RotateCcw, FolderTree, GitBranch } from 'lucide-react';
 import {
   Dialog,
@@ -51,6 +52,7 @@ export function TaskCreationWizard({
   open,
   onOpenChange
 }: TaskCreationWizardProps) {
+  const { t } = useTranslation(['tasks']);
   // Get selected agent profile from settings
   const { settings } = useSettingsStore();
   const selectedProfile = DEFAULT_AGENT_PROFILES.find(
@@ -649,7 +651,7 @@ export function TaskCreationWizard({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Files and images can be copy/pasted or dragged & dropped into the description.
+              {t('tasks:images.pasteDropHint')}
             </p>
 
             {/* Image Thumbnails - displayed inline below description */}
@@ -735,7 +737,7 @@ export function TaskCreationWizard({
           {pasteSuccess && (
             <div className="flex items-center gap-2 text-sm text-success animate-in fade-in slide-in-from-top-1 duration-200">
               <ImageIcon className="h-4 w-4" />
-              Image added successfully!
+              {t('tasks:images.addedSuccess')}
             </div>
           )}
 

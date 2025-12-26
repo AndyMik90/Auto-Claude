@@ -25,6 +25,7 @@
  * ```
  */
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, Image as ImageIcon, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
   Dialog,
@@ -79,6 +80,7 @@ interface TaskEditDialogProps {
 }
 
 export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDialogProps) {
+  const { t } = useTranslation(['tasks']);
   // Get selected agent profile from settings for defaults
   const { settings } = useSettingsStore();
   const selectedProfile = DEFAULT_AGENT_PROFILES.find(
@@ -204,7 +206,10 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       setShowImages((task.metadata?.attachedImages || []).length > 0);
       setPasteSuccess(false);
     }
-  }, [open, task, settings.selectedAgentProfile, selectedProfile.model, selectedProfile.thinkingLevel, setImages]);
+  // Note: We use selectedProfile (whole object) as dependency rather than individual properties
+  // to avoid potential stale closure issues. The profile is derived from settings.selectedAgentProfile
+  // so changes to the settings will trigger a re-run of this effect.
+  }, [open, task, settings.selectedAgentProfile, selectedProfile, setImages]);
 
   const handleSave = async () => {
     // Validate input - only description is required
@@ -359,7 +364,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
           {pasteSuccess && (
             <div className="flex items-center gap-2 text-sm text-success animate-in fade-in slide-in-from-top-1 duration-200">
               <ImageIcon className="h-4 w-4" />
-              Image added successfully!
+              {t('tasks:images.addedSuccess')}
             </div>
           )}
 

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { ScrollArea } from '../ui/scroll-area';
@@ -25,7 +24,6 @@ interface TaskDetailPanelProps {
 export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
   const state = useTaskDetail({ task });
   const _progress = calculateProgress(task.subtasks);
-  const [imageError, setImageError] = useState<string | null>(null);
 
   // Event Handlers
   const handleStartStop = () => {
@@ -55,7 +53,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
     state.setIsSubmitting(false);
     state.setFeedback('');
     state.setFeedbackImages([]);
-    setImageError(null);
+    state.setImageError(null);
   };
 
   const handleDelete = async () => {
@@ -208,8 +206,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                     onFeedbackChange={state.setFeedback}
                     images={state.feedbackImages}
                     onImagesChange={state.setFeedbackImages}
-                    imageError={imageError}
-                    onImageError={setImageError}
+                    imageError={state.imageError}
+                    onImageError={state.setImageError}
                     onReject={handleReject}
                     onMerge={handleMerge}
                     onDiscard={handleDiscard}

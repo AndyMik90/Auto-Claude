@@ -1,4 +1,5 @@
 import { useState, useCallback, type ClipboardEvent, type DragEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertCircle, RotateCcw, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Textarea } from '../../ui/textarea';
@@ -26,6 +27,15 @@ interface QAFeedbackSectionProps {
 
 /**
  * Displays the QA feedback section where users can request changes
+ *
+ * NOTE: This component intentionally implements its own paste/drop handlers rather than
+ * using the shared useImagePaste hook. This is because:
+ * 1. The QA feedback flow requires different error handling (e.g., inline error display)
+ * 2. The component needs to integrate with parent state (imageError, onImageError props)
+ * 3. The visual feedback patterns differ (drag-over on textarea vs. separate drop zone)
+ *
+ * If unifying the handlers in the future, ensure the parent component's error state
+ * management and the specific UX requirements of QA feedback are preserved.
  */
 export function QAFeedbackSection({
   feedback,
@@ -37,6 +47,7 @@ export function QAFeedbackSection({
   imageError,
   onImageError
 }: QAFeedbackSectionProps) {
+  const { t } = useTranslation(['tasks']);
   const [isDragOver, setIsDragOver] = useState(false);
 
   /**
@@ -229,7 +240,7 @@ export function QAFeedbackSection({
         rows={3}
       />
       <p className="text-xs text-muted-foreground mt-1">
-        Screenshots can be copy/pasted or dragged & dropped into the feedback.
+        {t('tasks:images.pasteDropHintFeedback')}
       </p>
 
       {/* Image Thumbnails - displayed inline below textarea */}

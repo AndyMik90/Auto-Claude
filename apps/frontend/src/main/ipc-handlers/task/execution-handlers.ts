@@ -3,6 +3,7 @@ import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/con
 import type { IPCResult, TaskStartOptions, TaskStatus, ImageAttachment } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { writeFile } from 'fs/promises';
 import { spawnSync } from 'child_process';
 import { AgentManager } from '../../agent';
 import { fileWatcher } from '../../file-watcher';
@@ -233,21 +234,26 @@ export function registerTaskExecutionHandlers(
         const attachmentsDir = path.join(targetSpecDir, 'attachments');
         mkdirSync(attachmentsDir, { recursive: true });
 
-        for (const image of images) {
+        // Save images concurrently using async I/O to avoid blocking the main process
+        const savePromises = images.map(async (image) => {
           if (image.data) {
             try {
               // Decode base64 and save to file
               const buffer = Buffer.from(image.data, 'base64');
               const imagePath = path.join(attachmentsDir, image.filename);
-              writeFileSync(imagePath, buffer);
+              await writeFile(imagePath, buffer);
 
               // Track saved image paths for QA_FIX_REQUEST.md
-              savedImagePaths.push(`attachments/${image.filename}`);
+              return `attachments/${image.filename}`;
             } catch (err) {
               console.error(`[TASK_REVIEW] Failed to save image ${image.filename}:`, err);
+              return null;
             }
           }
-        }
+          return null;
+        });
+        const results = await Promise.all(savePromises);
+        savedImagePaths = results.filter((p): p is string => p !== null);
       }
 
       if (approved) {

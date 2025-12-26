@@ -96,6 +96,7 @@ function TaskDetailModalContent({ open, task, onOpenChange }: { open: boolean; t
     state.setIsSubmitting(false);
     state.setFeedback('');
     state.setFeedbackImages([]);
+    state.setImageError(null);
   };
 
   const handleDelete = async () => {
