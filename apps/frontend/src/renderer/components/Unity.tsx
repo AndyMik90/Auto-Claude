@@ -948,6 +948,51 @@ export function Unity({ projectId }: UnityProps) {
               </div>
             )}
 
+            {/* Profile Selector Card */}
+            {projectInfo.isUnityProject && profileSettings && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    {t('profiles.title')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Select
+                      value={profileSettings.activeProfileId || ''}
+                      onValueChange={setActiveProfile}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder={t('profiles.selectProfile')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profileSettings.profiles.length === 0 ? (
+                          <SelectItem value="" disabled>
+                            {t('profiles.noProfiles')}
+                          </SelectItem>
+                        ) : (
+                          profileSettings.profiles.map((profile) => (
+                            <SelectItem key={profile.id} value={profile.id}>
+                              {profile.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsProfileDialogOpen(true)}
+                      title={t('profiles.manage')}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Actions Card */}
             {projectInfo.isUnityProject && (
               <Card>
@@ -973,12 +1018,12 @@ export function Unity({ projectId }: UnityProps) {
                       ) : (
                         <>
                           <Play className="h-4 w-4 mr-2" />
-                          {t('actions.runTests')}
+                          {t('actions.runEditModeTests')}
                         </>
                       )}
                     </Button>
                     <p className="text-xs text-muted-foreground">
-                      {t('actions.testsDescription')}
+                      {t('actions.editModeDescription')}
                     </p>
                     {!effectiveEditorPath && (
                       <p className="text-xs text-warning flex items-center gap-1">
@@ -986,6 +1031,57 @@ export function Unity({ projectId }: UnityProps) {
                         {t('actions.selectEditorPrompt')}
                       </p>
                     )}
+                  </div>
+
+                  {/* Run PlayMode Tests */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="playmode-target" className="text-xs">
+                          {t('actions.buildTargetLabel')}
+                        </Label>
+                        <Input
+                          id="playmode-target"
+                          value={playModeBuildTarget}
+                          onChange={(e) => setPlayModeBuildTarget(e.target.value)}
+                          placeholder={t('actions.buildTargetDefault', { target: 'Auto' })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="test-filter" className="text-xs">
+                          {t('actions.testFilterLabel')}
+                        </Label>
+                        <Input
+                          id="test-filter"
+                          value={playModeTestFilter}
+                          onChange={(e) => setPlayModeTestFilter(e.target.value)}
+                          placeholder={t('actions.testFilterPlaceholder')}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={runPlayModeTests}
+                      disabled={!canRunTests}
+                      variant="secondary"
+                    >
+                      {isRunning ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {t('actions.runningTests')}
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4 mr-2" />
+                          {t('actions.runPlayModeTests')}
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      {t('actions.playModeDescription')}
+                    </p>
                   </div>
 
                   {/* Build (Custom) */}
@@ -1036,6 +1132,79 @@ export function Unity({ projectId }: UnityProps) {
                       </p>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pipeline Card */}
+            {projectInfo.isUnityProject && profileSettings && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FastForward className="h-5 w-5" />
+                    {t('pipeline.title')}
+                  </CardTitle>
+                  <CardDescription>
+                    {t('pipeline.description')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Pipeline Steps */}
+                  <div className="space-y-2">
+                    {pipelineSteps.map((step, index) => (
+                      <div key={step.type} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`step-${step.type}`}
+                          checked={step.enabled}
+                          onCheckedChange={(checked) => {
+                            const newSteps = [...pipelineSteps];
+                            newSteps[index] = { ...step, enabled: !!checked };
+                            setPipelineSteps(newSteps);
+                          }}
+                        />
+                        <Label
+                          htmlFor={`step-${step.type}`}
+                          className="text-sm font-normal cursor-pointer flex-1"
+                        >
+                          {t(`pipeline.steps.${step.type}`)}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Continue on Fail */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="continue-on-fail"
+                      checked={continueOnFail}
+                      onCheckedChange={(checked) => setContinueOnFail(!!checked)}
+                    />
+                    <Label
+                      htmlFor="continue-on-fail"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {t('pipeline.continueOnFail')}
+                    </Label>
+                  </div>
+
+                  {/* Run Pipeline Button */}
+                  <Button
+                    className="w-full"
+                    onClick={runPipeline}
+                    disabled={isRunningPipeline || !effectiveEditorPath}
+                  >
+                    {isRunningPipeline ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('pipeline.running')}
+                      </>
+                    ) : (
+                      <>
+                        <FastForward className="h-4 w-4 mr-2" />
+                        {t('pipeline.runPipeline')}
+                      </>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -1329,6 +1498,133 @@ export function Unity({ projectId }: UnityProps) {
         </ScrollArea>
       )}
     </div>
+
+      {/* Profile Management Dialog */}
+      <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('profiles.dialog.title')}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Profile List */}
+            {profileSettings && profileSettings.profiles.length > 0 && (
+              <div className="space-y-2">
+                {profileSettings.profiles.map((profile) => (
+                  <div
+                    key={profile.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{profile.name}</div>
+                      {profile.buildExecuteMethod && (
+                        <div className="text-xs text-muted-foreground">
+                          {profile.buildExecuteMethod}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingProfile(profile)}
+                      >
+                        <Edit2 className="h-3 w-3 mr-1" />
+                        {t('profiles.dialog.edit')}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(t('profiles.dialog.confirmDelete', { name: profile.name }))) {
+                            deleteProfile(profile.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        {t('profiles.dialog.delete')}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Create New Profile Button */}
+            {!editingProfile && !isCreatingProfile && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setIsCreatingProfile(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t('profiles.dialog.createNew')}
+              </Button>
+            )}
+
+            {/* Profile Form (Create or Edit) */}
+            {(isCreatingProfile || editingProfile) && (
+              <div className="space-y-4 p-4 border rounded-lg">
+                <div>
+                  <Label htmlFor="profile-name">{t('profiles.dialog.nameLabel')}</Label>
+                  <Input
+                    id="profile-name"
+                    placeholder={t('profiles.dialog.namePlaceholder')}
+                    defaultValue={editingProfile?.name || ''}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="profile-build-method">{t('profiles.dialog.buildMethodLabel')}</Label>
+                  <Input
+                    id="profile-build-method"
+                    placeholder={t('profiles.dialog.buildMethodPlaceholder')}
+                    defaultValue={editingProfile?.buildExecuteMethod || ''}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      const nameInput = document.getElementById('profile-name') as HTMLInputElement;
+                      const buildMethodInput = document.getElementById('profile-build-method') as HTMLInputElement;
+
+                      const profileData = {
+                        name: nameInput.value,
+                        buildExecuteMethod: buildMethodInput.value || undefined,
+                        testDefaults: {
+                          editModeEnabled: true,
+                          playModeEnabled: true
+                        }
+                      };
+
+                      if (editingProfile) {
+                        updateProfile(editingProfile.id, profileData);
+                      } else {
+                        createProfile(profileData);
+                      }
+
+                      setIsCreatingProfile(false);
+                      setEditingProfile(null);
+                    }}
+                  >
+                    {editingProfile ? t('profiles.dialog.save') : t('profiles.dialog.create')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreatingProfile(false);
+                      setEditingProfile(null);
+                    }}
+                  >
+                    {t('profiles.dialog.cancel')}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }
