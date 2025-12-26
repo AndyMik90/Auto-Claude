@@ -27,13 +27,44 @@ from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Any
 
+_IS_WINDOWS = os.name == "nt"
+
 try:
     import fcntl  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover
+except ImportError:  # pragma: no cover
     fcntl = None
 
-if os.name == "nt":
-    import msvcrt
+try:
+    import msvcrt  # type: ignore
+except ImportError:  # pragma: no cover
+    msvcrt = None
+
+
+def _try_lock(fd: int, exclusive: bool) -> None:
+    if _IS_WINDOWS:
+        if msvcrt is None:
+            raise FileLockError("msvcrt is required for file locking on Windows")
+        del exclusive
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        return
+
+    if fcntl is None:
+        raise FileLockError("fcntl is required for file locking on non-Windows platforms")
+
+    lock_mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+    fcntl.flock(fd, lock_mode | fcntl.LOCK_NB)
+
+
+def _unlock(fd: int) -> None:
+    if _IS_WINDOWS:
+        if msvcrt is None:
+            return
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        return
+
+    if fcntl is None:
+        return
+    fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 class FileLockError(Exception):
@@ -101,13 +132,7 @@ class FileLock:
         while True:
             try:
                 # Non-blocking lock attempt
-                if os.name == "nt":
-                    msvcrt.locking(self._fd, msvcrt.LK_NBLCK, 1)
-                else:
-                    if fcntl is None:
-                        raise FileLockError("fcntl is required for file locking on non-Windows platforms")
-                    lock_mode = fcntl.LOCK_EX if self.exclusive else fcntl.LOCK_SH
-                    fcntl.flock(self._fd, lock_mode | fcntl.LOCK_NB)
+                _try_lock(self._fd, self.exclusive)
                 return  # Lock acquired
             except (BlockingIOError, OSError):
                 # Lock held by another process
@@ -126,11 +151,7 @@ class FileLock:
         """Release the file lock."""
         if self._fd is not None:
             try:
-                if os.name == "nt":
-                    msvcrt.locking(self._fd, msvcrt.LK_UNLCK, 1)
-                else:
-                    if fcntl is not None:
-                        fcntl.flock(self._fd, fcntl.LOCK_UN)
+                _unlock(self._fd)
                 os.close(self._fd)
             except Exception:
                 pass  # Best effort cleanup
