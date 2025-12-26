@@ -1126,7 +1126,12 @@ function createUnityProfile(projectId: string, profile: Omit<UnityProfile, 'id'>
   const profileSettings = getUnityProfiles(projectId);
 
   // Generate a unique ID based on the name
-  const id = profile.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  let id = profile.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  
+  // Fallback if sanitized name is empty or too short
+  if (!id || id.length < 2) {
+    id = `profile-${Date.now()}`;
+  }
 
   // Ensure uniqueness
   let finalId = id;
@@ -1262,6 +1267,55 @@ function savePipelineRecord(projectId: string, pipeline: UnityPipelineRun): void
 const runningPipelines = new Map<string, { canceled: boolean; currentRunId?: string }>();
 
 /**
+ * Helper function to execute a pipeline step that runs Unity and track its status
+ */
+async function executeUnityRunStep(
+  step: PipelineStep,
+  runId: string,
+  projectId: string,
+  pipelineRun: UnityPipelineRun,
+  pipelineId: string
+): Promise<void> {
+  step.runId = runId;
+  
+  // Track current run in pipeline state
+  const pipelineState = runningPipelines.get(pipelineId);
+  if (pipelineState) {
+    pipelineState.currentRunId = runId;
+  }
+
+  // Get the run status
+  const runs = loadUnityRuns(projectId);
+  const run = runs.find(r => r.id === runId);
+  
+  if (run) {
+    if (run.status === 'success') {
+      step.status = 'success';
+    } else if (run.status === 'canceled') {
+      step.status = 'canceled';
+    } else {
+      step.status = 'failed';
+    }
+  } else {
+    step.status = 'failed';
+  }
+
+  // Update summary counts
+  if (step.status === 'success') {
+    pipelineRun.summary!.successCount++;
+  } else if (step.status === 'failed') {
+    pipelineRun.summary!.failedCount++;
+  } else if (step.status === 'canceled') {
+    pipelineRun.summary!.canceledCount++;
+  }
+
+  // Clear current run ID
+  if (pipelineState) {
+    pipelineState.currentRunId = undefined;
+  }
+}
+
+/**
  * Run a Unity pipeline (sequential execution of steps)
  */
 async function runUnityPipeline(
@@ -1387,29 +1441,7 @@ async function runUnityPipeline(
 
           case 'editmode-tests':
             const editModeRunId = await runEditModeTests(projectId, editorPath);
-            step.runId = editModeRunId;
-            // Track current run in pipeline state
-            const pipelineState = runningPipelines.get(id);
-            if (pipelineState) {
-              pipelineState.currentRunId = editModeRunId;
-            }
-            // Get the run status
-            const editModeRuns = loadUnityRuns(projectId);
-            const editModeRun = editModeRuns.find(r => r.id === editModeRunId);
-            if (editModeRun) {
-              step.status = editModeRun.status === 'success' ? 'success' : 'failed';
-            } else {
-              step.status = 'failed';
-            }
-            if (step.status === 'success') {
-              pipelineRun.summary!.successCount++;
-            } else {
-              pipelineRun.summary!.failedCount++;
-            }
-            // Clear current run ID
-            if (pipelineState) {
-              pipelineState.currentRunId = undefined;
-            }
+            await executeUnityRunStep(step, editModeRunId, projectId, pipelineRun, id);
             break;
 
           case 'playmode-tests':
@@ -1419,29 +1451,7 @@ async function runUnityPipeline(
               buildTarget: playModeBuildTarget,
               testFilter
             });
-            step.runId = playModeRunId;
-            // Track current run in pipeline state
-            const playModePipelineState = runningPipelines.get(id);
-            if (playModePipelineState) {
-              playModePipelineState.currentRunId = playModeRunId;
-            }
-            // Get the run status
-            const playModeRuns = loadUnityRuns(projectId);
-            const playModeRun = playModeRuns.find(r => r.id === playModeRunId);
-            if (playModeRun) {
-              step.status = playModeRun.status === 'success' ? 'success' : 'failed';
-            } else {
-              step.status = 'failed';
-            }
-            if (step.status === 'success') {
-              pipelineRun.summary!.successCount++;
-            } else {
-              pipelineRun.summary!.failedCount++;
-            }
-            // Clear current run ID
-            if (playModePipelineState) {
-              playModePipelineState.currentRunId = undefined;
-            }
+            await executeUnityRunStep(step, playModeRunId, projectId, pipelineRun, id);
             break;
 
           case 'build':
@@ -1450,29 +1460,7 @@ async function runUnityPipeline(
               throw new Error('Build execute method not configured');
             }
             const buildRunId = await runBuild(projectId, editorPath, executeMethod);
-            step.runId = buildRunId;
-            // Track current run in pipeline state
-            const buildPipelineState = runningPipelines.get(id);
-            if (buildPipelineState) {
-              buildPipelineState.currentRunId = buildRunId;
-            }
-            // Get the run status
-            const buildRuns = loadUnityRuns(projectId);
-            const buildRun = buildRuns.find(r => r.id === buildRunId);
-            if (buildRun) {
-              step.status = buildRun.status === 'success' ? 'success' : 'failed';
-            } else {
-              step.status = 'failed';
-            }
-            if (step.status === 'success') {
-              pipelineRun.summary!.successCount++;
-            } else {
-              pipelineRun.summary!.failedCount++;
-            }
-            // Clear current run ID
-            if (buildPipelineState) {
-              buildPipelineState.currentRunId = undefined;
-            }
+            await executeUnityRunStep(step, buildRunId, projectId, pipelineRun, id);
             break;
 
           case 'collect-artifacts':
