@@ -31,41 +31,44 @@ export function QAFeedbackSection({
   onImageError
 }: QAFeedbackSectionProps) {
   // Use shared image paste/drop hook
+  // The hook manages its own state - we sync to parent for persistence but render hook's images directly
   const {
-    images: hookImages,
-    setImages: setHookImages,
-    error: hookError,
+    images: localImages,
+    setImages: setLocalImages,
+    error: localError,
     isDragOver,
     handlePaste,
     handleDragOver,
     handleDragLeave,
-    handleDrop
+    handleDrop,
+    removeImage
   } = useImagePaste({
     initialImages: images,
     disabled: isSubmitting
   });
 
-  // Sync hook images with parent state
+  // Sync hook images to parent state (for persistence when submitting)
   useEffect(() => {
-    // Only update parent if images actually changed (avoid infinite loop)
-    if (JSON.stringify(hookImages) !== JSON.stringify(images)) {
-      onImagesChange(hookImages);
+    // Only update parent if images actually changed
+    if (JSON.stringify(localImages) !== JSON.stringify(images)) {
+      onImagesChange(localImages);
     }
-  }, [hookImages, images, onImagesChange]);
+  }, [localImages, images, onImagesChange]);
 
-  // Sync parent images with hook (for external changes)
+  // Sync parent images to hook when parent changes externally (e.g., on clear)
   useEffect(() => {
-    if (JSON.stringify(images) !== JSON.stringify(hookImages)) {
-      setHookImages(images);
+    // Only sync if parent has fewer images (deletion from parent) or is empty (reset)
+    if (images.length < localImages.length || (images.length === 0 && localImages.length > 0)) {
+      setLocalImages(images);
     }
-  }, [images, hookImages, setHookImages]);
+  }, [images, localImages, setLocalImages]);
 
   // Sync error state with parent
   useEffect(() => {
-    if (hookError !== imageError) {
-      onImageError(hookError);
+    if (localError !== imageError) {
+      onImageError(localError);
     }
-  }, [hookError, imageError, onImageError]);
+  }, [localError, imageError, onImageError]);
 
   return (
     <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
@@ -95,9 +98,9 @@ export function QAFeedbackSection({
       </p>
 
       {/* Image Thumbnails - displayed inline below textarea */}
-      {images.length > 0 && (
+      {localImages.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2 mb-3">
-          {images.map((image) => (
+          {localImages.map((image) => (
             <div
               key={image.id}
               className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
@@ -122,7 +125,7 @@ export function QAFeedbackSection({
                   className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onImagesChange(images.filter(img => img.id !== image.id));
+                    removeImage(image.id);
                   }}
                 >
                   <X className="h-3 w-3" />
@@ -142,7 +145,7 @@ export function QAFeedbackSection({
       )}
 
       {/* Spacing when no images */}
-      {images.length === 0 && !imageError && <div className="mb-3" />}
+      {localImages.length === 0 && !imageError && <div className="mb-3" />}
 
       <Button
         variant="warning"
