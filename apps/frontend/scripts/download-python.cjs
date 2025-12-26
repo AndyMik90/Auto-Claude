@@ -255,8 +255,16 @@ function extractTarGz(archivePath, destDir) {
   // Ensure destination exists
   fs.mkdirSync(destDir, { recursive: true });
 
+  // Build tar arguments
+  // On Windows, paths like D:\path are misinterpreted as remote host:path
+  // --force-local tells tar to treat colons as part of the filename
+  const tarArgs = ['-xzf', archivePath, '-C', destDir];
+  if (os.platform() === 'win32') {
+    tarArgs.unshift('--force-local');
+  }
+
   // Use tar command with array arguments (safer than string interpolation)
-  const result = spawnSync('tar', ['-xzf', archivePath, '-C', destDir], {
+  const result = spawnSync('tar', tarArgs, {
     stdio: 'inherit',
   });
 
