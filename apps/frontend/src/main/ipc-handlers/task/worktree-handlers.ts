@@ -5,11 +5,11 @@ import path from 'path';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, spawn, spawnSync } from 'child_process';
 import { projectStore } from '../../project-store';
-import { PythonEnvManager } from '../../python-env-manager';
+import { getConfiguredPythonPath, PythonEnvManager } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../auto-claude-updater';
 import { getProfileEnv } from '../../rate-limit-detector';
 import { findTaskAndProject } from './shared';
-import { findPythonCommand, parsePythonCommand } from '../../python-detector';
+import { parsePythonCommand } from '../../python-detector';
 
 /**
  * Read the stored base branch from task_metadata.json
@@ -354,7 +354,8 @@ export function registerWorktreeHandlers(
           debug('Using stored base branch:', taskBaseBranch);
         }
 
-        const pythonPath = pythonEnvManager.getPythonPath() || findPythonCommand() || 'python';
+        // Use configured Python path (venv if ready, otherwise bundled/system)
+        const pythonPath = getConfiguredPythonPath();
         debug('Running command:', pythonPath, args.join(' '));
         debug('Working directory:', sourcePath);
 
@@ -553,23 +554,37 @@ export function registerWorktreeHandlers(
               }
 
               // Persist the status change to implementation_plan.json
-              const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-              try {
-                if (existsSync(planPath)) {
-                  const { readFileSync, writeFileSync } = require('fs');
-                  const planContent = readFileSync(planPath, 'utf-8');
-                  const plan = JSON.parse(planContent);
-                  plan.status = newStatus;
-                  plan.planStatus = planStatus;
-                  plan.updated_at = new Date().toISOString();
-                  if (staged) {
-                    plan.stagedAt = new Date().toISOString();
-                    plan.stagedInMainProject = true;
+              // Issue #243: We must update BOTH the main project's plan AND the worktree's plan (if it exists)
+              // because ProjectStore prefers the worktree version when deduplicating tasks.
+              const planPaths = [
+                path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), // Main project
+                path.join(worktreePath, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN) // Worktree
+              ];
+
+              const { readFileSync, writeFileSync } = require('fs');
+
+              for (const planPath of planPaths) {
+                try {
+                  if (existsSync(planPath)) {
+                    const planContent = readFileSync(planPath, 'utf-8');
+                    const plan = JSON.parse(planContent);
+                    plan.status = newStatus;
+                    plan.planStatus = planStatus;
+                    plan.updated_at = new Date().toISOString();
+                    if (staged) {
+                      plan.stagedAt = new Date().toISOString();
+                      plan.stagedInMainProject = true;
+                    }
+                    writeFileSync(planPath, JSON.stringify(plan, null, 2));
                   }
-                  writeFileSync(planPath, JSON.stringify(plan, null, 2));
+                } catch (persistError) {
+                  // Only log error if main plan fails; worktree plan might legitimately be missing or read-only
+                  if (planPath.includes(specDir)) {
+                    console.error('Failed to persist task status to main plan:', persistError);
+                  } else {
+                    debug('Failed to persist task status to worktree plan (non-critical):', persistError);
+                  }
                 }
-              } catch (persistError) {
-                console.error('Failed to persist task status:', persistError);
               }
 
               const mainWindow = getMainWindow();
@@ -711,7 +726,8 @@ export function registerWorktreeHandlers(
           console.warn('[IPC] Using stored base branch for preview:', taskBaseBranch);
         }
 
-        const pythonPath = pythonEnvManager.getPythonPath() || findPythonCommand() || 'python';
+        // Use configured Python path (venv if ready, otherwise bundled/system)
+        const pythonPath = getConfiguredPythonPath();
         console.warn('[IPC] Running merge preview:', pythonPath, args.join(' '));
 
         // Get profile environment for consistency
