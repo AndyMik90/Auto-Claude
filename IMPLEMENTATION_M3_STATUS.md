@@ -76,19 +76,25 @@
   - Cancellation support
   - Integration with existing process management infrastructure
 
+## Partially Completed ⚙️
+
+### Unity.tsx State Variables and Interfaces
+- ✅ Updated UnityRun interface to support new action types (tweak, upm-resolve, bridge-install)
+- ✅ Added tweakSummary and backup/diff artifact paths to UnityRun
+- ✅ Added all necessary imports (icons, types)
+- ✅ Added M3 state variables:
+  - Unity Doctor: `doctorReport`, `isDoctorRunning`, `bridgeInstalled`, `expandedChecks`
+  - Project Tweaks: `tweakTargetGroup`, `defineSymbol`, `scriptingBackend`, `tweakBuildTarget`
+  - UPM: `packages`, `isLoadingPackages`
+
 ## Remaining Work 🚧
 
 ### 1. Unity.tsx UI Updates (PRIMARY TASK)
 
 #### A. Unity Doctor Panel
-**Location**: Insert after Project Info card, before Actions card
+**Location**: Insert after line 980 (after empty state), before line 982 (Profile Selector Card)
 
-**Components Needed**:
-```tsx
-// State variables
-const [doctorReport, setDoctorReport] = useState<UnityDoctorReport | null>(null);
-const [isDoctorRunning, setIsDoctorRunning] = useState(false);
-const [bridgeInstalled, setBridgeInstalled] = useState(false);
+**Components Needed** (state variables already added ✅):
 
 // Fetch function
 const runDoctorChecks = async () => {
