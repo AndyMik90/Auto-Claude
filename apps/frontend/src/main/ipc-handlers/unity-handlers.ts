@@ -221,8 +221,8 @@ function getMacOSBuildTarget(unityVersion?: string): string {
   // Unity 2017+ uses StandaloneOSX
   // Earlier versions used different names, but those are very rare now
   if (parsed.major < 2017) {
-    // For very old Unity versions, use StandaloneOSXUniversal or StandaloneOSXIntel
-    // However, these versions are rarely used, so we'll default to StandaloneOSX
+    // For very old Unity versions, use StandaloneOSXUniversal
+    // Note: These versions are rarely used in modern development
     return 'StandaloneOSXUniversal';
   }
 
@@ -1588,9 +1588,18 @@ async function runUnityPipeline(
               
               // Add error details for failed steps
               if (s.status === 'failed' && s.errorDetails) {
-                const errorType = s.errorDetails.type === 'test-failure' ? '🧪 Test Failure' : 
-                                 s.errorDetails.type === 'execution-error' ? '⚠️ Execution Error' : 
-                                 '❓ Unknown Error';
+                let errorType: string;
+                switch (s.errorDetails.type) {
+                  case 'test-failure':
+                    errorType = '🧪 Test Failure';
+                    break;
+                  case 'execution-error':
+                    errorType = '⚠️ Execution Error';
+                    break;
+                  default:
+                    errorType = '❓ Unknown Error';
+                    break;
+                }
                 stepLine += `\n  ${errorType}: ${s.errorDetails.message}`;
               }
               
@@ -1621,9 +1630,20 @@ async function runUnityPipeline(
       } catch (error) {
         // Distinguish between different types of errors for better debugging
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const isExecutionError = errorMessage.includes('not found') || 
-                                 errorMessage.includes('not configured') ||
-                                 errorMessage.includes('failed to');
+        
+        // Detect execution errors by checking for specific patterns
+        const executionErrorPatterns = [
+          'not found',
+          'not configured',
+          'failed to',
+          'cannot find',
+          'missing',
+          'invalid path',
+          'permission denied'
+        ];
+        const isExecutionError = executionErrorPatterns.some(pattern => 
+          errorMessage.toLowerCase().includes(pattern.toLowerCase())
+        );
         
         console.error(`Pipeline step ${step.type} failed:`, error);
         step.status = 'failed';
