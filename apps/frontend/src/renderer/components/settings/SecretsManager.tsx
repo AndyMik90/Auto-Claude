@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Key, Eye, EyeOff, Copy, Trash2, Pencil, ChevronDown, ChevronRight, AlertTriangle, Folder, Star } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -19,6 +20,7 @@ interface SecretsManagerProps {
 }
 
 export function SecretsManager(_props: SecretsManagerProps) {
+  const { t } = useTranslation('settings');
   const [groups, setGroups] = useState<SecretGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddGroupDialogOpen, setIsAddGroupDialogOpen] = useState(false);
@@ -128,7 +130,7 @@ export function SecretsManager(_props: SecretsManagerProps) {
   };
 
   const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm('Are you sure you want to delete this secret group and all its accounts? This action cannot be undone.')) {
+    if (!confirm(t('secrets.manager.confirmDelete.group'))) {
       return;
     }
 
@@ -143,7 +145,7 @@ export function SecretsManager(_props: SecretsManagerProps) {
   };
 
   const handleDeleteAccount = async (groupId: string, accountId: string) => {
-    if (!confirm('Are you sure you want to delete this account?')) {
+    if (!confirm(t('secrets.manager.confirmDelete.account'))) {
       return;
     }
 
@@ -183,9 +185,9 @@ export function SecretsManager(_props: SecretsManagerProps) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-12">
         <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Encryption Not Available</h3>
+        <h3 className="text-lg font-semibold mb-2">{t('secrets.manager.encryptionUnavailable.title')}</h3>
         <p className="text-sm text-muted-foreground text-center max-w-md">
-          Secure encryption is not available on your system. Please ensure your operating system supports secure storage.
+          {t('secrets.manager.encryptionUnavailable.message')}
         </p>
       </div>
     );
@@ -199,12 +201,9 @@ export function SecretsManager(_props: SecretsManagerProps) {
       <div className="space-y-6">
         {/* Description */}
         <div className="rounded-lg border border-border bg-muted/50 p-4">
-          <h3 className="font-medium text-sm mb-2">About Secrets</h3>
+          <h3 className="font-medium text-sm mb-2">{t('secrets.manager.about.title')}</h3>
           <p className="text-sm text-muted-foreground">
-            Secrets are securely encrypted credentials that auto-populate into your generated projects.
-            Create secret groups with multiple accounts, then reference them in your template files using
-            secret parameters. When creating projects, select which account to use and the values are
-            automatically injected.
+            {t('secrets.manager.about.description')}
           </p>
         </div>
 
@@ -212,7 +211,7 @@ export function SecretsManager(_props: SecretsManagerProps) {
         <div>
           <Button onClick={() => setIsAddGroupDialogOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Secret Group
+            {t('secrets.manager.addGroup')}
           </Button>
         </div>
 
@@ -222,10 +221,10 @@ export function SecretsManager(_props: SecretsManagerProps) {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Star className="h-4 w-4" />
-                Default Accounts for Templates
+                {t('secrets.manager.defaultAccounts.title')}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Select which account to use by default when creating projects from templates
+                {t('secrets.manager.defaultAccounts.description')}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -237,7 +236,7 @@ export function SecretsManager(_props: SecretsManagerProps) {
                     onValueChange={(value) => handleSetDefaultAccount(group.title, value)}
                   >
                     <SelectTrigger id={`default-${group.id}`}>
-                      <SelectValue placeholder="Select default account" />
+                      <SelectValue placeholder={t('secrets.manager.defaultAccounts.placeholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {group.accounts.map((account) => (
@@ -248,7 +247,7 @@ export function SecretsManager(_props: SecretsManagerProps) {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {group.accounts.length} accounts available
+                    {group.accounts.length} {t('secrets.manager.defaultAccounts.accountsAvailable')}
                   </p>
                 </div>
               ))}
@@ -258,17 +257,17 @@ export function SecretsManager(_props: SecretsManagerProps) {
 
         {/* Secret Groups List */}
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Loading secrets...</div>
+          <div className="text-sm text-muted-foreground">{t('secrets.manager.loading')}</div>
         ) : groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Key className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No secret groups yet</h3>
+            <h3 className="text-lg font-medium mb-2">{t('secrets.manager.empty.title')}</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Create your first secret group template to securely store credentials
+              {t('secrets.manager.empty.description')}
             </p>
             <Button onClick={() => setIsAddGroupDialogOpen(true)} variant="outline" className="gap-2">
               <Plus className="h-4 w-4" />
-              Create Secret Group
+              {t('secrets.manager.empty.action')}
             </Button>
           </div>
         ) : (
@@ -302,10 +301,10 @@ export function SecretsManager(_props: SecretsManagerProps) {
                         )}
                         <div className="flex items-center gap-3 mt-1">
                           <p className="text-xs text-muted-foreground">
-                            {group.accounts.length} {group.accounts.length === 1 ? 'account' : 'accounts'}
+                            {group.accounts.length} {group.accounts.length === 1 ? t('secrets.manager.group.account') : t('secrets.manager.group.accounts')}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Keys: {group.keyIds.join(', ')}
+                            {t('secrets.manager.group.keys')}: {group.keyIds.join(', ')}
                           </p>
                         </div>
                       </div>
@@ -317,7 +316,7 @@ export function SecretsManager(_props: SecretsManagerProps) {
                         onClick={() => handleAddAccount(group)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        Add Account
+                        {t('secrets.manager.group.addAccount')}
                       </Button>
                       <Button
                         variant="ghost"
@@ -342,7 +341,7 @@ export function SecretsManager(_props: SecretsManagerProps) {
                   <CardContent className="pt-0">
                     {group.accounts.length === 0 ? (
                       <div className="text-sm text-muted-foreground text-center py-4">
-                        No accounts yet. Click "Add Account" to create one.
+                        {t('secrets.manager.group.noAccounts')}
                       </div>
                     ) : (
                       <div className="space-y-3">

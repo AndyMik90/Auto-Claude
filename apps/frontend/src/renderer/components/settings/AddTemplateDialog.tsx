@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Folder, Image as ImageIcon, X } from 'lucide-react';
 import {
   Dialog,
@@ -21,6 +22,7 @@ interface AddTemplateDialogProps {
 }
 
 export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: AddTemplateDialogProps) {
+  const { t } = useTranslation('settings');
   const [name, setName] = useState('');
   const [folderPath, setFolderPath] = useState('');
   const [imagePath, setImagePath] = useState<string>('');
@@ -79,11 +81,11 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
   const handleSave = async () => {
     // Validation
     if (!name.trim()) {
-      setError('Please enter a template name');
+      setError(t('templates.errors.nameRequired'));
       return;
     }
     if (!folderPath.trim()) {
-      setError('Please select a folder');
+      setError(t('templates.errors.folderRequired'));
       return;
     }
 
@@ -104,7 +106,7 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
         );
 
         if (!result.success) {
-          setError(result.error || 'Failed to update template');
+          setError(result.error || t('templates.errors.updateFailed'));
           return;
         }
       } else {
@@ -116,14 +118,14 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
         });
 
         if (!result.success) {
-          setError(result.error || 'Failed to create template');
+          setError(result.error || t('templates.errors.createFailed'));
           return;
         }
       }
 
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('templates.errors.generic'));
     } finally {
       setIsSaving(false);
     }
@@ -133,21 +135,21 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{template ? 'Edit Template' : 'Add Template'}</DialogTitle>
+          <DialogTitle>{template ? t('templates.add.titleEdit') : t('templates.add.title')}</DialogTitle>
           <DialogDescription>
             {template
-              ? 'Update your template details'
-              : 'Create a new project template by selecting a folder and giving it a name'}
+              ? t('templates.add.descriptionEdit')
+              : t('templates.add.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Template Name */}
           <div className="space-y-2">
-            <Label htmlFor="template-name">Template Name</Label>
+            <Label htmlFor="template-name">{t('templates.form.name.label')}</Label>
             <Input
               id="template-name"
-              placeholder="My Awesome Template"
+              placeholder={t('templates.form.name.placeholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -155,25 +157,25 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
 
           {/* Folder Path */}
           <div className="space-y-2">
-            <Label htmlFor="template-folder">Template Folder</Label>
+            <Label htmlFor="template-folder">{t('templates.form.folder.label')}</Label>
             <div className="flex gap-2">
               <Input
                 id="template-folder"
-                placeholder="Select a folder..."
+                placeholder={t('templates.form.folder.placeholder')}
                 value={folderPath}
                 onChange={(e) => setFolderPath(e.target.value)}
                 className="flex-1"
               />
               <Button variant="outline" onClick={handleSelectFolder}>
                 <Folder className="h-4 w-4 mr-2" />
-                Browse
+                {t('templates.form.folder.browse')}
               </Button>
             </div>
           </div>
 
           {/* Image (Optional) */}
           <div className="space-y-2">
-            <Label htmlFor="template-image">Icon/Image (Optional)</Label>
+            <Label htmlFor="template-image">{t('templates.form.image.label')}</Label>
             {imagePath ? (
               <div className="flex items-center gap-2">
                 <div className="flex-1 rounded-md bg-muted px-3 py-2 text-sm truncate">
@@ -186,11 +188,11 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
             ) : (
               <Button variant="outline" onClick={handleSelectImage} className="w-full">
                 <ImageIcon className="h-4 w-4 mr-2" />
-                Choose Image
+                {t('templates.form.image.chooseImage')}
               </Button>
             )}
             <p className="text-xs text-muted-foreground">
-              Select an image file to use as the template icon
+              {t('templates.form.image.helper')}
             </p>
           </div>
 
@@ -204,10 +206,10 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
-            Cancel
+            {t('templates.actions.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? 'Saving...' : template ? 'Update' : 'Create'}
+            {isSaving ? t('templates.actions.saving') : template ? t('templates.actions.update') : t('templates.actions.create')}
           </Button>
         </DialogFooter>
       </DialogContent>
