@@ -18,7 +18,7 @@ interface SecretsManagerProps {
   // No props needed for embedded view
 }
 
-export function SecretsManager({}: SecretsManagerProps) {
+export function SecretsManager(_props: SecretsManagerProps) {
   const [groups, setGroups] = useState<SecretGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddGroupDialogOpen, setIsAddGroupDialogOpen] = useState(false);
