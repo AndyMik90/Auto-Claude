@@ -210,6 +210,13 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, p
             Failed
           </Badge>
         );
+      case 'stopped':
+        return (
+          <Badge variant="outline" className="text-xs bg-muted/10 text-muted-foreground border-muted-foreground/30 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Stopped
+          </Badge>
+        );
       default:
         return (
           <Badge variant="secondary" className="text-xs text-muted-foreground">
@@ -232,6 +239,7 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, p
             isInterrupted && 'border-warning/30 bg-warning/5',
             status === 'completed' && 'border-success/30 bg-success/5',
             status === 'failed' && 'border-destructive/30 bg-destructive/5',
+            status === 'stopped' && 'border-muted-foreground/30 bg-muted/5',
             status === 'pending' && 'border-border bg-secondary/30'
           )}
         >

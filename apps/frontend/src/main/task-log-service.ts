@@ -424,8 +424,8 @@ export class TaskLogService extends EventEmitter {
 
       for (const phase of phases) {
         if (logs.phases[phase]?.status === 'active') {
-          // Mark as failed since the phase was interrupted/stopped
-          logs.phases[phase].status = 'failed';
+          // Mark as stopped since the task was stopped by the user
+          logs.phases[phase].status = 'stopped';
           logs.phases[phase].completed_at = new Date().toISOString();
           hasChanges = true;
         }
