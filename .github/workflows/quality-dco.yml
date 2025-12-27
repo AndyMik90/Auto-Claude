@@ -8,16 +8,34 @@ permissions:
   contents: read
   pull-requests: read
 
+env:
+  # Comma-separated list of emails that should be ignored during DCO checks
+  DCO_EXCLUDE_EMAILS: ''
+
+# Job is taken from https://github.com/cncf/dcochecker/blob/main/action.yml
+# Using steps instead of reusable workflow to preserve custom failure message
 jobs:
   check:
     name: DCO Check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check DCO Sign-off
-        uses: dcoapp/dco-check@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v5
         with:
-          require-signoff: true
+          python-version: '3.x'
+
+      - name: Check DCO
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DCO_CHECK_VERBOSE: '1'
+          DCO_CHECK_EXCLUDE_EMAILS: ${{ env.DCO_EXCLUDE_EMAILS }}
+        run: |
+          pip3 install -U dco-check
+          dco-check
 
       - name: DCO Help on Failure
         if: failure()
@@ -30,19 +48,38 @@ jobs:
 
             ### How to Fix
 
-            **Option 1: Sign off your last commit**
+            **⚠️ Important:** If you merged \`develop\` or another branch, be careful not to accidentally sign other people's commits. Only sign YOUR commits.
+
+            **Step 1: Identify which commits are yours**
+            \`\`\`bash
+            git log --oneline
+            \`\`\`
+
+            **Step 2: Choose the appropriate method**
+
+            **If only your last commit needs signing:**
             \`\`\`bash
             git commit --amend --signoff
             git push --force-with-lease
             \`\`\`
 
-            **Option 2: Sign off all commits in this PR**
+            **If you have multiple commits and HAVE NOT merged other branches:**
             \`\`\`bash
-            git rebase HEAD~N --signoff  # Replace N with number of commits
+            git rebase HEAD~N --signoff  # Replace N with number of YOUR commits
             git push --force-with-lease
             \`\`\`
 
-            **Option 3: Configure git to always sign off**
+            **If you merged another branch (use interactive rebase):**
+            \`\`\`bash
+            git rebase -i HEAD~N  # Replace N with total number of commits
+            # Mark only YOUR commits with 'edit', leave others as 'pick'
+            # For each commit you marked:
+            git commit --amend --signoff --no-edit
+            git rebase --continue
+            git push --force-with-lease
+            \`\`\`
+
+            **Tip: Configure git to always sign off future commits**
             \`\`\`bash
             git config --global format.signoff true
             \`\`\`
