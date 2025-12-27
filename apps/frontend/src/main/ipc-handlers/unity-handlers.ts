@@ -97,6 +97,10 @@ interface PipelineStep {
   enabled: boolean;
   runId?: string;  // Reference to the actual run
   status?: 'pending' | 'running' | 'success' | 'failed' | 'skipped' | 'canceled';
+  errorDetails?: {
+    type: 'test-failure' | 'execution-error' | 'unknown';
+    message?: string;
+  };
 }
 
 interface UnityPipelineRun {
@@ -180,6 +184,49 @@ function detectUnityProject(projectPath: string): UnityProjectInfo {
   }
 
   return result;
+}
+
+/**
+ * Parse Unity version string to major.minor format
+ * Example: "2021.3.15f1" -> { major: 2021, minor: 3 }
+ */
+function parseUnityVersion(version: string): { major: number; minor: number } | null {
+  const match = version.match(/^(\d+)\.(\d+)/);
+  if (!match) return null;
+  return {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10)
+  };
+}
+
+/**
+ * Determine the appropriate macOS build target based on Unity version
+ * Unity versions before 2017 used different naming conventions
+ * Unity 2017-2019: StandaloneOSX (universal) or StandaloneOSXIntel64
+ * Unity 2020+: StandaloneOSX (universal, includes Apple Silicon support in 2020.2+)
+ */
+function getMacOSBuildTarget(unityVersion?: string): string {
+  // Default to modern target
+  const defaultTarget = 'StandaloneOSX';
+  
+  if (!unityVersion) {
+    return defaultTarget;
+  }
+
+  const parsed = parseUnityVersion(unityVersion);
+  if (!parsed) {
+    return defaultTarget;
+  }
+
+  // Unity 2017+ uses StandaloneOSX
+  // Earlier versions used different names, but those are very rare now
+  if (parsed.major < 2017) {
+    // For very old Unity versions, use StandaloneOSXUniversal or StandaloneOSXIntel
+    // However, these versions are rarely used, so we'll default to StandaloneOSX
+    return 'StandaloneOSXUniversal';
+  }
+
+  return defaultTarget;
 }
 
 /**
@@ -708,7 +755,9 @@ async function runPlayModeTests(
   // Determine default build target based on platform
   let defaultBuildTarget = 'StandaloneWindows64';
   if (process.platform === 'darwin') {
-    defaultBuildTarget = 'StandaloneOSX';
+    // Detect Unity version for proper macOS build target selection
+    const projectInfo = detectUnityProject(unityPath);
+    defaultBuildTarget = getMacOSBuildTarget(projectInfo.version);
   } else if (process.platform === 'linux') {
     defaultBuildTarget = 'StandaloneLinux64';
   }
@@ -1295,9 +1344,33 @@ async function executeUnityRunStep(
       step.status = 'canceled';
     } else {
       step.status = 'failed';
+      // Distinguish between test failures and other errors
+      if (run.testsSummary && run.testsSummary.failed > 0) {
+        // This is a test failure (tests ran but some failed)
+        step.errorDetails = {
+          type: 'test-failure',
+          message: `${run.testsSummary.failed} test(s) failed`
+        };
+      } else if (run.errorSummary && run.errorSummary.errorCount > 0) {
+        // This is an execution error (Unity encountered errors)
+        step.errorDetails = {
+          type: 'execution-error',
+          message: run.errorSummary.firstErrorLine || 'Unity execution error'
+        };
+      } else {
+        // Unknown failure type
+        step.errorDetails = {
+          type: 'unknown',
+          message: run.canceledReason || 'Unknown failure'
+        };
+      }
     }
   } else {
     step.status = 'failed';
+    step.errorDetails = {
+      type: 'execution-error',
+      message: 'Run record not found'
+    };
   }
 
   // Update summary counts
@@ -1511,7 +1584,17 @@ async function runUnityPipeline(
 
             for (const s of pipelineRun.steps) {
               const statusIcon = s.status === 'success' ? '✅' : s.status === 'failed' ? '❌' : s.status === 'skipped' ? '⏭' : s.status === 'canceled' ? '🚫' : '⏳';
-              summaryLines.push(`${statusIcon} ${s.type}: ${s.status || 'pending'}${s.runId ? ` (${s.runId})` : ''}`);
+              let stepLine = `${statusIcon} ${s.type}: ${s.status || 'pending'}${s.runId ? ` (${s.runId})` : ''}`;
+              
+              // Add error details for failed steps
+              if (s.status === 'failed' && s.errorDetails) {
+                const errorType = s.errorDetails.type === 'test-failure' ? '🧪 Test Failure' : 
+                                 s.errorDetails.type === 'execution-error' ? '⚠️ Execution Error' : 
+                                 '❓ Unknown Error';
+                stepLine += `\n  ${errorType}: ${s.errorDetails.message}`;
+              }
+              
+              summaryLines.push(stepLine);
             }
 
             summaryLines.push('');
@@ -1536,8 +1619,21 @@ async function runUnityPipeline(
             throw new Error(`Unknown step type: ${step.type}`);
         }
       } catch (error) {
+        // Distinguish between different types of errors for better debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isExecutionError = errorMessage.includes('not found') || 
+                                 errorMessage.includes('not configured') ||
+                                 errorMessage.includes('failed to');
+        
         console.error(`Pipeline step ${step.type} failed:`, error);
         step.status = 'failed';
+        
+        // Set error details to distinguish execution errors from test failures
+        step.errorDetails = {
+          type: isExecutionError ? 'execution-error' : 'unknown',
+          message: errorMessage
+        };
+        
         pipelineRun.summary!.failedCount++;
 
         // Stop pipeline if continueOnFail is false
