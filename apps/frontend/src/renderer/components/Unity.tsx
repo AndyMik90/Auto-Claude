@@ -1606,6 +1606,17 @@ export function Unity({ projectId }: UnityProps) {
                         return;
                       }
 
+                      // Check for duplicate profile names
+                      const duplicateProfile = profileSettings?.profiles.find(
+                        (profile) =>
+                          profile.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+                          (!editingProfile || profile.id !== editingProfile.id)
+                      );
+                      if (duplicateProfile) {
+                        setProfileFormError(t('profiles.dialog.duplicateProfileName'));
+                        return;
+                      }
+
                       const profileData = {
                         name: trimmedName,
                         buildExecuteMethod: profileFormBuildMethod.trim() || undefined,

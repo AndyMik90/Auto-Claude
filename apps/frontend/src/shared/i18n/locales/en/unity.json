@@ -71,6 +71,7 @@
       "confirmDeleteTitle": "Delete Profile",
       "deleteButton": "Delete Profile",
       "profileNameRequired": "Profile name is required",
+      "duplicateProfileName": "A profile with this name already exists",
       "saveFailed": "Failed to save profile. Please try again."
     }
   },
@@ -139,8 +140,7 @@
     "actionLabels": {
       "editmode-tests": "EditMode Tests",
       "playmode-tests": "PlayMode Tests",
-      "build": "Build",
-      "pipeline": "Pipeline"
+      "build": "Build"
     },
     "command": "Command",
     "artifacts": "Artifacts",

@@ -1484,6 +1484,9 @@ async function runUnityPipeline(
       const step = pipelineRun.steps[i];
 
       // Check if pipeline was canceled
+      // NOTE: Cancellation is only checked between steps, not during long-running operations.
+      // For more responsive cancellation during lengthy builds/tests, the underlying
+      // Unity process would need to support mid-execution cancellation checks.
       if (runningPipelines.get(id)?.canceled) {
         // Mark the current step as canceled
         step.status = 'canceled';
@@ -1725,7 +1728,37 @@ async function cancelUnityPipeline(projectId: string, pipelineId: string): Promi
         console.error('Failed to cancel running step:', error);
       }
     }
+
+    // Wait for the pipeline loop to observe cancellation and stop
+    await waitForPipelineCancellation(pipelineId);
   }
+}
+
+/**
+ * Wait for pipeline cancellation to complete
+ */
+async function waitForPipelineCancellation(
+  pipelineId: string,
+  timeoutMs: number = 10_000,
+  pollIntervalMs: number = 100
+): Promise<void> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const state = runningPipelines.get(pipelineId);
+
+    // Consider the pipeline "cancellation complete" when it is no longer registered
+    // or when it is marked as canceled and has no current running step.
+    if (!state || (state.canceled && !state.currentRunId)) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  console.warn(
+    `Timeout while waiting for Unity pipeline cancellation (pipelineId=${pipelineId})`
+  );
 }
 
 /**
