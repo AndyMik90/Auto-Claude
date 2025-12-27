@@ -742,6 +742,26 @@ export function Unity({ projectId }: UnityProps) {
     return parts.join(' / ') || 'No tests';
   };
 
+  // Get action label with fallback for new M3 actions
+  const getActionLabel = (action: UnityRun['action']) => {
+    switch (action) {
+      case 'editmode-tests':
+        return t('history.actionLabels.editmode-tests', { defaultValue: 'EditMode Tests' });
+      case 'playmode-tests':
+        return t('history.actionLabels.playmode-tests', { defaultValue: 'PlayMode Tests' });
+      case 'build':
+        return t('history.actionLabels.build', { defaultValue: 'Build' });
+      case 'tweak':
+        return 'Project Tweak';
+      case 'upm-resolve':
+        return 'UPM Resolve';
+      case 'bridge-install':
+        return 'Bridge Install';
+      default:
+        return action;
+    }
+  };
+
   // Cancel a running Unity run
   const cancelRun = async (runId: string) => {
     if (!selectedProject) return;
@@ -1888,7 +1908,7 @@ export function Unity({ projectId }: UnityProps) {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   {getStatusIcon(run.status)}
                                   <span className="text-sm font-medium">
-                                    {t(`history.actionLabels.${run.action}`)}
+                                    {getActionLabel(run.action)}
                                   </span>
                                   <Badge variant="outline" className="text-xs">
                                     {run.status}
@@ -1897,6 +1917,11 @@ export function Unity({ projectId }: UnityProps) {
                                     <span className="text-xs text-muted-foreground">
                                       {testSummary}
                                     </span>
+                                  )}
+                                  {run.tweakSummary && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {run.tweakSummary.description}
+                                    </Badge>
                                   )}
                                   {hasErrors && run.errorSummary && (
                                     <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/30">
@@ -2135,8 +2160,49 @@ export function Unity({ projectId }: UnityProps) {
                                         </Button>
                                       </div>
                                     )}
+                                    {run.artifactPaths.diffFile && (
+                                      <div className="flex gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 text-xs flex-1 justify-start"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.electronAPI.openPath(run.artifactPaths.diffFile!);
+                                          }}
+                                        >
+                                          <FileText className="h-3 w-3 mr-1" />
+                                          View Diff
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            copyToClipboard(run.artifactPaths.diffFile!);
+                                          }}
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
+
+                                {/* Tweak Summary - Changed Files */}
+                                {run.tweakSummary && run.tweakSummary.changedFiles.length > 0 && (
+                                  <div className="mt-2">
+                                    <p className="text-xs font-medium mb-1">Changed Files</p>
+                                    <div className="bg-muted p-2 rounded text-xs font-mono space-y-0.5">
+                                      {run.tweakSummary.changedFiles.map((file, idx) => (
+                                        <div key={idx} className="text-muted-foreground">
+                                          {file}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
