@@ -73,6 +73,7 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
 
   // Handle slider drag - only update pending state
   const handleSliderChange = (newScale: number) => {
+    if (Number.isNaN(newScale)) return;
     updatePendingScale(newScale);
   };
 
