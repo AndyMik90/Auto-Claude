@@ -1,6 +1,6 @@
 import { ipcMain, dialog, app, shell } from 'electron';
 import { existsSync, writeFileSync, mkdirSync } from 'fs';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import path from 'path';
 import { is } from '@electron-toolkit/utils';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
@@ -272,7 +272,7 @@ export function registerSettingsHandlers(
         let gitInitialized = false;
         if (initGit) {
           try {
-            execSync(`${getToolPath('git')} init`, { cwd: projectPath, stdio: 'ignore' });
+            execFileSync(getToolPath('git'), ['init'], { cwd: projectPath, stdio: 'ignore' });
             gitInitialized = true;
           } catch {
             // Git init failed, but folder was created - continue without git

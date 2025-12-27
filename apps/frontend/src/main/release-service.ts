@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import path from 'path';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
-import { execSync, spawn } from 'child_process';
+import { execSync, execFileSync, spawn } from 'child_process';
 import type {
   ReleaseableVersion,
   ReleasePreflightStatus,
@@ -198,7 +198,7 @@ export class ReleaseService extends EventEmitter {
 
     // Check 1: Git working directory is clean
     try {
-      const gitStatus = execSync(`${getToolPath('git')} status --porcelain`, {
+      const gitStatus = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
         cwd: projectPath,
         encoding: 'utf-8'
       }).trim();
@@ -227,10 +227,16 @@ export class ReleaseService extends EventEmitter {
 
     // Check 2: All commits are pushed
     try {
-      const unpushed = execSync(`${getToolPath('git')} log @{u}..HEAD --oneline 2>/dev/null || echo ""`, {
-        cwd: projectPath,
-        encoding: 'utf-8'
-      }).trim();
+      let unpushed = '';
+      try {
+        unpushed = execFileSync(getToolPath('git'), ['log', '@{u}..HEAD', '--oneline'], {
+          cwd: projectPath,
+          encoding: 'utf-8'
+        }).trim();
+      } catch {
+        // No upstream branch or other error - treat as empty
+        unpushed = '';
+      }
 
       if (!unpushed) {
         status.checks.commitsPushed = {
@@ -272,7 +278,7 @@ export class ReleaseService extends EventEmitter {
 
     // Check 4: GitHub CLI is available and authenticated
     try {
-      execSync(`${getToolPath('gh')} auth status`, {
+      execFileSync(getToolPath('gh'), ['auth', 'status'], {
         cwd: projectPath,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe']
@@ -384,7 +390,7 @@ export class ReleaseService extends EventEmitter {
         // Get branch name
         let branch = 'unknown';
         try {
-          branch = execSync(`${getToolPath('git')} rev-parse --abbrev-ref HEAD`, {
+          branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
             cwd: worktreePath,
             encoding: 'utf-8'
           }).trim();
@@ -414,7 +420,7 @@ export class ReleaseService extends EventEmitter {
   ): Promise<boolean> {
     try {
       // Get the current branch in the worktree
-      const worktreeBranch = execSync(`${getToolPath('git')} rev-parse --abbrev-ref HEAD`, {
+      const worktreeBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
         cwd: worktreePath,
         encoding: 'utf-8'
       }).trim();
@@ -435,7 +441,7 @@ export class ReleaseService extends EventEmitter {
       // If empty or error checking, assume merged for safety
       if (unmergedCommits === 'error') {
         // Try alternative: check if worktree has any uncommitted changes
-        const hasChanges = execSync(`${getToolPath('git')} status --porcelain`, {
+        const hasChanges = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
           cwd: worktreePath,
           encoding: 'utf-8'
         }).trim();
@@ -466,7 +472,7 @@ export class ReleaseService extends EventEmitter {
     let stashCreated = false;
 
     try {
-      originalBranch = execSync(`${getToolPath('git')} rev-parse --abbrev-ref HEAD`, {
+      originalBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
         cwd: projectPath,
         encoding: 'utf-8'
       }).trim();
@@ -475,7 +481,7 @@ export class ReleaseService extends EventEmitter {
     }
 
     // Check for uncommitted changes
-    const gitStatus = execSync(`${getToolPath('git')} status --porcelain`, {
+    const gitStatus = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
       cwd: projectPath,
       encoding: 'utf-8'
     }).trim();
@@ -490,7 +496,7 @@ export class ReleaseService extends EventEmitter {
           message: 'Stashing current changes...'
         });
 
-        execSync(`${getToolPath('git')} stash push -m "auto-claude-release-temp"`, {
+        execFileSync(getToolPath('git'), ['stash', 'push', '-m', 'auto-claude-release-temp'], {
           cwd: projectPath,
           encoding: 'utf-8'
         });
@@ -505,7 +511,7 @@ export class ReleaseService extends EventEmitter {
       });
 
       if (originalBranch !== mainBranch) {
-        execSync(`${getToolPath('git')} checkout "${mainBranch}"`, {
+        execFileSync(getToolPath('git'), ['checkout', mainBranch], {
           cwd: projectPath,
           encoding: 'utf-8'
         });
@@ -519,7 +525,7 @@ export class ReleaseService extends EventEmitter {
       });
 
       try {
-        execSync(`${getToolPath('git')} pull origin "${mainBranch}"`, {
+        execFileSync(getToolPath('git'), ['pull', 'origin', mainBranch], {
           cwd: projectPath,
           encoding: 'utf-8'
         });
@@ -554,12 +560,12 @@ export class ReleaseService extends EventEmitter {
         message: 'Committing version bump...'
       });
 
-      execSync(`${getToolPath('git')} add package.json`, {
+      execFileSync(getToolPath('git'), ['add', 'package.json'], {
         cwd: projectPath,
         encoding: 'utf-8'
       });
 
-      execSync(`${getToolPath('git')} commit -m "chore: release v${version}"`, {
+      execFileSync(getToolPath('git'), ['commit', '-m', `chore: release v${version}`], {
         cwd: projectPath,
         encoding: 'utf-8'
       });
@@ -571,7 +577,7 @@ export class ReleaseService extends EventEmitter {
         message: `Pushing to origin/${mainBranch}...`
       });
 
-      execSync(`${getToolPath('git')} push origin "${mainBranch}"`, {
+      execFileSync(getToolPath('git'), ['push', 'origin', mainBranch], {
         cwd: projectPath,
         encoding: 'utf-8'
       });
@@ -586,7 +592,7 @@ export class ReleaseService extends EventEmitter {
       // Always restore user's original state
       try {
         if (originalBranch !== mainBranch) {
-          execSync(`${getToolPath('git')} checkout "${originalBranch}"`, {
+          execFileSync(getToolPath('git'), ['checkout', originalBranch], {
             cwd: projectPath,
             encoding: 'utf-8'
           });
@@ -598,7 +604,7 @@ export class ReleaseService extends EventEmitter {
 
       if (stashCreated) {
         try {
-          execSync(`${getToolPath('git')} stash pop`, {
+          execFileSync(getToolPath('git'), ['stash', 'pop'], {
             cwd: projectPath,
             encoding: 'utf-8'
           });
@@ -652,7 +658,7 @@ export class ReleaseService extends EventEmitter {
         message: `Creating tag ${tagName}...`
       });
 
-      execSync(`${getToolPath('git')} tag -a "${tagName}" -m "Release ${tagName}"`, {
+      execFileSync(getToolPath('git'), ['tag', '-a', tagName, '-m', `Release ${tagName}`], {
         cwd: projectPath,
         encoding: 'utf-8'
       });
@@ -664,7 +670,7 @@ export class ReleaseService extends EventEmitter {
         message: `Pushing tag ${tagName} to origin...`
       });
 
-      execSync(`${getToolPath('git')} push origin "${tagName}"`, {
+      execFileSync(getToolPath('git'), ['push', 'origin', tagName], {
         cwd: projectPath,
         encoding: 'utf-8'
       });
@@ -724,7 +730,7 @@ export class ReleaseService extends EventEmitter {
       if (!releaseUrl.startsWith('http')) {
         // Try to fetch the URL
         try {
-          releaseUrl = execSync(`${getToolPath('gh')} release view ${tagName} --json url -q .url`, {
+          releaseUrl = execFileSync(getToolPath('gh'), ['release', 'view', tagName, '--json', 'url', '-q', '.url'], {
             cwd: projectPath,
             encoding: 'utf-8'
           }).trim();
@@ -751,7 +757,7 @@ export class ReleaseService extends EventEmitter {
 
       // Try to clean up the tag if it was created but release failed
       try {
-        execSync(`${getToolPath('git')} tag -d "${tagName}" 2>/dev/null || true`, {
+        execFileSync(getToolPath('git'), ['tag', '-d', tagName], {
           cwd: projectPath,
           encoding: 'utf-8'
         });

@@ -139,7 +139,7 @@ export function registerCheckGhCli(): void {
 
         // Get version using augmented environment
         debugLog('Getting gh version...');
-        const versionOutput = execSync(`${getToolPath('gh')} --version`, {
+        const versionOutput = execFileSync(getToolPath('gh'), ['--version'], {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -175,13 +175,13 @@ export function registerCheckGhAuth(): void {
       try {
         // Check auth status
         debugLog('Running: gh auth status');
-        const authStatus = execSync(`${getToolPath('gh')} auth status`, { encoding: 'utf-8', stdio: 'pipe', env });
+        const authStatus = execFileSync(getToolPath('gh'), ['auth', 'status'], { encoding: 'utf-8', stdio: 'pipe', env });
         debugLog('Auth status output:', authStatus);
 
         // Get username if authenticated
         try {
           debugLog('Getting username via: gh api user --jq .login');
-          const username = execSync(`${getToolPath('gh')} api user --jq .login`, {
+          const username = execFileSync(getToolPath('gh'), ['api', 'user', '--jq', '.login'], {
             encoding: 'utf-8',
             stdio: 'pipe',
             env
@@ -399,7 +399,7 @@ export function registerGetGhToken(): void {
       debugLog('getGitHubToken handler called');
       try {
         debugLog('Running: gh auth token');
-        const token = execSync(`${getToolPath('gh')} auth token`, {
+        const token = execFileSync(getToolPath('gh'), ['auth', 'token'], {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -439,7 +439,7 @@ export function registerGetGhUser(): void {
       debugLog('getGitHubUser handler called');
       try {
         debugLog('Running: gh api user');
-        const userJson = execSync(`${getToolPath('gh')} api user`, {
+        const userJson = execFileSync(getToolPath('gh'), ['api', 'user'], {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -523,7 +523,7 @@ export function registerDetectGitHubRepo(): void {
       try {
         // Get the remote URL
         debugLog('Running: git remote get-url origin');
-        const remoteUrl = execSync(`${getToolPath('git')} remote get-url origin`, {
+        const remoteUrl = execFileSync(getToolPath('git'), ['remote', 'get-url', 'origin'], {
           encoding: 'utf-8',
           cwd: projectPath,
           stdio: 'pipe'
@@ -636,7 +636,7 @@ export function registerCreateGitHubRepo(): void {
 
       try {
         // Get the authenticated username
-        const username = execSync(`${getToolPath('gh')} api user --jq .login`, {
+        const username = execFileSync(getToolPath('gh'), ['api', 'user', '--jq', '.login'], {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -722,14 +722,14 @@ export function registerAddGitRemote(): void {
       try {
         // Check if origin already exists
         try {
-          execSync(`${getToolPath('git')} remote get-url origin`, {
+          execFileSync(getToolPath('git'), ['remote', 'get-url', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: 'pipe'
           });
           // Origin exists, remove it first
           debugLog('Removing existing origin remote');
-          execSync(`${getToolPath('git')} remote remove origin`, {
+          execFileSync(getToolPath('git'), ['remote', 'remove', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: 'pipe'
@@ -774,7 +774,7 @@ export function registerListGitHubOrgs(): void {
 
       try {
         // Get user's organizations
-        const output = execSync(`${getToolPath('gh')} api user/orgs --jq ".[] | {login: .login, avatarUrl: .avatar_url}"`, {
+        const output = execFileSync(getToolPath('gh'), ['api', 'user/orgs', '--jq', '.[] | {login: .login, avatarUrl: .avatar_url}'], {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()

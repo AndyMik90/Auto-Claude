@@ -3,7 +3,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../../shared/constants';
@@ -34,7 +34,7 @@ function checkGhCli(): { installed: boolean; error?: string } {
  */
 function checkGhAuth(projectPath: string): { authenticated: boolean; error?: string } {
   try {
-    execSync(`${getToolPath('gh')} auth status`, { cwd: projectPath, encoding: 'utf-8', stdio: 'pipe' });
+    execFileSync(getToolPath('gh'), ['auth', 'status'], { cwd: projectPath, encoding: 'utf-8', stdio: 'pipe' });
     return { authenticated: true };
   } catch {
     return {
@@ -127,7 +127,7 @@ export function registerCreateRelease(): void {
  */
 function getLatestTag(projectPath: string): string | null {
   try {
-    const tag = execSync(`${getToolPath('git')} describe --tags --abbrev=0 2>/dev/null || echo ""`, {
+    const tag = execFileSync(getToolPath('git'), ['describe', '--tags', '--abbrev=0'], {
       cwd: projectPath,
       encoding: 'utf-8'
     }).trim();
@@ -144,7 +144,7 @@ function getCommitsSinceTag(projectPath: string, tag: string | null): GitCommit[
   try {
     const range = tag ? `${tag}..HEAD` : 'HEAD';
     const format = '%H|%s|%an|%ae|%aI';
-    const output = execSync(`${getToolPath('git')} log ${range} --pretty=format:"${format}"`, {
+    const output = execFileSync(getToolPath('git'), ['log', range, `--pretty=format:${format}`], {
       cwd: projectPath,
       encoding: 'utf-8'
     }).trim();

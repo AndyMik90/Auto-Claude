@@ -1,7 +1,7 @@
 import { ipcMain, app } from 'electron';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { is } from '@electron-toolkit/utils';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type {
@@ -38,7 +38,7 @@ import { getEffectiveSourcePath } from '../updater/path-resolver';
  */
 function getGitBranches(projectPath: string): string[] {
   try {
-    const result = execSync(`${getToolPath('git')} branch --list --format="%(refname:short)"`, {
+    const result = execFileSync(getToolPath('git'), ['branch', '--list', '--format=%(refname:short)'], {
       cwd: projectPath,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
@@ -54,7 +54,7 @@ function getGitBranches(projectPath: string): string[] {
  */
 function getCurrentGitBranch(projectPath: string): string | null {
   try {
-    const result = execSync(`${getToolPath('git')} rev-parse --abbrev-ref HEAD`, {
+    const result = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: projectPath,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
@@ -83,7 +83,7 @@ function detectMainBranch(projectPath: string): string | null {
 
   // If none of the common names found, check for origin/HEAD reference
   try {
-    const result = execSync(`${getToolPath('git')} symbolic-ref refs/remotes/origin/HEAD`, {
+    const result = execFileSync(getToolPath('git'), ['symbolic-ref', 'refs/remotes/origin/HEAD'], {
       cwd: projectPath,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']

@@ -3,7 +3,7 @@
  */
 
 import { existsSync, readFileSync } from 'fs';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import path from 'path';
 import type { Project } from '../../../shared/types';
 import { parseEnvFile } from '../utils';
@@ -17,7 +17,7 @@ import { getToolPath } from '../../cli-tool-manager';
  */
 function getTokenFromGhCli(): string | null {
   try {
-    const token = execSync(`${getToolPath('gh')} auth token`, {
+    const token = execFileSync(getToolPath('gh'), ['auth', 'token'], {
       encoding: 'utf-8',
       stdio: 'pipe',
       env: getAugmentedEnv()
