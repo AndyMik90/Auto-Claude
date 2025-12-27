@@ -1,10 +1,66 @@
 import { ipcMain, app } from 'electron';
-import { existsSync, writeFileSync, readFileSync, mkdirSync, cpSync } from 'fs';
+import { existsSync, writeFileSync, readFileSync, mkdirSync, cpSync, realpathSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { Template, TemplateStore, IPCResult } from '../../shared/types';
 import { v4 as uuidv4 } from 'uuid';
 import { parseTemplateDirectory, replaceTemplateParameters, type ParsedTemplate, type TemplateParameter } from '../template-parser';
+
+/**
+ * Security: Sanitize folder/file name to prevent path traversal attacks
+ * Only allows alphanumeric characters, hyphens, underscores, dots, and spaces
+ * Removes any path separators or parent directory references
+ */
+const sanitizeName = (name: string): string => {
+  // Remove any path separators and parent directory references
+  const cleaned = name.replace(/[/\\]/g, '').replace(/\.\./g, '');
+
+  // Only allow safe characters: alphanumeric, hyphen, underscore, dot, space
+  const safe = cleaned.replace(/[^a-zA-Z0-9\-_. ]/g, '');
+
+  // Trim whitespace and ensure not empty
+  const trimmed = safe.trim();
+
+  if (trimmed.length === 0) {
+    throw new Error('Invalid name: must contain at least one alphanumeric character');
+  }
+
+  // Prevent names that are only dots (., .., ...)
+  if (/^\.+$/.test(trimmed)) {
+    throw new Error('Invalid name: cannot be only dots');
+  }
+
+  return trimmed;
+};
+
+/**
+ * Security: Validate that a path is safe and within expected boundaries
+ * Prevents path traversal attacks by resolving to real path and checking containment
+ */
+const validateDestinationPath = (destinationPath: string): string => {
+  try {
+    // Resolve to absolute path
+    const absolutePath = path.resolve(destinationPath);
+
+    // Check if path exists
+    if (!existsSync(absolutePath)) {
+      throw new Error('Destination path does not exist');
+    }
+
+    // Resolve to real path (follows symlinks)
+    const realPath = realpathSync(absolutePath);
+
+    // Ensure it's a directory (not a file)
+    const stats = require('fs').statSync(realPath);
+    if (!stats.isDirectory()) {
+      throw new Error('Destination path must be a directory');
+    }
+
+    return realPath;
+  } catch (error) {
+    throw new Error(`Invalid destination path: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
 
 const getTemplatesPath = (): string => {
   const userDataPath = app.getPath('userData');
@@ -151,9 +207,12 @@ export function registerTemplateHandlers(): void {
           return { success: false, error: 'Template folder does not exist' };
         }
 
-        // Get the template folder name
-        const templateFolderName = path.basename(template.folderPath);
-        const targetPath = path.join(destinationPath, templateFolderName);
+        // Security: Validate destination path
+        const validatedDestPath = validateDestinationPath(destinationPath);
+
+        // Get the template folder name and sanitize it
+        const templateFolderName = sanitizeName(path.basename(template.folderPath));
+        const targetPath = path.join(validatedDestPath, templateFolderName);
 
         // Check if target already exists
         if (existsSync(targetPath)) {
@@ -189,12 +248,16 @@ export function registerTemplateHandlers(): void {
           return { success: false, error: 'Template folder does not exist' };
         }
 
-        // Use the custom name for the target folder
-        const targetPath = path.join(destinationPath, customName);
+        // Security: Validate destination path and sanitize custom name
+        const validatedDestPath = validateDestinationPath(destinationPath);
+        const sanitizedName = sanitizeName(customName);
+
+        // Use the sanitized custom name for the target folder
+        const targetPath = path.join(validatedDestPath, sanitizedName);
 
         // Check if target already exists
         if (existsSync(targetPath)) {
-          return { success: false, error: `A folder named "${customName}" already exists at the destination` };
+          return { success: false, error: `A folder named "${sanitizedName}" already exists at the destination` };
         }
 
         // Copy the template folder recursively
@@ -270,10 +333,14 @@ export function registerTemplateHandlers(): void {
           return { success: false, error: 'Template folder does not exist' };
         }
 
-        const targetPath = path.join(destinationPath, customName);
+        // Security: Validate destination path and sanitize custom name
+        const validatedDestPath = validateDestinationPath(destinationPath);
+        const sanitizedName = sanitizeName(customName);
+
+        const targetPath = path.join(validatedDestPath, sanitizedName);
 
         if (existsSync(targetPath)) {
-          return { success: false, error: `A folder named "${customName}" already exists at the destination` };
+          return { success: false, error: `A folder named "${sanitizedName}" already exists at the destination` };
         }
 
         // First, copy the template folder recursively

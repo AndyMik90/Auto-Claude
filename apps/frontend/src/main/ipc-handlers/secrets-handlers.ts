@@ -9,8 +9,36 @@ import type {
   SecretAccountInput,
   IPCResult
 } from '../../shared/types';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4, validate as validateUUID } from 'uuid';
 import { SecretsEncryption } from '../secrets-encryption';
+
+/**
+ * Security: Validate UUID format to prevent injection attacks
+ */
+const validateId = (id: string, fieldName: string): void => {
+  if (!validateUUID(id)) {
+    throw new Error(`Invalid ${fieldName}: must be a valid UUID`);
+  }
+};
+
+/**
+ * Security: Validate string length to prevent DoS attacks
+ */
+const validateStringLength = (value: string, fieldName: string, maxLength: number = 1000): void => {
+  if (value.length > maxLength) {
+    throw new Error(`${fieldName} exceeds maximum length of ${maxLength} characters`);
+  }
+};
+
+/**
+ * Security: Validate object size to prevent DoS attacks
+ */
+const validateObjectSize = (obj: Record<string, any>, fieldName: string, maxKeys: number = 100): void => {
+  const keyCount = Object.keys(obj).length;
+  if (keyCount > maxKeys) {
+    throw new Error(`${fieldName} exceeds maximum of ${maxKeys} keys`);
+  }
+};
 
 const getSecretsPath = (): string => {
   const userDataPath = app.getPath('userData');
@@ -82,6 +110,9 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_GET_GROUP,
     async (_, groupId: string): Promise<IPCResult<SecretGroup>> => {
       try {
+        // Security: Validate UUID format
+        validateId(groupId, 'groupId');
+
         const store = readSecretsFile();
         const group = store.groups.find(g => g.id === groupId);
 
@@ -104,6 +135,16 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_CREATE_GROUP,
     async (_, groupInput: SecretGroupInput): Promise<IPCResult<SecretGroup>> => {
       try {
+        // Security: Validate input lengths
+        validateStringLength(groupInput.title, 'title', 200);
+        if (groupInput.description) {
+          validateStringLength(groupInput.description, 'description', 1000);
+        }
+        if (groupInput.imagePath) {
+          validateStringLength(groupInput.imagePath, 'imagePath', 500);
+        }
+        validateObjectSize(groupInput.keyIds, 'keyIds', 50);
+
         const store = readSecretsFile();
         const now = Date.now();
 
@@ -136,6 +177,23 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_UPDATE_GROUP,
     async (_, groupId: string, updates: Partial<SecretGroupInput>): Promise<IPCResult<SecretGroup>> => {
       try {
+        // Security: Validate UUID format
+        validateId(groupId, 'groupId');
+
+        // Security: Validate input lengths
+        if (updates.title !== undefined) {
+          validateStringLength(updates.title, 'title', 200);
+        }
+        if (updates.description !== undefined) {
+          validateStringLength(updates.description, 'description', 1000);
+        }
+        if (updates.imagePath !== undefined) {
+          validateStringLength(updates.imagePath, 'imagePath', 500);
+        }
+        if (updates.keyIds !== undefined) {
+          validateObjectSize(updates.keyIds, 'keyIds', 50);
+        }
+
         const store = readSecretsFile();
         const group = store.groups.find(g => g.id === groupId);
 
@@ -166,6 +224,9 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_DELETE_GROUP,
     async (_, groupId: string): Promise<IPCResult> => {
       try {
+        // Security: Validate UUID format
+        validateId(groupId, 'groupId');
+
         const store = readSecretsFile();
         const index = store.groups.findIndex(g => g.id === groupId);
 
@@ -191,6 +252,19 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_ADD_ACCOUNT,
     async (_, groupId: string, accountInput: SecretAccountInput): Promise<IPCResult<SecretGroup>> => {
       try {
+        // Security: Validate UUID format
+        validateId(groupId, 'groupId');
+
+        // Security: Validate input lengths
+        validateStringLength(accountInput.title, 'account title', 200);
+        validateObjectSize(accountInput.keys, 'account keys', 50);
+
+        // Security: Validate each key value length
+        for (const [keyId, value] of Object.entries(accountInput.keys)) {
+          validateStringLength(keyId, 'key ID', 100);
+          validateStringLength(value, 'key value', 10000); // Secrets can be longer
+        }
+
         const store = readSecretsFile();
         const group = store.groups.find(g => g.id === groupId);
 
@@ -234,6 +308,20 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_UPDATE_ACCOUNT,
     async (_, groupId: string, accountId: string, accountInput: SecretAccountInput): Promise<IPCResult<SecretGroup>> => {
       try {
+        // Security: Validate UUID formats
+        validateId(groupId, 'groupId');
+        validateId(accountId, 'accountId');
+
+        // Security: Validate input lengths
+        validateStringLength(accountInput.title, 'account title', 200);
+        validateObjectSize(accountInput.keys, 'account keys', 50);
+
+        // Security: Validate each key value length
+        for (const [keyId, value] of Object.entries(accountInput.keys)) {
+          validateStringLength(keyId, 'key ID', 100);
+          validateStringLength(value, 'key value', 10000); // Secrets can be longer
+        }
+
         const store = readSecretsFile();
         const group = store.groups.find(g => g.id === groupId);
 
@@ -276,6 +364,10 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_DELETE_ACCOUNT,
     async (_, groupId: string, accountId: string): Promise<IPCResult<SecretGroup>> => {
       try {
+        // Security: Validate UUID formats
+        validateId(groupId, 'groupId');
+        validateId(accountId, 'accountId');
+
         const store = readSecretsFile();
         const group = store.groups.find(g => g.id === groupId);
 
@@ -308,6 +400,10 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_DECRYPT_ACCOUNT,
     async (_, groupId: string, accountId: string): Promise<IPCResult<Record<string, string>>> => {
       try {
+        // Security: Validate UUID formats
+        validateId(groupId, 'groupId');
+        validateId(accountId, 'accountId');
+
         const store = readSecretsFile();
         const group = store.groups.find(g => g.id === groupId);
 
@@ -320,7 +416,7 @@ export function registerSecretsHandlers(): void {
           return { success: false, error: 'Account not found' };
         }
 
-        // Decrypt all keys
+        // Decrypt all keys (NO logging of decrypted values)
         const decryptedKeys: Record<string, string> = {};
         for (const [keyId, encryptedValue] of Object.entries(account.keys)) {
           decryptedKeys[keyId] = SecretsEncryption.decrypt(encryptedValue);
@@ -341,6 +437,13 @@ export function registerSecretsHandlers(): void {
     IPC_CHANNELS.SECRETS_DECRYPT_ACCOUNT_KEY,
     async (_, groupId: string, accountId: string, keyId: string): Promise<IPCResult<string>> => {
       try {
+        // Security: Validate UUID formats
+        validateId(groupId, 'groupId');
+        validateId(accountId, 'accountId');
+
+        // Security: Validate keyId length
+        validateStringLength(keyId, 'keyId', 100);
+
         const store = readSecretsFile();
         const group = store.groups.find(g => g.id === groupId);
 
@@ -358,6 +461,7 @@ export function registerSecretsHandlers(): void {
           return { success: false, error: 'Key not found in account' };
         }
 
+        // Decrypt value (NO logging of decrypted value)
         const decryptedValue = SecretsEncryption.decrypt(encryptedValue);
 
         return { success: true, data: decryptedValue };
