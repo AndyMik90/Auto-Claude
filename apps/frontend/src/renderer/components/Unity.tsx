@@ -1361,6 +1361,226 @@ export function Unity({ projectId }: UnityProps) {
               </Card>
             )}
 
+            {/* M3: Project Tweaks Panel */}
+            {projectInfo.isUnityProject && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Wrench className="h-5 w-5" />
+                    Project Tweaks
+                  </CardTitle>
+                  <CardDescription>
+                    Safe project settings modification with backups and diffs
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Bridge Warning */}
+                  {!bridgeInstalled && (
+                    <div className="border-l-4 border-yellow-600 bg-yellow-50 dark:bg-yellow-950/30 p-3 rounded">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                            Unity Bridge Required
+                          </p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            Install the Unity Bridge to enable safe project tweaks. The bridge uses official Unity APIs instead of editing project files directly.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={installBridge}
+                            className="mt-2 gap-2"
+                          >
+                            <Download className="h-3 w-3" />
+                            Install Unity Bridge
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Define Symbols */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Scripting Define Symbols</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="targetGroup" className="text-xs text-muted-foreground">Target Group</Label>
+                        <Select value={tweakTargetGroup} onValueChange={setTweakTargetGroup}>
+                          <SelectTrigger id="targetGroup">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Standalone">Standalone</SelectItem>
+                            <SelectItem value="Android">Android</SelectItem>
+                            <SelectItem value="iOS">iOS</SelectItem>
+                            <SelectItem value="WebGL">WebGL</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="defineSymbol" className="text-xs text-muted-foreground">Symbol</Label>
+                        <Input
+                          id="defineSymbol"
+                          value={defineSymbol}
+                          onChange={(e) => setDefineSymbol(e.target.value)}
+                          placeholder="MY_DEFINE"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={addDefineSymbol}
+                        disabled={!bridgeInstalled || !effectiveEditorPath || !defineSymbol.trim()}
+                        className="gap-1"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={removeDefineSymbol}
+                        disabled={!bridgeInstalled || !effectiveEditorPath || !defineSymbol.trim()}
+                        className="gap-1"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Scripting Backend */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Scripting Backend</Label>
+                    <div className="flex gap-2">
+                      <Select value={scriptingBackend} onValueChange={setScriptingBackend}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Mono">Mono</SelectItem>
+                          <SelectItem value="IL2CPP">IL2CPP</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={setBackend}
+                        disabled={!bridgeInstalled || !effectiveEditorPath}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Build Target */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Build Target</Label>
+                    <div className="flex gap-2">
+                      <Select value={tweakBuildTarget} onValueChange={setTweakBuildTarget}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="StandaloneWindows64">Windows 64-bit</SelectItem>
+                          <SelectItem value="StandaloneOSX">macOS</SelectItem>
+                          <SelectItem value="StandaloneLinux64">Linux 64-bit</SelectItem>
+                          <SelectItem value="Android">Android</SelectItem>
+                          <SelectItem value="iOS">iOS</SelectItem>
+                          <SelectItem value="WebGL">WebGL</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={switchBuildTarget}
+                        disabled={!bridgeInstalled || !effectiveEditorPath}
+                      >
+                        Switch
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* M3: Unity Package Manager Panel */}
+            {projectInfo.isUnityProject && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Unity Package Manager
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={listPackages}
+                        disabled={isLoadingPackages}
+                        className="gap-2"
+                      >
+                        {isLoadingPackages ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        Refresh
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={upmResolve}
+                        disabled={!bridgeInstalled || !effectiveEditorPath}
+                        className="gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        UPM Resolve
+                      </Button>
+                    </div>
+                  </div>
+                  <CardDescription>
+                    View and resolve Unity Package Manager dependencies
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingPackages && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+
+                  {!isLoadingPackages && packages.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No packages found. Click "Refresh" to load packages from manifest.json</p>
+                    </div>
+                  )}
+
+                  {!isLoadingPackages && packages.length > 0 && (
+                    <ScrollArea className="h-[200px]">
+                      <div className="space-y-1">
+                        {packages.map((pkg) => (
+                          <div
+                            key={pkg.name}
+                            className="flex items-center justify-between p-2 border rounded hover:bg-muted/50"
+                          >
+                            <span className="text-sm font-mono text-foreground">{pkg.name}</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {pkg.version}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Profile Selector Card */}
             {projectInfo.isUnityProject && profileSettings && (
               <Card>
