@@ -1248,7 +1248,7 @@ async function runUnityTweak(
 
         run.endedAt = new Date().toISOString();
         run.durationMs = duration;
-        run.exitCode = code;
+        run.exitCode = code ?? undefined;
         run.status = wasCanceled ? 'canceled' : code === 0 ? 'success' : 'failed';
         run.artifactPaths.postBackupDir = backup.postDir;
         run.artifactPaths.diffFile = diffPath;
@@ -1279,7 +1279,7 @@ async function runUnityTweak(
         console.error('Error processing tweak results:', error);
         run.endedAt = new Date().toISOString();
         run.durationMs = duration;
-        run.exitCode = code;
+        run.exitCode = code ?? undefined;
         run.status = 'failed';
         run.errorSummary = {
           errorCount: 1,
