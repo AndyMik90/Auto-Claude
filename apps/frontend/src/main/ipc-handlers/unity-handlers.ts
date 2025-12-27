@@ -97,6 +97,10 @@ interface PipelineStep {
   enabled: boolean;
   runId?: string;  // Reference to the actual run
   status?: 'pending' | 'running' | 'success' | 'failed' | 'skipped' | 'canceled';
+  errorDetails?: {
+    type: 'test-failure' | 'execution-error' | 'unknown';
+    message?: string;
+  };
 }
 
 interface UnityPipelineRun {
@@ -125,6 +129,17 @@ interface UnityPipelineRun {
 
 // Constants
 const DEFAULT_CANCELED_REASON = 'canceled (reason unknown)';
+
+// Error patterns for detecting execution errors in pipeline steps
+const EXECUTION_ERROR_PATTERNS = [
+  'not found',
+  'not configured',
+  'failed to',
+  'cannot find',
+  'missing',
+  'invalid path',
+  'permission denied'
+];
 
 /**
  * Parse ISO timestamp for use in IDs (includes milliseconds for uniqueness)
@@ -180,6 +195,49 @@ function detectUnityProject(projectPath: string): UnityProjectInfo {
   }
 
   return result;
+}
+
+/**
+ * Parse Unity version string to major.minor format
+ * Example: "2021.3.15f1" -> { major: 2021, minor: 3 }
+ */
+function parseUnityVersion(version: string): { major: number; minor: number } | null {
+  const match = version.match(/^(\d+)\.(\d+)/);
+  if (!match) return null;
+  return {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10)
+  };
+}
+
+/**
+ * Determine the appropriate macOS build target based on Unity version
+ * Unity versions before 2017 used different naming conventions
+ * Unity 2017-2019: StandaloneOSX (universal) or StandaloneOSXIntel64
+ * Unity 2020+: StandaloneOSX (universal, includes Apple Silicon support in 2020.2+)
+ */
+function getMacOSBuildTarget(unityVersion?: string): string {
+  // Default to modern target
+  const defaultTarget = 'StandaloneOSX';
+  
+  if (!unityVersion) {
+    return defaultTarget;
+  }
+
+  const parsed = parseUnityVersion(unityVersion);
+  if (!parsed) {
+    return defaultTarget;
+  }
+
+  // Unity 2017+ uses StandaloneOSX
+  // Earlier versions used different names, but those are very rare now
+  if (parsed.major < 2017) {
+    // For very old Unity versions, use StandaloneOSXUniversal
+    // Note: These versions are rarely used in modern development
+    return 'StandaloneOSXUniversal';
+  }
+
+  return defaultTarget;
 }
 
 /**
@@ -708,7 +766,9 @@ async function runPlayModeTests(
   // Determine default build target based on platform
   let defaultBuildTarget = 'StandaloneWindows64';
   if (process.platform === 'darwin') {
-    defaultBuildTarget = 'StandaloneOSX';
+    // Detect Unity version for proper macOS build target selection
+    const projectInfo = detectUnityProject(unityPath);
+    defaultBuildTarget = getMacOSBuildTarget(projectInfo.version);
   } else if (process.platform === 'linux') {
     defaultBuildTarget = 'StandaloneLinux64';
   }
@@ -1295,9 +1355,33 @@ async function executeUnityRunStep(
       step.status = 'canceled';
     } else {
       step.status = 'failed';
+      // Distinguish between test failures and other errors
+      if (run.testsSummary && run.testsSummary.failed > 0) {
+        // This is a test failure (tests ran but some failed)
+        step.errorDetails = {
+          type: 'test-failure',
+          message: `${run.testsSummary.failed} test(s) failed`
+        };
+      } else if (run.errorSummary && run.errorSummary.errorCount > 0) {
+        // This is an execution error (Unity encountered errors)
+        step.errorDetails = {
+          type: 'execution-error',
+          message: run.errorSummary.firstErrorLine || 'Unity execution error'
+        };
+      } else {
+        // Unknown failure type
+        step.errorDetails = {
+          type: 'unknown',
+          message: run.canceledReason || 'Unknown failure'
+        };
+      }
     }
   } else {
     step.status = 'failed';
+    step.errorDetails = {
+      type: 'execution-error',
+      message: 'Run record not found'
+    };
   }
 
   // Update summary counts
@@ -1511,7 +1595,26 @@ async function runUnityPipeline(
 
             for (const s of pipelineRun.steps) {
               const statusIcon = s.status === 'success' ? '✅' : s.status === 'failed' ? '❌' : s.status === 'skipped' ? '⏭' : s.status === 'canceled' ? '🚫' : '⏳';
-              summaryLines.push(`${statusIcon} ${s.type}: ${s.status || 'pending'}${s.runId ? ` (${s.runId})` : ''}`);
+              let stepLine = `${statusIcon} ${s.type}: ${s.status || 'pending'}${s.runId ? ` (${s.runId})` : ''}`;
+              
+              // Add error details for failed steps
+              if (s.status === 'failed' && s.errorDetails) {
+                let errorType: string;
+                switch (s.errorDetails.type) {
+                  case 'test-failure':
+                    errorType = '🧪 Test Failure';
+                    break;
+                  case 'execution-error':
+                    errorType = '⚠️ Execution Error';
+                    break;
+                  default:
+                    errorType = '❓ Unknown Error';
+                    break;
+                }
+                stepLine += `\n  ${errorType}: ${s.errorDetails.message}`;
+              }
+              
+              summaryLines.push(stepLine);
             }
 
             summaryLines.push('');
@@ -1536,8 +1639,24 @@ async function runUnityPipeline(
             throw new Error(`Unknown step type: ${step.type}`);
         }
       } catch (error) {
+        // Distinguish between different types of errors for better debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessageLower = errorMessage.toLowerCase();
+        
+        // Detect execution errors by checking for specific patterns
+        const isExecutionError = EXECUTION_ERROR_PATTERNS.some(pattern => 
+          errorMessageLower.includes(pattern)
+        );
+        
         console.error(`Pipeline step ${step.type} failed:`, error);
         step.status = 'failed';
+        
+        // Set error details to distinguish execution errors from test failures
+        step.errorDetails = {
+          type: isExecutionError ? 'execution-error' : 'unknown',
+          message: errorMessage
+        };
+        
         pipelineRun.summary!.failedCount++;
 
         // Stop pipeline if continueOnFail is false
