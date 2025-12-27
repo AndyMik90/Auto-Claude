@@ -131,11 +131,55 @@ export const useInsightsStore = create<InsightsState>((set, get) => ({
   sessionStates: new Map<string, SessionState>(),
 
   // Actions
-  setSession: (session) => set({ session }),
+  setSession: (session) => {
+    if (session) {
+      // Update active context when session changes
+      const key = getSessionKey(session.projectId, session.id);
+      const currentState = get();
+      const existingSessionState = currentState.sessionStates.get(key);
+
+      // Initialize session state if it doesn't exist
+      if (!existingSessionState) {
+        const newSessionStates = new Map(currentState.sessionStates);
+        newSessionStates.set(key, getDefaultSessionState());
+        set({
+          session,
+          activeProjectId: session.projectId,
+          activeSessionId: session.id,
+          sessionStates: newSessionStates
+        });
+      } else {
+        set({
+          session,
+          activeProjectId: session.projectId,
+          activeSessionId: session.id
+        });
+      }
+    } else {
+      set({ session });
+    }
+  },
 
   setSessions: (sessions) => set({ sessions }),
 
-  setStatus: (status) => set({ status }),
+  setStatus: (status) => {
+    const state = get();
+    // Update global status for backwards compatibility
+    set({ status });
+
+    // Also update session-specific status if we have active context
+    if (state.activeProjectId && state.activeSessionId) {
+      const key = getSessionKey(state.activeProjectId, state.activeSessionId);
+      const sessionState = getOrCreateSessionState(key, state.sessionStates);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, {
+        ...sessionState,
+        status,
+        lastUpdated: new Date()
+      });
+      set({ sessionStates: newSessionStates });
+    }
+  },
 
   setLoadingSessions: (loading) => set({ isLoadingSessions: loading }),
 
@@ -186,88 +230,217 @@ export const useInsightsStore = create<InsightsState>((set, get) => ({
       };
     }),
 
-  appendStreamingContent: (content) =>
-    set((state) => ({
-      streamingContent: state.streamingContent + content
-    })),
+  appendStreamingContent: (content) => {
+    const state = get();
+    // Update global streamingContent for backwards compatibility
+    set({ streamingContent: state.streamingContent + content });
 
-  clearStreamingContent: () => set({ streamingContent: '' }),
+    // Also update session-specific streamingContent if we have active context
+    if (state.activeProjectId && state.activeSessionId) {
+      const key = getSessionKey(state.activeProjectId, state.activeSessionId);
+      const sessionState = getOrCreateSessionState(key, state.sessionStates);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, {
+        ...sessionState,
+        streamingContent: sessionState.streamingContent + content,
+        lastUpdated: new Date()
+      });
+      set({ sessionStates: newSessionStates });
+    }
+  },
 
-  setCurrentTool: (tool) => set({ currentTool: tool }),
+  clearStreamingContent: () => {
+    const state = get();
+    // Clear global streamingContent for backwards compatibility
+    set({ streamingContent: '' });
 
-  addToolUsage: (tool) =>
-    set((state) => ({
-      toolsUsed: [
-        ...state.toolsUsed,
-        {
-          name: tool.name,
-          input: tool.input,
-          timestamp: new Date()
-        }
-      ]
-    })),
+    // Also clear session-specific streamingContent if we have active context
+    if (state.activeProjectId && state.activeSessionId) {
+      const key = getSessionKey(state.activeProjectId, state.activeSessionId);
+      const sessionState = getOrCreateSessionState(key, state.sessionStates);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, {
+        ...sessionState,
+        streamingContent: '',
+        lastUpdated: new Date()
+      });
+      set({ sessionStates: newSessionStates });
+    }
+  },
 
-  clearToolsUsed: () => set({ toolsUsed: [] }),
+  setCurrentTool: (tool) => {
+    const state = get();
+    // Update global currentTool for backwards compatibility
+    set({ currentTool: tool });
 
-  finalizeStreamingMessage: (suggestedTask) =>
-    set((state) => {
-      const content = state.streamingContent;
-      const toolsUsed = state.toolsUsed.length > 0 ? [...state.toolsUsed] : undefined;
+    // Also update session-specific currentTool if we have active context
+    if (state.activeProjectId && state.activeSessionId) {
+      const key = getSessionKey(state.activeProjectId, state.activeSessionId);
+      const sessionState = getOrCreateSessionState(key, state.sessionStates);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, {
+        ...sessionState,
+        currentTool: tool,
+        lastUpdated: new Date()
+      });
+      set({ sessionStates: newSessionStates });
+    }
+  },
 
-      if (!content && !suggestedTask && !toolsUsed) {
-        return { streamingContent: '', toolsUsed: [] };
-      }
+  addToolUsage: (tool) => {
+    const state = get();
+    const newToolUsage: InsightsToolUsage = {
+      name: tool.name,
+      input: tool.input,
+      timestamp: new Date()
+    };
 
-      const newMessage: InsightsChatMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content,
-        timestamp: new Date(),
-        suggestedTask,
-        toolsUsed
-      };
+    // Update global toolsUsed for backwards compatibility
+    set({ toolsUsed: [...state.toolsUsed, newToolUsage] });
 
-      if (!state.session) {
-        return {
-          streamingContent: '',
-          toolsUsed: [],
-          session: {
-            id: `session-${Date.now()}`,
-            projectId: '',
-            messages: [newMessage],
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }
-        };
-      }
+    // Also update session-specific toolsUsed if we have active context
+    if (state.activeProjectId && state.activeSessionId) {
+      const key = getSessionKey(state.activeProjectId, state.activeSessionId);
+      const sessionState = getOrCreateSessionState(key, state.sessionStates);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, {
+        ...sessionState,
+        toolsUsed: [...sessionState.toolsUsed, newToolUsage],
+        lastUpdated: new Date()
+      });
+      set({ sessionStates: newSessionStates });
+    }
+  },
 
-      return {
+  clearToolsUsed: () => {
+    const state = get();
+    // Clear global toolsUsed for backwards compatibility
+    set({ toolsUsed: [] });
+
+    // Also clear session-specific toolsUsed if we have active context
+    if (state.activeProjectId && state.activeSessionId) {
+      const key = getSessionKey(state.activeProjectId, state.activeSessionId);
+      const sessionState = getOrCreateSessionState(key, state.sessionStates);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, {
+        ...sessionState,
+        toolsUsed: [],
+        lastUpdated: new Date()
+      });
+      set({ sessionStates: newSessionStates });
+    }
+  },
+
+  finalizeStreamingMessage: (suggestedTask) => {
+    const state = get();
+    const content = state.streamingContent;
+    const toolsUsedList = state.toolsUsed.length > 0 ? [...state.toolsUsed] : undefined;
+
+    // Also clear session-specific state if we have active context
+    if (state.activeProjectId && state.activeSessionId) {
+      const key = getSessionKey(state.activeProjectId, state.activeSessionId);
+      const sessionState = getOrCreateSessionState(key, state.sessionStates);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, {
+        ...sessionState,
+        streamingContent: '',
+        toolsUsed: [],
+        currentTool: null,
+        lastUpdated: new Date()
+      });
+      set({ sessionStates: newSessionStates });
+    }
+
+    if (!content && !suggestedTask && !toolsUsedList) {
+      set({ streamingContent: '', toolsUsed: [] });
+      return;
+    }
+
+    const newMessage: InsightsChatMessage = {
+      id: `msg-${Date.now()}`,
+      role: 'assistant',
+      content,
+      timestamp: new Date(),
+      suggestedTask,
+      toolsUsed: toolsUsedList
+    };
+
+    if (!state.session) {
+      set({
         streamingContent: '',
         toolsUsed: [],
         session: {
-          ...state.session,
-          messages: [...state.session.messages, newMessage],
+          id: `session-${Date.now()}`,
+          projectId: '',
+          messages: [newMessage],
+          createdAt: new Date(),
           updatedAt: new Date()
         }
-      };
-    }),
+      });
+      return;
+    }
 
-  clearSession: () =>
     set({
-      session: null,
-      status: initialStatus,
-      pendingMessage: '',
       streamingContent: '',
-      currentTool: null,
-      toolsUsed: []
-    }),
+      toolsUsed: [],
+      session: {
+        ...state.session,
+        messages: [...state.session.messages, newMessage],
+        updatedAt: new Date()
+      }
+    });
+  },
+
+  clearSession: () => {
+    const state = get();
+
+    // Clear session-specific state if we have active context
+    if (state.activeProjectId && state.activeSessionId) {
+      const key = getSessionKey(state.activeProjectId, state.activeSessionId);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, getDefaultSessionState());
+      set({
+        session: null,
+        status: initialStatus,
+        pendingMessage: '',
+        streamingContent: '',
+        currentTool: null,
+        toolsUsed: [],
+        sessionStates: newSessionStates
+      });
+    } else {
+      set({
+        session: null,
+        status: initialStatus,
+        pendingMessage: '',
+        streamingContent: '',
+        currentTool: null,
+        toolsUsed: []
+      });
+    }
+  },
 
   // Session-scoped state actions
-  setActiveContext: (projectId, sessionId) =>
-    set({
-      activeProjectId: projectId,
-      activeSessionId: sessionId
-    }),
+  setActiveContext: (projectId, sessionId) => {
+    const state = get();
+    const key = getSessionKey(projectId, sessionId);
+
+    // Initialize session state if it doesn't exist
+    if (!state.sessionStates.has(key)) {
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(key, getDefaultSessionState());
+      set({
+        activeProjectId: projectId,
+        activeSessionId: sessionId,
+        sessionStates: newSessionStates
+      });
+    } else {
+      set({
+        activeProjectId: projectId,
+        activeSessionId: sessionId
+      });
+    }
+  },
 
   getSessionState: (projectId, sessionId) => {
     const key = getSessionKey(projectId, sessionId);
@@ -354,12 +527,22 @@ export async function newSession(projectId: string): Promise<void> {
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
   const result = await window.electronAPI.switchInsightsSession(projectId, sessionId);
   if (result.success && result.data) {
-    useInsightsStore.getState().setSession(result.data);
-    // Reset streaming state when switching sessions
-    useInsightsStore.getState().clearStreamingContent();
-    useInsightsStore.getState().clearToolsUsed();
-    useInsightsStore.getState().setCurrentTool(null);
-    useInsightsStore.getState().setStatus({ phase: 'idle', message: '' });
+    const store = useInsightsStore.getState();
+    // Set the session (which also updates activeProjectId/activeSessionId)
+    store.setSession(result.data);
+
+    // Sync global state with the new session's state
+    // This ensures backwards compatibility while using session-scoped state
+    const key = getSessionKey(projectId, sessionId);
+    const sessionState = getOrCreateSessionState(key, store.sessionStates);
+
+    // Update global state to match session state
+    useInsightsStore.setState({
+      streamingContent: sessionState.streamingContent,
+      currentTool: sessionState.currentTool,
+      toolsUsed: sessionState.toolsUsed,
+      status: sessionState.status
+    });
   }
 }
 
