@@ -22,6 +22,7 @@ import { app } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/constants';
 import type { AppUpdateInfo } from '../shared/types';
+import { compareVersions } from './updater/version-manager';
 
 // Debug mode - DEBUG_UPDATER=true or development mode
 const DEBUG_UPDATER = process.env.DEBUG_UPDATER === 'true' || process.env.NODE_ENV === 'development';
@@ -29,6 +30,21 @@ const DEBUG_UPDATER = process.env.DEBUG_UPDATER === 'true' || process.env.NODE_E
 // Configure electron-updater
 autoUpdater.autoDownload = true;  // Automatically download updates when available
 autoUpdater.autoInstallOnAppQuit = true;  // Automatically install on app quit
+
+// Update channels: 'latest' for stable, 'beta' for pre-release
+type UpdateChannel = 'latest' | 'beta';
+
+/**
+ * Set the update channel for electron-updater.
+ * - 'latest': Only receive stable releases (default)
+ * - 'beta': Receive pre-release/beta versions
+ *
+ * @param channel - The update channel to use
+ */
+export function setUpdateChannel(channel: UpdateChannel): void {
+  autoUpdater.channel = channel;
+  console.warn(`[app-updater] Update channel set to: ${channel}`);
+}
 
 // Enable more verbose logging in debug mode
 if (DEBUG_UPDATER) {
@@ -49,15 +65,21 @@ let mainWindow: BrowserWindow | null = null;
  * Should only be called in production (app.isPackaged).
  *
  * @param window - The main BrowserWindow for sending update events
+ * @param betaUpdates - Whether to receive beta/pre-release updates
  */
-export function initializeAppUpdater(window: BrowserWindow): void {
+export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false): void {
   mainWindow = window;
+
+  // Set update channel based on user preference
+  const channel = betaUpdates ? 'beta' : 'latest';
+  setUpdateChannel(channel);
 
   // Log updater configuration
   console.warn('[app-updater] ========================================');
   console.warn('[app-updater] Initializing app auto-updater');
   console.warn('[app-updater] App packaged:', app.isPackaged);
   console.warn('[app-updater] Current version:', autoUpdater.currentVersion.version);
+  console.warn('[app-updater] Update channel:', channel);
   console.warn('[app-updater] Auto-download enabled:', autoUpdater.autoDownload);
   console.warn('[app-updater] Debug mode:', DEBUG_UPDATER);
   console.warn('[app-updater] ========================================');
@@ -176,9 +198,16 @@ export async function checkForUpdates(): Promise<AppUpdateInfo | null> {
       return null;
     }
 
-    const updateAvailable = result.updateInfo.version !== autoUpdater.currentVersion.version;
+    const currentVersion = autoUpdater.currentVersion.version;
+    const latestVersion = result.updateInfo.version;
+    
+    // Use proper semver comparison to detect if update is actually newer
+    // This prevents offering downgrades (e.g., v2.7.1 when on v2.7.2-beta.6)
+    const isNewer = compareVersions(latestVersion, currentVersion) > 0;
+    
+    console.warn(`[app-updater] Version comparison: ${latestVersion} vs ${currentVersion} -> ${isNewer ? 'UPDATE' : 'NO UPDATE'}`);
 
-    if (!updateAvailable) {
+    if (!isNewer) {
       return null;
     }
 

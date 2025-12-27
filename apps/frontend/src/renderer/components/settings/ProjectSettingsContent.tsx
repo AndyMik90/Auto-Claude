@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { LinearTaskImportModal } from '../LinearTaskImportModal';
 import { SettingsSection } from './SettingsSection';
 import { useProjectSettings, UseProjectSettingsReturn } from '../project-settings/hooks/useProjectSettings';
+import { loadTasks } from '../../stores/task-store';
 import { EmptyProjectState } from './common/EmptyProjectState';
 import { ErrorDisplay } from './common/ErrorDisplay';
 import { SectionRouter } from './sections/SectionRouter';
@@ -157,8 +158,11 @@ function ProjectSettingsContentInner({
         projectId={project.id}
         open={showLinearImportModal}
         onOpenChange={setShowLinearImportModal}
-        onImportComplete={(result) => {
-          console.warn('Import complete:', result);
+        onImportComplete={async (result) => {
+          // Refresh task list to show imported tasks (even on partial success)
+          if (result.imported > 0) {
+            await loadTasks(project.id);
+          }
         }}
       />
     </>

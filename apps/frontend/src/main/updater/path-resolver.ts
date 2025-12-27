@@ -2,7 +2,7 @@
  * Path resolution utilities for Auto Claude updater
  */
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { app } from 'electron';
 
@@ -26,13 +26,22 @@ export function getBundledSourcePath(): string {
   ];
 
   for (const p of possiblePaths) {
-    if (existsSync(p)) {
+    // Validate it's a proper backend source (must have runners/spec_runner.py)
+    const markerPath = path.join(p, 'runners', 'spec_runner.py');
+    if (existsSync(p) && existsSync(markerPath)) {
       return p;
     }
   }
 
-  // Fallback
-  return path.join(app.getAppPath(), '..', 'backend');
+  // Fallback - warn if this path is also invalid
+  const fallback = path.join(app.getAppPath(), '..', 'backend');
+  const fallbackMarker = path.join(fallback, 'runners', 'spec_runner.py');
+  if (!existsSync(fallbackMarker)) {
+    console.warn(
+      `[path-resolver] No valid backend source found in development paths, fallback "${fallback}" may be invalid`
+    );
+  }
+  return fallback;
 }
 
 /**
@@ -43,13 +52,35 @@ export function getUpdateCachePath(): string {
 }
 
 /**
- * Get the effective source path (considers override from updates)
+ * Get the effective source path (considers override from updates and settings)
  */
 export function getEffectiveSourcePath(): string {
+  // First, check user settings for configured autoBuildPath
+  try {
+    const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+    if (existsSync(settingsPath)) {
+      const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+      if (settings.autoBuildPath && existsSync(settings.autoBuildPath)) {
+        // Validate it's a proper backend source (must have runners/spec_runner.py)
+        const markerPath = path.join(settings.autoBuildPath, 'runners', 'spec_runner.py');
+        if (existsSync(markerPath)) {
+          return settings.autoBuildPath;
+        }
+        // Invalid path - log warning and fall through to auto-detection
+        console.warn(
+          `[path-resolver] Configured autoBuildPath "${settings.autoBuildPath}" is missing runners/spec_runner.py, falling back to bundled source`
+        );
+      }
+    }
+  } catch {
+    // Ignore settings read errors
+  }
+
   if (app.isPackaged) {
     // Check for user-updated source first
     const overridePath = path.join(app.getPath('userData'), 'backend-source');
-    if (existsSync(overridePath)) {
+    const overrideMarker = path.join(overridePath, 'runners', 'spec_runner.py');
+    if (existsSync(overridePath) && existsSync(overrideMarker)) {
       return overridePath;
     }
   }

@@ -16,6 +16,7 @@ import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { AgentManager } from '../agent';
+import type { IdeationGenerationStatus, IdeationSession, Idea } from '../../shared/types';
 import {
   getIdeationSession,
   updateIdeaStatus,
@@ -36,7 +37,7 @@ import {
 export function registerIdeationHandlers(
   agentManager: AgentManager,
   getMainWindow: () => BrowserWindow | null
-): void {
+): () => void {
   // Session management
   ipcMain.handle(
     IPC_CHANNELS.IDEATION_GET,
@@ -98,4 +99,75 @@ export function registerIdeationHandlers(
     IPC_CHANNELS.IDEATION_CONVERT_TO_TASK,
     convertIdeaToTask
   );
+
+  // ============================================
+  // Ideation Agent Events → Renderer
+  // ============================================
+
+  const handleIdeationProgress = (projectId: string, status: IdeationGenerationStatus): void => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_PROGRESS, projectId, status);
+    }
+  };
+
+  const handleIdeationLog = (projectId: string, log: string): void => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_LOG, projectId, log);
+    }
+  };
+
+  const handleIdeationTypeComplete = (projectId: string, ideationType: string, ideas: Idea[]): void => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_TYPE_COMPLETE, projectId, ideationType, ideas);
+    }
+  };
+
+  const handleIdeationTypeFailed = (projectId: string, ideationType: string): void => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_TYPE_FAILED, projectId, ideationType);
+    }
+  };
+
+  const handleIdeationComplete = (projectId: string, session: IdeationSession): void => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_COMPLETE, projectId, session);
+    }
+  };
+
+  const handleIdeationError = (projectId: string, error: string): void => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_ERROR, projectId, error);
+    }
+  };
+
+  const handleIdeationStopped = (projectId: string): void => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.IDEATION_STOPPED, projectId);
+    }
+  };
+
+  agentManager.on('ideation-progress', handleIdeationProgress);
+  agentManager.on('ideation-log', handleIdeationLog);
+  agentManager.on('ideation-type-complete', handleIdeationTypeComplete);
+  agentManager.on('ideation-type-failed', handleIdeationTypeFailed);
+  agentManager.on('ideation-complete', handleIdeationComplete);
+  agentManager.on('ideation-error', handleIdeationError);
+  agentManager.on('ideation-stopped', handleIdeationStopped);
+
+  return (): void => {
+    agentManager.off('ideation-progress', handleIdeationProgress);
+    agentManager.off('ideation-log', handleIdeationLog);
+    agentManager.off('ideation-type-complete', handleIdeationTypeComplete);
+    agentManager.off('ideation-type-failed', handleIdeationTypeFailed);
+    agentManager.off('ideation-complete', handleIdeationComplete);
+    agentManager.off('ideation-error', handleIdeationError);
+    agentManager.off('ideation-stopped', handleIdeationStopped);
+  };
 }

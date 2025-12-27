@@ -4,6 +4,15 @@
  */
 
 // ============================================
+// UI Scale Constants
+// ============================================
+
+export const UI_SCALE_MIN = 75;
+export const UI_SCALE_MAX = 200;
+export const UI_SCALE_DEFAULT = 100;
+export const UI_SCALE_STEP = 5;
+
+// ============================================
 // Default App Settings
 // ============================================
 
@@ -13,6 +22,8 @@ export const DEFAULT_APP_SETTINGS = {
   defaultModel: 'opus',
   agentFramework: 'auto-claude',
   pythonPath: undefined as string | undefined,
+  gitPath: undefined as string | undefined,
+  githubCLIPath: undefined as string | undefined,
   autoBuildPath: undefined as string | undefined,
   autoUpdateAutoBuild: true,
   autoNameTerminals: true,
@@ -31,7 +42,13 @@ export const DEFAULT_APP_SETTINGS = {
   // Changelog preferences (persisted between sessions)
   changelogFormat: 'keep-a-changelog' as const,
   changelogAudience: 'user-facing' as const,
-  changelogEmojiLevel: 'none' as const
+  changelogEmojiLevel: 'none' as const,
+  // UI Scale (default 100% - standard size)
+  uiScale: UI_SCALE_DEFAULT,
+  // Beta updates opt-in (receive pre-release versions)
+  betaUpdates: false,
+  // Language preference (default to English)
+  language: 'en' as const
 };
 
 // ============================================

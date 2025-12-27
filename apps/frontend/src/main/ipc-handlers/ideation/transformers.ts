@@ -11,9 +11,44 @@ import type {
   SecurityHardeningIdea,
   PerformanceOptimizationIdea,
   CodeQualityIdea,
-  IdeationStatus
+  IdeationStatus,
+  IdeationType,
+  IdeationSession
 } from '../../../shared/types';
+import { debugLog } from '../../../shared/utils/debug-logger';
 import type { RawIdea } from './types';
+
+const VALID_IDEATION_TYPES: ReadonlySet<IdeationType> = new Set([
+  'code_improvements',
+  'ui_ux_improvements',
+  'documentation_gaps',
+  'security_hardening',
+  'performance_optimizations',
+  'code_quality'
+] as const);
+
+function isValidIdeationType(value: unknown): value is IdeationType {
+  return typeof value === 'string' && VALID_IDEATION_TYPES.has(value as IdeationType);
+}
+
+function validateEnabledTypes(rawTypes: unknown): IdeationType[] {
+  if (!Array.isArray(rawTypes)) {
+    return [];
+  }
+  const validTypes: IdeationType[] = [];
+  const invalidTypes: unknown[] = [];
+  for (const entry of rawTypes) {
+    if (isValidIdeationType(entry)) {
+      validTypes.push(entry);
+    } else {
+      invalidTypes.push(entry);
+    }
+  }
+  if (invalidTypes.length > 0) {
+    debugLog('[Transformers] Dropped invalid IdeationType values:', invalidTypes);
+  }
+  return validTypes;
+}
 
 /**
  * Transform an idea from snake_case (Python backend) to camelCase (TypeScript frontend)
@@ -144,4 +179,62 @@ export function transformIdeaFromSnakeCase(idea: RawIdea): Idea {
     existingPatterns: [],
     implementationApproach: ''
   } as CodeImprovementIdea;
+}
+
+interface RawIdeationSession {
+  id?: string;
+  project_id?: string;
+  config?: {
+    enabled_types?: string[];
+    enabledTypes?: string[];
+    include_roadmap_context?: boolean;
+    includeRoadmapContext?: boolean;
+    include_kanban_context?: boolean;
+    includeKanbanContext?: boolean;
+    max_ideas_per_type?: number;
+    maxIdeasPerType?: number;
+  };
+  ideas?: RawIdea[];
+  project_context?: {
+    existing_features?: string[];
+    tech_stack?: string[];
+    target_audience?: string;
+    planned_features?: string[];
+  };
+  projectContext?: {
+    existingFeatures?: string[];
+    techStack?: string[];
+    targetAudience?: string;
+    plannedFeatures?: string[];
+  };
+  generated_at?: string;
+  updated_at?: string;
+}
+
+export function transformSessionFromSnakeCase(
+  rawSession: RawIdeationSession,
+  projectId: string
+): IdeationSession {
+  const rawEnabledTypes = rawSession.config?.enabled_types || rawSession.config?.enabledTypes || [];
+  const enabledTypes = validateEnabledTypes(rawEnabledTypes);
+
+  return {
+    id: rawSession.id || `ideation-${Date.now()}`,
+    projectId,
+    config: {
+      enabledTypes,
+      includeRoadmapContext: rawSession.config?.include_roadmap_context ?? rawSession.config?.includeRoadmapContext ?? true,
+      includeKanbanContext: rawSession.config?.include_kanban_context ?? rawSession.config?.includeKanbanContext ?? true,
+      maxIdeasPerType: rawSession.config?.max_ideas_per_type || rawSession.config?.maxIdeasPerType || 5
+    },
+    ideas: (rawSession.ideas || []).map(idea => transformIdeaFromSnakeCase(idea)),
+    projectContext: {
+      existingFeatures: rawSession.project_context?.existing_features || rawSession.projectContext?.existingFeatures || [],
+      techStack: rawSession.project_context?.tech_stack || rawSession.projectContext?.techStack || [],
+      targetAudience: rawSession.project_context?.target_audience || rawSession.projectContext?.targetAudience,
+      plannedFeatures: rawSession.project_context?.planned_features || rawSession.projectContext?.plannedFeatures || []
+    },
+    generatedAt: rawSession.generated_at ? new Date(rawSession.generated_at) : new Date(),
+    updatedAt: rawSession.updated_at ? new Date(rawSession.updated_at) : new Date()
+  };
 }

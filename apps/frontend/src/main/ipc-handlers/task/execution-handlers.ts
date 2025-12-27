@@ -11,6 +11,25 @@ import { checkGitStatus } from '../../project-initializer';
 import { getClaudeProfileManager } from '../../claude-profile-manager';
 
 /**
+ * Helper function to check subtask completion status
+ */
+function checkSubtasksCompletion(plan: Record<string, unknown> | null): {
+  allSubtasks: Array<{ status: string }>;
+  completedCount: number;
+  totalCount: number;
+  allCompleted: boolean;
+} {
+  const allSubtasks = (plan?.phases as Array<{ subtasks?: Array<{ status: string }> }> | undefined)?.flatMap(phase =>
+    phase.subtasks || []
+  ) || [];
+  const completedCount = allSubtasks.filter(s => s.status === 'completed').length;
+  const totalCount = allSubtasks.length;
+  const allCompleted = totalCount > 0 && completedCount === totalCount;
+
+  return { allSubtasks, completedCount, totalCount, allCompleted };
+}
+
+/**
  * Register task execution handlers (start, stop, review, status management, recovery)
  */
 export function registerTaskExecutionHandlers(
@@ -412,6 +431,13 @@ export function registerTaskExecutionHandlers(
           writeFileSync(planPath, JSON.stringify(plan, null, 2));
         }
 
+        // Auto-stop task when status changes AWAY from 'in_progress' and process IS running
+        // This handles the case where user drags a running task back to Planning/backlog
+        if (status !== 'in_progress' && agentManager.isRunning(taskId)) {
+          console.warn('[TASK_UPDATE_STATUS] Stopping task due to status change away from in_progress:', taskId);
+          agentManager.killTask(taskId);
+        }
+
         // Auto-start task when status changes to 'in_progress' and no process is running
         if (status === 'in_progress' && !agentManager.isRunning(taskId)) {
           const mainWindow = getMainWindow();
@@ -582,17 +608,9 @@ export function registerTaskExecutionHandlers(
 
         if (!targetStatus && plan?.phases && Array.isArray(plan.phases)) {
           // Analyze subtask statuses to determine appropriate recovery status
-          const allSubtasks: Array<{ status: string }> = [];
-          for (const phase of plan.phases as Array<{ subtasks?: Array<{ status: string }> }>) {
-            if (phase.subtasks && Array.isArray(phase.subtasks)) {
-              allSubtasks.push(...phase.subtasks);
-            }
-          }
+          const { completedCount, totalCount, allCompleted } = checkSubtasksCompletion(plan);
 
-          if (allSubtasks.length > 0) {
-            const completedCount = allSubtasks.filter(s => s.status === 'completed').length;
-            const allCompleted = completedCount === allSubtasks.length;
-
+          if (totalCount > 0) {
             if (allCompleted) {
               // All subtasks completed - should go to review (ai_review or human_review based on source)
               // For recovery, human_review is safer as it requires manual verification
@@ -618,7 +636,30 @@ export function registerTaskExecutionHandlers(
           // Add recovery note
           plan.recoveryNote = `Task recovered from stuck state at ${new Date().toISOString()}`;
 
-          // Reset in_progress and failed subtask statuses to 'pending' so they can be retried
+          // Check if task is actually stuck or just completed and waiting for merge
+          const { allCompleted } = checkSubtasksCompletion(plan);
+
+          if (allCompleted) {
+            console.log('[Recovery] Task is fully complete (all subtasks done), setting to human_review without restart');
+            // Don't reset any subtasks - task is done!
+            // Just update status in plan file (project store reads from file, no separate update needed)
+            plan.status = 'human_review';
+            plan.planStatus = 'review';
+            writeFileSync(planPath, JSON.stringify(plan, null, 2));
+
+            return {
+              success: true,
+              data: {
+                taskId,
+                recovered: true,
+                newStatus: 'human_review',
+                message: 'Task is complete and ready for review',
+                autoRestarted: false
+              }
+            };
+          }
+
+          // Task is not complete - reset only stuck subtasks for retry
           // Keep completed subtasks as-is so run.py can resume from where it left off
           if (plan.phases && Array.isArray(plan.phases)) {
             for (const phase of plan.phases as Array<{ subtasks?: Array<{ status: string; actual_output?: string; started_at?: string; completed_at?: string }> }>) {
@@ -627,11 +668,13 @@ export function registerTaskExecutionHandlers(
                   // Reset in_progress subtasks to pending (they were interrupted)
                   // Keep completed subtasks as-is so run.py can resume
                   if (subtask.status === 'in_progress') {
+                    const originalStatus = subtask.status;
                     subtask.status = 'pending';
                     // Clear execution data to maintain consistency
                     delete subtask.actual_output;
                     delete subtask.started_at;
                     delete subtask.completed_at;
+                    console.log(`[Recovery] Reset stuck subtask: ${originalStatus} -> pending`);
                   }
                   // Also reset failed subtasks so they can be retried
                   if (subtask.status === 'failed') {
@@ -640,6 +683,7 @@ export function registerTaskExecutionHandlers(
                     delete subtask.actual_output;
                     delete subtask.started_at;
                     delete subtask.completed_at;
+                    console.log(`[Recovery] Reset failed subtask for retry`);
                   }
                 }
               }

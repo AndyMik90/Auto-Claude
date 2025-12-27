@@ -21,6 +21,9 @@ import {
   buildMemoryStatus
 } from './memory-status-handlers';
 import { loadFileBasedMemories } from './memory-data-handlers';
+import { parsePythonCommand } from '../../python-detector';
+import { getConfiguredPythonPath } from '../../python-env-manager';
+import { getAugmentedEnv } from '../../env-utils';
 
 /**
  * Load project index from file
@@ -157,26 +160,52 @@ export function registerProjectContextHandlers(
         const analyzerPath = path.join(autoBuildSource, 'analyzer.py');
         const indexOutputPath = path.join(project.path, AUTO_BUILD_PATHS.PROJECT_INDEX);
 
+        // Get configured Python path (venv if ready, otherwise bundled/system)
+        // This ensures we use the venv Python which has dependencies installed
+        const pythonCmd = getConfiguredPythonPath();
+        console.log('[project-context] Using Python:', pythonCmd);
+
+        const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonCmd);
+
         // Run analyzer
         await new Promise<void>((resolve, reject) => {
-          const proc = spawn('python', [
+          let stdout = '';
+          let stderr = '';
+
+          const proc = spawn(pythonCommand, [
+            ...pythonBaseArgs,
             analyzerPath,
             '--project-dir', project.path,
             '--output', indexOutputPath
           ], {
             cwd: project.path,
-            env: { ...process.env }
+            env: getAugmentedEnv()
+          });
+
+          proc.stdout?.on('data', (data) => {
+            stdout += data.toString();
+          });
+
+          proc.stderr?.on('data', (data) => {
+            stderr += data.toString();
           });
 
           proc.on('close', (code: number) => {
             if (code === 0) {
+              console.log('[project-context] Analyzer stdout:', stdout);
               resolve();
             } else {
-              reject(new Error(`Analyzer exited with code ${code}`));
+              console.error('[project-context] Analyzer failed with code', code);
+              console.error('[project-context] Analyzer stderr:', stderr);
+              console.error('[project-context] Analyzer stdout:', stdout);
+              reject(new Error(`Analyzer exited with code ${code}: ${stderr || stdout}`));
             }
           });
 
-          proc.on('error', reject);
+          proc.on('error', (err) => {
+            console.error('[project-context] Analyzer spawn error:', err);
+            reject(err);
+          });
         });
 
         // Read the new index

@@ -8,8 +8,8 @@ Follows the same patterns as linear_config.py for consistency.
 Uses LadybugDB as the embedded graph database (no Docker required, requires Python 3.12+).
 
 Multi-Provider Support (V2):
-- LLM Providers: OpenAI, Anthropic, Azure OpenAI, Ollama, Google AI
-- Embedder Providers: OpenAI, Voyage AI, Azure OpenAI, Ollama, Google AI
+- LLM Providers: OpenAI, Anthropic, Azure OpenAI, Ollama, Google AI, OpenRouter
+- Embedder Providers: OpenAI, Voyage AI, Azure OpenAI, Ollama, Google AI, OpenRouter
 
 Environment Variables:
     # Core
@@ -89,6 +89,7 @@ class LLMProvider(str, Enum):
     AZURE_OPENAI = "azure_openai"
     OLLAMA = "ollama"
     GOOGLE = "google"
+    OPENROUTER = "openrouter"
 
 
 class EmbedderProvider(str, Enum):
@@ -99,6 +100,7 @@ class EmbedderProvider(str, Enum):
     AZURE_OPENAI = "azure_openai"
     OLLAMA = "ollama"
     GOOGLE = "google"
+    OPENROUTER = "openrouter"
 
 
 @dataclass
@@ -140,6 +142,12 @@ class GraphitiConfig:
     google_api_key: str = ""
     google_llm_model: str = "gemini-2.0-flash"
     google_embedding_model: str = "text-embedding-004"
+
+    # OpenRouter settings (multi-provider aggregator)
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_llm_model: str = "anthropic/claude-3.5-sonnet"
+    openrouter_embedding_model: str = "openai/text-embedding-3-small"
 
     # Ollama settings (local)
     ollama_base_url: str = DEFAULT_OLLAMA_BASE_URL
@@ -196,6 +204,18 @@ class GraphitiConfig:
             "GOOGLE_EMBEDDING_MODEL", "text-embedding-004"
         )
 
+        # OpenRouter settings
+        openrouter_api_key = os.environ.get("OPENROUTER_API_KEY", "")
+        openrouter_base_url = os.environ.get(
+            "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+        )
+        openrouter_llm_model = os.environ.get(
+            "OPENROUTER_LLM_MODEL", "anthropic/claude-3.5-sonnet"
+        )
+        openrouter_embedding_model = os.environ.get(
+            "OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"
+        )
+
         # Ollama settings
         ollama_base_url = os.environ.get("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL)
         ollama_llm_model = os.environ.get("OLLAMA_LLM_MODEL", "")
@@ -227,6 +247,10 @@ class GraphitiConfig:
             google_api_key=google_api_key,
             google_llm_model=google_llm_model,
             google_embedding_model=google_embedding_model,
+            openrouter_api_key=openrouter_api_key,
+            openrouter_base_url=openrouter_base_url,
+            openrouter_llm_model=openrouter_llm_model,
+            openrouter_embedding_model=openrouter_embedding_model,
             ollama_base_url=ollama_base_url,
             ollama_llm_model=ollama_llm_model,
             ollama_embedding_model=ollama_embedding_model,
@@ -267,6 +291,8 @@ class GraphitiConfig:
             return bool(self.ollama_embedding_model)
         elif self.embedder_provider == "google":
             return bool(self.google_api_key)
+        elif self.embedder_provider == "openrouter":
+            return bool(self.openrouter_api_key)
         return False
 
     def get_validation_errors(self) -> list[str]:
@@ -309,6 +335,11 @@ class GraphitiConfig:
         elif self.embedder_provider == "google":
             if not self.google_api_key:
                 errors.append("Google embedder provider requires GOOGLE_API_KEY")
+        elif self.embedder_provider == "openrouter":
+            if not self.openrouter_api_key:
+                errors.append(
+                    "OpenRouter embedder provider requires OPENROUTER_API_KEY"
+                )
         else:
             errors.append(f"Unknown embedder provider: {self.embedder_provider}")
 
@@ -367,6 +398,18 @@ class GraphitiConfig:
         elif self.embedder_provider == "azure_openai":
             # Depends on the deployment, default to 1536
             return 1536
+        elif self.embedder_provider == "openrouter":
+            # OpenRouter uses provider/model format
+            # Extract underlying provider to determine dimension
+            model = self.openrouter_embedding_model.lower()
+            if model.startswith("openai/"):
+                return 1536  # OpenAI text-embedding-3-small
+            elif model.startswith("voyage/"):
+                return 1024  # Voyage-3
+            elif model.startswith("google/"):
+                return 768  # Google text-embedding-004
+            # Add more providers as needed
+            return 1536  # Default for unknown OpenRouter models
         return 768  # Safe default
 
     def get_provider_signature(self) -> str:
@@ -403,7 +446,14 @@ class GraphitiConfig:
             base_name = self.database
 
         # Remove existing provider suffix if present
-        for provider in ["openai", "ollama", "voyage", "google", "azure_openai"]:
+        for provider in [
+            "openai",
+            "ollama",
+            "voyage",
+            "google",
+            "azure_openai",
+            "openrouter",
+        ]:
             if f"_{provider}_" in base_name:
                 base_name = base_name.split(f"_{provider}_")[0]
                 break
@@ -616,6 +666,11 @@ def get_available_providers() -> dict:
     if config.google_api_key:
         available_llm.append("google")
         available_embedder.append("google")
+
+    # Check OpenRouter
+    if config.openrouter_api_key:
+        available_llm.append("openrouter")
+        available_embedder.append("openrouter")
 
     # Check Ollama
     if config.ollama_llm_model:

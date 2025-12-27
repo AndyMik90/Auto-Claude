@@ -4,6 +4,7 @@
 
 import type { NotificationSettings } from './project';
 import type { ChangelogFormat, ChangelogAudience, ChangelogEmojiLevel } from './changelog';
+import type { SupportedLanguage } from '../constants/i18n';
 
 // Color theme types for multi-theme support
 export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest';
@@ -50,6 +51,8 @@ export interface FeatureModelConfig {
   insights: ModelTypeShort;    // Insights chat feature
   ideation: ModelTypeShort;    // Ideation generation
   roadmap: ModelTypeShort;     // Roadmap generation
+  githubIssues: ModelTypeShort; // GitHub Issues automation
+  githubPrs: ModelTypeShort;    // GitHub PR review automation
 }
 
 // Feature-specific thinking level configuration
@@ -57,6 +60,8 @@ export interface FeatureThinkingConfig {
   insights: ThinkingLevel;
   ideation: ThinkingLevel;
   roadmap: ThinkingLevel;
+  githubIssues: ThinkingLevel;
+  githubPrs: ThinkingLevel;
 }
 
 // Agent profile for preset model/thinking configurations
@@ -79,6 +84,8 @@ export interface AppSettings {
   defaultModel: string;
   agentFramework: string;
   pythonPath?: string;
+  gitPath?: string;
+  githubCLIPath?: string;
   autoBuildPath?: string;
   autoUpdateAutoBuild: boolean;
   autoNameTerminals: boolean;
@@ -89,6 +96,7 @@ export interface AppSettings {
   globalAnthropicApiKey?: string;
   globalGoogleApiKey?: string;
   globalGroqApiKey?: string;
+  globalOpenRouterApiKey?: string;
   // Graphiti LLM provider settings
   graphitiLlmProvider?: 'openai' | 'anthropic' | 'google' | 'groq' | 'ollama';
   ollamaBaseUrl?: string;
@@ -106,8 +114,14 @@ export interface AppSettings {
   changelogFormat?: ChangelogFormat;
   changelogAudience?: ChangelogAudience;
   changelogEmojiLevel?: ChangelogEmojiLevel;
+  // UI Scale setting (75-200%, default 100)
+  uiScale?: number;
+  // Beta updates opt-in (receive pre-release updates)
+  betaUpdates?: boolean;
   // Migration flags (internal use)
   _migratedAgentProfileToAuto?: boolean;
+  // Language preference for UI (i18n)
+  language?: SupportedLanguage;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Settings2, Download, RefreshCw, AlertCircle } from 'lucide-react';
 import {
   DndContext,
@@ -40,6 +41,7 @@ import { Context } from './components/Context';
 import { Ideation } from './components/Ideation';
 import { Insights } from './components/Insights';
 import { GitHubIssues } from './components/GitHubIssues';
+import { GitHubPRs } from './components/github-prs';
 import { Changelog } from './components/Changelog';
 import { Worktrees } from './components/Worktrees';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -54,8 +56,9 @@ import { useProjectStore, loadProjects, addProject, initializeProject } from './
 import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings } from './stores/settings-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
+import { initializeGitHubListeners } from './stores/github';
 import { useIpcListeners } from './hooks/useIpc';
-import { COLOR_THEMES } from '../shared/constants';
+import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
 import type { Task, Project, ColorTheme } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
 
@@ -118,6 +121,8 @@ export function App() {
   useEffect(() => {
     loadProjects();
     loadSettings();
+    // Initialize global GitHub listeners (PR reviews, etc.) so they persist across navigation
+    initializeGitHubListeners();
   }, []);
 
   // Restore tab state and open tabs for loaded projects
@@ -184,6 +189,14 @@ export function App() {
       setIsOnboardingWizardOpen(true);
     }
   }, [settingsHaveLoaded, settings.onboardingCompleted]);
+
+  // Sync i18n language with settings
+  const { t, i18n } = useTranslation('dialogs');
+  useEffect(() => {
+    if (settings.language && settings.language !== i18n.language) {
+      i18n.changeLanguage(settings.language);
+    }
+  }, [settings.language, i18n]);
 
   // Listen for open-app-settings events (e.g., from project settings)
   useEffect(() => {
@@ -290,16 +303,9 @@ export function App() {
       useTaskStore.getState().clearTasks();
     }
 
-    // Handle terminals on project change
-    const currentTerminals = useTerminalStore.getState().terminals;
-
-    // Close existing terminals (they belong to the previous project)
-    currentTerminals.forEach((t) => {
-      window.electronAPI.destroyTerminal(t.id);
-    });
-    useTerminalStore.getState().clearAllTerminals();
-
-    // Try to restore saved sessions for the new project
+    // Handle terminals on project change - DON'T destroy, just restore if needed
+    // Terminals are now filtered by projectPath in TerminalGrid, so each project
+    // sees only its own terminals. PTY processes stay alive across project switches.
     if (selectedProject?.path) {
       restoreTerminalSessions(selectedProject.path).catch((err) => {
         console.error('[App] Failed to restore sessions:', err);
@@ -356,6 +362,14 @@ export function App() {
       mediaQuery.removeEventListener('change', handleChange);
     };
   }, [settings.theme, settings.colorTheme]);
+
+  // Apply UI scale
+  useEffect(() => {
+    const root = document.documentElement;
+    const scale = settings.uiScale ?? UI_SCALE_DEFAULT;
+    const clampedScale = Math.max(UI_SCALE_MIN, Math.min(UI_SCALE_MAX, scale));
+    root.setAttribute('data-ui-scale', clampedScale.toString());
+  }, [settings.uiScale]);
 
   // Update selected task when tasks change (for real-time updates)
   useEffect(() => {
@@ -483,6 +497,7 @@ export function App() {
     githubToken: string;
     githubRepo: string;
     mainBranch: string;
+    githubAuthMethod?: 'oauth' | 'pat';
   }) => {
     if (!gitHubSetupProject) return;
 
@@ -497,7 +512,8 @@ export function App() {
       await window.electronAPI.updateProjectEnv(gitHubSetupProject.id, {
         githubEnabled: true,
         githubToken: settings.githubToken, // GitHub token for repo access
-        githubRepo: settings.githubRepo
+        githubRepo: settings.githubRepo,
+        githubAuthMethod: settings.githubAuthMethod // Track how user authenticated
       });
 
       // Update project settings with mainBranch
@@ -657,6 +673,14 @@ export function App() {
                     onNavigateToTask={handleGoToTask}
                   />
                 )}
+                {activeView === 'github-prs' && (activeProjectId || selectedProjectId) && (
+                  <GitHubPRs
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('github');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                  />
+                )}
                 {activeView === 'changelog' && (activeProjectId || selectedProjectId) && (
                   <Changelog />
                 )}
@@ -738,19 +762,19 @@ export function App() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Download className="h-5 w-5" />
-                Initialize Auto Claude
+                {t('initialize.title')}
               </DialogTitle>
               <DialogDescription>
-                This project doesn't have Auto Claude initialized. Would you like to set it up now?
+                {t('initialize.description')}
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <div className="rounded-lg bg-muted p-4 text-sm">
-                <p className="font-medium mb-2">This will:</p>
+                <p className="font-medium mb-2">{t('initialize.willDo')}</p>
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                  <li>Create a <code className="text-xs bg-background px-1 py-0.5 rounded">.auto-claude</code> folder in your project</li>
-                  <li>Copy the Auto Claude framework files</li>
-                  <li>Set up the specs directory for your tasks</li>
+                  <li>{t('initialize.createFolder')}</li>
+                  <li>{t('initialize.copyFramework')}</li>
+                  <li>{t('initialize.setupSpecs')}</li>
                 </ul>
               </div>
               {!settings.autoBuildPath && (
@@ -758,9 +782,9 @@ export function App() {
                   <div className="flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
                     <div>
-                      <p className="font-medium text-warning">Source path not configured</p>
+                      <p className="font-medium text-warning">{t('initialize.sourcePathNotConfigured')}</p>
                       <p className="text-muted-foreground mt-1">
-                        Please set the Auto Claude source path in App Settings before initializing.
+                        {t('initialize.sourcePathNotConfiguredDescription')}
                       </p>
                     </div>
                   </div>
@@ -771,7 +795,7 @@ export function App() {
                   <div className="flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                     <div>
-                      <p className="font-medium text-destructive">Initialization Failed</p>
+                      <p className="font-medium text-destructive">{t('initialize.initFailed')}</p>
                       <p className="text-muted-foreground mt-1">
                         {initError}
                       </p>
@@ -782,7 +806,7 @@ export function App() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={handleSkipInit} disabled={isInitializing}>
-                Skip
+                {t('common:buttons.skip', { ns: 'common' })}
               </Button>
               <Button
                 onClick={handleInitialize}
@@ -791,12 +815,12 @@ export function App() {
                 {isInitializing ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Initializing...
+                    {t('common:labels.initializing', { ns: 'common' })}
                   </>
                 ) : (
                   <>
                     <Download className="mr-2 h-4 w-4" />
-                    Initialize
+                    {t('common:buttons.initialize', { ns: 'common' })}
                   </>
                 )}
               </Button>

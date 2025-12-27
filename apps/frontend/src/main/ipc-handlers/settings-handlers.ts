@@ -1,6 +1,6 @@
 import { ipcMain, dialog, app, shell } from 'electron';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { execSync } from 'child_process';
+import { existsSync, writeFileSync, mkdirSync } from 'fs';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import { is } from '@electron-toolkit/utils';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
@@ -11,8 +11,11 @@ import type {
 import { AgentManager } from '../agent';
 import type { BrowserWindow } from 'electron';
 import { getEffectiveVersion } from '../auto-claude-updater';
+import { setUpdateChannel } from '../app-updater';
+import { getSettingsPath, readSettingsFile } from '../settings-utils';
+import { configureTools, getToolPath, getToolInfo } from '../cli-tool-manager';
 
-const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+const settingsPath = getSettingsPath();
 
 /**
  * Auto-detect the auto-claude source path relative to the app location.
@@ -23,13 +26,11 @@ const detectAutoBuildSourcePath = (): string | null => {
 
   // Development mode paths
   if (is.dev) {
-    // In dev, __dirname is typically auto-claude-ui/out/main
-    // We need to go up to the project root to find auto-claude/
+    // In dev, __dirname is typically apps/frontend/out/main
+    // We need to go up to find apps/backend
     possiblePaths.push(
-      path.resolve(__dirname, '..', '..', '..', 'auto-claude'),  // From out/main up 3 levels
-      path.resolve(__dirname, '..', '..', 'auto-claude'),        // From out/main up 2 levels
-      path.resolve(process.cwd(), 'auto-claude'),                // From cwd (project root)
-      path.resolve(process.cwd(), '..', 'auto-claude')           // From cwd parent (if running from auto-claude-ui/)
+      path.resolve(__dirname, '..', '..', '..', 'backend'),      // From out/main -> apps/backend
+      path.resolve(process.cwd(), 'apps', 'backend')             // From cwd (repo root)
     );
   } else {
     // Production mode paths (packaged app)
@@ -37,16 +38,14 @@ const detectAutoBuildSourcePath = (): string | null => {
     // We check common locations relative to the app bundle
     const appPath = app.getAppPath();
     possiblePaths.push(
-      path.resolve(appPath, '..', 'auto-claude'),               // Sibling to app
-      path.resolve(appPath, '..', '..', 'auto-claude'),         // Up 2 from app
-      path.resolve(appPath, '..', '..', '..', 'auto-claude'),   // Up 3 from app
-      path.resolve(process.resourcesPath, '..', 'auto-claude'), // Relative to resources
-      path.resolve(process.resourcesPath, '..', '..', 'auto-claude')
+      path.resolve(appPath, '..', 'backend'),                    // Sibling to app
+      path.resolve(appPath, '..', '..', 'backend'),              // Up 2 from app
+      path.resolve(process.resourcesPath, '..', 'backend')       // Relative to resources
     );
   }
 
   // Add process.cwd() as last resort on all platforms
-  possiblePaths.push(path.resolve(process.cwd(), 'auto-claude'));
+  possiblePaths.push(path.resolve(process.cwd(), 'apps', 'backend'));
 
   // Enable debug logging with DEBUG=1
   const debug = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
@@ -61,8 +60,9 @@ const detectAutoBuildSourcePath = (): string | null => {
   }
 
   for (const p of possiblePaths) {
-    // Use requirements.txt as marker - it always exists in auto-claude source
-    const markerPath = path.join(p, 'requirements.txt');
+    // Use runners/spec_runner.py as marker - this is the file actually needed for task execution
+    // This prevents matching legacy 'auto-claude/' directories that don't have the runners
+    const markerPath = path.join(p, 'runners', 'spec_runner.py');
     const exists = existsSync(p) && existsSync(markerPath);
 
     if (debug) {
@@ -94,17 +94,10 @@ export function registerSettingsHandlers(
   ipcMain.handle(
     IPC_CHANNELS.SETTINGS_GET,
     async (): Promise<IPCResult<AppSettings>> => {
-      let settings: AppSettings = { ...DEFAULT_APP_SETTINGS };
+      // Load settings using shared helper and merge with defaults
+      const savedSettings = readSettingsFile();
+      const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...savedSettings };
       let needsSave = false;
-
-      if (existsSync(settingsPath)) {
-        try {
-          const content = readFileSync(settingsPath, 'utf-8');
-          settings = { ...settings, ...JSON.parse(content) };
-        } catch {
-          // Use defaults
-        }
-      }
 
       // Migration: Set agent profile to 'auto' for users who haven't made a selection (one-time)
       // This ensures new users get the optimized 'auto' profile as the default
@@ -136,6 +129,13 @@ export function registerSettingsHandlers(
         }
       }
 
+      // Configure CLI tools with current settings
+      configureTools({
+        pythonPath: settings.pythonPath,
+        gitPath: settings.gitPath,
+        githubCLIPath: settings.githubCLIPath,
+      });
+
       return { success: true, data: settings as AppSettings };
     }
   );
@@ -144,12 +144,9 @@ export function registerSettingsHandlers(
     IPC_CHANNELS.SETTINGS_SAVE,
     async (_, settings: Partial<AppSettings>): Promise<IPCResult> => {
       try {
-        let currentSettings = DEFAULT_APP_SETTINGS;
-        if (existsSync(settingsPath)) {
-          const content = readFileSync(settingsPath, 'utf-8');
-          currentSettings = { ...currentSettings, ...JSON.parse(content) };
-        }
-
+        // Load current settings using shared helper
+        const savedSettings = readSettingsFile();
+        const currentSettings = { ...DEFAULT_APP_SETTINGS, ...savedSettings };
         const newSettings = { ...currentSettings, ...settings };
         writeFileSync(settingsPath, JSON.stringify(newSettings, null, 2));
 
@@ -158,11 +155,55 @@ export function registerSettingsHandlers(
           agentManager.configure(settings.pythonPath, settings.autoBuildPath);
         }
 
+        // Configure CLI tools if any paths changed
+        if (
+          settings.pythonPath !== undefined ||
+          settings.gitPath !== undefined ||
+          settings.githubCLIPath !== undefined
+        ) {
+          configureTools({
+            pythonPath: newSettings.pythonPath,
+            gitPath: newSettings.gitPath,
+            githubCLIPath: newSettings.githubCLIPath,
+          });
+        }
+
+        // Update auto-updater channel if betaUpdates setting changed
+        if (settings.betaUpdates !== undefined) {
+          const channel = settings.betaUpdates ? 'beta' : 'latest';
+          setUpdateChannel(channel);
+        }
+
         return { success: true };
       } catch (error) {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to save settings'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_GET_CLI_TOOLS_INFO,
+    async (): Promise<IPCResult<{
+      python: ReturnType<typeof getToolInfo>;
+      git: ReturnType<typeof getToolInfo>;
+      gh: ReturnType<typeof getToolInfo>;
+    }>> => {
+      try {
+        return {
+          success: true,
+          data: {
+            python: getToolInfo('python'),
+            git: getToolInfo('git'),
+            gh: getToolInfo('gh'),
+          },
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get CLI tools info',
         };
       }
     }
@@ -231,7 +272,7 @@ export function registerSettingsHandlers(
         let gitInitialized = false;
         if (initGit) {
           try {
-            execSync('git init', { cwd: projectPath, stdio: 'ignore' });
+            execFileSync(getToolPath('git'), ['init'], { cwd: projectPath, stdio: 'ignore' });
             gitInitialized = true;
           } catch {
             // Git init failed, but folder was created - continue without git

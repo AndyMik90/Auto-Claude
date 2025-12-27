@@ -80,24 +80,42 @@ export const infrastructureMock = {
     }
   }),
 
-  listOllamaEmbeddingModels: async () => ({
-    success: true,
-    data: {
-      embedding_models: [
-        { name: 'nomic-embed-text', embedding_dim: 768, description: 'Nomic AI text embeddings', size_bytes: 500000000, size_gb: 0.47 },
-      ],
-      count: 1
-    }
-  }),
+   listOllamaEmbeddingModels: async () => ({
+     success: true,
+     data: {
+       embedding_models: [
+         { name: 'embeddinggemma', embedding_dim: 768, description: "Google's lightweight embedding model (Recommended)", size_bytes: 650000000, size_gb: 0.621 },
+         { name: 'nomic-embed-text', embedding_dim: 768, description: 'Popular general-purpose embeddings', size_bytes: 287000000, size_gb: 0.274 },
+         { name: 'mxbai-embed-large', embedding_dim: 1024, description: 'MixedBread AI large embeddings', size_bytes: 701000000, size_gb: 0.670 },
+       ],
+       count: 3
+     }
+   }),
 
-  pullOllamaModel: async (modelName: string) => ({
-    success: true,
-    data: {
-      model: modelName,
-      status: 'completed' as const,
-      output: [`Pulling ${modelName}...`, 'Pull complete']
-    }
-  }),
+   pullOllamaModel: async (modelName: string) => ({
+     success: true,
+     data: {
+       model: modelName,
+       status: 'completed' as const,
+       output: [`Pulling ${modelName}...`, 'Pull complete']
+     }
+   }),
+
+   onDownloadProgress: (callback: (data: {
+     modelName: string;
+     status: string;
+     completed: number;
+     total: number;
+     percentage: number;
+   }) => void) => {
+     // Store callback for test verification
+     (window as any).__downloadProgressCallback = callback;
+     
+     // Return cleanup function
+     return () => {
+       delete (window as any).__downloadProgressCallback;
+     };
+   },
 
   // Ideation Operations
   getIdeation: async () => ({

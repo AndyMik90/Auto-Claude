@@ -50,13 +50,25 @@ export function registerLinearHandlers(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': apiKey
       },
       body: JSON.stringify({ query, variables })
     });
 
+    // Check response.ok first, then try to parse JSON
+    // This handles cases where the API returns non-JSON errors (e.g., 503 from proxy)
     if (!response.ok) {
-      throw new Error(`Linear API error: ${response.status} ${response.statusText}`);
+      let errorMessage = response.statusText;
+      try {
+        const errorResult = await response.json();
+        errorMessage = errorResult?.errors?.[0]?.message
+          || errorResult?.error
+          || errorResult?.message
+          || response.statusText;
+      } catch {
+        // JSON parsing failed - use status text as fallback
+      }
+      throw new Error(`Linear API error: ${response.status} - ${errorMessage}`);
     }
 
     const result = await response.json();
@@ -126,7 +138,7 @@ export function registerLinearHandlers(
           `;
           // Get approximate count
           const _issuesQuery = `
-            query($teamId: String!) {
+            query($teamId: ID!) {
               issues(filter: { team: { id: { eq: $teamId } } }, first: 0) {
                 pageInfo {
                   hasNextPage
@@ -139,7 +151,7 @@ export function registerLinearHandlers(
 
           // Simple count estimation - get first 250 issues
           const countData = await linearGraphQL(apiKey, `
-            query($teamId: String!) {
+            query($teamId: ID!) {
               issues(filter: { team: { id: { eq: $teamId } } }, first: 250) {
                 nodes { id }
               }
@@ -226,7 +238,7 @@ export function registerLinearHandlers(
 
       try {
         const query = `
-          query($teamId: String!) {
+          query($teamId: ID!) {
             team(id: $teamId) {
               projects {
                 nodes {
@@ -267,20 +279,28 @@ export function registerLinearHandlers(
       }
 
       try {
-        // Build filter based on provided parameters
-        const filters: string[] = [];
+        // Build filter using GraphQL variables for safety
+        const variables: Record<string, string> = {};
+        const filterParts: string[] = [];
+        const variableDeclarations: string[] = [];
+
         if (teamId) {
-          filters.push(`team: { id: { eq: "${teamId}" } }`);
+          variables.teamId = teamId;
+          variableDeclarations.push('$teamId: ID!');
+          filterParts.push('team: { id: { eq: $teamId } }');
         }
         if (linearProjectId) {
-          filters.push(`project: { id: { eq: "${linearProjectId}" } }`);
+          variables.linearProjectId = linearProjectId;
+          variableDeclarations.push('$linearProjectId: ID!');
+          filterParts.push('project: { id: { eq: $linearProjectId } }');
         }
 
-        const filterClause = filters.length > 0 ? `filter: { ${filters.join(', ')} }` : '';
+        const variablesDef = variableDeclarations.length > 0 ? `(${variableDeclarations.join(', ')})` : '';
+        const filterClause = filterParts.length > 0 ? `filter: { ${filterParts.join(', ')} }, ` : '';
 
         const query = `
-          query {
-            issues(${filterClause}, first: 250, orderBy: updatedAt) {
+          query${variablesDef} {
+            issues(${filterClause}first: 250, orderBy: updatedAt) {
               nodes {
                 id
                 identifier
@@ -317,7 +337,7 @@ export function registerLinearHandlers(
           }
         `;
 
-        const data = await linearGraphQL(apiKey, query) as {
+        const data = await linearGraphQL(apiKey, query, variables) as {
           issues: {
             nodes: Array<{
               id: string;
@@ -369,7 +389,7 @@ export function registerLinearHandlers(
       try {
         // First, fetch the full details of selected issues
         const query = `
-          query($ids: [String!]!) {
+          query($ids: [ID!]!) {
             issues(filter: { id: { in: $ids } }) {
               nodes {
                 id

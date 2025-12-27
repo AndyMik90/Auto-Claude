@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Github,
   GitBranch,
@@ -41,7 +42,7 @@ interface GitHubSetupModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: Project;
-  onComplete: (settings: { githubToken: string; githubRepo: string; mainBranch: string }) => void;
+  onComplete: (settings: { githubToken: string; githubRepo: string; mainBranch: string; githubAuthMethod?: 'oauth' | 'pat' }) => void;
   onSkip?: () => void;
 }
 
@@ -63,6 +64,7 @@ export function GitHubSetupModal({
   onComplete,
   onSkip
 }: GitHubSetupModalProps) {
+  const { t } = useTranslation('dialogs');
   const [step, setStep] = useState<SetupStep>('github-auth');
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const [githubRepo, setGithubRepo] = useState<string | null>(null);
@@ -365,7 +367,8 @@ export function GitHubSetupModal({
       onComplete({
         githubToken,
         githubRepo,
-        mainBranch: selectedBranch
+        mainBranch: selectedBranch,
+        githubAuthMethod: 'oauth' // Setup modal always uses OAuth flow
       });
     }
   };
@@ -379,10 +382,10 @@ export function GitHubSetupModal({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Github className="h-5 w-5" />
-                Connect to GitHub
+                {t('githubSetup.connectTitle')}
               </DialogTitle>
               <DialogDescription>
-                Auto Claude requires GitHub to manage your code branches and keep tasks up to date.
+                {t('githubSetup.connectDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -401,10 +404,10 @@ export function GitHubSetupModal({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
-                Connect to Claude AI
+                {t('githubSetup.claudeTitle')}
               </DialogTitle>
               <DialogDescription>
-                Auto Claude uses Claude AI for intelligent features like Roadmap generation, Task automation, and Ideation.
+                {t('githubSetup.claudeDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -444,7 +447,7 @@ export function GitHubSetupModal({
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Auto Claude will use this repository for managing task branches and keeping your code up to date.
+                {t('githubSetup.repoDescription')}
               </p>
 
               {error && (

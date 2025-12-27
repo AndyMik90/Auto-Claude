@@ -3,10 +3,28 @@
  * Provides a simpler OAuth flow than manual PAT creation
  */
 
-import { ipcMain, shell } from 'electron';
+import { ipcMain, shell, BrowserWindow } from 'electron';
 import { execSync, execFileSync, spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
+import { getAugmentedEnv, findExecutable } from '../../env-utils';
+import { getToolPath } from '../../cli-tool-manager';
+
+/**
+ * Send device code info to all renderer windows immediately when extracted
+ * This allows the UI to display the code while the auth process is still running
+ */
+function sendDeviceCodeToRenderer(deviceCode: string, authUrl: string, browserOpened: boolean): void {
+  debugLog('Sending device code to renderer windows');
+  const windows = BrowserWindow.getAllWindows();
+  for (const win of windows) {
+    win.webContents.send(IPC_CHANNELS.GITHUB_AUTH_DEVICE_CODE, {
+      deviceCode,
+      authUrl,
+      browserOpened
+    });
+  }
+}
 
 // Debug logging helper
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
@@ -100,6 +118,7 @@ function parseDeviceFlowOutput(stdout: string, stderr: string): DeviceFlowInfo {
 
 /**
  * Check if gh CLI is installed
+ * Uses augmented PATH to find gh CLI in common locations (e.g., Homebrew on macOS)
  */
 export function registerCheckGhCli(): void {
   ipcMain.handle(
@@ -107,15 +126,24 @@ export function registerCheckGhCli(): void {
     async (): Promise<IPCResult<{ installed: boolean; version?: string }>> => {
       debugLog('checkGitHubCli handler called');
       try {
-        const checkCmd = process.platform === 'win32' ? 'where gh' : 'which gh';
-        debugLog(`Running command: ${checkCmd}`);
+        // Use findExecutable to check common locations including Homebrew paths
+        const ghPath = findExecutable('gh');
+        if (!ghPath) {
+          debugLog('gh CLI not found in PATH or common locations');
+          return {
+            success: true,
+            data: { installed: false }
+          };
+        }
+        debugLog('gh CLI found at:', ghPath);
 
-        const whichResult = execSync(checkCmd, { encoding: 'utf-8', stdio: 'pipe' });
-        debugLog('gh CLI found at:', whichResult.trim());
-
-        // Get version
+        // Get version using augmented environment
         debugLog('Getting gh version...');
-        const versionOutput = execSync('gh --version', { encoding: 'utf-8', stdio: 'pipe' });
+        const versionOutput = execFileSync(getToolPath('gh'), ['--version'], {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          env: getAugmentedEnv()
+        });
         const version = versionOutput.trim().split('\n')[0];
         debugLog('gh version:', version);
 
@@ -136,24 +164,27 @@ export function registerCheckGhCli(): void {
 
 /**
  * Check if user is authenticated with gh CLI
+ * Uses augmented PATH to find gh CLI in common locations (e.g., Homebrew on macOS)
  */
 export function registerCheckGhAuth(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_CHECK_AUTH,
     async (): Promise<IPCResult<{ authenticated: boolean; username?: string }>> => {
       debugLog('checkGitHubAuth handler called');
+      const env = getAugmentedEnv();
       try {
         // Check auth status
         debugLog('Running: gh auth status');
-        const authStatus = execSync('gh auth status', { encoding: 'utf-8', stdio: 'pipe' });
+        const authStatus = execFileSync(getToolPath('gh'), ['auth', 'status'], { encoding: 'utf-8', stdio: 'pipe', env });
         debugLog('Auth status output:', authStatus);
 
         // Get username if authenticated
         try {
           debugLog('Getting username via: gh api user --jq .login');
-          const username = execSync('gh api user --jq .login', {
+          const username = execFileSync(getToolPath('gh'), ['api', 'user', '--jq', '.login'], {
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env
           }).trim();
           debugLog('Username:', username);
 
@@ -212,7 +243,8 @@ export function registerStartGhAuth(): void {
           debugLog('Spawning: gh', args);
 
           const ghProcess = spawn('gh', args, {
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env: getAugmentedEnv()
           });
 
           let output = '';
@@ -250,6 +282,10 @@ export function registerStartGhAuth(): void {
                 browserOpenedSuccessfully = false;
                 // Don't fail here - we'll return the device code so user can manually navigate
               }
+
+              // IMMEDIATELY send device code to renderer so user can see it while auth is in progress
+              // This is critical - the frontend needs to display the code while the gh process is still running
+              sendDeviceCodeToRenderer(extractedDeviceCode, extractedAuthUrl, browserOpenedSuccessfully);
 
               // Extraction complete - mutex flag stays true to prevent re-extraction
               // The deviceCodeExtracted flag will prevent future attempts
@@ -363,9 +399,10 @@ export function registerGetGhToken(): void {
       debugLog('getGitHubToken handler called');
       try {
         debugLog('Running: gh auth token');
-        const token = execSync('gh auth token', {
+        const token = execFileSync(getToolPath('gh'), ['auth', 'token'], {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env: getAugmentedEnv()
         }).trim();
 
         if (!token) {
@@ -402,9 +439,10 @@ export function registerGetGhUser(): void {
       debugLog('getGitHubUser handler called');
       try {
         debugLog('Running: gh api user');
-        const userJson = execSync('gh api user', {
+        const userJson = execFileSync(getToolPath('gh'), ['api', 'user'], {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env: getAugmentedEnv()
         });
 
         debugLog('User API response received');
@@ -445,7 +483,8 @@ export function registerListUserRepos(): void {
           'gh repo list --limit 100 --json nameWithOwner,description,isPrivate',
           {
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env: getAugmentedEnv()
           }
         );
 
@@ -484,7 +523,7 @@ export function registerDetectGitHubRepo(): void {
       try {
         // Get the remote URL
         debugLog('Running: git remote get-url origin');
-        const remoteUrl = execSync('git remote get-url origin', {
+        const remoteUrl = execFileSync(getToolPath('git'), ['remote', 'get-url', 'origin'], {
           encoding: 'utf-8',
           cwd: projectPath,
           stdio: 'pipe'
@@ -551,7 +590,8 @@ export function registerGetGitHubBranches(): void {
           ['api', apiEndpoint, '--paginate', '--jq', '.[].name'],
           {
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env: getAugmentedEnv()
           }
         );
 
@@ -596,9 +636,10 @@ export function registerCreateGitHubRepo(): void {
 
       try {
         // Get the authenticated username
-        const username = execSync('gh api user --jq .login', {
+        const username = execFileSync(getToolPath('gh'), ['api', 'user', '--jq', '.login'], {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env: getAugmentedEnv()
         }).trim();
 
         // Determine the owner (personal account or organization)
@@ -628,7 +669,8 @@ export function registerCreateGitHubRepo(): void {
         const output = execFileSync('gh', args, {
           encoding: 'utf-8',
           cwd: options.projectPath,
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env: getAugmentedEnv()
         });
 
         debugLog('gh repo create output:', output);
@@ -680,14 +722,14 @@ export function registerAddGitRemote(): void {
       try {
         // Check if origin already exists
         try {
-          execSync('git remote get-url origin', {
+          execFileSync(getToolPath('git'), ['remote', 'get-url', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: 'pipe'
           });
           // Origin exists, remove it first
           debugLog('Removing existing origin remote');
-          execSync('git remote remove origin', {
+          execFileSync(getToolPath('git'), ['remote', 'remove', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: 'pipe'
@@ -732,9 +774,10 @@ export function registerListGitHubOrgs(): void {
 
       try {
         // Get user's organizations
-        const output = execSync('gh api user/orgs --jq \'.[] | {login: .login, avatarUrl: .avatar_url}\'', {
+        const output = execFileSync(getToolPath('gh'), ['api', 'user/orgs', '--jq', '.[] | {login: .login, avatarUrl: .avatar_url}'], {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env: getAugmentedEnv()
         });
 
         // Parse the JSON lines output
