@@ -342,13 +342,13 @@ export function CodeEditor({ projectId }: CodeEditorProps) {
                   )}
                   {Array.isArray(rootChildren) && rootChildren.length > 0 && (
                     <>
-                      {rootChildren
-                        .filter(node => node.isDir)
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map(node => renderFileNode(node, 0))}
-                      {rootChildren
-                        .filter(node => !node.isDir)
-                        .sort((a, b) => a.name.localeCompare(b.name))
+                      {[...rootChildren]
+                        .sort((a, b) => {
+                          if (a.isDir !== b.isDir) {
+                            return a.isDir ? -1 : 1; // Directories first
+                          }
+                          return a.name.localeCompare(b.name); // Alphabetical within type
+                        })
                         .map(node => renderFileNode(node, 0))}
                     </>
                   )}
