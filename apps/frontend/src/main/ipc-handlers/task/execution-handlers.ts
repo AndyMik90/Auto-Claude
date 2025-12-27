@@ -184,6 +184,15 @@ export function registerTaskExecutionHandlers(
     agentManager.killTask(taskId);
     fileWatcher.unwatch(taskId);
 
+    // Find task and project to update phase logs
+    const { task, project } = findTaskAndProject(taskId);
+    if (task && project) {
+      // Mark any active phases as stopped in the log files
+      const { taskLogService } = require('../../task-log-service');
+      const specsBaseDir = getSpecsDir(project.autoBuildPath);
+      taskLogService.markActivePhasesStopped(task.specId, project.path, specsBaseDir);
+    }
+
     const mainWindow = getMainWindow();
     if (mainWindow) {
       mainWindow.webContents.send(
