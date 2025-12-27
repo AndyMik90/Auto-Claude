@@ -21,8 +21,8 @@ Example Usage:
 from __future__ import annotations
 
 import asyncio
-import os
 import json
+import os
 import tempfile
 import time
 import warnings
@@ -53,6 +53,7 @@ def _try_lock(fd: int, exclusive: bool) -> None:
             warnings.warn(
                 "Shared file locks are not supported on Windows; using exclusive lock",
                 RuntimeWarning,
+                stacklevel=3,
             )
         msvcrt.locking(fd, msvcrt.LK_NBLCK, _WINDOWS_LOCK_SIZE)
         return
@@ -198,12 +199,12 @@ class FileLock:
     async def __aenter__(self):
         """Async context manager entry."""
         # Run blocking lock acquisition in thread pool
-        await asyncio.get_event_loop().run_in_executor(None, self._acquire_lock)
+        await asyncio.get_running_loop().run_in_executor(None, self._acquire_lock)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
-        await asyncio.get_event_loop().run_in_executor(None, self._release_lock)
+        await asyncio.get_running_loop().run_in_executor(None, self._release_lock)
         return False
 
 
@@ -276,7 +277,7 @@ async def locked_write(filepath: str | Path, timeout: float = 5.0, mode: str = "
 
     try:
         # Atomic write in thread pool (since it uses sync file I/O)
-        fd, tmp_path = await asyncio.get_event_loop().run_in_executor(
+        fd, tmp_path = await asyncio.get_running_loop().run_in_executor(
             None,
             lambda: tempfile.mkstemp(
                 dir=filepath.parent, prefix=f".{filepath.name}.tmp.", suffix=""
@@ -292,14 +293,14 @@ async def locked_write(filepath: str | Path, timeout: float = 5.0, mode: str = "
             f.close()
 
             # Atomic replace
-            await asyncio.get_event_loop().run_in_executor(
+            await asyncio.get_running_loop().run_in_executor(
                 None, os.replace, tmp_path, filepath
             )
 
         except Exception:
             # Clean up temp file on error
             try:
-                await asyncio.get_event_loop().run_in_executor(
+                await asyncio.get_running_loop().run_in_executor(
                     None, os.unlink, tmp_path
                 )
             except Exception:
@@ -440,7 +441,7 @@ async def locked_json_update(
         updated_data = updater(data)
 
         # Write atomically
-        fd, tmp_path = await asyncio.get_event_loop().run_in_executor(
+        fd, tmp_path = await asyncio.get_running_loop().run_in_executor(
             None,
             lambda: tempfile.mkstemp(
                 dir=filepath.parent, prefix=f".{filepath.name}.tmp.", suffix=""
@@ -451,13 +452,13 @@ async def locked_json_update(
             with os.fdopen(fd, "w") as f:
                 json.dump(updated_data, f, indent=indent)
 
-            await asyncio.get_event_loop().run_in_executor(
+            await asyncio.get_running_loop().run_in_executor(
                 None, os.replace, tmp_path, filepath
             )
 
         except Exception:
             try:
-                await asyncio.get_event_loop().run_in_executor(
+                await asyncio.get_running_loop().run_in_executor(
                     None, os.unlink, tmp_path
                 )
             except Exception:
