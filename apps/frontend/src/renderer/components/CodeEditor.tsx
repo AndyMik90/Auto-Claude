@@ -250,13 +250,12 @@ export function CodeEditor({ projectId }: CodeEditorProps) {
               )}
               {Array.isArray(children) && children.length > 0 && (
                 <>
-                  {children
-                    .filter(child => child.isDir)
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(child => renderFileNode(child, depth + 1))}
-                  {children
-                    .filter(child => !child.isDir)
-                    .sort((a, b) => a.name.localeCompare(b.name))
+                  {[...children]
+                    .sort((a, b) => {
+                      if (a.isDir && !b.isDir) return -1;
+                      if (!a.isDir && b.isDir) return 1;
+                      return a.name.localeCompare(b.name);
+                    })
                     .map(child => renderFileNode(child, depth + 1))}
                 </>
               )}
