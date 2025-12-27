@@ -253,7 +253,6 @@ export async function restoreTerminalSessions(projectPath: string): Promise<void
 
       // Remove dead terminals from store (they have state but no PTY process)
       const deadTerminals = aliveChecks.filter(c => !c.alive);
-      const aliveTerminals = aliveChecks.filter(c => c.alive);
 
       for (const { terminal } of deadTerminals) {
         debugLog(`[TerminalStore] Removing dead terminal: ${terminal.id}`);
