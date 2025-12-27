@@ -519,6 +519,191 @@ export function Unity({ projectId }: UnityProps) {
     }
   };
 
+  // M3: Run Unity Doctor checks
+  const runDoctorChecks = async () => {
+    if (!selectedProject) return;
+
+    setIsDoctorRunning(true);
+    try {
+      const result = await window.electronAPI.runUnityDoctorChecks(
+        selectedProject.id,
+        effectiveEditorPath
+      );
+      if (result.success) {
+        setDoctorReport(result.data);
+        // Also check bridge status
+        const bridgeResult = await window.electronAPI.checkBridgeInstalled(selectedProject.id);
+        if (bridgeResult.success) {
+          setBridgeInstalled(bridgeResult.data.installed);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to run Unity Doctor checks:', err);
+    } finally {
+      setIsDoctorRunning(false);
+    }
+  };
+
+  // M3: Install Unity Bridge
+  const installBridge = async () => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.installBridge(selectedProject.id);
+      if (result.success) {
+        setBridgeInstalled(true);
+        await loadRuns(); // Refresh to show the install run
+        await runDoctorChecks(); // Re-run doctor to update bridge status
+      }
+    } catch (err) {
+      console.error('Failed to install Unity Bridge:', err);
+    }
+  };
+
+  // M3: Add define symbol
+  const addDefineSymbol = async () => {
+    if (!selectedProject || !effectiveEditorPath || !defineSymbol.trim()) return;
+
+    try {
+      const result = await window.electronAPI.tweakAddDefine(
+        selectedProject.id,
+        effectiveEditorPath,
+        {
+          targetGroup: tweakTargetGroup,
+          symbol: defineSymbol.trim(),
+        }
+      );
+      if (result.success) {
+        setDefineSymbol(''); // Clear input
+        await loadRuns(); // Refresh to show the tweak run
+      }
+    } catch (err) {
+      console.error('Failed to add define symbol:', err);
+    }
+  };
+
+  // M3: Remove define symbol
+  const removeDefineSymbol = async () => {
+    if (!selectedProject || !effectiveEditorPath || !defineSymbol.trim()) return;
+
+    try {
+      const result = await window.electronAPI.tweakRemoveDefine(
+        selectedProject.id,
+        effectiveEditorPath,
+        {
+          targetGroup: tweakTargetGroup,
+          symbol: defineSymbol.trim(),
+        }
+      );
+      if (result.success) {
+        setDefineSymbol(''); // Clear input
+        await loadRuns(); // Refresh to show the tweak run
+      }
+    } catch (err) {
+      console.error('Failed to remove define symbol:', err);
+    }
+  };
+
+  // M3: Set scripting backend
+  const setBackend = async () => {
+    if (!selectedProject || !effectiveEditorPath) return;
+
+    try {
+      const result = await window.electronAPI.tweakSetBackend(
+        selectedProject.id,
+        effectiveEditorPath,
+        {
+          targetGroup: tweakTargetGroup,
+          backend: scriptingBackend,
+        }
+      );
+      if (result.success) {
+        await loadRuns(); // Refresh to show the tweak run
+      }
+    } catch (err) {
+      console.error('Failed to set scripting backend:', err);
+    }
+  };
+
+  // M3: Switch build target
+  const switchBuildTarget = async () => {
+    if (!selectedProject || !effectiveEditorPath) return;
+
+    try {
+      const result = await window.electronAPI.tweakSwitchBuildTarget(
+        selectedProject.id,
+        effectiveEditorPath,
+        {
+          buildTarget: tweakBuildTarget,
+        }
+      );
+      if (result.success) {
+        await loadRuns(); // Refresh to show the tweak run
+      }
+    } catch (err) {
+      console.error('Failed to switch build target:', err);
+    }
+  };
+
+  // M3: List Unity packages
+  const listPackages = async () => {
+    if (!selectedProject) return;
+
+    setIsLoadingPackages(true);
+    try {
+      const result = await window.electronAPI.upmListPackages(selectedProject.id);
+      if (result.success) {
+        setPackages(result.data.packages);
+      }
+    } catch (err) {
+      console.error('Failed to list Unity packages:', err);
+    } finally {
+      setIsLoadingPackages(false);
+    }
+  };
+
+  // M3: UPM Resolve
+  const upmResolve = async () => {
+    if (!selectedProject || !effectiveEditorPath) return;
+
+    try {
+      const result = await window.electronAPI.upmResolve(selectedProject.id, effectiveEditorPath);
+      if (result.success) {
+        await loadRuns(); // Refresh to show the UPM resolve run
+        await listPackages(); // Refresh package list
+      }
+    } catch (err) {
+      console.error('Failed to resolve Unity packages:', err);
+    }
+  };
+
+  // M3: Copy diagnostics text
+  const copyDiagnostics = async () => {
+    if (!doctorReport) return;
+
+    try {
+      const result = await window.electronAPI.getDiagnosticsText(doctorReport);
+      if (result.success) {
+        await window.electronAPI.copyToClipboard(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to copy diagnostics:', err);
+    }
+  };
+
+  // M3: Toggle check expansion
+  const toggleCheckExpansion = (checkId: string) => {
+    setExpandedChecks((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(checkId)) {
+        newSet.delete(checkId);
+      } else {
+        newSet.add(checkId);
+      }
+      return newSet;
+    });
+  };
+
   // Format duration
   const formatDuration = (ms?: number) => {
     if (!ms) return t('history.durationUnavailable');
