@@ -1,0 +1,86 @@
+{
+  "status": {
+    "backlog": "Backlog",
+    "todo": "Zu erledigen",
+    "in_progress": "In Bearbeitung",
+    "review": "Überprüfung",
+    "complete": "Abgeschlossen",
+    "archived": "Archiviert"
+  },
+  "actions": {
+    "start": "Starten",
+    "stop": "Stoppen",
+    "recover": "Wiederherstellen",
+    "resume": "Fortsetzen",
+    "archive": "Archivieren",
+    "delete": "Löschen",
+    "view": "Details anzeigen"
+  },
+  "labels": {
+    "running": "Läuft",
+    "aiReview": "KI-Überprüfung",
+    "needsReview": "Überprüfung erforderlich",
+    "pending": "Ausstehend",
+    "stuck": "Blockiert",
+    "incomplete": "Unvollständig",
+    "recovering": "Wird wiederhergestellt...",
+    "needsRecovery": "Wiederherstellung erforderlich",
+    "needsResume": "Fortsetzung erforderlich"
+  },
+  "reviewReason": {
+    "completed": "Abgeschlossen",
+    "hasErrors": "Hat Fehler",
+    "qaIssues": "QA-Probleme",
+    "approvePlan": "Plan genehmigen"
+  },
+  "tooltips": {
+    "archiveTask": "Aufgabe archivieren",
+    "archiveAllDone": "Alle erledigten Aufgaben archivieren"
+  },
+  "creation": {
+    "title": "Neue Aufgabe erstellen",
+    "description": "Beschreibe was du bauen möchtest",
+    "placeholder": "Beschreibe deine Aufgabe..."
+  },
+  "empty": {
+    "title": "Noch keine Aufgaben",
+    "description": "Erstelle deine erste Aufgabe um loszulegen"
+  },
+  "kanban": {
+    "emptyBacklog": "Keine Aufgaben geplant",
+    "emptyBacklogHint": "Füge eine Aufgabe hinzu um loszulegen",
+    "emptyInProgress": "Nichts in Bearbeitung",
+    "emptyInProgressHint": "Starte eine Aufgabe aus dem Backlog",
+    "emptyAiReview": "Keine Aufgaben in Überprüfung",
+    "emptyAiReviewHint": "KI wird abgeschlossene Aufgaben überprüfen",
+    "emptyHumanReview": "Nichts zu überprüfen",
+    "emptyHumanReviewHint": "Aufgaben warten hier auf deine Genehmigung",
+    "emptyDone": "Keine abgeschlossenen Aufgaben",
+    "emptyDoneHint": "Genehmigte Aufgaben erscheinen hier",
+    "emptyDefault": "Keine Aufgaben",
+    "dropHere": "Hier ablegen",
+    "showArchived": "Archivierte anzeigen"
+  },
+  "execution": {
+    "phases": {
+      "idle": "Bereit",
+      "planning": "Planung",
+      "coding": "Programmierung",
+      "reviewing": "Überprüfung",
+      "fixing": "Behebung",
+      "complete": "Abgeschlossen",
+      "failed": "Fehlgeschlagen"
+    },
+    "labels": {
+      "interrupted": "Unterbrochen",
+      "progress": "Fortschritt",
+      "entry": "Eintrag",
+      "entries": "Einträge"
+    },
+    "shortPhases": {
+      "plan": "Plan",
+      "code": "Code",
+      "qa": "QA"
+    }
+  }
+}

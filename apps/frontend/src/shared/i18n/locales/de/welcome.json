@@ -1,0 +1,16 @@
+{
+  "hero": {
+    "title": "Willkommen bei Auto Claude",
+    "subtitle": "Baue Software autonom mit KI-gesteuerten Agenten"
+  },
+  "actions": {
+    "newProject": "Neues Projekt",
+    "openProject": "Projekt öffnen"
+  },
+  "recentProjects": {
+    "title": "Letzte Projekte",
+    "empty": "Noch keine Projekte",
+    "emptyDescription": "Erstelle ein neues Projekt oder öffne ein bestehendes um loszulegen",
+    "openFolder": "Ordner öffnen"
+  }
+}

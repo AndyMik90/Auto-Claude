@@ -1,0 +1,240 @@
+{
+  "title": "Einstellungen",
+  "tabs": {
+    "app": "App-Einstellungen",
+    "project": "Projekt-Einstellungen"
+  },
+  "sections": {
+    "appearance": {
+      "title": "Erscheinungsbild",
+      "description": "Passe das Aussehen von Auto Claude an"
+    },
+    "display": {
+      "title": "Anzeige",
+      "description": "Passe die Größe der UI-Elemente an"
+    },
+    "language": {
+      "title": "Sprache",
+      "description": "Wähle deine bevorzugte Sprache"
+    },
+    "agent": {
+      "title": "Agent-Einstellungen",
+      "description": "Standard-Modell und Framework"
+    },
+    "paths": {
+      "title": "Pfade",
+      "description": "Python- und Framework-Pfade"
+    },
+    "integrations": {
+      "title": "Integrationen",
+      "description": "API-Schlüssel & Claude-Konten"
+    },
+    "updates": {
+      "title": "Updates",
+      "description": "Auto Claude Updates"
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "description": "Benachrichtigungseinstellungen"
+    }
+  },
+  "language": {
+    "label": "Oberflächensprache",
+    "description": "Wähle die Sprache für die Anwendungsoberfläche"
+  },
+  "scale": {
+    "presets": "Skalierungsvorlagen",
+    "presetsDescription": "Schnelle Skalierungsoptionen für gängige Einstellungen",
+    "fineTune": "Feinabstimmung",
+    "fineTuneDescription": "Anpassung von 75% bis 200% in 5%-Schritten",
+    "default": "Standard",
+    "comfortable": "Komfortabel",
+    "large": "Groß",
+    "preview": "Änderungen werden sofort angezeigt. Klicke auf Speichern um sie zu übernehmen."
+  },
+  "general": {
+    "otherAgentSettings": "Weitere Agent-Einstellungen",
+    "otherAgentSettingsDescription": "Zusätzliche Agent-Konfigurationsoptionen",
+    "agentFramework": "Agent-Framework",
+    "agentFrameworkDescription": "Das Coding-Framework für autonome Aufgaben",
+    "agentFrameworkAutoClaude": "Auto Claude",
+    "aiTerminalNaming": "KI-Terminal-Benennung",
+    "aiTerminalNamingDescription": "Terminals automatisch nach Befehlen benennen (verwendet Haiku)",
+    "featureModelSettings": "Feature-Modell-Einstellungen",
+    "featureModelSettingsDescription": "Modell und Denklevel für Erkenntnisse, Ideenfindung und Roadmap",
+    "model": "Modell",
+    "thinkingLevel": "Denklevel",
+    "paths": "Pfade",
+    "pathsDescription": "Konfiguriere ausführbare Dateien und Framework-Pfade",
+    "pythonPath": "Python-Pfad",
+    "pythonPathDescription": "Pfad zur Python-Executable (leer lassen für Standard)",
+    "pythonPathPlaceholder": "python3 (Standard)",
+    "autoClaudePath": "Auto Claude Pfad",
+    "autoClaudePathDescription": "Relativer Pfad zum auto-claude Verzeichnis in Projekten",
+    "autoClaudePathPlaceholder": "auto-claude (Standard)",
+    "autoNameTerminals": "Terminals automatisch benennen",
+    "autoNameTerminalsDescription": "KI verwenden um beschreibende Namen für Terminal-Tabs basierend auf ihrer Aktivität zu generieren"
+  },
+  "theme": {
+    "title": "Erscheinungsbild",
+    "description": "Passe das Aussehen von Auto Claude an",
+    "mode": "Modus",
+    "modeDescription": "Wähle zwischen hellem und dunklem Design",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System",
+    "colorTheme": "Farbschema",
+    "colorThemeDescription": "Wähle deine bevorzugte Farbpalette"
+  },
+  "updates": {
+    "title": "Updates",
+    "description": "Verwalte Auto Claude Updates",
+    "appUpdateReady": "App-Update bereit",
+    "newVersion": "Neue Version",
+    "released": "Veröffentlicht",
+    "downloading": "Lädt herunter...",
+    "updateDownloaded": "Update heruntergeladen! Klicke auf Installieren um neu zu starten und das Update anzuwenden.",
+    "installAndRestart": "Installieren und Neustarten",
+    "downloadUpdate": "Update herunterladen",
+    "version": "Version",
+    "loading": "Lädt...",
+    "checkingForUpdates": "Suche nach Updates...",
+    "newVersionAvailable": "Neue Version verfügbar:",
+    "latestVersion": "Du verwendest die neueste Version.",
+    "viewRelease": "Vollständiges Release auf GitHub ansehen",
+    "unableToCheck": "Konnte nicht nach Updates suchen",
+    "checkForUpdates": "Nach Updates suchen",
+    "autoUpdateProjects": "Projekte automatisch aktualisieren",
+    "autoUpdateProjectsDescription": "Auto Claude in Projekten automatisch aktualisieren wenn eine neue Version verfügbar ist",
+    "betaUpdates": "Beta-Updates",
+    "betaUpdatesDescription": "Vorabversionen mit neuen Features erhalten (möglicherweise weniger stabil)"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "description": "Standard-Benachrichtigungseinstellungen konfigurieren",
+    "onTaskComplete": "Bei Aufgabenabschluss",
+    "onTaskCompleteDescription": "Benachrichtigen wenn eine Aufgabe erfolgreich abgeschlossen wurde",
+    "onTaskFailed": "Bei Aufgabenfehler",
+    "onTaskFailedDescription": "Benachrichtigen wenn eine Aufgabe einen Fehler verursacht",
+    "onReviewNeeded": "Bei erforderlicher Überprüfung",
+    "onReviewNeededDescription": "Benachrichtigen wenn QA deine Überprüfung erfordert",
+    "sound": "Ton",
+    "soundDescription": "Ton bei Benachrichtigungen abspielen"
+  },
+  "actions": {
+    "save": "Einstellungen speichern",
+    "rerunWizard": "Assistenten erneut starten",
+    "rerunWizardDescription": "Den Einrichtungsassistenten erneut starten"
+  },
+  "projectSections": {
+    "general": {
+      "title": "Allgemein",
+      "description": "Auto-Build und Agent-Konfiguration"
+    },
+    "claude": {
+      "title": "Claude Auth",
+      "description": "Claude-Authentifizierung"
+    },
+    "linear": {
+      "title": "Linear",
+      "description": "Linear-Integration"
+    },
+    "github": {
+      "title": "GitHub",
+      "description": "GitHub Issues Sync"
+    },
+    "memory": {
+      "title": "Gedächtnis",
+      "description": "Graphiti Gedächtnis-Backend"
+    }
+  },
+  "agentProfile": {
+    "label": "Agent-Profil",
+    "title": "Standard Agent-Profil",
+    "sectionDescription": "Wähle eine Voreinstellung für Modell und Denklevel",
+    "profilesInfo": "Agent-Profile bieten Voreinstellungen für Claude-Modell und Denklevel. Wenn du eine neue Aufgabe erstellst, werden diese Einstellungen als Standard verwendet. Du kannst sie im Aufgaben-Erstellungsassistenten jederzeit überschreiben.",
+    "custom": "Benutzerdefiniert",
+    "customConfiguration": "Benutzerdefinierte Konfiguration",
+    "customDescription": "Modell & Denklevel wählen",
+    "phaseConfiguration": "Phasen-Konfiguration",
+    "phaseConfigurationDescription": "Modell und Denklevel für jede Phase anpassen",
+    "clickToCustomize": "Zum Anpassen klicken",
+    "model": "Modell",
+    "thinking": "Denken",
+    "thinkingLevel": "Denklevel",
+    "selectModel": "Modell wählen",
+    "selectThinkingLevel": "Denklevel wählen",
+    "perPhaseOptimization": "(Phasen-spezifische Optimierung)",
+    "resetToDefaults": "Auf Standard zurücksetzen",
+    "phaseConfigNote": "Diese Einstellungen werden als Standard verwendet wenn neue Aufgaben mit dem Auto-Profil erstellt werden. Du kannst sie pro Aufgabe im Erstellungsassistenten überschreiben.",
+    "phases": {
+      "spec": {
+        "label": "Spezifikation",
+        "description": "Erkennung, Anforderungen, Kontexterfassung"
+      },
+      "planning": {
+        "label": "Planung",
+        "description": "Implementierungsplanung und Architektur"
+      },
+      "coding": {
+        "label": "Programmierung",
+        "description": "Eigentliche Code-Implementierung"
+      },
+      "qa": {
+        "label": "QA-Überprüfung",
+        "description": "Qualitätssicherung und Validierung"
+      }
+    }
+  },
+  "workspace": {
+    "roles": {
+      "backend": "Backend",
+      "frontend": "Frontend",
+      "mobile": "Mobil",
+      "shared": "Gemeinsam",
+      "apiGateway": "API-Gateway",
+      "worker": "Worker",
+      "other": "Sonstiges"
+    }
+  },
+  "integrations": {
+    "title": "Integrationen",
+    "description": "Claude-Konten und API-Schlüssel verwalten",
+    "claudeAccounts": "Claude-Konten",
+    "claudeAccountsDescription": "Füge mehrere Claude-Abonnements hinzu um automatisch zwischen ihnen zu wechseln wenn du Rate-Limits erreichst.",
+    "noAccountsYet": "Noch keine Konten konfiguriert",
+    "default": "Standard",
+    "active": "Aktiv",
+    "authenticated": "Authentifiziert",
+    "needsAuth": "Auth erforderlich",
+    "authenticate": "Authentifizieren",
+    "setActive": "Als aktiv setzen",
+    "manualTokenEntry": "Manuelle Token-Eingabe",
+    "runSetupToken": "Führe claude setup-token aus um deinen Token zu erhalten",
+    "tokenPlaceholder": "sk-ant-oat01-...",
+    "emailPlaceholder": "E-Mail (optional, zur Anzeige)",
+    "saveToken": "Token speichern",
+    "accountNamePlaceholder": "Kontoname (z.B. Arbeit, Privat)",
+    "autoSwitching": "Automatischer Kontowechsel",
+    "autoSwitchingDescription": "Automatisch zwischen Claude-Konten wechseln um Unterbrechungen zu vermeiden. Konfiguriere proaktive Überwachung um vor Erreichen der Limits zu wechseln.",
+    "enableAutoSwitching": "Automatisches Wechseln aktivieren",
+    "masterSwitch": "Hauptschalter für alle Auto-Wechsel-Funktionen",
+    "proactiveMonitoring": "Proaktive Überwachung",
+    "proactiveDescription": "Nutzung regelmäßig prüfen und vor Erreichen der Limits wechseln",
+    "checkUsageEvery": "Nutzung prüfen alle",
+    "seconds15": "15 Sekunden",
+    "seconds30": "30 Sekunden (empfohlen)",
+    "minute1": "1 Minute",
+    "disabled": "Deaktiviert",
+    "sessionThreshold": "Sitzungs-Nutzungsschwelle",
+    "sessionThresholdDescription": "Wechseln wenn Sitzungsnutzung diesen Wert erreicht (empfohlen: 95%)",
+    "weeklyThreshold": "Wöchentliche Nutzungsschwelle",
+    "weeklyThresholdDescription": "Wechseln wenn wöchentliche Nutzung diesen Wert erreicht (empfohlen: 99%)",
+    "reactiveRecovery": "Reaktive Wiederherstellung",
+    "reactiveDescription": "Automatisch wechseln wenn unerwartetes Rate-Limit erreicht wird",
+    "apiKeys": "API-Schlüssel",
+    "apiKeysInfo": "Hier gesetzte Schlüssel werden als Standard verwendet. Einzelne Projekte können diese in ihren Einstellungen überschreiben.",
+    "openaiKey": "OpenAI API-Schlüssel",
+    "openaiKeyDescription": "Erforderlich für Graphiti Gedächtnis-Backend (Embeddings)"
+  }
+}

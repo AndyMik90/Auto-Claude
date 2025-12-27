@@ -19,6 +19,15 @@ import frWelcome from './locales/fr/welcome.json';
 import frOnboarding from './locales/fr/onboarding.json';
 import frDialogs from './locales/fr/dialogs.json';
 
+// Import German translation resources
+import deCommon from './locales/de/common.json';
+import deNavigation from './locales/de/navigation.json';
+import deSettings from './locales/de/settings.json';
+import deTasks from './locales/de/tasks.json';
+import deWelcome from './locales/de/welcome.json';
+import deOnboarding from './locales/de/onboarding.json';
+import deDialogs from './locales/de/dialogs.json';
+
 export const defaultNS = 'common';
 
 export const resources = {
@@ -39,6 +48,15 @@ export const resources = {
     welcome: frWelcome,
     onboarding: frOnboarding,
     dialogs: frDialogs
+  },
+  de: {
+    common: deCommon,
+    navigation: deNavigation,
+    settings: deSettings,
+    tasks: deTasks,
+    welcome: deWelcome,
+    onboarding: deOnboarding,
+    dialogs: deDialogs
   }
 } as const;
 
