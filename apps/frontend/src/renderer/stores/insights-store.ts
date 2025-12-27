@@ -11,10 +11,66 @@ import type {
   Task
 } from '../../shared/types';
 
+// ============================================
+// Session State Types (for cross-session isolation)
+// ============================================
+
 interface ToolUsage {
   name: string;
   input?: string;
 }
+
+/**
+ * Session-scoped state that must be isolated per conversation.
+ * This prevents state leakage between different sessions and projects.
+ */
+export interface SessionState {
+  streamingContent: string;
+  currentTool: ToolUsage | null;
+  status: InsightsChatStatus;
+  toolsUsed: InsightsToolUsage[];
+  lastUpdated: Date;
+}
+
+// ============================================
+// Composite Key Utilities
+// ============================================
+
+/**
+ * Creates a composite key for session-scoped state lookup.
+ * Format: "${projectId}:${sessionId}"
+ */
+export function getSessionKey(projectId: string, sessionId: string): string {
+  return `${projectId}:${sessionId}`;
+}
+
+/**
+ * Default session state for new or non-existent sessions
+ */
+function getDefaultSessionState(): SessionState {
+  return {
+    streamingContent: '',
+    currentTool: null,
+    status: { phase: 'idle', message: '' },
+    toolsUsed: [],
+    lastUpdated: new Date()
+  };
+}
+
+/**
+ * Returns existing session state or creates a default one.
+ * Does NOT mutate the map - caller is responsible for storing if needed.
+ */
+export function getOrCreateSessionState(
+  key: string,
+  sessionStates: Map<string, SessionState>
+): SessionState {
+  return sessionStates.get(key) || getDefaultSessionState();
+}
+
+// ============================================
+// Main Store Interface
+// ============================================
 
 interface InsightsState {
   // Data
@@ -26,6 +82,11 @@ interface InsightsState {
   currentTool: ToolUsage | null; // Currently executing tool
   toolsUsed: InsightsToolUsage[]; // Tools used during current response
   isLoadingSessions: boolean;
+
+  // Session-scoped state (for cross-session isolation)
+  activeProjectId: string | null;
+  activeSessionId: string | null;
+  sessionStates: Map<string, SessionState>;
 
   // Actions
   setSession: (session: InsightsSession | null) => void;
@@ -42,6 +103,10 @@ interface InsightsState {
   finalizeStreamingMessage: (suggestedTask?: InsightsChatMessage['suggestedTask']) => void;
   clearSession: () => void;
   setLoadingSessions: (loading: boolean) => void;
+
+  // Session-scoped state actions
+  setActiveContext: (projectId: string, sessionId: string) => void;
+  getSessionState: (projectId: string, sessionId: string) => SessionState;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -49,7 +114,7 @@ const initialStatus: InsightsChatStatus = {
   message: ''
 };
 
-export const useInsightsStore = create<InsightsState>((set, _get) => ({
+export const useInsightsStore = create<InsightsState>((set, get) => ({
   // Initial state
   session: null,
   sessions: [],
@@ -59,6 +124,11 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   currentTool: null,
   toolsUsed: [],
   isLoadingSessions: false,
+
+  // Session-scoped state (for cross-session isolation)
+  activeProjectId: null,
+  activeSessionId: null,
+  sessionStates: new Map<string, SessionState>(),
 
   // Actions
   setSession: (session) => set({ session }),
@@ -190,7 +260,19 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       streamingContent: '',
       currentTool: null,
       toolsUsed: []
-    })
+    }),
+
+  // Session-scoped state actions
+  setActiveContext: (projectId, sessionId) =>
+    set({
+      activeProjectId: projectId,
+      activeSessionId: sessionId
+    }),
+
+  getSessionState: (projectId, sessionId) => {
+    const key = getSessionKey(projectId, sessionId);
+    return getOrCreateSessionState(key, get().sessionStates);
+  }
 }));
 
 // Helper functions
