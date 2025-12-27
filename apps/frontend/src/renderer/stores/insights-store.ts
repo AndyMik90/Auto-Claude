@@ -37,11 +37,30 @@ export interface SessionState {
 // ============================================
 
 /**
+ * Maximum number of session states to keep per project.
+ * Older sessions (by lastUpdated) will be cleaned up to prevent memory leaks.
+ */
+const MAX_SESSIONS_PER_PROJECT = 10;
+
+/**
  * Creates a composite key for session-scoped state lookup.
  * Format: "${projectId}:${sessionId}"
  */
 export function getSessionKey(projectId: string, sessionId: string): string {
   return `${projectId}:${sessionId}`;
+}
+
+/**
+ * Parses a composite key back into projectId and sessionId.
+ * Returns null if the key is invalid.
+ */
+export function parseSessionKey(key: string): { projectId: string; sessionId: string } | null {
+  const colonIndex = key.indexOf(':');
+  if (colonIndex === -1) return null;
+  return {
+    projectId: key.substring(0, colonIndex),
+    sessionId: key.substring(colonIndex + 1)
+  };
 }
 
 /**
@@ -107,6 +126,11 @@ interface InsightsState {
   // Session-scoped state actions
   setActiveContext: (projectId: string, sessionId: string) => void;
   getSessionState: (projectId: string, sessionId: string) => SessionState;
+
+  // Session state cleanup actions
+  removeSessionState: (projectId: string, sessionId: string) => void;
+  cleanupOldSessions: (projectId: string) => void;
+  cleanupProjectSessions: (projectId: string) => void;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -445,6 +469,74 @@ export const useInsightsStore = create<InsightsState>((set, get) => ({
   getSessionState: (projectId, sessionId) => {
     const key = getSessionKey(projectId, sessionId);
     return getOrCreateSessionState(key, get().sessionStates);
+  },
+
+  // Session state cleanup actions
+  removeSessionState: (projectId, sessionId) => {
+    const key = getSessionKey(projectId, sessionId);
+    const state = get();
+    if (state.sessionStates.has(key)) {
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.delete(key);
+      set({ sessionStates: newSessionStates });
+    }
+  },
+
+  cleanupOldSessions: (projectId) => {
+    const state = get();
+
+    // Collect all sessions for this project
+    const projectSessions: Array<{ key: string; lastUpdated: Date }> = [];
+    for (const [key, sessionState] of state.sessionStates.entries()) {
+      const parsed = parseSessionKey(key);
+      if (parsed && parsed.projectId === projectId) {
+        projectSessions.push({ key, lastUpdated: sessionState.lastUpdated });
+      }
+    }
+
+    // If under the limit, no cleanup needed
+    if (projectSessions.length <= MAX_SESSIONS_PER_PROJECT) {
+      return;
+    }
+
+    // Sort by lastUpdated descending (most recent first)
+    projectSessions.sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+
+    // Keep only the most recent MAX_SESSIONS_PER_PROJECT sessions
+    const sessionsToRemove = projectSessions.slice(MAX_SESSIONS_PER_PROJECT);
+
+    // Don't remove the active session even if it's old
+    const activeKey = state.activeProjectId && state.activeSessionId
+      ? getSessionKey(state.activeProjectId, state.activeSessionId)
+      : null;
+
+    const newSessionStates = new Map(state.sessionStates);
+    for (const { key } of sessionsToRemove) {
+      if (key !== activeKey) {
+        newSessionStates.delete(key);
+      }
+    }
+
+    if (newSessionStates.size !== state.sessionStates.size) {
+      set({ sessionStates: newSessionStates });
+    }
+  },
+
+  cleanupProjectSessions: (projectId) => {
+    const state = get();
+    const newSessionStates = new Map<string, SessionState>();
+
+    // Keep only sessions from other projects
+    for (const [key, sessionState] of state.sessionStates.entries()) {
+      const parsed = parseSessionKey(key);
+      if (!parsed || parsed.projectId !== projectId) {
+        newSessionStates.set(key, sessionState);
+      }
+    }
+
+    if (newSessionStates.size !== state.sessionStates.size) {
+      set({ sessionStates: newSessionStates });
+    }
   }
 }));
 
@@ -518,7 +610,10 @@ export async function clearSession(projectId: string): Promise<void> {
 export async function newSession(projectId: string): Promise<void> {
   const result = await window.electronAPI.newInsightsSession(projectId);
   if (result.success && result.data) {
-    useInsightsStore.getState().setSession(result.data);
+    const store = useInsightsStore.getState();
+    store.setSession(result.data);
+    // Cleanup old session states to prevent memory leaks
+    store.cleanupOldSessions(projectId);
     // Reload sessions list
     await loadInsightsSessions(projectId);
   }
@@ -543,12 +638,17 @@ export async function switchSession(projectId: string, sessionId: string): Promi
       toolsUsed: sessionState.toolsUsed,
       status: sessionState.status
     });
+
+    // Cleanup old session states to prevent memory leaks
+    store.cleanupOldSessions(projectId);
   }
 }
 
 export async function deleteSession(projectId: string, sessionId: string): Promise<boolean> {
   const result = await window.electronAPI.deleteInsightsSession(projectId, sessionId);
   if (result.success) {
+    // Remove session state from the Map to prevent memory leaks
+    useInsightsStore.getState().removeSessionState(projectId, sessionId);
     // Reload sessions list and current session
     await loadInsightsSession(projectId);
     return true;
