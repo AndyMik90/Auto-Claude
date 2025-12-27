@@ -17,7 +17,12 @@ import {
   Copy,
   RotateCcw,
   Ban,
-  FileText
+  FileText,
+  List,
+  Plus,
+  Trash2,
+  Edit2,
+  FastForward
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
@@ -27,6 +32,13 @@ import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
+import { Checkbox } from './ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import {
   Select,
   SelectContent,
@@ -36,6 +48,13 @@ import {
 } from './ui/select';
 import { useProjectStore } from '../stores/project-store';
 import { useSettingsStore } from '../stores/settings-store';
+import type {
+  UnityProfile,
+  UnityProfileSettings,
+  UnityPipelineRun,
+  PipelineStep,
+  PipelineStepType
+} from '../../preload/api/unity-api';
 
 interface UnityProps {
   projectId: string;
@@ -54,7 +73,7 @@ interface UnityEditorInfo {
 
 interface UnityRun {
   id: string;
-  action: 'editmode-tests' | 'build';
+  action: 'editmode-tests' | 'playmode-tests' | 'build';
   startedAt: string;
   endedAt?: string;
   durationMs?: number;
@@ -68,6 +87,8 @@ interface UnityRun {
     projectPath: string;
     executeMethod?: string;
     testPlatform?: string;
+    buildTarget?: string;
+    testFilter?: string;
   };
   artifactPaths: {
     runDir: string;
@@ -110,8 +131,35 @@ export function Unity({ projectId }: UnityProps) {
   const [runs, setRuns] = useState<UnityRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<UnityRun | null>(null);
   const [isLoadingRuns, setIsLoadingRuns] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunningEditMode, setIsRunningEditMode] = useState(false);
+  const [isRunningPlayMode, setIsRunningPlayMode] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+
+  // M2: Profiles state
+  const [profileSettings, setProfileSettings] = useState<UnityProfileSettings | null>(null);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<UnityProfile | null>(null);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [deleteConfirmProfile, setDeleteConfirmProfile] = useState<UnityProfile | null>(null);
+  const [profileFormName, setProfileFormName] = useState<string>('');
+  const [profileFormBuildMethod, setProfileFormBuildMethod] = useState<string>('');
+  const [profileFormError, setProfileFormError] = useState<string>('');
+
+  // M2: Pipeline state
+  const [isRunningPipeline, setIsRunningPipeline] = useState(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
+  const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>([
+    { type: 'validate', enabled: true },
+    { type: 'editmode-tests', enabled: true },
+    { type: 'playmode-tests', enabled: true },
+    { type: 'build', enabled: false },
+    { type: 'collect-artifacts', enabled: false }
+  ]);
+  const [continueOnFail, setContinueOnFail] = useState(false);
+
+  // M2: PlayMode parameters
+  const [playModeBuildTarget, setPlayModeBuildTarget] = useState<string>('');
+  const [playModeTestFilter, setPlayModeTestFilter] = useState<string>('');
 
   // Get the effective editor path based on project version
   const effectiveEditorPath = useMemo(() => {
@@ -204,17 +252,45 @@ export function Unity({ projectId }: UnityProps) {
     }
   }, [selectedProject]);
 
+  // M2: Load profiles
+  const loadProfiles = useCallback(async () => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.getUnityProfiles(selectedProject.id);
+      if (result.success && result.data) {
+        setProfileSettings(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to load Unity profiles:', err);
+    }
+  }, [selectedProject]);
+
   // Initial load
   useEffect(() => {
     detectUnityProject();
     loadSettings();
     loadRuns();
-  }, [detectUnityProject, loadSettings, loadRuns]);
+    loadProfiles(); // M2
+  }, [detectUnityProject, loadSettings, loadRuns, loadProfiles]);
 
   // Load editors when project info or settings change
   useEffect(() => {
     loadUnityEditors();
   }, [loadUnityEditors]);
+
+  // Update PlayMode defaults when active profile changes
+  useEffect(() => {
+    if (!profileSettings) return;
+    
+    const activeProfile = profileSettings.profiles.find(p => p.id === profileSettings.activeProfileId);
+    if (activeProfile?.testDefaults?.playModeBuildTarget) {
+      setPlayModeBuildTarget(activeProfile.testDefaults.playModeBuildTarget);
+    }
+    if (activeProfile?.testDefaults?.testFilter) {
+      setPlayModeTestFilter(activeProfile.testDefaults.testFilter);
+    }
+  }, [profileSettings?.activeProfileId]);
 
   // Save Unity settings
   const saveSettings = async () => {
@@ -242,7 +318,7 @@ export function Unity({ projectId }: UnityProps) {
   const runEditModeTests = async () => {
     if (!selectedProject || !effectiveEditorPath) return;
 
-    setIsRunning(true);
+    setIsRunningEditMode(true);
     setRunError(null);
 
     try {
@@ -256,7 +332,7 @@ export function Unity({ projectId }: UnityProps) {
     } catch (err) {
       setRunError(err instanceof Error ? err.message : t('errors.runTests'));
     } finally {
-      setIsRunning(false);
+      setIsRunningEditMode(false);
     }
   };
 
@@ -264,7 +340,7 @@ export function Unity({ projectId }: UnityProps) {
   const runBuild = async () => {
     if (!selectedProject || !effectiveEditorPath || !buildExecuteMethod) return;
 
-    setIsRunning(true);
+    setIsRunningEditMode(true);
     setRunError(null);
 
     try {
@@ -282,7 +358,124 @@ export function Unity({ projectId }: UnityProps) {
     } catch (err) {
       setRunError(err instanceof Error ? err.message : t('errors.runBuild'));
     } finally {
-      setIsRunning(false);
+      setIsRunningEditMode(false);
+    }
+  };
+
+  // M2: Run PlayMode tests
+  const runPlayModeTests = async () => {
+    if (!selectedProject || !effectiveEditorPath) return;
+
+    setIsRunningPlayMode(true);
+    setRunError(null);
+
+    try {
+      const result = await window.electronAPI.runUnityPlayModeTests(
+        selectedProject.id,
+        effectiveEditorPath,
+        {
+          buildTarget: playModeBuildTarget || undefined,
+          testFilter: playModeTestFilter || undefined
+        }
+      );
+      if (result.success) {
+        // Refresh runs
+        await loadRuns();
+      } else {
+        setRunError(result.error || 'Failed to run PlayMode tests');
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to run PlayMode tests');
+    } finally {
+      setIsRunningPlayMode(false);
+    }
+  };
+
+  // M2: Run pipeline
+  const runPipeline = async () => {
+    if (!selectedProject || !profileSettings) return;
+
+    setIsRunningPipeline(true);
+    setPipelineError(null);
+
+    try {
+      const result = await window.electronAPI.runUnityPipeline(selectedProject.id, {
+        profileId: profileSettings.activeProfileId,
+        steps: pipelineSteps,
+        continueOnFail
+      });
+      if (result.success) {
+        // Refresh runs
+        await loadRuns();
+      } else {
+        const errorMsg = result.error || 'Failed to run pipeline';
+        setPipelineError(errorMsg);
+        console.error('Failed to run pipeline:', errorMsg);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to run pipeline';
+      setPipelineError(errorMsg);
+      console.error('Failed to run pipeline:', err);
+    } finally {
+      setIsRunningPipeline(false);
+    }
+  };
+
+  // M2: Set active profile
+  const setActiveProfile = async (profileId: string) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.setActiveUnityProfile(selectedProject.id, profileId);
+      if (result.success) {
+        await loadProfiles();
+      }
+    } catch (err) {
+      console.error('Failed to set active profile:', err);
+    }
+  };
+
+  // M2: Create profile
+  const createProfile = async (profile: Omit<UnityProfile, 'id'>) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.createUnityProfile(selectedProject.id, profile);
+      if (result.success) {
+        await loadProfiles();
+      }
+    } catch (err) {
+      console.error('Failed to create profile:', err);
+      throw err; // Re-throw to let caller handle
+    }
+  };
+
+  // M2: Update profile
+  const updateProfile = async (profileId: string, updates: Partial<Omit<UnityProfile, 'id'>>) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.updateUnityProfile(selectedProject.id, profileId, updates);
+      if (result.success) {
+        await loadProfiles();
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      throw err; // Re-throw to let caller handle
+    }
+  };
+
+  // M2: Delete profile
+  const deleteProfile = async (profileId: string) => {
+    if (!selectedProject) return;
+
+    try {
+      const result = await window.electronAPI.deleteUnityProfile(selectedProject.id, profileId);
+      if (result.success) {
+        await loadProfiles();
+      }
+    } catch (err) {
+      console.error('Failed to delete profile:', err);
     }
   };
 
@@ -345,7 +538,7 @@ export function Unity({ projectId }: UnityProps) {
   const rerun = async (runId: string) => {
     if (!selectedProject) return;
 
-    setIsRunning(true);
+    setIsRunningEditMode(true);
     setRunError(null);
 
     try {
@@ -359,7 +552,52 @@ export function Unity({ projectId }: UnityProps) {
     } catch (err) {
       setRunError(err instanceof Error ? err.message : 'Failed to re-run');
     } finally {
-      setIsRunning(false);
+      setIsRunningEditMode(false);
+    }
+  };
+
+  // Delete a single Unity run
+  const deleteRun = async (runId: string) => {
+    if (!selectedProject) return;
+
+    const confirmed = window.confirm(t('history.confirmDelete'));
+    if (!confirmed) return;
+
+    try {
+      const result = await window.electronAPI.deleteUnityRun(selectedProject.id, runId);
+      if (result.success) {
+        // Close the expanded run if it was deleted
+        if (selectedRun?.id === runId) {
+          setSelectedRun(null);
+        }
+        // Refresh runs
+        await loadRuns();
+      } else {
+        setRunError(result.error || 'Failed to delete run');
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to delete run');
+    }
+  };
+
+  // Clear all Unity runs
+  const clearAllRuns = async () => {
+    if (!selectedProject) return;
+
+    const confirmed = window.confirm(t('history.confirmClearAll'));
+    if (!confirmed) return;
+
+    try {
+      const result = await window.electronAPI.clearUnityRuns(selectedProject.id);
+      if (result.success) {
+        setSelectedRun(null);
+        // Refresh runs
+        await loadRuns();
+      } else {
+        setRunError(result.error || 'Failed to clear runs');
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to clear runs');
     }
   };
 
@@ -455,7 +693,7 @@ export function Unity({ projectId }: UnityProps) {
     );
   }
 
-  const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunning && !hasRunningRun;
+  const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunningEditMode && !isRunningPlayMode && !hasRunningRun;
   const canRunBuild = canRunTests && buildExecuteMethod;
 
   // Check if project's required editor is installed
@@ -741,6 +979,51 @@ export function Unity({ projectId }: UnityProps) {
               </div>
             )}
 
+            {/* Profile Selector Card */}
+            {projectInfo.isUnityProject && profileSettings && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    {t('profiles.title')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Select
+                      value={profileSettings.activeProfileId || ''}
+                      onValueChange={setActiveProfile}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder={t('profiles.selectProfile')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profileSettings.profiles.length === 0 ? (
+                          <SelectItem value="" disabled>
+                            {t('profiles.noProfiles')}
+                          </SelectItem>
+                        ) : (
+                          profileSettings.profiles.map((profile) => (
+                            <SelectItem key={profile.id} value={profile.id}>
+                              {profile.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsProfileDialogOpen(true)}
+                      title={t('profiles.manage')}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Actions Card */}
             {projectInfo.isUnityProject && (
               <Card>
@@ -751,28 +1034,59 @@ export function Unity({ projectId }: UnityProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Run EditMode Tests */}
+                  {/* Test Configuration */}
                   <div className="space-y-2">
-                    <Button
-                      className="w-full"
-                      onClick={runEditModeTests}
-                      disabled={!canRunTests}
-                    >
-                      {isRunning ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          {t('actions.runningTests')}
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-4 w-4 mr-2" />
-                          {t('actions.runTests')}
-                        </>
-                      )}
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      {t('actions.testsDescription')}
-                    </p>
+                    <Label htmlFor="test-filter" className="text-xs">
+                      {t('actions.testFilterLabel')}
+                    </Label>
+                    <Input
+                      id="test-filter"
+                      value={playModeTestFilter}
+                      onChange={(e) => setPlayModeTestFilter(e.target.value)}
+                      placeholder={t('actions.testFilterPlaceholder')}
+                    />
+                  </div>
+
+                  {/* Run Tests Buttons */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={runEditModeTests}
+                        disabled={!canRunTests}
+                      >
+                        {isRunningEditMode ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            {t('actions.runningTests')}
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-2" />
+                            {t('actions.runEditModeTests')}
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={runPlayModeTests}
+                        disabled={!canRunTests}
+                      >
+                        {isRunningPlayMode ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            {t('actions.runningTests')}
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-2" />
+                            {t('actions.runPlayModeTests')}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                      <p>{t('actions.editModeDescription')}</p>
+                      <p>{t('actions.playModeDescription')}</p>
+                    </div>
                     {!effectiveEditorPath && (
                       <p className="text-xs text-warning flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
@@ -807,7 +1121,7 @@ export function Unity({ projectId }: UnityProps) {
                       disabled={!canRunBuild}
                       variant="secondary"
                     >
-                      {isRunning ? (
+                      {isRunningEditMode ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           {t('actions.runningBuild')}
@@ -833,17 +1147,116 @@ export function Unity({ projectId }: UnityProps) {
               </Card>
             )}
 
+            {/* Pipeline Card */}
+            {projectInfo.isUnityProject && profileSettings && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FastForward className="h-5 w-5" />
+                    {t('pipeline.title')}
+                  </CardTitle>
+                  <CardDescription>
+                    {t('pipeline.description')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Pipeline Steps */}
+                  <div className="space-y-2">
+                    {pipelineSteps.map((step, index) => (
+                      <div key={step.type} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`step-${step.type}`}
+                          checked={step.enabled}
+                          onCheckedChange={(checked) => {
+                            const newSteps = [...pipelineSteps];
+                            newSteps[index] = { ...step, enabled: !!checked };
+                            setPipelineSteps(newSteps);
+                          }}
+                        />
+                        <Label
+                          htmlFor={`step-${step.type}`}
+                          className="text-sm font-normal cursor-pointer flex-1"
+                        >
+                          {t(`pipeline.steps.${step.type}`)}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Continue on Fail */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="continue-on-fail"
+                      checked={continueOnFail}
+                      onCheckedChange={(checked) => setContinueOnFail(!!checked)}
+                    />
+                    <Label
+                      htmlFor="continue-on-fail"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {t('pipeline.continueOnFail')}
+                    </Label>
+                  </div>
+
+                  {/* Run Pipeline Button */}
+                  <Button
+                    className="w-full"
+                    onClick={runPipeline}
+                    disabled={
+                      isRunningPipeline ||
+                      !effectiveEditorPath ||
+                      !pipelineSteps.some((step) => step.enabled)
+                    }
+                  >
+                    {isRunningPipeline ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('pipeline.running')}
+                      </>
+                    ) : (
+                      <>
+                        <FastForward className="h-4 w-4 mr-2" />
+                        {t('pipeline.runPipeline')}
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Pipeline Error Message */}
+                  {pipelineError && (
+                    <div className="mt-2 text-sm text-red-500">
+                      {pipelineError}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Run History Card */}
             {projectInfo.isUnityProject && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    {t('history.title')}
-                  </CardTitle>
-                  <CardDescription>
-                    {t('history.description', { count: runs.length })}
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        {t('history.title')}
+                      </CardTitle>
+                      <CardDescription>
+                        {t('history.description', { count: runs.length })}
+                      </CardDescription>
+                    </div>
+                    {runs.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearAllRuns}
+                        className="h-8"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        {t('history.clearAll')}
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {isLoadingRuns ? (
@@ -919,30 +1332,44 @@ export function Unity({ projectId }: UnityProps) {
                                     </Button>
                                   )}
                                   {run.status !== 'running' && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-7 text-xs"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            rerun(run.id);
-                                          }}
-                                          disabled={!run.params || hasRunningRun}
-                                        >
-                                          <RotateCcw className="h-3 w-3 mr-1" />
-                                          Re-run
-                                        </Button>
-                                      </TooltipTrigger>
-                                      {(!run.params || hasRunningRun) && (
-                                        <TooltipContent>
-                                          {!run.params 
-                                            ? 'Cannot re-run: parameters not available' 
-                                            : 'Cannot re-run: another Unity action is currently running'}
-                                        </TooltipContent>
-                                      )}
-                                    </Tooltip>
+                                    <>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              rerun(run.id);
+                                            }}
+                                            disabled={!run.params || hasRunningRun}
+                                          >
+                                            <RotateCcw className="h-3 w-3 mr-1" />
+                                            Re-run
+                                          </Button>
+                                        </TooltipTrigger>
+                                        {(!run.params || hasRunningRun) && (
+                                          <TooltipContent>
+                                            {!run.params
+                                              ? 'Cannot re-run: parameters not available'
+                                              : 'Cannot re-run: another Unity action is currently running'}
+                                          </TooltipContent>
+                                        )}
+                                      </Tooltip>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs text-destructive hover:text-destructive"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          deleteRun(run.id);
+                                        }}
+                                      >
+                                        <XCircle className="h-3 w-3 mr-1" />
+                                        {t('history.deleteRun')}
+                                      </Button>
+                                    </>
                                   )}
                                 </div>
 
@@ -1006,7 +1433,7 @@ export function Unity({ projectId }: UnityProps) {
                                 <div>
                                   <p className="text-xs font-medium mb-1">{t('history.command')}</p>
                                   <div className="relative">
-                                    <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
+                                    <pre className="text-xs bg-muted p-2 rounded whitespace-pre-wrap break-all max-w-full">
                                       {run.command}
                                     </pre>
                                     <Button
@@ -1122,6 +1549,213 @@ export function Unity({ projectId }: UnityProps) {
         </ScrollArea>
       )}
     </div>
+
+      {/* Profile Management Dialog */}
+      <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('profiles.dialog.title')}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Profile List */}
+            {profileSettings && profileSettings.profiles.length > 0 && (
+              <div className="space-y-2">
+                {profileSettings.profiles.map((profile) => (
+                  <div
+                    key={profile.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{profile.name}</div>
+                      {profile.buildExecuteMethod && (
+                        <div className="text-xs text-muted-foreground">
+                          {profile.buildExecuteMethod}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingProfile(profile);
+                          setProfileFormName(profile.name);
+                          setProfileFormBuildMethod(profile.buildExecuteMethod || '');
+                          setProfileFormError('');
+                        }}
+                      >
+                        <Edit2 className="h-3 w-3 mr-1" />
+                        {t('profiles.dialog.edit')}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteConfirmProfile(profile)}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        {t('profiles.dialog.delete')}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Create New Profile Button */}
+            {!editingProfile && !isCreatingProfile && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setIsCreatingProfile(true);
+                  setProfileFormName('');
+                  setProfileFormBuildMethod('');
+                  setProfileFormError('');
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t('profiles.dialog.createNew')}
+              </Button>
+            )}
+
+            {/* Profile Form (Create or Edit) */}
+            {(isCreatingProfile || editingProfile) && (
+              <div className="space-y-4 p-4 border rounded-lg">
+                {profileFormError && (
+                  <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                    {profileFormError}
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="profile-name">{t('profiles.dialog.nameLabel')}</Label>
+                  <Input
+                    id="profile-name"
+                    placeholder={t('profiles.dialog.namePlaceholder')}
+                    value={profileFormName}
+                    onChange={(e) => {
+                      setProfileFormName(e.target.value);
+                      setProfileFormError(''); // Clear error on input
+                    }}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="profile-build-method">{t('profiles.dialog.buildMethodLabel')}</Label>
+                  <Input
+                    id="profile-build-method"
+                    placeholder={t('profiles.dialog.buildMethodPlaceholder')}
+                    value={profileFormBuildMethod}
+                    onChange={(e) => setProfileFormBuildMethod(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={async () => {
+                      // Validate profile name
+                      const trimmedName = profileFormName.trim();
+                      if (!trimmedName) {
+                        setProfileFormError(t('profiles.dialog.profileNameRequired'));
+                        return;
+                      }
+
+                      // Check for duplicate profile names
+                      const duplicateProfile = profileSettings?.profiles.find(
+                        (profile) =>
+                          profile.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+                          (!editingProfile || profile.id !== editingProfile.id)
+                      );
+                      if (duplicateProfile) {
+                        setProfileFormError(t('profiles.dialog.duplicateProfileName'));
+                        return;
+                      }
+
+                      const profileData = {
+                        name: trimmedName,
+                        buildExecuteMethod: profileFormBuildMethod.trim() || undefined,
+                        testDefaults: {
+                          editModeEnabled: true,
+                          playModeEnabled: true
+                        }
+                      };
+
+                      try {
+                        if (editingProfile) {
+                          await updateProfile(editingProfile.id, profileData);
+                        } else {
+                          await createProfile(profileData);
+                        }
+                        // Reset form and close dialog only on success
+                        setIsCreatingProfile(false);
+                        setEditingProfile(null);
+                        setProfileFormName('');
+                        setProfileFormBuildMethod('');
+                        setProfileFormError('');
+                        setIsProfileDialogOpen(false);
+                      } catch (error) {
+                        console.error('Failed to save profile:', error);
+                        setProfileFormError(t('profiles.dialog.saveFailed'));
+                        // Keep form open on error
+                      }
+                    }}
+                  >
+                    {editingProfile ? t('profiles.dialog.save') : t('profiles.dialog.create')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreatingProfile(false);
+                      setEditingProfile(null);
+                      setProfileFormName('');
+                      setProfileFormBuildMethod('');
+                      setProfileFormError('');
+                    }}
+                  >
+                    {t('profiles.dialog.cancel')}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmProfile !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirmProfile(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('profiles.dialog.confirmDeleteTitle')}</DialogTitle>
+          </DialogHeader>
+          <p>{t('profiles.dialog.confirmDelete', { name: deleteConfirmProfile?.name || '' })}</p>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmProfile(null)}
+            >
+              {t('profiles.dialog.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteConfirmProfile) {
+                  deleteProfile(deleteConfirmProfile.id);
+                  setDeleteConfirmProfile(null);
+                }
+              }}
+            >
+              {t('profiles.dialog.delete')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }
