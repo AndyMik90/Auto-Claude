@@ -9,6 +9,7 @@ import { fileWatcher } from '../../file-watcher';
 import { findTaskAndProject } from './shared';
 import { checkGitStatus } from '../../project-initializer';
 import { getClaudeProfileManager } from '../../claude-profile-manager';
+import { taskLogService } from '../../task-log-service';
 
 /**
  * Helper function to check subtask completion status
@@ -190,7 +191,6 @@ export function registerTaskExecutionHandlers(
       const { task, project } = findTaskAndProject(taskId);
       if (task && project) {
         // Mark any active phases as stopped in the log files
-        const { taskLogService } = require('../../task-log-service');
         const specsBaseDir = getSpecsDir(project.autoBuildPath);
         taskLogService.markActivePhasesStopped(task.specId, project.path, specsBaseDir);
       }
