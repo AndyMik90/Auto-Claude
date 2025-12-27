@@ -1503,7 +1503,7 @@ async function runUnityPipeline(
 
       try {
         switch (step.type) {
-          case 'validate':
+          case 'validate': {
             // Lightweight validation
             if (!existsSync(join(unityPath, 'ProjectSettings', 'ProjectVersion.txt'))) {
               throw new Error('Unity project not detected');
@@ -1522,13 +1522,15 @@ async function runUnityPipeline(
             step.status = 'success';
             pipelineRun.summary!.successCount++;
             break;
+          }
 
-          case 'editmode-tests':
+          case 'editmode-tests': {
             const editModeRunId = await runEditModeTests(projectId, editorPath);
             await executeUnityRunStep(step, editModeRunId, projectId, pipelineRun, id);
             break;
+          }
 
-          case 'playmode-tests':
+          case 'playmode-tests': {
             const playModeBuildTarget = profile?.testDefaults?.playModeBuildTarget;
             const testFilter = profile?.testDefaults?.testFilter;
             const playModeRunId = await runPlayModeTests(projectId, editorPath, {
@@ -1537,8 +1539,9 @@ async function runUnityPipeline(
             });
             await executeUnityRunStep(step, playModeRunId, projectId, pipelineRun, id);
             break;
+          }
 
-          case 'build':
+          case 'build': {
             const executeMethod = profile?.buildExecuteMethod || settings.buildExecuteMethod;
             if (!executeMethod) {
               throw new Error('Build execute method not configured');
@@ -1546,8 +1549,9 @@ async function runUnityPipeline(
             const buildRunId = await runBuild(projectId, editorPath, executeMethod);
             await executeUnityRunStep(step, buildRunId, projectId, pipelineRun, id);
             break;
+          }
 
-          case 'collect-artifacts':
+          case 'collect-artifacts': {
             // Create bundle directory
             const bundleDir = join(pipelineDir, 'bundle');
             if (!existsSync(bundleDir)) {
@@ -1596,24 +1600,27 @@ async function runUnityPipeline(
             for (const s of pipelineRun.steps) {
               const statusIcon = s.status === 'success' ? '✅' : s.status === 'failed' ? '❌' : s.status === 'skipped' ? '⏭' : s.status === 'canceled' ? '🚫' : '⏳';
               let stepLine = `${statusIcon} ${s.type}: ${s.status || 'pending'}${s.runId ? ` (${s.runId})` : ''}`;
-              
+
               // Add error details for failed steps
               if (s.status === 'failed' && s.errorDetails) {
                 let errorType: string;
                 switch (s.errorDetails.type) {
-                  case 'test-failure':
+                  case 'test-failure': {
                     errorType = '🧪 Test Failure';
                     break;
-                  case 'execution-error':
+                  }
+                  case 'execution-error': {
                     errorType = '⚠️ Execution Error';
                     break;
-                  default:
+                  }
+                  default: {
                     errorType = '❓ Unknown Error';
                     break;
+                  }
                 }
                 stepLine += `\n  ${errorType}: ${s.errorDetails.message}`;
               }
-              
+
               summaryLines.push(stepLine);
             }
 
@@ -1634,6 +1641,7 @@ async function runUnityPipeline(
             step.status = 'success';
             pipelineRun.summary!.successCount++;
             break;
+          }
 
           default:
             throw new Error(`Unknown step type: ${step.type}`);
