@@ -1029,9 +1029,9 @@ export function Unity({ projectId }: UnityProps) {
                         <Input
                           id="playmode-target"
                           value={playModeBuildTarget}
-                          onChange={(e) => setPlayModeBuildTarget(e.target.value)}
+                          readOnly
                           placeholder={t('actions.buildTargetDefault', { target: 'Auto' })}
-                          className="mt-1"
+                          className="mt-1 bg-muted cursor-not-allowed"
                         />
                       </div>
                       <div>
