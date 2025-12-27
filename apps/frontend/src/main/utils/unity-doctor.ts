@@ -118,8 +118,8 @@ async function checkUnityProject(projectPath: string): Promise<UnityDoctorCheck[
     projectPath,
     'Assets',
     'Editor',
-    'AIIDE.UnityBridge',
-    'AIIDEUnityBridge.cs'
+    'Squido.JungleXRKit.Assistant.UnityBridge',
+    'JungleAssistantUnityBridge.cs'
   );
   if (await fs.pathExists(bridgePath)) {
     checks.push({

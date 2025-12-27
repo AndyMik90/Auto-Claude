@@ -1,6 +1,6 @@
-// AIIDE Unity Bridge
+// Jungle-Assistant Unity Bridge
 // Auto-generated editor utility for safe project settings modification
-// DO NOT EDIT MANUALLY - This file is managed by AIIDE
+// DO NOT EDIT MANUALLY - This file is managed by Jungle-Assistant
 
 #if UNITY_EDITOR
 using System;
@@ -9,20 +9,20 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEngine;
 
-namespace AIIDE.UnityBridge
+namespace Squido.JungleXRKit.Assistant.UnityBridge
 {
     /// <summary>
-    /// Unity Bridge for AIIDE - Provides safe executeMethod entry points for project settings modification
+    /// Unity Bridge for Jungle-Assistant - Provides safe executeMethod entry points for project settings modification
     /// </summary>
-    public static class AIIDEUnityBridge
+    public static class JungleAssistantUnityBridge
     {
-        private const string LOG_PREFIX = "[AIIDE Bridge]";
+        private const string LOG_PREFIX = "[Jungle-Assistant Bridge]";
 
         // Command line argument keys
-        private const string ARG_TARGET_GROUP = "-aiideTargetGroup";
-        private const string ARG_DEFINE = "-aiideDefine";
-        private const string ARG_BACKEND = "-aiideBackend";
-        private const string ARG_BUILD_TARGET = "-aiideBuildTarget";
+        private const string ARG_TARGET_GROUP = "-jaTargetGroup";
+        private const string ARG_DEFINE = "-jaDefine";
+        private const string ARG_BACKEND = "-jaBackend";
+        private const string ARG_BUILD_TARGET = "-jaBuildTarget";
 
         /// <summary>
         /// No-op method to validate Unity project loads correctly

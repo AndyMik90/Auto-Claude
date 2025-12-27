@@ -184,8 +184,8 @@ export async function installUnityBridge(
   projectPath: string,
   bridgeTemplatePath: string
 ): Promise<{ installed: boolean; bridgePath: string; message: string }> {
-  const bridgeDir = path.join(projectPath, 'Assets', 'Editor', 'AIIDE.UnityBridge');
-  const bridgePath = path.join(bridgeDir, 'AIIDEUnityBridge.cs');
+  const bridgeDir = path.join(projectPath, 'Assets', 'Editor', 'Squido.JungleXRKit.Assistant.UnityBridge');
+  const bridgePath = path.join(bridgeDir, 'JungleAssistantUnityBridge.cs');
 
   // Read template
   const templateContent = await fs.readFile(bridgeTemplatePath, 'utf-8');
@@ -242,8 +242,8 @@ export async function isUnityBridgeInstalled(projectPath: string): Promise<boole
     projectPath,
     'Assets',
     'Editor',
-    'AIIDE.UnityBridge',
-    'AIIDEUnityBridge.cs'
+    'Squido.JungleXRKit.Assistant.UnityBridge',
+    'JungleAssistantUnityBridge.cs'
   );
   return await fs.pathExists(bridgePath);
 }
@@ -321,44 +321,44 @@ export function buildTweakCommand(
 
   switch (action) {
     case 'add-define':
-      args.push('-executeMethod', 'AIIDE.UnityBridge.AIIDEUnityBridge.AddDefineSymbol');
+      args.push('-executeMethod', 'Squido.JungleXRKit.Assistant.UnityBridge.JungleAssistantUnityBridge.AddDefineSymbol');
       if (params.targetGroup) {
-        args.push('-aiideTargetGroup', params.targetGroup);
+        args.push('-jaTargetGroup', params.targetGroup);
       }
       if (params.symbol) {
-        args.push('-aiideDefine', params.symbol);
+        args.push('-jaDefine', params.symbol);
       }
       break;
 
     case 'remove-define':
-      args.push('-executeMethod', 'AIIDE.UnityBridge.AIIDEUnityBridge.RemoveDefineSymbol');
+      args.push('-executeMethod', 'Squido.JungleXRKit.Assistant.UnityBridge.JungleAssistantUnityBridge.RemoveDefineSymbol');
       if (params.targetGroup) {
-        args.push('-aiideTargetGroup', params.targetGroup);
+        args.push('-jaTargetGroup', params.targetGroup);
       }
       if (params.symbol) {
-        args.push('-aiideDefine', params.symbol);
+        args.push('-jaDefine', params.symbol);
       }
       break;
 
     case 'set-backend':
-      args.push('-executeMethod', 'AIIDE.UnityBridge.AIIDEUnityBridge.SetScriptingBackend');
+      args.push('-executeMethod', 'Squido.JungleXRKit.Assistant.UnityBridge.JungleAssistantUnityBridge.SetScriptingBackend');
       if (params.targetGroup) {
-        args.push('-aiideTargetGroup', params.targetGroup);
+        args.push('-jaTargetGroup', params.targetGroup);
       }
       if (params.backend) {
-        args.push('-aiideBackend', params.backend);
+        args.push('-jaBackend', params.backend);
       }
       break;
 
     case 'switch-build-target':
-      args.push('-executeMethod', 'AIIDE.UnityBridge.AIIDEUnityBridge.SwitchBuildTarget');
+      args.push('-executeMethod', 'Squido.JungleXRKit.Assistant.UnityBridge.JungleAssistantUnityBridge.SwitchBuildTarget');
       if (params.buildTarget) {
-        args.push('-aiideBuildTarget', params.buildTarget);
+        args.push('-jaBuildTarget', params.buildTarget);
       }
       break;
 
     case 'upm-resolve':
-      args.push('-executeMethod', 'AIIDE.UnityBridge.AIIDEUnityBridge.NoopValidate');
+      args.push('-executeMethod', 'Squido.JungleXRKit.Assistant.UnityBridge.JungleAssistantUnityBridge.NoopValidate');
       break;
 
     default:
