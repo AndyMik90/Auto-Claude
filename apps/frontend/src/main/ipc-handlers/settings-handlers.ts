@@ -1,6 +1,6 @@
 import { ipcMain, dialog, app, shell } from 'electron';
-import { existsSync, writeFileSync, mkdirSync } from 'fs';
-import { execSync, execFileSync } from 'node:child_process';
+import { existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
+import { execFileSync } from 'node:child_process';
 import path from 'path';
 import { is } from '@electron-toolkit/utils';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
@@ -350,16 +350,50 @@ export function registerSettingsHandlers(
     IPC_CHANNELS.SHELL_OPEN_TERMINAL,
     async (_, dirPath: string): Promise<IPCResult<void>> => {
       try {
+        // Validate dirPath input
+        if (!dirPath || typeof dirPath !== 'string' || dirPath.trim() === '') {
+          return {
+            success: false,
+            error: 'Directory path is required and must be a non-empty string'
+          };
+        }
+
+        // Resolve to absolute path
+        const resolvedPath = path.resolve(dirPath);
+
+        // Verify path exists
+        if (!existsSync(resolvedPath)) {
+          return {
+            success: false,
+            error: `Directory does not exist: ${resolvedPath}`
+          };
+        }
+
+        // Verify it's a directory
+        try {
+          if (!statSync(resolvedPath).isDirectory()) {
+            return {
+              success: false,
+              error: `Path is not a directory: ${resolvedPath}`
+            };
+          }
+        } catch (statError) {
+          return {
+            success: false,
+            error: `Cannot access path: ${resolvedPath}`
+          };
+        }
+
         const platform = process.platform;
 
         if (platform === 'darwin') {
           // macOS: Use execFileSync with argument array to prevent injection
-          execFileSync('open', ['-a', 'Terminal', dirPath], { stdio: 'ignore' });
+          execFileSync('open', ['-a', 'Terminal', resolvedPath], { stdio: 'ignore' });
         } else if (platform === 'win32') {
           // Windows: Use cmd.exe directly with argument array
           // /C tells cmd to execute the command and terminate
           // /K keeps the window open after executing cd
-          execFileSync('cmd.exe', ['/K', 'cd', '/d', dirPath], {
+          execFileSync('cmd.exe', ['/K', 'cd', '/d', resolvedPath], {
             stdio: 'ignore',
             windowsHide: false,
             shell: false  // Explicitly disable shell to prevent injection
@@ -367,10 +401,10 @@ export function registerSettingsHandlers(
         } else {
           // Linux: Try common terminal emulators with argument arrays
           const terminals: Array<{ cmd: string; args: string[] }> = [
-            { cmd: 'gnome-terminal', args: ['--working-directory', dirPath] },
-            { cmd: 'konsole', args: ['--workdir', dirPath] },
-            { cmd: 'xfce4-terminal', args: ['--working-directory', dirPath] },
-            { cmd: 'xterm', args: ['-e', 'bash', '-c', `cd '${dirPath.replace(/'/g, "'\\''")}' && exec bash`] }
+            { cmd: 'gnome-terminal', args: ['--working-directory', resolvedPath] },
+            { cmd: 'konsole', args: ['--workdir', resolvedPath] },
+            { cmd: 'xfce4-terminal', args: ['--working-directory', resolvedPath] },
+            { cmd: 'xterm', args: ['-e', 'bash', '-c', `cd '${resolvedPath.replace(/'/g, "'\\''")}' && exec bash`] }
           ];
 
           let opened = false;
