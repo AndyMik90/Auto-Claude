@@ -26,6 +26,9 @@ export const DEFAULT_APP_SETTINGS = {
   autoUpdateAutoBuild: true,
   autoNameTerminals: true,
   onboardingCompleted: false,
+  // Path configuration for WSL/Windows compatibility
+  projectBasePath: undefined as string | undefined, // Default projects directory
+  pathMode: 'auto' as 'auto' | 'native' | 'wsl-windows', // How to interpret paths
   notifications: {
     onTaskComplete: true,
     onTaskFailed: true,

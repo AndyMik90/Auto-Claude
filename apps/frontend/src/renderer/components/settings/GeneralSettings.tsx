@@ -12,7 +12,7 @@ import {
   DEFAULT_FEATURE_THINKING,
   FEATURE_LABELS
 } from '../../../shared/constants';
-import type { AppSettings, FeatureModelConfig, FeatureThinkingConfig, ModelTypeShort, ThinkingLevel } from '../../../shared/types';
+import type { AppSettings, FeatureModelConfig, FeatureThinkingConfig, ModelTypeShort, ThinkingLevel, PathMode } from '../../../shared/types';
 
 interface GeneralSettingsProps {
   settings: AppSettings;
@@ -150,6 +150,13 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
     );
   }
 
+  // Path mode options
+  const pathModeOptions: { value: PathMode; labelKey: string; descriptionKey: string }[] = [
+    { value: 'auto', labelKey: 'general.pathModeAuto', descriptionKey: 'general.pathModeAutoDescription' },
+    { value: 'native', labelKey: 'general.pathModeNative', descriptionKey: 'general.pathModeNativeDescription' },
+    { value: 'wsl-windows', labelKey: 'general.pathModeWslWindows', descriptionKey: 'general.pathModeWslWindowsDescription' }
+  ];
+
   // paths section
   return (
     <SettingsSection
@@ -157,6 +164,47 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
       description={t('general.pathsDescription')}
     >
       <div className="space-y-6">
+        {/* Project Base Path */}
+        <div className="space-y-3">
+          <Label htmlFor="projectBasePath" className="text-sm font-medium text-foreground">{t('general.projectBasePath')}</Label>
+          <p className="text-sm text-muted-foreground">{t('general.projectBasePathDescription')}</p>
+          <Input
+            id="projectBasePath"
+            placeholder={t('general.projectBasePathPlaceholder')}
+            className="w-full max-w-lg"
+            value={settings.projectBasePath || ''}
+            onChange={(e) => onSettingsChange({ ...settings, projectBasePath: e.target.value })}
+          />
+        </div>
+
+        {/* Path Mode */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-foreground">{t('general.pathMode')}</Label>
+          <p className="text-sm text-muted-foreground">{t('general.pathModeDescription')}</p>
+          <Select
+            value={settings.pathMode || 'auto'}
+            onValueChange={(value) => onSettingsChange({ ...settings, pathMode: value as PathMode })}
+          >
+            <SelectTrigger className="w-full max-w-md">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pathModeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <div className="flex flex-col">
+                    <span>{t(option.labelKey)}</span>
+                    <span className="text-xs text-muted-foreground">{t(option.descriptionKey)}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-border pt-4" />
+
+        {/* Python Path */}
         <div className="space-y-3">
           <Label htmlFor="pythonPath" className="text-sm font-medium text-foreground">{t('general.pythonPath')}</Label>
           <p className="text-sm text-muted-foreground">{t('general.pythonPathDescription')}</p>
@@ -168,6 +216,8 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
             onChange={(e) => onSettingsChange({ ...settings, pythonPath: e.target.value })}
           />
         </div>
+
+        {/* Auto Claude Path */}
         <div className="space-y-3">
           <Label htmlFor="autoBuildPath" className="text-sm font-medium text-foreground">{t('general.autoClaudePath')}</Label>
           <p className="text-sm text-muted-foreground">{t('general.autoClaudePathDescription')}</p>

@@ -73,7 +73,19 @@
     "autoClaudePathDescription": "Relative path to auto-claude directory in projects",
     "autoClaudePathPlaceholder": "auto-claude (default)",
     "autoNameTerminals": "Automatically name terminals",
-    "autoNameTerminalsDescription": "Use AI to generate descriptive names for terminal tabs based on their activity"
+    "autoNameTerminalsDescription": "Use AI to generate descriptive names for terminal tabs based on their activity",
+    "projectBasePath": "Project Base Directory",
+    "projectBasePathDescription": "Default directory for new projects (empty = home directory)",
+    "projectBasePathPlaceholder": "e.g. C:\\Users\\Name\\Projects",
+    "projectBasePathBrowse": "Browse",
+    "pathMode": "Path Mode",
+    "pathModeDescription": "How file paths should be interpreted",
+    "pathModeAuto": "Automatic",
+    "pathModeAutoDescription": "Automatically detects the correct path conversion",
+    "pathModeNative": "Native",
+    "pathModeNativeDescription": "Uses paths without conversion",
+    "pathModeWslWindows": "WSL → Windows",
+    "pathModeWslWindowsDescription": "Converts WSL paths to Windows paths (/mnt/c/ → C:\\)"
   },
   "theme": {
     "title": "Appearance",

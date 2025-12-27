@@ -78,6 +78,9 @@ export interface AgentProfile {
   phaseThinking?: PhaseThinkingConfig;
 }
 
+// Path mode for WSL/Windows compatibility
+export type PathMode = 'auto' | 'native' | 'wsl-windows';
+
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   colorTheme?: ColorTheme;
@@ -88,6 +91,9 @@ export interface AppSettings {
   autoUpdateAutoBuild: boolean;
   autoNameTerminals: boolean;
   notifications: NotificationSettings;
+  // Path configuration for WSL/Windows compatibility
+  projectBasePath?: string;  // Default directory for new projects
+  pathMode?: PathMode;       // How to interpret/convert paths
   // Global API keys (used as defaults for all projects)
   globalClaudeOAuthToken?: string;
   globalOpenAIApiKey?: string;

@@ -73,7 +73,19 @@
     "autoClaudePathDescription": "Relativer Pfad zum auto-claude Verzeichnis in Projekten",
     "autoClaudePathPlaceholder": "auto-claude (Standard)",
     "autoNameTerminals": "Terminals automatisch benennen",
-    "autoNameTerminalsDescription": "KI verwenden um beschreibende Namen für Terminal-Tabs basierend auf ihrer Aktivität zu generieren"
+    "autoNameTerminalsDescription": "KI verwenden um beschreibende Namen für Terminal-Tabs basierend auf ihrer Aktivität zu generieren",
+    "projectBasePath": "Projekt-Basisverzeichnis",
+    "projectBasePathDescription": "Standardverzeichnis für neue Projekte (leer = Home-Verzeichnis)",
+    "projectBasePathPlaceholder": "z.B. C:\\Users\\Name\\Projekte",
+    "projectBasePathBrowse": "Durchsuchen",
+    "pathMode": "Pfad-Modus",
+    "pathModeDescription": "Wie Dateipfade interpretiert werden sollen",
+    "pathModeAuto": "Automatisch",
+    "pathModeAutoDescription": "Erkennt automatisch die richtige Pfadkonvertierung",
+    "pathModeNative": "Nativ",
+    "pathModeNativeDescription": "Verwendet Pfade ohne Konvertierung",
+    "pathModeWslWindows": "WSL → Windows",
+    "pathModeWslWindowsDescription": "Konvertiert WSL-Pfade zu Windows-Pfaden (/mnt/c/ → C:\\)"
   },
   "theme": {
     "title": "Erscheinungsbild",
