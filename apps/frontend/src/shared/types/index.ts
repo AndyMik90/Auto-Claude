@@ -18,6 +18,7 @@ export * from './integrations';
 export * from './app-update';
 export * from './template';
 export * from './secrets';
+export * from './cli';
 
 // IPC types (must be last to use types from other modules)
 export * from './ipc';

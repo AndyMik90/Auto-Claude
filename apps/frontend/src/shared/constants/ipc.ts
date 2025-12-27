@@ -10,7 +10,6 @@ export const IPC_CHANNELS = {
   PROJECT_LIST: 'project:list',
   PROJECT_UPDATE_SETTINGS: 'project:updateSettings',
   PROJECT_INITIALIZE: 'project:initialize',
-  PROJECT_UPDATE_AUTOBUILD: 'project:updateAutoBuild',
   PROJECT_CHECK_VERSION: 'project:checkVersion',
 
   // Tab state operations (persisted in main process)
@@ -106,6 +105,7 @@ export const IPC_CHANNELS = {
   // Settings
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
+  SETTINGS_GET_CLI_TOOLS_INFO: 'settings:getCliToolsInfo',
 
   // Templates
   TEMPLATES_GET: 'templates:get',
@@ -140,6 +140,7 @@ export const IPC_CHANNELS = {
 
   // Shell operations
   SHELL_OPEN_EXTERNAL: 'shell:openExternal',
+  SHELL_OPEN_TERMINAL: 'shell:openTerminal',
 
   // Roadmap operations
   ROADMAP_GET: 'roadmap:get',
@@ -223,10 +224,72 @@ export const IPC_CHANNELS = {
   GITHUB_ADD_REMOTE: 'github:addRemote',
   GITHUB_LIST_ORGS: 'github:listOrgs',
 
+  // GitHub OAuth events (main -> renderer) - for streaming device code during auth
+  GITHUB_AUTH_DEVICE_CODE: 'github:authDeviceCode',
+
   // GitHub events (main -> renderer)
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',
   GITHUB_INVESTIGATION_COMPLETE: 'github:investigationComplete',
   GITHUB_INVESTIGATION_ERROR: 'github:investigationError',
+
+  // GitHub Auto-Fix operations
+  GITHUB_AUTOFIX_START: 'github:autofix:start',
+  GITHUB_AUTOFIX_STOP: 'github:autofix:stop',
+  GITHUB_AUTOFIX_GET_QUEUE: 'github:autofix:getQueue',
+  GITHUB_AUTOFIX_CHECK_LABELS: 'github:autofix:checkLabels',
+  GITHUB_AUTOFIX_CHECK_NEW: 'github:autofix:checkNew',
+  GITHUB_AUTOFIX_GET_CONFIG: 'github:autofix:getConfig',
+  GITHUB_AUTOFIX_SAVE_CONFIG: 'github:autofix:saveConfig',
+  GITHUB_AUTOFIX_BATCH: 'github:autofix:batch',
+  GITHUB_AUTOFIX_GET_BATCHES: 'github:autofix:getBatches',
+
+  // GitHub Auto-Fix events (main -> renderer)
+  GITHUB_AUTOFIX_PROGRESS: 'github:autofix:progress',
+  GITHUB_AUTOFIX_COMPLETE: 'github:autofix:complete',
+  GITHUB_AUTOFIX_ERROR: 'github:autofix:error',
+  GITHUB_AUTOFIX_BATCH_PROGRESS: 'github:autofix:batchProgress',
+  GITHUB_AUTOFIX_BATCH_COMPLETE: 'github:autofix:batchComplete',
+  GITHUB_AUTOFIX_BATCH_ERROR: 'github:autofix:batchError',
+
+  // GitHub Issue Analysis Preview (proactive batch workflow)
+  GITHUB_AUTOFIX_ANALYZE_PREVIEW: 'github:autofix:analyzePreview',
+  GITHUB_AUTOFIX_ANALYZE_PREVIEW_PROGRESS: 'github:autofix:analyzePreviewProgress',
+  GITHUB_AUTOFIX_ANALYZE_PREVIEW_COMPLETE: 'github:autofix:analyzePreviewComplete',
+  GITHUB_AUTOFIX_ANALYZE_PREVIEW_ERROR: 'github:autofix:analyzePreviewError',
+  GITHUB_AUTOFIX_APPROVE_BATCHES: 'github:autofix:approveBatches',
+
+  // GitHub PR Review operations
+  GITHUB_PR_LIST: 'github:pr:list',
+  GITHUB_PR_GET: 'github:pr:get',
+  GITHUB_PR_GET_DIFF: 'github:pr:getDiff',
+  GITHUB_PR_REVIEW: 'github:pr:review',
+  GITHUB_PR_REVIEW_CANCEL: 'github:pr:reviewCancel',
+  GITHUB_PR_GET_REVIEW: 'github:pr:getReview',
+  GITHUB_PR_POST_REVIEW: 'github:pr:postReview',
+  GITHUB_PR_DELETE_REVIEW: 'github:pr:deleteReview',
+  GITHUB_PR_MERGE: 'github:pr:merge',
+  GITHUB_PR_ASSIGN: 'github:pr:assign',
+  GITHUB_PR_POST_COMMENT: 'github:pr:postComment',
+  GITHUB_PR_FIX: 'github:pr:fix',
+  GITHUB_PR_FOLLOWUP_REVIEW: 'github:pr:followupReview',
+  GITHUB_PR_CHECK_NEW_COMMITS: 'github:pr:checkNewCommits',
+
+  // GitHub PR Review events (main -> renderer)
+  GITHUB_PR_REVIEW_PROGRESS: 'github:pr:reviewProgress',
+  GITHUB_PR_REVIEW_COMPLETE: 'github:pr:reviewComplete',
+  GITHUB_PR_REVIEW_ERROR: 'github:pr:reviewError',
+
+  // GitHub Issue Triage operations
+  GITHUB_TRIAGE_RUN: 'github:triage:run',
+  GITHUB_TRIAGE_GET_RESULTS: 'github:triage:getResults',
+  GITHUB_TRIAGE_APPLY_LABELS: 'github:triage:applyLabels',
+  GITHUB_TRIAGE_GET_CONFIG: 'github:triage:getConfig',
+  GITHUB_TRIAGE_SAVE_CONFIG: 'github:triage:saveConfig',
+
+  // GitHub Issue Triage events (main -> renderer)
+  GITHUB_TRIAGE_PROGRESS: 'github:triage:progress',
+  GITHUB_TRIAGE_COMPLETE: 'github:triage:complete',
+  GITHUB_TRIAGE_ERROR: 'github:triage:error',
 
   // Memory Infrastructure status (LadybugDB - no Docker required)
   MEMORY_STATUS: 'memory:status',

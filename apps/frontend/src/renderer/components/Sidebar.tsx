@@ -13,6 +13,7 @@ import {
   Download,
   RefreshCw,
   Github,
+  GitPullRequest,
   FileText,
   Sparkles,
   GitBranch,
@@ -39,9 +40,7 @@ import { cn } from '../lib/utils';
 import {
   useProjectStore,
   removeProject,
-  initializeProject,
-  checkProjectVersion,
-  updateProjectAutoBuild
+  initializeProject
 } from '../stores/project-store';
 import { useSettingsStore } from '../stores/settings-store';
 import { AddProjectModal } from './AddProjectModal';
@@ -49,7 +48,7 @@ import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import type { Project, AutoBuildVersionInfo, GitStatus } from '../../shared/types';
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
+export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'github-prs' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
 
 interface SidebarProps {
   onSettingsClick: () => void;
@@ -77,6 +76,7 @@ const projectNavItems: NavItem[] = [
 
 const toolsNavItems: NavItem[] = [
   { id: 'github-issues', labelKey: 'navigation:items.githubIssues', icon: Github, shortcut: 'G' },
+  { id: 'github-prs', labelKey: 'navigation:items.githubPRs', icon: GitPullRequest, shortcut: 'P' },
   { id: 'worktrees', labelKey: 'navigation:items.worktrees', icon: GitBranch, shortcut: 'W' }
 ];
 
@@ -94,11 +94,9 @@ export function Sidebar({
 
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [showInitDialog, setShowInitDialog] = useState(false);
-  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [showGitSetupModal, setShowGitSetupModal] = useState(false);
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
-  const [_versionInfo, setVersionInfo] = useState<AutoBuildVersionInfo | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -137,20 +135,6 @@ export function Sidebar({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedProjectId, onViewChange]);
-
-  // Check for updates when project changes
-  useEffect(() => {
-    const checkUpdates = async () => {
-      if (selectedProjectId && settings.autoUpdateAutoBuild) {
-        const info = await checkProjectVersion(selectedProjectId);
-        if (info?.updateAvailable) {
-          setVersionInfo(info);
-          setShowUpdateDialog(true);
-        }
-      }
-    };
-    checkUpdates();
-  }, [selectedProjectId, settings.autoUpdateAutoBuild]);
 
   // Check git status when project changes
   useEffect(() => {
@@ -207,26 +191,6 @@ export function Sidebar({
   const handleSkipInit = () => {
     setShowInitDialog(false);
     setPendingProject(null);
-  };
-
-  const _handleUpdate = async () => {
-    if (!selectedProjectId) return;
-
-    setIsInitializing(true);
-    try {
-      const result = await updateProjectAutoBuild(selectedProjectId);
-      if (result?.success) {
-        setShowUpdateDialog(false);
-        setVersionInfo(null);
-      }
-    } finally {
-      setIsInitializing(false);
-    }
-  };
-
-  const _handleSkipUpdate = () => {
-    setShowUpdateDialog(false);
-    setVersionInfo(null);
   };
 
   const handleGitInitialized = async () => {
@@ -432,26 +396,6 @@ export function Sidebar({
                   {t('common:buttons.initialize')}
                 </>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Update Auto Claude Dialog - Deprecated, updateAvailable is always false now */}
-      <Dialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <RefreshCw className="h-5 w-5" />
-              {t('dialogs:update.title')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('dialogs:update.projectInitialized')}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUpdateDialog(false)}>
-              {t('common:buttons.close')}
             </Button>
           </DialogFooter>
         </DialogContent>
