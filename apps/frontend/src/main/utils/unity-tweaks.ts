@@ -306,16 +306,7 @@ export async function readUnityPackages(projectPath: string): Promise<{
 
   const manifestPath = path.join(projectPath, 'Packages', 'manifest.json');
 
-  if (!(await fs.pathExists(manifestPath))) {
-    return {
-      success: false,
-      error: 'manifest.json not found',
-    };
-  }
-
   try {
-    // Check if the file is readable before attempting to read
-    await fs.access(manifestPath, fs.constants.R_OK);
     const content = await fs.readFile(manifestPath, 'utf-8');
     const manifest = JSON.parse(content);
     const dependencies = manifest.dependencies || {};
