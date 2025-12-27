@@ -4,16 +4,15 @@ import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { IDEATION_TYPE_COLORS } from '../../../shared/constants';
 import type { IdeationType } from '../../../shared/types';
+import { useViewState } from '../../contexts/ViewStateContext';
 import { TypeIcon } from './TypeIcon';
 
 interface IdeationHeaderProps {
   totalIdeas: number;
   ideaCountByType: Record<string, number>;
   showDismissed: boolean;
-  showArchived: boolean;
   selectedCount: number;
   onToggleShowDismissed: () => void;
-  onToggleShowArchived: () => void;
   onOpenConfig: () => void;
   onOpenAddMore: () => void;
   onDismissAll: () => void;
@@ -29,10 +28,8 @@ export function IdeationHeader({
   totalIdeas,
   ideaCountByType,
   showDismissed,
-  showArchived,
   selectedCount,
   onToggleShowDismissed,
-  onToggleShowArchived,
   onOpenConfig,
   onOpenAddMore,
   onDismissAll,
@@ -43,6 +40,8 @@ export function IdeationHeader({
   hasActiveIdeas,
   canAddMore
 }: IdeationHeaderProps) {
+  // Get showArchived from shared context for cross-page sync
+  const { showArchived, toggleShowArchived } = useViewState();
   const hasSelection = selectedCount > 0;
   return (
     <div className="shrink-0 border-b border-border p-4 bg-card/50">
@@ -124,7 +123,7 @@ export function IdeationHeader({
               <Button
                 variant={showArchived ? 'secondary' : 'outline'}
                 size="icon"
-                onClick={onToggleShowArchived}
+                onClick={toggleShowArchived}
               >
                 <Archive className="h-4 w-4" />
               </Button>
