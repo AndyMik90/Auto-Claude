@@ -12,6 +12,14 @@ import { getAugmentedEnv } from '../../env-utils';
 import { getToolPath } from '../../cli-tool-manager';
 
 /**
+ * Operation types for determining which repository to target
+ * - 'issues': Issue-related operations (should use parent repo for forks)
+ * - 'prs': Pull request operations (should use parent repo for forks)
+ * - 'code': Code-related operations (should use fork repo)
+ */
+export type OperationType = 'issues' | 'prs' | 'code';
+
+/**
  * Get GitHub token from gh CLI if available
  * Uses augmented PATH to find gh CLI in common locations (e.g., Homebrew on macOS)
  */
@@ -99,6 +107,34 @@ export function normalizeRepoReference(repo: string): string {
   }
 
   return normalized.trim();
+}
+
+/**
+ * Get the target repository based on fork configuration and operation type
+ * For forks:
+ * - Issues and PRs should be fetched from the parent repository (if available)
+ * - Code operations should use the fork repository
+ * For non-forks:
+ * - Always use the configured repository
+ *
+ * @param config - GitHub configuration containing fork and parent info
+ * @param operationType - Type of operation: 'issues', 'prs', or 'code'
+ * @returns The repository to target in owner/repo format
+ */
+export function getTargetRepo(config: GitHubConfig, operationType: OperationType): string {
+  // If not a fork, always use the configured repo
+  if (!config.isFork) {
+    return config.repo;
+  }
+
+  // For forks, route issues and PRs to parent if available
+  if (operationType === 'issues' || operationType === 'prs') {
+    // If parent repo is available, use it; otherwise fall back to fork
+    return config.parentRepo || config.repo;
+  }
+
+  // Code operations always use the fork
+  return config.repo;
 }
 
 /**

@@ -28,8 +28,9 @@ vi.mock('../../../env-utils', () => ({
 }));
 
 import { existsSync, readFileSync } from 'fs';
-import { getGitHubConfig, normalizeRepoReference } from '../utils';
+import { getGitHubConfig, normalizeRepoReference, getTargetRepo } from '../utils';
 import type { Project } from '../../../../shared/types';
+import type { GitHubConfig } from '../types';
 
 const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>;
 const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>;
@@ -384,6 +385,113 @@ GITHUB_PARENT_REPO=invalid-repo-format`;
 
     it('should trim whitespace', () => {
       expect(normalizeRepoReference('  owner/repo  ')).toBe('owner/repo');
+    });
+  });
+
+  describe('getTargetRepo', () => {
+    // Helper to create a GitHubConfig for testing
+    const createConfig = (overrides: Partial<GitHubConfig> = {}): GitHubConfig => ({
+      token: 'test-token',
+      repo: 'fork-owner/fork-repo',
+      isFork: false,
+      parentRepo: undefined,
+      ...overrides
+    });
+
+    describe('non-fork repositories', () => {
+      it('should return the configured repo for issues', () => {
+        const config = createConfig({ isFork: false });
+        expect(getTargetRepo(config, 'issues')).toBe('fork-owner/fork-repo');
+      });
+
+      it('should return the configured repo for prs', () => {
+        const config = createConfig({ isFork: false });
+        expect(getTargetRepo(config, 'prs')).toBe('fork-owner/fork-repo');
+      });
+
+      it('should return the configured repo for code', () => {
+        const config = createConfig({ isFork: false });
+        expect(getTargetRepo(config, 'code')).toBe('fork-owner/fork-repo');
+      });
+
+      it('should return the configured repo even if parentRepo is set but isFork is false', () => {
+        const config = createConfig({
+          isFork: false,
+          parentRepo: 'parent-owner/parent-repo'
+        });
+        expect(getTargetRepo(config, 'issues')).toBe('fork-owner/fork-repo');
+      });
+    });
+
+    describe('fork repositories with parent configured', () => {
+      it('should return parent repo for issues', () => {
+        const config = createConfig({
+          isFork: true,
+          parentRepo: 'parent-owner/parent-repo'
+        });
+        expect(getTargetRepo(config, 'issues')).toBe('parent-owner/parent-repo');
+      });
+
+      it('should return parent repo for prs', () => {
+        const config = createConfig({
+          isFork: true,
+          parentRepo: 'parent-owner/parent-repo'
+        });
+        expect(getTargetRepo(config, 'prs')).toBe('parent-owner/parent-repo');
+      });
+
+      it('should return fork repo for code operations', () => {
+        const config = createConfig({
+          isFork: true,
+          parentRepo: 'parent-owner/parent-repo'
+        });
+        expect(getTargetRepo(config, 'code')).toBe('fork-owner/fork-repo');
+      });
+    });
+
+    describe('fork repositories without parent configured', () => {
+      it('should fall back to fork repo for issues when no parent is set', () => {
+        const config = createConfig({
+          isFork: true,
+          parentRepo: undefined
+        });
+        expect(getTargetRepo(config, 'issues')).toBe('fork-owner/fork-repo');
+      });
+
+      it('should fall back to fork repo for prs when no parent is set', () => {
+        const config = createConfig({
+          isFork: true,
+          parentRepo: undefined
+        });
+        expect(getTargetRepo(config, 'prs')).toBe('fork-owner/fork-repo');
+      });
+
+      it('should return fork repo for code operations when no parent is set', () => {
+        const config = createConfig({
+          isFork: true,
+          parentRepo: undefined
+        });
+        expect(getTargetRepo(config, 'code')).toBe('fork-owner/fork-repo');
+      });
+    });
+
+    describe('edge cases', () => {
+      it('should handle undefined isFork as false', () => {
+        const config: GitHubConfig = {
+          token: 'test-token',
+          repo: 'fork-owner/fork-repo'
+          // isFork is undefined
+        };
+        expect(getTargetRepo(config, 'issues')).toBe('fork-owner/fork-repo');
+      });
+
+      it('should handle empty string parentRepo as falsy', () => {
+        const config = createConfig({
+          isFork: true,
+          parentRepo: '' as unknown as undefined // Edge case: empty string
+        });
+        expect(getTargetRepo(config, 'issues')).toBe('fork-owner/fork-repo');
+      });
     });
   });
 });
