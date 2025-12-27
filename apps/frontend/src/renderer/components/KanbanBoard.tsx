@@ -18,16 +18,19 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive } from 'lucide-react';
+import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, Settings } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { TaskCard } from './TaskCard';
 import { SortableTaskCard } from './SortableTaskCard';
+import { QueueSettingsModal } from './QueueSettingsModal';
 import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
 import { cn } from '../lib/utils';
 import { persistTaskStatus, archiveTasks } from '../stores/task-store';
+import { updateProjectSettings } from '../stores/project-store';
+import { useProjectStore } from '../stores/project-store';
 import type { Task, TaskStatus } from '../../shared/types';
 
 interface KanbanBoardProps {
@@ -43,6 +46,7 @@ interface DroppableColumnProps {
   isOver: boolean;
   onAddClick?: () => void;
   onArchiveAll?: () => void;
+  onQueueSettings?: () => void;
 }
 
 // Empty state content for each column
@@ -53,6 +57,12 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
         icon: <Inbox className="h-6 w-6 text-muted-foreground/50" />,
         message: t('kanban.emptyBacklog'),
         subtext: t('kanban.emptyBacklogHint')
+      };
+    case 'queue':
+      return {
+        icon: <Loader2 className="h-6 w-6 text-muted-foreground/50" />,
+        message: t('kanban.emptyQueue'),
+        subtext: t('kanban.emptyQueueHint')
       };
     case 'in_progress':
       return {
@@ -86,7 +96,7 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArchiveAll }: DroppableColumnProps) {
+function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArchiveAll, onQueueSettings }: DroppableColumnProps) {
   const { t } = useTranslation('tasks');
   const { setNodeRef } = useDroppable({
     id: status
@@ -98,6 +108,8 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
     switch (status) {
       case 'backlog':
         return 'column-backlog';
+      case 'queue':
+        return 'column-queue';
       case 'in_progress':
         return 'column-in-progress';
       case 'ai_review':
@@ -142,6 +154,17 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
               onClick={onAddClick}
             >
               <Plus className="h-4 w-4" />
+            </Button>
+          )}
+          {status === 'queue' && onQueueSettings && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors"
+              onClick={onQueueSettings}
+              title="Queue Settings"
+            >
+              <Settings className="h-4 w-4" />
             </Button>
           )}
           {status === 'done' && onArchiveAll && tasks.length > 0 && (
@@ -216,6 +239,13 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [showQueueSettings, setShowQueueSettings] = useState(false);
+
+  // Get active project for queue settings
+  const { getActiveProject } = useProjectStore();
+  const activeProject = getActiveProject();
+  const projectId = tasks.length > 0 ? tasks[0].projectId : activeProject?.id || '';
+  const maxParallelTasks = activeProject?.settings.maxParallelTasks ?? 3;
 
   // Count archived tasks for display
   const archivedCount = useMemo(() => {
@@ -244,6 +274,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
   const tasksByStatus = useMemo(() => {
     const grouped: Record<TaskStatus, Task[]> = {
       backlog: [],
+      queue: [],
       in_progress: [],
       ai_review: [],
       human_review: [],
@@ -282,6 +313,21 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
     const result = await archiveTasks(projectId, doneTaskIds);
     if (!result.success) {
       console.error('[KanbanBoard] Failed to archive tasks:', result.error);
+    }
+  };
+
+  const handleSaveQueueSettings = async (newMaxParallel: number) => {
+    if (!projectId) {
+      console.error('[KanbanBoard] No projectId found');
+      return;
+    }
+
+    const success = await updateProjectSettings(projectId, {
+      maxParallelTasks: newMaxParallel
+    });
+
+    if (!success) {
+      console.error('[KanbanBoard] Failed to save queue settings');
     }
   };
 
@@ -391,6 +437,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
               onTaskClick={onTaskClick}
               isOver={overColumnId === status}
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
+              onQueueSettings={status === 'queue' ? () => setShowQueueSettings(true) : undefined}
               onArchiveAll={status === 'done' ? handleArchiveAll : undefined}
             />
           ))}
@@ -405,6 +452,15 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Queue Settings Modal */}
+      <QueueSettingsModal
+        open={showQueueSettings}
+        onOpenChange={setShowQueueSettings}
+        projectId={projectId}
+        currentMaxParallel={maxParallelTasks}
+        onSave={handleSaveQueueSettings}
+      />
     </div>
   );
 }
