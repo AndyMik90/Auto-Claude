@@ -5,6 +5,10 @@
 export interface GitHubConfig {
   token: string;
   repo: string;
+  /** Whether this repository is a fork */
+  isFork?: boolean;
+  /** Parent repository in owner/repo format (e.g., 'original-owner/repo-name') */
+  parentRepo?: string;
 }
 
 export interface GitHubAPIIssue {
@@ -35,6 +39,14 @@ export interface GitHubAPIRepository {
   default_branch: string;
   private: boolean;
   owner: { login: string; avatar_url?: string };
+  fork?: boolean;
+  parent?: {
+    id: number;
+    name: string;
+    full_name: string;
+    owner: { login: string; avatar_url?: string };
+    html_url: string;
+  };
 }
 
 export interface GitHubAPIComment {

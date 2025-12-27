@@ -185,6 +185,11 @@ export const integrationMock = {
     data: 'user/example-repo'
   }),
 
+  detectFork: async () => ({
+    success: true,
+    data: { isFork: false }
+  }),
+
   getGitHubBranches: async () => ({
     success: true,
     data: ['main', 'develop', 'feature/example']

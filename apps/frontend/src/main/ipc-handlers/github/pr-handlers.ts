@@ -13,7 +13,7 @@ import type { BrowserWindow } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { IPC_CHANNELS, MODEL_ID_MAP, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING } from '../../../shared/constants';
-import { getGitHubConfig, githubFetch } from './utils';
+import { getGitHubConfig, githubFetch, getTargetRepo } from './utils';
 import { readSettingsFile } from '../../settings-utils';
 import { getAugmentedEnv } from '../../env-utils';
 import type { Project, AppSettings } from '../../../shared/types';
@@ -344,9 +344,11 @@ export function registerPRHandlers(
         }
 
         try {
+          // Use parent repo for PRs when this is a fork
+          const targetRepo = getTargetRepo(config, true);
           const prs = await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls?state=open&per_page=50`
+            `/repos/${targetRepo}/pulls?state=open&per_page=50`
           ) as Array<{
             number: number;
             title: string;
@@ -401,9 +403,11 @@ export function registerPRHandlers(
         if (!config) return null;
 
         try {
+          // Use parent repo for PRs when this is a fork
+          const targetRepo = getTargetRepo(config, true);
           const pr = await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls/${prNumber}`
+            `/repos/${targetRepo}/pulls/${prNumber}`
           ) as {
             number: number;
             title: string;
@@ -423,7 +427,7 @@ export function registerPRHandlers(
 
           const files = await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls/${prNumber}/files`
+            `/repos/${targetRepo}/pulls/${prNumber}/files`
           ) as Array<{
             filename: string;
             additions: number;
@@ -533,6 +537,8 @@ export function registerPRHandlers(
           const config = getGitHubConfig(project);
           if (config) {
             try {
+              // Use parent repo for PRs when this is a fork
+              const targetRepo = getTargetRepo(config, true);
               // Get current user
               const user = await githubFetch(config.token, '/user') as { login: string };
               debugLog('Auto-assigning user to PR', { prNumber, username: user.login });
@@ -540,7 +546,7 @@ export function registerPRHandlers(
               // Assign to PR
               await githubFetch(
                 config.token,
-                `/repos/${config.repo}/issues/${prNumber}/assignees`,
+                `/repos/${targetRepo}/issues/${prNumber}/assignees`,
                 {
                   method: 'POST',
                   body: JSON.stringify({ assignees: [user.login] }),
@@ -606,6 +612,9 @@ export function registerPRHandlers(
           return false;
         }
 
+        // Use parent repo for PRs when this is a fork
+        const targetRepo = getTargetRepo(config, true);
+
         try {
           // Filter findings if selection provided
           const selectedSet = selectedFindingIds ? new Set(selectedFindingIds) : null;
@@ -660,7 +669,7 @@ export function registerPRHandlers(
           try {
             const reviewResponse = await githubFetch(
               config.token,
-              `/repos/${config.repo}/pulls/${prNumber}/reviews`,
+              `/repos/${targetRepo}/pulls/${prNumber}/reviews`,
               {
                 method: 'POST',
                 body: JSON.stringify({
@@ -679,7 +688,7 @@ export function registerPRHandlers(
               debugLog('Cannot use REQUEST_CHANGES/APPROVE on own PR, falling back to COMMENT', { prNumber });
               const fallbackResponse = await githubFetch(
                 config.token,
-                `/repos/${config.repo}/pulls/${prNumber}/reviews`,
+                `/repos/${targetRepo}/pulls/${prNumber}/reviews`,
                 {
                   method: 'POST',
                   body: JSON.stringify({
@@ -789,13 +798,16 @@ export function registerPRHandlers(
           return false;
         }
 
+        // Use parent repo for PRs when this is a fork
+        const targetRepo = getTargetRepo(config, true);
+
         try {
           debugLog('Deleting review from GitHub', { prNumber, reviewId: result.reviewId });
 
           // Delete review via GitHub API
           await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls/${prNumber}/reviews/${result.reviewId}`,
+            `/repos/${targetRepo}/pulls/${prNumber}/reviews/${result.reviewId}`,
             {
               method: 'DELETE',
             }
@@ -873,11 +885,14 @@ export function registerPRHandlers(
         const config = getGitHubConfig(project);
         if (!config) return false;
 
+        // Use parent repo for PRs when this is a fork
+        const targetRepo = getTargetRepo(config, true);
+
         try {
           // Use GitHub API to add assignee
           await githubFetch(
             config.token,
-            `/repos/${config.repo}/issues/${prNumber}/assignees`,
+            `/repos/${targetRepo}/issues/${prNumber}/assignees`,
             {
               method: 'POST',
               body: JSON.stringify({ assignees: [username] }),
@@ -964,11 +979,14 @@ export function registerPRHandlers(
           return { hasNewCommits: false, newCommitCount: 0 };
         }
 
+        // Use parent repo for PRs when this is a fork
+        const targetRepo = getTargetRepo(config, true);
+
         try {
           // Get PR data to find current HEAD
           const prData = (await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls/${prNumber}`
+            `/repos/${targetRepo}/pulls/${prNumber}`
           )) as { head: { sha: string }; commits: number };
 
           const currentHeadSha = prData.head.sha;
@@ -985,7 +1003,7 @@ export function registerPRHandlers(
           // Get comparison to count new commits
           const comparison = (await githubFetch(
             config.token,
-            `/repos/${config.repo}/compare/${reviewedCommitSha}...${currentHeadSha}`
+            `/repos/${targetRepo}/compare/${reviewedCommitSha}...${currentHeadSha}`
           )) as { ahead_by?: number; total_commits?: number };
 
           return {

@@ -289,6 +289,7 @@ export interface ProjectEnvConfig {
   githubRepo?: string; // Format: owner/repo
   githubAutoSync?: boolean; // Auto-sync issues on project load
   githubAuthMethod?: 'oauth' | 'pat'; // How the token was obtained
+  githubParentRepo?: string; // Manual parent repo override for forks (Format: owner/repo)
 
   // Git/Worktree Settings
   defaultBranch?: string; // Base branch for worktree creation (e.g., 'main', 'develop')

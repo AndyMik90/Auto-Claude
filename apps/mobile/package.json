@@ -1,0 +1,59 @@
+{
+  "name": "autoclaude-mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/netinfo": "^11.4.1",
+    "@tanstack/react-query": "^5.90.12",
+    "expo": "~54.0.30",
+    "expo-camera": "^17.0.10",
+    "expo-constants": "~18.0.12",
+    "expo-linking": "~8.0.11",
+    "expo-local-authentication": "^17.0.8",
+    "expo-notifications": "^0.32.15",
+    "expo-router": "~6.0.21",
+    "expo-secure-store": "^15.0.8",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-pager-view": "~6.9.1",
+    "react-native-paper": "^5.14.5",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-tab-view": "^4.2.2",
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-worklets": "0.5.1",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^29.5.14",
+    "@types/react": "~19.1.0",
+    "@types/react-native-vector-icons": "^6.4.18",
+    "jest": "~29.7.0",
+    "jest-expo": "^54.0.16",
+    "typescript": "~5.9.2"
+  },
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|react-native-paper|react-native-vector-icons|@tanstack/.*|zustand)"
+    ],
+    "setupFilesAfterEnv": [
+      "@testing-library/jest-native/extend-expect"
+    ]
+  }
+}

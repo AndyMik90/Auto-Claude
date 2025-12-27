@@ -62,6 +62,9 @@ export function registerEnvHandlers(
     if (config.githubAutoSync !== undefined) {
       existingVars['GITHUB_AUTO_SYNC'] = config.githubAutoSync ? 'true' : 'false';
     }
+    if (config.githubParentRepo !== undefined) {
+      existingVars['GITHUB_PARENT_REPO'] = config.githubParentRepo;
+    }
     // Git/Worktree Settings
     if (config.defaultBranch !== undefined) {
       existingVars['DEFAULT_BRANCH'] = config.defaultBranch;
@@ -133,6 +136,8 @@ ${existingVars['LINEAR_REALTIME_SYNC'] !== undefined ? `LINEAR_REALTIME_SYNC=${e
 ${existingVars['GITHUB_TOKEN'] ? `GITHUB_TOKEN=${existingVars['GITHUB_TOKEN']}` : '# GITHUB_TOKEN='}
 ${existingVars['GITHUB_REPO'] ? `GITHUB_REPO=${existingVars['GITHUB_REPO']}` : '# GITHUB_REPO=owner/repo'}
 ${existingVars['GITHUB_AUTO_SYNC'] !== undefined ? `GITHUB_AUTO_SYNC=${existingVars['GITHUB_AUTO_SYNC']}` : '# GITHUB_AUTO_SYNC=false'}
+# Parent repository for forks (overrides auto-detection)
+${existingVars['GITHUB_PARENT_REPO'] ? `GITHUB_PARENT_REPO=${existingVars['GITHUB_PARENT_REPO']}` : '# GITHUB_PARENT_REPO=owner/repo'}
 
 # =============================================================================
 # GIT/WORKTREE SETTINGS (OPTIONAL)
@@ -271,6 +276,9 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       }
       if (vars['GITHUB_AUTO_SYNC']?.toLowerCase() === 'true') {
         config.githubAutoSync = true;
+      }
+      if (vars['GITHUB_PARENT_REPO']) {
+        config.githubParentRepo = vars['GITHUB_PARENT_REPO'];
       }
 
       // Git/Worktree config

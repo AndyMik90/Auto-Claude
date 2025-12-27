@@ -6,7 +6,7 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult, GitHubIssue } from '../../../shared/types';
 import { projectStore } from '../../project-store';
-import { getGitHubConfig, githubFetch, normalizeRepoReference } from './utils';
+import { getGitHubConfig, githubFetch, getTargetRepo } from './utils';
 import type { GitHubAPIIssue, GitHubAPIComment } from './types';
 
 /**
@@ -57,8 +57,9 @@ export function registerGetIssues(): void {
       }
 
       try {
-        const normalizedRepo = normalizeRepoReference(config.repo);
-        if (!normalizedRepo) {
+        // Use parent repo for issues when this is a fork
+        const targetRepo = getTargetRepo(config, true);
+        if (!targetRepo) {
           return {
             success: false,
             error: 'Invalid repository format. Use owner/repo or GitHub URL.'
@@ -67,7 +68,7 @@ export function registerGetIssues(): void {
 
         const issues = await githubFetch(
           config.token,
-          `/repos/${normalizedRepo}/issues?state=${state}&per_page=100&sort=updated`
+          `/repos/${targetRepo}/issues?state=${state}&per_page=100&sort=updated`
         );
 
         // Ensure issues is an array
@@ -82,7 +83,7 @@ export function registerGetIssues(): void {
         const issuesOnly = issues.filter((issue: GitHubAPIIssue) => !issue.pull_request);
 
         const result: GitHubIssue[] = issuesOnly.map((issue: GitHubAPIIssue) =>
-          transformIssue(issue, normalizedRepo)
+          transformIssue(issue, targetRepo)
         );
 
         return { success: true, data: result };
@@ -114,8 +115,9 @@ export function registerGetIssue(): void {
       }
 
       try {
-        const normalizedRepo = normalizeRepoReference(config.repo);
-        if (!normalizedRepo) {
+        // Use parent repo for issues when this is a fork
+        const targetRepo = getTargetRepo(config, true);
+        if (!targetRepo) {
           return {
             success: false,
             error: 'Invalid repository format. Use owner/repo or GitHub URL.'
@@ -124,10 +126,10 @@ export function registerGetIssue(): void {
 
         const issue = await githubFetch(
           config.token,
-          `/repos/${normalizedRepo}/issues/${issueNumber}`
+          `/repos/${targetRepo}/issues/${issueNumber}`
         ) as GitHubAPIIssue;
 
-        const result = transformIssue(issue, normalizedRepo);
+        const result = transformIssue(issue, targetRepo);
 
         return { success: true, data: result };
       } catch (error) {
@@ -158,8 +160,9 @@ export function registerGetIssueComments(): void {
       }
 
       try {
-        const normalizedRepo = normalizeRepoReference(config.repo);
-        if (!normalizedRepo) {
+        // Use parent repo for issue comments when this is a fork
+        const targetRepo = getTargetRepo(config, true);
+        if (!targetRepo) {
           return {
             success: false,
             error: 'Invalid repository format. Use owner/repo or GitHub URL.'
@@ -168,7 +171,7 @@ export function registerGetIssueComments(): void {
 
         const comments = await githubFetch(
           config.token,
-          `/repos/${normalizedRepo}/issues/${issueNumber}/comments`
+          `/repos/${targetRepo}/issues/${issueNumber}/comments`
         ) as GitHubAPIComment[];
 
         return { success: true, data: comments };

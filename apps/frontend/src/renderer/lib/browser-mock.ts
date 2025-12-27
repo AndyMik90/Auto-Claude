@@ -128,6 +128,7 @@ const browserMockAPI: ElectronAPI = {
     getGitHubUser: async () => ({ success: true, data: { username: '' } }),
     listGitHubUserRepos: async () => ({ success: true, data: { repos: [] } }),
     detectGitHubRepo: async () => ({ success: true, data: '' }),
+    detectFork: async () => ({ success: true, data: { isFork: false } }),
     getGitHubBranches: async () => ({ success: true, data: [] }),
     createGitHubRepo: async () => ({ success: true, data: { fullName: '', url: '' } }),
     addGitRemote: async () => ({ success: true, data: { remoteUrl: '' } }),

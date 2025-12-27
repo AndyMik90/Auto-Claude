@@ -12,6 +12,19 @@ import type {
 import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
 
 /**
+ * Result of fork status detection
+ */
+export interface ForkStatusResult {
+  isFork: boolean;
+  parentRepository?: {
+    owner: string;
+    name: string;
+    fullName: string;
+    url: string;
+  };
+}
+
+/**
  * Auto-fix configuration
  */
 export interface AutoFixConfig {
@@ -162,6 +175,7 @@ export interface GitHubAPI {
 
   // Repository detection and management
   detectGitHubRepo: (projectPath: string) => Promise<IPCResult<string>>;
+  detectFork: (projectId: string) => Promise<IPCResult<ForkStatusResult>>;
   getGitHubBranches: (repo: string, token: string) => Promise<IPCResult<string[]>>;
   createGitHubRepo: (
     repoName: string,
@@ -412,6 +426,9 @@ export const createGitHubAPI = (): GitHubAPI => ({
   // Repository detection and management
   detectGitHubRepo: (projectPath: string): Promise<IPCResult<string>> =>
     invokeIpc(IPC_CHANNELS.GITHUB_DETECT_REPO, projectPath),
+
+  detectFork: (projectId: string): Promise<IPCResult<ForkStatusResult>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_DETECT_FORK, projectId),
 
   getGitHubBranches: (repo: string, token: string): Promise<IPCResult<string[]>> =>
     invokeIpc(IPC_CHANNELS.GITHUB_GET_BRANCHES, repo, token),
