@@ -7,8 +7,8 @@
  *
  * To run: npx playwright test --config=e2e/playwright.config.ts insights-isolation
  */
-import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'fs';
+import { test, expect, _electron as _electron, ElectronApplication, Page } from '@playwright/test';
+import { mkdirSync, rmSync, existsSync } from 'fs';
 import path from 'path';
 
 // Test data directories
@@ -70,7 +70,7 @@ function getSessionKey(projectId: string, sessionId: string): string {
 
 test.describe('Insights Cross-Session Isolation (Interactive)', () => {
   let app: ElectronApplication;
-  let page: Page;
+  let _page: Page;
 
   test.beforeAll(async () => {
     setupTestEnvironment();
@@ -147,7 +147,7 @@ test.describe('Insights Cross-Session Isolation (Interactive)', () => {
 
 test.describe('Insights Cross-Project Isolation (Interactive)', () => {
   let app: ElectronApplication;
-  let page: Page;
+  let _page: Page;
 
   test.beforeAll(async () => {
     setupTestEnvironment();
@@ -268,8 +268,9 @@ test.describe('Insights Session Isolation (Mock-based)', () => {
     setupTestEnvironment();
 
     const sessionStates = new Map<string, MockSessionState>();
-    const activeProjectId = 'project-1';
-    const activeSessionId = 'session-a';
+    // Active context is project-1:session-a
+    const _activeProjectId = 'project-1';
+    const _activeSessionId = 'session-a';
 
     // Initialize both sessions
     const sessionAKey = getSessionKey('project-1', 'session-a');
@@ -344,8 +345,9 @@ test.describe('Insights Session Isolation (Mock-based)', () => {
     setupTestEnvironment();
 
     const sessionStates = new Map<string, MockSessionState>();
-    let activeProjectId = 'project-1';
-    let activeSessionId = 'session-a';
+    // Track which session is active (simulating component state)
+    const _activeProjectId = 'project-1';
+    let _activeSessionId = 'session-a';
 
     // Set up initial state for session A
     const sessionAKey = getSessionKey('project-1', 'session-a');
@@ -357,7 +359,7 @@ test.describe('Insights Session Isolation (Mock-based)', () => {
     }));
 
     // Switch to session B
-    activeSessionId = 'session-b';
+    _activeSessionId = 'session-b';
     const sessionBKey = getSessionKey('project-1', 'session-b');
     sessionStates.set(sessionBKey, createMockSessionState());
 
@@ -366,7 +368,7 @@ test.describe('Insights Session Isolation (Mock-based)', () => {
     expect(sessionStates.get(sessionBKey)?.currentTool).toBeNull();
 
     // Switch back to session A - state should be preserved
-    activeSessionId = 'session-a';
+    _activeSessionId = 'session-a';
     const restoredState = sessionStates.get(sessionAKey);
 
     expect(restoredState?.streamingContent).toBe('Session A content');
