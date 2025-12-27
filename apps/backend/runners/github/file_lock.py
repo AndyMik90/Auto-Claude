@@ -295,10 +295,10 @@ async def locked_write(
         try:
             # Open temp file and yield to caller
             f = os.fdopen(fd, mode)
-            yield f
-
-            # Ensure file is closed before rename
-            f.close()
+            try:
+                yield f
+            finally:
+                f.close()
 
             # Atomic replace
             await asyncio.get_running_loop().run_in_executor(
@@ -442,11 +442,13 @@ async def locked_json_update(
 
     try:
         # Read current data
-        if filepath.exists():
-            with open(filepath) as f:
-                data = json.load(f)
-        else:
-            data = None
+        def _read_json():
+            if filepath.exists():
+                with open(filepath) as f:
+                    return json.load(f)
+            return None
+
+        data = await asyncio.get_running_loop().run_in_executor(None, _read_json)
 
         # Apply update function
         updated_data = updater(data)
