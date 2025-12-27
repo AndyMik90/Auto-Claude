@@ -63,6 +63,8 @@
   "kanban": {
     "emptyBacklog": "Aucune tâche planifiée",
     "emptyBacklogHint": "Ajoutez une tâche pour commencer",
+    "emptyQueue": "File d'attente vide",
+    "emptyQueueHint": "Les tâches attendent ici avant de démarrer",
     "emptyInProgress": "Rien en cours",
     "emptyInProgressHint": "Démarrez une tâche depuis le Backlog",
     "emptyAiReview": "Aucune tâche en révision",

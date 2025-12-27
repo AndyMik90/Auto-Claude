@@ -19,17 +19,18 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw } from 'lucide-react';
+import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, Settings } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { TaskCard } from './TaskCard';
 import { SortableTaskCard } from './SortableTaskCard';
+import { QueueSettingsModal } from './QueueSettingsModal';
 import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
 import { cn } from '../lib/utils';
-import { persistTaskStatus, forceCompleteTask, archiveTasks } from '../stores/task-store';
-import { useToast } from '../hooks/use-toast';
-import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
+import { persistTaskStatus, archiveTasks } from '../stores/task-store';
+import { updateProjectSettings } from '../stores/project-store';
+import { useProjectStore } from '../stores/project-store';
 import type { Task, TaskStatus } from '../../shared/types';
 
 // Type guard for valid drop column targets - preserves literal type from TASK_STATUS_COLUMNS
@@ -54,62 +55,7 @@ interface DroppableColumnProps {
   isOver: boolean;
   onAddClick?: () => void;
   onArchiveAll?: () => void;
-  archivedCount?: number;
-  showArchived?: boolean;
-  onToggleArchived?: () => void;
-}
-
-/**
- * Compare two tasks arrays for meaningful changes.
- * Returns true if tasks are equivalent (should skip re-render).
- */
-function tasksAreEquivalent(prevTasks: Task[], nextTasks: Task[]): boolean {
-  if (prevTasks.length !== nextTasks.length) return false;
-  if (prevTasks === nextTasks) return true;
-
-  // Compare by ID and fields that affect rendering
-  for (let i = 0; i < prevTasks.length; i++) {
-    const prev = prevTasks[i];
-    const next = nextTasks[i];
-    if (
-      prev.id !== next.id ||
-      prev.status !== next.status ||
-      prev.executionProgress?.phase !== next.executionProgress?.phase ||
-      prev.updatedAt !== next.updatedAt
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/**
- * Custom comparator for DroppableColumn memo.
- */
-function droppableColumnPropsAreEqual(
-  prevProps: DroppableColumnProps,
-  nextProps: DroppableColumnProps
-): boolean {
-  // Quick checks first
-  if (prevProps.status !== nextProps.status) return false;
-  if (prevProps.isOver !== nextProps.isOver) return false;
-  if (prevProps.onTaskClick !== nextProps.onTaskClick) return false;
-  if (prevProps.onStatusChange !== nextProps.onStatusChange) return false;
-  if (prevProps.onAddClick !== nextProps.onAddClick) return false;
-  if (prevProps.onArchiveAll !== nextProps.onArchiveAll) return false;
-  if (prevProps.archivedCount !== nextProps.archivedCount) return false;
-  if (prevProps.showArchived !== nextProps.showArchived) return false;
-  if (prevProps.onToggleArchived !== nextProps.onToggleArchived) return false;
-
-  // Deep compare tasks
-  const tasksEqual = tasksAreEquivalent(prevProps.tasks, nextProps.tasks);
-
-  // Only log when re-rendering (reduces noise)
-  if (window.DEBUG && !tasksEqual) {
-    console.log(`[DroppableColumn] Re-render: ${nextProps.status} column (${nextProps.tasks.length} tasks)`);
-  }
-
-  return tasksEqual;
+  onQueueSettings?: () => void;
 }
 
 // Empty state content for each column
@@ -120,6 +66,12 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
         icon: <Inbox className="h-6 w-6 text-muted-foreground/50" />,
         message: t('kanban.emptyBacklog'),
         subtext: t('kanban.emptyBacklogHint')
+      };
+    case 'queue':
+      return {
+        icon: <Loader2 className="h-6 w-6 text-muted-foreground/50" />,
+        message: t('kanban.emptyQueue'),
+        subtext: t('kanban.emptyQueueHint')
       };
     case 'in_progress':
       return {
@@ -153,8 +105,8 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, archivedCount, showArchived, onToggleArchived }: DroppableColumnProps) {
-  const { t } = useTranslation(['tasks', 'common']);
+function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArchiveAll, onQueueSettings }: DroppableColumnProps) {
+  const { t } = useTranslation('tasks');
   const { setNodeRef } = useDroppable({
     id: status
   });
@@ -197,6 +149,8 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
     switch (status) {
       case 'backlog':
         return 'column-backlog';
+      case 'queue':
+        return 'column-queue';
       case 'in_progress':
         return 'column-in-progress';
       case 'ai_review':
@@ -244,7 +198,18 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
               <Plus className="h-4 w-4" />
             </Button>
           )}
-          {status === 'done' && onArchiveAll && tasks.length > 0 && !showArchived && (
+          {status === 'queue' && onQueueSettings && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors"
+              onClick={onQueueSettings}
+              title="Queue Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
+          {status === 'done' && onArchiveAll && tasks.length > 0 && (
             <Button
               variant="ghost"
               size="icon"
@@ -337,7 +302,14 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const { toast } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
-  const { showArchived, toggleShowArchived } = useViewState();
+  const [showArchived, setShowArchived] = useState(false);
+  const [showQueueSettings, setShowQueueSettings] = useState(false);
+
+  // Get active project for queue settings
+  const { getActiveProject } = useProjectStore();
+  const activeProject = getActiveProject();
+  const projectId = tasks.length > 0 ? tasks[0].projectId : activeProject?.id || '';
+  const maxParallelTasks = activeProject?.settings.maxParallelTasks ?? 3;
 
   // Worktree cleanup dialog state
   const [worktreeCleanupDialog, setWorktreeCleanupDialog] = useState<{
@@ -385,6 +357,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     // Note: pr_created tasks are shown in the 'done' column since they're essentially complete
     const grouped: Record<typeof TASK_STATUS_COLUMNS[number], Task[]> = {
       backlog: [],
+      queue: [],
       in_progress: [],
       ai_review: [],
       human_review: [],
@@ -425,6 +398,21 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     const result = await archiveTasks(projectId, doneTaskIds);
     if (!result.success) {
       console.error('[KanbanBoard] Failed to archive tasks:', result.error);
+    }
+  };
+
+  const handleSaveQueueSettings = async (newMaxParallel: number) => {
+    if (!projectId) {
+      console.error('[KanbanBoard] No projectId found');
+      return;
+    }
+
+    const success = await updateProjectSettings(projectId, {
+      maxParallelTasks: newMaxParallel
+    });
+
+    if (!success) {
+      console.error('[KanbanBoard] Failed to save queue settings');
     }
   };
 
@@ -590,6 +578,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               onStatusChange={handleStatusChange}
               isOver={overColumnId === status}
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
+              onQueueSettings={status === 'queue' ? () => setShowQueueSettings(true) : undefined}
               onArchiveAll={status === 'done' ? handleArchiveAll : undefined}
               archivedCount={status === 'done' ? archivedCount : undefined}
               showArchived={status === 'done' ? showArchived : undefined}
@@ -608,19 +597,13 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         </DragOverlay>
       </DndContext>
 
-      {/* Worktree cleanup confirmation dialog */}
-      <WorktreeCleanupDialog
-        open={worktreeCleanupDialog.open}
-        taskTitle={worktreeCleanupDialog.taskTitle}
-        worktreePath={worktreeCleanupDialog.worktreePath}
-        isProcessing={worktreeCleanupDialog.isProcessing}
-        error={worktreeCleanupDialog.error}
-        onOpenChange={(open) => {
-          if (!open && !worktreeCleanupDialog.isProcessing) {
-            setWorktreeCleanupDialog(prev => ({ ...prev, open: false, error: undefined }));
-          }
-        }}
-        onConfirm={handleWorktreeCleanupConfirm}
+      {/* Queue Settings Modal */}
+      <QueueSettingsModal
+        open={showQueueSettings}
+        onOpenChange={setShowQueueSettings}
+        projectId={projectId}
+        currentMaxParallel={maxParallelTasks}
+        onSave={handleSaveQueueSettings}
       />
     </div>
   );

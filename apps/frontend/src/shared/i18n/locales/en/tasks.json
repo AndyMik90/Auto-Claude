@@ -63,6 +63,8 @@
   "kanban": {
     "emptyBacklog": "No tasks planned",
     "emptyBacklogHint": "Add a task to get started",
+    "emptyQueue": "Queue is empty",
+    "emptyQueueHint": "Tasks wait here before starting",
     "emptyInProgress": "Nothing running",
     "emptyInProgressHint": "Start a task from Backlog",
     "emptyAiReview": "No tasks in review",
