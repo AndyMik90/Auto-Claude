@@ -125,6 +125,13 @@ export function TaskSubtasks({ task, phaseLogs, onViewAllLogs }: TaskSubtasksPro
       .filter((s): s is Subtask => s != null);
   }, [task.subtasks, sortMode, relevanceScores]);
 
+  // Precompute original indices (1-based) for O(1) lookup instead of O(n) findIndex per subtask
+  const originalIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    task.subtasks.forEach((s, idx) => map.set(s.id, idx + 1));
+    return map;
+  }, [task.subtasks]);
+
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-3">
@@ -192,8 +199,8 @@ export function TaskSubtasks({ task, phaseLogs, onViewAllLogs }: TaskSubtasksPro
                 : { modified: [], read: [] };
               // Get relevance score for this subtask
               const relevanceScore = relevanceScores.get(subtask.id);
-              // Original index (1-based) for display
-              const originalIndex = task.subtasks.findIndex(s => s.id === subtask.id) + 1;
+              // Original index (1-based) for display - O(1) lookup from precomputed map
+              const originalIndex = originalIndexMap.get(subtask.id) ?? 0;
 
               return (
                 <Collapsible
@@ -244,9 +251,9 @@ export function TaskSubtasks({ task, phaseLogs, onViewAllLogs }: TaskSubtasksPro
                                   <div className="text-xs space-y-1">
                                     <p className="font-medium">{t('detail.scoring.relevanceScore')}: {Math.round(relevanceScore.totalScore)}</p>
                                     <p className="text-muted-foreground">
-                                      {relevanceScore.actionCount} actions •
-                                      Avg: {Math.round(relevanceScore.averageScore)} •
-                                      Top: {Math.round(relevanceScore.topScore)}
+                                      {t('detail.scoring.actionsCount', { count: relevanceScore.actionCount })} •{' '}
+                                      {t('detail.scoring.averageScore', { value: Math.round(relevanceScore.averageScore) })} •{' '}
+                                      {t('detail.scoring.topScore', { value: Math.round(relevanceScore.topScore) })}
                                     </p>
                                     {relevanceScore.hasErrors && (
                                       <p className="text-destructive">{t('detail.subtasks.containsErrors')}</p>

@@ -72,7 +72,7 @@ function getToolInfo(toolName: string) {
 function formatTime(timestamp: string): string {
   try {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   } catch {
     return '';
   }
@@ -321,10 +321,10 @@ function SubphaseGroup({ subphase, actions, defaultExpanded = true }: SubphaseGr
 }
 
 /**
- * Get filename from a path
+ * Get filename from a path (handles both Unix and Windows separators)
  */
 function getFilenameFromPath(path: string): string {
-  const parts = path.split('/');
+  const parts = path.split(/[\\/]/);
   return parts[parts.length - 1] || path;
 }
 

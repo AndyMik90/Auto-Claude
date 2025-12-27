@@ -122,7 +122,11 @@
       "longDuration": "Durée longue",
       "newActionType": "Nouveau type d'action",
       "standardAction": "Action standard",
-      "relevanceScore": "Score de pertinence"
+      "relevanceScore": "Score de pertinence",
+      "actionsCount_one": "{{count}} action",
+      "actionsCount_other": "{{count}} actions",
+      "averageScore": "Moy: {{value}}",
+      "topScore": "Max: {{value}}"
     }
   }
 }

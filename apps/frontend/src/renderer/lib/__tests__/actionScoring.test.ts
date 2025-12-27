@@ -386,12 +386,9 @@ describe('Action Scoring Algorithm', () => {
 
       const result = filterTopActions(actions, 5);
 
-      // Earlier actions should win tiebreaker
-      result.forEach((scored, resultIndex) => {
-        if (resultIndex > 0) {
-          expect(scored.index).toBeGreaterThanOrEqual(result[resultIndex - 1].index);
-        }
-      });
+      // Earlier actions should win tiebreaker - exact original order preserved
+      const resultIndices = result.map(scored => scored.index);
+      expect(resultIndices).toEqual([0, 1, 2, 3, 4]);
     });
 
     it('should filter by subtask_id when provided', () => {

@@ -223,12 +223,12 @@ export function calculateAverageDuration(actions: TaskLogEntry[]): number | unde
  * Check if action duration is anomalous (significantly longer than average)
  */
 export function isTimeAnomaly(action: TaskLogEntry, averageDuration?: number): boolean {
-  if (averageDuration === undefined) {
-    return false;
-  }
-
   const duration = parseDuration(action);
-  if (duration === undefined) {
+
+  // Return false if either value is undefined
+  // Note: parseDuration currently always returns undefined (see TODO in that function)
+  // Once duration tracking is implemented in TaskLogEntry, this function will work correctly
+  if (averageDuration === undefined || duration === undefined) {
     return false;
   }
 
@@ -679,27 +679,28 @@ function extractFilePathFromInput(input: string): string | null {
 
   // Look for file path patterns in the string
   // Extension length up to 10 chars to cover .typescript, .properties, etc.
+  // Note: Quoted patterns come first to correctly extract paths without quotes
+  // Note: No /g flag - we use exec() and only need the first match
   const pathPatterns = [
-    // Unix absolute paths (e.g., /home/user/file.ts)
-    /\/[\w\-./]+\.[a-zA-Z]{1,10}/g,
-    // Unix relative paths (e.g., ./src/file.ts)
-    /\.\/[\w\-./]+\.[a-zA-Z]{1,10}/g,
-    // Windows absolute paths (e.g., C:\Users\file.ts)
-    /[A-Za-z]:\\[\w\-.\\]+\.[a-zA-Z]{1,10}/g,
-    // Windows relative paths (e.g., .\src\file.ts)
-    /\.\\[\w\-.\\]+\.[a-zA-Z]{1,10}/g,
-    // Paths in double quotes (Unix or Windows)
-    /"([^"]+\.[a-zA-Z]{1,10})"/g,
+    // Paths in double quotes (Unix or Windows) - checked first to extract without quotes
+    /"([^"]+\.[a-zA-Z]{1,10})"/,
     // Paths in single quotes (Unix or Windows)
-    /'([^']+\.[a-zA-Z]{1,10})'/g,
+    /'([^']+\.[a-zA-Z]{1,10})'/,
+    // Unix absolute paths (e.g., /home/user/file.ts)
+    /\/[\w\-./]+\.[a-zA-Z]{1,10}/,
+    // Unix relative paths (e.g., ./src/file.ts)
+    /\.\/[\w\-./]+\.[a-zA-Z]{1,10}/,
+    // Windows absolute paths (e.g., C:\Users\file.ts)
+    /[A-Za-z]:\\[\w\-.\\]+\.[a-zA-Z]{1,10}/,
+    // Windows relative paths (e.g., .\src\file.ts)
+    /\.\\[\w\-.\\]+\.[a-zA-Z]{1,10}/,
   ];
 
   for (const pattern of pathPatterns) {
-    const match = trimmed.match(pattern);
-    if (match && match.length > 0) {
-      // Clean up the match (remove surrounding quotes if present)
-      const cleanPath = match[0].replace(/^["']|["']$/g, '');
-      return cleanPath;
+    const match = pattern.exec(trimmed);
+    if (match) {
+      // Prefer captured group (match[1]) for quoted patterns, otherwise use full match (match[0])
+      return match[1] ?? match[0];
     }
   }
 
