@@ -1,0 +1,102 @@
+{
+  "buttons": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "skip": "Überspringen",
+    "next": "Weiter",
+    "back": "Zurück",
+    "close": "Schließen",
+    "initialize": "Initialisieren",
+    "delete": "Löschen",
+    "confirm": "Bestätigen",
+    "retry": "Wiederholen",
+    "create": "Erstellen",
+    "open": "Öffnen",
+    "start": "Starten",
+    "stop": "Stoppen",
+    "refresh": "Aktualisieren",
+    "merge": "Zusammenführen",
+    "discard": "Verwerfen",
+    "switch": "Wechseln",
+    "add": "Hinzufügen",
+    "gotIt": "Verstanden",
+    "continue": "Fortfahren",
+    "saving": "Speichert..."
+  },
+  "labels": {
+    "loading": "Lädt...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "initializing": "Initialisiert...",
+    "saving": "Speichert...",
+    "noData": "Keine Daten",
+    "optional": "Optional",
+    "required": "Erforderlich",
+    "dismiss": "Schließen"
+  },
+  "time": {
+    "justNow": "Gerade eben",
+    "minutesAgo": "vor {{count}} Min.",
+    "hoursAgo": "vor {{count}} Std.",
+    "daysAgo": "vor {{count}} Tagen"
+  },
+  "errors": {
+    "generic": "Ein Fehler ist aufgetreten",
+    "networkError": "Netzwerkfehler",
+    "notFound": "Nicht gefunden",
+    "unauthorized": "Nicht autorisiert"
+  },
+  "notification": {
+    "accountSwitched": "Konto gewechselt",
+    "swapFrom": "Gewechselt von",
+    "swapTo": "zu",
+    "swapReason": "({{reason}}-Wechsel)"
+  },
+  "rateLimit": {
+    "title": "Rate-Limit erreicht",
+    "resetsAt": "Zurückgesetzt {{time}}",
+    "hitLimit": "{{source}} hat Nutzungslimit erreicht",
+    "clickToManage": "Klicken zum Verwalten →",
+    "modalTitle": "Claude Code Nutzungslimit erreicht",
+    "modalDescription": "Du hast dein Claude Code Nutzungslimit für diesen Zeitraum erreicht.",
+    "profile": "Profil: {{name}}",
+    "autoSwitching": "Automatischer Wechsel zu {{name}}",
+    "autoSwitchingDescription": "Claude wird automatisch mit deinem anderen Konto neu gestartet",
+    "resetsTime": "Zurückgesetzt {{time}}",
+    "usageRestored": "Dein Kontingent wird zu diesem Zeitpunkt wiederhergestellt",
+    "switchAccount": "Claude-Konto wechseln",
+    "useAnotherAccount": "Anderes Konto verwenden",
+    "recommended": "Empfohlen: {{name}} hat mehr Kapazität verfügbar.",
+    "otherSubscriptions": "Du hast andere Claude-Abonnements konfiguriert. Wechsle um weiterzuarbeiten:",
+    "selectAccount": "Konto auswählen...",
+    "switching": "Wechselt...",
+    "addNewAccount": "Neues Konto hinzufügen...",
+    "addAnotherSubscription": "Füge ein weiteres Claude-Abonnement hinzu, um automatisch zu wechseln wenn du Rate-Limits erreichst.",
+    "addAnotherAccount": "Weiteres Konto hinzufügen:",
+    "connectAccount": "Claude-Konto verbinden:",
+    "accountNamePlaceholder": "Kontoname (z.B. Arbeit, Privat)",
+    "willOpenLogin": "Dies öffnet die Claude-Anmeldung zur Authentifizierung des neuen Kontos.",
+    "autoSwitchOnRateLimit": "Automatisch bei Rate-Limit wechseln",
+    "upgradeTitle": "Upgrade für mehr Nutzung",
+    "upgradeDescription": "Upgrade dein Claude-Abonnement für höhere Nutzungslimits.",
+    "upgradeSubscription": "Abonnement upgraden",
+    "sources": {
+      "changelog": "Changelog",
+      "task": "Aufgabe",
+      "roadmap": "Roadmap",
+      "ideation": "Ideenfindung",
+      "titleGenerator": "Titel-Generator",
+      "claude": "Claude"
+    }
+  },
+  "prReview": {
+    "reviewing": "Wird überprüft",
+    "reviewed": "Überprüft",
+    "approved": "Genehmigt",
+    "changesRequested": "Änderungen angefordert",
+    "commented": "Kommentiert",
+    "readyForFollowup": "Bereit für Nachbearbeitung",
+    "readyToMerge": "Bereit zum Zusammenführen",
+    "pendingPost": "Ausstehend"
+  }
+}

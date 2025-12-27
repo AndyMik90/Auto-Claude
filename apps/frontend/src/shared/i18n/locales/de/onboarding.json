@@ -1,0 +1,83 @@
+{
+  "wizard": {
+    "title": "Einrichtungsassistent",
+    "description": "Konfiguriere deine Auto Claude Umgebung in wenigen einfachen Schritten",
+    "helpText": "Dieser Assistent hilft dir bei der Einrichtung deiner Umgebung in nur wenigen Schritten. Du kannst deinen Claude OAuth-Token konfigurieren, Gedächtnis-Funktionen einrichten und deine erste Aufgabe erstellen."
+  },
+  "welcome": {
+    "title": "Willkommen bei Auto Claude",
+    "subtitle": "Baue Software autonom mit KI-gesteuerten Agenten",
+    "getStarted": "Loslegen",
+    "skip": "Einrichtung überspringen",
+    "features": {
+      "aiPowered": {
+        "title": "KI-gestützte Entwicklung",
+        "description": "Generiere Code und baue Features mit Claude Code Agenten"
+      },
+      "specDriven": {
+        "title": "Spezifikations-gesteuerter Workflow",
+        "description": "Definiere Aufgaben mit klaren Spezifikationen und lass Auto Claude die Implementierung übernehmen"
+      },
+      "memory": {
+        "title": "Gedächtnis & Kontext",
+        "description": "Persistentes Gedächtnis über Sitzungen hinweg mit Graphiti"
+      },
+      "parallel": {
+        "title": "Parallele Ausführung",
+        "description": "Führe mehrere Agenten parallel aus für schnellere Entwicklungszyklen"
+      }
+    }
+  },
+  "oauth": {
+    "title": "Claude-Authentifizierung",
+    "description": "Verbinde dein Claude-Konto um KI-Funktionen zu aktivieren",
+    "keychainTitle": "Sichere Speicherung",
+    "keychainDescription": "Deine Tokens werden mit dem Schlüsselbund deines Systems verschlüsselt. Möglicherweise siehst du eine Passwort-Abfrage von macOS — klicke auf \"Immer erlauben\" um sie nicht erneut zu sehen."
+  },
+  "memory": {
+    "title": "Gedächtnis",
+    "description": "Das Auto Claude Gedächtnis hilft dabei, Kontext über deine Coding-Sitzungen hinweg zu behalten"
+  },
+  "completion": {
+    "title": "Alles eingerichtet!",
+    "subtitle": "Auto Claude ist bereit, dir beim Bauen großartiger Software zu helfen",
+    "setupComplete": "Einrichtung abgeschlossen",
+    "setupCompleteDescription": "Deine Umgebung ist konfiguriert und bereit. Du kannst sofort mit dem Erstellen von Aufgaben beginnen oder die Anwendung in deinem eigenen Tempo erkunden.",
+    "whatsNext": "Was kommt als Nächstes?",
+    "createTask": {
+      "title": "Aufgabe erstellen",
+      "description": "Beginne damit, deine erste Aufgabe zu erstellen um Auto Claude in Aktion zu sehen.",
+      "action": "Aufgaben-Ersteller öffnen"
+    },
+    "customizeSettings": {
+      "title": "Einstellungen anpassen",
+      "description": "Passe deine Präferenzen an, konfiguriere Integrationen oder starte diesen Assistenten erneut.",
+      "action": "Einstellungen öffnen"
+    },
+    "exploreDocs": {
+      "title": "Dokumentation erkunden",
+      "description": "Erfahre mehr über erweiterte Funktionen, Best Practices und Fehlerbehebung."
+    },
+    "finish": "Fertigstellen & Loslegen",
+    "rerunHint": "Du kannst diesen Assistenten jederzeit über Einstellungen → Anwendung erneut starten"
+  },
+  "steps": {
+    "welcome": "Willkommen",
+    "auth": "Auth",
+    "memory": "Gedächtnis",
+    "graphiti": "Graphiti",
+    "firstSpec": "Erste Aufgabe",
+    "github": "GitHub",
+    "linear": "Linear",
+    "agentConfig": "Agent",
+    "done": "Fertig"
+  },
+  "graphiti": {
+    "title": "Graphiti Gedächtnis",
+    "description": "Konfiguriere das erweiterte Graphiti-Gedächtnissystem für persistenten Kontext"
+  },
+  "firstSpec": {
+    "title": "Erste Aufgabe erstellen",
+    "description": "Lass uns deine erste Aufgabe gemeinsam erstellen"
+  }
+}

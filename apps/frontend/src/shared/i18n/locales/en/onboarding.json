@@ -65,6 +65,19 @@
     "welcome": "Welcome",
     "auth": "Auth",
     "memory": "Memory",
+    "graphiti": "Graphiti",
+    "firstSpec": "First Task",
+    "github": "GitHub",
+    "linear": "Linear",
+    "agentConfig": "Agent",
     "done": "Done"
+  },
+  "graphiti": {
+    "title": "Graphiti Memory",
+    "description": "Configure the advanced Graphiti memory system for persistent context"
+  },
+  "firstSpec": {
+    "title": "Create First Task",
+    "description": "Let's create your first task together"
   }
 }
