@@ -147,7 +147,7 @@ class ProjectAnalyzer:
                     hasher.update(f"{filename}:{stat.st_mtime}:{stat.st_size}".encode())
                     files_found += 1
                 except OSError:
-                    pass
+                    continue
 
         # Check glob patterns for project files that can be anywhere
         for pattern in glob_patterns:
@@ -158,7 +158,7 @@ class ProjectAnalyzer:
                     hasher.update(f"{rel_path}:{stat.st_mtime}:{stat.st_size}".encode())
                     files_found += 1
                 except OSError:
-                    pass
+                    continue
 
         # If no config files found, hash the project directory structure
         # to at least detect when files are added/removed
