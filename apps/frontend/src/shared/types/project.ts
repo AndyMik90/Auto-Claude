@@ -24,6 +24,8 @@ export interface ProjectSettings {
   graphitiMcpUrl?: string;
   /** Main branch name for worktree creation (default: auto-detected or 'main') */
   mainBranch?: string;
+  /** Maximum number of tasks that can run in parallel in "In Progress" (default: 3) */
+  maxParallelTasks?: number;
 }
 
 export interface NotificationSettings {
