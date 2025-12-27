@@ -1,11 +1,11 @@
 import { Terminal, ExternalLink, ChevronDown } from 'lucide-react';
-import { Button } from '../../../ui/button';
+import { Button } from '../../ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '../../../ui/dropdown-menu';
+} from '../../ui/dropdown-menu';
 
 interface TerminalDropdownProps {
   onOpenInbuilt: () => void;
