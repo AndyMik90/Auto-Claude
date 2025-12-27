@@ -13,7 +13,7 @@
     - `RemoveDefineSymbol()` - Remove scripting define symbol from build target group
     - `SetScriptingBackend()` - Switch between Mono and IL2CPP
     - `SwitchBuildTarget()` - Switch active build target
-  - Robust error handling with AIIDE log prefix for easy parsing
+  - Robust error handling with "[Jungle-Assistant Bridge]" log prefix for easy parsing
   - Cross-platform support (Windows, macOS, Linux)
 
 ### 2. Unity Doctor Diagnostics System
