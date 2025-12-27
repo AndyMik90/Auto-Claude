@@ -52,6 +52,7 @@ import { AppUpdateNotification } from './components/AppUpdateNotification';
 import { UsageIndicator } from './components/UsageIndicator';
 import { ProactiveSwapListener } from './components/ProactiveSwapListener';
 import { GitHubSetupModal } from './components/GitHubSetupModal';
+import { TourProvider } from './contexts/TourContext';
 import { useProjectStore, loadProjects, addProject, initializeProject } from './stores/project-store';
 import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings } from './stores/settings-store';
@@ -559,6 +560,7 @@ export function App() {
 
   return (
     <TooltipProvider>
+      <TourProvider>
       <ProactiveSwapListener />
       <div className="flex h-screen bg-background">
         {/* Sidebar */}
@@ -862,6 +864,7 @@ export function App() {
         {/* App Update Notification - shows when new app version is available */}
         <AppUpdateNotification />
       </div>
+      </TourProvider>
     </TooltipProvider>
   );
 }

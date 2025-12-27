@@ -350,7 +350,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-tour="kanban-board">
       {/* Kanban header with filters */}
       <div className="flex items-center justify-end px-6 py-3 border-b border-border/50">
         <div className="flex items-center gap-2">

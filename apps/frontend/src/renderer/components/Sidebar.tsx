@@ -285,7 +285,7 @@ export function Sidebar({
 
   return (
     <TooltipProvider>
-      <div className="flex h-full w-64 flex-col bg-sidebar border-r border-border">
+      <div className="flex h-full w-64 flex-col bg-sidebar border-r border-border" data-tour="sidebar">
         {/* Header with drag area - extra top padding for macOS traffic lights */}
         <div className="electron-drag flex h-14 items-center px-4 pt-6">
           <span className="electron-no-drag text-lg font-bold text-primary">Auto Claude</span>
@@ -337,6 +337,7 @@ export function Sidebar({
                   size="sm"
                   className="flex-1 justify-start gap-2"
                   onClick={onSettingsClick}
+                  data-tour="settings-button"
                 >
                   <Settings className="h-4 w-4" />
                   {t('actions.settings')}
@@ -363,6 +364,7 @@ export function Sidebar({
             className="w-full"
             onClick={onNewTaskClick}
             disabled={!selectedProjectId || !selectedProject?.autoBuildPath}
+            data-tour="create-task-button"
           >
             <Plus className="mr-2 h-4 w-4" />
             {t('actions.newTask')}

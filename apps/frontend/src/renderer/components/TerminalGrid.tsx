@@ -282,7 +282,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
   // Empty state
   if (terminals.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
+      <div className="flex h-full flex-col items-center justify-center gap-6 p-8" data-tour="terminals">
         <div className="flex flex-col items-center gap-3 text-center">
           <div className="rounded-full bg-card p-4">
             <Grid2X2 className="h-8 w-8 text-muted-foreground" />
@@ -309,7 +309,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col" data-tour="terminals">
         {/* Toolbar */}
         <div className="flex h-10 items-center justify-between border-b border-border bg-card/30 px-3">
           <div className="flex items-center gap-2">
