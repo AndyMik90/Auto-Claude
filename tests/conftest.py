@@ -42,8 +42,8 @@ if 'claude_code_sdk' not in sys.modules:
     sys.modules['claude_code_sdk'] = _create_sdk_mock()
     sys.modules['claude_code_sdk.types'] = MagicMock()
 
-# Add auto-claude directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "auto-claude"))
+# Add apps/backend directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
 
 
 # =============================================================================
@@ -602,6 +602,7 @@ def mock_run_agent_fn():
         async def _mock_agent(
             prompt_file: str,
             additional_context: str = None,
+            phase_name: str = None,
         ) -> tuple[bool, str]:
             nonlocal call_count
             if side_effect is not None:

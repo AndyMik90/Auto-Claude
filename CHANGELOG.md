@@ -1,3 +1,446 @@
+## 2.7.1 - Build Pipeline Enhancements
+
+### 🛠️ Improvements
+
+- Enhanced VirusTotal scan error handling in release workflow with graceful failure recovery and improved reporting visibility
+
+- Refactored macOS build workflow to support both Intel and ARM64 architectures with notarization for Intel builds and improved artifact handling
+
+- Streamlined CI/CD processes with updated caching strategies and enhanced error handling for external API interactions
+
+### 📚 Documentation
+
+- Clarified README documentation
+
+---
+
+## What's Changed
+
+- chore: Enhance VirusTotal scan error handling in release workflow by @AndyMik90 in d23fcd8
+
+- chore: Refactor macOS build workflow to support Intel and ARM64 architectures by @AndyMik90 in 326118b
+
+- docs: readme clarification by @AndyMik90 in 6afcc92
+
+- fix: version by @AndyMik90 in 2c93890
+
+## Thanks to all contributors
+
+@AndyMik90
+
+## 2.7.0 - Tab Persistence & Memory System Modernization
+
+### ✨ New Features
+
+- Project tab bar with persistent tab management and GitHub organization initialization on project creation
+
+- Task creation enhanced with @ autocomplete for agent profiles and improved drag-and-drop support
+
+- Keyboard shortcuts and tooltips added to project tabs for better navigation
+
+- Agent task restart functionality with new profile support for flexible task recovery
+
+- Ollama embedding model support with automatic dimension detection for self-hosted deployments
+
+### 🛠️ Improvements
+
+- Memory system completely redesigned with embedded LadybugDB, eliminating Docker/FalkorDB dependency and improving performance
+
+- Tab persistence implemented via IPC-based mechanism for reliable session state management
+
+- Terminal environment improved by using virtual environment Python for proper terminal name generation
+
+- AI merge operations timeout increased from 2 to 10 minutes for reliability with larger changes
+
+- Merge operations now use stored baseBranch metadata for consistent branch targeting
+
+- Memory configuration UI simplified and rebranded with improved Ollama integration and detection
+
+- CI/CD workflows enhanced with code signing support and automated release process
+
+- Cross-platform compatibility improved by replacing Unix shell syntax with portable git commands
+
+- Python venv created in userData for packaged applications to ensure proper environment isolation
+
+### 🐛 Bug Fixes
+
+- Task title no longer blocks edit/close buttons in UI
+
+- Tab persistence and terminal shortcuts properly scoped to prevent conflicts
+
+- Agent profile fallback corrected from 'Balanced' to 'Auto (Optimized)'
+
+- macOS notarization made optional and improved with private artifact storage
+
+- Embedding provider changes now properly detected during migration
+
+- Memory query CLI respects user's memory enabled flag
+
+- CodeRabbit review issues and linting errors resolved across codebase
+
+- F-string prefixes removed from strings without placeholders
+
+- Import ordering fixed for ruff compliance
+
+- Preview panel now receives projectPath prop correctly for image component functionality
+
+- Default database path unified to ~/.auto-claude/memories for consistency
+
+- @lydell/node-pty build scripts compatibility improved for pnpm v10
+
+---
+
+## What's Changed
+
+- feat(ui): add project tab bar from PR #101 by @AndyMik90 in c400fe9
+
+- feat: improve task creation UX with @ autocomplete and better drag-drop by @AndyMik90 in 20d1487
+
+- feat(ui): add keyboard shortcuts and tooltips for project tabs by @AndyMik90 in ed73265
+
+- feat(agent): enhance task restart functionality with new profile support by @AndyMik90 in c8452a5
+
+- feat: add Ollama embedding model support with auto-detected dimensions by @AndyMik90 in 45901f3
+
+- feat(memory): replace FalkorDB with LadybugDB embedded database by @AndyMik90 in 87d0b52
+
+- feat: add automated release workflow with code signing by @AndyMik90 in 6819b00
+
+- feat: add embedding provider change detection and fix import ordering by @AndyMik90 in 36f8006
+
+- fix(tests): update tab management tests for IPC-based persistence by @AndyMik90 in ea25d6e
+
+- fix(ui): address CodeRabbit PR review issues by @AndyMik90 in 39ce754
+
+- fix: address CodeRabbit review issues by @AndyMik90 in 95ae0b0
+
+- fix: prevent task title from blocking edit/close buttons by @AndyMik90 in 8a0fb26
+
+- fix: use venv Python for terminal name generation by @AndyMik90 in 325cb54
+
+- fix(merge): increase AI merge timeout from 2 to 10 minutes by @AndyMik90 in 4477538
+
+- fix(merge): use stored baseBranch from task metadata for merge operations by @AndyMik90 in 8d56474
+
+- fix: unify default database path to ~/.auto-claude/memories by @AndyMik90 in 684e3f9
+
+- fix(ui): fix tab persistence and scope terminal shortcuts by @AndyMik90 in 2d1168b
+
+- fix: create Python venv in userData for packaged apps by @AndyMik90 in b83377c
+
+- fix(ui): change agent profile fallback from 'Balanced' to 'Auto (Optimized)' by @AndyMik90 in 385dcc1
+
+- fix: check APPLE_ID in shell instead of workflow if condition by @AndyMik90 in 9eece01
+
+- fix: allow @lydell/node-pty build scripts in pnpm v10 by @AndyMik90 in 1f6963f
+
+- fix: use shell guard for notarization credentials check by @AndyMik90 in 4cbddd3
+
+- fix: improve migrate_embeddings robustness and correctness by @AndyMik90 in 61f0238
+
+- fix: respect user's memory enabled flag in query_memory CLI by @AndyMik90 in 45b2c83
+
+- fix: save notarization logs to private artifact instead of public logs by @AndyMik90 in a82525d
+
+- fix: make macOS notarization optional by @AndyMik90 in f2b7b56
+
+- fix: add author email for Linux builds by @AndyMik90 in 5f66127
+
+- fix: add GH_TOKEN and homepage for release workflow by @AndyMik90 in 568ea18
+
+- fix(ci): quote GITHUB_OUTPUT for shell safety by @AndyMik90 in 1e891e1
+
+- fix: address CodeRabbit review feedback by @AndyMik90 in 8e4b1da
+
+- fix: update test and apply ruff formatting by @AndyMik90 in a087ba3
+
+- fix: address additional CodeRabbit review comments by @AndyMik90 in 461fad6
+
+- fix: sort imports in memory.py for ruff I001 by @AndyMik90 in b3c257d
+
+- fix: address CodeRabbit review comments from PR #100 by @AndyMik90 in 1ed237a
+
+- fix: remove f-string prefixes from strings without placeholders by @AndyMik90 in bcd453a
+
+- fix: resolve remaining CI failures by @AndyMik90 in cfbccda
+
+- fix: resolve all CI failures in PR #100 by @AndyMik90 in c493d6c
+
+- fix(cli): update graphiti status display for LadybugDB by @AndyMik90 in 049c60c
+
+- fix(ui): replace Unix shell syntax with cross-platform git commands by @AndyMik90 in 83aa3f0
+
+- fix: correct model name and release workflow conditionals by @AndyMik90 in de41dfc
+
+- style: fix ruff linting errors in graphiti queries by @AndyMik90 in 127559f
+
+- style: apply ruff formatting to 4 files by @AndyMik90 in 9d5d075
+
+- refactor: update memory test suite for LadybugDB by @AndyMik90 in f0b5efc
+
+- refactor(ui): simplify reference files and images handling in task modal by @AndyMik90 in 1975e4d
+
+- refactor: rebrand memory system UI and simplify configuration by @AndyMik90 in 2b3cd49
+
+- refactor: replace Docker/FalkorDB with embedded LadybugDB for memory system by @AndyMik90 in 325458d
+
+- docs: add CodeRabbit review response tracking by @AndyMik90 in 3452548
+
+- chore: use GitHub noreply email for author field by @AndyMik90 in 18f2045
+
+- chore: simplify notarization step after successful setup by @AndyMik90 in e4fe7cd
+
+- chore: update CI and release workflows, remove changelog config by @AndyMik90 in 6f891b7
+
+- chore: remove docker-compose.yml (FalkorDB no longer used) by @AndyMik90 in 68f3f06
+
+- fix: Replace space with hyphen in productName to fix PTY daemon spawn (#65) by @Craig Van in 8f1f7a7
+
+- fix: update npm scripts to use hyphenated product name by @AndyMik90 in 89978ed
+
+- fix(ui): improve Ollama UX in memory settings by @AndyMik90 in dea1711
+
+- auto-claude: subtask-1-1 - Add projectPath prop to PreviewPanel and implement custom img component by @AndyMik90 in e6529e0
+
+- Project tab persistence and github org init on project creation by @AndyMik90 in ae1dac9
+
+- Readme for installors by @AndyMik90 in 1855d7d
+
+---
+
+## Thanks to all contributors
+
+@AndyMik90, @Craig Van
+
+## 2.6.0 - Improved User Experience and Agent Configuration
+
+### ✨ New Features
+
+- Add customizable phase configuration in app settings, allowing users to tailor the AI build pipeline to their workflow
+
+- Implement parallel AI merge functionality for faster integration of completed builds
+
+- Add Google AI as LLM and embedding provider for Graphiti memory system
+
+- Implement device code authentication flow with timeout handling, browser launch fallback, and comprehensive testing
+
+### 🛠️ Improvements
+
+- Move Agent Profiles from dashboard to Settings for better organization and discoverability
+
+- Default agent profile to 'Auto (Optimized)' for streamlined out-of-the-box experience
+
+- Enhance WorkspaceStatus component UI with improved visual design
+
+- Refactor task management from sidebar to modal interface for cleaner navigation
+
+- Add comprehensive theme system with multiple color schemes (Forest, Neo, Retro, Dusk, Ocean, Lime) and light/dark mode support
+
+- Extract human-readable feature titles from spec.md for better task identification
+
+- Improve task description display for specs with compact markdown formatting
+
+### 🐛 Bug Fixes
+
+- Fix asyncio coroutine creation in worker threads to properly support async operations
+
+- Improve UX for phase configuration in task creation workflow
+
+- Address CodeRabbit PR #69 feedback and additional review comments
+
+- Fix auto-close behavior for task modal when marking tasks as done
+
+- Resolve Python lint errors and import sorting issues (ruff I001 compliance)
+
+- Ensure planner agent properly writes implementation_plan.json
+
+- Add platform detection for terminal profile commands on Windows
+
+- Set default selected agent profile to 'auto' across all users
+
+- Fix display of correct merge target branch in worktree UI
+
+- Add validation for invalid colorTheme fallback to prevent UI errors
+
+- Remove outdated Sun/Moon toggle button from sidebar
+
+---
+
+## What's Changed
+
+- feat: add customizable phase configuration in app settings by @AndyMik90 in aee0ba4
+
+- feat: implement parallel AI merge functionality by @AndyMik90 in 458d4bb
+
+- feat(graphiti): add Google AI as LLM and embedding provider by @adryserage in fe69106
+
+- fix: create coroutine inside worker thread for asyncio.run by @AndyMik90 in f89e4e6
+
+- fix: improve UX for phase configuration in task creation by @AndyMik90 in b9797cb
+
+- fix: address CodeRabbit PR #69 feedback by @AndyMik90 in cc38a06
+
+- fix: sort imports in workspace.py to pass ruff I001 check by @AndyMik90 in 9981ee4
+
+- fix(ui): auto-close task modal when marking task as done by @AndyMik90 in 297d380
+
+- fix: resolve Python lint errors in workspace.py by @AndyMik90 in 0506256
+
+- refactor: move Agent Profiles from dashboard to Settings by @AndyMik90 in 1094990
+
+- fix(planning): ensure planner agent writes implementation_plan.json by @AndyMik90 in 9ab5a4f
+
+- fix(windows): add platform detection for terminal profile commands by @AndyMik90 in f0a6a0a
+
+- fix: default agent profile to 'Auto (Optimized)' for all users by @AndyMik90 in 08aa2ff
+
+- fix: update default selected agent profile to 'auto' by @AndyMik90 in 37ace0a
+
+- style: enhance WorkspaceStatus component UI by @AndyMik90 in 3092155
+
+- fix: display correct merge target branch in worktree UI by @AndyMik90 in 2b96160
+
+- Improvement/refactor task sidebar to task modal by @AndyMik90 in 2a96f85
+
+- fix: extract human-readable title from spec.md when feature field is spec ID by @AndyMik90 in 8b59375
+
+- fix: task descriptions not showing for specs with compact markdown by @AndyMik90 in 7f12ef0
+
+- Add comprehensive theme system with Forest, Neo, Retro, Dusk, Ocean, and Lime color schemes by @AndyMik90 in ba776a3, e2b24e2, 7589046, e248256, 76c1bd7, bcbced2
+
+- Add ColorTheme type and configuration to app settings by @AndyMik90 in 2ca89ce, c505d6e, a75c0a9
+
+- Implement device code authentication flow with timeout handling and fallback URL display by @AndyMik90 in 5f26d39, 81e1536, 1a7cf40, 4a4ad6b, 6a4c1b4, b75a09c, e134c4c
+
+- fix(graphiti): address CodeRabbit review comments by @adryserage in 679b8cd
+
+- fix(lint): sort imports in Google provider files by @adryserage in 1a38a06
+
+## 2.6.0 - Multi-Provider Graphiti Support & Platform Fixes
+
+### ✨ New Features
+
+- **Google AI Provider for Graphiti**: Full Google AI (Gemini) support for both LLM and embeddings in the Memory Layer
+  - Add GoogleLLMClient with gemini-2.0-flash default model
+  - Add GoogleEmbedder with text-embedding-004 default model
+  - UI integration for Google API key configuration with link to Google AI Studio
+- **Ollama LLM Provider in UI**: Add Ollama as an LLM provider option in Graphiti onboarding wizard
+  - Ollama runs locally and doesn't require an API key
+  - Configure Base URL instead of API key for local inference
+- **LLM Provider Selection UI**: Add provider selection dropdown to Graphiti setup wizard for flexible backend configuration
+- **Per-Project GitHub Configuration**: UI clarity improvements for per-project GitHub org/repo settings
+
+### 🛠️ Improvements
+
+- Enhanced Graphiti provider factory to support Google AI alongside existing providers
+- Updated env-handlers to properly populate graphitiProviderConfig from .env files
+- Improved type definitions with proper Graphiti provider config properties in AppSettings
+- Better API key loading when switching between providers in settings
+
+### 🐛 Bug Fixes
+
+- **node-pty Migration**: Replaced node-pty with @lydell/node-pty for prebuilt Windows binaries
+  - Updated all imports to use @lydell/node-pty directly
+  - Fixed "Cannot find module 'node-pty'" startup error
+- **GitHub Organization Support**: Fixed repository support for GitHub organization accounts
+  - Add defensive array validation for GitHub issues API response
+- **Asyncio Deprecation**: Fixed asyncio deprecation warning by using get_running_loop() instead of get_event_loop()
+- Applied ruff formatting and fixed import sorting (I001) in Google provider files
+
+### 🔧 Other Changes
+
+- Added google-generativeai dependency to requirements.txt
+- Updated provider validation to include Google/Groq/HuggingFace type assertions
+
+---
+
+## What's Changed
+
+- fix(graphiti): address CodeRabbit review comments by @adryserage in 679b8cd
+- fix(lint): sort imports in Google provider files by @adryserage in 1a38a06
+- feat(graphiti): add Google AI as LLM and embedding provider by @adryserage in fe69106
+- fix: GitHub organization repository support by @mojaray2k in 873cafa
+- feat(ui): add LLM provider selection to Graphiti onboarding by @adryserage in 4750869
+- fix(types): add missing AppSettings properties for Graphiti providers by @adryserage in 6680ed4
+- feat(ui): add Ollama as LLM provider option for Graphiti by @adryserage in a3eee92
+- fix(ui): address PR review feedback for Graphiti provider selection by @adryserage in b8a419a
+- fix(deps): update imports to use @lydell/node-pty directly by @adryserage in 2b61ebb
+- fix(deps): replace node-pty with @lydell/node-pty for prebuilt binaries by @adryserage in e1aee6a
+- fix: add UI clarity for per-project GitHub configuration by @mojaray2k in c9745b6
+- fix: add defensive array validation for GitHub issues API response by @mojaray2k in b3636a5
+
+---
+
+## 2.5.5 - Enhanced Agent Reliability & Build Workflow
+
+### ✨ New Features
+
+- Required GitHub setup flow after Auto Claude initialization to ensure proper configuration
+- Atomic log saving mechanism to prevent log file corruption during concurrent operations
+- Per-session model and thinking level selection in insights management
+- Multi-auth token support and ANTHROPIC_BASE_URL passthrough for flexible authentication
+- Comprehensive DEBUG logging at Claude SDK invocation points for improved troubleshooting
+- Auto-download of prebuilt node-pty binaries for Windows environments
+- Enhanced merge workflow with current branch detection for accurate change previews
+- Phase configuration module and enhanced agent profiles for improved flexibility
+- Stage-only merge handling with comprehensive verification checks
+- Authentication failure detection system with patterns and validation checks across agent pipeline
+
+### 🛠️ Improvements
+
+- Changed default agent profile from 'balanced' to 'auto' for more adaptive behavior
+- Better GitHub issue tracking and improved user experience in issue management
+- Improved merge preview accuracy using git diff counts for file statistics
+- Preserved roadmap generation state when switching between projects
+- Enhanced agent profiles with phase configuration support
+
+### 🐛 Bug Fixes
+
+- Resolved CI test failures and improved merge preview reliability
+- Fixed CI failures related to linting, formatting, and tests
+- Prevented dialog skip during project initialization flow
+- Updated model IDs for Sonnet and Haiku to match current Claude versions
+- Fixed branch namespace conflict detection to prevent worktree creation failures
+- Removed duplicate LINEAR_API_KEY checks and consolidated imports
+- Python 3.10+ version requirement enforced with proper version checking
+- Prevented command injection vulnerabilities in GitHub API calls
+
+### 🔧 Other Changes
+
+- Code cleanup and test fixture updates
+- Removed redundant auto-claude/specs directory structure
+- Untracked .auto-claude directory to respect gitignore rules
+
+---
+
+## What's Changed
+
+- fix: resolve CI test failures and improve merge preview by @AndyMik90 in de2eccd
+- chore: code cleanup and test fixture updates by @AndyMik90 in 948db57
+- refactor: change default agent profile from 'balanced' to 'auto' by @AndyMik90 in f98a13e
+- security: prevent command injection in GitHub API calls by @AndyMik90 in 24ff491
+- fix: resolve CI failures (lint, format, test) by @AndyMik90 in a8f2d0b
+- fix: use git diff count for totalFiles in merge preview by @AndyMik90 in 46d2536
+- feat: enhance stage-only merge handling with verification checks by @AndyMik90 in 7153558
+- feat: introduce phase configuration module and enhance agent profiles by @AndyMik90 in 2672528
+- fix: preserve roadmap generation state when switching projects by @AndyMik90 in 569e921
+- feat: add required GitHub setup flow after Auto Claude initialization by @AndyMik90 in 03ccce5
+- chore: remove redundant auto-claude/specs directory by @AndyMik90 in 64d5170
+- chore: untrack .auto-claude directory (should be gitignored) by @AndyMik90 in 0710c13
+- fix: prevent dialog skip during project initialization by @AndyMik90 in 56cedec
+- feat: enhance merge workflow by detecting current branch by @AndyMik90 in c0c8067
+- fix: update model IDs for Sonnet and Haiku by @AndyMik90 in 059315d
+- feat: add comprehensive DEBUG logging and fix lint errors by @AndyMik90 in 99cf21e
+- feat: implement atomic log saving to prevent corruption by @AndyMik90 in da5e26b
+- feat: add better github issue tracking and UX by @AndyMik90 in c957eaa
+- feat: add comprehensive DEBUG logging to Claude SDK invocation points by @AndyMik90 in 73d01c0
+- feat: auto-download prebuilt node-pty binaries for Windows by @AndyMik90 in 41a507f
+- feat(insights): add per-session model and thinking level selection by @AndyMik90 in e02aa59
+- fix: require Python 3.10+ and add version check by @AndyMik90 in 9a5ca8c
+- fix: detect branch namespace conflict blocking worktree creation by @AndyMik90 in 63a1d3c
+- fix: remove duplicate LINEAR_API_KEY check and consolidate imports by @Jacob in 7d351e3
+- feat: add multi-auth token support and ANTHROPIC_BASE_URL passthrough by @Jacob in 9dea155
+
 ## 2.5.0 - Roadmap Intelligence & Workflow Refinements
 
 ### ✨ New Features
@@ -178,7 +621,7 @@
 
 - Restructured SortableFeatureCard badge layout for improved visual presentation
 
-Bug Fixes: 
+Bug Fixes:
 - Fixed spec runner path configuration for more reliable task execution
 
 ---

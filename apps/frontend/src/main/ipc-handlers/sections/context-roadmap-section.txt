@@ -1,0 +1,876 @@
+  // ============================================
+  // Roadmap Operations
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROADMAP_GET,
+    async (_, projectId: string): Promise<IPCResult<Roadmap | null>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      const roadmapPath = path.join(
+        project.path,
+        AUTO_BUILD_PATHS.ROADMAP_DIR,
+        AUTO_BUILD_PATHS.ROADMAP_FILE
+      );
+
+      if (!existsSync(roadmapPath)) {
+        return { success: true, data: null };
+      }
+
+      try {
+        const content = readFileSync(roadmapPath, 'utf-8');
+        const rawRoadmap = JSON.parse(content);
+
+        // Transform snake_case to camelCase for frontend
+        const roadmap: Roadmap = {
+          id: rawRoadmap.id || `roadmap-${Date.now()}`,
+          projectId,
+          projectName: rawRoadmap.project_name || project.name,
+          version: rawRoadmap.version || '1.0',
+          vision: rawRoadmap.vision || '',
+          targetAudience: {
+            primary: rawRoadmap.target_audience?.primary || '',
+            secondary: rawRoadmap.target_audience?.secondary || []
+          },
+          phases: (rawRoadmap.phases || []).map((phase: Record<string, unknown>) => ({
+            id: phase.id,
+            name: phase.name,
+            description: phase.description,
+            order: phase.order,
+            status: phase.status || 'planned',
+            features: phase.features || [],
+            milestones: (phase.milestones as Array<Record<string, unknown>> || []).map((m) => ({
+              id: m.id,
+              title: m.title,
+              description: m.description,
+              features: m.features || [],
+              status: m.status || 'planned',
+              targetDate: m.target_date ? new Date(m.target_date as string) : undefined
+            }))
+          })),
+          features: (rawRoadmap.features || []).map((feature: Record<string, unknown>) => ({
+            id: feature.id,
+            title: feature.title,
+            description: feature.description,
+            rationale: feature.rationale || '',
+            priority: feature.priority || 'should',
+            complexity: feature.complexity || 'medium',
+            impact: feature.impact || 'medium',
+            phaseId: feature.phase_id,
+            dependencies: feature.dependencies || [],
+            status: feature.status || 'idea',
+            acceptanceCriteria: feature.acceptance_criteria || [],
+            userStories: feature.user_stories || [],
+            linkedSpecId: feature.linked_spec_id
+          })),
+          status: rawRoadmap.status || 'draft',
+          createdAt: rawRoadmap.metadata?.created_at ? new Date(rawRoadmap.metadata.created_at) : new Date(),
+          updatedAt: rawRoadmap.metadata?.updated_at ? new Date(rawRoadmap.metadata.updated_at) : new Date()
+        };
+
+        return { success: true, data: roadmap };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to read roadmap'
+        };
+      }
+    }
+  );
+
+  ipcMain.on(
+    IPC_CHANNELS.ROADMAP_GENERATE,
+    (_, projectId: string) => {
+      const mainWindow = getMainWindow();
+      if (!mainWindow) return;
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        mainWindow.webContents.send(
+          IPC_CHANNELS.ROADMAP_ERROR,
+          projectId,
+          'Project not found'
+        );
+        return;
+      }
+
+      // Start roadmap generation via agent manager
+      agentManager.startRoadmapGeneration(projectId, project.path, false);
+
+      // Send initial progress
+      mainWindow.webContents.send(
+        IPC_CHANNELS.ROADMAP_PROGRESS,
+        projectId,
+        {
+          phase: 'analyzing',
+          progress: 10,
+          message: 'Analyzing project structure...'
+        } as RoadmapGenerationStatus
+      );
+    }
+  );
+
+  ipcMain.on(
+    IPC_CHANNELS.ROADMAP_REFRESH,
+    (_, projectId: string) => {
+      const mainWindow = getMainWindow();
+      if (!mainWindow) return;
+
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        mainWindow.webContents.send(
+          IPC_CHANNELS.ROADMAP_ERROR,
+          projectId,
+          'Project not found'
+        );
+        return;
+      }
+
+      // Start roadmap regeneration with refresh flag
+      agentManager.startRoadmapGeneration(projectId, project.path, true);
+
+      // Send initial progress
+      mainWindow.webContents.send(
+        IPC_CHANNELS.ROADMAP_PROGRESS,
+        projectId,
+        {
+          phase: 'analyzing',
+          progress: 10,
+          message: 'Refreshing roadmap...'
+        } as RoadmapGenerationStatus
+      );
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROADMAP_UPDATE_FEATURE,
+    async (
+      _,
+      projectId: string,
+      featureId: string,
+      status: RoadmapFeatureStatus
+    ): Promise<IPCResult> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      const roadmapPath = path.join(
+        project.path,
+        AUTO_BUILD_PATHS.ROADMAP_DIR,
+        AUTO_BUILD_PATHS.ROADMAP_FILE
+      );
+
+      if (!existsSync(roadmapPath)) {
+        return { success: false, error: 'Roadmap not found' };
+      }
+
+      try {
+        const content = readFileSync(roadmapPath, 'utf-8');
+        const roadmap = JSON.parse(content);
+
+        // Find and update the feature
+        const feature = roadmap.features?.find((f: { id: string }) => f.id === featureId);
+        if (!feature) {
+          return { success: false, error: 'Feature not found' };
+        }
+
+        feature.status = status;
+        roadmap.metadata = roadmap.metadata || {};
+        roadmap.metadata.updated_at = new Date().toISOString();
+
+        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to update feature'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ROADMAP_CONVERT_TO_SPEC,
+    async (
+      _,
+      projectId: string,
+      featureId: string
+    ): Promise<IPCResult<Task>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      const roadmapPath = path.join(
+        project.path,
+        AUTO_BUILD_PATHS.ROADMAP_DIR,
+        AUTO_BUILD_PATHS.ROADMAP_FILE
+      );
+
+      if (!existsSync(roadmapPath)) {
+        return { success: false, error: 'Roadmap not found' };
+      }
+
+      try {
+        const content = readFileSync(roadmapPath, 'utf-8');
+        const roadmap = JSON.parse(content);
+
+        // Find the feature
+        const feature = roadmap.features?.find((f: { id: string }) => f.id === featureId);
+        if (!feature) {
+          return { success: false, error: 'Feature not found' };
+        }
+
+        // Build task description from feature
+        const taskDescription = `# ${feature.title}
+
+${feature.description}
+
+## Rationale
+${feature.rationale || 'N/A'}
+
+## User Stories
+${(feature.user_stories || []).map((s: string) => `- ${s}`).join('\n') || 'N/A'}
+
+## Acceptance Criteria
+${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join('\n') || 'N/A'}
+`;
+
+        // Generate proper spec directory (like task creation)
+                const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        const specsDir = path.join(project.path, specsBaseDir);
+
+        // Ensure specs directory exists
+        if (!existsSync(specsDir)) {
+          mkdirSync(specsDir, { recursive: true });
+        }
+
+        // Find next available spec number
+        let specNumber = 1;
+        const existingDirs = existsSync(specsDir)
+          ? readdirSync(specsDir, { withFileTypes: true })
+              .filter(d => d.isDirectory())
+              .map(d => d.name)
+          : [];
+        const existingNumbers = existingDirs
+          .map(name => {
+            const match = name.match(/^(\d+)/);
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter(n => n > 0);
+        if (existingNumbers.length > 0) {
+          specNumber = Math.max(...existingNumbers) + 1;
+        }
+
+        // Create spec ID with zero-padded number and slugified title
+        const slugifiedTitle = feature.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 50);
+        const specId = `${String(specNumber).padStart(3, '0')}-${slugifiedTitle}`;
+
+        // Create spec directory
+        const specDir = path.join(specsDir, specId);
+        mkdirSync(specDir, { recursive: true });
+
+        // Create initial implementation_plan.json
+        const now = new Date().toISOString();
+        const implementationPlan = {
+          feature: feature.title,
+          description: taskDescription,
+          created_at: now,
+          updated_at: now,
+          status: 'pending',
+          phases: []
+        };
+        writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), JSON.stringify(implementationPlan, null, 2));
+
+        // Create requirements.json
+        const requirements = {
+          task_description: taskDescription,
+          workflow_type: 'feature'
+        };
+        writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS), JSON.stringify(requirements, null, 2));
+
+        // Build metadata
+        const metadata: TaskMetadata = {
+          sourceType: 'roadmap',
+          featureId: feature.id,
+          category: 'feature'
+        };
+        writeFileSync(path.join(specDir, 'task_metadata.json'), JSON.stringify(metadata, null, 2));
+
+        // Start spec creation with the existing spec directory
+        agentManager.startSpecCreation(specId, project.path, taskDescription, specDir, metadata);
+
+        // Update feature with linked spec
+        feature.status = 'planned';
+        feature.linked_spec_id = specId;
+        roadmap.metadata = roadmap.metadata || {};
+        roadmap.metadata.updated_at = new Date().toISOString();
+        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+
+        // Create task object
+        const task: Task = {
+          id: specId,
+          specId: specId,
+          projectId,
+          title: feature.title,
+          description: taskDescription,
+          status: 'backlog',
+          subtasks: [],
+          logs: [],
+          metadata,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        return { success: true, data: task };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to convert feature to spec'
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Roadmap Agent Events → Renderer
+  // ============================================
+
+  agentManager.on('roadmap-progress', (projectId: string, status: RoadmapGenerationStatus) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_PROGRESS, projectId, status);
+    }
+  });
+
+  agentManager.on('roadmap-complete', (projectId: string, roadmap: Roadmap) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_COMPLETE, projectId, roadmap);
+    }
+  });
+
+  agentManager.on('roadmap-error', (projectId: string, error: string) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.ROADMAP_ERROR, projectId, error);
+    }
+  });
+
+  // ============================================
+  // Context Operations
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONTEXT_GET,
+    async (_, projectId: string): Promise<IPCResult<ProjectContextData>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        // Load project index
+        let projectIndex: ProjectIndex | null = null;
+        const indexPath = path.join(project.path, AUTO_BUILD_PATHS.PROJECT_INDEX);
+        if (existsSync(indexPath)) {
+          const content = readFileSync(indexPath, 'utf-8');
+          projectIndex = JSON.parse(content);
+        }
+
+        // Load graphiti state from most recent spec or project root
+        let memoryState: GraphitiMemoryState | null = null;
+        let memoryStatus: GraphitiMemoryStatus = {
+          enabled: false,
+          available: false,
+          reason: 'Graphiti not configured'
+        };
+
+        // Check for graphiti state in specs
+                const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        const specsDir = path.join(project.path, specsBaseDir);
+        if (existsSync(specsDir)) {
+          const specDirs = readdirSync(specsDir)
+            .filter((f: string) => {
+              const specPath = path.join(specsDir, f);
+              return statSync(specPath).isDirectory();
+            })
+            .sort()
+            .reverse();
+
+          for (const specDir of specDirs) {
+            const statePath = path.join(specsDir, specDir, AUTO_BUILD_PATHS.GRAPHITI_STATE);
+            if (existsSync(statePath)) {
+              const stateContent = readFileSync(statePath, 'utf-8');
+              memoryState = JSON.parse(stateContent);
+
+              // If we found a state, update memory status
+              if (memoryState?.initialized) {
+                memoryStatus = {
+                  enabled: true,
+                  available: true,
+                  database: memoryState.database || 'auto_build_memory',
+                  host: process.env.GRAPHITI_FALKORDB_HOST || 'localhost',
+                  port: parseInt(process.env.GRAPHITI_FALKORDB_PORT || '6380', 10)
+                };
+              }
+              break;
+            }
+          }
+        }
+
+        // Check environment for Graphiti config if not found in specs
+        if (!memoryState) {
+          // Load project .env file and global settings to check for Graphiti config
+          let projectEnvVars: Record<string, string> = {};
+          if (project.autoBuildPath) {
+            const projectEnvPath = path.join(project.path, project.autoBuildPath, '.env');
+            if (existsSync(projectEnvPath)) {
+              try {
+                const envContent = readFileSync(projectEnvPath, 'utf-8');
+                // Parse .env file inline - handle both Unix and Windows line endings
+                for (const line of envContent.split(/\r?\n/)) {
+                  const trimmed = line.trim();
+                  if (!trimmed || trimmed.startsWith('#')) continue;
+                  const eqIndex = trimmed.indexOf('=');
+                  if (eqIndex > 0) {
+                    const key = trimmed.substring(0, eqIndex).trim();
+                    let value = trimmed.substring(eqIndex + 1).trim();
+                    if ((value.startsWith('"') && value.endsWith('"')) ||
+                        (value.startsWith("'") && value.endsWith("'"))) {
+                      value = value.slice(1, -1);
+                    }
+                    projectEnvVars[key] = value;
+                  }
+                }
+              } catch {
+                // Continue with empty vars
+              }
+            }
+          }
+
+          // Load global settings for OpenAI API key fallback
+          let globalOpenAIKey: string | undefined;
+          if (existsSync(settingsPath)) {
+            try {
+              const settingsContent = readFileSync(settingsPath, 'utf-8');
+              const globalSettings = JSON.parse(settingsContent);
+              globalOpenAIKey = globalSettings.globalOpenAIApiKey;
+            } catch {
+              // Continue without global settings
+            }
+          }
+
+          // Check for Graphiti config: project .env > process.env
+          const graphitiEnabled =
+            projectEnvVars['GRAPHITI_ENABLED']?.toLowerCase() === 'true' ||
+            process.env.GRAPHITI_ENABLED?.toLowerCase() === 'true';
+
+          // Check for OpenAI key: project .env > global settings > process.env
+          const hasOpenAI =
+            !!projectEnvVars['OPENAI_API_KEY'] ||
+            !!globalOpenAIKey ||
+            !!process.env.OPENAI_API_KEY;
+
+          // Get Graphiti connection details from project .env or process.env
+          const graphitiHost = projectEnvVars['GRAPHITI_FALKORDB_HOST'] || process.env.GRAPHITI_FALKORDB_HOST || 'localhost';
+          const graphitiPort = parseInt(projectEnvVars['GRAPHITI_FALKORDB_PORT'] || process.env.GRAPHITI_FALKORDB_PORT || '6380', 10);
+          const graphitiDatabase = projectEnvVars['GRAPHITI_DATABASE'] || process.env.GRAPHITI_DATABASE || 'auto_build_memory';
+
+          if (graphitiEnabled && hasOpenAI) {
+            memoryStatus = {
+              enabled: true,
+              available: true,
+              host: graphitiHost,
+              port: graphitiPort,
+              database: graphitiDatabase
+            };
+          } else if (graphitiEnabled && !hasOpenAI) {
+            memoryStatus = {
+              enabled: true,
+              available: false,
+              reason: 'OPENAI_API_KEY not set (required for Graphiti embeddings)'
+            };
+          }
+        }
+
+        // Load recent memories from file-based memory (session insights)
+        const recentMemories: MemoryEpisode[] = [];
+        if (existsSync(specsDir)) {
+          const recentSpecDirs = readdirSync(specsDir)
+            .filter((f: string) => {
+              const specPath = path.join(specsDir, f);
+              return statSync(specPath).isDirectory();
+            })
+            .sort()
+            .reverse()
+            .slice(0, 10); // Last 10 specs
+
+          for (const specDir of recentSpecDirs) {
+            const memoryDir = path.join(specsDir, specDir, 'memory');
+            if (existsSync(memoryDir)) {
+              // Load session insights from session_insights subdirectory
+              const sessionInsightsDir = path.join(memoryDir, 'session_insights');
+              if (existsSync(sessionInsightsDir)) {
+                const sessionFiles = readdirSync(sessionInsightsDir)
+                  .filter((f: string) => f.startsWith('session_') && f.endsWith('.json'))
+                  .sort()
+                  .reverse();
+
+                for (const sessionFile of sessionFiles.slice(0, 3)) {
+                  try {
+                    const sessionPath = path.join(sessionInsightsDir, sessionFile);
+                    const sessionContent = readFileSync(sessionPath, 'utf-8');
+                    const sessionData = JSON.parse(sessionContent);
+
+                    // Session files have: session_number, timestamp, subtasks_completed,
+                    // discoveries, what_worked, what_failed, recommendations_for_next_session
+                    if (sessionData.session_number !== undefined) {
+                      recentMemories.push({
+                        id: `${specDir}-${sessionFile}`,
+                        type: 'session_insight',
+                        timestamp: sessionData.timestamp || new Date().toISOString(),
+                        content: JSON.stringify({
+                          discoveries: sessionData.discoveries,
+                          what_worked: sessionData.what_worked,
+                          what_failed: sessionData.what_failed,
+                          recommendations: sessionData.recommendations_for_next_session,
+                          subtasks_completed: sessionData.subtasks_completed
+                        }, null, 2),
+                        session_number: sessionData.session_number
+                      });
+                    }
+                  } catch {
+                    // Skip invalid files
+                  }
+                }
+              }
+
+              // Also load codebase_map.json as a memory item
+              const codebaseMapPath = path.join(memoryDir, 'codebase_map.json');
+              if (existsSync(codebaseMapPath)) {
+                try {
+                  const mapContent = readFileSync(codebaseMapPath, 'utf-8');
+                  const mapData = JSON.parse(mapContent);
+                  if (mapData.discovered_files && Object.keys(mapData.discovered_files).length > 0) {
+                    recentMemories.push({
+                      id: `${specDir}-codebase_map`,
+                      type: 'codebase_map',
+                      timestamp: mapData.last_updated || new Date().toISOString(),
+                      content: JSON.stringify(mapData.discovered_files, null, 2),
+                      session_number: undefined
+                    });
+                  }
+                } catch {
+                  // Skip invalid files
+                }
+              }
+            }
+          }
+        }
+
+        return {
+          success: true,
+          data: {
+            projectIndex,
+            memoryStatus,
+            memoryState,
+            recentMemories: recentMemories.slice(0, 20),
+            isLoading: false
+          }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to load project context'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONTEXT_REFRESH_INDEX,
+    async (_, projectId: string): Promise<IPCResult<ProjectIndex>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      try {
+        // Run the analyzer script to regenerate project_index.json
+        const autoBuildSource = getAutoBuildSourcePath();
+
+        if (!autoBuildSource) {
+          return {
+            success: false,
+            error: 'Auto-build source path not configured'
+          };
+        }
+
+        const analyzerPath = path.join(autoBuildSource, 'analyzer.py');
+        const indexOutputPath = path.join(project.path, AUTO_BUILD_PATHS.PROJECT_INDEX);
+
+        // Run analyzer
+        await new Promise<void>((resolve, reject) => {
+          const proc = spawn('python', [
+            analyzerPath,
+            '--project-dir', project.path,
+            '--output', indexOutputPath
+          ], {
+            cwd: project.path,
+            env: { ...process.env }
+          });
+
+          proc.on('close', (code: number) => {
+            if (code === 0) {
+              resolve();
+            } else {
+              reject(new Error(`Analyzer exited with code ${code}`));
+            }
+          });
+
+          proc.on('error', reject);
+        });
+
+        // Read the new index
+        if (existsSync(indexOutputPath)) {
+          const content = readFileSync(indexOutputPath, 'utf-8');
+          const projectIndex = JSON.parse(content);
+          return { success: true, data: projectIndex };
+        }
+
+        return { success: false, error: 'Failed to generate project index' };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to refresh project index'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONTEXT_MEMORY_STATUS,
+    async (_, projectId: string): Promise<IPCResult<GraphitiMemoryStatus>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      // Load project .env file to check for Graphiti config
+      let projectEnvVars: Record<string, string> = {};
+      if (project.autoBuildPath) {
+        const projectEnvPath = path.join(project.path, project.autoBuildPath, '.env');
+        if (existsSync(projectEnvPath)) {
+          try {
+            const envContent = readFileSync(projectEnvPath, 'utf-8');
+            // Parse .env file inline - handle both Unix and Windows line endings
+            for (const line of envContent.split(/\r?\n/)) {
+              const trimmed = line.trim();
+              if (!trimmed || trimmed.startsWith('#')) continue;
+              const eqIndex = trimmed.indexOf('=');
+              if (eqIndex > 0) {
+                const key = trimmed.substring(0, eqIndex).trim();
+                let value = trimmed.substring(eqIndex + 1).trim();
+                if ((value.startsWith('"') && value.endsWith('"')) ||
+                    (value.startsWith("'") && value.endsWith("'"))) {
+                  value = value.slice(1, -1);
+                }
+                projectEnvVars[key] = value;
+              }
+            }
+          } catch {
+            // Continue with empty vars
+          }
+        }
+      }
+
+      // Load global settings for OpenAI API key fallback
+      let globalOpenAIKey: string | undefined;
+      if (existsSync(settingsPath)) {
+        try {
+          const settingsContent = readFileSync(settingsPath, 'utf-8');
+          const globalSettings = JSON.parse(settingsContent);
+          globalOpenAIKey = globalSettings.globalOpenAIApiKey;
+        } catch {
+          // Continue without global settings
+        }
+      }
+
+      // Check for Graphiti config: project .env > process.env
+      const graphitiEnabled =
+        projectEnvVars['GRAPHITI_ENABLED']?.toLowerCase() === 'true' ||
+        process.env.GRAPHITI_ENABLED?.toLowerCase() === 'true';
+
+      // Check for OpenAI key: project .env > global settings > process.env
+      const hasOpenAI =
+        !!projectEnvVars['OPENAI_API_KEY'] ||
+        !!globalOpenAIKey ||
+        !!process.env.OPENAI_API_KEY;
+
+      // Get Graphiti connection details from project .env or process.env
+      const graphitiHost = projectEnvVars['GRAPHITI_FALKORDB_HOST'] || process.env.GRAPHITI_FALKORDB_HOST || 'localhost';
+      const graphitiPort = parseInt(projectEnvVars['GRAPHITI_FALKORDB_PORT'] || process.env.GRAPHITI_FALKORDB_PORT || '6380', 10);
+      const graphitiDatabase = projectEnvVars['GRAPHITI_DATABASE'] || process.env.GRAPHITI_DATABASE || 'auto_build_memory';
+
+      if (!graphitiEnabled) {
+        return {
+          success: true,
+          data: {
+            enabled: false,
+            available: false,
+            reason: 'GRAPHITI_ENABLED not set to true'
+          }
+        };
+      }
+
+      if (!hasOpenAI) {
+        return {
+          success: true,
+          data: {
+            enabled: true,
+            available: false,
+            reason: 'OPENAI_API_KEY not set (required for embeddings)'
+          }
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          enabled: true,
+          available: true,
+          host: graphitiHost,
+          port: graphitiPort,
+          database: graphitiDatabase
+        }
+      };
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONTEXT_SEARCH_MEMORIES,
+    async (_, projectId: string, query: string): Promise<IPCResult<ContextSearchResult[]>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      // For now, do simple text search in file-based memories
+      // Graphiti search would require running Python subprocess
+      const results: ContextSearchResult[] = [];
+      const queryLower = query.toLowerCase();
+
+      // Get specs directory path
+      const specsBaseDir = getSpecsDir(project.autoBuildPath);
+      const specsDir = path.join(project.path, specsBaseDir);
+      if (existsSync(specsDir)) {
+        const allSpecDirs = readdirSync(specsDir)
+          .filter((f: string) => {
+            const specPath = path.join(specsDir, f);
+            return statSync(specPath).isDirectory();
+          });
+
+        for (const specDir of allSpecDirs) {
+          const memoryDir = path.join(specsDir, specDir, 'memory');
+          if (existsSync(memoryDir)) {
+            const memoryFiles = readdirSync(memoryDir)
+              .filter((f: string) => f.endsWith('.json'));
+
+            for (const memFile of memoryFiles) {
+              try {
+                const memPath = path.join(memoryDir, memFile);
+                const memContent = readFileSync(memPath, 'utf-8');
+
+                if (memContent.toLowerCase().includes(queryLower)) {
+                  const memData = JSON.parse(memContent);
+                  results.push({
+                    content: JSON.stringify(memData.insights || memData, null, 2),
+                    score: 1.0,
+                    type: 'session_insight'
+                  });
+                }
+              } catch {
+                // Skip invalid files
+              }
+            }
+          }
+        }
+      }
+
+      return { success: true, data: results.slice(0, 20) };
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONTEXT_GET_MEMORIES,
+    async (_, projectId: string, limit: number = 20): Promise<IPCResult<MemoryEpisode[]>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      const memories: MemoryEpisode[] = [];
+
+      // Get specs directory path
+      const specsBaseDir = getSpecsDir(project.autoBuildPath);
+      const specsDir = path.join(project.path, specsBaseDir);
+
+      if (existsSync(specsDir)) {
+        const sortedSpecDirs = readdirSync(specsDir)
+          .filter((f: string) => {
+            const specPath = path.join(specsDir, f);
+            return statSync(specPath).isDirectory();
+          })
+          .sort()
+          .reverse();
+
+        for (const specDir of sortedSpecDirs) {
+          const memoryDir = path.join(specsDir, specDir, 'memory');
+          if (existsSync(memoryDir)) {
+            const memoryFiles = readdirSync(memoryDir)
+              .filter((f: string) => f.endsWith('.json'))
+              .sort()
+              .reverse();
+
+            for (const memFile of memoryFiles) {
+              try {
+                const memPath = path.join(memoryDir, memFile);
+                const memContent = readFileSync(memPath, 'utf-8');
+                const memData = JSON.parse(memContent);
+
+                memories.push({
+                  id: `${specDir}-${memFile}`,
+                  type: memData.type || 'session_insight',
+                  timestamp: memData.timestamp || new Date().toISOString(),
+                  content: JSON.stringify(memData.insights || memData, null, 2),
+                  session_number: memData.session_number
+                });
+
+                if (memories.length >= limit) {
+                  break;
+                }
+              } catch {
+                // Skip invalid files
+              }
+            }
+          }
+
+          if (memories.length >= limit) {
+            break;
+          }
+        }
+      }
+
+      return { success: true, data: memories };
+    }
+  );
