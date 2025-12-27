@@ -48,13 +48,10 @@ except ImportError:  # pragma: no cover
 def _try_lock(fd: int, exclusive: bool) -> None:
     if _IS_WINDOWS:
         if msvcrt is None:
-            raise FileLockError(
-                "msvcrt is required for file locking on Windows"
-            )
+            raise FileLockError("msvcrt is required for file locking on Windows")
         if not exclusive:
             warnings.warn(
-                "Shared file locks are not supported on Windows; "
-                "using exclusive lock",
+                "Shared file locks are not supported on Windows; using exclusive lock",
                 RuntimeWarning,
                 stacklevel=3,
             )
