@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useViewState } from '../contexts/ViewStateContext';
 import {
   DndContext,
   DragOverlay,
@@ -215,7 +216,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
   const { t } = useTranslation('tasks');
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
+  const { showArchived, setShowArchived } = useViewState();
 
   // Count archived tasks for display
   const archivedCount = useMemo(() => {
