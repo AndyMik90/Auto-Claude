@@ -139,6 +139,12 @@ class PRContextGatherer:
             flush=True,
         )
 
+        # Ensure PR refs are available locally (fetches commits for fork PRs)
+        head_sha = pr_data.get("headRefOid", "")
+        base_sha = pr_data.get("baseRefOid", "")
+        if head_sha and base_sha:
+            await self._ensure_pr_refs_available(head_sha, base_sha)
+
         # Fetch changed files with content
         changed_files = await self._fetch_changed_files(pr_data)
         print(f"[Context] Fetched {len(changed_files)} changed files", flush=True)
@@ -197,6 +203,8 @@ class PRContextGatherer:
                 "state",
                 "headRefName",
                 "baseRefName",
+                "headRefOid",  # Commit SHA for head - works even when branch is unavailable locally
+                "baseRefOid",  # Commit SHA for base - works even when branch is unavailable locally
                 "author",
                 "files",
                 "additions",
@@ -205,6 +213,71 @@ class PRContextGatherer:
                 "labels",
             ],
         )
+
+    async def _ensure_pr_refs_available(self, head_sha: str, base_sha: str) -> bool:
+        """
+        Ensure PR refs are available locally by fetching the commit SHAs.
+
+        This solves the "fatal: bad revision" error when PR branches aren't
+        available locally (e.g., PRs from forks or unfetched branches).
+
+        Args:
+            head_sha: The head commit SHA (from headRefOid)
+            base_sha: The base commit SHA (from baseRefOid)
+
+        Returns:
+            True if refs are available, False otherwise
+        """
+        try:
+            # Fetch the specific commits - this works even for fork PRs
+            proc = await asyncio.create_subprocess_exec(
+                "git",
+                "fetch",
+                "origin",
+                head_sha,
+                base_sha,
+                cwd=self.project_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+
+            if proc.returncode == 0:
+                print(
+                    f"[Context] Fetched PR refs: {head_sha[:8]}...{base_sha[:8]}",
+                    flush=True,
+                )
+                return True
+            else:
+                # If direct SHA fetch fails, try fetching the PR ref
+                print("[Context] Direct SHA fetch failed, trying PR ref...", flush=True)
+                proc2 = await asyncio.create_subprocess_exec(
+                    "git",
+                    "fetch",
+                    "origin",
+                    f"pull/{self.pr_number}/head:refs/pr/{self.pr_number}",
+                    cwd=self.project_dir,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await asyncio.wait_for(proc2.communicate(), timeout=30.0)
+                if proc2.returncode == 0:
+                    print(
+                        f"[Context] Fetched PR ref: refs/pr/{self.pr_number}",
+                        flush=True,
+                    )
+                    return True
+                print(
+                    f"[Context] Failed to fetch PR refs: {stderr.decode('utf-8')}",
+                    flush=True,
+                )
+                return False
+        except asyncio.TimeoutError:
+            print("[Context] Timeout fetching PR refs", flush=True)
+            return False
+        except Exception as e:
+            print(f"[Context] Error fetching PR refs: {e}", flush=True)
+            return False
 
     async def _fetch_changed_files(self, pr_data: dict) -> list[ChangedFile]:
         """
@@ -226,16 +299,18 @@ class PRContextGatherer:
 
             print(f"[Context]   Processing {path} ({status})...", flush=True)
 
-            # Get current content (from PR head branch)
-            content = await self._read_file_content(path, pr_data["headRefName"])
+            # Use commit SHAs if available (works for fork PRs), fallback to branch names
+            head_ref = pr_data.get("headRefOid") or pr_data["headRefName"]
+            base_ref = pr_data.get("baseRefOid") or pr_data["baseRefName"]
 
-            # Get base content (from base branch)
-            base_content = await self._read_file_content(path, pr_data["baseRefName"])
+            # Get current content (from PR head commit)
+            content = await self._read_file_content(path, head_ref)
+
+            # Get base content (from base commit)
+            base_content = await self._read_file_content(path, base_ref)
 
             # Get the patch for this specific file
-            patch = await self._get_file_patch(
-                path, pr_data["baseRefName"], pr_data["headRefName"]
-            )
+            patch = await self._get_file_patch(path, base_ref, head_ref)
 
             changed_files.append(
                 ChangedFile(
