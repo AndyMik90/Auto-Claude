@@ -1204,6 +1204,163 @@ export function Unity({ projectId }: UnityProps) {
               </div>
             )}
 
+            {/* M3: Unity Doctor Panel */}
+            {projectInfo.isUnityProject && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Stethoscope className="h-5 w-5" />
+                      Unity Doctor
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      {doctorReport && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyDiagnostics}
+                          className="gap-2"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Copy Report
+                        </Button>
+                      )}
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={runDoctorChecks}
+                        disabled={isDoctorRunning}
+                        className="gap-2"
+                      >
+                        {isDoctorRunning ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        Run Diagnostics
+                      </Button>
+                    </div>
+                  </div>
+                  <CardDescription>
+                    Check Unity project, editor, toolchain, and package health
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isDoctorRunning && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+
+                  {!isDoctorRunning && !doctorReport && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Click "Run Diagnostics" to check your Unity project health</p>
+                    </div>
+                  )}
+
+                  {doctorReport && !isDoctorRunning && (
+                    <div className="space-y-4">
+                      {/* Summary */}
+                      <div className="flex items-center gap-4 p-3 bg-muted rounded-md">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-success" />
+                          <span className="text-sm font-medium">{doctorReport.summary.success} OK</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                          <span className="text-sm font-medium">{doctorReport.summary.warning} Warnings</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <XCircle className="h-4 w-4 text-destructive" />
+                          <span className="text-sm font-medium">{doctorReport.summary.error} Errors</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Info className="h-4 w-4 text-info" />
+                          <span className="text-sm font-medium">{doctorReport.summary.info} Info</span>
+                        </div>
+                      </div>
+
+                      {/* Checks by category */}
+                      {['project', 'editor', 'toolchain', 'packages', 'git'].map((category) => {
+                        const categoryChecks = doctorReport.checks.filter((c) => c.category === category);
+                        if (categoryChecks.length === 0) return null;
+
+                        return (
+                          <div key={category} className="space-y-2">
+                            <h4 className="text-sm font-semibold text-foreground capitalize">{category}</h4>
+                            <div className="space-y-1">
+                              {categoryChecks.map((check) => (
+                                <div
+                                  key={check.id}
+                                  className="border rounded-md p-3 hover:bg-muted/50 transition-colors"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2 flex-1">
+                                      <div className="mt-0.5">
+                                        {check.status === 'success' && (
+                                          <CheckCircle className="h-4 w-4 text-success" />
+                                        )}
+                                        {check.status === 'warning' && (
+                                          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                                        )}
+                                        {check.status === 'error' && (
+                                          <XCircle className="h-4 w-4 text-destructive" />
+                                        )}
+                                        {check.status === 'info' && (
+                                          <Info className="h-4 w-4 text-info" />
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm font-medium">{check.name}</span>
+                                          <Badge variant="secondary" className="text-xs">
+                                            {check.message}
+                                          </Badge>
+                                        </div>
+                                        {check.details && (
+                                          <button
+                                            onClick={() => toggleCheckExpansion(check.id)}
+                                            className="flex items-center gap-1 mt-1 text-xs text-muted-foreground hover:text-foreground"
+                                          >
+                                            {expandedChecks.has(check.id) ? (
+                                              <ChevronUp className="h-3 w-3" />
+                                            ) : (
+                                              <ChevronDown className="h-3 w-3" />
+                                            )}
+                                            Details
+                                          </button>
+                                        )}
+                                        {expandedChecks.has(check.id) && check.details && (
+                                          <div className="mt-2 text-xs text-muted-foreground bg-muted p-2 rounded">
+                                            {check.details}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {check.actionable && check.fixAction === 'install-bridge' && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={installBridge}
+                                        className="gap-1"
+                                      >
+                                        <Download className="h-3 w-3" />
+                                        Install
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Profile Selector Card */}
             {projectInfo.isUnityProject && profileSettings && (
               <Card>
