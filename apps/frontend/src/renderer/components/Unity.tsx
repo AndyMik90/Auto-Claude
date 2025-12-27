@@ -131,7 +131,8 @@ export function Unity({ projectId }: UnityProps) {
   const [runs, setRuns] = useState<UnityRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<UnityRun | null>(null);
   const [isLoadingRuns, setIsLoadingRuns] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunningEditMode, setIsRunningEditMode] = useState(false);
+  const [isRunningPlayMode, setIsRunningPlayMode] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
 
   // M2: Profiles state
@@ -145,8 +146,8 @@ export function Unity({ projectId }: UnityProps) {
   const [profileFormError, setProfileFormError] = useState<string>('');
 
   // M2: Pipeline state
-  const [, setPipelines] = useState<UnityPipelineRun[]>([]);
   const [isRunningPipeline, setIsRunningPipeline] = useState(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
   const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>([
     { type: 'validate', enabled: true },
     { type: 'editmode-tests', enabled: true },
@@ -258,33 +259,10 @@ export function Unity({ projectId }: UnityProps) {
     try {
       const result = await window.electronAPI.getUnityProfiles(selectedProject.id);
       if (result.success && result.data) {
-        const profileData = result.data;
-        setProfileSettings(profileData);
-        // Update PlayMode defaults from active profile
-        const activeProfile = profileData.profiles.find(p => p.id === profileData.activeProfileId);
-        if (activeProfile?.testDefaults?.playModeBuildTarget) {
-          setPlayModeBuildTarget(activeProfile.testDefaults.playModeBuildTarget);
-        }
-        if (activeProfile?.testDefaults?.testFilter) {
-          setPlayModeTestFilter(activeProfile.testDefaults.testFilter);
-        }
+        setProfileSettings(result.data);
       }
     } catch (err) {
       console.error('Failed to load Unity profiles:', err);
-    }
-  }, [selectedProject]);
-
-  // M2: Load pipelines
-  const loadPipelines = useCallback(async () => {
-    if (!selectedProject) return;
-
-    try {
-      const result = await window.electronAPI.loadUnityPipelines(selectedProject.id);
-      if (result.success && result.data) {
-        setPipelines(result.data.pipelines || []);
-      }
-    } catch (err) {
-      console.error('Failed to load Unity pipelines:', err);
     }
   }, [selectedProject]);
 
@@ -294,13 +272,25 @@ export function Unity({ projectId }: UnityProps) {
     loadSettings();
     loadRuns();
     loadProfiles(); // M2
-    loadPipelines(); // M2
-  }, [detectUnityProject, loadSettings, loadRuns, loadProfiles, loadPipelines]);
+  }, [detectUnityProject, loadSettings, loadRuns, loadProfiles]);
 
   // Load editors when project info or settings change
   useEffect(() => {
     loadUnityEditors();
   }, [loadUnityEditors]);
+
+  // Update PlayMode defaults when active profile changes
+  useEffect(() => {
+    if (!profileSettings) return;
+    
+    const activeProfile = profileSettings.profiles.find(p => p.id === profileSettings.activeProfileId);
+    if (activeProfile?.testDefaults?.playModeBuildTarget) {
+      setPlayModeBuildTarget(activeProfile.testDefaults.playModeBuildTarget);
+    }
+    if (activeProfile?.testDefaults?.testFilter) {
+      setPlayModeTestFilter(activeProfile.testDefaults.testFilter);
+    }
+  }, [profileSettings?.activeProfileId]);
 
   // Save Unity settings
   const saveSettings = async () => {
@@ -328,7 +318,7 @@ export function Unity({ projectId }: UnityProps) {
   const runEditModeTests = async () => {
     if (!selectedProject || !effectiveEditorPath) return;
 
-    setIsRunning(true);
+    setIsRunningEditMode(true);
     setRunError(null);
 
     try {
@@ -342,7 +332,7 @@ export function Unity({ projectId }: UnityProps) {
     } catch (err) {
       setRunError(err instanceof Error ? err.message : t('errors.runTests'));
     } finally {
-      setIsRunning(false);
+      setIsRunningEditMode(false);
     }
   };
 
@@ -350,7 +340,7 @@ export function Unity({ projectId }: UnityProps) {
   const runBuild = async () => {
     if (!selectedProject || !effectiveEditorPath || !buildExecuteMethod) return;
 
-    setIsRunning(true);
+    setIsRunningEditMode(true);
     setRunError(null);
 
     try {
@@ -368,7 +358,7 @@ export function Unity({ projectId }: UnityProps) {
     } catch (err) {
       setRunError(err instanceof Error ? err.message : t('errors.runBuild'));
     } finally {
-      setIsRunning(false);
+      setIsRunningEditMode(false);
     }
   };
 
@@ -376,7 +366,7 @@ export function Unity({ projectId }: UnityProps) {
   const runPlayModeTests = async () => {
     if (!selectedProject || !effectiveEditorPath) return;
 
-    setIsRunning(true);
+    setIsRunningPlayMode(true);
     setRunError(null);
 
     try {
@@ -397,7 +387,7 @@ export function Unity({ projectId }: UnityProps) {
     } catch (err) {
       setRunError(err instanceof Error ? err.message : 'Failed to run PlayMode tests');
     } finally {
-      setIsRunning(false);
+      setIsRunningPlayMode(false);
     }
   };
 
@@ -406,6 +396,7 @@ export function Unity({ projectId }: UnityProps) {
     if (!selectedProject || !profileSettings) return;
 
     setIsRunningPipeline(true);
+    setPipelineError(null);
 
     try {
       const result = await window.electronAPI.runUnityPipeline(selectedProject.id, {
@@ -414,13 +405,16 @@ export function Unity({ projectId }: UnityProps) {
         continueOnFail
       });
       if (result.success) {
-        // Refresh runs and pipelines
+        // Refresh runs
         await loadRuns();
-        await loadPipelines();
       } else {
-        console.error('Failed to run pipeline:', result.error);
+        const errorMsg = result.error || 'Failed to run pipeline';
+        setPipelineError(errorMsg);
+        console.error('Failed to run pipeline:', errorMsg);
       }
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to run pipeline';
+      setPipelineError(errorMsg);
       console.error('Failed to run pipeline:', err);
     } finally {
       setIsRunningPipeline(false);
@@ -544,7 +538,7 @@ export function Unity({ projectId }: UnityProps) {
   const rerun = async (runId: string) => {
     if (!selectedProject) return;
 
-    setIsRunning(true);
+    setIsRunningEditMode(true);
     setRunError(null);
 
     try {
@@ -558,7 +552,7 @@ export function Unity({ projectId }: UnityProps) {
     } catch (err) {
       setRunError(err instanceof Error ? err.message : 'Failed to re-run');
     } finally {
-      setIsRunning(false);
+      setIsRunningEditMode(false);
     }
   };
 
@@ -654,7 +648,7 @@ export function Unity({ projectId }: UnityProps) {
     );
   }
 
-  const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunning && !hasRunningRun;
+  const canRunTests = projectInfo?.isUnityProject && effectiveEditorPath && !isRunningEditMode && !isRunningPlayMode && !hasRunningRun;
   const canRunBuild = canRunTests && buildExecuteMethod;
 
   // Check if project's required editor is installed
@@ -1002,7 +996,7 @@ export function Unity({ projectId }: UnityProps) {
                       onClick={runEditModeTests}
                       disabled={!canRunTests}
                     >
-                      {isRunning ? (
+                      {isRunningEditMode ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           {t('actions.runningTests')}
@@ -1059,7 +1053,7 @@ export function Unity({ projectId }: UnityProps) {
                       disabled={!canRunTests}
                       variant="secondary"
                     >
-                      {isRunning ? (
+                      {isRunningPlayMode ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           {t('actions.runningTests')}
@@ -1102,7 +1096,7 @@ export function Unity({ projectId }: UnityProps) {
                       disabled={!canRunBuild}
                       variant="secondary"
                     >
-                      {isRunning ? (
+                      {isRunningEditMode ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           {t('actions.runningBuild')}
@@ -1201,6 +1195,13 @@ export function Unity({ projectId }: UnityProps) {
                       </>
                     )}
                   </Button>
+
+                  {/* Pipeline Error Message */}
+                  {pipelineError && (
+                    <div className="mt-2 text-sm text-red-500">
+                      {pipelineError}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -1605,6 +1606,17 @@ export function Unity({ projectId }: UnityProps) {
                         return;
                       }
 
+                      // Check for duplicate profile names
+                      const duplicateProfile = profileSettings?.profiles.find(
+                        (profile) =>
+                          profile.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+                          (!editingProfile || profile.id !== editingProfile.id)
+                      );
+                      if (duplicateProfile) {
+                        setProfileFormError(t('profiles.dialog.duplicateProfileName'));
+                        return;
+                      }
+
                       const profileData = {
                         name: trimmedName,
                         buildExecuteMethod: profileFormBuildMethod.trim() || undefined,
@@ -1656,7 +1668,14 @@ export function Unity({ projectId }: UnityProps) {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirmProfile !== null} onOpenChange={(open) => !open && setDeleteConfirmProfile(null)}>
+      <Dialog
+        open={deleteConfirmProfile !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirmProfile(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('profiles.dialog.confirmDeleteTitle')}</DialogTitle>
