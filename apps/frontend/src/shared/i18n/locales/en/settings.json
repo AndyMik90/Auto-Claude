@@ -252,5 +252,79 @@
     "apiKeysInfo": "Keys set here are used as defaults. Individual projects can override these in their settings.",
     "openaiKey": "OpenAI API Key",
     "openaiKeyDescription": "Required for Graphiti memory backend (embeddings)"
+  },
+  "templates": {
+    "add": {
+      "title": "Add Template",
+      "titleEdit": "Edit Template",
+      "description": "Create a new project template by selecting a folder and giving it a name",
+      "descriptionEdit": "Update your template details"
+    },
+    "form": {
+      "name": {
+        "label": "Template Name",
+        "placeholder": "My Awesome Template"
+      },
+      "folder": {
+        "label": "Template Folder",
+        "placeholder": "Select a folder...",
+        "browse": "Browse"
+      },
+      "image": {
+        "label": "Icon/Image (Optional)",
+        "chooseImage": "Choose Image",
+        "helper": "Select an image file to use as the template icon"
+      }
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "create": "Create",
+      "update": "Update",
+      "saving": "Saving..."
+    },
+    "errors": {
+      "nameRequired": "Please enter a template name",
+      "folderRequired": "Please select a folder",
+      "updateFailed": "Failed to update template",
+      "createFailed": "Failed to create template",
+      "generic": "An error occurred"
+    }
+  },
+  "secrets": {
+    "manager": {
+      "title": "Secrets Manager",
+      "encryptionUnavailable": {
+        "title": "Encryption Not Available",
+        "message": "Secure encryption is not available on your system. Please ensure your operating system supports secure storage."
+      },
+      "about": {
+        "title": "About Secrets",
+        "description": "Secrets are securely encrypted credentials that auto-populate into your generated projects. Create secret groups with multiple accounts, then reference them in your template files using secret parameters. When creating projects, select which account to use and the values are automatically injected."
+      },
+      "addGroup": "Add Secret Group",
+      "loading": "Loading secrets...",
+      "empty": {
+        "title": "No secret groups yet",
+        "description": "Create your first secret group template to securely store credentials",
+        "action": "Create Secret Group"
+      },
+      "defaultAccounts": {
+        "title": "Default Accounts for Templates",
+        "description": "Select which account to use by default when creating projects from templates",
+        "placeholder": "Select default account",
+        "accountsAvailable": "accounts available"
+      },
+      "group": {
+        "account": "account",
+        "accounts": "accounts",
+        "keys": "Keys",
+        "addAccount": "Add Account",
+        "noAccounts": "No accounts yet. Click \"Add Account\" to create one."
+      },
+      "confirmDelete": {
+        "group": "Are you sure you want to delete this secret group and all its accounts? This action cannot be undone.",
+        "account": "Are you sure you want to delete this account?"
+      }
+    }
   }
 }

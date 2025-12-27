@@ -87,6 +87,7 @@ export interface AppSettings {
   gitPath?: string;
   githubCLIPath?: string;
   autoBuildPath?: string;
+  projectPath?: string;
   autoUpdateAutoBuild: boolean;
   autoNameTerminals: boolean;
   notifications: NotificationSettings;
@@ -118,6 +119,9 @@ export interface AppSettings {
   uiScale?: number;
   // Beta updates opt-in (receive pre-release updates)
   betaUpdates?: boolean;
+  // Default secret accounts per group (for template parameters)
+  // Maps secret group title to default account ID
+  defaultSecretAccounts?: Record<string, string>;
   // Migration flags (internal use)
   _migratedAgentProfileToAuto?: boolean;
   // Language preference for UI (i18n)
