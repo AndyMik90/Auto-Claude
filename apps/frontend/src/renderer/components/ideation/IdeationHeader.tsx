@@ -1,10 +1,9 @@
-import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, Archive, CheckSquare, X } from 'lucide-react';
+import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, CheckSquare, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { IDEATION_TYPE_COLORS } from '../../../shared/constants';
 import type { IdeationType } from '../../../shared/types';
-import { useViewState } from '../../contexts/ViewStateContext';
 import { TypeIcon } from './TypeIcon';
 
 interface IdeationHeaderProps {
@@ -40,8 +39,6 @@ export function IdeationHeader({
   hasActiveIdeas,
   canAddMore
 }: IdeationHeaderProps) {
-  // Get showArchived from shared context for cross-page sync
-  const { showArchived, toggleShowArchived } = useViewState();
   const hasSelection = selectedCount > 0;
   return (
     <div className="shrink-0 border-b border-border p-4 bg-card/50">
@@ -116,20 +113,6 @@ export function IdeationHeader({
             </TooltipTrigger>
             <TooltipContent>
               {showDismissed ? 'Hide dismissed' : 'Show dismissed'}
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={showArchived ? 'secondary' : 'outline'}
-                size="icon"
-                onClick={toggleShowArchived}
-              >
-                <Archive className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {showArchived ? 'Hide archived' : 'Show archived'}
             </TooltipContent>
           </Tooltip>
           <Tooltip>
