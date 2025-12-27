@@ -45,9 +45,10 @@ interface TaskDetailModalProps {
   task: Task | null;
   onOpenChange: (open: boolean) => void;
   onSwitchToTerminals?: () => void;
+  onOpenInbuiltTerminal?: (id: string, cwd: string) => void;
 }
 
-export function TaskDetailModal({ open, task, onOpenChange, onSwitchToTerminals }: TaskDetailModalProps) {
+export function TaskDetailModal({ open, task, onOpenChange, onSwitchToTerminals, onOpenInbuiltTerminal }: TaskDetailModalProps) {
   // Don't render anything if no task
   if (!task) {
     return null;
@@ -59,12 +60,13 @@ export function TaskDetailModal({ open, task, onOpenChange, onSwitchToTerminals 
       task={task}
       onOpenChange={onOpenChange}
       onSwitchToTerminals={onSwitchToTerminals}
+      onOpenInbuiltTerminal={onOpenInbuiltTerminal}
     />
   );
 }
 
 // Separate component to use hooks only when task exists
-function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals }: { open: boolean; task: Task; onOpenChange: (open: boolean) => void; onSwitchToTerminals?: () => void }) {
+function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals, onOpenInbuiltTerminal }: { open: boolean; task: Task; onOpenChange: (open: boolean) => void; onSwitchToTerminals?: () => void; onOpenInbuiltTerminal?: (id: string, cwd: string) => void }) {
   const state = useTaskDetail({ task });
   const progressPercent = calculateProgress(task.subtasks);
   const completedSubtasks = task.subtasks.filter(s => s.status === 'completed').length;
@@ -411,6 +413,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals 
                             onLoadMergePreview={state.loadMergePreview}
                             onClose={handleClose}
                             onSwitchToTerminals={onSwitchToTerminals}
+                            onOpenInbuiltTerminal={onOpenInbuiltTerminal}
                           />
                         </>
                       )}

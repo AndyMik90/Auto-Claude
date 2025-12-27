@@ -391,6 +391,22 @@ export function App() {
     setSelectedTask(null);
   };
 
+  const handleOpenInbuiltTerminal = async (id: string, cwd: string) => {
+    // Close modal
+    setSelectedTask(null);
+    // Switch to terminals view
+    setActiveView('terminals');
+    // Create terminal
+    try {
+      const result = await window.electronAPI.createTerminal({ id, cwd });
+      if (!result.success) {
+        console.error('[App] Failed to create terminal:', result.error);
+      }
+    } catch (err) {
+      console.error('[App] Exception creating terminal:', err);
+    }
+  };
+
   const handleAddProject = async () => {
     try {
       const path = await window.electronAPI.selectDirectory();
@@ -717,6 +733,7 @@ export function App() {
           task={selectedTask}
           onOpenChange={(open) => !open && handleCloseTaskDetail()}
           onSwitchToTerminals={() => setActiveView('terminals')}
+          onOpenInbuiltTerminal={handleOpenInbuiltTerminal}
         />
 
         {/* Dialogs */}
