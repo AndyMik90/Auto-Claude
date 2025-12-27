@@ -130,6 +130,17 @@ interface UnityPipelineRun {
 // Constants
 const DEFAULT_CANCELED_REASON = 'canceled (reason unknown)';
 
+// Error patterns for detecting execution errors in pipeline steps
+const EXECUTION_ERROR_PATTERNS = [
+  'not found',
+  'not configured',
+  'failed to',
+  'cannot find',
+  'missing',
+  'invalid path',
+  'permission denied'
+];
+
 /**
  * Parse ISO timestamp for use in IDs (includes milliseconds for uniqueness)
  * Converts "2024-12-26T14:30:45.123Z" to "20241226-143045123"
@@ -1630,19 +1641,11 @@ async function runUnityPipeline(
       } catch (error) {
         // Distinguish between different types of errors for better debugging
         const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessageLower = errorMessage.toLowerCase();
         
         // Detect execution errors by checking for specific patterns
-        const executionErrorPatterns = [
-          'not found',
-          'not configured',
-          'failed to',
-          'cannot find',
-          'missing',
-          'invalid path',
-          'permission denied'
-        ];
-        const isExecutionError = executionErrorPatterns.some(pattern => 
-          errorMessage.toLowerCase().includes(pattern.toLowerCase())
+        const isExecutionError = EXECUTION_ERROR_PATTERNS.some(pattern => 
+          errorMessageLower.includes(pattern)
         );
         
         console.error(`Pipeline step ${step.type} failed:`, error);
