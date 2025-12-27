@@ -529,11 +529,11 @@ export function Unity({ projectId }: UnityProps) {
         selectedProject.id,
         effectiveEditorPath
       );
-      if (result.success) {
+      if (result.success && result.data) {
         setDoctorReport(result.data);
         // Also check bridge status
         const bridgeResult = await window.electronAPI.checkBridgeInstalled(selectedProject.id);
-        if (bridgeResult.success) {
+        if (bridgeResult.success && bridgeResult.data) {
           setBridgeInstalled(bridgeResult.data.installed);
         }
       }
@@ -652,7 +652,7 @@ export function Unity({ projectId }: UnityProps) {
     setIsLoadingPackages(true);
     try {
       const result = await window.electronAPI.upmListPackages(selectedProject.id);
-      if (result.success) {
+      if (result.success && result.data) {
         setPackages(result.data.packages);
       }
     } catch (err) {
@@ -683,7 +683,7 @@ export function Unity({ projectId }: UnityProps) {
 
     try {
       const result = await window.electronAPI.getDiagnosticsText(doctorReport);
-      if (result.success) {
+      if (result.success && result.data) {
         await window.electronAPI.copyToClipboard(result.data);
       }
     } catch (err) {
@@ -1332,10 +1332,7 @@ export function Unity({ projectId }: UnityProps) {
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                          <span className="text-sm font-medium">{check.name}</span>
-                                          <Badge variant="secondary" className="text-xs">
-                                            {check.message}
-                                          </Badge>
+                                          <span className="text-sm font-medium">{check.message}</span>
                                         </div>
                                         {check.details && (
                                           <button

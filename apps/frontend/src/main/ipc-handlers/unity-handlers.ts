@@ -35,7 +35,7 @@ interface UnityTweakParams {
 
 interface UnityRun {
   id: string;
-  action: 'editmode-tests' | 'playmode-tests' | 'build';
+  action: 'editmode-tests' | 'playmode-tests' | 'build' | 'tweak' | 'upm-resolve' | 'bridge-install';
   startedAt: string;
   endedAt?: string;
   durationMs?: number;
@@ -51,6 +51,8 @@ interface UnityRun {
     testPlatform?: string;
     buildTarget?: string;  // for PlayMode and Build
     testFilter?: string;   // for test filtering
+    tweakAction?: string;  // M3: tweak action type
+    [key: string]: any;    // M3: additional params
   };
   artifactPaths: {
     runDir: string;
@@ -59,6 +61,9 @@ interface UnityRun {
     stdout?: string;
     stderr?: string;
     errorDigest?: string;
+    preBackupDir?: string;   // M3: pre-backup directory
+    postBackupDir?: string;  // M3: post-backup directory
+    diffFile?: string;       // M3: diff file
   };
   testsSummary?: {
     passed: number;
@@ -69,6 +74,12 @@ interface UnityRun {
   errorSummary?: {
     errorCount: number;
     firstErrorLine?: string;
+  };
+  tweakSummary?: {             // M3: tweak summary
+    action: string;
+    description: string;
+    changedFiles: string[];
+    backupCreated: boolean;
   };
   canceledReason?: string;
 }
@@ -484,7 +495,7 @@ function getUnityRunsDir(projectId: string): string {
 /**
  * Create a new run directory and return the run ID
  */
-function createRunDir(projectId: string, action: 'editmode-tests' | 'playmode-tests' | 'build'): { id: string; dir: string } {
+function createRunDir(projectId: string, action: 'editmode-tests' | 'playmode-tests' | 'build' | 'tweak' | 'upm-resolve' | 'bridge-install'): { id: string; dir: string } {
   const runsDir = getUnityRunsDir(projectId);
 
   // Generate run ID: YYYYMMDD-HHMMSSmmm_action
@@ -1120,9 +1131,16 @@ async function runUnityTweak(
   tweakAction: string,
   params: UnityTweakParams
 ): Promise<string> {
-  const projectPath = getUnityProjectPath(projectId);
-  const runId = createRunId();
-  const runDir = join(projectPath, '.auto-claude', 'unity-runs', runId);
+  const project = projectStore.getProject(projectId);
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  // Get Unity settings to check for custom Unity project path
+  const settings = getUnitySettings(projectId);
+  const projectPath = settings.unityProjectPath || project.path;
+
+  const { id: runId, dir: runDir } = createRunDir(projectId, 'tweak');
 
   // Import tweak utilities
   const {
@@ -1186,11 +1204,13 @@ async function runUnityTweak(
       detached: true,
     });
 
-    run.pid = unityProcess.pid;
-    saveRunRecord(projectId, run);
-
-    // Store process
-    unityProcessStore.set(runId, unityProcess);
+    // Store PID for cancellation
+    const pid = unityProcess.pid;
+    if (pid) {
+      run.pid = pid;
+      saveRunRecord(projectId, run);
+      unityProcessStore.register(runId, pid);
+    }
 
     unityProcess.stdout.on('data', (data) => {
       stdoutStream.write(data);
@@ -1203,13 +1223,16 @@ async function runUnityTweak(
     unityProcess.on('close', async (code) => {
       stdoutStream.end();
       stderrStream.end();
-      unityProcessStore.delete(runId);
+
+      // Unregister process
+      unityProcessStore.unregister(runId);
 
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      // Check if run was canceled
-      const wasCanceled = checkIfCanceled(projectId, runId);
+      // Check if this was a cancellation by reloading from disk
+      const diskRun = loadRunRecord(projectId, runId);
+      const wasCanceled = diskRun?.status === 'canceled';
 
       try {
         // Create post-backup and diff
@@ -1271,7 +1294,9 @@ async function runUnityTweak(
     unityProcess.on('error', (error) => {
       stdoutStream.end();
       stderrStream.end();
-      unityProcessStore.delete(runId);
+
+      // Unregister process
+      unityProcessStore.unregister(runId);
 
       run.endedAt = new Date().toISOString();
       run.durationMs = Date.now() - startTime;
@@ -2530,8 +2555,14 @@ export function registerUnityHandlers(): void {
     IPC_CHANNELS.UNITY_DOCTOR_RUN_CHECKS,
     async (_, projectId: string, editorPath?: string): Promise<IPCResult<any>> => {
       try {
+        const project = projectStore.getProject(projectId);
+        if (!project) {
+          throw new Error('Project not found');
+        }
+        const settings = getUnitySettings(projectId);
+        const projectPath = settings.unityProjectPath || project.path;
+
         const { runUnityDoctorChecks } = await import('../utils/unity-doctor');
-        const projectPath = getUnityProjectPath(projectId);
         const report = await runUnityDoctorChecks(projectPath, editorPath);
         return { success: true, data: report };
       } catch (error) {
@@ -2565,8 +2596,14 @@ export function registerUnityHandlers(): void {
     IPC_CHANNELS.UNITY_BRIDGE_CHECK_INSTALLED,
     async (_, projectId: string): Promise<IPCResult<{ installed: boolean }>> => {
       try {
+        const project = projectStore.getProject(projectId);
+        if (!project) {
+          throw new Error('Project not found');
+        }
+        const settings = getUnitySettings(projectId);
+        const projectPath = settings.unityProjectPath || project.path;
+
         const { isUnityBridgeInstalled } = await import('../utils/unity-tweaks');
-        const projectPath = getUnityProjectPath(projectId);
         const installed = await isUnityBridgeInstalled(projectPath);
         return { success: true, data: { installed } };
       } catch (error) {
@@ -2583,14 +2620,18 @@ export function registerUnityHandlers(): void {
     IPC_CHANNELS.UNITY_BRIDGE_INSTALL,
     async (_, projectId: string): Promise<IPCResult<void>> => {
       try {
+        const project = projectStore.getProject(projectId);
+        if (!project) {
+          throw new Error('Project not found');
+        }
+        const settings = getUnitySettings(projectId);
+        const projectPath = settings.unityProjectPath || project.path;
+
         const { installUnityBridge } = await import('../utils/unity-tweaks');
-        const projectPath = getUnityProjectPath(projectId);
         const bridgeTemplatePath = join(__dirname, '../unity-bridge-template.cs');
 
         // Create a run record for this installation
-        const runId = createRunId();
-        const runDir = join(projectPath, '.auto-claude', 'unity-runs', runId);
-        mkdirSync(runDir, { recursive: true });
+        const { id: runId, dir: runDir } = createRunDir(projectId, 'bridge-install');
 
         const startTime = Date.now();
         const result = await installUnityBridge(projectPath, bridgeTemplatePath);
@@ -2702,8 +2743,14 @@ export function registerUnityHandlers(): void {
     IPC_CHANNELS.UNITY_UPM_LIST_PACKAGES,
     async (_, projectId: string): Promise<IPCResult<{ packages: any[] }>> => {
       try {
+        const project = projectStore.getProject(projectId);
+        if (!project) {
+          throw new Error('Project not found');
+        }
+        const settings = getUnitySettings(projectId);
+        const projectPath = settings.unityProjectPath || project.path;
+
         const { readUnityPackages } = await import('../utils/unity-tweaks');
-        const projectPath = getUnityProjectPath(projectId);
         const result = await readUnityPackages(projectPath);
 
         if (!result.success) {

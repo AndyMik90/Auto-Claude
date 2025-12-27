@@ -132,7 +132,6 @@ export interface UnityPipelineRun {
 export interface UnityDoctorCheck {
   id: string;
   category: 'project' | 'editor' | 'toolchain' | 'packages' | 'git';
-  name: string;
   status: 'success' | 'warning' | 'error' | 'info';
   message: string;
   details?: string;
@@ -141,6 +140,7 @@ export interface UnityDoctorCheck {
 }
 
 export interface UnityDoctorReport {
+  projectPath: string;
   timestamp: string;
   checks: UnityDoctorCheck[];
   summary: {
