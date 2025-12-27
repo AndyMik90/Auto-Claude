@@ -31,6 +31,7 @@ function getTokenFromGhCli(): string | null {
 /**
  * Get GitHub configuration from project environment file
  * Falls back to gh CLI token if GITHUB_TOKEN not in .env
+ * Parses IS_FORK and GITHUB_PARENT_REPO for fork detection support
  */
 export function getGitHubConfig(project: Project): GitHubConfig | null {
   if (!project.autoBuildPath) return null;
@@ -52,7 +53,23 @@ export function getGitHubConfig(project: Project): GitHubConfig | null {
     }
 
     if (!token || !repo) return null;
-    return { token, repo };
+
+    // Parse fork detection fields
+    const isForkRaw = vars['IS_FORK'];
+    const isFork = isForkRaw === 'true' || isForkRaw === 'TRUE';
+
+    // Parse parent repo - normalize and validate
+    const parentRepoRaw = vars['GITHUB_PARENT_REPO'];
+    let parentRepo: string | undefined;
+    if (parentRepoRaw && parentRepoRaw.trim()) {
+      parentRepo = normalizeRepoReference(parentRepoRaw);
+      // Validate normalized format is owner/repo
+      if (!parentRepo || !parentRepo.includes('/')) {
+        parentRepo = undefined;
+      }
+    }
+
+    return { token, repo, isFork, parentRepo };
   } catch {
     return null;
   }
