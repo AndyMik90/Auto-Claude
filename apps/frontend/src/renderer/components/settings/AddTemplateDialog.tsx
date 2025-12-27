@@ -92,12 +92,16 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
 
     try {
       if (template) {
-        // Update existing template
-        const result = await window.electronAPI.updateTemplate(template.id, {
-          name: name.trim(),
-          folderPath: folderPath.trim(),
-          imagePath: imagePath.trim() || undefined
-        });
+        // Update existing template with optimistic locking
+        const result = await window.electronAPI.updateTemplate(
+          template.id,
+          {
+            name: name.trim(),
+            folderPath: folderPath.trim(),
+            imagePath: imagePath.trim() || undefined
+          },
+          template.version // Optimistic locking: pass current version
+        );
 
         if (!result.success) {
           setError(result.error || 'Failed to update template');

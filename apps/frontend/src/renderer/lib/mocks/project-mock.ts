@@ -105,5 +105,10 @@ export const projectMock = {
   initializeGit: async () => ({
     success: true,
     data: { success: true }
+  }),
+
+  cloneRepository: async () => ({
+    success: true,
+    data: { path: '/mock/cloned-repo' }
   })
 };

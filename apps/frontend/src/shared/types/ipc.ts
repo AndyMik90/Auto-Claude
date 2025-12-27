@@ -244,9 +244,9 @@ export interface ElectronAPI {
 
   // Template operations
   getTemplates: () => Promise<IPCResult<import('./template').Template[]>>;
-  saveTemplate: (template: Omit<import('./template').Template, 'id' | 'createdAt' | 'updatedAt'>) => Promise<IPCResult<import('./template').Template>>;
+  saveTemplate: (template: Omit<import('./template').Template, 'id' | 'version' | 'createdAt' | 'updatedAt'>) => Promise<IPCResult<import('./template').Template>>;
   deleteTemplate: (templateId: string) => Promise<IPCResult>;
-  updateTemplate: (templateId: string, updates: Partial<Omit<import('./template').Template, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<IPCResult<import('./template').Template>>;
+  updateTemplate: (templateId: string, updates: Partial<Omit<import('./template').Template, 'id' | 'version' | 'createdAt' | 'updatedAt'>>, expectedVersion: number) => Promise<IPCResult<import('./template').Template>>;
   copyTemplate: (templateId: string, destinationPath: string) => Promise<IPCResult<{ path: string }>>;
   copyTemplateWithName: (templateId: string, destinationPath: string, customName: string) => Promise<IPCResult<{ path: string }>>;
   parseTemplateParameters: (templateId: string) => Promise<IPCResult<import('./template').ParsedTemplate>>;
