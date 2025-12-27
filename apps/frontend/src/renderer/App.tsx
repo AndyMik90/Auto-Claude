@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings2, Download, RefreshCw, AlertCircle } from 'lucide-react';
 import {
@@ -391,6 +391,17 @@ export function App() {
     setSelectedTask(null);
   };
 
+  // Ref to store the resolve function for terminal grid readiness
+  const terminalGridReadyRef = useRef<(() => void) | null>(null);
+
+  // Callback when TerminalGrid is mounted and ready
+  const handleTerminalGridMounted = useCallback(() => {
+    if (terminalGridReadyRef.current) {
+      terminalGridReadyRef.current();
+      terminalGridReadyRef.current = null;
+    }
+  }, []);
+
   const handleOpenInbuiltTerminal = async (id: string, cwd: string) => {
     console.log('[App] Opening inbuilt terminal:', { id, cwd });
 
@@ -400,8 +411,16 @@ export function App() {
     // Close modal
     setSelectedTask(null);
 
-    // Wait a tick for view to switch and TerminalGrid to mount
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait for TerminalGrid to mount and signal readiness
+    await new Promise<void>((resolve) => {
+      // If terminals view is already active, TerminalGrid is already mounted
+      if (activeView === 'terminals') {
+        resolve();
+      } else {
+        // Store resolve function to be called when TerminalGrid mounts
+        terminalGridReadyRef.current = resolve;
+      }
+    });
 
     // Add terminal to store - this will trigger Terminal component to mount
     // which will then create the backend PTY via usePtyProcess
@@ -673,6 +692,7 @@ export function App() {
                     projectPath={selectedProject?.path}
                     onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
                     isActive={activeView === 'terminals'}
+                    onMounted={handleTerminalGridMounted}
                   />
                 </div>
                 {activeView === 'roadmap' && (activeProjectId || selectedProjectId) && (

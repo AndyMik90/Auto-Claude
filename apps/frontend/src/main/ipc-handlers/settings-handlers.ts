@@ -357,7 +357,9 @@ export function registerSettingsHandlers(
           execSync(`open -a Terminal "${dirPath}"`, { stdio: 'ignore' });
         } else if (platform === 'win32') {
           // Windows: Open cmd or PowerShell at the specified directory
-          execSync(`start cmd /K "cd /d "${dirPath}""`, { stdio: 'ignore' });
+          // Validate and escape the path to prevent command injection
+          const sanitizedPath = dirPath.replace(/"/g, '\\"');
+          execSync(`start cmd /K cd /d "${sanitizedPath}"`, { stdio: 'ignore' });
         } else {
           // Linux: Try common terminal emulators
           // Try in order: gnome-terminal, konsole, xfce4-terminal, xterm

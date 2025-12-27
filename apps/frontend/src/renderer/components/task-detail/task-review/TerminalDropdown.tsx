@@ -1,4 +1,5 @@
 import { Terminal, ExternalLink, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import {
   DropdownMenu,
@@ -23,6 +24,8 @@ export function TerminalDropdown({
   disabled = false,
   className
 }: TerminalDropdownProps) {
+  const { t } = useTranslation('taskReview');
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -31,7 +34,7 @@ export function TerminalDropdown({
           size="sm"
           disabled={disabled}
           className={className}
-          title="Open terminal"
+          title={t('terminal.openTerminal')}
         >
           <Terminal className="h-3.5 w-3.5" />
           <ChevronDown className="h-3 w-3 ml-1" />
@@ -40,11 +43,11 @@ export function TerminalDropdown({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onOpenInbuilt}>
           <Terminal className="h-4 w-4 mr-2" />
-          Open in Inbuilt Terminal
+          {t('terminal.openInbuilt')}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onOpenExternal}>
           <ExternalLink className="h-4 w-4 mr-2" />
-          Open in External Terminal
+          {t('terminal.openExternal')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
