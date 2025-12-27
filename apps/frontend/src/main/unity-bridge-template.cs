@@ -259,7 +259,7 @@ namespace Squido.JungleXRKit.Assistant.UnityBridge
 
                 if (string.IsNullOrEmpty(buildTargetStr))
                 {
-                    LogError("Missing required argument: -aiideBuildTarget");
+                    LogError("Missing required argument: -jaBuildTarget");
                     EditorApplication.Exit(1);
                     return;
                 }
