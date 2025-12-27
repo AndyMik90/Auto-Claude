@@ -155,9 +155,11 @@ export function getFilesToBackup(action: string, params: TweakParams): string[] 
       break;
 
     case 'switch-build-target':
-      // Build target also modifies EditorUserBuildSettings (not critical, in Library/)
-      // But may also update ProjectSettings if platform-specific settings differ
+      // Switching build target also modifies EditorUserBuildSettings (stored in Library/)
+      // This file is important for build configuration persistence and should be backed up
+      // Build target changes may also update ProjectSettings if platform-specific settings differ
       files.push('ProjectSettings/EditorBuildSettings.asset');
+      files.push('Library/EditorUserBuildSettings.asset');
       break;
 
     case 'upm-resolve':
