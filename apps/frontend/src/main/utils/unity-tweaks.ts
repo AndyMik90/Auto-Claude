@@ -173,9 +173,9 @@ export function getFilesToBackup(action: string, params: TweakParams): string[] 
 /**
  * Check if project is a git repository
  */
-async function isGitRepository(projectPath: string): Promise<boolean> {
+function isGitRepository(projectPath: string): Promise<boolean> {
   const gitDir = path.join(projectPath, '.git');
-  return await fs.pathExists(gitDir);
+  return fs.pathExists(gitDir);
 }
 
 /**
