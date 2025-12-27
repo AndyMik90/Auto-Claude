@@ -299,4 +299,57 @@ export function registerSettingsHandlers(
       await shell.openExternal(url);
     }
   );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SHELL_OPEN_TERMINAL,
+    async (_, dirPath: string): Promise<IPCResult<void>> => {
+      try {
+        const platform = process.platform;
+
+        if (platform === 'darwin') {
+          // macOS: Open Terminal.app at the specified directory
+          execSync(`open -a Terminal "${dirPath}"`, { stdio: 'ignore' });
+        } else if (platform === 'win32') {
+          // Windows: Open cmd or PowerShell at the specified directory
+          execSync(`start cmd /K "cd /d "${dirPath}""`, { stdio: 'ignore' });
+        } else {
+          // Linux: Try common terminal emulators
+          // Try in order: gnome-terminal, konsole, xfce4-terminal, xterm
+          const terminals = [
+            `gnome-terminal --working-directory="${dirPath}"`,
+            `konsole --workdir "${dirPath}"`,
+            `xfce4-terminal --working-directory="${dirPath}"`,
+            `xterm -e "cd '${dirPath}' && bash"`
+          ];
+
+          let opened = false;
+          for (const terminalCmd of terminals) {
+            try {
+              execSync(terminalCmd, { stdio: 'ignore' });
+              opened = true;
+              break;
+            } catch {
+              // Try next terminal
+              continue;
+            }
+          }
+
+          if (!opened) {
+            return {
+              success: false,
+              error: 'No supported terminal emulator found. Please install gnome-terminal, konsole, xfce4-terminal, or xterm.'
+            };
+          }
+        }
+
+        return { success: true };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          success: false,
+          error: `Failed to open terminal: ${errorMsg}`
+        };
+      }
+    }
+  );
 }

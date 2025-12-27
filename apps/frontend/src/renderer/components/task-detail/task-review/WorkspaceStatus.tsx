@@ -19,6 +19,7 @@ import { Checkbox } from '../../ui/checkbox';
 import { cn } from '../../../lib/utils';
 import type { Task, WorktreeStatus, MergeConflict, MergeStats, GitConflictInfo } from '../../../../shared/types';
 import { useTerminalHandler } from '../hooks/useTerminalHandler';
+import { TerminalDropdown } from './TerminalDropdown';
 
 interface WorkspaceStatusProps {
   task: Task;
@@ -56,7 +57,7 @@ export function WorkspaceStatus({
   onStageOnlyChange,
   onMerge
 }: WorkspaceStatusProps) {
-  const { openTerminal, error: terminalError, isOpening } = useTerminalHandler();
+  const { openTerminal, openExternalTerminal, error: terminalError, isOpening } = useTerminalHandler();
   const hasGitConflicts = mergePreview?.gitConflicts?.hasConflicts;
   const hasUncommittedChanges = mergePreview?.uncommittedChanges?.hasChanges;
   const uncommittedCount = mergePreview?.uncommittedChanges?.count || 0;
@@ -98,16 +99,12 @@ export function WorkspaceStatus({
               View
             </Button>
             {worktreeStatus.worktreePath && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openTerminal(`open-${task.id}`, worktreeStatus.worktreePath!)}
-                className="h-7 px-2"
-                title="Open in terminal"
+              <TerminalDropdown
+                onOpenInbuilt={() => openTerminal(`open-${task.id}`, worktreeStatus.worktreePath!)}
+                onOpenExternal={() => openExternalTerminal(worktreeStatus.worktreePath!)}
                 disabled={isOpening}
-              >
-                <Terminal className="h-3.5 w-3.5" />
-              </Button>
+                className="h-7 px-2"
+              />
             )}
           </div>
         </div>
@@ -177,21 +174,22 @@ export function WorkspaceStatus({
               <p className="text-xs text-muted-foreground mt-0.5">
                 Commit or stash them before staging to avoid conflicts.
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
+              <TerminalDropdown
+                onOpenInbuilt={() => {
                   const mainProjectPath = worktreeStatus.worktreePath?.replace('.worktrees/' + task.specId, '') || '';
                   if (mainProjectPath) {
                     openTerminal(`stash-${task.id}`, mainProjectPath);
                   }
                 }}
-                className="text-xs h-6 mt-2"
+                onOpenExternal={() => {
+                  const mainProjectPath = worktreeStatus.worktreePath?.replace('.worktrees/' + task.specId, '') || '';
+                  if (mainProjectPath) {
+                    openExternalTerminal(mainProjectPath);
+                  }
+                }}
                 disabled={isOpening}
-              >
-                <Terminal className="h-3 w-3 mr-1" />
-                {isOpening ? 'Opening...' : 'Open Terminal'}
-              </Button>
+                className="text-xs h-6 mt-2"
+              />
             </div>
           </div>
         )}
