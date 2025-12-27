@@ -36,6 +36,8 @@ interface WorkspaceStatusProps {
   onLoadMergePreview: () => void;
   onStageOnlyChange: (value: boolean) => void;
   onMerge: () => void;
+  onClose?: () => void;
+  onSwitchToTerminals?: () => void;
 }
 
 /**
@@ -55,7 +57,9 @@ export function WorkspaceStatus({
   onShowConflictDialog,
   onLoadMergePreview,
   onStageOnlyChange,
-  onMerge
+  onMerge,
+  onClose,
+  onSwitchToTerminals
 }: WorkspaceStatusProps) {
   const { openTerminal, openExternalTerminal, error: terminalError, isOpening } = useTerminalHandler();
   const hasGitConflicts = mergePreview?.gitConflicts?.hasConflicts;
@@ -100,7 +104,11 @@ export function WorkspaceStatus({
             </Button>
             {worktreeStatus.worktreePath && (
               <TerminalDropdown
-                onOpenInbuilt={() => openTerminal(`open-${task.id}`, worktreeStatus.worktreePath!)}
+                onOpenInbuilt={() => {
+                  if (onClose) onClose();
+                  if (onSwitchToTerminals) onSwitchToTerminals();
+                  openTerminal(`open-${task.id}`, worktreeStatus.worktreePath!);
+                }}
                 onOpenExternal={() => openExternalTerminal(worktreeStatus.worktreePath!)}
                 disabled={isOpening}
                 className="h-7 px-2"
@@ -178,6 +186,8 @@ export function WorkspaceStatus({
                 onOpenInbuilt={() => {
                   const mainProjectPath = worktreeStatus.worktreePath?.replace('.worktrees/' + task.specId, '') || '';
                   if (mainProjectPath) {
+                    if (onClose) onClose();
+                    if (onSwitchToTerminals) onSwitchToTerminals();
                     openTerminal(`stash-${task.id}`, mainProjectPath);
                   }
                 }}

@@ -40,6 +40,7 @@ interface TaskReviewProps {
   onShowConflictDialog: (show: boolean) => void;
   onLoadMergePreview: () => void;
   onClose?: () => void;
+  onSwitchToTerminals?: () => void;
 }
 
 /**
@@ -79,7 +80,8 @@ export function TaskReview({
   onStageOnlyChange,
   onShowConflictDialog,
   onLoadMergePreview,
-  onClose
+  onClose,
+  onSwitchToTerminals
 }: TaskReviewProps) {
   return (
     <div className="space-y-4">
@@ -115,6 +117,8 @@ export function TaskReview({
           onLoadMergePreview={onLoadMergePreview}
           onStageOnlyChange={onStageOnlyChange}
           onMerge={onMerge}
+          onClose={onClose}
+          onSwitchToTerminals={onSwitchToTerminals}
         />
       ) : task.stagedInMainProject && !stagedSuccess ? (
         <StagedInProjectMessage
