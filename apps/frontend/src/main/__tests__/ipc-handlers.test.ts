@@ -47,6 +47,14 @@ vi.mock('../updater/version-manager', () => ({
   compareVersions: vi.fn(() => 0)
 }));
 
+vi.mock('../notification-service', () => ({
+  notificationService: {
+    initialize: vi.fn(),
+    notifyReviewNeeded: vi.fn(),
+    notifyTaskFailed: vi.fn()
+  }
+}));
+
 // Mock modules before importing
 vi.mock('electron', () => {
   const mockIpcMain = new (class extends EventEmitter {
@@ -503,9 +511,20 @@ describe('IPC Handlers', () => {
       );
     });
 
-    it.skip('should forward exit events with status change on failure', async () => {
+    it('should forward exit events with status change on failure', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
       setupIpcHandlers(mockAgentManager as never, mockTerminalManager as never, () => mockMainWindow as never, mockPythonEnvManager as never);
+
+      // Add project first
+      await ipcMain.invokeHandler('project:add', {}, TEST_PROJECT_PATH);
+
+      // Create a spec/task directory with implementation_plan.json
+      const specDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', 'task-1');
+      mkdirSync(specDir, { recursive: true });
+      writeFileSync(
+        path.join(specDir, 'implementation_plan.json'),
+        JSON.stringify({ feature: 'Test Task', status: 'in_progress' })
+      );
 
       mockAgentManager.emit('exit', 'task-1', 1, 'task-execution');
 
