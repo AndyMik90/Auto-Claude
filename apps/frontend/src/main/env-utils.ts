@@ -12,6 +12,28 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
+import { execFileSync } from 'child_process';
+
+/**
+ * Get npm global prefix directory dynamically
+ *
+ * Runs `npm config get prefix` to find where npm globals are installed.
+ * Works with standard npm, nvm-windows, nvm, and custom installations.
+ *
+ * @returns npm global prefix directory, or null if npm not available
+ */
+function getNpmGlobalPrefix(): string | null {
+  try {
+    const prefix = execFileSync('npm', ['config', 'get', 'prefix'], {
+      encoding: 'utf-8',
+      timeout: 3000,
+      windowsHide: true,
+    }).trim();
+    return prefix || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Common binary directories that should be in PATH
@@ -35,6 +57,7 @@ const COMMON_BIN_PATHS: Record<string, string[]> = {
     // Windows usually handles PATH better, but we can add common locations
     'C:\\Program Files\\Git\\cmd',
     'C:\\Program Files\\GitHub CLI',
+    // Note: npm global prefix is detected dynamically via getNpmGlobalPrefix()
   ],
 };
 
@@ -73,6 +96,12 @@ export function getAugmentedEnv(additionalPaths?: string[]): Record<string, stri
     if (!currentPathSet.has(p) && fs.existsSync(p)) {
       pathsToAdd.push(p);
     }
+  }
+
+  // Add npm global prefix dynamically (works with any npm setup)
+  const npmPrefix = getNpmGlobalPrefix();
+  if (npmPrefix && !currentPathSet.has(npmPrefix) && fs.existsSync(npmPrefix)) {
+    pathsToAdd.push(npmPrefix);
   }
 
   // Add user-requested additional paths
