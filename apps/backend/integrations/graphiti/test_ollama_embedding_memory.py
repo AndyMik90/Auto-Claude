@@ -378,9 +378,9 @@ async def test_memory_creation(test_db_path: Path) -> tuple[Path, Path, bool]:
     print_step(4, "Saving gotchas (pitfalls)")
 
     gotchas = [
-        "Never store JWT secrets in frontend code or environment files checked into git",
-        "OAuth redirect URIs must exactly match the registered URIs",
-        "Token expiration times should be short for security (15 min access, 7 day refresh)",
+        "Never store config values in frontend code or files checked into git",
+        "API redirect URIs must exactly match the registered URIs",
+        "Cache expiration times should be short for performance (15 min default)",
     ]
 
     for i, gotcha in enumerate(gotchas):
@@ -391,10 +391,10 @@ async def test_memory_creation(test_db_path: Path) -> tuple[Path, Path, bool]:
     print_step(5, "Saving codebase discoveries")
 
     discoveries = {
-        "api/routes/auth.py": "Authentication API endpoints (login, logout, refresh)",
-        "middleware/auth.py": "JWT verification middleware for protected routes",
-        "models/user.py": "User model with credential hashing and role management",
-        "services/oauth.py": "OAuth provider integrations (Google, GitHub, Microsoft)",
+        "api/routes/users.py": "User management API endpoints (list, create, update)",
+        "middleware/logging.py": "Request logging middleware for all routes",
+        "models/user.py": "User model with profile data and role management",
+        "services/notifications.py": "Notification service integrations (email, SMS, push)",
     }
 
     discovery_result = await memory.save_codebase_discoveries(discoveries)
@@ -447,51 +447,51 @@ async def test_memory_retrieval(spec_dir: Path, project_dir: Path) -> bool:
 
     print_result("Initialize", "Reconnected successfully", True)
 
-    # Step 2: Semantic search for OAuth-related content
-    print_step(2, "Searching for OAuth-related memories")
+    # Step 2: Semantic search for API-related content
+    print_step(2, "Searching for API-related memories")
 
-    oauth_query = "How does the OAuth auth flow work in this project?"
-    results = await memory.get_relevant_context(oauth_query, num_results=5)
+    api_query = "How do the API endpoints work in this project?"
+    results = await memory.get_relevant_context(api_query, num_results=5)
 
-    print(f"  Query: '{oauth_query}'")
+    print(f"  Query: '{api_query}'")
     print(f"  Found {len(results)} results:")
 
-    oauth_found = False
+    api_found = False
     for i, result in enumerate(results):
         content = result.get("content", "")[:100]
         result_type = result.get("type", "unknown")
         score = result.get("score", 0)
         print(f"    {i + 1}. [{result_type}] (score: {score:.4f}) {content}...")
-        if "oauth" in content.lower() or "authentication" in content.lower():
-            oauth_found = True
+        if "api" in content.lower() or "routes" in content.lower():
+            api_found = True
 
-    if oauth_found:
-        print_result("OAuth search", "Found OAuth-related content", True)
+    if api_found:
+        print_result("API search", "Found API-related content", True)
     else:
-        print_info("OAuth content may not be in top results - checking other queries")
+        print_info("API content may not be in top results - checking other queries")
 
-    # Step 3: Search for JWT-related content
-    print_step(3, "Searching for JWT token patterns")
+    # Step 3: Search for middleware-related content
+    print_step(3, "Searching for middleware patterns")
 
-    jwt_query = "JWT token validation and security best practices"
-    results = await memory.get_relevant_context(jwt_query, num_results=5)
+    middleware_query = "middleware and request handling best practices"
+    results = await memory.get_relevant_context(middleware_query, num_results=5)
 
-    print(f"  Query: '{jwt_query}'")
+    print(f"  Query: '{middleware_query}'")
     print(f"  Found {len(results)} results:")
 
-    jwt_found = False
+    middleware_found = False
     for i, result in enumerate(results):
         content = result.get("content", "")[:100]
         result_type = result.get("type", "unknown")
         score = result.get("score", 0)
         print(f"    {i + 1}. [{result_type}] (score: {score:.4f}) {content}...")
-        if "jwt" in content.lower() or "token" in content.lower():
-            jwt_found = True
+        if "middleware" in content.lower() or "routes" in content.lower():
+            middleware_found = True
 
     print_result(
-        "JWT search",
-        "Found JWT-related content" if jwt_found else "No direct matches",
-        jwt_found or len(results) > 0,
+        "Middleware search",
+        "Found middleware-related content" if middleware_found else "No direct matches",
+        middleware_found or len(results) > 0,
     )
 
     # Step 4: Get session history
