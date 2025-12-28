@@ -7,11 +7,16 @@ redirect URI and supports extended scopes for full API access.
 """
 
 import secrets
+import webbrowser
+from dataclasses import dataclass
 from typing import TypedDict
 from urllib.parse import urlencode
 
 from authlib.integrations.httpx_client import OAuth2Client
 from authlib.oauth2.rfc7636 import create_s256_code_challenge
+
+from core.auth import KeychainError, save_token_to_keychain
+from core.oauth_server import OAuthCallbackServer, OAuthServerError
 
 
 # OAuth 2.0 configuration for Anthropic Claude
@@ -189,3 +194,159 @@ def exchange_code_for_token(
         refresh_token=token.get("refresh_token", ""),
         scope=token.get("scope", ""),
     )
+
+
+@dataclass
+class OAuthFlowResult:
+    """Result of an OAuth flow operation."""
+
+    success: bool
+    """Whether the OAuth flow completed successfully."""
+
+    token: str | None = None
+    """The access token (if successful)."""
+
+    error: str | None = None
+    """Error code (if failed)."""
+
+    error_description: str | None = None
+    """Human-readable error description (if failed)."""
+
+    def __repr__(self) -> str:
+        if self.success:
+            return f"OAuthFlowResult(success=True, token='{self.token[:15]}...')"
+        return f"OAuthFlowResult(success=False, error='{self.error}')"
+
+
+class OAuthFlowError(Exception):
+    """Exception raised for OAuth flow errors."""
+
+    def __init__(self, error: str, description: str | None = None) -> None:
+        """
+        Initialize OAuth flow error.
+
+        Args:
+            error: Error code (e.g., 'server_start_failed', 'browser_open_failed')
+            description: Human-readable error description
+        """
+        self.error = error
+        self.description = description or error
+        super().__init__(f"{error}: {self.description}")
+
+
+def run_oauth_flow(
+    timeout: float = 300.0,
+    open_browser: bool = True,
+    save_to_keychain: bool = True,
+) -> OAuthFlowResult:
+    """
+    Run the complete OAuth 2.0 + PKCE authentication flow.
+
+    This function orchestrates the entire OAuth flow:
+    1. Starts a local callback server on port 8487
+    2. Opens the browser with the authorization URL (if enabled)
+    3. Waits for the OAuth callback with authorization code
+    4. Exchanges the authorization code for an access token
+    5. Saves the token to macOS Keychain (if enabled)
+
+    Args:
+        timeout: Maximum time in seconds to wait for callback (default 5 minutes)
+        open_browser: Whether to automatically open the browser (default True)
+        save_to_keychain: Whether to save the token to Keychain (default True)
+
+    Returns:
+        OAuthFlowResult with success status and token or error information
+
+    Raises:
+        OAuthFlowError: For critical errors that prevent flow completion
+    """
+    server = None
+
+    try:
+        # Step 1: Start the callback server
+        server = OAuthCallbackServer()
+        try:
+            server.start(timeout=timeout)
+        except OAuthServerError as e:
+            return OAuthFlowResult(
+                success=False,
+                error="server_start_failed",
+                error_description=str(e),
+            )
+
+        # Step 2: Generate authorization URL with PKCE
+        authorization_url, expected_state, code_verifier = create_authorization_url()
+
+        # Step 3: Open browser (if enabled)
+        if open_browser:
+            try:
+                webbrowser.open(authorization_url)
+            except Exception as e:
+                # Browser open failure is non-fatal; user can manually navigate
+                # Continue with the flow, but note the error
+                pass
+
+        # Step 4: Wait for OAuth callback
+        callback_result = server.wait_for_callback(timeout=timeout)
+
+        if not callback_result.success:
+            return OAuthFlowResult(
+                success=False,
+                error=callback_result.error or "callback_failed",
+                error_description=callback_result.error_description,
+            )
+
+        # Step 5: Validate state parameter (CSRF protection)
+        if callback_result.state != expected_state:
+            return OAuthFlowResult(
+                success=False,
+                error="state_mismatch",
+                error_description="OAuth state parameter does not match. "
+                "This may indicate a CSRF attack.",
+            )
+
+        # Step 6: Exchange authorization code for token
+        if not callback_result.code:
+            return OAuthFlowResult(
+                success=False,
+                error="missing_code",
+                error_description="No authorization code received from callback",
+            )
+
+        try:
+            token_response = exchange_code_for_token(
+                code=callback_result.code,
+                code_verifier=code_verifier,
+            )
+        except OAuthTokenError as e:
+            return OAuthFlowResult(
+                success=False,
+                error=e.error,
+                error_description=e.description,
+            )
+
+        access_token = token_response["access_token"]
+
+        # Step 7: Save token to Keychain (if enabled and on macOS)
+        if save_to_keychain:
+            try:
+                save_token_to_keychain(access_token)
+            except (ValueError, KeychainError) as e:
+                # Keychain save failure is non-fatal; token is still valid
+                # Return success with a note about Keychain save failure
+                return OAuthFlowResult(
+                    success=True,
+                    token=access_token,
+                    error="keychain_save_failed",
+                    error_description=f"Token obtained but Keychain save failed: {e}",
+                )
+
+        return OAuthFlowResult(
+            success=True,
+            token=access_token,
+        )
+
+    finally:
+        # Step 8: Always shut down the server
+        if server is not None:
+            server.shutdown()
