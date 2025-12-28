@@ -52,7 +52,10 @@ export default defineConfig({
             src: resolve(__dirname, 'node_modules/monaco-editor/min/vs'),
             dest: 'monaco-editor/min'
           }
-        ]
+        ],
+        watch: {
+          reloadPageOnChange: true
+        }
       })
     ],
     resolve: {
