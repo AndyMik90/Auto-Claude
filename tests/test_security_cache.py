@@ -55,15 +55,18 @@ def get_dir_hash(project_dir):
 
 def test_cache_invalidation_on_file_creation(mock_project_dir, mock_profile_path):
     reset_profile_cache()
-    
+
     # 1. First call - file doesn't exist
     profile1 = get_security_profile(mock_project_dir)
     assert "unique_cmd_A" not in profile1.get_all_allowed_commands()
-    
+
     # 2. Create the file with valid JSON and CORRECT HASH
     current_hash = get_dir_hash(mock_project_dir)
     mock_profile_path.write_text(create_valid_profile_json(["unique_cmd_A"], current_hash))
-    
+
+    # Wait for file system to flush (needed on some CI environments with Python 3.13)
+    time.sleep(0.1)
+
     # 3. Second call - should detect file creation and reload
     profile2 = get_security_profile(mock_project_dir)
     assert "unique_cmd_A" in profile2.get_all_allowed_commands()
