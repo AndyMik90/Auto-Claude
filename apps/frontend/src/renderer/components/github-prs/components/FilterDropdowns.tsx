@@ -124,8 +124,8 @@ function FilterDropdown({
           <ChevronDown className="h-3.5 w-3.5 opacity-75" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[200px]">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">
+      <DropdownMenuContent align="start" className="min-w-[200px] max-h-[300px] overflow-y-auto">
+        <DropdownMenuLabel className="text-xs text-muted-foreground sticky top-0 bg-popover z-10">
           Filter by {label.toLowerCase()}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

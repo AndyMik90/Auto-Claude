@@ -89,29 +89,77 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>(undefined);
   const [selectedSort, setSelectedSort] = useState<SortOption>('newest');
 
-  // Get PRs for current status tab
-  const currentPRs = useMemo(() => getPRsByStatus(activeTab), [getPRsByStatus, activeTab]);
+  // Parse GitHub-style search query (e.g., "is:pr is:open author:username search terms")
+  const parseSearchQuery = useCallback((query: string) => {
+    const qualifiers: {
+      isOpen?: boolean;
+      isClosed?: boolean;
+      author?: string;
+      text: string;
+    } = { text: '' };
+
+    // Split on spaces but preserve quoted strings
+    const parts = query.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+    const textParts: string[] = [];
+
+    for (const part of parts) {
+      const lowerPart = part.toLowerCase();
+
+      if (lowerPart === 'is:pr') {
+        // Ignore - we're already filtering PRs
+        continue;
+      } else if (lowerPart === 'is:open') {
+        qualifiers.isOpen = true;
+        qualifiers.isClosed = false;
+      } else if (lowerPart === 'is:closed') {
+        qualifiers.isClosed = true;
+        qualifiers.isOpen = false;
+      } else if (lowerPart.startsWith('author:')) {
+        qualifiers.author = part.substring(7).replace(/^"|"$/g, '');
+      } else {
+        textParts.push(part);
+      }
+    }
+
+    qualifiers.text = textParts.join(' ').toLowerCase().trim();
+    return qualifiers;
+  }, []);
+
+  // Parse the search query to extract qualifiers
+  const parsedQuery = useMemo(() => parseSearchQuery(searchQuery), [parseSearchQuery, searchQuery]);
+
+  // Determine effective tab based on search qualifiers (query overrides tab if explicit)
+  const effectiveTab = useMemo(() => {
+    if (parsedQuery.isOpen) return 'open';
+    if (parsedQuery.isClosed) return 'closed';
+    return activeTab;
+  }, [parsedQuery.isOpen, parsedQuery.isClosed, activeTab]);
+
+  // Get PRs for current status tab (considering search qualifiers)
+  const currentPRs = useMemo(() => getPRsByStatus(effectiveTab), [getPRsByStatus, effectiveTab]);
 
   // Apply filters and search to current PRs
   const filteredPRs = useMemo(() => {
     let result = currentPRs;
 
-    // Filter by author
-    if (selectedAuthor) {
-      result = result.filter(pr => pr.author.login === selectedAuthor);
+    // Filter by author (from dropdown or search qualifier)
+    const authorFilter = parsedQuery.author || selectedAuthor;
+    if (authorFilter) {
+      result = result.filter(pr =>
+        pr.author.login.toLowerCase() === authorFilter.toLowerCase()
+      );
     }
 
     // Note: Label filtering is a placeholder - PRData doesn't include labels currently
     // The UI shows the Label dropdown but it won't filter until the API includes labels
 
-    // Filter by search query (simple title/author/branch search)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
+    // Filter by text portion of search query (title/author/branch/number)
+    if (parsedQuery.text) {
       result = result.filter(pr =>
-        pr.title.toLowerCase().includes(query) ||
-        pr.author.login.toLowerCase().includes(query) ||
-        pr.headRefName.toLowerCase().includes(query) ||
-        `#${pr.number}`.includes(query)
+        pr.title.toLowerCase().includes(parsedQuery.text) ||
+        pr.author.login.toLowerCase().includes(parsedQuery.text) ||
+        pr.headRefName.toLowerCase().includes(parsedQuery.text) ||
+        `#${pr.number}`.includes(parsedQuery.text)
       );
     }
 
@@ -135,7 +183,7 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
     });
 
     return result;
-  }, [currentPRs, selectedAuthor, searchQuery, selectedSort]);
+  }, [currentPRs, selectedAuthor, parsedQuery, selectedSort]);
 
   // Derive unique authors from all PRs (both open and closed) for filter dropdown
   const uniqueAuthors = useMemo(() => {
