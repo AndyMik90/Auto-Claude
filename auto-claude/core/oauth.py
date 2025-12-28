@@ -7,6 +7,7 @@ redirect URI and supports extended scopes for full API access.
 """
 
 import secrets
+from urllib.parse import urlencode
 
 from authlib.oauth2.rfc7636 import create_s256_code_challenge
 
@@ -41,3 +42,40 @@ def generate_pkce_pair() -> tuple[str, str]:
     code_challenge = create_s256_code_challenge(code_verifier)
 
     return code_verifier, code_challenge
+
+
+def create_authorization_url() -> tuple[str, str, str]:
+    """
+    Create an OAuth 2.0 authorization URL with PKCE parameters.
+
+    Generates a complete authorization URL for the Anthropic OAuth flow,
+    including PKCE code challenge and all required scopes for full API access.
+
+    Returns:
+        Tuple of (authorization_url, state, code_verifier)
+        - authorization_url: Complete URL to redirect user for authorization
+        - state: Random state parameter for CSRF protection
+        - code_verifier: PKCE verifier to use when exchanging code for token
+    """
+    # Generate PKCE pair
+    code_verifier, code_challenge = generate_pkce_pair()
+
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+
+    # Build authorization URL parameters
+    params = {
+        "response_type": "code",
+        "client_id": OAUTH_CLIENT_ID,
+        "redirect_uri": OAUTH_REDIRECT_URI,
+        "scope": OAUTH_SCOPES,
+        "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
+    }
+
+    # Construct full authorization URL
+    # Use safe=":" to prevent encoding colons in scope values (e.g., user:profile)
+    authorization_url = f"{OAUTH_AUTHORIZATION_ENDPOINT}?{urlencode(params, safe=':')}"
+
+    return authorization_url, state, code_verifier
