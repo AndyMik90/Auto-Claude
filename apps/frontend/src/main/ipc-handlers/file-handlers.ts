@@ -378,7 +378,7 @@ export function registerFileHandlers(): void {
             }
           } else if (error.code === 'EISDIR') {
             return { success: false, error: 'Not a file' };
-          } else if (error.code === 'ELOOP' || error.code === 'EMLINK') {
+          } else if (error.code === 'ELOOP') {
             // Provide more informative error by checking where symlink points
             // (safe to do since we're NOT using it, just for error message)
             try {
