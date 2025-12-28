@@ -10,12 +10,15 @@ import {
   RotateCcw,
   AlertTriangle,
   CheckCircle,
-  GitCommit
+  GitCommit,
+  Code,
+  Terminal
 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { cn } from '../../../lib/utils';
-import type { WorktreeStatus, MergeConflict, MergeStats, GitConflictInfo } from '../../../../shared/types';
+import type { WorktreeStatus, MergeConflict, MergeStats, GitConflictInfo, SupportedIDE, SupportedTerminal } from '../../../../shared/types';
+import { useSettingsStore } from '../../../stores/settings-store';
 
 interface WorkspaceStatusProps {
   worktreeStatus: WorktreeStatus;
@@ -39,6 +42,40 @@ interface WorkspaceStatusProps {
 /**
  * Displays the workspace status including change summary, merge preview, and action buttons
  */
+// IDE display names for button labels (short names for buttons)
+const IDE_LABELS: Partial<Record<SupportedIDE, string>> = {
+  vscode: 'VS Code',
+  cursor: 'Cursor',
+  windsurf: 'Windsurf',
+  zed: 'Zed',
+  sublime: 'Sublime',
+  webstorm: 'WebStorm',
+  intellij: 'IntelliJ',
+  pycharm: 'PyCharm',
+  xcode: 'Xcode',
+  vim: 'Vim',
+  neovim: 'Neovim',
+  emacs: 'Emacs',
+  custom: 'IDE'
+};
+
+// Terminal display names for button labels (short names for buttons)
+const TERMINAL_LABELS: Partial<Record<SupportedTerminal, string>> = {
+  system: 'Terminal',
+  terminal: 'Terminal',
+  iterm2: 'iTerm',
+  warp: 'Warp',
+  ghostty: 'Ghostty',
+  alacritty: 'Alacritty',
+  kitty: 'Kitty',
+  wezterm: 'WezTerm',
+  hyper: 'Hyper',
+  windowsterminal: 'Terminal',
+  gnometerminal: 'Terminal',
+  konsole: 'Konsole',
+  custom: 'Terminal'
+};
+
 export function WorkspaceStatus({
   worktreeStatus,
   workspaceError,
@@ -57,6 +94,36 @@ export function WorkspaceStatus({
   onSwitchToTerminals,
   onOpenInbuiltTerminal
 }: WorkspaceStatusProps) {
+  const { settings } = useSettingsStore();
+  const preferredIDE = settings.preferredIDE || 'vscode';
+  const preferredTerminal = settings.preferredTerminal || 'system';
+
+  const handleOpenInIDE = async () => {
+    if (!worktreeStatus.worktreePath) return;
+    try {
+      await window.electronAPI.worktreeOpenInIDE(
+        worktreeStatus.worktreePath,
+        preferredIDE,
+        settings.customIDEPath
+      );
+    } catch (err) {
+      console.error('Failed to open in IDE:', err);
+    }
+  };
+
+  const handleOpenInTerminal = async () => {
+    if (!worktreeStatus.worktreePath) return;
+    try {
+      await window.electronAPI.worktreeOpenInTerminal(
+        worktreeStatus.worktreePath,
+        preferredTerminal,
+        settings.customTerminalPath
+      );
+    } catch (err) {
+      console.error('Failed to open in terminal:', err);
+    }
+  };
+
   const hasGitConflicts = mergePreview?.gitConflicts?.hasConflicts;
   const hasUncommittedChanges = mergePreview?.uncommittedChanges?.hasChanges;
   const uncommittedCount = mergePreview?.uncommittedChanges?.count || 0;
@@ -131,6 +198,30 @@ export function WorkspaceStatus({
         {worktreeStatus.worktreePath && (
           <div className="mt-2 text-xs text-muted-foreground font-mono">
             📁 {worktreeStatus.worktreePath}
+          </div>
+        )}
+
+        {/* Open in IDE/Terminal buttons */}
+        {worktreeStatus.worktreePath && (
+          <div className="flex gap-2 mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenInIDE}
+              className="h-7 px-2 text-xs"
+            >
+              <Code className="h-3.5 w-3.5 mr-1" />
+              Open in {IDE_LABELS[preferredIDE]}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenInTerminal}
+              className="h-7 px-2 text-xs"
+            >
+              <Terminal className="h-3.5 w-3.5 mr-1" />
+              Open in {TERMINAL_LABELS[preferredTerminal]}
+            </Button>
           </div>
         )}
       </div>

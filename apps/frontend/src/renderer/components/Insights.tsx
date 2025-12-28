@@ -15,6 +15,8 @@ import {
   PanelLeftClose,
   PanelLeft
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
@@ -273,7 +275,9 @@ export function Insights({ projectId }: InsightsProps) {
                   </div>
                   {streamingContent && (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <p className="whitespace-pre-wrap">{streamingContent}</p>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {streamingContent}
+                      </ReactMarkdown>
                     </div>
                   )}
                   {/* Tool usage indicator */}
@@ -377,7 +381,9 @@ function MessageBubble({
           {isUser ? 'You' : 'Assistant'}
         </div>
         <div className="prose prose-sm dark:prose-invert max-w-none">
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {message.content}
+          </ReactMarkdown>
         </div>
 
         {/* Tool usage history for assistant messages */}

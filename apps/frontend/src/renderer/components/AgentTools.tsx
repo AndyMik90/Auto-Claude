@@ -23,12 +23,21 @@ import {
   ClipboardList,
   ListChecks
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ScrollArea } from './ui/scroll-area';
+import { useSettingsStore } from '../stores/settings-store';
+import {
+  DEFAULT_PHASE_MODELS,
+  DEFAULT_PHASE_THINKING,
+  DEFAULT_FEATURE_MODELS,
+  DEFAULT_FEATURE_THINKING,
+  AVAILABLE_MODELS,
+  THINKING_LEVELS
+} from '../../shared/constants/models';
+import type { ModelTypeShort, ThinkingLevel } from '../../shared/types/settings';
 
 // Agent configuration data - mirrors AGENT_CONFIGS from backend
-// This is a static representation for display purposes
-// Models shown are defaults from phase_config.py (user can override in settings)
+// Model and thinking are now dynamically read from user settings
 interface AgentConfig {
   label: string;
   description: string;
@@ -36,20 +45,41 @@ interface AgentConfig {
   tools: string[];
   mcp_servers: string[];
   mcp_optional?: string[];
-  thinking: string;
-  model: string;
+  // Maps to settings source - either a phase or a feature
+  settingsSource: {
+    type: 'phase';
+    phase: 'spec' | 'planning' | 'coding' | 'qa';
+  } | {
+    type: 'feature';
+    feature: 'insights' | 'ideation' | 'roadmap' | 'githubIssues' | 'githubPrs';
+  } | {
+    type: 'fixed';  // For agents not yet configurable
+    model: ModelTypeShort;
+    thinking: ThinkingLevel;
+  };
+}
+
+// Helper to get model label from short name
+function getModelLabel(modelShort: ModelTypeShort): string {
+  const model = AVAILABLE_MODELS.find(m => m.value === modelShort);
+  return model?.label.replace('Claude ', '') || modelShort;
+}
+
+// Helper to get thinking label from level
+function getThinkingLabel(level: ThinkingLevel): string {
+  const thinking = THINKING_LEVELS.find(t => t.value === level);
+  return thinking?.label || level;
 }
 
 const AGENT_CONFIGS: Record<string, AgentConfig> = {
-  // Spec Creation Phases
+  // Spec Creation Phases - all use 'spec' phase settings
   spec_gatherer: {
     label: 'Spec Gatherer',
     description: 'Collects initial requirements from user',
     category: 'spec',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: [],
-    thinking: 'medium',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'spec' },
   },
   spec_researcher: {
     label: 'Spec Researcher',
@@ -57,8 +87,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'spec',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: ['context7'],
-    thinking: 'medium',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'spec' },
   },
   spec_writer: {
     label: 'Spec Writer',
@@ -66,8 +95,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'spec',
     tools: ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'Bash'],
     mcp_servers: [],
-    thinking: 'high',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'spec' },
   },
   spec_critic: {
     label: 'Spec Critic',
@@ -75,8 +103,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'spec',
     tools: ['Read', 'Glob', 'Grep'],
     mcp_servers: [],
-    thinking: 'ultrathink',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'spec' },
   },
   spec_discovery: {
     label: 'Spec Discovery',
@@ -84,8 +111,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'spec',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: [],
-    thinking: 'medium',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'spec' },
   },
   spec_context: {
     label: 'Spec Context',
@@ -93,8 +119,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'spec',
     tools: ['Read', 'Glob', 'Grep'],
     mcp_servers: [],
-    thinking: 'medium',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'spec' },
   },
   spec_validation: {
     label: 'Spec Validation',
@@ -102,8 +127,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'spec',
     tools: ['Read', 'Glob', 'Grep'],
     mcp_servers: [],
-    thinking: 'high',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'spec' },
   },
 
   // Build Phases
@@ -114,8 +138,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     tools: ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'Bash', 'WebFetch', 'WebSearch'],
     mcp_servers: ['context7', 'graphiti-memory', 'auto-claude'],
     mcp_optional: ['linear'],
-    thinking: 'high',
-    model: 'Opus',
+    settingsSource: { type: 'phase', phase: 'planning' },
   },
   coder: {
     label: 'Coder',
@@ -124,8 +147,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     tools: ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'Bash', 'WebFetch', 'WebSearch'],
     mcp_servers: ['context7', 'graphiti-memory', 'auto-claude'],
     mcp_optional: ['linear'],
-    thinking: 'none',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'coding' },
   },
 
   // QA Phases
@@ -136,8 +158,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     tools: ['Read', 'Glob', 'Grep', 'Bash', 'WebFetch', 'WebSearch'],
     mcp_servers: ['context7', 'graphiti-memory', 'auto-claude'],
     mcp_optional: ['linear', 'electron', 'puppeteer'],
-    thinking: 'high',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'qa' },
   },
   qa_fixer: {
     label: 'QA Fixer',
@@ -146,19 +167,17 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     tools: ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'Bash', 'WebFetch', 'WebSearch'],
     mcp_servers: ['context7', 'graphiti-memory', 'auto-claude'],
     mcp_optional: ['linear', 'electron', 'puppeteer'],
-    thinking: 'medium',
-    model: 'Sonnet',
+    settingsSource: { type: 'phase', phase: 'qa' },
   },
 
-  // Utility Phases
+  // Utility Phases - use feature settings
   pr_reviewer: {
     label: 'PR Reviewer',
     description: 'Reviews GitHub pull requests',
     category: 'utility',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: ['context7'],
-    thinking: 'high',
-    model: 'Haiku',
+    settingsSource: { type: 'feature', feature: 'githubPrs' },
   },
   commit_message: {
     label: 'Commit Message',
@@ -166,8 +185,8 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'utility',
     tools: [],
     mcp_servers: [],
-    thinking: 'low',
-    model: 'Haiku',
+    // Commit message uses Haiku for speed - not yet user-configurable
+    settingsSource: { type: 'fixed', model: 'haiku', thinking: 'low' },
   },
   merge_resolver: {
     label: 'Merge Resolver',
@@ -175,8 +194,8 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'utility',
     tools: [],
     mcp_servers: [],
-    thinking: 'low',
-    model: 'Haiku',
+    // Merge resolver uses Haiku - not yet user-configurable
+    settingsSource: { type: 'fixed', model: 'haiku', thinking: 'low' },
   },
   insights: {
     label: 'Insights',
@@ -184,8 +203,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'utility',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: [],
-    thinking: 'medium',
-    model: 'Sonnet',
+    settingsSource: { type: 'feature', feature: 'insights' },
   },
   analysis: {
     label: 'Analysis',
@@ -193,8 +211,8 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'utility',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: ['context7'],
-    thinking: 'medium',
-    model: 'Sonnet',
+    // Analysis uses same as insights
+    settingsSource: { type: 'feature', feature: 'insights' },
   },
   batch_analysis: {
     label: 'Batch Analysis',
@@ -202,19 +220,18 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'utility',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: [],
-    thinking: 'low',
-    model: 'Haiku',
+    // Batch uses same as GitHub Issues
+    settingsSource: { type: 'feature', feature: 'githubIssues' },
   },
 
-  // Ideation & Roadmap
+  // Ideation & Roadmap - use feature settings
   ideation: {
     label: 'Ideation',
     description: 'Generates feature ideas',
     category: 'ideation',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: [],
-    thinking: 'high',
-    model: 'Sonnet',
+    settingsSource: { type: 'feature', feature: 'ideation' },
   },
   roadmap_discovery: {
     label: 'Roadmap Discovery',
@@ -222,8 +239,7 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
     category: 'ideation',
     tools: ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'],
     mcp_servers: ['context7'],
-    thinking: 'high',
-    model: 'Sonnet',
+    settingsSource: { type: 'feature', feature: 'roadmap' },
   },
 };
 
@@ -310,24 +326,16 @@ const CATEGORIES = {
   ideation: { label: 'Ideation', icon: Lightbulb },
 };
 
-// Thinking level labels - neutral styling per design.json
-const THINKING_LEVELS: Record<string, string> = {
-  none: 'None',
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  ultrathink: 'Ultra',
-};
-
 interface AgentCardProps {
   id: string;
   config: typeof AGENT_CONFIGS[keyof typeof AGENT_CONFIGS];
+  modelLabel: string;
+  thinkingLabel: string;
 }
 
-function AgentCard({ config }: AgentCardProps) {
+function AgentCard({ config, modelLabel, thinkingLabel }: AgentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const category = CATEGORIES[config.category as keyof typeof CATEGORIES];
-  const thinkingLabel = THINKING_LEVELS[config.thinking] || config.thinking;
   const CategoryIcon = category.icon;
 
   return (
@@ -344,7 +352,7 @@ function AgentCard({ config }: AgentCardProps) {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-medium text-sm text-foreground">{config.label}</h3>
             <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-secondary-foreground">
-              {config.model}
+              {modelLabel}
             </span>
             <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-secondary-foreground">
               {thinkingLabel}
@@ -455,9 +463,41 @@ function AgentCard({ config }: AgentCardProps) {
 
 export function AgentTools() {
   const { t } = useTranslation('navigation');
+  const settings = useSettingsStore((state) => state.settings);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['spec', 'build', 'qa'])
   );
+
+  // Get phase and feature settings with defaults
+  const phaseModels = settings.customPhaseModels || DEFAULT_PHASE_MODELS;
+  const phaseThinking = settings.customPhaseThinking || DEFAULT_PHASE_THINKING;
+  const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
+  const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
+
+  // Resolve model and thinking for an agent based on its settings source
+  const resolveAgentSettings = useMemo(() => {
+    return (config: AgentConfig): { model: ModelTypeShort; thinking: ThinkingLevel } => {
+      const source = config.settingsSource;
+
+      if (source.type === 'phase') {
+        return {
+          model: phaseModels[source.phase],
+          thinking: phaseThinking[source.phase],
+        };
+      } else if (source.type === 'feature') {
+        return {
+          model: featureModels[source.feature],
+          thinking: featureThinking[source.feature],
+        };
+      } else {
+        // Fixed settings
+        return {
+          model: source.model,
+          thinking: source.thinking,
+        };
+      }
+    };
+  }, [phaseModels, phaseThinking, featureModels, featureThinking]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories((prev) => {
@@ -560,9 +600,18 @@ export function AgentTools() {
                 {/* Agent Cards */}
                 {isExpanded && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pl-6">
-                    {agents.map(({ id, config }) => (
-                      <AgentCard key={id} id={id} config={config} />
-                    ))}
+                    {agents.map(({ id, config }) => {
+                      const { model, thinking } = resolveAgentSettings(config);
+                      return (
+                        <AgentCard
+                          key={id}
+                          id={id}
+                          config={config}
+                          modelLabel={getModelLabel(model)}
+                          thinkingLabel={getThinkingLabel(thinking)}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
