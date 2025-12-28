@@ -732,11 +732,15 @@ class GHClient:
             try:
                 all_reviews = json.loads(reviews_result.stdout)
                 # Filter reviews submitted after the timestamp
-                from datetime import datetime
+                from datetime import datetime, timezone
 
+                # Parse since_timestamp, handling both naive and aware formats
                 since_dt = datetime.fromisoformat(
                     since_timestamp.replace("Z", "+00:00")
                 )
+                # Ensure since_dt is timezone-aware (assume UTC if naive)
+                if since_dt.tzinfo is None:
+                    since_dt = since_dt.replace(tzinfo=timezone.utc)
 
                 for review in all_reviews:
                     submitted_at = review.get("submitted_at", "")
@@ -745,6 +749,9 @@ class GHClient:
                             review_dt = datetime.fromisoformat(
                                 submitted_at.replace("Z", "+00:00")
                             )
+                            # Ensure review_dt is also timezone-aware
+                            if review_dt.tzinfo is None:
+                                review_dt = review_dt.replace(tzinfo=timezone.utc)
                             if review_dt > since_dt:
                                 reviews.append(review)
                         except ValueError:
