@@ -19,10 +19,23 @@ import {
 import { useProjectStore } from '../stores/project-store';
 import { TooltipProvider } from './ui/tooltip';
 
-// Import Monaco directly so Vite can bundle it properly
-// This works for both dev and production in Electron
-loader.config({ monaco });
+// Import Monaco directly so Vite can bundle it properly.
+// This works for both dev and production in Electron. In a pure browser
+// environment, however, the `monaco` module or this configuration step
+// may not be available, so guard it to avoid runtime errors on import.
+const isElectronRenderer =
+  typeof window !== 'undefined' &&
+  typeof (window as any).process === 'object' &&
+  (window as any).process?.type === 'renderer';
 
+try {
+  if (isElectronRenderer && monaco) {
+    loader.config({ monaco });
+  }
+} catch {
+  // In non-Electron or mocked environments, fall back to the default loader
+  // behavior and avoid failing during module evaluation.
+}
 interface CodeEditorProps {
   projectId: string;
 }
