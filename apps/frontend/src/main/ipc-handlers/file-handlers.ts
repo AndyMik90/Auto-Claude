@@ -179,8 +179,8 @@ export function registerFileHandlers(): void {
             continue;
           }
 
-          // Skip hidden files (but allow hidden directories)
-          if (!entry.isDirectory() && entry.name.startsWith('.')) {
+          // Skip hidden files and directories (names starting with '.')
+          if (entry.name.startsWith('.')) {
             continue;
           }
 
