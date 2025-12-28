@@ -1,0 +1,334 @@
+{
+  "integrations_researched": [
+    {
+      "name": "Authlib",
+      "type": "library",
+      "verified_package": {
+        "name": "Authlib",
+        "install_command": "pip install Authlib",
+        "version": ">=1.3.0",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "from authlib.integrations.requests_client import OAuth2Session",
+          "from authlib.integrations.httpx_client import OAuth2Client",
+          "from authlib.integrations.httpx_client import AsyncOAuth2Client",
+          "from authlib.oauth2.rfc7636 import create_s256_code_challenge",
+          "from authlib.common.security import generate_token"
+        ],
+        "initialization": "session = OAuth2Session(client_id=client_id, redirect_uri=redirect_uri, scope=scope, code_challenge_method='S256')",
+        "key_functions": [
+          "generate_token(48) - Generate PKCE code verifier",
+          "session.create_authorization_url(auth_endpoint, code_verifier=verifier) - Create auth URL with PKCE",
+          "session.fetch_token(token_endpoint, authorization_response=callback_url, code_verifier=verifier) - Exchange code for token"
+        ],
+        "verified_against": "Context7 MCP: /authlib/authlib"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": ["requests or httpx"]
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "notes": "Pure Python library, no external services required"
+      },
+      "gotchas": [
+        "PKCE requires code_challenge_method='S256' in session initialization",
+        "code_verifier must be passed to both create_authorization_url() and fetch_token()",
+        "For public clients (no client_secret), use token_endpoint_auth_method='none'"
+      ],
+      "research_sources": [
+        "Context7 MCP: /authlib/authlib",
+        "https://github.com/authlib/authlib",
+        "https://docs.authlib.org/en/latest/client/oauth2.html"
+      ]
+    },
+    {
+      "name": "HTTPX",
+      "type": "library",
+      "verified_package": {
+        "name": "httpx",
+        "install_command": "pip install httpx",
+        "version": ">=0.25.0",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import httpx",
+          "from httpx import AsyncClient"
+        ],
+        "initialization": "client = httpx.Client() or async with httpx.AsyncClient() as client:",
+        "key_functions": [
+          "httpx.get(url, params=params)",
+          "httpx.post(url, data=data, json=json)",
+          "client.get(url)",
+          "client.post(url)"
+        ],
+        "verified_against": "Context7 MCP: /encode/httpx"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "notes": "Already available via anthropic SDK dependency"
+      },
+      "gotchas": [
+        "Already included as dependency of anthropic SDK",
+        "Supports both sync and async clients"
+      ],
+      "research_sources": [
+        "Context7 MCP: /encode/httpx",
+        "https://github.com/encode/httpx"
+      ]
+    },
+    {
+      "name": "Python http.server",
+      "type": "library",
+      "verified_package": {
+        "name": "http.server",
+        "install_command": "Built-in Python module (no installation needed)",
+        "version": "Python 3.10+",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "from http.server import HTTPServer, BaseHTTPRequestHandler",
+          "import threading"
+        ],
+        "initialization": "server = HTTPServer(('127.0.0.1', 8487), CallbackHandler)",
+        "key_functions": [
+          "BaseHTTPRequestHandler.do_GET() - Handle GET request",
+          "BaseHTTPRequestHandler.path - Access request path with query params",
+          "self.send_response(200) - Send HTTP response",
+          "server.handle_request() - Handle single request",
+          "threading.Thread(target=server.serve_forever) - Run in background"
+        ],
+        "verified_against": "Python Standard Library Documentation"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "ports": [8487],
+        "notes": "Must bind to 127.0.0.1:8487 to match Anthropic's whitelisted redirect URI"
+      },
+      "gotchas": [
+        "Must use port 8487 to match Anthropic's pre-registered redirect URI",
+        "Server should timeout after reasonable period if no callback received",
+        "Use threading for non-blocking operation",
+        "Parse query parameters from self.path using urllib.parse"
+      ],
+      "research_sources": [
+        "Python Standard Library: http.server module",
+        "https://docs.python.org/3/library/http.server.html"
+      ]
+    },
+    {
+      "name": "Anthropic OAuth Configuration",
+      "type": "service",
+      "verified_package": {
+        "name": "Anthropic Console OAuth",
+        "install_command": "N/A - external service",
+        "version": "N/A",
+        "verified": false
+      },
+      "api_patterns": {
+        "imports": [],
+        "initialization": "N/A - HTTP endpoints",
+        "key_functions": [],
+        "verified_against": "Partially verified from OpenCode reference implementation"
+      },
+      "configuration": {
+        "env_vars": [
+          "CLAUDE_CODE_OAUTH_TOKEN - Stored OAuth access token"
+        ],
+        "oauth_endpoints": {
+          "authorization_endpoint": "https://console.anthropic.com/oauth/authorize",
+          "token_endpoint": "https://console.anthropic.com/oauth/token",
+          "redirect_uri": "http://127.0.0.1:8487/oauth/callback",
+          "notes": "Endpoints inferred from OpenCode patterns - needs verification"
+        },
+        "scopes": {
+          "required": ["org:createapikey", "user:profile", "user:inference"],
+          "notes": "Scopes from requirements - user:profile enables /usage endpoint access"
+        },
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "notes": "Uses Anthropic's pre-whitelisted OAuth client - no custom app registration needed"
+      },
+      "gotchas": [
+        "Must use pre-whitelisted redirect URI (http://127.0.0.1:8487/oauth/callback)",
+        "OAuth tokens stored in macOS Keychain under 'Claude Code-credentials'",
+        "Token format starts with 'sk-ant-oat01-'",
+        "Current claude setup-token only requests user:inference scope",
+        "Need to request all three scopes: org:createapikey, user:profile, user:inference"
+      ],
+      "research_sources": [
+        "Context7 MCP: /sst/opencode",
+        "Existing codebase: apps/backend/core/auth.py",
+        "Requirements document"
+      ]
+    },
+    {
+      "name": "OpenCode OAuth Reference",
+      "type": "reference_implementation",
+      "verified_package": {
+        "name": "opencode",
+        "install_command": "npm install -g opencode (TypeScript implementation)",
+        "version": "latest",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [],
+        "initialization": "N/A - TypeScript reference only",
+        "key_functions": [
+          "POST /provider/{id}/oauth/authorize - Initiate OAuth flow",
+          "POST /provider/{id}/oauth/callback - Handle OAuth callback"
+        ],
+        "verified_against": "Context7 MCP: /sst/opencode"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": ["~/.local/share/opencode/auth.json"],
+        "oauth_config": {
+          "clientId": "Uses Anthropic pre-registered client",
+          "clientSecret": "None (public client with PKCE)",
+          "scope": "Configurable per provider"
+        },
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "notes": "Reference only - actual implementation is TypeScript"
+      },
+      "gotchas": [
+        "OpenCode is TypeScript - patterns need to be adapted for Python",
+        "Uses same port 8487 for callback as Claude Code",
+        "Supports 'Claude Pro/Max' authentication option for Anthropic"
+      ],
+      "research_sources": [
+        "Context7 MCP: /sst/opencode",
+        "https://github.com/sst/opencode"
+      ]
+    },
+    {
+      "name": "macOS Keychain Integration",
+      "type": "infrastructure",
+      "verified_package": {
+        "name": "security (macOS CLI)",
+        "install_command": "Built-in macOS tool",
+        "version": "N/A",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "import subprocess",
+          "import json"
+        ],
+        "initialization": "N/A - CLI tool",
+        "key_functions": [
+          "/usr/bin/security find-generic-password -s 'Claude Code-credentials' -w",
+          "/usr/bin/security add-generic-password -s 'Claude Code-credentials' -a [account] -w [password]"
+        ],
+        "verified_against": "Existing codebase: apps/backend/core/auth.py"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "keychain_entry": {
+          "service": "Claude Code-credentials",
+          "data_format": "JSON with claudeAiOauth.accessToken field"
+        },
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "notes": "macOS only - Linux/Windows need alternative storage"
+      },
+      "gotchas": [
+        "Only works on macOS (Darwin platform)",
+        "Credentials stored as JSON with nested structure",
+        "Token extracted from data.claudeAiOauth.accessToken",
+        "Valid tokens start with 'sk-ant-oat01-'"
+      ],
+      "research_sources": [
+        "Existing codebase: apps/backend/core/auth.py",
+        "macOS security command documentation"
+      ]
+    }
+  ],
+  "unverified_claims": [
+    {
+      "claim": "Anthropic OAuth authorization endpoint is https://console.anthropic.com/oauth/authorize",
+      "reason": "Inferred from OpenCode patterns and common OAuth conventions - could not directly verify from official Anthropic documentation",
+      "risk_level": "medium"
+    },
+    {
+      "claim": "Anthropic OAuth token endpoint is https://console.anthropic.com/oauth/token",
+      "reason": "Inferred from OpenCode patterns - needs verification against actual Anthropic OAuth implementation",
+      "risk_level": "medium"
+    },
+    {
+      "claim": "Pre-whitelisted redirect URI http://127.0.0.1:8487/oauth/callback is still active",
+      "reason": "Referenced in requirements but could not verify current status with Anthropic",
+      "risk_level": "medium"
+    },
+    {
+      "claim": "user:profile scope grants access to /usage endpoint",
+      "reason": "Stated in requirements - needs verification that this is the correct scope for usage data",
+      "risk_level": "low"
+    },
+    {
+      "claim": "Anthropic uses standard OAuth 2.0 PKCE flow with S256 challenge method",
+      "reason": "Assumed based on industry standards - needs verification",
+      "risk_level": "low"
+    }
+  ],
+  "recommendations": [
+    "Use Authlib for OAuth 2.0 + PKCE implementation - it has excellent Python support and verified PKCE functionality",
+    "Verify Anthropic OAuth endpoints by testing the discovery endpoint (/.well-known/oauth-authorization-server) if available",
+    "Consider adding fallback for Linux/Windows token storage (file-based with encryption)",
+    "Implement timeout mechanism for local callback server to handle cases where user doesn't complete authorization",
+    "Add comprehensive error handling for OAuth flow failures (network issues, denied authorization, expired codes)",
+    "Test the implementation with the actual Anthropic OAuth server before full integration",
+    "Consider using httpx instead of requests for consistency with existing Anthropic SDK usage"
+  ],
+  "existing_codebase_patterns": {
+    "auth_module": "apps/backend/core/auth.py",
+    "token_env_vars": ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN"],
+    "keychain_service": "Claude Code-credentials",
+    "token_prefix": "sk-ant-oat01-",
+    "platform_check": "platform.system() == 'Darwin'"
+  },
+  "implementation_notes": {
+    "pkce_flow": {
+      "step_1": "Generate code_verifier using generate_token(48) or similar (43-128 chars)",
+      "step_2": "Create code_challenge using S256 (SHA256 hash, base64url encoded)",
+      "step_3": "Build authorization URL with client_id, redirect_uri, scope, state, code_challenge, code_challenge_method",
+      "step_4": "Start local HTTP server on port 8487",
+      "step_5": "Open browser to authorization URL",
+      "step_6": "Wait for callback with authorization code",
+      "step_7": "Exchange code for token (POST to token endpoint with code, code_verifier, redirect_uri)",
+      "step_8": "Store token in keychain and/or environment"
+    },
+    "scopes_to_request": "org:createapikey user:profile user:inference"
+  },
+  "context7_libraries_used": [
+    "/authlib/authlib",
+    "/encode/httpx",
+    "/sst/opencode",
+    "/anthropics/anthropic-sdk-python",
+    "/docs.anthropic.com-7a01857/llmstxt"
+  ],
+  "created_at": "2024-12-28T01:15:00Z"
+}

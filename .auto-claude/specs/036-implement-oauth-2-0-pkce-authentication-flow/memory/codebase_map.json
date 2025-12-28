@@ -1,0 +1,15 @@
+{
+  "discovered_files": {
+    "auto-claude/": {
+      "description": "The actual backend directory is auto-claude/, not apps/backend/ as mentioned in spec. Requirements are at auto-claude/requirements.txt, core module is at auto-claude/core/",
+      "category": "architecture",
+      "discovered_at": "2025-12-28T00:26:25.551551+00:00"
+    },
+    "auto-claude/core/oauth.py": {
+      "description": "New OAuth module with PKCE generation. generate_pkce_pair() returns (verifier, challenge) tuple. Uses secrets.token_urlsafe(48) and Authlib create_s256_code_challenge. Configuration constants defined: OAUTH_CLIENT_ID, OAUTH_AUTHORIZATION_ENDPOINT, OAUTH_TOKEN_ENDPOINT, OAUTH_REDIRECT_URI, OAUTH_SCOPES.",
+      "category": "oauth",
+      "discovered_at": "2025-12-28T00:33:21.301160+00:00"
+    }
+  },
+  "last_updated": "2025-12-28T00:33:21.301168+00:00"
+}

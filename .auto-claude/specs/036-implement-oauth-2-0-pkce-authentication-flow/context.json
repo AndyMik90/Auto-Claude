@@ -1,0 +1,41 @@
+{
+  "task_description": "Implement OAuth 2.0 + PKCE authentication flow for Claude profiles to enable access to the /usage endpoint by requesting user:profile scope. Current setup-token only requests user:inference, blocking usage data access.",
+  "scoped_services": ["backend"],
+  "files_to_modify": {
+    "backend": [
+      "apps/backend/core/auth.py",
+      "apps/backend/requirements.txt"
+    ]
+  },
+  "files_to_create": {
+    "backend": [
+      "apps/backend/core/oauth.py",
+      "apps/backend/core/oauth_server.py",
+      "tests/test_oauth.py"
+    ]
+  },
+  "files_to_reference": [
+    "apps/backend/core/auth.py",
+    "apps/frontend/src/main/ipc-handlers/github/oauth-handlers.ts"
+  ],
+  "patterns": {
+    "keychain_storage": "Uses subprocess + /usr/bin/security with service 'Claude Code-credentials', JSON structure with claudeAiOauth.accessToken",
+    "token_validation": "Tokens must start with 'sk-ant-oat01-' prefix",
+    "platform_check": "platform.system() != 'Darwin' returns None early for non-macOS",
+    "error_handling": "Silently catch exceptions and return None for fallback mechanisms"
+  },
+  "existing_implementations": {
+    "description": "Found existing Keychain integration in apps/backend/core/auth.py and GitHub OAuth patterns in frontend",
+    "relevant_files": ["apps/backend/core/auth.py", "apps/frontend/src/main/ipc-handlers/github/oauth-handlers.ts"]
+  },
+  "oauth_config": {
+    "authorization_endpoint": "https://console.anthropic.com/oauth/authorize",
+    "token_endpoint": "https://console.anthropic.com/oauth/token",
+    "redirect_uri": "http://127.0.0.1:8487/oauth/callback",
+    "scopes": ["org:createapikey", "user:profile", "user:inference"],
+    "port": 8487,
+    "client_auth_method": "none",
+    "code_challenge_method": "S256"
+  },
+  "created_at": "2025-12-28T01:15:09.153975"
+}

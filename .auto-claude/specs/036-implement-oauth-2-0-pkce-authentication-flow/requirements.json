@@ -1,0 +1,4 @@
+{
+  "task_description": "Implement a custom OAuth 2.0 + PKCE (Proof Key for Code Exchange) authentication flow for Claude profiles to enable access to the /usage endpoint. The current claude setup-token command only requests the user:inference scope, which blocks access to usage data that requires the user:profile scope. This implementation follows the proven approach used by OpenCode, utilizing Anthropic's pre-whitelisted redirect URI to avoid custom app registration while requesting all required scopes (org:createapikey, user:profile, user:inference).",
+  "workflow_type": "feature"
+}

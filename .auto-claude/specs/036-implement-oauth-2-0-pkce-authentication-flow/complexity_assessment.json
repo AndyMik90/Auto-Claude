@@ -1,0 +1,106 @@
+{
+  "complexity": "standard",
+  "workflow_type": "feature",
+  "confidence": 0.85,
+  "reasoning": "OAuth 2.0 + PKCE implementation is a well-defined security protocol. The codebase already has similar patterns (GitHub OAuth flow in oauth-handlers.ts, Claude OAuth UI in ClaudeOAuthFlow.tsx). Requires research for Anthropic's specific OAuth endpoints and PKCE implementation, but scope is contained to authentication layer.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 7,
+      "estimated_services": 1,
+      "is_cross_cutting": false,
+      "notes": "Changes are localized to frontend auth layer. Need: new PKCE OAuth handler, callback server, updates to ClaudeOAuthFlow.tsx, claude-profile-manager.ts, IPC channels, and usage-monitor.ts to verify new scope works."
+    },
+    "integrations": {
+      "external_services": ["Anthropic OAuth"],
+      "new_dependencies": [],
+      "research_needed": true,
+      "notes": "Anthropic OAuth 2.0 endpoints need research. OpenCode's implementation provides a reference. PKCE flow is a standard protocol but Anthropic-specific details (scopes, redirect URIs) need verification."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": true,
+      "notes": "No Docker or DB changes. May need to add Anthropic OAuth endpoints as constants. Local callback server runs on port 8487 (temporary during auth flow only)."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": true,
+      "unfamiliar_tech": ["PKCE", "Anthropic OAuth"],
+      "notes": "GitHub OAuth flow in oauth-handlers.ts provides excellent reference patterns. PKCE is standard but needs implementation. Anthropic's specific OAuth flow (client_id, endpoints, scopes) needs research."
+    },
+    "risk": {
+      "level": "medium",
+      "concerns": [
+        "Security-critical: OAuth token handling",
+        "Port 8487 availability during auth",
+        "Backward compatibility with existing tokens",
+        "Token scope migration for existing users"
+      ],
+      "notes": "Auth changes are inherently risky. Need to ensure existing tokens continue working while enabling new scope requests."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "research",
+    "context",
+    "spec_writing",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": true,
+    "needs_self_critique": false,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "high",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration", "e2e"],
+    "security_scan_required": true,
+    "staging_deployment_required": false,
+    "reasoning": "Authentication changes are security-sensitive. Requires comprehensive testing including E2E to verify the full OAuth flow works. Security scan needed for token handling and PKCE implementation. No staging deployment needed since local callback server is temporary and doesn't require infrastructure setup."
+  },
+
+  "key_files": {
+    "reference_patterns": [
+      "apps/frontend/src/main/ipc-handlers/github/oauth-handlers.ts",
+      "apps/frontend/src/renderer/components/project-settings/ClaudeOAuthFlow.tsx",
+      "apps/frontend/src/main/claude-profile-manager.ts"
+    ],
+    "will_modify": [
+      "apps/frontend/src/renderer/components/project-settings/ClaudeOAuthFlow.tsx",
+      "apps/frontend/src/main/claude-profile-manager.ts",
+      "apps/frontend/src/main/claude-profile/usage-monitor.ts"
+    ],
+    "will_create": [
+      "apps/frontend/src/main/ipc-handlers/claude-oauth-handlers.ts",
+      "apps/frontend/src/main/claude-oauth/pkce-flow.ts"
+    ]
+  },
+
+  "research_topics": [
+    {
+      "topic": "Anthropic OAuth 2.0 endpoints and parameters",
+      "priority": "high",
+      "why": "Need authorization_endpoint, token_endpoint, client_id for PKCE flow"
+    },
+    {
+      "topic": "OpenCode PKCE implementation",
+      "priority": "high",
+      "why": "Reference implementation that uses same whitelisted redirect URI"
+    },
+    {
+      "topic": "PKCE code_verifier and code_challenge generation",
+      "priority": "medium",
+      "why": "Standard S256 implementation but need to verify Anthropic's requirements"
+    }
+  ],
+
+  "created_at": "2025-06-28T12:00:00Z"
+}

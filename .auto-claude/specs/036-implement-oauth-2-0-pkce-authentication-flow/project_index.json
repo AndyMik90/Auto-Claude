@@ -1,0 +1,234 @@
+{
+  "project_root": "/Users/andremikalsen/Documents/Coding/autonomous-coding",
+  "project_type": "monorepo",
+  "services": {
+    "frontend": {
+      "name": "frontend",
+      "path": "/Users/andremikalsen/Documents/Coding/autonomous-coding/apps/frontend",
+      "language": "TypeScript",
+      "framework": "React",
+      "type": "frontend",
+      "package_manager": "npm",
+      "default_port": 3000,
+      "build_tool": "Vite",
+      "styling": "Tailwind CSS",
+      "state_management": "Zustand",
+      "dev_command": "npm run dev",
+      "key_directories": {
+        "src": {
+          "path": "src",
+          "purpose": "Source code"
+        }
+      },
+      "dependencies": [
+        "@dnd-kit/core",
+        "@dnd-kit/sortable",
+        "@dnd-kit/utilities",
+        "@lydell/node-pty",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-collapsible",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-progress",
+        "@radix-ui/react-radio-group",
+        "@radix-ui/react-scroll-area",
+        "@radix-ui/react-select",
+        "@radix-ui/react-separator",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-switch",
+        "@radix-ui/react-tabs",
+        "@radix-ui/react-toast",
+        "@radix-ui/react-tooltip",
+        "@tailwindcss/typography"
+      ],
+      "dev_dependencies": [
+        "@electron-toolkit/preload",
+        "@electron-toolkit/utils",
+        "@electron/rebuild",
+        "@eslint/js",
+        "@playwright/test",
+        "@tailwindcss/postcss",
+        "@testing-library/react",
+        "@types/node",
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "testing": "Vitest",
+      "e2e_testing": "Playwright",
+      "api": {
+        "routes": [
+          {
+            "path": "/path",
+            "methods": [
+              "GET"
+            ],
+            "file": "dist/mac-arm64/Auto-Claude.app/Contents/Resources/backend/analysis/analyzers/route_detector.py",
+            "framework": "FastAPI",
+            "requires_auth": false
+          },
+          {
+            "path": "/path",
+            "methods": [
+              "POST"
+            ],
+            "file": "dist/mac-arm64/Auto-Claude.app/Contents/Resources/backend/analysis/analyzers/route_detector.py",
+            "framework": "FastAPI",
+            "requires_auth": false
+          },
+          {
+            "path": "/path",
+            "methods": [
+              "GET",
+              "POST"
+            ],
+            "file": "dist/mac-arm64/Auto-Claude.app/Contents/Resources/backend/analysis/analyzers/route_detector.py",
+            "framework": "Flask",
+            "requires_auth": true
+          },
+          {
+            "path": "/metrics",
+            "methods": [
+              "GET"
+            ],
+            "file": "dist/mac-arm64/Auto-Claude.app/Contents/Resources/backend/analysis/analyzers/context/monitoring_detector.py",
+            "framework": "Flask",
+            "requires_auth": false
+          }
+        ],
+        "total_routes": 4,
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "protected_routes": [
+          "/path"
+        ]
+      },
+      "consumes": [
+        "backend.api"
+      ]
+    },
+    "backend": {
+      "name": "backend",
+      "path": "/Users/andremikalsen/Documents/Coding/autonomous-coding/apps/backend",
+      "language": "Python",
+      "framework": null,
+      "type": "backend",
+      "package_manager": "pip",
+      "key_directories": {
+        "services": {
+          "path": "services",
+          "purpose": "Business logic"
+        }
+      },
+      "dependencies": [
+        "claude-agent-sdk",
+        "python-dotenv",
+        "tomli",
+        "real_ladybug",
+        "graphiti-core",
+        "google-generativeai",
+        "pydantic"
+      ],
+      "test_directory": "spec",
+      "environment": {
+        "variables": {
+          "CLAUDE_CODE_OAUTH_TOKEN": {
+            "value": "<REDACTED>",
+            "source": ".env",
+            "type": "string",
+            "sensitive": true,
+            "required": false
+          },
+          "GRAPHITI_ENABLED": {
+            "value": "true",
+            "source": ".env",
+            "type": "boolean",
+            "sensitive": false,
+            "required": true
+          }
+        },
+        "required_count": 1,
+        "optional_count": 0,
+        "detected_count": 2
+      },
+      "api": {
+        "routes": [
+          {
+            "path": "/path",
+            "methods": [
+              "GET"
+            ],
+            "file": "analysis/analyzers/route_detector.py",
+            "framework": "FastAPI",
+            "requires_auth": false
+          },
+          {
+            "path": "/path",
+            "methods": [
+              "POST"
+            ],
+            "file": "analysis/analyzers/route_detector.py",
+            "framework": "FastAPI",
+            "requires_auth": false
+          },
+          {
+            "path": "/path",
+            "methods": [
+              "GET",
+              "POST"
+            ],
+            "file": "analysis/analyzers/route_detector.py",
+            "framework": "Flask",
+            "requires_auth": true
+          },
+          {
+            "path": "/metrics",
+            "methods": [
+              "GET"
+            ],
+            "file": "analysis/analyzers/context/monitoring_detector.py",
+            "framework": "Flask",
+            "requires_auth": false
+          }
+        ],
+        "total_routes": 4,
+        "methods": [
+          "POST",
+          "GET"
+        ],
+        "protected_routes": [
+          "/path"
+        ]
+      }
+    }
+  },
+  "infrastructure": {
+    "ci": "GitHub Actions",
+    "ci_workflows": [
+      "validate-version.yml",
+      "release.yml",
+      "quality-dco.yml",
+      "test-on-tag.yml",
+      "pr-auto-label.yml",
+      "pr-status-check.yml",
+      "lint.yml",
+      "welcome.yml",
+      "issue-auto-label.yml",
+      "beta-release.yml",
+      "stale.yml",
+      "build-prebuilds.yml",
+      "quality-security.yml",
+      "prepare-release.yml",
+      "discord-release.yml",
+      "quality-commit-lint.yml",
+      "ci.yml",
+      "pr-status-gate.yml"
+    ]
+  },
+  "conventions": {
+    "python_linting": "Ruff",
+    "git_hooks": "Husky"
+  }
+}

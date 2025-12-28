@@ -1,0 +1,410 @@
+{
+  "feature": "OAuth 2.0 + PKCE Authentication Flow",
+  "workflow_type": "feature",
+  "workflow_rationale": "This is a new feature implementation adding OAuth 2.0 + PKCE authentication capability. Requires creating new modules (oauth.py, oauth_server.py), integrating with existing authentication infrastructure, and implementing a complete OAuth flow with local callback server.",
+  "phases": [
+    {
+      "id": "phase-1-dependencies",
+      "name": "Add Dependencies",
+      "type": "setup",
+      "description": "Add Authlib dependency required for OAuth 2.0 + PKCE implementation",
+      "depends_on": [],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "description": "Add Authlib>=1.3.0 to requirements.txt for OAuth 2.0 client with PKCE support",
+          "service": "backend",
+          "files_to_modify": [
+            "apps/backend/requirements.txt"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && source .venv/bin/activate && pip install -r requirements.txt && python -c \"from authlib.oauth2.rfc7636 import create_s256_code_challenge; print('Authlib OK')\"",
+            "expected": "Authlib OK"
+          },
+          "status": "completed",
+          "notes": "Added Authlib>=1.3.0 to auto-claude/requirements.txt. Note: The actual project structure uses auto-claude/ instead of apps/backend/ as specified. Verified PKCE import works correctly.",
+          "updated_at": "2025-12-28T00:28:01.454957+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-2-oauth-server",
+      "name": "OAuth Callback Server",
+      "type": "implementation",
+      "description": "Create local HTTP callback server to handle OAuth redirect on port 8487",
+      "depends_on": [
+        "phase-1-dependencies"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-2-1",
+          "description": "Create oauth_server.py with threaded HTTP server that handles single OAuth callback on port 8487, extracts authorization code, and shuts down gracefully",
+          "service": "backend",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/backend/core/oauth_server.py"
+          ],
+          "patterns_from": [
+            "apps/backend/core/auth.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -c \"from core.oauth_server import OAuthCallbackServer; print('Import OK')\"",
+            "expected": "Import OK"
+          },
+          "status": "completed",
+          "implementation_notes": [
+            "Bind to 127.0.0.1 only (not 0.0.0.0)",
+            "Use threading for non-blocking operation",
+            "Handle single request then shutdown",
+            "Detect port 8487 conflict with clear error"
+          ],
+          "notes": "Created oauth_server.py at auto-claude/core/oauth_server.py (not apps/backend/core/ as spec indicated). Implements OAuthCallbackServer with: threaded HTTP server on port 8487, 127.0.0.1 binding only, single callback handling with graceful shutdown, authorization code extraction, port conflict detection, and HTML success/error responses. Verified import works correctly.",
+          "updated_at": "2025-12-28T00:30:58.768313+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-3-oauth-flow",
+      "name": "OAuth PKCE Flow",
+      "type": "implementation",
+      "description": "Create OAuth 2.0 + PKCE flow implementation using Authlib",
+      "depends_on": [
+        "phase-2-oauth-server"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-3-1",
+          "description": "Create oauth.py with PKCE code verifier/challenge generation using secrets.token_urlsafe and Authlib's create_s256_code_challenge",
+          "service": "backend",
+          "files_to_modify": [],
+          "files_to_create": [
+            "apps/backend/core/oauth.py"
+          ],
+          "patterns_from": [
+            "apps/backend/core/auth.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -c \"from core.oauth import generate_pkce_pair; v, c = generate_pkce_pair(); print(f'Verifier len: {len(v)}, Challenge len: {len(c)}')\"",
+            "expected": "Verifier len:"
+          },
+          "status": "completed",
+          "implementation_notes": [
+            "Use secrets.token_urlsafe(48) for verifier",
+            "Use authlib.oauth2.rfc7636.create_s256_code_challenge for challenge"
+          ],
+          "notes": "Created oauth.py at auto-claude/core/oauth.py with generate_pkce_pair() function. Uses secrets.token_urlsafe(48) for verifier and Authlib's create_s256_code_challenge for S256 challenge. Verified: Verifier len: 64, Challenge len: 43. Committed as eef2d2b8.",
+          "updated_at": "2025-12-28T00:33:14.190446+00:00"
+        },
+        {
+          "id": "subtask-3-2",
+          "description": "Add OAuth authorization URL generation with all required scopes (org:createapikey, user:profile, user:inference) and PKCE parameters",
+          "service": "backend",
+          "files_to_modify": [
+            "apps/backend/core/oauth.py"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/backend/core/auth.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -c \"from core.oauth import create_authorization_url; url, state, verifier = create_authorization_url(); assert 'user:profile' in url; assert 'code_challenge=' in url; print('Auth URL OK')\"",
+            "expected": "Auth URL OK"
+          },
+          "status": "completed",
+          "implementation_notes": [
+            "Scopes: org:createapikey user:profile user:inference",
+            "Authorization endpoint: https://console.anthropic.com/oauth/authorize",
+            "Redirect URI: http://127.0.0.1:8487/oauth/callback",
+            "Must include code_challenge and code_challenge_method=S256"
+          ],
+          "notes": "Added create_authorization_url() function to oauth.py. Generates complete OAuth 2.0 authorization URL with PKCE parameters (code_challenge, code_challenge_method=S256), all required scopes (org:createapikey, user:profile, user:inference), and CSRF state protection. Returns (url, state, code_verifier) tuple. Verified: 'user:profile' in url and 'code_challenge=' in url. Committed as 7952ffd7.",
+          "updated_at": "2025-12-28T00:36:29.949745+00:00"
+        },
+        {
+          "id": "subtask-3-3",
+          "description": "Add token exchange function that exchanges authorization code for access token using code_verifier",
+          "service": "backend",
+          "files_to_modify": [
+            "apps/backend/core/oauth.py"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/backend/core/auth.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -c \"from core.oauth import exchange_code_for_token; import inspect; sig = inspect.signature(exchange_code_for_token); assert 'code' in str(sig) and 'code_verifier' in str(sig); print('Exchange function OK')\"",
+            "expected": "Exchange function OK"
+          },
+          "status": "completed",
+          "implementation_notes": [
+            "Token endpoint: https://console.anthropic.com/oauth/token",
+            "Must pass code_verifier in token request",
+            "Use token_endpoint_auth_method='none' for public client"
+          ],
+          "notes": "Added exchange_code_for_token() function that exchanges authorization code for access token using PKCE code_verifier. Includes OAuthTokenResponse TypedDict, OAuthTokenError exception class, and proper token format validation. Also added httpx dependency required by authlib.",
+          "updated_at": "2025-12-28T00:40:25.466507+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-4-token-storage",
+      "name": "Token Storage Integration",
+      "type": "implementation",
+      "description": "Integrate token storage with existing Keychain pattern in auth.py",
+      "depends_on": [
+        "phase-3-oauth-flow"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-4-1",
+          "description": "Add save_token_to_keychain function to auth.py that stores OAuth token in macOS Keychain using existing pattern",
+          "service": "backend",
+          "files_to_modify": [
+            "apps/backend/core/auth.py"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/backend/core/auth.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -c \"from core.auth import save_token_to_keychain; import inspect; sig = inspect.signature(save_token_to_keychain); print('Save function exists')\"",
+            "expected": "Save function exists"
+          },
+          "status": "completed",
+          "implementation_notes": [
+            "Service name: Claude Code-credentials",
+            "JSON structure: {\"claudeAiOauth\": {\"accessToken\": \"...\"}}",
+            "Validate token prefix sk-ant-oat01- before storage",
+            "Use subprocess + /usr/bin/security add-generic-password"
+          ],
+          "notes": "Added save_token_to_keychain function to auto-claude/core/auth.py. Function stores OAuth tokens in macOS Keychain using the same service name (\"Claude Code-credentials\") and JSON structure ({\"claudeAiOauth\": {\"accessToken\": \"...\"}}) as the existing get_token_from_keychain function. Includes token format validation (sk-ant-oat01- prefix), KeychainError exception class for error handling, and platform check for macOS-only operation. Committed as 8ff13208.",
+          "updated_at": "2025-12-28T00:42:34.590876+00:00"
+        },
+        {
+          "id": "subtask-4-2",
+          "description": "Add complete OAuth flow orchestrator function that combines callback server, authorization URL, and token exchange",
+          "service": "backend",
+          "files_to_modify": [
+            "apps/backend/core/oauth.py"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/backend/core/auth.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -c \"from core.oauth import run_oauth_flow; import inspect; sig = inspect.signature(run_oauth_flow); print('Flow orchestrator exists')\"",
+            "expected": "Flow orchestrator exists"
+          },
+          "status": "completed",
+          "implementation_notes": [
+            "Start callback server in background thread",
+            "Open browser with authorization URL",
+            "Wait for callback with timeout",
+            "Exchange code for token",
+            "Save to Keychain",
+            "Return success/failure status"
+          ],
+          "notes": "Added run_oauth_flow() function to oauth.py that orchestrates the complete OAuth 2.0 + PKCE authentication flow. The function: starts callback server in background thread, generates authorization URL with PKCE, opens browser (optional), waits for callback with timeout, validates state for CSRF protection, exchanges code for token, and saves to Keychain (optional). Returns OAuthFlowResult dataclass with success status and token or error info. Also added OAuthFlowError exception class. Verified import works correctly. Committed as 31248ab3.",
+          "updated_at": "2025-12-28T00:45:05.773635+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-5-tests",
+      "name": "Unit Tests",
+      "type": "implementation",
+      "description": "Add unit tests for OAuth functionality",
+      "depends_on": [
+        "phase-4-token-storage"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-5-1",
+          "description": "Create test_oauth.py with unit tests for PKCE generation, authorization URL creation, and token validation",
+          "service": "backend",
+          "files_to_modify": [],
+          "files_to_create": [
+            "tests/test_oauth.py"
+          ],
+          "patterns_from": [
+            "tests/test_security.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -m pytest ../tests/test_oauth.py -v --tb=short 2>&1 | head -50",
+            "expected": "passed"
+          },
+          "status": "completed",
+          "implementation_notes": [
+            "Test PKCE verifier is correct length (48 bytes base64)",
+            "Test challenge is base64url encoded SHA256",
+            "Test authorization URL contains all required parameters",
+            "Test token validation (prefix check)",
+            "Mock HTTP calls for token exchange"
+          ],
+          "notes": "Created tests/test_oauth.py with 51 unit tests covering: PKCE generation (verifier/challenge), authorization URL creation, token validation, token exchange, callback server, and OAuth constants. All tests pass.",
+          "updated_at": "2025-12-28T00:50:29.026676+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-6-integration",
+      "name": "Integration Verification",
+      "type": "integration",
+      "description": "Verify complete OAuth flow works end-to-end",
+      "depends_on": [
+        "phase-5-tests"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-6-1",
+          "description": "Verify all imports work correctly and no circular dependencies exist",
+          "service": "backend",
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -c \"from core.oauth import run_oauth_flow, generate_pkce_pair, create_authorization_url, exchange_code_for_token; from core.oauth_server import OAuthCallbackServer; from core.auth import get_token_from_keychain, save_token_to_keychain; print('All imports OK')\"",
+            "expected": "All imports OK"
+          },
+          "status": "completed",
+          "notes": "Verified all OAuth-related imports work correctly. Tested: run_oauth_flow, generate_pkce_pair, create_authorization_url, exchange_code_for_token from core.oauth; OAuthCallbackServer from core.oauth_server; get_token_from_keychain, save_token_to_keychain from core.auth. Also verified no circular dependencies exist by testing multiple import orders.",
+          "updated_at": "2025-12-28T00:52:13.612640+00:00"
+        },
+        {
+          "id": "subtask-6-2",
+          "description": "Run existing auth tests to verify no regressions",
+          "service": "backend",
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/backend && python -m pytest ../tests/ -k 'auth or oauth' --tb=short -q 2>&1 | tail -10",
+            "expected": "passed"
+          },
+          "status": "completed",
+          "notes": "Ran all auth/oauth tests - 52 tests passed with no regressions. Test command: python -m pytest tests/ -k 'auth or oauth' --tb=short -q. Tests include test_oauth.py (51 tests) and test_spec_complexity.py (1 auth-related test).",
+          "updated_at": "2025-12-28T00:53:49.425711+00:00"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_phases": 6,
+    "total_subtasks": 9,
+    "services_involved": [
+      "backend"
+    ],
+    "parallelism": {
+      "max_parallel_phases": 1,
+      "parallel_groups": [],
+      "recommended_workers": 1,
+      "speedup_estimate": "Sequential execution - phases have dependencies"
+    },
+    "startup_command": "source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 036 --parallel 1"
+  },
+  "verification_strategy": {
+    "risk_level": "high",
+    "skip_validation": false,
+    "test_creation_phase": "phase-5-tests",
+    "test_types_required": [
+      "unit",
+      "integration"
+    ],
+    "security_scanning_required": true,
+    "staging_deployment_required": false,
+    "acceptance_criteria": [
+      "All existing tests pass",
+      "New OAuth tests pass",
+      "PKCE implementation follows RFC 7636",
+      "Token stored correctly in Keychain",
+      "No hardcoded secrets or tokens in code"
+    ],
+    "verification_steps": [
+      {
+        "name": "Unit Tests",
+        "command": "cd apps/backend && python -m pytest ../tests/test_oauth.py -v",
+        "expected_outcome": "All tests pass",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Security Scan",
+        "command": "cd apps/backend && python security/scan_secrets.py --path core/oauth.py core/oauth_server.py --json 2>&1 | grep -E '(secrets_found|error)'",
+        "expected_outcome": "No secrets detected",
+        "type": "security",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Import Verification",
+        "command": "cd apps/backend && python -c \"from core.oauth import run_oauth_flow; print('OK')\"",
+        "expected_outcome": "OK",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      }
+    ],
+    "reasoning": "OAuth/authentication changes are security-sensitive. High risk requires comprehensive unit tests and security scanning. No staging deployment needed since callback server is local and temporary."
+  },
+  "qa_acceptance": {
+    "unit_tests": {
+      "required": true,
+      "commands": [
+        "cd apps/backend && python -m pytest ../tests/test_oauth.py -v"
+      ],
+      "minimum_coverage": null
+    },
+    "integration_tests": {
+      "required": true,
+      "commands": [
+        "cd apps/backend && python -m pytest ../tests/ -k 'auth or oauth' -v"
+      ],
+      "services_to_test": [
+        "backend"
+      ]
+    },
+    "e2e_tests": {
+      "required": false,
+      "commands": [],
+      "flows": []
+    },
+    "browser_verification": {
+      "required": false,
+      "pages": []
+    },
+    "database_verification": {
+      "required": false,
+      "checks": []
+    },
+    "manual_verification": {
+      "required": true,
+      "steps": [
+        "Verify port 8487 is available before test",
+        "Test OAuth flow opens browser correctly",
+        "Verify token stored in Keychain after successful auth",
+        "Verify token prefix is sk-ant-oat01-"
+      ]
+    }
+  },
+  "qa_signoff": null,
+  "last_updated": "2025-12-28T00:53:49.425719+00:00"
+}
