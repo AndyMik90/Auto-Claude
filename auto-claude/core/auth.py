@@ -190,3 +190,106 @@ def ensure_claude_code_oauth_token() -> None:
     token = get_auth_token()
     if token:
         os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = token
+
+
+class KeychainError(Exception):
+    """Exception raised for Keychain operations."""
+
+    def __init__(self, operation: str, message: str) -> None:
+        """
+        Initialize Keychain error.
+
+        Args:
+            operation: The Keychain operation that failed (e.g., 'save', 'delete')
+            message: Human-readable error message
+        """
+        self.operation = operation
+        self.message = message
+        super().__init__(f"Keychain {operation} failed: {message}")
+
+
+def save_token_to_keychain(token: str) -> bool:
+    """
+    Save an OAuth token to the macOS Keychain.
+
+    Stores the token in the same format used by Claude Code CLI,
+    allowing seamless integration with existing authentication flow.
+    Only works on macOS (Darwin platform).
+
+    Args:
+        token: The OAuth access token to store (must start with 'sk-ant-oat01-')
+
+    Returns:
+        True if token was saved successfully, False if not on macOS
+
+    Raises:
+        ValueError: If token is empty or has invalid format
+        KeychainError: If Keychain operation fails
+    """
+    # Only works on macOS
+    if platform.system() != "Darwin":
+        return False
+
+    # Validate token
+    if not token:
+        raise ValueError("Token cannot be empty")
+
+    if not token.startswith("sk-ant-oat01-"):
+        raise ValueError("Token must start with 'sk-ant-oat01-' prefix")
+
+    # Build the JSON structure expected by Claude Code
+    credentials_data = {
+        "claudeAiOauth": {
+            "accessToken": token,
+        }
+    }
+    credentials_json = json.dumps(credentials_data)
+
+    # First, try to delete any existing credential to avoid duplicates
+    # The 'delete' command fails silently if the credential doesn't exist
+    try:
+        subprocess.run(
+            [
+                "/usr/bin/security",
+                "delete-generic-password",
+                "-s",
+                "Claude Code-credentials",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        pass  # Continue even if delete times out
+
+    # Add the new credential to Keychain
+    try:
+        result = subprocess.run(
+            [
+                "/usr/bin/security",
+                "add-generic-password",
+                "-s",
+                "Claude Code-credentials",
+                "-a",
+                "",  # Empty account name (matches Claude Code behavior)
+                "-w",
+                credentials_json,
+                "-U",  # Update if exists (shouldn't after delete, but safe)
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() if result.stderr else "Unknown error"
+            raise KeychainError("save", error_msg)
+
+        return True
+
+    except subprocess.TimeoutExpired as e:
+        raise KeychainError("save", "Operation timed out") from e
+    except KeychainError:
+        raise
+    except Exception as e:
+        raise KeychainError("save", str(e)) from e
