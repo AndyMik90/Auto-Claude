@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Loader2, Save, FileCode, Folder, FolderOpen, ChevronRight, ChevronDown, File } from 'lucide-react';
-import Editor from '@monaco-editor/react';
+import Editor, { loader } from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -17,6 +17,14 @@ import {
 } from './ui/alert-dialog';
 import { useProjectStore } from '../stores/project-store';
 import { TooltipProvider } from './ui/tooltip';
+
+// Configure Monaco to use local assets bundled by Vite
+// This prevents CSP violations in Electron
+loader.config({
+  paths: {
+    vs: './monaco-editor/min/vs'
+  }
+});
 
 interface CodeEditorProps {
   projectId: string;

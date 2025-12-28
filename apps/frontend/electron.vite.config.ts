@@ -1,6 +1,7 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
   main: {
@@ -43,7 +44,17 @@ export default defineConfig({
         }
       }
     },
-    plugins: [react()],
+    plugins: [
+      react(),
+      viteStaticCopy({
+        targets: [
+          {
+            src: resolve(__dirname, 'node_modules/monaco-editor/min/vs'),
+            dest: 'monaco-editor/min'
+          }
+        ]
+      })
+    ],
     resolve: {
       alias: {
         '@': resolve(__dirname, 'src/renderer'),
