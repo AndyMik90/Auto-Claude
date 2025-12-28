@@ -60,6 +60,14 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
   const [showManualToken, setShowManualToken] = useState(false);
   const [savingTokenProfileId, setSavingTokenProfileId] = useState<string | null>(null);
 
+  // Custom API settings state
+  const [showCustomApi, setShowCustomApi] = useState(false);
+  const [customBaseUrl, setCustomBaseUrl] = useState('');
+  const [customAuthToken, setCustomAuthToken] = useState('');
+  const [customModel, setCustomModel] = useState('');
+  const [showCustomAuthToken, setShowCustomAuthToken] = useState(false);
+  const [savingCustomApi, setSavingCustomApi] = useState(false);
+
   // Error state
   const [error, setError] = useState<string | null>(null);
 
@@ -278,6 +286,36 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
       alert('Failed to save token. Please try again.');
     } finally {
       setSavingTokenProfileId(null);
+    }
+  };
+
+  const handleSaveCustomApi = async () => {
+    if (!customBaseUrl.trim() || !customAuthToken.trim()) {
+      setError('Base URL and Auth Token are required');
+      return;
+    }
+
+    setSavingCustomApi(true);
+    setError(null);
+    try {
+      // Save to .env file via backend
+      const result = await window.electronAPI.saveCustomApiSettings({
+        baseUrl: customBaseUrl.trim(),
+        authToken: customAuthToken.trim(),
+        model: customModel.trim() || undefined
+      });
+
+      if (result.success) {
+        alert('✅ Custom API settings saved successfully!\n\nPlease restart the app for changes to take effect.');
+        setShowCustomApi(false);
+      } else {
+        alert(`Failed to save settings: ${result.error || 'Please try again.'}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save custom API settings');
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setSavingCustomApi(false);
     }
   };
 
@@ -593,6 +631,108 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                   ))}
                 </div>
               )}
+
+              {/* Custom API Settings Section */}
+              <div className="border-t border-border pt-4 mt-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowCustomApi(!showCustomApi)}
+                  className="w-full justify-between h-auto py-2 px-3 hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <Key className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Custom API Settings (Proxy/OpenRouter)</span>
+                  </div>
+                  {showCustomApi ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+
+                {showCustomApi && (
+                  <div className="bg-muted/30 rounded-lg p-4 mt-2 space-y-3">
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Configure custom API endpoint for proxy services (litellm, OpenRouter) or self-hosted instances.
+                    </p>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Base URL</Label>
+                      <Input
+                        placeholder="http://14.225.27.135:8317"
+                        value={customBaseUrl}
+                        onChange={(e) => setCustomBaseUrl(e.target.value)}
+                        className="font-mono text-xs h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Auth Token / API Key</Label>
+                      <div className="relative">
+                        <Input
+                          type={showCustomAuthToken ? 'text' : 'password'}
+                          placeholder="your-api-key-here"
+                          value={customAuthToken}
+                          onChange={(e) => setCustomAuthToken(e.target.value)}
+                          className="pr-10 font-mono text-xs h-9"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCustomAuthToken(!showCustomAuthToken)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showCustomAuthToken ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">
+                        Custom Model Name (optional)
+                      </Label>
+                      <Input
+                        placeholder="gemini-claude-sonnet-4-5"
+                        value={customModel}
+                        onChange={(e) => setCustomModel(e.target.value)}
+                        className="font-mono text-xs h-9"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Override the default model ID for all agent operations
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowCustomApi(false);
+                          setCustomBaseUrl('');
+                          setCustomAuthToken('');
+                          setCustomModel('');
+                          setShowCustomAuthToken(false);
+                        }}
+                        className="h-8 text-xs"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveCustomApi}
+                        disabled={!customBaseUrl.trim() || !customAuthToken.trim() || savingCustomApi}
+                        className="h-8 text-xs gap-1"
+                      >
+                        {savingCustomApi ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Check className="h-3 w-3" />
+                        )}
+                        Save Settings
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Add new account input */}
               <div className="flex items-center gap-2">
