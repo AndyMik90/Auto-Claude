@@ -450,10 +450,9 @@ async def test_memory_retrieval(spec_dir: Path, project_dir: Path) -> bool:
     # Step 2: Semantic search for OAuth-related content
     print_step(2, "Searching for OAuth-related memories")
 
-    oauth_query = "How does the OAuth authentication flow work in this project?"
+    oauth_query = "How does the OAuth auth flow work in this project?"
     results = await memory.get_relevant_context(oauth_query, num_results=5)
 
-    # lgtm[py/clear-text-logging-sensitive-data] - This is a test search query, not actual credentials
     print(f"  Query: '{oauth_query}'")
     print(f"  Found {len(results)} results:")
 
