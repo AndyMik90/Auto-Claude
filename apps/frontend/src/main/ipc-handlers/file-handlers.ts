@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { readdirSync, readFileSync, writeFileSync, realpathSync, existsSync, statSync } from 'fs';
+import { readdirSync, readFileSync, writeFileSync, realpathSync, existsSync, statSync, lstatSync, openSync, fstatSync, closeSync, constants } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, FileNode } from '../../shared/types';
@@ -110,30 +110,6 @@ export function registerFileHandlers(): void {
     }
   }
 
-  /**
-   * Validates that a resolved path (following symlinks) is within workspace.
-   * Used for targets that exist (read operations).
-   */
-  function validateResolvedPath(workspaceRoot: string, absPath: string): { valid: boolean; error?: string } {
-    try {
-      const workspaceRootResolved = realpathSync(workspaceRoot);
-
-      if (!existsSync(absPath)) {
-        return { valid: false, error: 'Path does not exist' };
-      }
-
-      const targetReal = realpathSync(absPath);
-
-      if (!targetReal.startsWith(workspaceRootResolved + path.sep) && targetReal !== workspaceRootResolved) {
-        return { valid: false, error: 'Symlink resolves outside workspace root' };
-      }
-
-      return { valid: true };
-    } catch (error) {
-      return { valid: false, error: error instanceof Error ? error.message : 'Invalid path' };
-    }
-  }
-
   interface CodeEditorFileNode {
     name: string;
     relPath: string;
@@ -152,15 +128,43 @@ export function registerFileHandlers(): void {
         }
 
         const absPath = validation.absPath;
+        const workspaceRootResolved = realpathSync(workspaceRoot);
 
-        // Validate resolved path (prevent symlink escape)
-        const resolvedValidation = validateResolvedPath(workspaceRoot, absPath);
-        if (!resolvedValidation.valid) {
-          return { success: false, error: resolvedValidation.error };
+        // Use lstat to check without following symlinks (atomic check)
+        let stats;
+        try {
+          stats = lstatSync(absPath);
+        } catch {
+          return { success: false, error: 'Path does not exist' };
         }
 
-        // Check if it's a directory
-        if (!existsSync(absPath) || !statSync(absPath).isDirectory()) {
+        // If it's a symlink, resolve it and validate
+        if (stats.isSymbolicLink()) {
+          try {
+            const targetReal = realpathSync(absPath);
+
+            // Normalize paths for comparison on case-insensitive file systems
+            const isCaseInsensitiveFs = process.platform === 'win32' || process.platform === 'darwin';
+            const workspaceRootForCompare = isCaseInsensitiveFs
+              ? workspaceRootResolved.toLowerCase()
+              : workspaceRootResolved;
+            const targetRealForCompare = isCaseInsensitiveFs
+              ? targetReal.toLowerCase()
+              : targetReal;
+
+            // Validate symlink target is within workspace
+            if (!targetRealForCompare.startsWith(workspaceRootForCompare + path.sep) && targetRealForCompare !== workspaceRootForCompare) {
+              return { success: false, error: 'Symlink target is outside workspace root' };
+            }
+            // Re-stat the resolved target
+            stats = lstatSync(targetReal);
+          } catch {
+            return { success: false, error: 'Cannot resolve symlink' };
+          }
+        }
+
+        // Verify it's a directory
+        if (!stats.isDirectory()) {
           return { success: false, error: 'Not a directory' };
         }
 
@@ -183,11 +187,10 @@ export function registerFileHandlers(): void {
           const entryAbsPath = path.join(absPath, entry.name);
           const entryRelPath = relPath ? path.join(relPath, entry.name) : entry.name;
 
-          // Validate that symlinks resolve within workspace
-          try {
-            if (existsSync(entryAbsPath)) {
+          // For symlinks, validate they resolve within workspace
+          if (entry.isSymbolicLink()) {
+            try {
               const entryReal = realpathSync(entryAbsPath);
-              const workspaceRootResolved = realpathSync(workspaceRoot);
 
               // Normalize paths for comparison on case-insensitive file systems
               const isCaseInsensitiveFs = process.platform === 'win32' || process.platform === 'darwin';
@@ -202,10 +205,10 @@ export function registerFileHandlers(): void {
               if (!entryRealForCompare.startsWith(workspaceRootForCompare + path.sep) && entryRealForCompare !== workspaceRootForCompare) {
                 continue;
               }
+            } catch {
+              // Skip entries that can't be resolved
+              continue;
             }
-          } catch {
-            // Skip entries that can't be resolved
-            continue;
           }
 
           nodes.push({
@@ -244,23 +247,45 @@ export function registerFileHandlers(): void {
         }
 
         const absPath = validation.absPath;
+        const workspaceRootResolved = realpathSync(workspaceRoot);
 
-        // Validate resolved path (prevent symlink escape)
-        const resolvedValidation = validateResolvedPath(workspaceRoot, absPath);
-        if (!resolvedValidation.valid) {
-          return { success: false, error: resolvedValidation.error };
-        }
-
-        // Check if it's a file
-        if (!existsSync(absPath)) {
+        // Use lstat to check without following symlinks (atomic check)
+        let stats;
+        try {
+          stats = lstatSync(absPath);
+        } catch {
           return { success: false, error: 'File does not exist' };
         }
 
-        if (!statSync(absPath).isFile()) {
+        // Reject symlinks explicitly
+        if (stats.isSymbolicLink()) {
+          return { success: false, error: 'Symlinks are not allowed' };
+        }
+
+        // Verify it's a file
+        if (!stats.isFile()) {
           return { success: false, error: 'Not a file' };
         }
 
-        // Read file
+        // Additional safety: verify the parent directory is within workspace
+        // (protects against hardlinks to files outside workspace)
+        const parentDir = path.dirname(absPath);
+        const parentReal = realpathSync(parentDir);
+
+        // Normalize paths for comparison on case-insensitive file systems
+        const isCaseInsensitiveFs = process.platform === 'win32' || process.platform === 'darwin';
+        const workspaceRootForCompare = isCaseInsensitiveFs
+          ? workspaceRootResolved.toLowerCase()
+          : workspaceRootResolved;
+        const parentRealForCompare = isCaseInsensitiveFs
+          ? parentReal.toLowerCase()
+          : parentReal;
+
+        if (!parentRealForCompare.startsWith(workspaceRootForCompare + path.sep) && parentRealForCompare !== workspaceRootForCompare) {
+          return { success: false, error: 'Parent directory resolves outside workspace root' };
+        }
+
+        // Read file - at this point we've verified it's a real file, not a symlink
         const content = readFileSync(absPath, 'utf-8');
 
         return { success: true, data: content };
@@ -277,6 +302,7 @@ export function registerFileHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.CODE_EDITOR_WRITE_FILE,
     async (_, workspaceRoot: string, relPath: string, content: string): Promise<IPCResult<void>> => {
+      let fd: number | undefined;
       try {
         // Validate workspace path
         const validation = validateWorkspacePath(workspaceRoot, relPath);
@@ -287,59 +313,101 @@ export function registerFileHandlers(): void {
         const absPath = validation.absPath;
         const workspaceRootResolved = realpathSync(workspaceRoot);
 
-        // For write operations, validate differently based on whether file exists
-        if (existsSync(absPath)) {
-          // File exists: validate its real path
-          const targetReal = realpathSync(absPath);
-          const workspaceRootResolved = realpathSync(workspaceRoot);
+        // Normalize paths for comparison on case-insensitive file systems
+        const isCaseInsensitiveFs = process.platform === 'win32' || process.platform === 'darwin';
+        const workspaceRootForCompare = isCaseInsensitiveFs
+          ? workspaceRootResolved.toLowerCase()
+          : workspaceRootResolved;
 
-          // Normalize paths for comparison on case-insensitive file systems
-          const isCaseInsensitiveFs = process.platform === 'win32' || process.platform === 'darwin';
-          const workspaceRootForCompare = isCaseInsensitiveFs
-            ? workspaceRootResolved.toLowerCase()
-            : workspaceRootResolved;
-          const targetRealForCompare = isCaseInsensitiveFs
-            ? targetReal.toLowerCase()
-            : targetReal;
+        // Validate parent directory is within workspace
+        const parentDir = path.dirname(absPath);
+        let parentStats;
+        try {
+          parentStats = lstatSync(parentDir);
+        } catch {
+          return { success: false, error: 'Parent directory does not exist' };
+        }
 
-          if (!targetRealForCompare.startsWith(workspaceRootForCompare + path.sep) && targetRealForCompare !== workspaceRootForCompare) {
-            return { success: false, error: 'Symlink resolves outside workspace root' };
+        // Ensure parent is a directory and not a symlink
+        if (!parentStats.isDirectory()) {
+          return { success: false, error: 'Parent is not a directory' };
+        }
+
+        // Verify parent resolves within workspace (with case-insensitive comparison)
+        const parentReal = realpathSync(parentDir);
+        const parentRealForCompare = isCaseInsensitiveFs
+          ? parentReal.toLowerCase()
+          : parentReal;
+
+        if (!parentRealForCompare.startsWith(workspaceRootForCompare + path.sep) && parentRealForCompare !== workspaceRootForCompare) {
+          return { success: false, error: 'Parent directory resolves outside workspace root' };
+        }
+
+        // Check if file exists using lstat (doesn't follow symlinks)
+        let fileExists = false;
+        let existingStats;
+        try {
+          existingStats = lstatSync(absPath);
+          fileExists = true;
+        } catch {
+          // File doesn't exist - this is fine for new files
+          fileExists = false;
+        }
+
+        if (fileExists && existingStats) {
+          // File exists - validate it's not a symlink and is a regular file
+          if (existingStats.isSymbolicLink()) {
+            return { success: false, error: 'Cannot write to symlinks' };
           }
 
-          // Verify it's a file
-          if (!statSync(absPath).isFile()) {
-            return { success: false, error: 'Not a file' };
+          if (!existingStats.isFile()) {
+            return { success: false, error: 'Target is not a file' };
+          }
+
+          // Open existing file atomically with file descriptor
+          // This ensures we operate on the same file we just validated
+          fd = openSync(absPath, constants.O_WRONLY | constants.O_TRUNC);
+
+          // Double-check using fstat on the file descriptor
+          // This confirms we're writing to the file we think we are
+          const fdStats = fstatSync(fd);
+          if (!fdStats.isFile()) {
+            closeSync(fd);
+            return { success: false, error: 'File changed during operation' };
           }
         } else {
-          // File doesn't exist: validate parent directory
-          const parentDir = path.dirname(absPath);
-
-          if (!existsSync(parentDir)) {
-            return { success: false, error: 'Parent directory does not exist' };
-          }
-
-          const parentReal = realpathSync(parentDir);
-          const workspaceRootResolved = realpathSync(workspaceRoot);
-
-          // Normalize paths for comparison on case-insensitive file systems
-          const isCaseInsensitiveFs = process.platform === 'win32' || process.platform === 'darwin';
-          const workspaceRootForCompare = isCaseInsensitiveFs
-            ? workspaceRootResolved.toLowerCase()
-            : workspaceRootResolved;
-          const parentRealForCompare = isCaseInsensitiveFs
-            ? parentReal.toLowerCase()
-            : parentReal;
-
-          if (!parentRealForCompare.startsWith(workspaceRootForCompare + path.sep) && parentRealForCompare !== workspaceRootForCompare) {
-            return { success: false, error: 'Parent directory resolves outside workspace root' };
+          // File doesn't exist - create new file atomically
+          // O_CREAT | O_EXCL | O_WRONLY creates file exclusively (fails if exists)
+          // This prevents race condition where file is created between our check and write
+          try {
+            fd = openSync(absPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o644);
+          } catch (err) {
+            if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+              return { success: false, error: 'File was created by another process' };
+            }
+            throw err;
           }
         }
 
-        // Write file
-        writeFileSync(absPath, content, 'utf-8');
+        // Write content using the file descriptor
+        // At this point we have exclusive access to the file
+        writeFileSync(fd, content, 'utf-8');
+
+        // Close the file descriptor
+        closeSync(fd);
+        fd = undefined;
 
         return { success: true };
       } catch (error) {
+        // Ensure file descriptor is closed on error
+        if (fd !== undefined) {
+          try {
+            closeSync(fd);
+          } catch {
+            // Ignore close errors
+          }
+        }
+
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to write file'
