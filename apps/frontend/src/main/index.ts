@@ -160,12 +160,14 @@ app.whenReady().then(() => {
               migrated = true;
 
               // Save the corrected setting
-              // Re-read the file before writing to avoid race conditions
-              // (file may have changed since initial read)
+              // Read current settings atomically to avoid race conditions
               try {
-                const currentSettings = existsSync(settingsPath)
-                  ? JSON.parse(readFileSync(settingsPath, 'utf-8'))
-                  : {};
+                let currentSettings: Record<string, unknown> = {};
+                try {
+                  currentSettings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+                } catch {
+                  // File may not exist or be invalid, start with empty settings
+                }
                 currentSettings.autoBuildPath = correctedPath;
                 writeFileSync(settingsPath, JSON.stringify(currentSettings, null, 2), 'utf-8');
                 console.log('[main] Successfully saved migrated autoBuildPath to settings');

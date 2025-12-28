@@ -645,15 +645,6 @@ function escapeAppleScriptPath(dirPath: string): string {
 }
 
 /**
- * Escape a path for use in Windows cmd.exe commands
- * This prevents command injection via special characters
- */
-function escapeWindowsCmdPath(dirPath: string): string {
-  // Wrap in quotes and escape internal quotes
-  return `"${dirPath.replace(/"/g, '""')}"`;
-}
-
-/**
  * Validate a path doesn't contain path traversal attempts after variable expansion
  */
 function isPathSafe(expandedPath: string): boolean {
