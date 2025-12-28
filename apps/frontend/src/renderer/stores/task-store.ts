@@ -733,8 +733,8 @@ export async function checkAndAutoMergeTasks(projectId: string): Promise<void> {
           // Check if there are merge conflicts first
           const previewResult = await window.electronAPI.mergeWorktreePreview(task.id);
 
-          if (previewResult.success && previewResult.data) {
-            const summary = previewResult.data.summary;
+          if (previewResult.success && previewResult.data?.preview?.summary) {
+            const summary = previewResult.data.preview.summary;
 
             // Only auto-merge if there are no conflicts
             if (summary.totalConflicts === 0 && !summary.hasGitConflicts) {
@@ -758,6 +758,8 @@ export async function checkAndAutoMergeTasks(projectId: string): Promise<void> {
               console.warn(`[Auto-Merge] ⚠️  Task ${task.id} has conflicts, skipping auto-merge`);
               console.warn(`  Total conflicts: ${summary.totalConflicts}, Git conflicts: ${summary.hasGitConflicts}`);
             }
+          } else {
+            console.warn(`[Auto-Merge] Could not get merge preview for task ${task.id}`);
           }
         } catch (error) {
           console.error(`[Auto-Merge] Error checking task ${task.id} for auto-merge:`, error);
