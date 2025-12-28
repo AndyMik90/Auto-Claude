@@ -181,8 +181,15 @@ class PRContextGatherer:
         # Ensure PR refs are available locally (fetches commits for fork PRs)
         head_sha = pr_data.get("headRefOid", "")
         base_sha = pr_data.get("baseRefOid", "")
+        refs_available = False
         if head_sha and base_sha:
-            await self._ensure_pr_refs_available(head_sha, base_sha)
+            refs_available = await self._ensure_pr_refs_available(head_sha, base_sha)
+            if not refs_available:
+                print(
+                    "[Context] Warning: Could not fetch PR refs locally. "
+                    "Will use GitHub API patches as fallback.",
+                    flush=True,
+                )
 
         # Fetch changed files with content
         changed_files = await self._fetch_changed_files(pr_data)

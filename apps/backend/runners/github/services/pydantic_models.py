@@ -302,6 +302,8 @@ class OrchestratorFinding(BaseModel):
     category: Literal[
         "security",
         "quality",
+        "style",
+        "docs",
         "redundancy",
         "verification_failed",
         "pattern",

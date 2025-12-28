@@ -424,16 +424,19 @@ class OrchestratorReviewer:
                 logger.info("[Orchestrator] Using validated structured output")
                 print("[Orchestrator] Using SDK structured output", flush=True)
                 orchestrator_findings = self._parse_structured_output(structured_output)
-                # Fallback to text parsing if structured output parsing failed/returned empty
-                if not orchestrator_findings and result_text:
+                # Fallback to text parsing only if structured output parsing FAILED (None)
+                # An empty list means the PR is clean - don't trigger fallback
+                if orchestrator_findings is None and result_text:
                     logger.warning(
-                        "[Orchestrator] Structured output parsing returned empty, falling back to text"
+                        "[Orchestrator] Structured output parsing failed, falling back to text"
                     )
                     print(
-                        "[Orchestrator] Structured output empty, trying text parsing fallback",
+                        "[Orchestrator] Structured output failed, trying text parsing fallback",
                         flush=True,
                     )
                     orchestrator_findings = self._parse_orchestrator_output(result_text)
+                elif orchestrator_findings is None:
+                    orchestrator_findings = []  # No fallback available, use empty
             else:
                 logger.info("[Orchestrator] Falling back to text parsing")
                 print("[Orchestrator] Falling back to text parsing", flush=True)
@@ -693,11 +696,15 @@ Now perform your strategic review and use the available tools to spawn subagents
 
     def _parse_structured_output(
         self, structured_output: dict[str, Any]
-    ) -> list[PRReviewFinding]:
+    ) -> list[PRReviewFinding] | None:
         """
         Parse findings from SDK structured output.
 
         Uses the validated OrchestratorReviewResponse schema for type-safe parsing.
+
+        Returns:
+            List of findings on success (may be empty for clean PRs),
+            None on parsing failure (triggers fallback to text parsing).
         """
         findings = []
 
@@ -752,6 +759,7 @@ Now perform your strategic review and use the available tools to spawn subagents
         except Exception as e:
             logger.error(f"[Orchestrator] Failed to parse structured output: {e}")
             print(f"[Orchestrator] Structured output parsing failed: {e}", flush=True)
+            return None  # Signal failure - triggers fallback to text parsing
 
         return findings
 
