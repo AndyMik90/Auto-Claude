@@ -30,8 +30,25 @@ class TestSaveToMemoryGraph:
             # Should store 2 memories (1 problem, 1 solution)
             assert mock_client.store.call_count == 2
 
+            # Verify first call is problem with expected content
+            problem_call = mock_client.store.call_args_list[0]
+            assert problem_call[1]["memory_type"] == "problem"
+            assert "Auth failed" in problem_call[1]["content"]
+            assert isinstance(problem_call[1].get("tags"), list)
+
+            # Verify second call is solution with expected content
+            solution_call = mock_client.store.call_args_list[1]
+            assert solution_call[1]["memory_type"] == "solution"
+            assert "Fixed auth" in solution_call[1]["content"]
+
             # Should create 1 relationship
             assert mock_client.relate.call_count == 1
+
+            # Verify relate was called with correct IDs and relationship type
+            relate_call = mock_client.relate.call_args[1]
+            assert relate_call["from_id"] == "sol_1"
+            assert relate_call["to_id"] == "prob_1"
+            assert relate_call["relationship_type"] == "SOLVES"
 
     @pytest.mark.asyncio
     async def test_saves_patterns(self):
@@ -51,8 +68,15 @@ class TestSaveToMemoryGraph:
             # Should store 1 pattern
             assert mock_client.store.call_count == 1
 
+            # Verify store was called with pattern memory payload
+            pattern_call = mock_client.store.call_args[1]
+            assert pattern_call["memory_type"] == "code_pattern"
+            assert "async/await" in pattern_call["content"]
+            assert isinstance(pattern_call.get("tags"), list)
+
             # No relationships for patterns alone
             assert mock_client.relate.call_count == 0
+            mock_client.relate.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_handles_empty_session_output(self):
