@@ -604,3 +604,127 @@ class TestInsightsDataIntegrity:
                         assert len(captured_insights["what_worked"]) == 0
                         assert len(captured_insights["what_failed"]) > 0
                         assert "task_1" in captured_insights["what_failed"][0]
+
+
+class TestBackgroundTaskTracking:
+    """Tests for background task tracking and cleanup."""
+
+    @pytest.mark.asyncio
+    async def test_tasks_are_tracked(self):
+        """Background tasks are added to tracking set."""
+        with patch.dict(os.environ, {"MEMORYGRAPH_ENABLED": "true"}, clear=True):
+            clear_config_cache()
+
+            # Import fresh to get the tracking set
+            from agents import memory_manager
+
+            # Clear any existing tasks
+            memory_manager._background_tasks.clear()
+
+            async def slow_save(insights, project_dir):
+                await asyncio.sleep(0.5)
+
+            with patch(
+                "integrations.memorygraph.storage.save_to_memorygraph",
+                side_effect=slow_save,
+            ):
+                with patch(
+                    "agents.memory_manager.is_graphiti_enabled", return_value=False
+                ):
+                    with patch("agents.memory_manager.save_file_based_memory"):
+                        await memory_manager.save_session_memory(
+                            spec_dir=Path("/tmp/spec"),
+                            project_dir=Path("/tmp/project"),
+                            subtask_id="task_1",
+                            session_num=1,
+                            success=True,
+                            subtasks_completed=["task_1"],
+                        )
+
+                        # Task should be tracked while running
+                        assert memory_manager.get_pending_task_count() >= 1
+
+                        # Wait for task to complete
+                        await asyncio.sleep(0.6)
+
+                        # Task should be removed after completion
+                        assert memory_manager.get_pending_task_count() == 0
+
+    @pytest.mark.asyncio
+    async def test_cleanup_cancels_pending_tasks(self):
+        """cleanup_background_tasks cancels pending tasks."""
+        with patch.dict(os.environ, {"MEMORYGRAPH_ENABLED": "true"}, clear=True):
+            clear_config_cache()
+
+            from agents import memory_manager
+
+            memory_manager._background_tasks.clear()
+
+            async def very_slow_save(insights, project_dir):
+                await asyncio.sleep(10)  # Very slow
+
+            with patch(
+                "integrations.memorygraph.storage.save_to_memorygraph",
+                side_effect=very_slow_save,
+            ):
+                with patch(
+                    "agents.memory_manager.is_graphiti_enabled", return_value=False
+                ):
+                    with patch("agents.memory_manager.save_file_based_memory"):
+                        await memory_manager.save_session_memory(
+                            spec_dir=Path("/tmp/spec"),
+                            project_dir=Path("/tmp/project"),
+                            subtask_id="task_1",
+                            session_num=1,
+                            success=True,
+                            subtasks_completed=["task_1"],
+                        )
+
+                        # Task should be pending
+                        assert memory_manager.get_pending_task_count() >= 1
+
+                        # Cleanup should cancel it
+                        await memory_manager.cleanup_background_tasks(timeout=0.1)
+
+                        # All tasks should be cleared
+                        assert memory_manager.get_pending_task_count() == 0
+
+    @pytest.mark.asyncio
+    async def test_task_exceptions_are_logged(self):
+        """Exceptions in background tasks are logged, not silent."""
+        with patch.dict(os.environ, {"MEMORYGRAPH_ENABLED": "true"}, clear=True):
+            clear_config_cache()
+
+            from agents import memory_manager
+
+            memory_manager._background_tasks.clear()
+
+            with patch(
+                "integrations.memorygraph.storage.save_to_memorygraph",
+                side_effect=Exception("Test error"),
+            ):
+                with patch(
+                    "agents.memory_manager.is_graphiti_enabled", return_value=False
+                ):
+                    with patch("agents.memory_manager.save_file_based_memory"):
+                        with patch.object(
+                            memory_manager.logger, "warning"
+                        ) as mock_warning:
+                            await memory_manager.save_session_memory(
+                                spec_dir=Path("/tmp/spec"),
+                                project_dir=Path("/tmp/project"),
+                                subtask_id="task_1",
+                                session_num=1,
+                                success=True,
+                                subtasks_completed=["task_1"],
+                            )
+
+                            # Wait for task to fail
+                            await asyncio.sleep(0.1)
+
+                            # Exception should have been logged
+                            mock_warning.assert_called()
+                            call_args = str(mock_warning.call_args)
+                            assert (
+                                "MemoryGraph" in call_args or "Test error" in call_args
+                            )

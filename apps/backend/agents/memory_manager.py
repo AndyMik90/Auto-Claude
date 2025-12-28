@@ -33,6 +33,54 @@ from memory import save_session_insights as save_file_based_memory
 
 logger = logging.getLogger(__name__)
 
+# Track background tasks to prevent silent failures and enable cleanup
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _task_done_callback(task: asyncio.Task) -> None:
+    """
+    Callback for completed background tasks.
+
+    Removes task from tracking set and logs any unhandled exceptions.
+    """
+    _background_tasks.discard(task)
+
+    # Check for exceptions that weren't handled
+    if not task.cancelled():
+        exc = task.exception()
+        if exc is not None:
+            logger.error(f"Background task failed with unhandled exception: {exc}")
+
+
+async def cleanup_background_tasks(timeout: float = 5.0) -> None:
+    """
+    Cancel and wait for all pending background tasks.
+
+    Call this on shutdown to ensure clean termination.
+
+    Args:
+        timeout: Maximum seconds to wait for tasks to complete
+    """
+    if not _background_tasks:
+        return
+
+    logger.debug(f"Cleaning up {len(_background_tasks)} background task(s)")
+
+    # Cancel all pending tasks
+    for task in _background_tasks:
+        task.cancel()
+
+    # Wait for all tasks to complete (with timeout)
+    if _background_tasks:
+        await asyncio.wait(_background_tasks, timeout=timeout)
+
+    _background_tasks.clear()
+
+
+def get_pending_task_count() -> int:
+    """Return the number of pending background tasks."""
+    return len(_background_tasks)
+
 
 # ============================================================================
 # MemoryGraph Integration (Parallel Memory Layer)
@@ -47,6 +95,7 @@ def is_memorygraph_enabled() -> bool:
     """
     try:
         from integrations.memorygraph import is_memorygraph_enabled as check_enabled
+
         return check_enabled()
     except ImportError:
         return False
@@ -64,6 +113,7 @@ def get_memorygraph_status() -> dict:
     """
     try:
         from integrations.memorygraph import get_memorygraph_config
+
         return get_memorygraph_config()
     except ImportError:
         return {"enabled": False, "reason": "memorygraph integration not installed"}
@@ -425,7 +475,13 @@ async def save_session_memory(
     if is_memorygraph_enabled():
         if is_debug_enabled():
             debug("memory", "Scheduling PARALLEL save to MemoryGraph")
-        asyncio.create_task(_save_to_memorygraph_async(insights, project_dir))
+        # Create tracked background task with cleanup callback
+        task = asyncio.create_task(
+            _save_to_memorygraph_async(insights, project_dir),
+            name="memorygraph_save",
+        )
+        _background_tasks.add(task)
+        task.add_done_callback(_task_done_callback)
 
     # Check Graphiti status for debugging
     graphiti_enabled = is_graphiti_enabled()
