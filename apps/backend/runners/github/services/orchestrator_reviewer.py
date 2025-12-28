@@ -314,6 +314,20 @@ class OrchestratorReviewer:
                         tool_calls_made.append(tool_name)
                         logger.info(f"[Orchestrator] Tool call detected: {tool_name}")
 
+                        # SDK delivers structured output via StructuredOutput tool
+                        if tool_name == "StructuredOutput":
+                            structured_data = getattr(msg, "input", None)
+                            if structured_data:
+                                structured_output = structured_data
+                                logger.info(
+                                    "[Orchestrator] Found StructuredOutput tool use"
+                                )
+                                print(
+                                    "[Orchestrator] Received SDK structured output",
+                                    flush=True,
+                                )
+                            continue  # No need to handle as regular tool
+
                         tool_result = await self._handle_tool_call(msg, context)
                         # Tools already executed, agent will receive results
 
@@ -349,11 +363,26 @@ class OrchestratorReviewer:
                     # Collect final orchestrator output
                     if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                         for block in msg.content:
+                            block_type = type(block).__name__
                             if hasattr(block, "text"):
                                 result_text += block.text
                                 logger.debug(
                                     f"[Orchestrator] Received text block (length: {len(block.text)})"
                                 )
+                            # Also check for StructuredOutput in AssistantMessage content
+                            if block_type == "ToolUseBlock":
+                                tool_name = getattr(block, "name", "")
+                                if tool_name == "StructuredOutput":
+                                    structured_data = getattr(block, "input", None)
+                                    if structured_data:
+                                        structured_output = structured_data
+                                        logger.info(
+                                            "[Orchestrator] Found StructuredOutput in AssistantMessage"
+                                        )
+                                        print(
+                                            "[Orchestrator] Received SDK structured output",
+                                            flush=True,
+                                        )
 
                     # Check for structured output (SDK validated JSON)
                     if hasattr(msg, "structured_output") and msg.structured_output:
