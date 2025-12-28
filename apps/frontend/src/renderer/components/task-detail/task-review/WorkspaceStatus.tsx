@@ -31,6 +31,9 @@ interface WorkspaceStatusProps {
   onLoadMergePreview: () => void;
   onStageOnlyChange: (value: boolean) => void;
   onMerge: () => void;
+  onClose?: () => void;
+  onSwitchToTerminals?: () => void;
+  onOpenInbuiltTerminal?: (id: string, cwd: string) => void;
 }
 
 /**
@@ -49,7 +52,10 @@ export function WorkspaceStatus({
   onShowConflictDialog,
   onLoadMergePreview,
   onStageOnlyChange,
-  onMerge
+  onMerge,
+  onClose,
+  onSwitchToTerminals,
+  onOpenInbuiltTerminal
 }: WorkspaceStatusProps) {
   const hasGitConflicts = mergePreview?.gitConflicts?.hasConflicts;
   const hasUncommittedChanges = mergePreview?.uncommittedChanges?.hasChanges;

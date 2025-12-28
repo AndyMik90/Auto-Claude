@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTerminalStore } from '../../stores/terminal-store';
+import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 
 interface UseTerminalEventsOptions {
   terminalId: string;
@@ -45,7 +46,7 @@ export function useTerminalEvents({
   useEffect(() => {
     const cleanup = window.electronAPI.onTerminalOutput((id, data) => {
       if (id === terminalId) {
-        useTerminalStore.getState().appendOutput(terminalId, data);
+        terminalBufferManager.append(terminalId, data);
         onOutputRef.current?.(data);
       }
     });

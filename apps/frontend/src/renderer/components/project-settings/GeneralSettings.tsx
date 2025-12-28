@@ -32,7 +32,6 @@ interface GeneralSettingsProps {
   isCheckingVersion: boolean;
   isUpdating: boolean;
   handleInitialize: () => Promise<void>;
-  handleUpdate: () => Promise<void>;
 }
 
 export function GeneralSettings({
@@ -42,8 +41,7 @@ export function GeneralSettings({
   versionInfo,
   isCheckingVersion,
   isUpdating,
-  handleInitialize,
-  handleUpdate: _handleUpdate
+  handleInitialize
 }: GeneralSettingsProps) {
   const { t } = useTranslation(['settings']);
 

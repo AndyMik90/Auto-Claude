@@ -96,6 +96,7 @@ def create_client(
     model: str,
     agent_type: str = "coder",
     max_thinking_tokens: int | None = None,
+    output_format: dict | None = None,
 ) -> ClaudeSDKClient:
     """
     Create a Claude Agent SDK client with multi-layered security.
@@ -115,6 +116,9 @@ def create_client(
                             - high: 10000 (QA review)
                             - medium: 5000 (planning, validation)
                             - None: disabled (coding)
+        output_format: Optional structured output format for validated JSON responses.
+                      Use {"type": "json_schema", "schema": Model.model_json_schema()}
+                      See: https://platform.claude.com/docs/en/agent-sdk/structured-outputs
 
     Returns:
         Configured ClaudeSDKClient
@@ -341,21 +345,27 @@ def create_client(
         print("   - CLAUDE.md: disabled by project settings")
     print()
 
-    return ClaudeSDKClient(
-        options=ClaudeAgentOptions(
-            model=model,
-            system_prompt=base_prompt,
-            allowed_tools=allowed_tools_list,
-            mcp_servers=mcp_servers,
-            hooks={
-                "PreToolUse": [
-                    HookMatcher(matcher="Bash", hooks=[bash_security_hook]),
-                ],
-            },
-            max_turns=1000,
-            cwd=str(project_dir.resolve()),
-            settings=str(settings_file.resolve()),
-            env=sdk_env,  # Pass ANTHROPIC_BASE_URL etc. to subprocess
-            max_thinking_tokens=max_thinking_tokens,  # Extended thinking budget
-        )
-    )
+    # Build options dict, conditionally including output_format
+    options_kwargs = {
+        "model": model,
+        "system_prompt": base_prompt,
+        "allowed_tools": allowed_tools_list,
+        "mcp_servers": mcp_servers,
+        "hooks": {
+            "PreToolUse": [
+                HookMatcher(matcher="Bash", hooks=[bash_security_hook]),
+            ],
+        },
+        "max_turns": 1000,
+        "cwd": str(project_dir.resolve()),
+        "settings": str(settings_file.resolve()),
+        "env": sdk_env,  # Pass ANTHROPIC_BASE_URL etc. to subprocess
+        "max_thinking_tokens": max_thinking_tokens,  # Extended thinking budget
+    }
+
+    # Add structured output format if specified
+    # See: https://platform.claude.com/docs/en/agent-sdk/structured-outputs
+    if output_format:
+        options_kwargs["output_format"] = output_format
+
+    return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))

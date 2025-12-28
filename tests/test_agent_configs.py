@@ -218,13 +218,13 @@ class TestGetAllowedTools:
         assert "Edit" in tools
         assert "Bash" in tools
 
-    def test_qa_reviewer_excludes_write_tools(self):
-        """QA reviewer should NOT have Write/Edit tools (read-only except Bash for tests)."""
+    def test_qa_reviewer_has_write_tools(self):
+        """QA reviewer has Write/Edit tools for E2E testing and report generation."""
         from agents.tools_pkg.permissions import get_allowed_tools
 
         tools = get_allowed_tools("qa_reviewer")
-        assert "Write" not in tools
-        assert "Edit" not in tools
+        assert "Write" in tools
+        assert "Edit" in tools
         assert "Bash" in tools  # Can run tests
 
     def test_pr_reviewer_is_read_only(self):
