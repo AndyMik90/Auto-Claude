@@ -1656,10 +1656,11 @@ export function registerWorktreeHandlers(
               const { promises: fsPromises } = require('fs');
 
               // Fire and forget - don't block the response on file writes
-              const updatePlans = async () => {
-                const updates = planPaths.map(async ({ path: planPath, isMain }) => {
+              // But add retry logic for transient failures and verification
+              const updatePlanWithRetry = async (planPath: string, isMain: boolean, maxRetries = 3) => {
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
                   try {
-                    if (!existsSync(planPath)) return;
+                    if (!existsSync(planPath)) return true; // File doesn't exist, nothing to update
 
                     const planContent = await fsPromises.readFile(planPath, 'utf-8');
                     const plan = JSON.parse(planContent);
@@ -1671,17 +1672,42 @@ export function registerWorktreeHandlers(
                       plan.stagedInMainProject = true;
                     }
                     await fsPromises.writeFile(planPath, JSON.stringify(plan, null, 2));
-                  } catch (persistError) {
-                    // Only log error if main plan fails; worktree plan might legitimately be missing or read-only
-                    if (isMain) {
-                      console.error('Failed to persist task status to main plan:', persistError);
-                    } else {
-                      debug('Failed to persist task status to worktree plan (non-critical):', persistError);
-                    }
-                  }
-                });
 
-                await Promise.all(updates);
+                    // Verify the write succeeded by reading back
+                    const verifyContent = await fsPromises.readFile(planPath, 'utf-8');
+                    const verifyPlan = JSON.parse(verifyContent);
+                    if (verifyPlan.status === newStatus && verifyPlan.planStatus === planStatus) {
+                      return true; // Write verified
+                    }
+                    throw new Error('Write verification failed - status mismatch');
+                  } catch (persistError) {
+                    const isLastAttempt = attempt === maxRetries;
+                    if (isLastAttempt) {
+                      // Only log error if main plan fails; worktree plan might legitimately be missing or read-only
+                      if (isMain) {
+                        console.error('Failed to persist task status to main plan after retries:', persistError);
+                      } else {
+                        debug('Failed to persist task status to worktree plan (non-critical):', persistError);
+                      }
+                      return false;
+                    }
+                    // Wait before retry (exponential backoff: 100ms, 200ms, 400ms)
+                    await new Promise(r => setTimeout(r, 100 * Math.pow(2, attempt - 1)));
+                  }
+                }
+                return false;
+              };
+
+              const updatePlans = async () => {
+                const results = await Promise.all(
+                  planPaths.map(({ path: planPath, isMain }) =>
+                    updatePlanWithRetry(planPath, isMain)
+                  )
+                );
+                // Log if main plan update failed (first element)
+                if (!results[0]) {
+                  console.warn('Background plan update: main plan write may not have persisted');
+                }
               };
 
               // Run async updates without blocking the response

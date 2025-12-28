@@ -1,4 +1,4 @@
-import { spawn, execSync } from 'child_process';
+import { spawn, execSync, ChildProcess } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
@@ -38,6 +38,8 @@ export class PythonEnvManager extends EventEmitter {
   private isInitializing = false;
   private isReady = false;
   private initializationPromise: Promise<PythonEnvStatus> | null = null;
+  private activeProcesses: Set<ChildProcess> = new Set();
+  private static readonly VENV_CREATION_TIMEOUT_MS = 120000; // 2 minutes timeout for venv creation
 
   /**
    * Get the path where the venv should be created.
@@ -242,12 +244,38 @@ if sys.version_info >= (3, 12):
         stdio: 'pipe'
       });
 
+      // Track the process for cleanup on app exit
+      this.activeProcesses.add(proc);
+
       let stderr = '';
+      let resolved = false;
+
+      // Set up timeout to kill hung venv creation
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          console.error('[PythonEnvManager] Venv creation timed out after', PythonEnvManager.VENV_CREATION_TIMEOUT_MS, 'ms');
+          this.emit('error', 'Virtual environment creation timed out. This may indicate a system issue.');
+          try {
+            proc.kill();
+          } catch {
+            // Process may already be dead
+          }
+          this.activeProcesses.delete(proc);
+          resolve(false);
+        }
+      }, PythonEnvManager.VENV_CREATION_TIMEOUT_MS);
+
       proc.stderr?.on('data', (data) => {
         stderr += data.toString();
       });
 
       proc.on('close', (code) => {
+        if (resolved) return; // Already handled by timeout
+        resolved = true;
+        clearTimeout(timeoutId);
+        this.activeProcesses.delete(proc);
+
         if (code === 0) {
           console.warn('[PythonEnvManager] Venv created successfully');
           resolve(true);
@@ -259,6 +287,11 @@ if sys.version_info >= (3, 12):
       });
 
       proc.on('error', (err) => {
+        if (resolved) return; // Already handled by timeout
+        resolved = true;
+        clearTimeout(timeoutId);
+        this.activeProcesses.delete(proc);
+
         console.error('[PythonEnvManager] Error creating venv:', err);
         this.emit('error', `Failed to create virtual environment: ${err.message}`);
         resolve(false);
@@ -633,10 +666,33 @@ if sys.version_info >= (3, 12):
       usingBundledPackages: this.usingBundledPackages
     };
   }
+
+  /**
+   * Clean up any active processes on app exit.
+   * Should be called when the application is about to quit.
+   */
+  cleanup(): void {
+    if (this.activeProcesses.size > 0) {
+      console.warn('[PythonEnvManager] Cleaning up', this.activeProcesses.size, 'active process(es)');
+      for (const proc of this.activeProcesses) {
+        try {
+          proc.kill();
+        } catch {
+          // Process may already be dead
+        }
+      }
+      this.activeProcesses.clear();
+    }
+  }
 }
 
 // Singleton instance
 export const pythonEnvManager = new PythonEnvManager();
+
+// Register cleanup on app exit
+app.on('will-quit', () => {
+  pythonEnvManager.cleanup();
+});
 
 /**
  * Get the configured venv Python path if ready, otherwise fall back to system Python.
