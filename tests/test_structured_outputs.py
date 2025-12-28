@@ -236,10 +236,10 @@ class TestOrchestratorFinding:
         }
         result = OrchestratorFinding.model_validate(data)
         assert result.file == "src/api.py"
-        assert result.confidence == 90
+        assert result.confidence == 0.9  # 90 normalized to 0.9
 
     def test_confidence_bounds(self):
-        """Test confidence percentage bounds (0-100)."""
+        """Test confidence bounds (accepts 0-100 or 0.0-1.0, normalized to 0.0-1.0)."""
         # Valid min
         data = {
             "file": "test.py",
@@ -250,14 +250,14 @@ class TestOrchestratorFinding:
             "confidence": 0,
         }
         result = OrchestratorFinding.model_validate(data)
-        assert result.confidence == 0
+        assert result.confidence == 0  # 0 stays as 0
 
-        # Valid max
+        # Valid max (100% normalized to 1.0)
         data["confidence"] = 100
         result = OrchestratorFinding.model_validate(data)
-        assert result.confidence == 100
+        assert result.confidence == 1.0  # 100 normalized to 1.0
 
-        # Invalid: over 100
+        # Invalid: over 100 (would normalize to >1.0)
         data["confidence"] = 101
         with pytest.raises(ValidationError):
             OrchestratorFinding.model_validate(data)

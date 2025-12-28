@@ -395,6 +395,16 @@ class OrchestratorReviewer:
                 logger.info("[Orchestrator] Using validated structured output")
                 print("[Orchestrator] Using SDK structured output", flush=True)
                 orchestrator_findings = self._parse_structured_output(structured_output)
+                # Fallback to text parsing if structured output parsing failed/returned empty
+                if not orchestrator_findings and result_text:
+                    logger.warning(
+                        "[Orchestrator] Structured output parsing returned empty, falling back to text"
+                    )
+                    print(
+                        "[Orchestrator] Structured output empty, trying text parsing fallback",
+                        flush=True,
+                    )
+                    orchestrator_findings = self._parse_orchestrator_output(result_text)
             else:
                 logger.info("[Orchestrator] Falling back to text parsing")
                 print("[Orchestrator] Falling back to text parsing", flush=True)

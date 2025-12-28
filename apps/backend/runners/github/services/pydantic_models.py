@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # =============================================================================
 # Common Finding Types
@@ -313,9 +313,20 @@ class OrchestratorFinding(BaseModel):
         description="Issue severity level"
     )
     suggestion: str | None = Field(None, description="How to fix this issue")
-    confidence: int = Field(
-        85, ge=0, le=100, description="Confidence percentage (0-100)"
+    confidence: float = Field(
+        0.85,
+        ge=0.0,
+        le=1.0,
+        description="Confidence (0.0-1.0 or 0-100, normalized to 0.0-1.0)",
     )
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def normalize_confidence(cls, v: int | float) -> float:
+        """Normalize confidence to 0.0-1.0 range (accepts 0-100 or 0.0-1.0)."""
+        if v > 1:
+            return v / 100.0
+        return float(v)
 
 
 class OrchestratorReviewResponse(BaseModel):

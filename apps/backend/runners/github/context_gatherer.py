@@ -28,6 +28,45 @@ try:
 except (ImportError, ValueError, SystemError):
     from gh_client import GHClient, PRTooLargeError
 
+# Validation patterns for git refs and paths (defense-in-depth)
+# These patterns allow common valid characters while rejecting potentially dangerous ones
+SAFE_REF_PATTERN = re.compile(r"^[a-zA-Z0-9._/\-]+$")
+SAFE_PATH_PATTERN = re.compile(r"^[a-zA-Z0-9._/\-@]+$")
+
+
+def _validate_git_ref(ref: str) -> bool:
+    """
+    Validate git ref (branch name or commit SHA) for safe use in commands.
+
+    Args:
+        ref: Git ref to validate
+
+    Returns:
+        True if ref is safe, False otherwise
+    """
+    if not ref or len(ref) > 256:
+        return False
+    return bool(SAFE_REF_PATTERN.match(ref))
+
+
+def _validate_file_path(path: str) -> bool:
+    """
+    Validate file path for safe use in git commands.
+
+    Args:
+        path: File path to validate
+
+    Returns:
+        True if path is safe, False otherwise
+    """
+    if not path or len(path) > 1024:
+        return False
+    # Reject path traversal attempts
+    if ".." in path or path.startswith("/"):
+        return False
+    return bool(SAFE_PATH_PATTERN.match(path))
+
+
 if TYPE_CHECKING:
     try:
         from .models import FollowupReviewContext, PRReviewResult
@@ -228,6 +267,18 @@ class PRContextGatherer:
         Returns:
             True if refs are available, False otherwise
         """
+        # Validate SHAs before using in git commands
+        if not _validate_git_ref(head_sha):
+            print(
+                f"[Context] Invalid head SHA rejected: {head_sha[:50]}...", flush=True
+            )
+            return False
+        if not _validate_git_ref(base_sha):
+            print(
+                f"[Context] Invalid base SHA rejected: {base_sha[:50]}...", flush=True
+            )
+            return False
+
         try:
             # Fetch the specific commits - this works even for fork PRs
             proc = await asyncio.create_subprocess_exec(
@@ -351,6 +402,14 @@ class PRContextGatherer:
         Returns:
             File content as string, or empty string if file doesn't exist
         """
+        # Validate inputs to prevent command injection
+        if not _validate_file_path(path):
+            print(f"[Context] Invalid file path rejected: {path[:50]}...", flush=True)
+            return ""
+        if not _validate_git_ref(ref):
+            print(f"[Context] Invalid git ref rejected: {ref[:50]}...", flush=True)
+            return ""
+
         try:
             proc = await asyncio.create_subprocess_exec(
                 "git",
@@ -387,6 +446,21 @@ class PRContextGatherer:
         Returns:
             Unified diff patch for this file
         """
+        # Validate inputs to prevent command injection
+        if not _validate_file_path(path):
+            print(f"[Context] Invalid file path rejected: {path[:50]}...", flush=True)
+            return ""
+        if not _validate_git_ref(base_ref):
+            print(
+                f"[Context] Invalid base ref rejected: {base_ref[:50]}...", flush=True
+            )
+            return ""
+        if not _validate_git_ref(head_ref):
+            print(
+                f"[Context] Invalid head ref rejected: {head_ref[:50]}...", flush=True
+            )
+            return ""
+
         try:
             proc = await asyncio.create_subprocess_exec(
                 "git",

@@ -50,13 +50,32 @@ logger = logging.getLogger(__name__)
 
 # Category mapping for AI responses
 _CATEGORY_MAPPING = {
+    # Direct matches (already valid)
     "security": ReviewCategory.SECURITY,
     "quality": ReviewCategory.QUALITY,
-    "logic": ReviewCategory.QUALITY,
+    "style": ReviewCategory.STYLE,
     "test": ReviewCategory.TEST,
     "docs": ReviewCategory.DOCS,
     "pattern": ReviewCategory.PATTERN,
     "performance": ReviewCategory.PERFORMANCE,
+    "verification_failed": ReviewCategory.VERIFICATION_FAILED,
+    "redundancy": ReviewCategory.REDUNDANCY,
+    # AI-generated alternatives that need mapping
+    "correctness": ReviewCategory.QUALITY,  # Logic/code correctness → quality
+    "consistency": ReviewCategory.PATTERN,  # Code consistency → pattern adherence
+    "testing": ReviewCategory.TEST,  # Testing → test
+    "documentation": ReviewCategory.DOCS,  # Documentation → docs
+    "bug": ReviewCategory.QUALITY,  # Bug → quality
+    "logic": ReviewCategory.QUALITY,  # Logic error → quality
+    "error_handling": ReviewCategory.QUALITY,  # Error handling → quality
+    "maintainability": ReviewCategory.QUALITY,  # Maintainability → quality
+    "readability": ReviewCategory.STYLE,  # Readability → style
+    "best_practices": ReviewCategory.PATTERN,  # Best practices → pattern
+    "best-practices": ReviewCategory.PATTERN,  # With hyphen
+    "architecture": ReviewCategory.PATTERN,  # Architecture → pattern
+    "complexity": ReviewCategory.QUALITY,  # Complexity → quality
+    "dead_code": ReviewCategory.REDUNDANCY,  # Dead code → redundancy
+    "unused": ReviewCategory.REDUNDANCY,  # Unused → redundancy
 }
 
 # Severity mapping for AI responses
