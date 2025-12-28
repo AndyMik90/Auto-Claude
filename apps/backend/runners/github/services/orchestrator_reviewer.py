@@ -698,9 +698,7 @@ Now perform your strategic review and use the available tools to spawn subagents
                     category=category,
                     severity=severity,
                     suggested_fix=f.suggestion or "",
-                    confidence=f.confidence / 100.0
-                    if f.confidence > 1
-                    else f.confidence / 100.0,
+                    confidence=self._normalize_confidence(f.confidence),
                 )
                 findings.append(finding)
                 logger.debug(
@@ -836,9 +834,9 @@ Now perform your strategic review and use the available tools to spawn subagents
                             suggested_fix=data.get(
                                 "suggestion", data.get("suggested_fix", "")
                             ),
-                            confidence=data.get("confidence", 85) / 100.0
-                            if data.get("confidence", 85) > 1
-                            else data.get("confidence", 0.85),
+                            confidence=self._normalize_confidence(
+                                data.get("confidence", 85)
+                            ),
                         )
                         findings.append(finding)
                         logger.debug(
@@ -903,9 +901,9 @@ Now perform your strategic review and use the available tools to spawn subagents
                             suggested_fix=data.get(
                                 "suggestion", data.get("suggested_fix", "")
                             ),
-                            confidence=data.get("confidence", 85) / 100.0
-                            if data.get("confidence", 85) > 1
-                            else data.get("confidence", 0.85),
+                            confidence=self._normalize_confidence(
+                                data.get("confidence", 85)
+                            ),
                         )
                         findings.append(finding)
                         logger.debug(
@@ -920,6 +918,27 @@ Now perform your strategic review and use the available tools to spawn subagents
 
         logger.info(f"[Orchestrator] Parsed {len(findings)} total findings from output")
         return findings
+
+    def _normalize_confidence(self, confidence_value: int | float) -> float:
+        """
+        Normalize confidence value to 0.0-1.0 range.
+
+        AI models may return confidence as:
+        - Percentage (0-100): divide by 100
+        - Decimal (0.0-1.0): use as-is
+
+        Args:
+            confidence_value: Raw confidence value from AI output
+
+        Returns:
+            Normalized confidence as float in 0.0-1.0 range
+        """
+        if confidence_value > 1:
+            # Percentage format (e.g., 85 -> 0.85)
+            return confidence_value / 100.0
+        else:
+            # Already decimal format (e.g., 0.85)
+            return float(confidence_value)
 
     def _extract_findings_from_data(
         self, findings_data: list[dict]
@@ -961,9 +980,7 @@ Now perform your strategic review and use the available tools to spawn subagents
                 category=category,
                 severity=severity,
                 suggested_fix=data.get("suggestion", data.get("suggested_fix", "")),
-                confidence=data.get("confidence", 85) / 100.0
-                if data.get("confidence", 85) > 1
-                else data.get("confidence", 0.85),
+                confidence=self._normalize_confidence(data.get("confidence", 85)),
             )
             findings.append(finding)
             logger.debug(
