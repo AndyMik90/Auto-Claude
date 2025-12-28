@@ -265,7 +265,7 @@ export function registerFileHandlers(): void {
           if (error.code === 'ENOENT') {
             return { success: false, error: 'File does not exist' };
           }
-          if (error.code === 'ELOOP' || error.code === 'EMLINK') {
+          if (error.code === 'ELOOP') {
             // Provide more informative error by checking where symlink points
             // (safe to do since we're NOT using it, just for error message)
             try {
