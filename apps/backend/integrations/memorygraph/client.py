@@ -56,14 +56,6 @@ class MemoryGraphClient:
         """
         proc = None
         try:
-            # Build MCP request
-            request = {
-                "jsonrpc": "2.0",
-                "id": self._next_id(),
-                "method": "tools/call",
-                "params": {"name": tool_name, "arguments": arguments},
-            }
-
             # Try to call memorygraph via subprocess
             # This will fail gracefully if memorygraph is not installed or running
             proc = await asyncio.create_subprocess_exec(
@@ -73,20 +65,54 @@ class MemoryGraphClient:
                 stderr=asyncio.subprocess.PIPE,
             )
 
-            # Send request with configurable timeout
-            request_json = json.dumps(request) + "\n"
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(request_json.encode()), timeout=self._timeout
-            )
+            # MCP requires initialization before tool calls
+            # Step 1: Send initialize request
+            init_request = {
+                "jsonrpc": "2.0",
+                "id": self._next_id(),
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "auto-claude", "version": "1.0"},
+                },
+            }
+            proc.stdin.write((json.dumps(init_request) + "\n").encode())
+            await proc.stdin.drain()
 
-            # Parse response
-            if proc.returncode != 0:
-                logger.debug(
-                    f"MemoryGraph server returned error code {proc.returncode}"
-                )
+            # Read init response
+            init_response = await asyncio.wait_for(
+                proc.stdout.readline(), timeout=self._timeout
+            )
+            init_data = json.loads(init_response.decode())
+            if "error" in init_data:
+                logger.debug(f"MCP init error: {init_data['error']}")
                 return None
 
-            response = json.loads(stdout.decode())
+            # Step 2: Send initialized notification
+            initialized_notif = {
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+            }
+            proc.stdin.write((json.dumps(initialized_notif) + "\n").encode())
+            await proc.stdin.drain()
+
+            # Step 3: Send the actual tool call
+            tool_request = {
+                "jsonrpc": "2.0",
+                "id": self._next_id(),
+                "method": "tools/call",
+                "params": {"name": tool_name, "arguments": arguments},
+            }
+            proc.stdin.write((json.dumps(tool_request) + "\n").encode())
+            await proc.stdin.drain()
+
+            # Read tool response
+            tool_response = await asyncio.wait_for(
+                proc.stdout.readline(), timeout=self._timeout
+            )
+            response = json.loads(tool_response.decode())
+
             if "error" in response:
                 logger.debug(f"MemoryGraph tool error: {response['error']}")
                 return None
@@ -98,25 +124,24 @@ class MemoryGraphClient:
             return None
         except asyncio.TimeoutError:
             logger.debug(f"MemoryGraph request timeout after {self._timeout}s")
-            # Kill the process on timeout
-            if proc is not None:
-                try:
-                    proc.kill()
-                    await proc.wait()
-                except ProcessLookupError:
-                    pass  # Process already terminated
+            return None
+        except json.JSONDecodeError as e:
+            logger.debug(f"MemoryGraph invalid JSON response: {e}")
             return None
         except Exception as e:
             logger.debug(f"MemoryGraph client error: {e}")
             return None
         finally:
             # Ensure process is cleaned up
-            if proc is not None and proc.returncode is None:
+            if proc is not None:
                 try:
-                    proc.kill()
-                    await proc.wait()
-                except ProcessLookupError:
-                    pass  # Process already terminated
+                    proc.terminate()
+                    await asyncio.wait_for(proc.wait(), timeout=1.0)
+                except (ProcessLookupError, asyncio.TimeoutError):
+                    try:
+                        proc.kill()
+                    except ProcessLookupError:
+                        pass
 
     async def recall(self, query: str, limit: int = 5) -> list[dict]:
         """
