@@ -108,8 +108,19 @@ class TestFormatContext:
 
         context = format_context(memories, [])
 
-        # Should only include 2 patterns (count the "- " prefix for list items)
-        assert context.count("- Use pattern") == 2
+        # Parse lines to find pattern list items (lines starting with "- " containing pattern content)
+        pattern_lines = [
+            line
+            for line in context.splitlines()
+            if line.startswith("- ") and "Use pattern" in line
+        ]
+        assert len(pattern_lines) == 2
+
+        # Verify first two patterns are included (indices 0 and 1)
+        assert "Use pattern 0" in context
+        assert "Use pattern 1" in context
+        # Third pattern should not be included
+        assert "Use pattern 2" not in context
 
     def test_handles_missing_fields_gracefully(self):
         """Handles memories with missing fields."""
