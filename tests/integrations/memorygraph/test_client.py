@@ -258,31 +258,64 @@ NPE on login"""
 
     @pytest.mark.asyncio
     async def test_call_tool_builds_correct_mcp_request(self):
-        """Builds correct JSON-RPC 2.0 request for MCP."""
+        """Builds correct JSON-RPC 2.0 request for MCP with initialization handshake."""
         client = MemoryGraphClient()
 
-        # Mock subprocess to capture the request
-        mock_proc = AsyncMock()
-        mock_proc.returncode = 0
-        mock_proc.communicate = AsyncMock(
-            return_value=(
-                json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}}).encode(),
-                b"",
-            )
+        # Track all writes to stdin
+        written_data = []
+
+        # Mock subprocess with stdin/stdout for MCP protocol
+        mock_stdin = AsyncMock()
+        mock_stdin.write = lambda data: written_data.append(data)
+        mock_stdin.drain = AsyncMock()
+
+        # Response sequence: init response, then tool response
+        init_response = (
+            json.dumps(
+                {"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "2024-11-05"}}
+            ).encode()
+            + b"\n"
         )
+        tool_response = (
+            json.dumps({"jsonrpc": "2.0", "id": 2, "result": {"content": []}}).encode()
+            + b"\n"
+        )
+        responses = iter([init_response, tool_response])
+
+        mock_stdout = AsyncMock()
+        mock_stdout.readline = AsyncMock(side_effect=lambda: next(responses))
+
+        mock_proc = AsyncMock()
+        mock_proc.stdin = mock_stdin
+        mock_proc.stdout = mock_stdout
+        mock_proc.stderr = AsyncMock()
+        mock_proc.terminate = lambda: None
+        mock_proc.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
             await client._call_tool("recall_memories", {"query": "test", "limit": 5})
 
-        # Check that communicate was called with correct JSON-RPC request
-        call_args = mock_proc.communicate.call_args
-        request_bytes = call_args[0][0]
-        request = json.loads(request_bytes.decode())
+        # Should have written 3 messages: init, initialized notification, tool call
+        assert len(written_data) == 3
 
-        assert request["jsonrpc"] == "2.0"
-        assert request["method"] == "tools/call"
-        assert request["params"]["name"] == "recall_memories"
-        assert request["params"]["arguments"] == {"query": "test", "limit": 5}
+        # Parse the messages
+        init_request = json.loads(written_data[0].decode().strip())
+        initialized_notif = json.loads(written_data[1].decode().strip())
+        tool_request = json.loads(written_data[2].decode().strip())
+
+        # Verify init request
+        assert init_request["jsonrpc"] == "2.0"
+        assert init_request["method"] == "initialize"
+
+        # Verify initialized notification
+        assert initialized_notif["jsonrpc"] == "2.0"
+        assert initialized_notif["method"] == "notifications/initialized"
+
+        # Verify tool request
+        assert tool_request["jsonrpc"] == "2.0"
+        assert tool_request["method"] == "tools/call"
+        assert tool_request["params"]["name"] == "recall_memories"
+        assert tool_request["params"]["arguments"] == {"query": "test", "limit": 5}
 
     @pytest.mark.asyncio
     async def test_handles_mcp_server_not_installed(self):
@@ -300,21 +333,39 @@ NPE on login"""
         """Handles MCP error response gracefully."""
         client = MemoryGraphClient()
 
-        # Simulate MCP error response
-        mock_proc = AsyncMock()
-        mock_proc.returncode = 0
-        mock_proc.communicate = AsyncMock(
-            return_value=(
-                json.dumps(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 1,
-                        "error": {"code": -32600, "message": "Invalid request"},
-                    }
-                ).encode(),
-                b"",
-            )
+        # Mock subprocess with stdin/stdout for MCP protocol
+        mock_stdin = AsyncMock()
+        mock_stdin.write = lambda data: None
+        mock_stdin.drain = AsyncMock()
+
+        # Init succeeds, but tool call returns error
+        init_response = (
+            json.dumps(
+                {"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "2024-11-05"}}
+            ).encode()
+            + b"\n"
         )
+        error_response = (
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "error": {"code": -32600, "message": "Invalid request"},
+                }
+            ).encode()
+            + b"\n"
+        )
+        responses = iter([init_response, error_response])
+
+        mock_stdout = AsyncMock()
+        mock_stdout.readline = AsyncMock(side_effect=lambda: next(responses))
+
+        mock_proc = AsyncMock()
+        mock_proc.stdin = mock_stdin
+        mock_proc.stdout = mock_stdout
+        mock_proc.stderr = AsyncMock()
+        mock_proc.terminate = lambda: None
+        mock_proc.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
             result = await client._call_tool("invalid_tool", {})
@@ -353,23 +404,33 @@ Added null check"""
 
     @pytest.mark.asyncio
     async def test_process_cleanup_on_timeout(self):
-        """Ensures process is killed on timeout."""
+        """Ensures process is terminated on timeout."""
         import asyncio
         from unittest.mock import Mock
 
         client = MemoryGraphClient(timeout=0.001)  # Very short timeout
 
+        # Mock subprocess with stdin/stdout
+        mock_stdin = AsyncMock()
+        mock_stdin.write = Mock()
+        mock_stdin.drain = AsyncMock()
+
+        mock_stdout = AsyncMock()
+        # Simulate slow response - timeout on readline
+        mock_stdout.readline = AsyncMock(side_effect=asyncio.TimeoutError())
+
         mock_proc = AsyncMock()
+        mock_proc.stdin = mock_stdin
+        mock_proc.stdout = mock_stdout
+        mock_proc.stderr = AsyncMock()
         mock_proc.returncode = None  # Process still running
-        # kill() is a regular method, not async
+        mock_proc.terminate = Mock()
         mock_proc.kill = Mock()
-        mock_proc.wait = AsyncMock()
-        # Simulate slow response
-        mock_proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
+        mock_proc.wait = AsyncMock()  # wait completes successfully after terminate
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
             result = await client._call_tool("slow_tool", {})
 
         assert result is None
-        # Should have attempted to kill the process
-        mock_proc.kill.assert_called()
+        # Should have attempted to terminate the process
+        mock_proc.terminate.assert_called()
