@@ -57,6 +57,8 @@ import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings } from './stores/settings-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
 import { initializeGitHubListeners } from './stores/github';
+import { initDownloadProgressListener } from './stores/download-store';
+import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
 import { useIpcListeners } from './hooks/useIpc';
 import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
 import type { Task, Project, ColorTheme } from '../shared/types';
@@ -125,6 +127,12 @@ export function App() {
     loadSettings();
     // Initialize global GitHub listeners (PR reviews, etc.) so they persist across navigation
     initializeGitHubListeners();
+    // Initialize global download progress listener for Ollama model downloads
+    const cleanupDownloadListener = initDownloadProgressListener();
+
+    return () => {
+      cleanupDownloadListener();
+    };
   }, []);
 
   // Restore tab state and open tabs for loaded projects
@@ -861,6 +869,9 @@ export function App() {
 
         {/* App Update Notification - shows when new app version is available */}
         <AppUpdateNotification />
+
+        {/* Global Download Indicator - shows Ollama model download progress */}
+        <GlobalDownloadIndicator />
       </div>
     </TooltipProvider>
   );
