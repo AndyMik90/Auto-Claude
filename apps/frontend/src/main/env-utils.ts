@@ -57,7 +57,6 @@ const COMMON_BIN_PATHS: Record<string, string[]> = {
     // Windows usually handles PATH better, but we can add common locations
     'C:\\Program Files\\Git\\cmd',
     'C:\\Program Files\\GitHub CLI',
-    // Note: npm global prefix is detected dynamically via getNpmGlobalPrefix()
   ],
 };
 
@@ -98,7 +97,7 @@ export function getAugmentedEnv(additionalPaths?: string[]): Record<string, stri
     }
   }
 
-  // Add npm global prefix dynamically (works with any npm setup)
+  // Add npm global prefix dynamically (cross-platform: works with standard npm, nvm, nvm-windows)
   const npmPrefix = getNpmGlobalPrefix();
   if (npmPrefix && !currentPathSet.has(npmPrefix) && fs.existsSync(npmPrefix)) {
     pathsToAdd.push(npmPrefix);
