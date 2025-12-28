@@ -101,27 +101,74 @@ class AIBotComment:
 
 
 # Known AI code review bots and their display names
+# Organized by category for maintainability
 AI_BOT_PATTERNS: dict[str, str] = {
+    # === AI Code Review Tools ===
     "coderabbitai": "CodeRabbit",
     "coderabbit-ai": "CodeRabbit",
     "coderabbit[bot]": "CodeRabbit",
     "greptile": "Greptile",
     "greptile[bot]": "Greptile",
+    "greptile-ai": "Greptile",
+    "greptile-apps": "Greptile",
     "cursor-ai": "Cursor",
     "cursor[bot]": "Cursor",
     "sourcery-ai": "Sourcery",
     "sourcery-ai[bot]": "Sourcery",
+    "sourcery-ai-bot": "Sourcery",
     "codiumai": "Qodo",
     "codium-ai[bot]": "Qodo",
+    "codiumai-agent": "Qodo",
     "qodo-merge-bot": "Qodo",
+    # === AI Coding Assistants ===
     "copilot": "GitHub Copilot",
     "copilot[bot]": "GitHub Copilot",
+    "copilot-swe-agent[bot]": "GitHub Copilot",
+    "sweep-ai[bot]": "Sweep AI",
+    "sweep-nightly[bot]": "Sweep AI",
+    "sweep-canary[bot]": "Sweep AI",
+    "bitoagent": "Bito AI",
+    "codeium-ai-superpowers": "Codeium",
+    "devin-ai-integration": "Devin AI",
+    # === GitHub Native Bots ===
     "github-actions": "GitHub Actions",
     "github-actions[bot]": "GitHub Actions",
-    "deepsource-autofix": "DeepSource",
-    "deepsource-autofix[bot]": "DeepSource",
+    "github-advanced-security": "GitHub Advanced Security",
+    "github-advanced-security[bot]": "GitHub Advanced Security",
+    "dependabot": "Dependabot",
+    "dependabot[bot]": "Dependabot",
+    "github-merge-queue[bot]": "GitHub Merge Queue",
+    # === Code Quality & Static Analysis ===
     "sonarcloud": "SonarCloud",
     "sonarcloud[bot]": "SonarCloud",
+    "deepsource-autofix": "DeepSource",
+    "deepsource-autofix[bot]": "DeepSource",
+    "deepsourcebot": "DeepSource",
+    "codeclimate[bot]": "CodeClimate",
+    "codefactor-io[bot]": "CodeFactor",
+    "codacy[bot]": "Codacy",
+    # === Security Scanning ===
+    "snyk-bot": "Snyk",
+    "snyk[bot]": "Snyk",
+    "snyk-security-bot": "Snyk",
+    "gitguardian[bot]": "GitGuardian",
+    "semgrep-app[bot]": "Semgrep",
+    "semgrep-bot": "Semgrep",
+    # === Code Coverage ===
+    "codecov[bot]": "Codecov",
+    "codecov-commenter": "Codecov",
+    "coveralls": "Coveralls",
+    "coveralls[bot]": "Coveralls",
+    # === Dependency Management ===
+    "renovate[bot]": "Renovate",
+    "renovate-bot": "Renovate",
+    "self-hosted-renovate[bot]": "Renovate",
+    # === PR Automation ===
+    "mergify[bot]": "Mergify",
+    "imgbotapp": "Imgbot",
+    "imgbot[bot]": "Imgbot",
+    "allstar[bot]": "Allstar",
+    "percy[bot]": "Percy",
 }
 
 
