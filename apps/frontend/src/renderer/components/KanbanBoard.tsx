@@ -30,7 +30,7 @@ import { SortableTaskCard } from './SortableTaskCard';
 import { QueueSettingsModal } from './QueueSettingsModal';
 import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
 import { cn } from '../lib/utils';
-import { persistTaskStatus, archiveTasks, promoteNextQueuedTask, checkAndAutoMergeTasks } from '../stores/task-store';
+import { persistTaskStatus, archiveTasks, promoteNextQueuedTask, checkAndAutoMergeTasks, checkTaskForAutoMerge } from '../stores/task-store';
 import { updateProjectSettings } from '../stores/project-store';
 import { useProjectStore } from '../stores/project-store';
 import type { Task, TaskStatus } from '../../shared/types';
@@ -304,6 +304,34 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
       });
     }
   }, [projectId, tasks.length]); // Only depend on projectId and task count, not full tasks array
+
+  // Track tasks with completed subtasks to trigger auto-merge when validation completes
+  const prevTaskSubtasks = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (!projectId || tasks.length === 0) return;
+
+    // Check each task for newly completed subtasks
+    tasks.forEach(task => {
+      if (!task.subtasks || task.subtasks.length === 0) return;
+
+      const completedCount = task.subtasks.filter(s => s.status === 'completed').length;
+      const totalCount = task.subtasks.length;
+      const prevCompleted = prevTaskSubtasks.current.get(task.id) || 0;
+
+      // If all subtasks just became completed (validation just finished)
+      if (completedCount === totalCount && prevCompleted < totalCount) {
+        console.log(`[KanbanBoard] Task ${task.id} validation completed (${completedCount}/${totalCount}), checking for auto-merge`);
+
+        // Trigger auto-merge check for this specific task
+        checkTaskForAutoMerge(task.id).catch(error => {
+          console.error(`[KanbanBoard] Auto-merge check failed for ${task.id}:`, error);
+        });
+      }
+
+      // Update tracked count
+      prevTaskSubtasks.current.set(task.id, completedCount);
+    });
+  }, [tasks, projectId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
