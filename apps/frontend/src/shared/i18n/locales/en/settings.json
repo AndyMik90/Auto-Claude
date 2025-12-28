@@ -129,7 +129,9 @@
   "projectSections": {
     "general": {
       "title": "General",
-      "description": "Auto-Build and agent config"
+      "description": "Auto-Build and agent config",
+      "useClaudeMd": "Use CLAUDE.md",
+      "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context"
     },
     "claude": {
       "title": "Claude Auth",

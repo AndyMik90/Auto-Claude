@@ -59,6 +59,30 @@ def get_electron_debug_port() -> int:
     return int(os.environ.get("ELECTRON_DEBUG_PORT", "9222"))
 
 
+def should_use_claude_md() -> bool:
+    """Check if CLAUDE.md instructions should be included in system prompt."""
+    return os.environ.get("USE_CLAUDE_MD", "").lower() == "true"
+
+
+def load_claude_md(project_dir: Path) -> str | None:
+    """
+    Load CLAUDE.md content from project root if it exists.
+
+    Args:
+        project_dir: Root directory of the project
+
+    Returns:
+        Content of CLAUDE.md if found, None otherwise
+    """
+    claude_md_path = project_dir / "CLAUDE.md"
+    if claude_md_path.exists():
+        try:
+            return claude_md_path.read_text(encoding="utf-8")
+        except Exception:
+            return None
+    return None
+
+
 # Puppeteer MCP tools for browser automation
 # NOTE: Screenshots must be compressed (1280x720, quality 60, JPEG) to stay under
 # Claude SDK's 1MB JSON message buffer limit. See GitHub issue #74.
@@ -339,19 +363,34 @@ def create_client(
         if auto_claude_mcp_server:
             mcp_servers["auto-claude"] = auto_claude_mcp_server
 
+    # Build system prompt
+    base_prompt = (
+        f"You are an expert full-stack developer building production-quality software. "
+        f"Your working directory is: {project_dir.resolve()}\n"
+        f"Your filesystem access is RESTRICTED to this directory only. "
+        f"Use relative paths (starting with ./) for all file operations. "
+        f"Never use absolute paths or try to access files outside your working directory.\n\n"
+        f"You follow existing code patterns, write clean maintainable code, and verify "
+        f"your work through thorough testing. You communicate progress through Git commits "
+        f"and build-progress.txt updates."
+    )
+
+    # Include CLAUDE.md if enabled and present
+    if should_use_claude_md():
+        claude_md_content = load_claude_md(project_dir)
+        if claude_md_content:
+            base_prompt = f"{base_prompt}\n\n# Project Instructions (from CLAUDE.md)\n\n{claude_md_content}"
+            print("   - CLAUDE.md: included in system prompt")
+        else:
+            print("   - CLAUDE.md: not found in project root")
+    else:
+        print("   - CLAUDE.md: disabled by project settings")
+    print()
+
     return ClaudeSDKClient(
         options=ClaudeAgentOptions(
             model=model,
-            system_prompt=(
-                f"You are an expert full-stack developer building production-quality software. "
-                f"Your working directory is: {project_dir.resolve()}\n"
-                f"Your filesystem access is RESTRICTED to this directory only. "
-                f"Use relative paths (starting with ./) for all file operations. "
-                f"Never use absolute paths or try to access files outside your working directory.\n\n"
-                f"You follow existing code patterns, write clean maintainable code, and verify "
-                f"your work through thorough testing. You communicate progress through Git commits "
-                f"and build-progress.txt updates."
-            ),
+            system_prompt=base_prompt,
             allowed_tools=allowed_tools_list,
             mcp_servers=mcp_servers,
             hooks={

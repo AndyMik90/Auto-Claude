@@ -95,6 +95,11 @@ export class AgentProcessManager {
         const graphitiUrl = project.settings.graphitiMcpUrl || 'http://localhost:8000/mcp/';
         env['GRAPHITI_MCP_URL'] = graphitiUrl;
       }
+
+      // CLAUDE.md integration (enabled by default)
+      if (project.settings.useClaudeMd !== false) {
+        env['USE_CLAUDE_MD'] = 'true';
+      }
     }
 
     return env;
