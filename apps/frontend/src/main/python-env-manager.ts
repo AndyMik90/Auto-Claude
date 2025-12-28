@@ -78,15 +78,18 @@ export class PythonEnvManager extends EventEmitter {
   }
 
   /**
-   * Check if claude-agent-sdk is installed
+   * Check if required dependencies are installed.
+   * Verifies critical packages that must be present for the backend to work.
    */
   private async checkDepsInstalled(): Promise<boolean> {
     const venvPython = this.getVenvPythonPath();
     if (!venvPython || !existsSync(venvPython)) return false;
 
     try {
-      // Check if claude_agent_sdk can be imported
-      execSync(`"${venvPython}" -c "import claude_agent_sdk"`, {
+      // Check all critical dependencies - if any fail, we need to reinstall
+      // This prevents issues where partial installs leave some packages missing
+      // See: https://github.com/AndyMik90/Auto-Claude/issues/359
+      execSync(`"${venvPython}" -c "import claude_agent_sdk; import dotenv"`, {
         stdio: 'pipe',
         timeout: 10000
       });
