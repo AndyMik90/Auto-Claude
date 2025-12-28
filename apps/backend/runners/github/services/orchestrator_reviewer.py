@@ -188,7 +188,7 @@ class OrchestratorReviewer:
             )
 
             # Use model and thinking level from config (user settings)
-            model = self.config.model
+            model = self.config.model or "claude-sonnet-4-5-20250929"
             thinking_level = self.config.thinking_level or "medium"
             thinking_budget = get_thinking_budget(thinking_level)
 

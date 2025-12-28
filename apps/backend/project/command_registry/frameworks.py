@@ -157,6 +157,12 @@ FRAMEWORK_COMMANDS: dict[str, set[str]] = {
     },
     "dart_frog": {"dart_frog", "dart"},  # Dart backend framework
     "serverpod": {"serverpod", "dart"},  # Dart backend framework
+    "shelf": {"dart", "pub"},  # Dart HTTP server middleware
+    "aqueduct": {
+        "aqueduct",
+        "dart",
+        "pub",
+    },  # Dart HTTP framework (deprecated but still used)
 }
 
 

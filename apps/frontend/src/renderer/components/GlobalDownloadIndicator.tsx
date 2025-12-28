@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Download, X, ChevronDown, ChevronUp, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useDownloadStore } from '../stores/download-store';
 import { cn } from '../lib/utils';
 
@@ -11,6 +12,7 @@ import { cn } from '../lib/utils';
  * Can be expanded to show details or minimized to just show count.
  */
 export function GlobalDownloadIndicator() {
+  const { t } = useTranslation('common');
   const downloads = useDownloadStore((state) => state.downloads);
   const clearDownload = useDownloadStore((state) => state.clearDownload);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -33,12 +35,15 @@ export function GlobalDownloadIndicator() {
     <div className="fixed bottom-4 right-4 z-50 max-w-sm">
       <div className="rounded-lg border border-border bg-card shadow-lg overflow-hidden">
         {/* Header */}
-        <div
+        <button
+          type="button"
           className={cn(
-            'flex items-center justify-between px-3 py-2 cursor-pointer',
+            'flex items-center justify-between px-3 py-2 cursor-pointer w-full text-left',
             hasActive ? 'bg-primary/10' : 'bg-muted/50'
           )}
           onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          aria-label={t('downloads.toggleExpand')}
         >
           <div className="flex items-center gap-2">
             {hasActive ? (
@@ -52,15 +57,16 @@ export function GlobalDownloadIndicator() {
             )}
             <span className="text-sm font-medium">
               {hasActive
-                ? `Downloading ${activeDownloads.length} model${activeDownloads.length > 1 ? 's' : ''}`
+                ? t('downloads.downloading', { count: activeDownloads.length })
                 : completedDownloads.length > 0
-                  ? `${completedDownloads.length} download${completedDownloads.length > 1 ? 's' : ''} complete`
-                  : `${failedDownloads.length} download${failedDownloads.length > 1 ? 's' : ''} failed`}
+                  ? t('downloads.complete', { count: completedDownloads.length })
+                  : t('downloads.failed', { count: failedDownloads.length })}
             </span>
           </div>
           <div className="flex items-center gap-1">
             {!hasActive && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   // Clear all completed/failed downloads
@@ -71,6 +77,7 @@ export function GlobalDownloadIndicator() {
                   });
                 }}
                 className="p-1 hover:bg-muted rounded"
+                aria-label={t('downloads.clearAll')}
               >
                 <X className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
@@ -81,7 +88,7 @@ export function GlobalDownloadIndicator() {
               <ChevronUp className="h-4 w-4 text-muted-foreground" />
             )}
           </div>
-        </div>
+        </button>
 
         {/* Download list (expanded) */}
         {isExpanded && (
@@ -96,18 +103,18 @@ export function GlobalDownloadIndicator() {
                     {download.status === 'completed' && (
                       <span className="text-xs text-success flex items-center gap-1">
                         <Check className="h-3 w-3" />
-                        Done
+                        {t('downloads.done')}
                       </span>
                     )}
                     {download.status === 'failed' && (
                       <span className="text-xs text-destructive flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
-                        Failed
+                        {t('downloads.failedLabel')}
                       </span>
                     )}
                     {(download.status === 'starting' || download.status === 'downloading') && (
                       <span className="text-xs text-muted-foreground">
-                        {download.percentage > 0 ? `${Math.round(download.percentage)}%` : 'Starting...'}
+                        {download.percentage > 0 ? `${Math.round(download.percentage)}%` : t('downloads.starting')}
                       </span>
                     )}
                   </div>

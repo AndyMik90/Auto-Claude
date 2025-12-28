@@ -216,7 +216,8 @@ AGENT_CONFIGS = {
     # QA PHASES (Read + test + browser + Graphiti memory)
     # ═══════════════════════════════════════════════════════════════════════
     "qa_reviewer": {
-        "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
+        # Read-only + Bash (for running tests) - reviewer should NOT edit code
+        "tools": BASE_READ_TOOLS + ["Bash"] + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude", "browser"],
         "mcp_servers_optional": ["linear"],  # For updating issue status
         "auto_claude_tools": [
