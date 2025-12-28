@@ -106,6 +106,8 @@ class ProjectAnalyzer:
             "Gemfile.lock",
             "composer.json",
             "composer.lock",
+            "pubspec.yaml",
+            "pubspec.lock",
             "Makefile",
             "Dockerfile",
             "docker-compose.yml",
@@ -129,7 +131,7 @@ class ProjectAnalyzer:
         # to at least detect when files are added/removed
         if files_found == 0:
             # Count Python, JS, and other source files as a proxy for project structure
-            for ext in ["*.py", "*.js", "*.ts", "*.go", "*.rs"]:
+            for ext in ["*.py", "*.js", "*.ts", "*.go", "*.rs", "*.dart"]:
                 count = len(list(self.project_dir.glob(f"**/{ext}")))
                 hasher.update(f"{ext}:{count}".encode())
             # Also include the project directory name for uniqueness

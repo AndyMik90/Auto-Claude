@@ -619,20 +619,19 @@ Please analyze this follow-up review context and provide your response in the JS
 """
 
         try:
-            # Use ClaudeSDKClient directly for simple message calls
-            # (no agent tools needed, just a single query/response)
-            from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
+            # Use simple_client for single-turn code review analysis
+            from core.simple_client import create_simple_client
+            from phase_config import get_thinking_budget
 
             model = self.config.model or "claude-sonnet-4-5-20250929"
+            thinking_level = self.config.thinking_level or "medium"
+            thinking_budget = get_thinking_budget(thinking_level)
 
-            client = ClaudeSDKClient(
-                options=ClaudeAgentOptions(
-                    model=model,
-                    system_prompt="You are a code review assistant. Analyze the provided context and respond with valid JSON.",
-                    allowed_tools=[],
-                    max_turns=1,
-                    max_thinking_tokens=2048,
-                )
+            client = create_simple_client(
+                agent_type="pr_reviewer",
+                model=model,
+                system_prompt="You are a code review assistant. Analyze the provided context and respond with valid JSON.",
+                max_thinking_tokens=thinking_budget,
             )
 
             response_text = ""

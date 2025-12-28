@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Check for Claude SDK availability
 try:
-    from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
+    import claude_agent_sdk  # noqa: F401 - check availability
 
     CLAUDE_SDK_AVAILABLE = True
 except (ImportError, ValueError, SystemError):
@@ -207,16 +207,14 @@ class BatchValidator:
 
             try:
                 # Create Claude SDK client with extended thinking
-                client = ClaudeSDKClient(
-                    options=ClaudeAgentOptions(
-                        model=self.model,
-                        system_prompt="You are an expert at analyzing GitHub issues and determining if they should be grouped together for a combined fix.",
-                        allowed_tools=[],  # No tools needed for this analysis
-                        max_turns=1,
-                        cwd=str(self.project_dir.resolve()),
-                        settings=str(settings_file.resolve()),
-                        max_thinking_tokens=self.thinking_budget,  # Extended thinking
-                    )
+                from core.simple_client import create_simple_client
+
+                client = create_simple_client(
+                    agent_type="batch_validation",
+                    model=self.model,
+                    system_prompt="You are an expert at analyzing GitHub issues and determining if they should be grouped together for a combined fix.",
+                    cwd=self.project_dir,
+                    max_thinking_tokens=self.thinking_budget,  # Extended thinking
                 )
 
                 async with client:

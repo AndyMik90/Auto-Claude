@@ -172,6 +172,14 @@ LANGUAGE_COMMANDS: dict[str, set[str]] = {
     "zig": {
         "zig",
     },
+    "dart": {
+        "dart",
+        "dart2js",
+        "dartanalyzer",
+        "dartdoc",
+        "dartfmt",
+        "pub",
+    },
 }
 
 
