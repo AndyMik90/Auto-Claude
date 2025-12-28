@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { readdirSync, readFileSync, writeFileSync, realpathSync, existsSync, statSync, lstatSync, openSync, fstatSync, closeSync, constants } from 'fs';
+import { readdirSync, readFileSync, writeFileSync, realpathSync, lstatSync, openSync, fstatSync, closeSync, constants } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, FileNode } from '../../shared/types';
