@@ -57,7 +57,7 @@ vi.mock('../notification-service', () => ({
 }));
 
 // Mock electron-log to prevent Electron binary dependency
-vi.mock('electron-log/main', () => ({
+vi.mock('electron-log/main.js', () => ({
   default: {
     initialize: vi.fn(),
     transports: {

@@ -18,7 +18,7 @@ const mockGetFile = vi.fn();
 const mockGetPath = vi.fn();
 
 // Mock electron-log before importing
-vi.mock('electron-log/main', () => ({
+vi.mock('electron-log/main.js', () => ({
   default: {
     initialize: vi.fn(),
     transports: {
@@ -433,7 +433,7 @@ describe('Application Logger', () => {
   describe('Beta version detection', () => {
     it('should detect beta version from app version', async () => {
       // The mock returns '2.7.2-beta.10' which should be detected as beta
-      const electronLog = await import('electron-log/main');
+      const electronLog = await import('electron-log/main.js');
 
       // Beta version should set file level to debug
       // This is tested implicitly by the mock setup

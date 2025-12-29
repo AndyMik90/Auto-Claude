@@ -14,7 +14,7 @@
  * - Beta version detection for enhanced logging
  */
 
-import log from 'electron-log/main';
+import log from 'electron-log/main.js';
 import { app } from 'electron';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
