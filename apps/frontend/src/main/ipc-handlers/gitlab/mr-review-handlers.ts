@@ -50,7 +50,8 @@ const { debug: debugLog } = createContextLogger('GitLab MR');
 const runningReviews = new Map<string, import('child_process').ChildProcess>();
 
 const REBASE_POLL_INTERVAL_MS = 1000;
-const REBASE_TIMEOUT_MS = 30000;
+// Default rebase timeout (60 seconds). Can be overridden via GITLAB_REBASE_TIMEOUT_MS env var
+const REBASE_TIMEOUT_MS = parseInt(process.env.GITLAB_REBASE_TIMEOUT_MS || '60000', 10);
 
 /**
  * Get the registry key for an MR review

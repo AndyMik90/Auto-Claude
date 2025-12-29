@@ -9,6 +9,7 @@ Uses direct API calls with PRIVATE-TOKEN authentication.
 from __future__ import annotations
 
 import json
+import time
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -56,8 +57,9 @@ class GitLabClient:
         method: str = "GET",
         data: dict | None = None,
         timeout: float | None = None,
+        max_retries: int = 3,
     ) -> Any:
-        """Make an API request to GitLab."""
+        """Make an API request to GitLab with rate limit handling."""
         url = self._api_url(endpoint)
         headers = {
             "PRIVATE-TOKEN": self.config.token,
@@ -68,23 +70,49 @@ class GitLabClient:
         if data:
             request_data = json.dumps(data).encode("utf-8")
 
-        req = urllib.request.Request(
-            url,
-            data=request_data,
-            headers=headers,
-            method=method,
-        )
+        last_error = None
+        for attempt in range(max_retries):
+            req = urllib.request.Request(
+                url,
+                data=request_data,
+                headers=headers,
+                method=method,
+            )
 
-        try:
-            with urllib.request.urlopen(
-                req, timeout=timeout or self.default_timeout
-            ) as response:
-                if response.status == 204:
-                    return None
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            error_body = e.read().decode("utf-8") if e.fp else ""
-            raise Exception(f"GitLab API error {e.code}: {error_body}") from e
+            try:
+                with urllib.request.urlopen(
+                    req, timeout=timeout or self.default_timeout
+                ) as response:
+                    if response.status == 204:
+                        return None
+                    return json.loads(response.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode("utf-8") if e.fp else ""
+                last_error = e
+
+                # Handle rate limit (429) with exponential backoff
+                if e.code == 429:
+                    # Check for Retry-After header
+                    retry_after = e.headers.get("Retry-After")
+                    if retry_after:
+                        wait_time = int(retry_after)
+                    else:
+                        # Exponential backoff: 1s, 2s, 4s
+                        wait_time = 2**attempt
+
+                    if attempt < max_retries - 1:
+                        print(
+                            f"[GitLab] Rate limited (429). Retrying in {wait_time}s "
+                            f"(attempt {attempt + 1}/{max_retries})...",
+                            flush=True,
+                        )
+                        time.sleep(wait_time)
+                        continue
+
+                raise Exception(f"GitLab API error {e.code}: {error_body}") from e
+
+        # Should not reach here, but just in case
+        raise Exception(f"GitLab API error after {max_retries} retries") from last_error
 
     def get_mr(self, mr_iid: int) -> dict:
         """Get MR details."""

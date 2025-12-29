@@ -9,6 +9,9 @@ Main coordinator for GitLab automation workflows:
 
 from __future__ import annotations
 
+import json
+import traceback
+import urllib.error
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -250,9 +253,52 @@ class GitLabOrchestrator:
 
             return result
 
-        except Exception as e:
-            import traceback
+        except urllib.error.HTTPError as e:
+            error_msg = f"GitLab API error {e.code}"
+            if e.code == 401:
+                error_msg = "GitLab authentication failed. Check your token."
+            elif e.code == 403:
+                error_msg = "GitLab access forbidden. Check your permissions."
+            elif e.code == 404:
+                error_msg = f"MR !{mr_iid} not found in GitLab."
+            elif e.code == 429:
+                error_msg = "GitLab rate limit exceeded. Please try again later."
+            print(f"[GitLab] Review failed for !{mr_iid}: {error_msg}", flush=True)
+            result = MRReviewResult(
+                mr_iid=mr_iid,
+                project=self.config.project,
+                success=False,
+                error=error_msg,
+            )
+            result.save(self.gitlab_dir)
+            return result
 
+        except json.JSONDecodeError as e:
+            error_msg = f"Invalid JSON response from GitLab: {e}"
+            print(f"[GitLab] Review failed for !{mr_iid}: {error_msg}", flush=True)
+            result = MRReviewResult(
+                mr_iid=mr_iid,
+                project=self.config.project,
+                success=False,
+                error=error_msg,
+            )
+            result.save(self.gitlab_dir)
+            return result
+
+        except OSError as e:
+            error_msg = f"File system error: {e}"
+            print(f"[GitLab] Review failed for !{mr_iid}: {error_msg}", flush=True)
+            result = MRReviewResult(
+                mr_iid=mr_iid,
+                project=self.config.project,
+                success=False,
+                error=error_msg,
+            )
+            result.save(self.gitlab_dir)
+            return result
+
+        except Exception as e:
+            # Catch-all for unexpected errors, with full traceback for debugging
             error_details = f"{type(e).__name__}: {e}"
             full_traceback = traceback.format_exc()
             print(f"[GitLab] Review failed for !{mr_iid}: {error_details}", flush=True)
@@ -402,12 +448,58 @@ class GitLabOrchestrator:
 
             return result
 
-        except Exception as e:
+        except urllib.error.HTTPError as e:
+            error_msg = f"GitLab API error {e.code}"
+            if e.code == 401:
+                error_msg = "GitLab authentication failed. Check your token."
+            elif e.code == 403:
+                error_msg = "GitLab access forbidden. Check your permissions."
+            elif e.code == 404:
+                error_msg = f"MR !{mr_iid} not found in GitLab."
+            elif e.code == 429:
+                error_msg = "GitLab rate limit exceeded. Please try again later."
+            print(
+                f"[GitLab] Follow-up review failed for !{mr_iid}: {error_msg}",
+                flush=True,
+            )
             result = MRReviewResult(
                 mr_iid=mr_iid,
                 project=self.config.project,
                 success=False,
-                error=str(e),
+                error=error_msg,
+                is_followup_review=True,
+            )
+            result.save(self.gitlab_dir)
+            return result
+
+        except json.JSONDecodeError as e:
+            error_msg = f"Invalid JSON response from GitLab: {e}"
+            print(
+                f"[GitLab] Follow-up review failed for !{mr_iid}: {error_msg}",
+                flush=True,
+            )
+            result = MRReviewResult(
+                mr_iid=mr_iid,
+                project=self.config.project,
+                success=False,
+                error=error_msg,
+                is_followup_review=True,
+            )
+            result.save(self.gitlab_dir)
+            return result
+
+        except Exception as e:
+            # Catch-all for unexpected errors
+            error_details = f"{type(e).__name__}: {e}"
+            print(
+                f"[GitLab] Follow-up review failed for !{mr_iid}: {error_details}",
+                flush=True,
+            )
+            result = MRReviewResult(
+                mr_iid=mr_iid,
+                project=self.config.project,
+                success=False,
+                error=error_details,
                 is_followup_review=True,
             )
             result.save(self.gitlab_dir)

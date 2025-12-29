@@ -35,6 +35,8 @@ function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
   try {
     const parsedUrl = new URL(rawUrl);
     const expectedHost = new URL(instanceUrl).host;
+    // Validate protocol is HTTPS for security
+    if (parsedUrl.protocol !== 'https:') return '';
     if (parsedUrl.host !== expectedHost) return '';
     return parsedUrl.toString();
   } catch {
