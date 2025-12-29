@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import type { Task, TaskStatus, SubtaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft, ImageAttachment } from '../../shared/types';
-import { debugLog } from '../../shared/utils/debug-logger';
-import { isTerminalPhase } from '../../shared/constants/phase-protocol';
+import type { Task, TaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft } from '../../shared/types';
+import { useProjectStore } from './project-store';
 
 interface TaskState {
   tasks: Task[];
@@ -467,6 +466,38 @@ export async function createTask(
  * Start a task
  */
 export function startTask(taskId: string, options?: { parallel?: boolean; workers?: number }): void {
+  const store = useTaskStore.getState();
+  const task = store.tasks.find((t) => t.id === taskId || t.specId === taskId);
+
+  if (!task) {
+    console.error('[startTask] Task not found:', taskId);
+    return;
+  }
+
+  // ============================================
+  // QUEUE SYSTEM: Enforce parallel task limit
+  // ============================================
+  // Get project settings to check maxParallelTasks
+  const projectId = task.projectId;
+  if (projectId) {
+    const projectStore = useProjectStore.getState();
+    const project = projectStore.projects.find((p) => p.id === projectId);
+    const maxParallelTasks = project?.settings.maxParallelTasks ?? 3;
+
+    // Count current in-progress tasks (excluding archived)
+    const inProgressCount = store.tasks.filter((t) =>
+      t.status === 'in_progress' && !t.metadata?.archivedAt
+    ).length;
+
+    // If limit reached, move to queue instead of starting immediately
+    if (inProgressCount >= maxParallelTasks) {
+      console.log(`[Queue] In Progress full (${inProgressCount}/${maxParallelTasks}), moving task to Queue`);
+      // Move to queue - it will auto-promote when a slot opens
+      persistTaskStatus(taskId, 'queue');
+      return;
+    }
+  }
+
   window.electronAPI.startTask(taskId, options);
 }
 

@@ -109,135 +109,16 @@
       "qa": "QA"
     }
   },
-  "files": {
-    "title": "Fichiers",
-    "tab": "Fichiers",
-    "noSpecPath": "Aucun fichier de spécification disponible",
-    "noFiles": "Aucun fichier trouvé",
-    "loading": "Chargement des fichiers...",
-    "loadingContent": "Chargement du contenu...",
-    "errorLoading": "Échec du chargement des fichiers",
-    "errorLoadingContent": "Échec du chargement du contenu du fichier",
-    "retry": "Réessayer",
-    "selectFile": "Sélectionnez un fichier pour voir son contenu",
-    "openInIDE": "Ouvrir dans l'IDE"
-  },
-  "metadata": {
-    "severity": "sévérité",
-    "pullRequest": "Pull Request"
-  },
-  "images": {
-    "removeImageAriaLabel": "Supprimer l'image {{filename}}",
-    "pasteHint": "Astuce : Collez des captures d'écran directement avec {{shortcut}} pour ajouter des images de référence."
-  },
-  "notifications": {
-    "backgroundTaskTitle": "La tâche continue en arrière-plan",
-    "backgroundTaskDescription": "La tâche est toujours en cours. Vous pouvez rouvrir cette boîte de dialogue pour suivre la progression."
-  },
-  "wizard": {
-    "createTitle": "Créer une nouvelle tâche",
-    "createDescription": "Décrivez ce que vous voulez construire. L'IA analysera votre demande et créera une spécification détaillée.",
-    "descriptionPlaceholder": "Décrivez la fonctionnalité, la correction de bug ou l'amélioration que vous souhaitez implémenter. Soyez aussi précis que possible sur les exigences, les contraintes et le comportement attendu. Tapez @ pour référencer des fichiers.",
-    "draftRestored": "Brouillon restauré",
-    "startFresh": "Recommencer",
-    "hideFiles": "Masquer les fichiers",
-    "browseFiles": "Parcourir les fichiers",
-    "creating": "Création...",
-    "createTask": "Créer la tâche",
-    "worktreeNotice": {
-      "title": "Espace de travail isolé",
-      "description": "Cette tâche s'exécute dans un worktree git isolé. Votre branche principale reste protégée jusqu'à ce que vous choisissiez de fusionner."
-    },
-    "gitOptions": {
-      "title": "Options Git (optionnel)",
-      "baseBranchLabel": "Branche de base (optionnel)",
-      "useProjectDefault": "Utiliser la branche par défaut du projet",
-      "useProjectDefaultWithBranch": "Utiliser la branche par défaut du projet ({{branch}})",
-      "helpText": "Remplacez la branche à partir de laquelle le worktree de cette tâche sera créé. Laissez vide pour utiliser la branche par défaut configurée du projet.",
-      "useWorktreeLabel": "Utiliser un espace de travail isolé (recommandé)",
-      "useWorktreeDescription": "Crée les changements dans un worktree git séparé pour une révision sécurisée avant la fusion. Désactivez pour travailler directement dans votre projet (plus rapide mais risqué)."
-    },
-    "errors": {
-      "createFailed": "Échec de la création de la tâche. Veuillez réessayer."
+  "queue": {
+    "limitReached": "Tâche mise en file d'attente. Limite de tâches parallèles atteinte ({{count}}). Démarrera automatiquement quand un emplacement se libère.",
+    "movedToQueue": "Tâche déplacée vers la file d'attente ({{current}}/{{max}} tâches en cours)",
+    "autoPromoted": "Tâche automatiquement promue de la file d'attente vers En cours",
+    "capacityAvailable": "{{available}} emplacement(s) disponible(s)",
+    "settings": {
+      "title": "Paramètres de la file d'attente",
+      "maxParallel": "Tâches parallèles maximales",
+      "description": "Définir le nombre maximum de tâches pouvant s'exécuter en parallèle",
+      "save": "Enregistrer les paramètres"
     }
-  },
-  "feedback": {
-    "dragDropHint": "Glissez-déposez des images ou collez des captures d'écran",
-    "imageAdded": "Image ajoutée avec succès",
-    "maxImagesError": "Maximum de {{count}} images autorisées",
-    "invalidTypeError": "Type d'image invalide. Autorisés : {{types}}",
-    "removeImage": "Supprimer l'image",
-    "processingError": "Échec du traitement de l'image"
-  },
-  "review": {
-    "mergeTooltip": "Fusionne les changements de la branche worktree de la tâche vers votre branche de base. L'IA résoudra les conflits éventuels. Vous pourrez ensuite choisir de conserver ou de supprimer le worktree."
-  },
-  "edit": {
-    "title": "Modifier la tâche",
-    "description": "Mettez à jour les détails de la tâche, y compris le titre, la description, la classification, les images et les paramètres. Les modifications seront enregistrées dans les fichiers de spécification.",
-    "saveChanges": "Enregistrer les modifications",
-    "errors": {
-      "updateFailed": "Échec de la mise à jour de la tâche. Veuillez réessayer."
-    }
-  },
-  "form": {
-    "description": "Description",
-    "descriptionPlaceholder": "Décrivez la fonctionnalité, la correction de bug ou l'amélioration que vous souhaitez implémenter. Soyez aussi précis que possible sur les exigences, les contraintes et le comportement attendu.",
-    "imageAddedSuccess": "Image ajoutée avec succès !",
-    "taskTitle": "Titre de la tâche",
-    "titlePlaceholder": "Laissez vide pour générer automatiquement à partir de la description",
-    "titleHelpText": "Un titre court et descriptif sera généré automatiquement s'il est laissé vide.",
-    "classificationOptional": "Classification (optionnel)",
-    "requireReviewLabel": "Exiger une révision humaine avant le codage",
-    "requireReviewDescription": "Lorsque activé, vous serez invité à réviser la spécification et le plan d'implémentation avant le début de la phase de codage. Cela vous permet d'approuver, de demander des modifications ou de fournir des commentaires.",
-    "errors": {
-      "descriptionRequired": "Veuillez fournir une description",
-      "maxImagesReached": "Maximum de 5 images autorisé",
-      "invalidImageType": "Type d'image non valide. Autorisés : PNG, JPEG, GIF, WebP",
-      "processPasteFailed": "Échec du traitement de l'image collée",
-      "processDropFailed": "Échec du traitement de l'image déposée"
-    },
-    "classification": {
-      "category": "Catégorie",
-      "selectCategory": "Sélectionner une catégorie",
-      "priority": "Priorité",
-      "selectPriority": "Sélectionner une priorité",
-      "complexity": "Complexité",
-      "selectComplexity": "Sélectionner une complexité",
-      "impact": "Impact",
-      "selectImpact": "Sélectionner un impact",
-      "helpText": "Ces étiquettes aident à organiser et à prioriser les tâches. Elles sont optionnelles mais utiles pour le filtrage.",
-      "values": {
-        "category": {
-          "feature": "Fonctionnalité",
-          "bug_fix": "Correction de bug",
-          "refactoring": "Refactoring",
-          "documentation": "Documentation",
-          "security": "Sécurité"
-        },
-        "priority": {
-          "low": "Basse",
-          "medium": "Moyenne",
-          "high": "Haute",
-          "urgent": "Urgente"
-        },
-        "complexity": {
-          "trivial": "Triviale",
-          "small": "Petite",
-          "medium": "Moyenne",
-          "large": "Grande",
-          "complex": "Complexe"
-        },
-        "impact": {
-          "low": "Impact faible",
-          "medium": "Impact moyen",
-          "high": "Impact élevé",
-          "critical": "Impact critique"
-        }
-      }
-    }
-  },
-  "subtasks": {
-    "untitled": "Sous-tâche sans titre"
   }
 }
