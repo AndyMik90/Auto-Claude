@@ -52,6 +52,10 @@ function sanitizeToken(value: string | undefined): string | null {
   return trimmed.length > 512 ? trimmed.substring(0, 512) : trimmed;
 }
 
+// Max length for project references (group/project paths)
+// GitLab limits project paths to 255 chars, using 1024 as defense-in-depth
+const MAX_PROJECT_REF_LENGTH = 1024;
+
 function sanitizeProjectRef(value: string | undefined): string | null {
   if (!value) return null;
   let sanitized = '';
@@ -63,7 +67,10 @@ function sanitizeProjectRef(value: string | undefined): string | null {
     sanitized += value[i];
   }
   const trimmed = sanitized.trim();
-  return trimmed ? trimmed : null;
+  if (!trimmed) return null;
+  // Reject excessively long inputs as defense-in-depth
+  if (trimmed.length > MAX_PROJECT_REF_LENGTH) return null;
+  return trimmed;
 }
 
 /**
