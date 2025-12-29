@@ -29,7 +29,7 @@ Subject to the terms and conditions of this Agreement, You hereby grant to the P
 
 You understand and agree that the Project Owner may, in the future, license the Project, including Your Contributions, under additional licenses beyond the current GNU Affero General Public License version 3.0 (AGPL-3.0). Such additional licenses may include commercial or enterprise licenses.
 
-This provision ensures the Project has proper licensing flexibility should such licensing options be introduced in the future. The open source version of the Project will continue to be available under AGPL-3.0.
+This provision ensures the Project has proper licensing flexibility should such licensing options be introduced in the future. The open-source version of the Project will continue to be available under AGPL-3.0.
 
 ## 5. Representations
 
