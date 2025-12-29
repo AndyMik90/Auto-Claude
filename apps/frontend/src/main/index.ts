@@ -9,6 +9,8 @@ import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
 import { initializeAppUpdater } from './app-updater';
+import { initializeLogForwarding } from './log-forwarder';
+import { getPluginManager } from './plugin/PluginManager';
 import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import type { AppSettings } from '../shared/types';
@@ -172,6 +174,12 @@ app.whenReady().then(() => {
 
   // Initialize usage monitoring after window is created
   if (mainWindow) {
+    // Initialize log forwarding to renderer
+    initializeLogForwarding(mainWindow);
+
+    // Initialize plugin manager
+    getPluginManager();
+
     // Setup event forwarding from usage monitor to renderer
     initializeUsageMonitorForwarding(mainWindow);
 
