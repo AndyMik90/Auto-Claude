@@ -57,15 +57,11 @@ export class CSharpLspServerManager {
       throw new Error('LSP server is already running');
     }
 
-    // Validate workspace root
-    if (!existsSync(workspaceRoot)) {
-      throw new Error('Workspace root does not exist');
-    }
-
-    this.workspaceRoot = realpathSync(workspaceRoot);
-    this.status = 'starting';
-
     try {
+      // Resolve workspace root to canonical path
+      // realpathSync will throw ENOENT if workspace root doesn't exist
+      this.workspaceRoot = realpathSync(workspaceRoot);
+      this.status = 'starting';
       // Find OmniSharp server binary
       const omnisharpPath = this.findOmniSharpPath();
       if (!omnisharpPath) {

@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { existsSync, realpathSync } from 'fs';
+import { realpathSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult } from '../../shared/types';
@@ -17,12 +17,8 @@ function validateWorkspacePath(
   relPath: string
 ): { valid: boolean; absPath?: string; error?: string } {
   try {
-    // Check if workspace root exists before calling realpathSync
-    if (!existsSync(workspaceRoot)) {
-      return { valid: false, error: 'Workspace root does not exist' };
-    }
-
     // Resolve workspace root to canonical path
+    // realpathSync will throw ENOENT if workspace root doesn't exist
     const workspaceRootResolved = realpathSync(workspaceRoot);
 
     // Resolve the target path
