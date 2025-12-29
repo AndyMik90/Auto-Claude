@@ -101,22 +101,29 @@ export function CodeEditor({ projectId }: CodeEditorProps) {
   // Save recent files to project settings
   const saveRecentFiles = useCallback(async (files: string[]) => {
     if (!selectedProject) return;
-    try {
-      await window.electronAPI.updateProjectSettings(projectId, {
-        codeEditorRecentFiles: files
-      });
-    } catch (error) {
-      console.error('Failed to save recent files:', error);
-    }
+    await window.electronAPI.updateProjectSettings(projectId, {
+      codeEditorRecentFiles: files
+    });
   }, [projectId, selectedProject]);
 
   // Update recent files when a file is opened
-  const addToRecentFiles = useCallback((relPath: string) => {
+  const addToRecentFiles = useCallback(async (relPath: string) => {
+    let previousRecents: string[] = [];
+    let newRecents: string[] = [];
+
     setRecentFiles(prev => {
-      const newRecents = [relPath, ...prev.filter(f => f !== relPath)].slice(0, 30);
-      saveRecentFiles(newRecents);
+      previousRecents = prev;
+      newRecents = [relPath, ...prev.filter(f => f !== relPath)].slice(0, 30);
       return newRecents;
     });
+
+    try {
+      await saveRecentFiles(newRecents);
+    } catch (error) {
+      console.error('Failed to save recent files:', error);
+      // Revert UI state to keep it consistent with persisted settings
+      setRecentFiles(previousRecents);
+    }
   }, [saveRecentFiles]);
 
   // Load directory contents
