@@ -84,5 +84,17 @@
       "code": "Code",
       "qa": "QA"
     }
+  },
+  "queue": {
+    "limitReached": "Task queued. Maximum parallel tasks limit reached ({{count}}). Will start automatically when a slot opens.",
+    "movedToQueue": "Task moved to Queue ({{current}}/{{max}} tasks running)",
+    "autoPromoted": "Task automatically promoted from Queue to In Progress",
+    "capacityAvailable": "{{available}} slot(s) available",
+    "settings": {
+      "title": "Queue Settings",
+      "maxParallel": "Maximum Parallel Tasks",
+      "description": "Set the maximum number of tasks that can run in parallel",
+      "save": "Save Settings"
+    }
   }
 }

@@ -84,5 +84,17 @@
       "code": "Code",
       "qa": "QA"
     }
+  },
+  "queue": {
+    "limitReached": "Tâche mise en file d'attente. Limite de tâches parallèles atteinte ({{count}}). Démarrera automatiquement quand un emplacement se libère.",
+    "movedToQueue": "Tâche déplacée vers la file d'attente ({{current}}/{{max}} tâches en cours)",
+    "autoPromoted": "Tâche automatiquement promue de la file d'attente vers En cours",
+    "capacityAvailable": "{{available}} emplacement(s) disponible(s)",
+    "settings": {
+      "title": "Paramètres de la file d'attente",
+      "maxParallel": "Tâches parallèles maximales",
+      "description": "Définir le nombre maximum de tâches pouvant s'exécuter en parallèle",
+      "save": "Enregistrer les paramètres"
+    }
   }
 }

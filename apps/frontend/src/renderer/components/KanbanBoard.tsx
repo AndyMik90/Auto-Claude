@@ -28,7 +28,7 @@ import { SortableTaskCard } from './SortableTaskCard';
 import { QueueSettingsModal } from './QueueSettingsModal';
 import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
 import { cn } from '../lib/utils';
-import { persistTaskStatus, archiveTasks } from '../stores/task-store';
+import { persistTaskStatus, archiveTasks, useTaskStore } from '../stores/task-store';
 import { updateProjectSettings } from '../stores/project-store';
 import { useProjectStore } from '../stores/project-store';
 import type { Task, TaskStatus } from '../../shared/types';
@@ -47,6 +47,7 @@ interface DroppableColumnProps {
   onAddClick?: () => void;
   onArchiveAll?: () => void;
   onQueueSettings?: () => void;
+  maxParallelTasks?: number;
 }
 
 // Empty state content for each column
@@ -96,13 +97,16 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArchiveAll, onQueueSettings }: DroppableColumnProps) {
+function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArchiveAll, onQueueSettings, maxParallelTasks }: DroppableColumnProps) {
   const { t } = useTranslation('tasks');
   const { setNodeRef } = useDroppable({
     id: status
   });
 
   const taskIds = tasks.map((t) => t.id);
+
+  // Check if In Progress column is at capacity
+  const isInProgressFull = status === 'in_progress' && maxParallelTasks && tasks.length >= maxParallelTasks;
 
   const getColumnBorderColor = (): string => {
     switch (status) {
@@ -141,9 +145,18 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
           <h2 className="font-semibold text-sm text-foreground">
             {TASK_STATUS_LABELS[status]}
           </h2>
-          <span className="column-count-badge">
-            {tasks.length}
-          </span>
+          {status === 'in_progress' && maxParallelTasks ? (
+            <span className={cn(
+              "column-count-badge",
+              isInProgressFull && "bg-warning/20 text-warning border-warning/30"
+            )}>
+              {tasks.length}/{maxParallelTasks}
+            </span>
+          ) : (
+            <span className="column-count-badge">
+              {tasks.length}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {status === 'backlog' && onAddClick && (
@@ -362,7 +375,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
     setOverColumnId(null);
@@ -372,26 +385,80 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
     const activeTaskId = active.id as string;
     const overId = over.id as string;
 
+    // Determine target status
+    let newStatus: TaskStatus | null = null;
+
     // Check if dropped on a column
     if (TASK_STATUS_COLUMNS.includes(overId as TaskStatus)) {
-      const newStatus = overId as TaskStatus;
-      const task = tasks.find((t) => t.id === activeTaskId);
-
-      if (task && task.status !== newStatus) {
-        // Persist status change to file and update local state
-        persistTaskStatus(activeTaskId, newStatus);
+      newStatus = overId as TaskStatus;
+    } else {
+      // Check if dropped on another task - move to that task's column
+      const overTask = tasks.find((t) => t.id === overId);
+      if (overTask) {
+        newStatus = overTask.status;
       }
-      return;
     }
 
-    // Check if dropped on another task - move to that task's column
-    const overTask = tasks.find((t) => t.id === overId);
-    if (overTask) {
-      const task = tasks.find((t) => t.id === activeTaskId);
-      if (task && task.status !== overTask.status) {
-        // Persist status change to file and update local state
-        persistTaskStatus(activeTaskId, overTask.status);
+    if (!newStatus) return;
+
+    const task = tasks.find((t) => t.id === activeTaskId);
+    if (!task || task.status === newStatus) return;
+
+    const oldStatus = task.status;
+
+    // ============================================
+    // QUEUE SYSTEM: Enforce parallel task limit
+    // ============================================
+    if (newStatus === 'in_progress') {
+      // Get CURRENT state from store directly to avoid stale prop/memo issues during rapid dragging
+      const currentTasks = useTaskStore.getState().tasks;
+      const inProgressCount = currentTasks.filter((t) =>
+        t.status === 'in_progress' && !t.metadata?.archivedAt
+      ).length;
+
+      // If limit reached, move to queue instead (unless already coming from queue)
+      if (inProgressCount >= maxParallelTasks && oldStatus !== 'queue') {
+        console.log(`[Queue] In Progress full (${inProgressCount}/${maxParallelTasks}), moving task to Queue`);
+        newStatus = 'queue';
       }
+    }
+
+    // Persist status change to file and update local state
+    await persistTaskStatus(activeTaskId, newStatus);
+
+    // ============================================
+    // QUEUE SYSTEM: Auto-process queue when slot opens
+    // ============================================
+    if (oldStatus === 'in_progress' && newStatus !== 'in_progress') {
+      // A task left In Progress - check if we can promote from queue
+      await processQueue();
+    }
+  };
+
+  /**
+   * Automatically move the next task from Queue to In Progress if capacity allows
+   */
+  const processQueue = async () => {
+    // Get CURRENT state from store to ensure accuracy
+    const currentTasks = useTaskStore.getState().tasks;
+    const inProgressCount = currentTasks.filter((t) =>
+      t.status === 'in_progress' && !t.metadata?.archivedAt
+    ).length;
+    const queuedTasks = currentTasks.filter((t) =>
+      t.status === 'queue' && !t.metadata?.archivedAt
+    );
+
+    // Check if we have capacity and queued tasks
+    if (inProgressCount < maxParallelTasks && queuedTasks.length > 0) {
+      // Get the oldest task in queue (FIFO ordering)
+      const nextTask = queuedTasks.sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateA - dateB; // Ascending order (oldest first)
+      })[0];
+
+      console.log(`[Queue] Auto-promoting task ${nextTask.id} from Queue to In Progress`);
+      await persistTaskStatus(nextTask.id, 'in_progress');
     }
   };
 
@@ -439,6 +506,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
               onQueueSettings={status === 'queue' ? () => setShowQueueSettings(true) : undefined}
               onArchiveAll={status === 'done' ? handleArchiveAll : undefined}
+              maxParallelTasks={status === 'in_progress' ? maxParallelTasks : undefined}
             />
           ))}
         </div>
