@@ -24,6 +24,8 @@ export interface ProjectSettings {
   graphitiMcpUrl?: string;
   /** Main branch name for worktree creation (default: auto-detected or 'main') */
   mainBranch?: string;
+  /** Include CLAUDE.md instructions in agent system prompt (default: true) */
+  useClaudeMd?: boolean;
 }
 
 export interface NotificationSettings {
@@ -50,7 +52,7 @@ export interface ServiceInfo {
   path: string;
   language?: string;
   framework?: string;
-  type?: 'backend' | 'frontend' | 'worker' | 'scraper' | 'library' | 'proxy' | 'unknown';
+  type?: 'backend' | 'frontend' | 'worker' | 'scraper' | 'library' | 'proxy' | 'mobile' | 'desktop' | 'unknown';
   package_manager?: string;
   default_port?: number;
   entry_point?: string;
@@ -65,6 +67,9 @@ export interface ServiceInfo {
   styling?: string;
   state_management?: string;
   build_tool?: string;
+  // iOS/Swift specific
+  apple_frameworks?: string[];
+  spm_dependencies?: string[];
   dockerfile?: string;
   consumes?: string[];
   environment?: {
