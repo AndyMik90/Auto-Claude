@@ -151,6 +151,8 @@ function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
     const expectedHost = new URL(instanceUrl).host;
     if (parsedUrl.host !== expectedHost) return '';
     if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') return '';
+    // Reject URLs with embedded credentials (security risk)
+    if (parsedUrl.username || parsedUrl.password) return '';
     return parsedUrl.toString();
   } catch {
     return '';

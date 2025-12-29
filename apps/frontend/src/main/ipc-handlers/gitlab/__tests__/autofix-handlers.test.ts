@@ -15,6 +15,8 @@ function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
     const expectedHost = new URL(instanceUrl).host;
     // Validate protocol is HTTPS for security
     if (parsedUrl.protocol !== 'https:') return '';
+    // Reject URLs with embedded credentials (security risk)
+    if (parsedUrl.username || parsedUrl.password) return '';
     if (parsedUrl.host !== expectedHost) return '';
     return parsedUrl.toString();
   } catch {
@@ -88,14 +90,14 @@ describe('GitLab AutoFix Handlers', () => {
     });
 
     it('should reject URLs with authentication credentials', () => {
-      // URL with username:password should be rejected due to different host parsing
+      // URL with username:password should be rejected for security
       const url = 'https://user:pass@gitlab.com/test/project/-/issues/42';
-      // This will parse with username/password but host should still match
-      // The security concern is the credentials, but our function only checks host
-      // For extra security, we could add credential checking
-      const result = sanitizeIssueUrl(url, instanceUrl);
-      // Current implementation accepts this - could be improved
-      expect(typeof result).toBe('string');
+      expect(sanitizeIssueUrl(url, instanceUrl)).toBe('');
+    });
+
+    it('should reject URLs with only username', () => {
+      const url = 'https://user@gitlab.com/test/project/-/issues/42';
+      expect(sanitizeIssueUrl(url, instanceUrl)).toBe('');
     });
   });
 });

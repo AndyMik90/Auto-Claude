@@ -37,6 +37,8 @@ function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
     const expectedHost = new URL(instanceUrl).host;
     // Validate protocol is HTTPS for security
     if (parsedUrl.protocol !== 'https:') return '';
+    // Reject URLs with embedded credentials (security risk)
+    if (parsedUrl.username || parsedUrl.password) return '';
     if (parsedUrl.host !== expectedHost) return '';
     return parsedUrl.toString();
   } catch {
