@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto-Claude Documentation</title>
+  <meta name="description" content="Comprehensive technical documentation for the Auto-Claude project - Electron + Python agent system">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/themes/vue.css">
+  <style>
+    /* Custom styling for better documentation experience */
+    :root {
+      --theme-color: #42b983;
+      --sidebar-width: 280px;
+    }
+
+    /* Improve code block readability */
+    .markdown-section pre {
+      background-color: #f8f8f8;
+      border-radius: 4px;
+    }
+
+    /* Mermaid diagram centering */
+    .mermaid {
+      text-align: center;
+      margin: 1em 0;
+    }
+
+    /* Better heading spacing */
+    .markdown-section h2 {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">Loading documentation...</div>
+  <script>
+    window.$docsify = {
+      name: 'Auto-Claude',
+      repo: 'https://github.com/AndyMik90/Auto-Claude',
+      loadSidebar: true,
+      subMaxLevel: 3,
+      auto2top: true,
+      coverpage: false,
+      maxLevel: 4,
+      search: {
+        placeholder: 'Search documentation',
+        noData: 'No results found',
+        depth: 3,
+        hideOtherSidebarContent: true
+      },
+      // Mermaid diagram configuration
+      markdown: {
+        renderer: {
+          code: function(code, lang) {
+            if (lang === 'mermaid') {
+              return '<div class="mermaid">' + code + '</div>';
+            }
+            return this.origin.code.apply(this, arguments);
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Docsify core -->
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
+  <!-- Search plugin (required for search config) -->
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <!-- Copy code plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2"></script>
+  <!-- Mermaid diagram support - initialize before docsify-mermaid plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true
+      }
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-mermaid@2.0.0/dist/docsify-mermaid.min.js"></script>
+</body>
+</html>

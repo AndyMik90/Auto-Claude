@@ -161,5 +161,5 @@ dev/
 _bmad/
 _bmad-output/
 .claude/
-/docs
+# NOTE: /docs was previously ignored but is now tracked for project documentation
 OPUS_ANALYSIS_AND_IDEAS.md
