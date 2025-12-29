@@ -67,7 +67,7 @@ export function registerCheckGlabCli(): void {
         }
         debugLog('glab CLI found at:', glabPath);
 
-        const versionOutput = execSync('glab --version', {
+        const versionOutput = execFileSync('glab', ['--version'], {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -394,7 +394,7 @@ export function registerDetectGitLabProject(): void {
     async (_event, projectPath: string): Promise<IPCResult<{ project: string; instanceUrl: string }>> => {
       debugLog('detectGitLabProject handler called', { projectPath });
       try {
-        const remoteUrl = execSync('git remote get-url origin', {
+        const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'], {
           encoding: 'utf-8',
           cwd: projectPath,
           stdio: 'pipe',
@@ -593,13 +593,13 @@ export function registerAddGitLabRemote(): void {
       try {
         // Check if origin exists
         try {
-          execSync('git remote get-url origin', {
+          execFileSync('git', ['remote', 'get-url', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: 'pipe'
           });
           // Remove existing origin
-          execSync('git remote remove origin', {
+          execFileSync('git', ['remote', 'remove', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: 'pipe'
@@ -675,8 +675,8 @@ export function registerListGitLabGroups(): void {
       } catch (error) {
         debugLog('Failed to list groups:', error instanceof Error ? error.message : error);
         return {
-          success: true,
-          data: { groups: [] }
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to list groups'
         };
       }
     }

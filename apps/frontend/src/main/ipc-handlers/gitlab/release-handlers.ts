@@ -58,7 +58,7 @@ export function registerCreateRelease(): void {
         const releaseBody: Record<string, unknown> = {
           tag_name: tagName,
           description: options?.description || releaseNotes,
-          ref: options?.ref || 'main'
+          ref: options?.ref || project.settings.mainBranch || 'main'
         };
 
         if (options?.milestones && Array.isArray(options.milestones)) {

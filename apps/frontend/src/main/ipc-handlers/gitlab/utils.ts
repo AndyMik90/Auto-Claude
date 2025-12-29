@@ -3,7 +3,7 @@
  */
 
 import { readFile, access } from 'fs/promises';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import path from 'path';
 import type { Project } from '../../../shared/types';
 import { parseEnvFile } from '../utils';
@@ -85,7 +85,7 @@ function getTokenFromGlabCli(instanceUrl?: string): string | null {
       }
     }
 
-    const token = execSync(`glab ${args.join(' ')}`, {
+    const token = execFileSync('glab', args, {
       encoding: 'utf-8',
       stdio: 'pipe',
       env: getAugmentedEnv()
@@ -346,7 +346,7 @@ export async function getProjectIdFromPath(
  */
 export function detectGitLabProjectFromRemote(projectPath: string): { project: string; instanceUrl: string } | null {
   try {
-    const remoteUrl = execSync('git remote get-url origin', {
+    const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'], {
       cwd: projectPath,
       encoding: 'utf-8',
       stdio: 'pipe',

@@ -144,18 +144,11 @@ export function InvestigationDialog({
                 <ScrollArea className="flex-1 min-h-0 border rounded-md">
                   <div className="p-2 space-y-2">
                     {notes.map((note) => (
-                      <div
+                      <button
+                        type="button"
                         key={note.id}
-                        role="button"
-                        tabIndex={0}
-                        className="flex gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                        className="flex gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors cursor-pointer w-full text-left"
                         onClick={() => toggleNote(note.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            toggleNote(note.id);
-                          }
-                        }}
                       >
                         <Checkbox
                           checked={selectedNoteIds.includes(note.id)}
@@ -172,7 +165,7 @@ export function InvestigationDialog({
                             {note.body}
                           </p>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </ScrollArea>
