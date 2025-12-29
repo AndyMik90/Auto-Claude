@@ -26,5 +26,26 @@ export const fileMock = {
 
   codeEditorWriteFile: async () => ({
     success: true
+  }),
+
+  codeEditorSearchText: async (_workspaceRoot: string, query: string) => ({
+    success: true,
+    data: [
+      {
+        relPath: 'src/example.ts',
+        matches: [
+          {
+            line: 10,
+            column: 5,
+            preview: `  const result = ${query}();`
+          },
+          {
+            line: 25,
+            column: 12,
+            preview: `  // TODO: ${query} implementation`
+          }
+        ]
+      }
+    ]
   })
 };
