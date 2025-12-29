@@ -1,6 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
 import { BrowserWindow } from 'electron';
-import { realpathSync, existsSync, readdirSync } from 'fs';
+import { realpathSync, readdirSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type {
@@ -321,25 +321,20 @@ export class CSharpLspServerManager {
 
   private findOmniSharpPath(): string | null {
     // Check environment variable
-    if (process.env.OMNISHARP_PATH && existsSync(process.env.OMNISHARP_PATH)) {
+    if (process.env.OMNISHARP_PATH) {
       return process.env.OMNISHARP_PATH;
     }
 
-    // Try common installation paths
-    const commonPaths = [
-      '/usr/local/bin/omnisharp',
-      '/usr/bin/omnisharp',
-      'C:\\Program Files\\OmniSharp\\OmniSharp.exe',
-      path.join(process.env.HOME || '', '.omnisharp', 'OmniSharp.exe')
-    ];
-
-    for (const p of commonPaths) {
-      if (existsSync(p)) {
-        return p;
-      }
+    // Return platform-specific default path
+    // Note: We don't check file existence here to avoid TOCTOU race conditions.
+    // The spawn process will fail gracefully if the executable doesn't exist.
+    if (process.platform === 'win32') {
+      return 'C:\\Program Files\\OmniSharp\\OmniSharp.exe';
+    } else {
+      // Unix-like systems (Linux, macOS)
+      // Default to /usr/local/bin, which is the common installation location
+      return '/usr/local/bin/omnisharp';
     }
-
-    return null;
   }
 
   private detectProject(): { solution?: string; project?: string } {
