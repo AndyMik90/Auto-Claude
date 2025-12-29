@@ -35,7 +35,9 @@
   },
   "tooltips": {
     "archiveTask": "Archive task",
-    "archiveAllDone": "Archive all done tasks"
+    "archiveAllDone": "Archive all done tasks",
+    "addTask": "Add new task",
+    "queueAll": "Move all tasks to Queue"
   },
   "creation": {
     "title": "Create New Task",
