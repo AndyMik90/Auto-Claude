@@ -417,6 +417,9 @@ export class CSharpLspServerManager {
 
   /**
    * Create a properly formatted file URI from an absolute path
+   * Following RFC 8089:
+   * - Windows: file:///C:/path (drive letter with 3 slashes total)
+   * - Unix: file:///path (absolute path starting with / results in 3 slashes total)
    */
   private createFileUri(absPath: string): string {
     // Convert to forward slashes
@@ -430,7 +433,7 @@ export class CSharpLspServerManager {
       }
     }
     
-    // For Unix-like systems: file:///path (absolute paths always start with /)
+    // For Unix-like systems: file:// + /path = file:///path (3 slashes per RFC 8089)
     return `file://${uriPath}`;
   }
 
