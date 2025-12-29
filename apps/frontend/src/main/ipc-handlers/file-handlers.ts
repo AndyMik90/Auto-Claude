@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import { readdirSync, readFileSync, writeFileSync, realpathSync, lstatSync, openSync, fstatSync, closeSync, constants, existsSync, statSync } from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, FileNode } from '../../shared/types';
 
@@ -446,6 +447,263 @@ export function registerFileHandlers(): void {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to write file'
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Code Editor Search (using ripgrep)
+  // ============================================
+
+  interface SearchMatch {
+    line: number;
+    column: number;
+    preview: string;
+  }
+
+  interface SearchResult {
+    relPath: string;
+    matches: SearchMatch[];
+  }
+
+  interface SearchOptions {
+    glob?: string;
+    caseSensitive?: boolean;
+    maxResults?: number;
+  }
+
+  // Search text using ripgrep (workspace-scoped)
+  ipcMain.handle(
+    IPC_CHANNELS.CODE_EDITOR_SEARCH_TEXT,
+    async (_, workspaceRoot: string, query: string, options: SearchOptions = {}): Promise<IPCResult<SearchResult[]>> => {
+      try {
+        // Validate workspace root exists
+        if (!existsSync(workspaceRoot)) {
+          return { success: false, error: 'Workspace root does not exist' };
+        }
+
+        const workspaceRootResolved = realpathSync(workspaceRoot);
+
+        // Validate query
+        if (!query || query.trim() === '') {
+          return { success: true, data: [] };
+        }
+
+        const maxResults = options.maxResults ?? 2000;
+        const caseSensitive = options.caseSensitive ?? false;
+
+        // Build ripgrep arguments
+        const args: string[] = [
+          '--json',              // Output JSON for structured parsing
+          '--max-count', '100',  // Max 100 matches per file
+        ];
+
+        if (!caseSensitive) {
+          args.push('--ignore-case');
+        }
+
+        // Add ignore patterns for common directories
+        const ignorePatterns = [
+          'node_modules/**',
+          '.git/**',
+          '.worktrees/**',
+          '__pycache__/**',
+          'dist/**',
+          'build/**',
+          'Library/**',   // Unity
+          'Temp/**',      // Unity
+          'Obj/**',       // Unity
+          'Logs/**',      // Unity
+          '.venv/**',
+          'venv/**',
+          '.cache/**',
+          'coverage/**',
+          'out/**',
+          '.turbo/**',
+        ];
+
+        ignorePatterns.forEach(pattern => {
+          args.push('--glob', `!${pattern}`);
+        });
+
+        const isSafeGlob = (pattern: string): boolean => {
+          // Basic sanity checks to avoid excessively complex or malformed patterns
+          // Limit overall length
+          if (pattern.length > 256) {
+            return false;
+          }
+
+          // Disallow control characters
+          // eslint-disable-next-line no-control-regex
+          if (/[\0-\x1F]/.test(pattern)) {
+            return false;
+          }
+
+          // Limit the total number of wildcard-like characters
+          const wildcardMatches = pattern.match(/[*?[\]]/g);
+          if (wildcardMatches && wildcardMatches.length > 50) {
+            return false;
+          }
+
+          // Limit the number of double-star segments
+          const doubleStarMatches = pattern.match(/\*\*/g);
+          if (doubleStarMatches && doubleStarMatches.length > 10) {
+            return false;
+          }
+
+          return true;
+        };
+
+        // Add user-provided glob filter if specified
+        if (options.glob) {
+          const userGlob = options.glob;
+          if (typeof userGlob === 'string' && isSafeGlob(userGlob)) {
+            args.push('--glob', userGlob);
+          }
+        }
+
+        // Add the search query
+        args.push('--', query);
+
+        // Spawn ripgrep process
+        return new Promise((resolve) => {
+          const rg = spawn('rg', args, {
+            cwd: workspaceRootResolved,
+            timeout: 10000, // 10 second timeout
+          });
+
+          const results: SearchResult[] = [];
+          const resultsByFile = new Map<string, SearchMatch[]>();
+          let totalMatches = 0;
+          const MAX_SEARCH_OUTPUT_BYTES = 5 * 1024 * 1024; // 5 MB cap per stream
+          let stdout = '';
+          let stderr = '';
+          let stdoutBytes = 0;
+          let stderrBytes = 0;
+
+          rg.stdout.on('data', (data: Buffer) => {
+            if (stdoutBytes >= MAX_SEARCH_OUTPUT_BYTES) {
+              return;
+            }
+            const remaining = MAX_SEARCH_OUTPUT_BYTES - stdoutBytes;
+            const chunk = remaining >= data.length ? data : data.subarray(0, remaining);
+            stdout += chunk.toString();
+            stdoutBytes += chunk.length;
+          });
+
+          rg.stderr.on('data', (data: Buffer) => {
+            if (stderrBytes >= MAX_SEARCH_OUTPUT_BYTES) {
+              return;
+            }
+            const remaining = MAX_SEARCH_OUTPUT_BYTES - stderrBytes;
+            const chunk = remaining >= data.length ? data : data.subarray(0, remaining);
+            stderr += chunk.toString();
+            stderrBytes += chunk.length;
+          });
+
+          rg.on('close', (code) => {
+            // rg returns 0 for matches found, 1 for no matches, 2 for error
+            if (code === 2) {
+              // Check if rg is not installed
+              if (stderr.includes('command not found') || stderr.includes('not recognized')) {
+                resolve({ success: false, error: 'ripgrep (rg) is not installed. Please install ripgrep to use search.' });
+              } else {
+                resolve({ success: false, error: `Search error: ${stderr}` });
+              }
+              return;
+            }
+
+            // Parse JSON output
+            const lines = stdout.trim().split('\n');
+            for (const line of lines) {
+              if (!line || totalMatches >= maxResults) break;
+
+              try {
+                const parsed = JSON.parse(line);
+
+                // rg --json outputs different message types
+                if (parsed.type === 'match') {
+                  const data = parsed.data;
+                  const filePath = data.path.text;
+
+                  // Validate path is within workspace
+                  const absPath = path.resolve(workspaceRootResolved, filePath);
+
+                  // Normalize paths for comparison
+                  const isCaseInsensitiveFs = process.platform === 'win32' || process.platform === 'darwin';
+                  const workspaceForCompare = isCaseInsensitiveFs
+                    ? workspaceRootResolved.toLowerCase()
+                    : workspaceRootResolved;
+                  const absPathForCompare = isCaseInsensitiveFs
+                    ? absPath.toLowerCase()
+                    : absPath;
+
+                  // Skip if path escapes workspace
+                  if (!absPathForCompare.startsWith(workspaceForCompare + path.sep) && absPathForCompare !== workspaceForCompare) {
+                    continue;
+                  }
+
+                  // Get relative path (use forward slashes for consistency)
+                  const relPath = path.relative(workspaceRootResolved, absPath).split(path.sep).join('/');
+
+                  // Extract match details
+                  const lineNumber = data.line_number;
+                  const lineText = data.lines.text.trimEnd();
+
+                  // Get column from submatch if available
+                  let column = 1;
+                  if (data.submatches && data.submatches.length > 0) {
+                    column = data.submatches[0].start + 1; // rg uses 0-based, we use 1-based
+                  }
+
+                  // Add to results
+                  if (!resultsByFile.has(relPath)) {
+                    resultsByFile.set(relPath, []);
+                  }
+
+                  resultsByFile.get(relPath)!.push({
+                    line: lineNumber,
+                    column,
+                    preview: lineText
+                  });
+
+                  totalMatches++;
+                }
+              } catch (err) {
+                // Skip malformed JSON lines
+                continue;
+              }
+            }
+
+            // Convert map to array
+            for (const [relPath, matches] of resultsByFile.entries()) {
+              results.push({
+                relPath,
+                matches
+              });
+            }
+
+            // Sort results by file path
+            results.sort((a, b) => a.relPath.localeCompare(b.relPath));
+
+            resolve({ success: true, data: results });
+          });
+
+          rg.on('error', (error) => {
+            if ((error as any).code === 'ENOENT') {
+              resolve({ success: false, error: 'ripgrep (rg) is not installed. Please install ripgrep to use search.' });
+            } else if ((error as any).code === 'ETIMEDOUT') {
+              resolve({ success: false, error: 'Search timed out. Try narrowing your search with a more specific query or glob pattern.' });
+            } else {
+              resolve({ success: false, error: error.message });
+            }
+          });
+        });
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Search failed'
         };
       }
     }
