@@ -430,8 +430,8 @@ export class CSharpLspServerManager {
       }
     }
     
-    // For Unix-like systems: file:///path (with three slashes)
-    return uriPath.startsWith('/') ? `file://${uriPath}` : `file:///${uriPath}`;
+    // For Unix-like systems: file:///path (absolute paths always start with /)
+    return `file://${uriPath}`;
   }
 
   private sendRequest(method: string, params: unknown): Promise<unknown> {

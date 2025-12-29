@@ -341,7 +341,7 @@ export function registerCSharpLspHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(
     IPC_CHANNELS.CSHARP_LSP_FORMAT_DOCUMENT,
-    async (_, relPath: string): Promise<IPCResult<unknown>> => {
+    async (_, relPath: string, _text: string): Promise<IPCResult<unknown>> => {
       try {
         if (!lspManager) {
           return { success: true, data: [] };
