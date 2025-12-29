@@ -49,7 +49,9 @@ def get_graphiti_memory(spec_dir: Path, project_dir: Path | None = None):
         return None
 
     try:
-        from graphiti_memory import GraphitiMemory
+        # Prefer the stable in-package import. Some deployments (e.g. app bundles)
+        # don't ship a top-level `graphiti_memory` shim.
+        from integrations.graphiti.memory import GraphitiMemory
 
         if project_dir is None:
             project_dir = spec_dir.parent.parent
