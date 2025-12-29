@@ -375,7 +375,7 @@ export class CSharpLspServerManager {
     // Create properly formatted file URI
     const workspaceUri = this.createFileUri(this.workspaceRoot);
 
-    const result = await this.sendRequest('initialize', {
+    await this.sendRequest('initialize', {
       processId: process.pid,
       clientInfo: {
         name: 'jungle-assistant',
