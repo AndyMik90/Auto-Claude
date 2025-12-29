@@ -99,6 +99,7 @@ class GraphitiClient:
         try:
             # Import Graphiti core
             from graphiti_core import Graphiti
+            from graphiti_core.cross_encoder.client import CrossEncoderClient
 
             # Import our provider factory
             from graphiti_providers import (
@@ -132,6 +133,20 @@ class GraphitiClient:
             except ProviderError as e:
                 logger.warning(f"Embedder provider configuration error: {e}")
                 return False
+
+            # graphiti-core defaults to OpenAI's reranker when cross_encoder=None,
+            # which hard-requires an OpenAI API key. If the user isn't using OpenAI,
+            # pass a safe no-op cross-encoder to prevent accidental OpenAI init.
+            cross_encoder = None
+            if not self.config.openai_api_key:
+                class _NoOpCrossEncoder(CrossEncoderClient):
+                    async def rank(
+                        self, query: str, passages: list[str]
+                    ) -> list[tuple[str, float]]:
+                        # Keep ordering stable; assign equal scores.
+                        return [(p, 1.0) for p in passages]
+
+                cross_encoder = _NoOpCrossEncoder()
 
             # Apply LadybugDB monkeypatch to use it via graphiti's KuzuDriver
             if not _apply_ladybug_monkeypatch():
@@ -172,20 +187,26 @@ class GraphitiClient:
                 graph_driver=self._driver,
                 llm_client=self._llm_client,
                 embedder=self._embedder,
+                cross_encoder=cross_encoder,
             )
 
-            # Build indices (first time only)
-            if not state or not state.indices_built:
-                logger.info("Building Graphiti indices and constraints...")
-                await self._graphiti.build_indices_and_constraints()
+            # Build indices and constraints.
+            #
+            # Even if our per-spec state says indices were built, the underlying DB
+            # may have been deleted/recreated (common in dev) which would make FTS
+            # indexes missing and break saves/searches with Binder errors.
+            # The operation is designed to be idempotent (or to skip "already exists"),
+            # so we run it unconditionally for robustness.
+            logger.info("Ensuring Graphiti indices and constraints exist...")
+            await self._graphiti.build_indices_and_constraints()
 
-                if state:
-                    state.indices_built = True
-                    state.initialized = True
-                    state.database = self.config.database
-                    state.created_at = datetime.now(timezone.utc).isoformat()
-                    state.llm_provider = self.config.llm_provider
-                    state.embedder_provider = self.config.embedder_provider
+            if state:
+                state.indices_built = True
+                state.initialized = True
+                state.database = self.config.database
+                state.created_at = datetime.now(timezone.utc).isoformat()
+                state.llm_provider = self.config.llm_provider
+                state.embedder_provider = self.config.embedder_provider
 
             self._initialized = True
             logger.info(
