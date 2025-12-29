@@ -88,6 +88,14 @@ export function registerAgenteventsHandlers(
 
           if (code === 0) {
             notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
+            // Ensure the UI doesn't get stuck in 'in_progress' if the final
+            // execution-progress marker ("complete") wasn't emitted or parsed
+            // before process exit.
+            mainWindow.webContents.send(
+              IPC_CHANNELS.TASK_STATUS_CHANGE,
+              taskId,
+              'human_review' as TaskStatus
+            );
           } else {
             notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
             mainWindow.webContents.send(
