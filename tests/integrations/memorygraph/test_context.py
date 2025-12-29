@@ -148,8 +148,9 @@ class TestGetContextForSubtask:
 
             context = await get_context_for_subtask(subtask, Path("/tmp"))
 
-        # Should return formatted markdown
-        assert "Prior Knowledge" in context or len(context) > 0
+        # Should return formatted markdown with memory content
+        assert "Prior Knowledge" in context
+        assert "Fixed JWT validation" in context
 
     @pytest.mark.asyncio
     async def test_handles_client_errors_gracefully(self):
@@ -163,10 +164,6 @@ class TestGetContextForSubtask:
             mock_client.recall = AsyncMock(side_effect=Exception("Connection failed"))
             mock_client_class.return_value = mock_client
 
-            # Should not raise exception
-            try:
-                _context = await get_context_for_subtask(subtask, Path("/tmp"))
-                # Might return empty or raise - both acceptable for graceful handling
-                assert _context is not None or _context is None  # Either is acceptable
-            except Exception:
-                pass  # Acceptable behavior
+            # Should return empty string on error, not raise
+            context = await get_context_for_subtask(subtask, Path("/tmp"))
+            assert context == ""

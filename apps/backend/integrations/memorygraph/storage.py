@@ -66,7 +66,7 @@ async def save_to_memorygraph(session_output: dict, project_dir: Path) -> None:
         for problem in problems:
             try:
                 # Add project tags
-                problem["tags"] = list(set(problem["tags"] + project_tags))
+                problem["tags"] = list(set(problem.get("tags", []) + project_tags))
 
                 memory_id = await client.store(
                     memory_type=problem["type"],
@@ -89,7 +89,7 @@ async def save_to_memorygraph(session_output: dict, project_dir: Path) -> None:
         for solution in solutions:
             try:
                 # Add project tags
-                solution["tags"] = list(set(solution["tags"] + project_tags))
+                solution["tags"] = list(set(solution.get("tags", []) + project_tags))
 
                 memory_id = await client.store(
                     memory_type=solution["type"],

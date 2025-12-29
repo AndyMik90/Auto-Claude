@@ -1,6 +1,7 @@
 """Tests for MemoryGraph MCP client."""
+import asyncio
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from integrations.memorygraph.client import MemoryGraphClient
@@ -405,9 +406,6 @@ Added null check"""
     @pytest.mark.asyncio
     async def test_process_cleanup_on_timeout(self):
         """Ensures process is terminated on timeout."""
-        import asyncio
-        from unittest.mock import Mock
-
         client = MemoryGraphClient(timeout=0.001)  # Very short timeout
 
         # Mock subprocess with stdin/stdout

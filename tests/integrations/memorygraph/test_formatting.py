@@ -83,7 +83,9 @@ class TestFormatContext:
         context = format_context(memories, [])
 
         # Content should be truncated (200 chars for solutions)
-        assert len(context) < len(long_content) + 200
+        # Verify truncation: 200 A's should be present, but not 201
+        assert "A" * 200 in context
+        assert "A" * 201 not in context
 
     def test_limits_number_of_solutions(self):
         """Limits to top 3 solutions."""

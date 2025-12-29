@@ -39,19 +39,28 @@ async def infer_relationships(
     # Link each solution to each problem from same session
     # This is a simple heuristic - in same session = likely related
     for solution in solutions:
+        solution_id = solution.get("id")
+        if not solution_id:
+            logger.debug(
+                f"Skipping solution without ID: {solution.get('title', 'unknown')}"
+            )
+            continue
         for problem in problems:
+            problem_id = problem.get("id")
+            if not problem_id:
+                continue
             try:
                 await client.relate(
-                    from_id=solution["id"],
-                    to_id=problem["id"],
+                    from_id=solution_id,
+                    to_id=problem_id,
                     relationship_type="SOLVES",
                 )
                 logger.debug(
-                    f"Created SOLVES relationship: {solution['id']} -> {problem['id']}"
+                    f"Created SOLVES relationship: {solution_id} -> {problem_id}"
                 )
             except Exception as e:
                 # Don't fail the entire operation if one relationship fails
                 logger.warning(
-                    f"Failed to create relationship {solution['id']} -> {problem['id']}: {e}"
+                    f"Failed to create relationship {solution_id} -> {problem_id}: {e}"
                 )
                 continue
