@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Loader2, Save, FileCode, Folder, FolderOpen, ChevronRight, ChevronDown, File, X, Search, Clock, AlertCircle } from 'lucide-react';
-import Editor, { loader } from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
-import * as monaco from 'monaco-editor';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
@@ -19,20 +18,6 @@ import {
 } from './ui/alert-dialog';
 import { useProjectStore } from '../stores/project-store';
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-
-// Import Monaco directly so Vite can bundle it properly.
-const isElectronRenderer =
-  typeof window !== 'undefined' &&
-  typeof (window as any).process === 'object' &&
-  (window as any).process?.type === 'renderer';
-
-try {
-  if (isElectronRenderer && monaco) {
-    loader.config({ monaco });
-  }
-} catch {
-  // Fallback to default loader behavior
-}
 
 interface CodeEditorProps {
   projectId: string;
