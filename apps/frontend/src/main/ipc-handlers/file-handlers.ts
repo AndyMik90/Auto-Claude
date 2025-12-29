@@ -263,9 +263,14 @@ export function registerFileHandlers(): void {
           : workspaceRootResolved;
 
         // Open file atomically - this is the ONLY check-and-use operation
-        // Using O_RDONLY | O_NOFOLLOW ensures we don't follow symlinks
+        // Using O_RDONLY | O_NOFOLLOW ensures we don't follow symlinks (Unix only)
+        // Note: O_NOFOLLOW is not supported on Windows
+        const readFlags = process.platform === 'win32'
+          ? constants.O_RDONLY
+          : constants.O_RDONLY | constants.O_NOFOLLOW;
+
         try {
-          fd = openSync(absPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+          fd = openSync(absPath, readFlags);
         } catch (err) {
           const error = err as NodeJS.ErrnoException;
           if (error.code === 'ENOENT') {
@@ -360,9 +365,14 @@ export function registerFileHandlers(): void {
           : workspaceRootResolved;
 
         // Try to open file atomically without following symlinks
+        // Note: O_NOFOLLOW is not supported on Windows, so we conditionally use it
         // First attempt: open existing file for writing
+        const openFlags = process.platform === 'win32'
+          ? constants.O_WRONLY | constants.O_TRUNC
+          : constants.O_WRONLY | constants.O_TRUNC | constants.O_NOFOLLOW;
+
         try {
-          fd = openSync(absPath, constants.O_WRONLY | constants.O_TRUNC | constants.O_NOFOLLOW);
+          fd = openSync(absPath, openFlags);
         } catch (err) {
           const error = err as NodeJS.ErrnoException;
 
@@ -370,8 +380,12 @@ export function registerFileHandlers(): void {
           if (error.code === 'ENOENT') {
             try {
               // O_CREAT | O_EXCL ensures atomic creation (fails if exists)
-              // O_NOFOLLOW prevents following symlinks
-              fd = openSync(absPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o644);
+              // O_NOFOLLOW prevents following symlinks (Unix only)
+              const createFlags = process.platform === 'win32'
+                ? constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL
+                : constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW;
+
+              fd = openSync(absPath, createFlags, 0o644);
             } catch (createErr) {
               const createError = createErr as NodeJS.ErrnoException;
               if (createError.code === 'EEXIST') {
