@@ -66,7 +66,9 @@ def validate_endpoint(endpoint: str) -> None:
 
     # Validate against known patterns
     if not any(endpoint.startswith(pattern) for pattern in VALID_ENDPOINT_PATTERNS):
-        raise ValueError(f"Endpoint does not match known GitLab API patterns: {endpoint}")
+        raise ValueError(
+            f"Endpoint does not match known GitLab API patterns: {endpoint}"
+        )
 
 
 class GitLabClient:
