@@ -49,7 +49,10 @@ def _task_done_callback(task: asyncio.Task) -> None:
     if not task.cancelled():
         exc = task.exception()
         if exc is not None:
-            logger.error(f"Background task failed with unhandled exception: {exc}")
+            logger.error(
+                f"Background task '{task.get_name()}' failed with unhandled exception: {exc}",
+                exc_info=exc,
+            )
 
 
 async def cleanup_background_tasks(timeout: float = 5.0) -> None:
@@ -114,15 +117,21 @@ def get_memorygraph_status() -> dict:
     Returns:
         Dict with status information:
             - enabled: bool
-            - backend: str
-            - project_scoped: bool
+            - backend: str | None
+            - project_scoped: bool | None
+            - reason: str (only present when disabled due to error)
     """
     try:
         from integrations.memorygraph import get_memorygraph_config
 
         return get_memorygraph_config()
     except ImportError:
-        return {"enabled": False, "reason": "memorygraph integration not installed"}
+        return {
+            "enabled": False,
+            "backend": None,
+            "project_scoped": None,
+            "reason": "memorygraph integration not installed",
+        }
 
 
 async def get_memorygraph_context(
