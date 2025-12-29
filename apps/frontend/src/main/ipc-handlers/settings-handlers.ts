@@ -497,20 +497,15 @@ export function registerSettingsHandlers(
           return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         };
 
-        // Helper function to escape $ in replacement string
-        const escapeReplacement = (str: string): string => {
-          return str.replace(/\$/g, '$$$$');
-        };
-
         // Update or add settings with proper escaping
         const updateEnvVar = (content: string, key: string, value: string): string => {
           const escapedKey = escapeRegex(key);
-          const escapedValue = escapeReplacement(value);
           const regex = new RegExp(`^${escapedKey}=.*$`, 'm');
           if (regex.test(content)) {
-            return content.replace(regex, `${key}=${escapedValue}`);
+            // Use function replacement to avoid $ interpretation in value
+            return content.replace(regex, () => `${key}=${value}`);
           } else {
-            return content + `\n${key}=${escapedValue}`;
+            return content + `\n${key}=${value}`;
           }
         };
 
