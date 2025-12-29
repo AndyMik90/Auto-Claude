@@ -351,8 +351,10 @@ export class ProjectStore {
         if (existsSync(specFilePath)) {
           try {
             const content = readFileSync(specFilePath, 'utf-8');
-            // Extract first paragraph after "## Overview" - handle both with and without blank line
-            const overviewMatch = content.match(/## Overview\s*\n+([^\n#]+)/);
+            // Extract full Overview section until next heading or end of file
+            // Use \n#{1,6}\s to match valid markdown headings (# to ######) with required space
+            // This avoids truncating at # in code blocks (e.g., Python comments)
+            const overviewMatch = content.match(/## Overview\s*\n+([\s\S]*?)(?=\n#{1,6}\s|$)/);
             if (overviewMatch) {
               description = overviewMatch[1].trim();
             }
@@ -555,7 +557,7 @@ export class ProjectStore {
       if (storedStatus) {
         // Planning/coding status from the backend should be respected even if subtasks aren't in progress yet
         // This happens when a task is in planning phase (creating spec) but no subtasks have been started
-        const isActiveProcessStatus = (plan.status as string) === 'planning' || (plan.status as string) === 'coding';
+        const isActiveProcessStatus = (plan.status as string) === 'planning' || (plan.status as string) === 'coding' || (plan.status as string) === 'in_progress';
 
         // Check if this is a plan review (spec approval stage before coding starts)
         // planStatus: "review" indicates spec creation is complete and awaiting user approval

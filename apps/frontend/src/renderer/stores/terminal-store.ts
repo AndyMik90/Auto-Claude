@@ -17,6 +17,7 @@ export interface Terminal {
   // outputBuffer removed - now managed by terminalBufferManager singleton
   isRestored?: boolean;  // Whether this terminal was restored from a saved session
   associatedTaskId?: string;  // ID of task associated with this terminal (for context loading)
+  projectPath?: string;  // Project this terminal belongs to (for multi-project support)
 }
 
 interface TerminalLayout {
@@ -35,7 +36,7 @@ interface TerminalState {
   hasRestoredSessions: boolean;  // Track if we've restored sessions for this project
 
   // Actions
-  addTerminal: (cwd?: string) => Terminal | null;
+  addTerminal: (cwd?: string, projectPath?: string) => Terminal | null;
   addRestoredTerminal: (session: TerminalSession) => Terminal;
   removeTerminal: (id: string) => void;
   updateTerminal: (id: string, updates: Partial<Terminal>) => void;
@@ -44,8 +45,6 @@ interface TerminalState {
   setClaudeMode: (id: string, isClaudeMode: boolean) => void;
   setClaudeSessionId: (id: string, sessionId: string) => void;
   setAssociatedTask: (id: string, taskId: string | undefined) => void;
-  appendOutput: (id: string, data: string) => void;
-  clearOutputBuffer: (id: string) => void;
   clearAllTerminals: () => void;
   setHasRestoredSessions: (value: boolean) => void;
 
@@ -53,6 +52,7 @@ interface TerminalState {
   getTerminal: (id: string) => Terminal | undefined;
   getActiveTerminal: () => Terminal | undefined;
   canAddTerminal: () => boolean;
+  getTerminalsForProject: (projectPath: string) => Terminal[];
 }
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
@@ -62,7 +62,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   maxTerminals: 12,
   hasRestoredSessions: false,
 
-  addTerminal: (cwd?: string) => {
+  addTerminal: (cwd?: string, projectPath?: string) => {
     const state = get();
     if (state.terminals.length >= state.maxTerminals) {
       return null;
@@ -76,6 +76,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       createdAt: new Date(),
       isClaudeMode: false,
       // outputBuffer removed - managed by terminalBufferManager
+      projectPath,
     };
 
     set((state) => ({
@@ -105,6 +106,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       claudeSessionId: session.claudeSessionId,
       // outputBuffer now stored in terminalBufferManager
       isRestored: true,
+      projectPath: session.projectPath,
     };
 
     // Restore buffer to buffer manager
@@ -183,18 +185,6 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     }));
   },
 
-  // DEPRECATED: Use terminalBufferManager.append() directly
-  // Kept for backward compatibility, but does NOT trigger React re-renders
-  appendOutput: (id: string, data: string) => {
-    terminalBufferManager.append(id, data);
-    // No React state update - this is the key performance improvement!
-  },
-
-  // DEPRECATED: Use terminalBufferManager.clear() directly
-  clearOutputBuffer: (id: string) => {
-    terminalBufferManager.clear(id);
-  },
-
   clearAllTerminals: () => {
     set({ terminals: [], activeTerminalId: null, hasRestoredSessions: false });
   },
@@ -216,21 +206,73 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     const state = get();
     return state.terminals.length < state.maxTerminals;
   },
+
+  getTerminalsForProject: (projectPath: string) => {
+    return get().terminals.filter(t => t.projectPath === projectPath);
+  },
 }));
+
+// Track in-progress restore operations to prevent race conditions
+const restoringProjects = new Set<string>();
 
 /**
  * Restore terminal sessions for a project from persisted storage
  */
 export async function restoreTerminalSessions(projectPath: string): Promise<void> {
-  const store = useTerminalStore.getState();
-
-  // Don't restore if we already have terminals (user might have opened some manually)
-  if (store.terminals.length > 0) {
-    debugLog('[TerminalStore] Terminals already exist, skipping session restore');
+  // Validate input
+  if (!projectPath || typeof projectPath !== 'string') {
+    debugLog('[TerminalStore] Invalid projectPath, skipping restore');
     return;
   }
 
+  // Prevent concurrent restores for same project (race condition protection)
+  if (restoringProjects.has(projectPath)) {
+    debugLog('[TerminalStore] Already restoring terminals for this project, skipping');
+    return;
+  }
+  restoringProjects.add(projectPath);
+
   try {
+    const store = useTerminalStore.getState();
+
+    // Get terminals for this project that exist in state
+    const projectTerminals = store.terminals.filter(t => t.projectPath === projectPath);
+
+    if (projectTerminals.length > 0) {
+      // Check if PTY processes are alive for existing terminals
+      const aliveChecks = await Promise.all(
+        projectTerminals.map(async (terminal) => {
+          try {
+            const result = await window.electronAPI.checkTerminalPtyAlive(terminal.id);
+            return { terminal, alive: result.success && result.data?.alive === true };
+          } catch {
+            return { terminal, alive: false };
+          }
+        })
+      );
+
+      // Remove dead terminals from store (they have state but no PTY process)
+      const deadTerminals = aliveChecks.filter(c => !c.alive);
+
+      for (const { terminal } of deadTerminals) {
+        debugLog(`[TerminalStore] Removing dead terminal: ${terminal.id}`);
+        store.removeTerminal(terminal.id);
+      }
+
+      // If all terminals were alive, we're done
+      if (deadTerminals.length === 0) {
+        debugLog('[TerminalStore] All terminals have live PTY processes');
+        return;
+      }
+
+      // Note: We don't skip disk restore when alive terminals exist because:
+      // 1. Dead terminals were removed from state above
+      // 2. addRestoredTerminal() has duplicate protection (checks terminal ID)
+      // 3. Disk restore will safely only add back the dead terminals
+      debugLog(`[TerminalStore] ${deadTerminals.length} terminals had dead PTY, will restore from disk`);
+    }
+
+    // Restore from disk
     const result = await window.electronAPI.getTerminalSessions(projectPath);
     if (!result.success || !result.data || result.data.length === 0) {
       return;
@@ -244,5 +286,7 @@ export async function restoreTerminalSessions(projectPath: string): Promise<void
     store.setHasRestoredSessions(true);
   } catch (error) {
     debugError('[TerminalStore] Error restoring sessions:', error);
+  } finally {
+    restoringProjects.delete(projectPath);
   }
 }

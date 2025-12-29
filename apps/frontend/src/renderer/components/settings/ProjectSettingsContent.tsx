@@ -104,7 +104,6 @@ function ProjectSettingsContentInner({
     linearConnectionStatus,
     isCheckingLinear,
     handleInitialize,
-    handleUpdate,
     handleClaudeSetup,
     error
   } = hook;
@@ -154,7 +153,6 @@ function ProjectSettingsContentInner({
         linearConnectionStatus={linearConnectionStatus}
         isCheckingLinear={isCheckingLinear}
         handleInitialize={handleInitialize}
-        handleUpdate={handleUpdate}
         handleClaudeSetup={handleClaudeSetup}
         onOpenLinearImport={() => setShowLinearImportModal(true)}
       />

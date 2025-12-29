@@ -378,5 +378,8 @@ export const integrationMock = {
   // GitLab Event Listeners
   onGitLabInvestigationProgress: () => () => {},
   onGitLabInvestigationComplete: () => () => {},
-  onGitLabInvestigationError: () => () => {}
+  onGitLabInvestigationError: () => () => {},
+
+  // OAuth device code event listener (for streaming device code during auth)
+  onGitHubAuthDeviceCode: () => () => {}
 };

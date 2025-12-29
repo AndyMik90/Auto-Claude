@@ -4,13 +4,22 @@ import type {
   AppSettings,
   IPCResult,
   SourceEnvConfig,
-  SourceEnvCheckResult
+  SourceEnvCheckResult,
+  ToolDetectionResult
 } from '../../shared/types';
 
 export interface SettingsAPI {
   // App Settings
   getSettings: () => Promise<IPCResult<AppSettings>>;
   saveSettings: (settings: Partial<AppSettings>) => Promise<IPCResult>;
+
+  // CLI Tools Detection
+  getCliToolsInfo: () => Promise<IPCResult<{
+    python: ToolDetectionResult;
+    git: ToolDetectionResult;
+    gh: ToolDetectionResult;
+    claude: ToolDetectionResult;
+  }>>;
 
   // App Info
   getAppVersion: () => Promise<string>;
@@ -28,6 +37,15 @@ export const createSettingsAPI = (): SettingsAPI => ({
 
   saveSettings: (settings: Partial<AppSettings>): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings),
+
+  // CLI Tools Detection
+  getCliToolsInfo: (): Promise<IPCResult<{
+    python: ToolDetectionResult;
+    git: ToolDetectionResult;
+    gh: ToolDetectionResult;
+    claude: ToolDetectionResult;
+  }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET_CLI_TOOLS_INFO),
 
   // App Info
   getAppVersion: (): Promise<string> =>

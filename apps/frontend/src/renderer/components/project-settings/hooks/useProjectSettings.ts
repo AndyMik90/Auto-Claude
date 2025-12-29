@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   updateProjectSettings,
   checkProjectVersion,
-  initializeProject,
-  updateProjectAutoBuild
+  initializeProject
 } from '../../../stores/project-store';
 import { checkGitHubConnection as checkGitHubConnectionGlobal } from '../../../stores/github';
 import type {
@@ -75,7 +74,6 @@ export interface UseProjectSettingsReturn {
 
   // Actions
   handleInitialize: () => Promise<void>;
-  handleUpdate: () => Promise<void>;
   handleSaveEnv: () => Promise<void>;
   handleClaudeSetup: () => Promise<void>;
   handleSave: (onClose: () => void) => Promise<void>;
@@ -300,24 +298,6 @@ export function useProjectSettings(
     }
   };
 
-  const handleUpdate = async () => {
-    setIsUpdating(true);
-    setError(null);
-    try {
-      const result = await updateProjectAutoBuild(project.id);
-      if (result?.success) {
-        const info = await checkProjectVersion(project.id);
-        setVersionInfo(info);
-      } else {
-        setError(result?.error || 'Failed to update');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   const handleSaveEnv = async () => {
     if (!envConfig) return;
 
@@ -439,7 +419,6 @@ export function useProjectSettings(
     linearConnectionStatus,
     isCheckingLinear,
     handleInitialize,
-    handleUpdate,
     handleSaveEnv,
     handleClaudeSetup,
     handleSave
