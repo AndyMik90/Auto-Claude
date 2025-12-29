@@ -1,6 +1,8 @@
 # MemoryGraph Integration for Auto-Claude
 
-**Status: Phase 1, 2 & 3 Complete**
+## Status
+
+Phase 1, 2 & 3 Complete
 
 This integration provides invisible memory capabilities for Auto-Claude agents using the MemoryGraph MCP server.
 
@@ -42,7 +44,7 @@ MEMORYGRAPH_ENABLED=true
   - Builds query from subtask description + file names
   - Calls `recall_memories` for fuzzy search
   - Finds related solutions for problems
-  - Returns formatted markdown or empty string
+  - Returns formatted Markdown or empty string
 
 **Context Formatting** (`formatting.py`)
 - `format_context(memories, solutions)` - Format as readable markdown
@@ -168,7 +170,9 @@ python3 -m pytest tests/integrations/memorygraph/ -v
 - Relationship Inference: 5 tests ✅
 - Storage Integration: 6 tests ✅
 
-**Total: 68 tests passing**
+### Total
+
+68 tests passing
 
 ## Integration with memory_manager.py
 

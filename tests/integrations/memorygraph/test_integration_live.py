@@ -14,10 +14,15 @@ from pathlib import Path
 
 import pytest
 
-# sys.path is configured in conftest.py
+# Python path is configured via pythonpath in tests/pytest.ini
 from integrations.memorygraph.client import MemoryGraphClient
 from integrations.memorygraph.context import get_context_for_subtask
 from integrations.memorygraph.storage import save_to_memorygraph
+
+# Indexing delays for MemoryGraph server (seconds)
+INDEXING_DELAY_SHORT = 0.5
+INDEXING_DELAY_NORMAL = 1.0
+INDEXING_DELAY_LONG = 1.5
 
 
 def is_memorygraph_server_available() -> bool:
@@ -44,7 +49,7 @@ class TestLiveMemoryGraphClient:
     """Live tests for MemoryGraphClient against real MCP server."""
 
     @pytest.mark.asyncio
-    async def test_store_and_recall_memory(self):
+    async def test_store_and_recall_memory(self, cleanup_test_memories):
         """Store a memory and recall it."""
         client = MemoryGraphClient(timeout=15.0)
 
@@ -58,6 +63,10 @@ class TestLiveMemoryGraphClient:
             importance=0.5,
         )
 
+        # Track for cleanup
+        if memory_id:
+            cleanup_test_memories.append(memory_id)
+
         # Verify we got an ID back
         assert memory_id is not None, "Failed to store memory - got None ID"
         assert len(memory_id) > 0, "Got empty memory ID"
@@ -65,7 +74,7 @@ class TestLiveMemoryGraphClient:
         print(f"Stored memory with ID: {memory_id}")
 
         # Give server time to index
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(INDEXING_DELAY_SHORT)
 
         # Recall the memory
         memories = await client.recall(f"Test Solution {test_id}", limit=5)
@@ -85,7 +94,7 @@ class TestLiveMemoryGraphClient:
         assert found, f"Could not find test memory in results: {memories}"
 
     @pytest.mark.asyncio
-    async def test_store_and_relate_memories(self):
+    async def test_store_and_relate_memories(self, cleanup_test_memories):
         """Store problem and solution, then create relationship."""
         client = MemoryGraphClient(timeout=15.0)
 
@@ -100,6 +109,7 @@ class TestLiveMemoryGraphClient:
             importance=0.6,
         )
         assert problem_id is not None, "Failed to store problem"
+        cleanup_test_memories.append(problem_id)
 
         # Store a solution
         solution_id = await client.store(
@@ -110,6 +120,7 @@ class TestLiveMemoryGraphClient:
             importance=0.7,
         )
         assert solution_id is not None, "Failed to store solution"
+        cleanup_test_memories.append(solution_id)
 
         # Create relationship
         success = await client.relate(
@@ -150,7 +161,7 @@ class TestLiveSaveToMemoryGraph:
     """Live tests for save_to_memorygraph function."""
 
     @pytest.mark.asyncio
-    async def test_save_session_insights(self):
+    async def test_save_session_insights(self, cleanup_test_memories):
         """Save real session insights to MemoryGraph."""
         test_id = f"session_test_{os.getpid()}"
 
@@ -165,7 +176,7 @@ class TestLiveSaveToMemoryGraph:
 
         # Verify by recalling
         client = MemoryGraphClient(timeout=15.0)
-        await asyncio.sleep(1.0)  # Give time to index
+        await asyncio.sleep(INDEXING_DELAY_NORMAL)
 
         memories = await client.recall(test_id, limit=10)
         print(f"Found {len(memories)} memories for session test")
@@ -176,11 +187,7 @@ class TestLiveSaveToMemoryGraph:
         ), f"Expected at least 1 memory result, got {len(memories)}"
 
         # Verify the test_id appears in the response content
-        found_test_id = False
-        for mem in memories:
-            if test_id in str(mem):
-                found_test_id = True
-                break
+        found_test_id = any(test_id in str(mem) for mem in memories)
         assert found_test_id, f"Test ID {test_id} not found in memories"
 
 
@@ -188,21 +195,23 @@ class TestLiveContextRetrieval:
     """Live tests for context retrieval."""
 
     @pytest.mark.asyncio
-    async def test_get_context_for_subtask(self):
+    async def test_get_context_for_subtask(self, cleanup_test_memories):
         """Retrieve context for a subtask from real memories."""
         # First, store some memories to retrieve
         client = MemoryGraphClient(timeout=15.0)
         test_id = f"context_test_{os.getpid()}"
 
-        await client.store(
+        memory_id = await client.store(
             memory_type="solution",
             title=f"JWT Validation Fix {test_id}",
             content=f"Added null check before token decode to fix NPE ({test_id})",
             tags=["auth", "jwt", "integration-test"],
             importance=0.8,
         )
+        if memory_id:
+            cleanup_test_memories.append(memory_id)
 
-        await asyncio.sleep(1.0)  # Give time to index
+        await asyncio.sleep(INDEXING_DELAY_NORMAL)
 
         # Now retrieve context
         subtask = {
@@ -215,15 +224,18 @@ class TestLiveContextRetrieval:
 
         print(f"Retrieved context:\n{context}")
 
-        # Context might be empty if no relevant memories, but shouldn't error
         assert isinstance(context, str)
+        # Verify our test memory was retrieved (or context is empty if not found)
+        assert test_id in context or len(context) == 0, (
+            f"Expected context to contain {test_id} or be empty, got: {context[:200]}"
+        )
 
 
 class TestLiveRoundTrip:
     """End-to-end round trip test."""
 
     @pytest.mark.asyncio
-    async def test_full_round_trip(self):
+    async def test_full_round_trip(self, cleanup_test_memories):
         """
         Full round trip: store session insights -> retrieve context.
 
@@ -240,7 +252,7 @@ class TestLiveRoundTrip:
         await save_to_memorygraph(session_output, Path(f"/tmp/{test_id}"))
 
         # 2. Wait for indexing
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(INDEXING_DELAY_LONG)
 
         # 3. Simulate new subtask that could benefit from past knowledge
         subtask = {
@@ -253,8 +265,6 @@ class TestLiveRoundTrip:
 
         print(f"Round trip context:\n{context}")
 
-        # The context should ideally contain our stored solution
-        # But this depends on the recall algorithm finding it relevant
         assert isinstance(context, str)
 
         # Direct recall should definitely find it
@@ -262,4 +272,9 @@ class TestLiveRoundTrip:
         memories = await client.recall(test_id, limit=10)
 
         assert len(memories) >= 1, f"Should find memories for {test_id}"
+
+        # Verify test_id appears in recalled memories
+        found = any(test_id in str(mem) for mem in memories)
+        assert found, f"Test ID {test_id} should appear in recalled memories"
+
         print(f"Direct recall found {len(memories)} memories")

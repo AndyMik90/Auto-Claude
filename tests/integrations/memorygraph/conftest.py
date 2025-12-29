@@ -1,16 +1,10 @@
 """
 Pytest configuration for MemoryGraph integration tests.
+
+Note: Python path is configured via pythonpath in tests/pytest.ini
 """
 
-import sys
-from pathlib import Path
-
 import pytest
-
-# Add apps/backend to path for imports
-backend_path = Path(__file__).parent.parent.parent.parent / "apps" / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 
 @pytest.fixture
