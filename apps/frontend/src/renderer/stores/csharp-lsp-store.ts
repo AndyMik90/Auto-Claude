@@ -5,6 +5,10 @@ import type {
   CSharpLspPublishDiagnosticsParams
 } from '../../shared/types';
 
+// LSP Diagnostic Severity levels (from LSP spec)
+const SEVERITY_ERROR = 1;
+const SEVERITY_WARNING = 2;
+
 interface FileDiagnostics {
   relPath: string;
   diagnostics: CSharpLspDiagnostic[];
@@ -17,6 +21,9 @@ interface CSharpLspState {
   workspaceRoot: string | null;
   diagnostics: Map<string, FileDiagnostics>; // relPath -> diagnostics
   isStarting: boolean;
+  // Cached counts for performance
+  _errorCount: number;
+  _warningCount: number;
 
   // Actions
   setStatus: (status: CSharpLspStatus, message?: string) => void;
@@ -41,6 +48,8 @@ export const useCSharpLspStore = create<CSharpLspState>((set, get) => ({
   workspaceRoot: null,
   diagnostics: new Map(),
   isStarting: false,
+  _errorCount: 0,
+  _warningCount: 0,
 
   setStatus: (status: CSharpLspStatus, message?: string) => {
     set({ status, statusMessage: message });
@@ -58,7 +67,22 @@ export const useCSharpLspStore = create<CSharpLspState>((set, get) => ({
         diagnostics: params.diagnostics,
         updatedAt: Date.now()
       });
-      return { diagnostics: newDiagnostics };
+
+      // Recompute cached counts for performance
+      let errorCount = 0;
+      let warningCount = 0;
+      newDiagnostics.forEach((fileDiag) => {
+        fileDiag.diagnostics.forEach((d) => {
+          if (d.severity === SEVERITY_ERROR) errorCount++;
+          else if (d.severity === SEVERITY_WARNING) warningCount++;
+        });
+      });
+
+      return {
+        diagnostics: newDiagnostics,
+        _errorCount: errorCount,
+        _warningCount: warningCount
+      };
     });
   },
 
@@ -67,9 +91,28 @@ export const useCSharpLspStore = create<CSharpLspState>((set, get) => ({
       if (relPath) {
         const newDiagnostics = new Map(state.diagnostics);
         newDiagnostics.delete(relPath);
-        return { diagnostics: newDiagnostics };
+
+        // Recompute cached counts
+        let errorCount = 0;
+        let warningCount = 0;
+        newDiagnostics.forEach((fileDiag) => {
+          fileDiag.diagnostics.forEach((d) => {
+            if (d.severity === SEVERITY_ERROR) errorCount++;
+            else if (d.severity === SEVERITY_WARNING) warningCount++;
+          });
+        });
+
+        return {
+          diagnostics: newDiagnostics,
+          _errorCount: errorCount,
+          _warningCount: warningCount
+        };
       }
-      return { diagnostics: new Map() };
+      return {
+        diagnostics: new Map(),
+        _errorCount: 0,
+        _warningCount: 0
+      };
     });
   },
 
@@ -114,7 +157,9 @@ export const useCSharpLspStore = create<CSharpLspState>((set, get) => ({
           status: 'stopped',
           workspaceRoot: null,
           diagnostics: new Map(),
-          statusMessage: undefined
+          statusMessage: undefined,
+          _errorCount: 0,
+          _warningCount: 0
         });
         return true;
       }
@@ -163,19 +208,11 @@ export const useCSharpLspStore = create<CSharpLspState>((set, get) => ({
   },
 
   getErrorCount: (): number => {
-    let count = 0;
-    get().diagnostics.forEach((fileDiag) => {
-      count += fileDiag.diagnostics.filter((d) => d.severity === 1).length;
-    });
-    return count;
+    return get()._errorCount;
   },
 
   getWarningCount: (): number => {
-    let count = 0;
-    get().diagnostics.forEach((fileDiag) => {
-      count += fileDiag.diagnostics.filter((d) => d.severity === 2).length;
-    });
-    return count;
+    return get()._warningCount;
   },
 
   isReady: (): boolean => {
