@@ -61,6 +61,48 @@ export function getEffectiveSourcePath(): string {
     if (existsSync(settingsPath)) {
       const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
       if (settings.autoBuildPath && existsSync(settings.autoBuildPath)) {
+        const debugSourcePath = ['true', '1', 'yes', 'on'].includes(
+          (process.env.AUTO_CLAUDE_DEBUG_SOURCE_PATH ?? '').toLowerCase()
+        );
+        const devUsePackagedOverride = ['true', '1', 'yes', 'on'].includes(
+          (process.env.AUTO_CLAUDE_DEV_USE_PACKAGED_AUTOBUILD ?? '').toLowerCase()
+        );
+        if (debugSourcePath) {
+          console.warn('[path-resolver] EffectiveSourcePath decision', {
+            appIsPackaged: app.isPackaged,
+            settingsAutoBuildPath: settings.autoBuildPath,
+            devUsePackagedOverride
+          });
+        }
+
+        // Dev safeguard: avoid accidentally using the installed /Applications app bundle
+        // as backend source when running `npm run dev`.
+        //
+        // To force using the packaged backend path in dev, set:
+        //   AUTO_CLAUDE_DEV_USE_PACKAGED_AUTOBUILD=1
+        if (
+          !app.isPackaged &&
+          !devUsePackagedOverride
+        ) {
+          const looksLikeMacAppBundle =
+            settings.autoBuildPath.includes('/Applications/Auto-Claude.app/') ||
+            settings.autoBuildPath.includes('/Applications/Auto Claude.app/');
+          if (debugSourcePath) {
+            console.warn('[path-resolver] Dev filter', {
+              looksLikeMacAppBundle,
+              settingsAutoBuildPath: settings.autoBuildPath
+            });
+          }
+          if (looksLikeMacAppBundle) {
+            console.warn(
+              '[path-resolver] Dev mode: ignoring settings.autoBuildPath pointing at installed app bundle; using repo auto-detection instead:',
+              settings.autoBuildPath
+            );
+            // Fall through to bundled source detection for dev (repo backend).
+            return getBundledSourcePath();
+          }
+        }
+
         // Validate it's a proper backend source (must have runners/spec_runner.py)
         const markerPath = path.join(settings.autoBuildPath, 'runners', 'spec_runner.py');
         if (existsSync(markerPath)) {
