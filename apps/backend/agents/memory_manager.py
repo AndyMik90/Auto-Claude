@@ -71,10 +71,16 @@ async def cleanup_background_tasks(timeout: float = 5.0) -> None:
         task.cancel()
 
     # Wait for all tasks to complete (with timeout)
-    if _background_tasks:
-        await asyncio.wait(_background_tasks, timeout=timeout)
-
-    _background_tasks.clear()
+    # Use try/finally to ensure task set is cleared even if wait raises
+    try:
+        if _background_tasks:
+            await asyncio.wait(
+                _background_tasks,
+                timeout=timeout,
+                return_when=asyncio.ALL_COMPLETED,
+            )
+    finally:
+        _background_tasks.clear()
 
 
 def get_pending_task_count() -> int:
