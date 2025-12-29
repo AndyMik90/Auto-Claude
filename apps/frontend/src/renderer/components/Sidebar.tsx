@@ -124,12 +124,23 @@ export function Sidebar({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in inputs
+      // Don't trigger shortcuts when typing in inputs or editors
       if (
           e.target instanceof HTMLInputElement ||
           e.target instanceof HTMLTextAreaElement ||
           e.target instanceof HTMLSelectElement ||
           (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      // Don't trigger shortcuts when focus is in Monaco Editor
+      const target = e.target as HTMLElement;
+      if (
+        target?.closest('.monaco-editor') ||
+        target?.classList?.contains('monaco-editor') ||
+        target?.closest('[data-mode-id]') || // Monaco editor text area
+        target?.classList?.contains('inputarea') // Monaco input area
       ) {
         return;
       }

@@ -255,11 +255,22 @@ export function App() {
   // Global keyboard shortcut: Cmd/Ctrl+T to add project (when not on terminals view)
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
-      // Skip if in input fields
+      // Skip if in input fields or editors
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
         (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      // Skip if focus is in Monaco Editor
+      const target = e.target as HTMLElement;
+      if (
+        target?.closest('.monaco-editor') ||
+        target?.classList?.contains('monaco-editor') ||
+        target?.closest('[data-mode-id]') ||
+        target?.classList?.contains('inputarea')
       ) {
         return;
       }
