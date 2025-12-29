@@ -41,7 +41,8 @@
   "tooltips": {
     "archiveTask": "Archiver la tâche",
     "archiveAllDone": "Archiver toutes les tâches terminées",
-    "viewPR": "Ouvrir la pull request dans le navigateur"
+    "addTask": "Ajouter une nouvelle tâche",
+    "queueAll": "Déplacer toutes les tâches vers la file d'attente"
   },
   "creation": {
     "title": "Créer une nouvelle tâche",

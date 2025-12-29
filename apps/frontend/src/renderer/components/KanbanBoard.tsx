@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, Settings } from 'lucide-react';
+import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, Settings, ArrowRight } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -56,6 +56,7 @@ interface DroppableColumnProps {
   onAddClick?: () => void;
   onArchiveAll?: () => void;
   onQueueSettings?: () => void;
+  onQueueAll?: () => void;
   maxParallelTasks?: number;
 }
 
@@ -106,7 +107,7 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArchiveAll, onQueueSettings, maxParallelTasks }: DroppableColumnProps) {
+function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArchiveAll, onQueueSettings, onQueueAll, maxParallelTasks }: DroppableColumnProps) {
   const { t } = useTranslation('tasks');
   const { setNodeRef } = useDroppable({
     id: status
@@ -200,16 +201,31 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
           )}
         </div>
         <div className="flex items-center gap-1">
-          {status === 'backlog' && onAddClick && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 hover:bg-primary/10 hover:text-primary transition-colors"
-              onClick={onAddClick}
-              aria-label={t('kanban.addTaskAriaLabel')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+          {status === 'backlog' && (
+            <>
+              {onAddClick && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:bg-primary/10 hover:text-primary transition-colors"
+                  onClick={onAddClick}
+                  title={t('tooltips.addTask')}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+              {onQueueAll && tasks.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors"
+                  onClick={onQueueAll}
+                  title={t('tooltips.queueAll')}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </>
           )}
           {status === 'queue' && onQueueSettings && (
             <Button
@@ -429,6 +445,21 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     }
   };
 
+  const handleQueueAll = async () => {
+    const backlogTasks = tasksByStatus.backlog;
+    if (backlogTasks.length === 0) return;
+
+    console.log(`[Queue] Moving ${backlogTasks.length} tasks from Planning to Queue`);
+
+    // Move all backlog tasks to queue
+    for (const task of backlogTasks) {
+      await persistTaskStatus(task.id, 'queue');
+    }
+
+    // After all tasks are queued, process the queue to start filling In Progress
+    await processQueue();
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const task = tasks.find((t) => t.id === active.id);
@@ -582,6 +613,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               onStatusChange={handleStatusChange}
               isOver={overColumnId === status}
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
+              onQueueAll={status === 'backlog' ? handleQueueAll : undefined}
               onQueueSettings={status === 'queue' ? () => setShowQueueSettings(true) : undefined}
               onArchiveAll={status === 'done' ? handleArchiveAll : undefined}
               maxParallelTasks={status === 'in_progress' ? maxParallelTasks : undefined}

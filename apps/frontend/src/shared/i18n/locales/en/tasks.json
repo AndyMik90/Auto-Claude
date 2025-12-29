@@ -41,7 +41,8 @@
   "tooltips": {
     "archiveTask": "Archive task",
     "archiveAllDone": "Archive all done tasks",
-    "viewPR": "Open pull request in browser"
+    "addTask": "Add new task",
+    "queueAll": "Move all tasks to Queue"
   },
   "creation": {
     "title": "Create New Task",
