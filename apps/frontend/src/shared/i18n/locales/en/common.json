@@ -1,4 +1,7 @@
 {
+  "projectTab": {
+    "settings": "Project settings"
+  },
   "buttons": {
     "save": "Save",
     "cancel": "Cancel",

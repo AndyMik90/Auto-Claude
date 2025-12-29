@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { TabsContent } from '../ui/tabs';
 import { EnvConfigModal } from '../EnvConfigModal';
 import { IDEATION_TYPE_DESCRIPTIONS } from '../../../shared/constants';
@@ -22,6 +21,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
   // Get showArchived from shared context for cross-page sync
   const { showArchived } = useViewState();
 
+  // Pass showArchived directly to the hook to avoid render lag from useEffect sync
   const {
     session,
     generationStatus,
@@ -45,7 +45,6 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
     setActiveTab,
     setShowConfigDialog,
     setShowDismissed,
-    setShowArchived,
     setShowEnvConfigModal,
     setShowAddMoreDialog,
     setTypesToAdd,
@@ -67,12 +66,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
     toggleSelectIdea,
     clearSelection,
     getIdeasByType
-  } = useIdeation(projectId, { onGoToTask });
-
-  // Sync context's showArchived with hook's internal state
-  useEffect(() => {
-    setShowArchived(showArchived);
-  }, [showArchived, setShowArchived]);
+  } = useIdeation(projectId, { onGoToTask, showArchived });
 
   // Show generation progress with streaming ideas (use isGenerating flag for reliable state)
   if (isGenerating) {

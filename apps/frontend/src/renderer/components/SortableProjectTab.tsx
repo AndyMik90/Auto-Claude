@@ -1,5 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useTranslation } from 'react-i18next';
 import { Settings2, Archive } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -35,6 +36,7 @@ export function SortableProjectTab({
   archivedCount,
   onToggleArchived
 }: SortableProjectTabProps) {
+  const { t } = useTranslation('common');
   // Build tooltip with keyboard shortcut hint (only for tabs 1-9)
   const shortcutHint = tabIndex < 9 ? `${modKey}${tabIndex + 1}` : '';
   const closeShortcut = `${modKey}W`;
@@ -136,13 +138,13 @@ export function SortableProjectTab({
                     e.stopPropagation();
                     onSettingsClick();
                   }}
-                  aria-label="Project settings"
+                  aria-label={t('projectTab.settings')}
                 >
                   <Settings2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <span>Project settings</span>
+                <span>{t('projectTab.settings')}</span>
               </TooltipContent>
             </Tooltip>
           )}
