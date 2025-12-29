@@ -5,6 +5,10 @@ import type {
   CSharpLspPublishDiagnosticsParams
 } from '../../shared/types';
 
+// LSP Diagnostic Severity levels (from LSP spec)
+const SEVERITY_ERROR = 1;
+const SEVERITY_WARNING = 2;
+
 interface FileDiagnostics {
   relPath: string;
   diagnostics: CSharpLspDiagnostic[];
@@ -69,8 +73,8 @@ export const useCSharpLspStore = create<CSharpLspState>((set, get) => ({
       let warningCount = 0;
       newDiagnostics.forEach((fileDiag) => {
         fileDiag.diagnostics.forEach((d) => {
-          if (d.severity === 1) errorCount++;
-          else if (d.severity === 2) warningCount++;
+          if (d.severity === SEVERITY_ERROR) errorCount++;
+          else if (d.severity === SEVERITY_WARNING) warningCount++;
         });
       });
 
@@ -93,8 +97,8 @@ export const useCSharpLspStore = create<CSharpLspState>((set, get) => ({
         let warningCount = 0;
         newDiagnostics.forEach((fileDiag) => {
           fileDiag.diagnostics.forEach((d) => {
-            if (d.severity === 1) errorCount++;
-            else if (d.severity === 2) warningCount++;
+            if (d.severity === SEVERITY_ERROR) errorCount++;
+            else if (d.severity === SEVERITY_WARNING) warningCount++;
           });
         });
 

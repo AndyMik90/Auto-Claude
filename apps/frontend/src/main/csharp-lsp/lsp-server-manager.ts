@@ -591,20 +591,7 @@ export class CSharpLspServerManager {
       throw new Error('Workspace root not set');
     }
     const absPath = path.resolve(this.workspaceRoot, relPath);
-    
-    // Convert to forward slashes for URI
-    let uriPath = absPath.replace(/\\/g, '/');
-    
-    // For Windows, ensure proper file URI format: file:///C:/path
-    if (process.platform === 'win32') {
-      // If path starts with drive letter, ensure three slashes
-      if (/^[a-zA-Z]:/.test(uriPath)) {
-        return `file:///${uriPath}`;
-      }
-    }
-    
-    // For Unix-like systems: file:///path
-    return `file://${uriPath}`;
+    return this.createFileUri(absPath);
   }
 
   private uriToPath(uri: string): string | null {
