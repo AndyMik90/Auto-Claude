@@ -410,37 +410,69 @@ export function CodeEditor({ projectId }: CodeEditorProps) {
     }
   }, [workspaceRoot, searchQuery]);
 
-  // Handle search result click - open file and jump to line
-  const handleSearchResultClick = useCallback(async (relPath: string, line: number, column: number) => {
-    // Check if file is already open
-    const existingTab = tabs.find(t => t.relPath === relPath);
-    if (existingTab) {
-      setActiveTabId(existingTab.id);
-      addToRecentFiles(relPath);
-
-      // Jump to line after a short delay to ensure editor is ready
-      setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.revealLineInCenter(line);
-          editorRef.current.setPosition({ lineNumber: line, column });
-          editorRef.current.focus();
-        }
-      }, 100);
-      return;
-    }
-
-    // Open file first
-    await openFile(relPath);
-
-    // Jump to line after file loads
-    setTimeout(() => {
+  // Wait for Monaco editor instance to be ready before jumping to a location
+  const waitForEditorReady = useCallback(
+    (): Promise<Monaco.editor.IStandaloneCodeEditor | null> => {
       if (editorRef.current) {
-        editorRef.current.revealLineInCenter(line);
-        editorRef.current.setPosition({ lineNumber: line, column });
-        editorRef.current.focus();
+        return Promise.resolve(editorRef.current);
       }
-    }, 200);
-  }, [tabs, addToRecentFiles, openFile]);
+
+      return new Promise(resolve => {
+        let resolved = false;
+        let intervalId: ReturnType<typeof setInterval> | undefined;
+        const timeoutId = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            if (intervalId !== undefined) {
+              clearInterval(intervalId);
+            }
+            resolve(editorRef.current ?? null);
+          }
+        }, 5000);
+
+        intervalId = setInterval(() => {
+          if (editorRef.current && !resolved) {
+            resolved = true;
+            clearInterval(intervalId);
+            clearTimeout(timeoutId);
+            resolve(editorRef.current);
+          }
+        }, 50);
+      });
+    },
+    []
+  );
+
+  // Handle search result click - open file and jump to line
+  const handleSearchResultClick = useCallback(
+    async (relPath: string, line: number, column: number) => {
+      // Check if file is already open
+      const existingTab = tabs.find(t => t.relPath === relPath);
+      if (existingTab) {
+        setActiveTabId(existingTab.id);
+        addToRecentFiles(relPath);
+
+        const editor = await waitForEditorReady();
+        if (editor) {
+          editor.revealLineInCenter(line);
+          editor.setPosition({ lineNumber: line, column });
+          editor.focus();
+        }
+        return;
+      }
+
+      // Open file first
+      await openFile(relPath);
+
+      const editor = await waitForEditorReady();
+      if (editor) {
+        editor.revealLineInCenter(line);
+        editor.setPosition({ lineNumber: line, column });
+        editor.focus();
+      }
+    },
+    [tabs, addToRecentFiles, openFile, waitForEditorReady]
+  );
 
   // Keyboard shortcuts
   useEffect(() => {
