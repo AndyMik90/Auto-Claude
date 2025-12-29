@@ -384,7 +384,8 @@ export function registerMRReviewHandlers(
           sendComplete(result);
         });
       } catch (error) {
-        debugLog('MR review failed', { mrIid, error: error instanceof Error ? error.message : error });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        debugLog('MR review failed', { mrIid, error: errorMessage });
         const { sendError } = createIPCCommunicators<MRReviewProgress, MRReviewResult>(
           mainWindow,
           {
@@ -394,7 +395,7 @@ export function registerMRReviewHandlers(
           },
           projectId
         );
-        sendError(error instanceof Error ? error.message : 'Failed to run MR review');
+        sendError({ mrIid, error: `MR review failed for MR #${mrIid}: ${errorMessage}` });
       }
     }
   );
@@ -863,7 +864,8 @@ export function registerMRReviewHandlers(
           }
         });
       } catch (error) {
-        debugLog('Follow-up review failed', { mrIid, error: error instanceof Error ? error.message : error });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        debugLog('Follow-up review failed', { mrIid, error: errorMessage });
         const { sendError } = createIPCCommunicators<MRReviewProgress, MRReviewResult>(
           mainWindow,
           {
@@ -873,7 +875,7 @@ export function registerMRReviewHandlers(
           },
           projectId
         );
-        sendError({ mrIid, error: error instanceof Error ? error.message : 'Failed to run follow-up review' });
+        sendError({ mrIid, error: `Follow-up review failed for MR #${mrIid}: ${errorMessage}` });
       }
     }
   );
