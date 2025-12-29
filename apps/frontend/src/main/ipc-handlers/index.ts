@@ -29,6 +29,7 @@ import { registerChangelogHandlers } from './changelog-handlers';
 import { registerInsightsHandlers } from './insights-handlers';
 import { registerMemoryHandlers } from './memory-handlers';
 import { registerAppUpdateHandlers } from './app-update-handlers';
+import { registerDebugHandlers } from './debug-handlers';
 import { notificationService } from '../notification-service';
 
 /**
@@ -102,6 +103,9 @@ export function setupIpcHandlers(
   // App auto-update handlers
   registerAppUpdateHandlers();
 
+  // Debug handlers (logs, debug info, etc.)
+  registerDebugHandlers();
+
   console.warn('[IPC] All handler modules registered successfully');
 }
 
@@ -124,5 +128,6 @@ export {
   registerChangelogHandlers,
   registerInsightsHandlers,
   registerMemoryHandlers,
-  registerAppUpdateHandlers
+  registerAppUpdateHandlers,
+  registerDebugHandlers
 };
