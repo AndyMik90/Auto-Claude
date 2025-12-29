@@ -534,29 +534,29 @@ if sys.version_info >= (3, 12):
       // For venv, site-packages is inside the venv
       const venvBase = this.getVenvBasePath();
       if (venvBase) {
-        // Dynamically detect Python version from venv lib directory
-        // This handles different Python versions (3.10, 3.11, 3.12, 3.13, etc.)
-        const libDir = path.join(venvBase, process.platform === 'win32' ? 'Lib' : 'lib');
-        let pythonVersion = 'python3.12'; // Fallback to bundled version
+        if (process.platform === 'win32') {
+          // Windows venv structure: Lib/site-packages (no python version subfolder)
+          this.sitePackagesPath = path.join(venvBase, 'Lib', 'site-packages');
+        } else {
+          // Unix venv structure: lib/python3.x/site-packages
+          // Dynamically detect Python version from venv lib directory
+          const libDir = path.join(venvBase, 'lib');
+          let pythonVersion = 'python3.12'; // Fallback to bundled version
 
-        if (process.platform !== 'win32' && existsSync(libDir)) {
-          try {
-            const entries = readdirSync(libDir);
-            const pythonDir = entries.find(e => e.startsWith('python3.'));
-            if (pythonDir) {
-              pythonVersion = pythonDir;
+          if (existsSync(libDir)) {
+            try {
+              const entries = readdirSync(libDir);
+              const pythonDir = entries.find(e => e.startsWith('python3.'));
+              if (pythonDir) {
+                pythonVersion = pythonDir;
+              }
+            } catch {
+              // Use fallback version
             }
-          } catch {
-            // Use fallback version
           }
-        }
 
-        this.sitePackagesPath = path.join(
-          venvBase,
-          process.platform === 'win32' ? 'Lib' : 'lib',
-          pythonVersion,
-          'site-packages'
-        );
+          this.sitePackagesPath = path.join(venvBase, 'lib', pythonVersion, 'site-packages');
+        }
       }
 
       this.isReady = true;
