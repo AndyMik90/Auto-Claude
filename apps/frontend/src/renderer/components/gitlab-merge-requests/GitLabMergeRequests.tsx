@@ -9,9 +9,10 @@ import { initializeMRReviewListeners } from '../../stores/gitlab';
 
 interface GitLabMergeRequestsProps {
   projectId: string;
+  onOpenSettings?: () => void;
 }
 
-export function GitLabMergeRequests({ projectId }: GitLabMergeRequestsProps) {
+export function GitLabMergeRequests({ projectId, onOpenSettings }: GitLabMergeRequestsProps) {
   const [stateFilter, setStateFilter] = useState<'opened' | 'closed' | 'merged' | 'all'>('opened');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 

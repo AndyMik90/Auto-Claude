@@ -722,6 +722,10 @@ export function App() {
                 {activeView === 'gitlab-merge-requests' && (activeProjectId || selectedProjectId) && (
                   <GitLabMergeRequests
                     projectId={activeProjectId || selectedProjectId!}
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('gitlab');
+                      setIsSettingsDialogOpen(true);
+                    }}
                   />
                 )}
                 {activeView === 'changelog' && (activeProjectId || selectedProjectId) && (
