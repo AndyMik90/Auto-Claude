@@ -1,5 +1,5 @@
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, watchFile } from 'fs';
+import { existsSync, readFileSync, writeFileSync, watchFile, renameSync, unlinkSync } from 'fs';
 import { EventEmitter } from 'events';
 import type { TaskLogs, TaskLogPhase, TaskLogStreamChunk, TaskPhaseLog } from '../shared/types';
 
@@ -386,6 +386,12 @@ export class TaskLogService extends EventEmitter {
    * @param specsRelPath - Relative path to specs (e.g., ".auto-claude/specs")
    */
   markActivePhasesStopped(specId: string, projectPath: string, specsRelPath: string): void {
+    // Validate specId to prevent path traversal attacks
+    if (!this.isValidSpecId(specId)) {
+      console.error(`[TaskLogService] Invalid specId format: ${specId}`);
+      return;
+    }
+
     // Get watched paths for this spec
     const watchedInfo = this.watchedPaths.get(specId);
 
@@ -411,6 +417,7 @@ export class TaskLogService extends EventEmitter {
 
   /**
    * Update a single log file to mark active phases as stopped
+   * Uses atomic write (temp file + rename) to prevent corruption
    */
   private updateLogFilePhaseStatus(logFilePath: string): void {
     try {
@@ -433,13 +440,41 @@ export class TaskLogService extends EventEmitter {
       // Only write if we made changes
       if (hasChanges) {
         logs.updated_at = new Date().toISOString();
-        writeFileSync(logFilePath, JSON.stringify(logs, null, 2), 'utf-8');
-        console.log(`[TaskLogService] Marked active phases as stopped in ${logFilePath}`);
+
+        // Use atomic write: temp file + rename to prevent corruption
+        const tempFilePath = `${logFilePath}.tmp`;
+        try {
+          writeFileSync(tempFilePath, JSON.stringify(logs, null, 2), 'utf-8');
+          renameSync(tempFilePath, logFilePath);
+          console.log(`[TaskLogService] Marked active phases as stopped in ${logFilePath}`);
+        } catch (writeError) {
+          // Clean up temp file if it exists
+          if (existsSync(tempFilePath)) {
+            unlinkSync(tempFilePath);
+          }
+          throw writeError;
+        }
       }
     } catch (error) {
       // File doesn't exist, is corrupted, or write failed - log and continue
       console.error(`[TaskLogService] Failed to update log file ${logFilePath}:`, error);
     }
+  }
+
+  /**
+   * Validate specId format to prevent path traversal attacks
+   * Valid format: 3 digits followed by dash and alphanumeric characters with dashes
+   * Example: "001-feature-name" or "123-bug-fix"
+   */
+  private isValidSpecId(specId: string): boolean {
+    // Check for path traversal patterns
+    if (specId.includes('..') || specId.includes('/') || specId.includes('\\')) {
+      return false;
+    }
+
+    // Validate format: XXX-name (e.g., 001-feature, 123-bug-fix)
+    const specIdPattern = /^[0-9]{3}-[a-z0-9-]+$/;
+    return specIdPattern.test(specId);
   }
 }
 
