@@ -111,6 +111,8 @@ class GoogleEmbedder:
         )
 
         # Response has embeddings list with ContentEmbedding objects
+        if not response.embeddings:
+            raise ProviderError("Google AI returned empty embeddings response")
         return list(response.embeddings[0].values)
 
     async def create_batch(self, input_data_list: list[str]) -> list[list[float]]:

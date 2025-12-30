@@ -107,6 +107,9 @@ class GoogleLLMClient:
         if system_instruction:
             config_kwargs["system_instruction"] = system_instruction
 
+        if not contents:
+            raise ProviderError("No user or assistant messages provided for generation")
+
         if response_model:
             # For structured output, use JSON mode
             config_kwargs["response_mime_type"] = "application/json"
@@ -128,11 +131,17 @@ class GoogleLLMClient:
             # Parse JSON response into the model
             try:
                 data = json.loads(response.text)
-                return response_model(**data)
             except json.JSONDecodeError as e:
                 raise ProviderError(
                     f"Failed to parse structured response from Google AI. "
                     f"Expected JSON for {response_model.__name__}, got: {response.text[:100]}..."
+                ) from e
+            try:
+                return response_model(**data)
+            except Exception as e:
+                raise ProviderError(
+                    f"Failed to validate structured response from Google AI. "
+                    f"Model {response_model.__name__} validation failed: {e}"
                 ) from e
         else:
             return response.text
