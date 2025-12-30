@@ -1,34 +1,34 @@
 <!-- docs/_sidebar.md - Auto-Claude Documentation Navigation -->
 
 - [Home](/)
-- [Getting Started](getting-started.md)
+- [Getting Started](/getting-started)
 
 ---
 
 - **Architecture**
-  - [Overview](architecture/overview.md)
-  - [Backend Architecture](architecture/backend.md)
-  - [Frontend Architecture](architecture/frontend.md)
-  - [Integration](architecture/integration.md)
+  - [Overview](/architecture/overview)
+  - [Backend Architecture](/architecture/backend)
+  - [Frontend Architecture](/architecture/frontend)
+  - [Integration](/architecture/integration)
 
 ---
 
 - **Components**
   - **Backend**
-    - [Agents System](components/backend/agents.md)
-    - [Analysis Module](components/backend/analysis.md)
-    - [CLI Commands](components/backend/cli.md)
-    - [Core Services](components/backend/core.md)
-    - [Planning & Integrations](components/backend/planning.md)
+    - [Agents System](/components/backend/agents)
+    - [Analysis Module](/components/backend/analysis)
+    - [CLI Commands](/components/backend/cli)
+    - [Core Services](/components/backend/core)
+    - [Planning & Integrations](/components/backend/planning)
   - **Frontend**
-    - [Main Process](components/frontend/main-process.md)
-    - [IPC Handlers](components/frontend/ipc-handlers.md)
-    - [Renderer Components](components/frontend/renderer.md)
-    - [State Management](components/frontend/state.md)
+    - [Main Process](/components/frontend/main-process)
+    - [IPC Handlers](/components/frontend/ipc-handlers)
+    - [Renderer Components](/components/frontend/renderer)
+    - [State Management](/components/frontend/state)
 
 ---
 
 - **Diagrams**
-  - [Use Cases](diagrams/use-cases.md)
-  - [Sequence Diagrams](diagrams/sequences.md)
-  - [Class Diagrams](diagrams/classes.md)
+  - [Use Cases](/diagrams/use-cases)
+  - [Sequence Diagrams](/diagrams/sequences)
+  - [Class Diagrams](/diagrams/classes)
