@@ -277,7 +277,44 @@ class PRReviewEngine:
         Returns:
             Tuple of (findings, structural_issues, ai_triages, quick_scan_summary)
         """
-        # Use orchestrating agent if enabled
+        # Use parallel orchestrator with SDK subagents if enabled
+        if self.config.use_parallel_orchestrator:
+            print(
+                "[AI] Using parallel orchestrator PR review (SDK subagents)...",
+                flush=True,
+            )
+            self._report_progress(
+                "orchestrating",
+                10,
+                "Starting parallel orchestrator review...",
+                pr_number=context.pr_number,
+            )
+
+            from .parallel_orchestrator_reviewer import ParallelOrchestratorReviewer
+
+            orchestrator = ParallelOrchestratorReviewer(
+                project_dir=self.project_dir,
+                github_dir=self.github_dir,
+                config=self.config,
+                progress_callback=self.progress_callback,
+            )
+
+            result = await orchestrator.review(context)
+
+            print(
+                f"[PR Review Engine] Parallel orchestrator returned {len(result.findings)} findings",
+                flush=True,
+            )
+
+            quick_scan_summary = {
+                "verdict": result.verdict.value if result.verdict else "unknown",
+                "findings_count": len(result.findings),
+                "strategy": "parallel_orchestrator",
+            }
+
+            return (result.findings, [], [], quick_scan_summary)
+
+        # Fall back to single orchestrating agent if enabled
         if self.config.use_orchestrator_review:
             print("[AI] Using orchestrating PR review agent (Opus 4.5)...", flush=True)
             self._report_progress(

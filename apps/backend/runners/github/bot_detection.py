@@ -34,7 +34,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from .file_lock import FileLock, atomic_write
+try:
+    from .file_lock import FileLock, atomic_write
+except (ImportError, ValueError, SystemError):
+    from file_lock import FileLock, atomic_write
 
 
 @dataclass

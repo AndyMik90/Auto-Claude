@@ -566,20 +566,49 @@ class GitHubOrchestrator:
                 pr_number=pr_number,
             )
 
-            # Run follow-up review
-            reviewer = FollowupReviewer(
-                project_dir=self.project_dir,
-                github_dir=self.github_dir,
-                config=self.config,
-                progress_callback=lambda p: self._report_progress(
-                    p.get("phase", "analyzing"),
-                    p.get("progress", 50),
-                    p.get("message", "Reviewing..."),
-                    pr_number=pr_number,
-                ),
-            )
+            # Use parallel orchestrator for follow-up if enabled
+            if self.config.use_parallel_orchestrator:
+                print(
+                    "[AI] Using parallel orchestrator for follow-up review (SDK subagents)...",
+                    flush=True,
+                )
+                try:
+                    from .services.parallel_followup_reviewer import (
+                        ParallelFollowupReviewer,
+                    )
+                except (ImportError, ValueError, SystemError):
+                    from services.parallel_followup_reviewer import (
+                        ParallelFollowupReviewer,
+                    )
 
-            result = await reviewer.review_followup(followup_context)
+                reviewer = ParallelFollowupReviewer(
+                    project_dir=self.project_dir,
+                    github_dir=self.github_dir,
+                    config=self.config,
+                    progress_callback=lambda p: self._report_progress(
+                        p.phase if hasattr(p, "phase") else p.get("phase", "analyzing"),
+                        p.progress if hasattr(p, "progress") else p.get("progress", 50),
+                        p.message
+                        if hasattr(p, "message")
+                        else p.get("message", "Reviewing..."),
+                        pr_number=pr_number,
+                    ),
+                )
+                result = await reviewer.review(followup_context)
+            else:
+                # Fall back to sequential follow-up reviewer
+                reviewer = FollowupReviewer(
+                    project_dir=self.project_dir,
+                    github_dir=self.github_dir,
+                    config=self.config,
+                    progress_callback=lambda p: self._report_progress(
+                        p.get("phase", "analyzing"),
+                        p.get("progress", 50),
+                        p.get("message", "Reviewing..."),
+                        pr_number=pr_number,
+                    ),
+                )
+                result = await reviewer.review_followup(followup_context)
 
             # Save result
             await result.save(self.github_dir)
