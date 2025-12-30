@@ -5,6 +5,7 @@ Handles database connection, initialization, and lifecycle management.
 Uses LadybugDB as the embedded graph database (no Docker required, Python 3.12+).
 """
 
+import asyncio
 import logging
 import sys
 from datetime import datetime, timezone
@@ -72,6 +73,8 @@ class GraphitiClient:
         self._llm_client = None
         self._embedder = None
         self._initialized = False
+        # Guards against concurrent initialize() calls racing and doing duplicate work.
+        self._init_lock = asyncio.Lock()
 
     @property
     def graphiti(self):
@@ -83,9 +86,9 @@ class GraphitiClient:
         """Check if client is initialized."""
         return self._initialized
 
-    async def initialize(self, state: GraphitiState | None = None) -> bool:
+    async def _initialize_unlocked(self, state: GraphitiState | None = None) -> bool:
         """
-        Initialize the Graphiti client with configured providers.
+        Initialize the Graphiti client with configured providers (caller must synchronize).
 
         Args:
             state: Optional GraphitiState for tracking initialization status
@@ -93,12 +96,10 @@ class GraphitiClient:
         Returns:
             True if initialization succeeded
         """
-        if self._initialized:
-            return True
-
         try:
             # Import Graphiti core
             from graphiti_core import Graphiti
+            from graphiti_core.cross_encoder.client import CrossEncoderClient
 
             # Import our provider factory
             from graphiti_providers import (
@@ -132,6 +133,22 @@ class GraphitiClient:
             except ProviderError as e:
                 logger.warning(f"Embedder provider configuration error: {e}")
                 return False
+
+            # graphiti-core defaults to OpenAI's reranker when cross_encoder=None,
+            # which hard-requires an OpenAI API key. If the user isn't using OpenAI,
+            # pass a safe no-op cross-encoder to prevent accidental OpenAI init.
+            cross_encoder = None
+            llm_provider = (self.config.llm_provider or "").lower()
+            embedder_provider = (self.config.embedder_provider or "").lower()
+            if llm_provider != "openai" and embedder_provider != "openai":
+                class _NoOpCrossEncoder(CrossEncoderClient):
+                    async def rank(
+                        self, query: str, passages: list[str]
+                    ) -> list[tuple[str, float]]:
+                        # Keep ordering stable; assign equal scores.
+                        return [(p, 1.0) for p in passages]
+
+                cross_encoder = _NoOpCrossEncoder()
 
             # Apply LadybugDB monkeypatch to use it via graphiti's KuzuDriver
             if not _apply_ladybug_monkeypatch():
@@ -172,20 +189,26 @@ class GraphitiClient:
                 graph_driver=self._driver,
                 llm_client=self._llm_client,
                 embedder=self._embedder,
+                cross_encoder=cross_encoder,
             )
 
-            # Build indices (first time only)
-            if not state or not state.indices_built:
-                logger.info("Building Graphiti indices and constraints...")
-                await self._graphiti.build_indices_and_constraints()
+            # Build indices and constraints.
+            #
+            # Even if our per-spec state says indices were built, the underlying DB
+            # may have been deleted/recreated (common in dev) which would make FTS
+            # indexes missing and break saves/searches with Binder errors.
+            # The operation is designed to be idempotent (or to skip "already exists"),
+            # so we run it unconditionally for robustness.
+            logger.info("Ensuring Graphiti indices and constraints exist...")
+            await self._graphiti.build_indices_and_constraints()
 
-                if state:
-                    state.indices_built = True
-                    state.initialized = True
-                    state.database = self.config.database
-                    state.created_at = datetime.now(timezone.utc).isoformat()
-                    state.llm_provider = self.config.llm_provider
-                    state.embedder_provider = self.config.embedder_provider
+            if state:
+                state.indices_built = True
+                state.initialized = True
+                state.database = self.config.database
+                state.created_at = datetime.now(timezone.utc).isoformat()
+                state.llm_provider = self.config.llm_provider
+                state.embedder_provider = self.config.embedder_provider
 
             self._initialized = True
             logger.info(
@@ -204,6 +227,29 @@ class GraphitiClient:
         except Exception as e:
             logger.warning(f"Failed to initialize Graphiti client: {e}")
             return False
+
+    async def initialize(self, state: GraphitiState | None = None) -> bool:
+        """
+        Initialize the Graphiti client with configured providers.
+
+        This method is concurrency-safe: concurrent callers will synchronize so that
+        initialization runs at most once.
+
+        Args:
+            state: Optional GraphitiState for tracking initialization status
+
+        Returns:
+            True if initialization succeeded
+        """
+        # Fast-path: common case when already initialized.
+        if self._initialized:
+            return True
+
+        async with self._init_lock:
+            # Double-check after acquiring lock (another task may have initialized).
+            if self._initialized:
+                return True
+            return await self._initialize_unlocked(state)
 
     async def close(self) -> None:
         """

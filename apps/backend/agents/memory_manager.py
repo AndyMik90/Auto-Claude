@@ -114,7 +114,9 @@ async def get_graphiti_context(
         return None
 
     try:
-        from graphiti_memory import GraphitiMemory
+        # Prefer the stable in-package import. Some deployments (e.g. app bundles)
+        # don't ship a top-level `graphiti_memory` shim.
+        from integrations.graphiti.memory import GraphitiMemory
 
         # Create memory manager
         memory = GraphitiMemory(spec_dir, project_dir)
@@ -286,7 +288,9 @@ async def save_session_memory(
             debug("memory", "Attempting PRIMARY storage: Graphiti")
 
         try:
-            from graphiti_memory import GraphitiMemory
+            # Prefer the stable in-package import. Some deployments (e.g. app bundles)
+            # don't ship a top-level `graphiti_memory` shim.
+            from integrations.graphiti.memory import GraphitiMemory
 
             memory = GraphitiMemory(spec_dir, project_dir)
 
