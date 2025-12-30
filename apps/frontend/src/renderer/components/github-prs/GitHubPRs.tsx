@@ -64,7 +64,6 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
     reviewResult,
     reviewProgress,
     isReviewing,
-    activePRReviews,
     selectPR,
     runReview,
     runFollowupReview,
@@ -81,6 +80,13 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
   } = useGitHubPRs(selectedProject?.id);
 
   const selectedPR = prs.find(pr => pr.number === selectedPRNumber);
+
+  // Get previousResult and newCommitsCheck for follow-up review continuity
+  const selectedPRReviewState = selectedPRNumber
+    ? getReviewStateForPR(selectedPRNumber)
+    : null;
+  const previousReviewResult = selectedPRReviewState?.previousResult ?? null;
+  const storedNewCommitsCheck = selectedPRReviewState?.newCommitsCheck ?? null;
 
   // PR filtering
   const {
@@ -215,8 +221,10 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
             <PRDetail
               pr={selectedPR}
               reviewResult={reviewResult}
+              previousReviewResult={previousReviewResult}
               reviewProgress={reviewProgress}
               isReviewing={isReviewing}
+              initialNewCommitsCheck={storedNewCommitsCheck}
               onRunReview={handleRunReview}
               onRunFollowupReview={handleRunFollowupReview}
               onCheckNewCommits={handleCheckNewCommits}
