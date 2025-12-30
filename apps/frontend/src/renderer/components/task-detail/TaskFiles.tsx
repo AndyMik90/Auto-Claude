@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FileText,
@@ -47,6 +47,9 @@ export function TaskFiles({ task }: TaskFilesProps) {
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [contentError, setContentError] = useState<string | null>(null);
+
+  // Ref for keyboard navigation
+  const fileListRef = useRef<HTMLDivElement>(null);
 
   // Load files from spec directory
   const loadFiles = useCallback(async () => {
@@ -101,6 +104,13 @@ export function TaskFiles({ task }: TaskFilesProps) {
     }
   }, []);
 
+  // Reset state when task.specsPath changes
+  useEffect(() => {
+    setSelectedFile(null);
+    setFileContent(null);
+    setContentError(null);
+  }, [task.specsPath]);
+
   // Load files on mount and when specsPath changes
   useEffect(() => {
     loadFiles();
@@ -129,6 +139,38 @@ export function TaskFiles({ task }: TaskFilesProps) {
       console.error('Failed to open in IDE:', err);
     }
   }, [settings.preferredIDE, settings.customIDEPath, task.specsPath]);
+
+  // Keyboard navigation for file list
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (files.length === 0) return;
+
+    const currentIndex = selectedFile
+      ? files.findIndex(f => f.path === selectedFile)
+      : -1;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        if (currentIndex < files.length - 1) {
+          loadFileContent(files[currentIndex + 1].path);
+        }
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        if (currentIndex > 0) {
+          loadFileContent(files[currentIndex - 1].path);
+        }
+        break;
+      case 'Home':
+        e.preventDefault();
+        loadFileContent(files[0].path);
+        break;
+      case 'End':
+        e.preventDefault();
+        loadFileContent(files[files.length - 1].path);
+        break;
+    }
+  }, [files, selectedFile, loadFileContent]);
 
   // Handle no specsPath
   if (!task.specsPath) {
@@ -215,8 +257,8 @@ export function TaskFiles({ task }: TaskFilesProps) {
     );
   };
 
-  // Get selected filename
-  const selectedFileName = selectedFile ? selectedFile.split('/').pop() : null;
+  // Get selected filename (cross-platform: handles both / and \ separators)
+  const selectedFileName = selectedFile ? selectedFile.split(/[/\\]/).pop() : null;
 
   return (
     <div className="h-full flex">
@@ -238,7 +280,14 @@ export function TaskFiles({ task }: TaskFilesProps) {
           </Button>
         </div>
         <ScrollArea className="flex-1">
-          <div className="p-2 space-y-1">
+          <div
+            ref={fileListRef}
+            className="p-2 space-y-1"
+            role="listbox"
+            aria-label={t('tasks:files.title')}
+            tabIndex={files.length > 0 ? 0 : -1}
+            onKeyDown={handleKeyDown}
+          >
             {isLoadingFiles ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -267,10 +316,12 @@ export function TaskFiles({ task }: TaskFilesProps) {
                 <button
                   type="button"
                   key={file.path}
+                  role="option"
+                  aria-selected={selectedFile === file.path}
                   onClick={() => loadFileContent(file.path)}
                   className={cn(
                     'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors',
-                    'hover:bg-secondary/50',
+                    'hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
                     selectedFile === file.path && 'bg-secondary'
                   )}
                 >

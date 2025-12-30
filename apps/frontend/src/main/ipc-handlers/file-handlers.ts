@@ -8,6 +8,29 @@ import type { IPCResult, FileNode } from '../../shared/types';
 // Maximum file size to read (1MB)
 const MAX_FILE_SIZE = 1024 * 1024;
 
+/**
+ * Validates and normalizes a file path for safe reading.
+ * Returns the normalized path if valid, or an error message.
+ */
+function validatePath(filePath: string): { valid: true; path: string } | { valid: false; error: string } {
+  // Resolve to absolute path (handles .., ., etc.)
+  const resolvedPath = path.resolve(filePath);
+
+  // Must be absolute after resolution
+  if (!path.isAbsolute(resolvedPath)) {
+    return { valid: false, error: 'Path must be absolute' };
+  }
+
+  // After resolution, path should not contain .. segments
+  // This catches edge cases where resolve might not fully normalize
+  const segments = resolvedPath.split(path.sep);
+  if (segments.includes('..')) {
+    return { valid: false, error: 'Invalid path: contains parent directory references' };
+  }
+
+  return { valid: true, path: resolvedPath };
+}
+
 // Directories to ignore when listing
 const IGNORED_DIRS = new Set([
   'node_modules', '.git', '__pycache__', 'dist', 'build',
@@ -69,25 +92,21 @@ export function registerFileHandlers(): void {
     IPC_CHANNELS.FILE_EXPLORER_READ,
     async (_, filePath: string): Promise<IPCResult<string>> => {
       try {
-        // Validate path - must be absolute and normalized
-        const normalizedPath = path.normalize(filePath);
-        if (!path.isAbsolute(normalizedPath)) {
-          return { success: false, error: 'Path must be absolute' };
+        // Validate and normalize path
+        const validation = validatePath(filePath);
+        if (!validation.valid) {
+          return { success: false, error: validation.error };
         }
-
-        // Prevent path traversal by checking for .. after normalization
-        if (normalizedPath.includes('..')) {
-          return { success: false, error: 'Invalid path' };
-        }
+        const safePath = validation.path;
 
         // Check file size before reading
-        const stats = statSync(normalizedPath);
+        const stats = statSync(safePath);
         if (stats.size > MAX_FILE_SIZE) {
           return { success: false, error: 'File too large (max 1MB)' };
         }
 
         // Use async file read to avoid blocking
-        const content = await readFile(normalizedPath, 'utf-8');
+        const content = await readFile(safePath, 'utf-8');
         return { success: true, data: content };
       } catch (error) {
         return {
