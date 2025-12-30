@@ -133,7 +133,14 @@
     "reviewComplete": "Révision terminée",
     "reviewStatus": "Statut de révision",
     "files": "fichiers",
-    "filesChanged": "{{count}} fichiers modifiés"
+    "filesChanged": "{{count}} fichiers modifiés",
+    "posting": "Publication...",
+    "postFindings": "Publier {{count}} résultat",
+    "postFindings_plural": "Publier {{count}} résultats",
+    "approve": "Approuver",
+    "merge": "Fusionner",
+    "postedFindings": "{{count}} résultat publié",
+    "postedFindings_plural": "{{count}} résultats publiés"
   },
   "downloads": {
     "toggleExpand": "Afficher/masquer les détails",

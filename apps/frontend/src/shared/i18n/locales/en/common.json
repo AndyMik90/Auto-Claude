@@ -133,7 +133,14 @@
     "reviewComplete": "Review Complete",
     "reviewStatus": "Review Status",
     "files": "files",
-    "filesChanged": "{{count}} files changed"
+    "filesChanged": "{{count}} files changed",
+    "posting": "Posting...",
+    "postFindings": "Post {{count}} Finding",
+    "postFindings_plural": "Post {{count}} Findings",
+    "approve": "Approve",
+    "merge": "Merge",
+    "postedFindings": "Posted {{count}} finding",
+    "postedFindings_plural": "Posted {{count}} findings"
   },
   "downloads": {
     "toggleExpand": "Toggle download details",

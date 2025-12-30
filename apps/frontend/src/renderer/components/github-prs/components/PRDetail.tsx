@@ -334,6 +334,7 @@ export function PRDetail({
   onMergePR,
   onAssignPR: _onAssignPR,
 }: PRDetailProps) {
+  const { t } = useTranslation('common');
   // Selection state for findings
   const [selectedFindingIds, setSelectedFindingIds] = useState<Set<string>>(new Set());
   const [postedFindingIds, setPostedFindingIds] = useState<Set<string>>(new Set());
@@ -613,17 +614,17 @@ export function PRDetail({
                   {isPostingFindings ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Posting...
+                      {t('prReview.posting')}
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4 mr-2" />
-                      Post {selectedCount} Finding{selectedCount !== 1 ? 's' : ''}
+                      {t('prReview.postFindings', { count: selectedCount })}
                     </>
                   )}
                 </Button>
              )}
-             
+
              {isReadyToMerge && (
                 <>
                   <Button
@@ -633,7 +634,7 @@ export function PRDetail({
                     className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     {isPosting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                    Approve
+                    {t('prReview.approve')}
                   </Button>
                   <Button
                     onClick={handleMerge}
@@ -642,7 +643,7 @@ export function PRDetail({
                     className="flex-1 sm:flex-none"
                   >
                     {isMerging ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <GitMerge className="h-4 w-4 mr-2" />}
-                    Merge
+                    {t('prReview.merge')}
                   </Button>
                 </>
              )}
@@ -650,7 +651,7 @@ export function PRDetail({
              {postSuccess && (
                <div className="ml-auto flex items-center gap-2 text-emerald-600 text-sm font-medium animate-pulse">
                  <CheckCircle className="h-4 w-4" />
-                 Posted {postSuccess.count} finding{postSuccess.count !== 1 ? 's' : ''}
+                 {t('prReview.postedFindings', { count: postSuccess.count })}
                </div>
              )}
           </div>
