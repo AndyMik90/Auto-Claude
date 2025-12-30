@@ -263,6 +263,7 @@ export function TaskFiles({ task }: TaskFilesProps) {
             ) : (
               files.map((file) => (
                 <button
+                  type="button"
                   key={file.path}
                   onClick={() => loadFileContent(file.path)}
                   className={cn(

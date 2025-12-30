@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -74,6 +75,7 @@ const isFilesTabEnabled = () => {
 
 // Separate component to use hooks only when task exists
 function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals, onOpenInbuiltTerminal }: { open: boolean; task: Task; onOpenChange: (open: boolean) => void; onSwitchToTerminals?: () => void; onOpenInbuiltTerminal?: (id: string, cwd: string) => void }) {
+  const { t } = useTranslation(['tasks']);
   const state = useTaskDetail({ task });
   const showFilesTab = isFilesTabEnabled();
   const progressPercent = calculateProgress(task.subtasks);
@@ -383,7 +385,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                       value="files"
                       className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
                     >
-                      Files
+                      {t('tasks:files.tab')}
                     </TabsTrigger>
                   )}
                 </TabsList>

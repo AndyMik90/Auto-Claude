@@ -1,8 +1,12 @@
 import { ipcMain } from 'electron';
-import { readdirSync, readFileSync } from 'fs';
+import { readdirSync, statSync } from 'fs';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, FileNode } from '../../shared/types';
+
+// Maximum file size to read (1MB)
+const MAX_FILE_SIZE = 1024 * 1024;
 
 // Directories to ignore when listing
 const IGNORED_DIRS = new Set([
@@ -65,7 +69,25 @@ export function registerFileHandlers(): void {
     IPC_CHANNELS.FILE_EXPLORER_READ,
     async (_, filePath: string): Promise<IPCResult<string>> => {
       try {
-        const content = readFileSync(filePath, 'utf-8');
+        // Validate path - must be absolute and normalized
+        const normalizedPath = path.normalize(filePath);
+        if (!path.isAbsolute(normalizedPath)) {
+          return { success: false, error: 'Path must be absolute' };
+        }
+
+        // Prevent path traversal by checking for .. after normalization
+        if (normalizedPath.includes('..')) {
+          return { success: false, error: 'Invalid path' };
+        }
+
+        // Check file size before reading
+        const stats = statSync(normalizedPath);
+        if (stats.size > MAX_FILE_SIZE) {
+          return { success: false, error: 'File too large (max 1MB)' };
+        }
+
+        // Use async file read to avoid blocking
+        const content = await readFile(normalizedPath, 'utf-8');
         return { success: true, data: content };
       } catch (error) {
         return {
