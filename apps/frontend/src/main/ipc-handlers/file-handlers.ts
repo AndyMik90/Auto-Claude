@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { readdirSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, FileNode } from '../../shared/types';
@@ -56,6 +56,21 @@ export function registerFileHandlers(): void {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to list directory'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FILE_EXPLORER_READ,
+    async (_, filePath: string): Promise<IPCResult<string>> => {
+      try {
+        const content = readFileSync(filePath, 'utf-8');
+        return { success: true, data: content };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to read file'
         };
       }
     }
