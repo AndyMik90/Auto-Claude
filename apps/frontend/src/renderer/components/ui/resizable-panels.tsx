@@ -6,6 +6,7 @@
  * - Min/max width constraints
  * - Persists width to localStorage
  * - Visual feedback on hover and drag
+ * - Touch support for mobile devices
  */
 
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
@@ -67,6 +68,11 @@ export function ResizablePanels({
     setIsDragging(true);
   }, []);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
   useEffect(() => {
     if (!isDragging) return;
 
@@ -74,6 +80,8 @@ export function ResizablePanels({
       if (!containerRef.current) return;
 
       const rect = containerRef.current.getBoundingClientRect();
+      // Guard against division by zero when container has no width
+      if (rect.width <= 0) return;
       const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
       const clampedWidth = Math.max(minLeftWidth, Math.min(maxLeftWidth, newWidth));
       setLeftWidth(clampedWidth);
@@ -83,18 +91,37 @@ export function ResizablePanels({
       setIsDragging(false);
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!containerRef.current || e.touches.length === 0) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const touch = e.touches[0];
+      const newWidth = ((touch.clientX - rect.left) / rect.width) * 100;
+      const clampedWidth = Math.max(minLeftWidth, Math.min(maxLeftWidth, newWidth));
+      setLeftWidth(clampedWidth);
+    };
+
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+    };
+
     // Add user-select: none to body during drag to prevent text selection
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'col-resize';
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDragging, minLeftWidth, maxLeftWidth]);
 
@@ -114,12 +141,13 @@ export function ResizablePanels({
       {/* Resizable divider */}
       <div
         className={cn(
-          "w-1 flex-shrink-0 relative cursor-col-resize",
+          "w-1 flex-shrink-0 relative cursor-col-resize touch-none",
           "bg-border transition-colors duration-150",
           "hover:bg-primary/40",
           isDragging && "bg-primary/60"
         )}
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
         {/* Wider invisible hit area for easier grabbing */}
         <div className="absolute inset-y-0 -left-1 -right-1 z-10" />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bot,
   Send,
@@ -14,10 +15,9 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
+import { Card, CardContent } from '../../ui/card';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Progress } from '../../ui/progress';
-import { cn } from '../../../lib/utils';
 
 // Helper function for formatting dates
 function formatDate(dateString: string): string {
@@ -81,6 +81,7 @@ export function PRDetail({
   onMergePR,
   onAssignPR: _onAssignPR,
 }: PRDetailProps) {
+  const { t } = useTranslation('common');
   // Selection state for findings
   const [selectedFindingIds, setSelectedFindingIds] = useState<Set<string>>(new Set());
   const [postedFindingIds, setPostedFindingIds] = useState<Set<string>>(new Set());
@@ -165,7 +166,7 @@ export function PRDetail({
     if (!reviewResult || !reviewResult.success) {
       return {
         status: 'not_reviewed',
-        label: 'Not Reviewed',
+        label: t('prReview.notReviewed'),
         description: 'Run an AI review to analyze this PR',
         icon: <Bot className="h-5 w-5" />,
         color: 'bg-muted text-muted-foreground border-muted',
@@ -195,7 +196,7 @@ export function PRDetail({
       if (hasNewCommits) {
         return {
           status: 'ready_for_followup',
-          label: 'Ready for Follow-up',
+          label: t('prReview.readyForFollowup'),
           description: `${newCommitCount} new commit${newCommitCount !== 1 ? 's' : ''} since follow-up. Run another follow-up review.`,
           icon: <RefreshCw className="h-5 w-5" />,
           color: 'bg-info/20 text-info border-info/50',
@@ -206,7 +207,7 @@ export function PRDetail({
       if (unresolvedCount === 0 && newIssuesCount === 0) {
         return {
           status: 'ready_to_merge',
-          label: 'Ready to Merge',
+          label: t('prReview.readyToMerge'),
           description: `All ${resolvedCount} issue${resolvedCount !== 1 ? 's' : ''} resolved. This PR can be merged.`,
           icon: <CheckCheck className="h-5 w-5" />,
           color: 'bg-success/20 text-success border-success/50',
@@ -218,7 +219,7 @@ export function PRDetail({
         const suggestionsCount = unresolvedCount + newIssuesCount;
         return {
           status: 'ready_to_merge',
-          label: 'Ready to Merge',
+          label: t('prReview.readyToMerge'),
           description: `${resolvedCount} resolved. ${suggestionsCount} non-blocking suggestion${suggestionsCount !== 1 ? 's' : ''} remain.`,
           icon: <CheckCheck className="h-5 w-5" />,
           color: 'bg-success/20 text-success border-success/50',
@@ -241,7 +242,7 @@ export function PRDetail({
     if (hasPosted && hasNewCommits) {
       return {
         status: 'ready_for_followup',
-        label: 'Ready for Follow-up',
+        label: t('prReview.readyForFollowup'),
         description: `${newCommitCount} new commit${newCommitCount !== 1 ? 's' : ''} since review. Run follow-up to check if issues are resolved.`,
         icon: <RefreshCw className="h-5 w-5" />,
         color: 'bg-info/20 text-info border-info/50',
@@ -252,7 +253,7 @@ export function PRDetail({
     if (isReadyToMerge && hasPosted) {
       return {
         status: 'ready_to_merge',
-        label: 'Ready to Merge',
+        label: t('prReview.readyToMerge'),
         description: 'No blocking issues found. This PR can be merged.',
         icon: <CheckCheck className="h-5 w-5" />,
         color: 'bg-success/20 text-success border-success/50',
@@ -263,7 +264,7 @@ export function PRDetail({
     if (hasPosted && hasBlockers) {
       return {
         status: 'waiting_for_changes',
-        label: 'Waiting for Changes',
+        label: t('prReview.waitingForChanges'),
         description: `${totalPosted} finding${totalPosted !== 1 ? 's' : ''} posted. Waiting for contributor to address issues.`,
         icon: <AlertTriangle className="h-5 w-5" />,
         color: 'bg-warning/20 text-warning border-warning/50',
@@ -274,7 +275,7 @@ export function PRDetail({
     if (hasPosted && !hasBlockers) {
       return {
         status: 'ready_to_merge',
-        label: 'Ready to Merge',
+        label: t('prReview.readyToMerge'),
         description: `${totalPosted} finding${totalPosted !== 1 ? 's' : ''} posted. No blocking issues remain.`,
         icon: <CheckCheck className="h-5 w-5" />,
         color: 'bg-success/20 text-success border-success/50',
@@ -295,12 +296,12 @@ export function PRDetail({
     // Default: Review complete, pending post
     return {
       status: 'reviewed_pending_post',
-      label: 'Review Complete',
+      label: t('prReview.reviewComplete'),
       description: `${reviewResult.findings.length} finding${reviewResult.findings.length !== 1 ? 's' : ''} found. Select and post to GitHub.`,
       icon: <MessageSquare className="h-5 w-5" />,
       color: 'bg-primary/20 text-primary border-primary/50',
     };
-  }, [reviewResult, postedFindingIds, isReadyToMerge, newCommitsCheck]);
+  }, [reviewResult, postedFindingIds, isReadyToMerge, newCommitsCheck, t]);
 
   const handlePostReview = async () => {
     const idsToPost = Array.from(selectedFindingIds);
@@ -391,7 +392,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
   return (
     <ScrollArea className="flex-1">
       <div className="p-6 max-w-5xl mx-auto space-y-6">
-        
+
         {/* Refactored Header */}
         <PRHeader pr={pr} />
 
@@ -417,12 +418,12 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
                   {isPostingFindings ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Posting...
+                      {t('prReview.posting')}
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4 mr-2" />
-                      Post {selectedCount} Finding{selectedCount !== 1 ? 's' : ''}
+                      {t('prReview.postFindings', { count: selectedCount })}
                     </>
                   )}
                 </Button>
@@ -439,15 +440,15 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
                   {isPosting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Posting Approval...
+                      {t('prReview.postingApproval')}
                     </>
                   ) : (
                     <>
                       <CheckCheck className="h-4 w-4 mr-2" />
-                      Auto-Approve PR
+                      {t('prReview.autoApprovePR')}
                       {lowSeverityFindings.length > 0 && (
                         <span className="ml-1 text-xs opacity-80">
-                          (+{lowSeverityFindings.length} suggestions)
+                          {t('prReview.suggestions', { count: lowSeverityFindings.length })}
                         </span>
                       )}
                     </>
@@ -464,7 +465,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
                     className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     {isPosting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                    Approve
+                    {t('prReview.approve')}
                   </Button>
                   <Button
                     onClick={handleMerge}
@@ -473,7 +474,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
                     className="flex-1 sm:flex-none"
                   >
                     {isMerging ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <GitMerge className="h-4 w-4 mr-2" />}
-                    Merge
+                    {t('prReview.merge')}
                   </Button>
                 </>
              )}
@@ -481,7 +482,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
              {postSuccess && (
                <div className="ml-auto flex items-center gap-2 text-emerald-600 text-sm font-medium animate-pulse">
                  <CheckCircle className="h-4 w-4" />
-                 Posted {postSuccess.count} finding{postSuccess.count !== 1 ? 's' : ''}
+                 {t('prReview.postedFindings', { count: postSuccess.count })}
                </div>
              )}
           </div>
@@ -501,7 +502,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
         {/* Review Result / Findings */}
         {reviewResult && reviewResult.success && (
           <CollapsibleCard
-            title={reviewResult.isFollowupReview ? 'Follow-up Review Details' : 'AI Analysis Results'}
+            title={reviewResult.isFollowupReview ? t('prReview.followupReviewDetails') : t('prReview.aiAnalysisResults')}
             icon={reviewResult.isFollowupReview ? (
               <RefreshCw className="h-4 w-4 text-blue-500" />
             ) : (
@@ -509,9 +510,9 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
             )}
             badge={
               <Badge variant="outline" className={getStatusColor(reviewResult.overallStatus)}>
-                {reviewResult.overallStatus === 'approve' && 'Approve'}
-                {reviewResult.overallStatus === 'request_changes' && 'Changes Requested'}
-                {reviewResult.overallStatus === 'comment' && 'Comment'}
+                {reviewResult.overallStatus === 'approve' && t('prReview.approve')}
+                {reviewResult.overallStatus === 'request_changes' && t('prReview.changesRequested')}
+                {reviewResult.overallStatus === 'comment' && t('prReview.commented')}
               </Badge>
             }
             open={analysisExpanded}
@@ -524,19 +525,19 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
                   {(reviewResult.resolvedFindings?.length ?? 0) > 0 && (
                     <Badge variant="outline" className="bg-success/10 text-success border-success/30 px-3 py-1">
                       <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                      {reviewResult.resolvedFindings?.length} resolved
+                      {t('prReview.resolved', { count: reviewResult.resolvedFindings?.length ?? 0 })}
                     </Badge>
                   )}
                   {(reviewResult.unresolvedFindings?.length ?? 0) > 0 && (
                     <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 px-3 py-1">
                       <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
-                      {reviewResult.unresolvedFindings?.length} still open
+                      {t('prReview.stillOpen', { count: reviewResult.unresolvedFindings?.length ?? 0 })}
                     </Badge>
                   )}
                   {(reviewResult.newFindingsSinceLastReview?.length ?? 0) > 0 && (
                     <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 px-3 py-1">
                       <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                      {reviewResult.newFindingsSinceLastReview?.length} new issue{reviewResult.newFindingsSinceLastReview?.length !== 1 ? 's' : ''}
+                      {t('prReview.newIssue', { count: reviewResult.newFindingsSinceLastReview?.length ?? 0 })}
                     </Badge>
                   )}
                 </div>
@@ -564,7 +565,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
               <div className="flex items-start gap-3 text-destructive">
                 <XCircle className="h-5 w-5 mt-0.5" />
                 <div className="space-y-1">
-                   <p className="font-semibold">Review Failed</p>
+                   <p className="font-semibold">{t('prReview.reviewFailed')}</p>
                    <p className="text-sm opacity-90">{reviewResult.error}</p>
                 </div>
               </div>
@@ -574,17 +575,15 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
 
         {/* Description */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Description</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">{t('prReview.description')}</h3>
              <ScrollArea className="h-[400px] w-full rounded-md border p-4 bg-muted/10">
               {pr.body ? (
                 <pre className="whitespace-pre-wrap text-sm text-muted-foreground font-sans break-words">
                   {pr.body}
                 </pre>
               ) : (
-                <p className="text-sm text-muted-foreground italic">No description provided.</p>
+                <p className="text-sm text-muted-foreground italic">{t('prReview.noDescription')}</p>
               )}
             </ScrollArea>
           </CardContent>

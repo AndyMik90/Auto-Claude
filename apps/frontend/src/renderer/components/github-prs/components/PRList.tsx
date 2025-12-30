@@ -158,7 +158,7 @@ interface PRListProps {
   selectedPRNumber: number | null;
   isLoading: boolean;
   error: string | null;
-  activePRReviews: number[];
+  activePRReviews?: Map<number, PRReviewInfo>;
   getReviewStateForPR: (prNumber: number) => PRReviewInfo | null;
   onSelectPR: (prNumber: number) => void;
 }
@@ -191,7 +191,7 @@ export function PRList({ prs, selectedPRNumber, isLoading, error, activePRReview
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center text-muted-foreground">
           <GitPullRequest className="h-8 w-8 mx-auto mb-2 animate-pulse" />
-          <p>Loading pull requests...</p>
+          <p>{t('prReview.loadingPRs')}</p>
         </div>
       </div>
     );
@@ -212,7 +212,7 @@ export function PRList({ prs, selectedPRNumber, isLoading, error, activePRReview
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center text-muted-foreground">
           <GitPullRequest className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>No open pull requests</p>
+          <p>{t('prReview.noOpenPRs')}</p>
         </div>
       </div>
     );

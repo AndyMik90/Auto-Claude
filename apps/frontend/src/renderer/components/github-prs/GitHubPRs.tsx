@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { GitPullRequest, RefreshCw, ExternalLink, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useProjectStore } from '../../stores/project-store';
 import { useGitHubPRs, usePRFiltering } from './hooks';
 import { PRList, PRDetail, PRFilterBar } from './components';
@@ -12,23 +13,25 @@ interface GitHubPRsProps {
 
 function NotConnectedState({
   error,
-  onOpenSettings
+  onOpenSettings,
+  t
 }: {
   error: string | null;
   onOpenSettings?: () => void;
+  t: (key: string) => string;
 }) {
   return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="text-center max-w-md">
         <GitPullRequest className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-        <h3 className="text-lg font-medium mb-2">GitHub Not Connected</h3>
+        <h3 className="text-lg font-medium mb-2">{t('prReview.notConnected')}</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          {error || 'Connect your GitHub account to view and review pull requests.'}
+          {error || t('prReview.connectPrompt')}
         </p>
         {onOpenSettings && (
           <Button onClick={onOpenSettings} variant="outline">
             <Settings className="h-4 w-4 mr-2" />
-            Open Settings
+            {t('prReview.openSettings')}
           </Button>
         )}
       </div>
@@ -48,6 +51,7 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
+  const { t } = useTranslation('common');
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -147,7 +151,7 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
 
   // Not connected state
   if (!isConnected) {
-    return <NotConnectedState error={error} onOpenSettings={onOpenSettings} />;
+    return <NotConnectedState error={error} onOpenSettings={onOpenSettings} t={t} />;
   }
 
   return (
@@ -157,7 +161,7 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-medium flex items-center gap-2">
             <GitPullRequest className="h-4 w-4" />
-            Pull Requests
+            {t('prReview.pullRequests')}
           </h2>
           {repoFullName && (
             <a
@@ -171,7 +175,7 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
             </a>
           )}
           <span className="text-xs text-muted-foreground">
-            {prs.length} open
+            {prs.length} {t('prReview.open')}
           </span>
         </div>
         <Button
@@ -230,7 +234,7 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
               onAssignPR={handleAssignPR}
             />
           ) : (
-            <EmptyState message="Select a pull request to view details" />
+            <EmptyState message={t('prReview.selectPRToView')} />
           )
         }
       />
