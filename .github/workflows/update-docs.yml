@@ -1,0 +1,134 @@
+name: Update Documentation
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      # Only trigger on source code changes, not docs themselves
+      - 'apps/backend/**/*.py'
+      - 'apps/frontend/src/**/*.ts'
+      - 'apps/frontend/src/**/*.tsx'
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 10  # Fetch recent commits for analysis
+
+      - name: Get recent commits
+        id: commits
+        run: |
+          # Get commits from the last push
+          COMMITS=$(git log --oneline -10 --no-merges)
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only HEAD~5 HEAD 2>/dev/null || git diff --name-only HEAD)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Use GitHub Copilot to update docs
+        uses: github/copilot-action@v1
+        with:
+          prompt: |
+            You are a technical documentation writer for the Auto-Claude project. Your task is to analyze recent code changes and update the documentation if the changes are relevant to the technical overview.
+
+            ## Recent Commits
+            ${{ steps.commits.outputs.commits }}
+
+            ## Changed Files
+            ${{ steps.commits.outputs.changed_files }}
+
+            ## Instructions
+
+            1. **Analyze the changes**: Review the recent commits and changed files to understand what was modified in the codebase.
+
+            2. **Determine relevance**: Only update documentation if changes affect:
+               - Architecture or system design
+               - New components, modules, or services
+               - API changes or new endpoints
+               - Agent behavior or workflow changes
+               - IPC communication patterns
+               - State management changes
+               - Integration points between frontend and backend
+
+            3. **Read existing documentation**: Before making changes, read these example documentation pages to understand the style and format:
+               - `docs/README.md` - Overview and structure
+               - `docs/architecture/overview.md` - Architecture documentation style
+               - `docs/components/backend/agents.md` - Component documentation style
+               - `docs/diagrams/sequences.md` - How to use Mermaid diagrams
+
+            4. **Documentation style guidelines**:
+               - Use Mermaid diagrams for visualizing:
+                 - Flowcharts for processes and workflows
+                 - Sequence diagrams for component interactions
+                 - Class diagrams for type structures
+               - Keep explanations concise and technical
+               - Use tables for listing properties, methods, or configurations
+               - Include code examples where helpful
+               - Follow the existing heading hierarchy (h2 for main sections, h3 for subsections)
+
+            5. **Update the appropriate documentation file(s)**:
+               - Architecture changes → `docs/architecture/`
+               - Backend component changes → `docs/components/backend/`
+               - Frontend component changes → `docs/components/frontend/`
+               - New diagrams → `docs/diagrams/`
+               - Update `docs/_sidebar.md` if adding new pages
+
+            6. **If no documentation updates are needed**: Simply respond with "No documentation updates required" and explain why the changes don't warrant documentation updates.
+
+            ## Mermaid Diagram Examples
+
+            ```mermaid
+            flowchart TB
+                A[Component] --> B[Process]
+                B --> C{Decision}
+                C -->|Yes| D[Action]
+                C -->|No| E[Alternative]
+            ```
+
+            ```mermaid
+            sequenceDiagram
+                participant A as Component A
+                participant B as Component B
+                A->>B: Request
+                B-->>A: Response
+            ```
+
+            Please analyze the changes and provide any necessary documentation updates.
+
+      - name: Create Pull Request
+        if: success()
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "docs: Auto-update documentation based on recent changes"
+          title: "docs: Auto-update documentation"
+          body: |
+            This PR contains automated documentation updates based on recent code changes.
+
+            ## Changes analyzed
+            ```
+            ${{ steps.commits.outputs.commits }}
+            ```
+
+            Please review the documentation changes to ensure accuracy.
+          branch: docs/auto-update
+          base: develop
+          labels: documentation, automated
