@@ -24,6 +24,8 @@ Usage:
 """
 
 import json
+import logging
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -186,7 +188,7 @@ class RiskClassifier:
 
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             # Log error but don't crash - return None to allow fallback behavior
-            print(f"Warning: Failed to parse complexity_assessment.json: {e}")
+            logger.warning(f"Failed to parse complexity_assessment.json: {e}")
             return None
 
     def _parse_assessment(self, data: dict[str, Any]) -> RiskAssessment:
@@ -575,16 +577,16 @@ def main() -> None:
     if args.json:
         print(json.dumps(summary, indent=2))
     else:
-        print(f"Risk Level: {summary['risk_level']}")
-        print(f"Complexity: {summary['complexity']}")
-        print(f"Skip Validation: {summary['skip_validation']}")
-        print(f"Minimal Mode: {summary['minimal_mode']}")
-        print(f"Test Types: {', '.join(summary['test_types'])}")
-        print(f"Security Scan: {summary['security_scan']}")
-        print(f"Staging Deployment: {summary['staging_deployment']}")
-        print(f"Confidence: {summary['confidence']:.2f}")
+        logger.info(f"Risk Level: {summary['risk_level']}")
+        logger.info(f"Complexity: {summary['complexity']}")
+        logger.info(f"Skip Validation: {summary['skip_validation']}")
+        logger.info(f"Minimal Mode: {summary['minimal_mode']}")
+        logger.info(f"Test Types: {', '.join(summary['test_types'])}")
+        logger.info(f"Security Scan: {summary['security_scan']}")
+        logger.info(f"Staging Deployment: {summary['staging_deployment']}")
+        logger.info(f"Confidence: {summary['confidence']:.2f}")
         if summary.get("reasoning"):
-            print(f"Reasoning: {summary['reasoning']}")
+            logger.info(f"Reasoning: {summary['reasoning']}")
 
 
 if __name__ == "__main__":
