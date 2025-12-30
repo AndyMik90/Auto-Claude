@@ -404,7 +404,19 @@ export function registerFileHandlers(): void {
           } else if (error.code === 'EISDIR') {
             return { success: false, error: 'Not a file' };
           } else if (error.code === 'ELOOP') {
-            // Symlink detected - reject without following it
+            // Symlink detected - check if it points outside workspace for error message
+            // Note: This is only for error reporting, we never write through the symlink
+            try {
+              const targetReal = realpathSync(absPath);
+              const targetRealForCompare = isCaseInsensitiveFs
+                ? targetReal.toLowerCase()
+                : targetReal;
+              if (!targetRealForCompare.startsWith(workspaceRootForCompare + path.sep) && targetRealForCompare !== workspaceRootForCompare) {
+                return { success: false, error: 'Symlink target is outside workspace root' };
+              }
+            } catch {
+              // If we can't resolve it, provide generic error
+            }
             return { success: false, error: 'Cannot write to symlinks' };
           } else {
             throw err;
