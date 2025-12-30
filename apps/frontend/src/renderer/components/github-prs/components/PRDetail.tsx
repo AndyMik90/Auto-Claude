@@ -47,6 +47,7 @@ interface PRDetailProps {
   previousReviewResult: PRReviewResult | null;
   reviewProgress: PRReviewProgress | null;
   isReviewing: boolean;
+  initialNewCommitsCheck?: NewCommitsCheck | null;
   onRunReview: () => void;
   onRunFollowupReview: () => void;
   onCheckNewCommits: () => Promise<NewCommitsCheck>;
@@ -74,6 +75,7 @@ export function PRDetail({
   previousReviewResult,
   reviewProgress,
   isReviewing,
+  initialNewCommitsCheck,
   onRunReview,
   onRunFollowupReview,
   onCheckNewCommits,
@@ -91,10 +93,18 @@ export function PRDetail({
   const [postSuccess, setPostSuccess] = useState<{ count: number; timestamp: number } | null>(null);
   const [isPosting, setIsPosting] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
-  const [newCommitsCheck, setNewCommitsCheck] = useState<NewCommitsCheck | null>(null);
+  // Initialize with store value, then sync and update via local checks
+  const [newCommitsCheck, setNewCommitsCheck] = useState<NewCommitsCheck | null>(initialNewCommitsCheck ?? null);
   const [isCheckingNewCommits, setIsCheckingNewCommits] = useState(false);
   const [analysisExpanded, setAnalysisExpanded] = useState(true);
   const checkNewCommitsAbortRef = useRef<AbortController | null>(null);
+
+  // Sync with store's newCommitsCheck when it changes (e.g., when switching PRs)
+  useEffect(() => {
+    if (initialNewCommitsCheck !== undefined) {
+      setNewCommitsCheck(initialNewCommitsCheck);
+    }
+  }, [initialNewCommitsCheck]);
 
   // Sync local postedFindingIds with reviewResult.postedFindingIds when it changes
   useEffect(() => {
