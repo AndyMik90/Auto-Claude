@@ -66,9 +66,16 @@ export function TaskDetailModal({ open, task, onOpenChange, onSwitchToTerminals,
   );
 }
 
+// Feature flag for Files tab (enabled by default, can be disabled via localStorage)
+const isFilesTabEnabled = () => {
+  const flag = localStorage.getItem('use_files_tab');
+  return flag === null || flag === 'true'; // Enabled by default
+};
+
 // Separate component to use hooks only when task exists
 function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals, onOpenInbuiltTerminal }: { open: boolean; task: Task; onOpenChange: (open: boolean) => void; onSwitchToTerminals?: () => void; onOpenInbuiltTerminal?: (id: string, cwd: string) => void }) {
   const state = useTaskDetail({ task });
+  const showFilesTab = isFilesTabEnabled();
   const progressPercent = calculateProgress(task.subtasks);
   const completedSubtasks = task.subtasks.filter(s => s.status === 'completed').length;
   const totalSubtasks = task.subtasks.length;
@@ -371,12 +378,14 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                   >
                     Logs
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="files"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
-                  >
-                    Files
-                  </TabsTrigger>
+                  {showFilesTab && (
+                    <TabsTrigger
+                      value="files"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
+                    >
+                      Files
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 {/* Overview Tab */}
@@ -449,9 +458,11 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                 </TabsContent>
 
                 {/* Files Tab */}
-                <TabsContent value="files" className="flex-1 min-h-0 overflow-hidden mt-0">
-                  <TaskFiles task={task} />
-                </TabsContent>
+                {showFilesTab && (
+                  <TabsContent value="files" className="flex-1 min-h-0 overflow-hidden mt-0">
+                    <TaskFiles task={task} />
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
 
