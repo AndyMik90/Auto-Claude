@@ -64,7 +64,6 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
     reviewResult,
     reviewProgress,
     isReviewing,
-    activePRReviews,
     selectPR,
     runReview,
     runFollowupReview,
@@ -210,7 +209,6 @@ export function GitHubPRs({ onOpenSettings }: GitHubPRsProps) {
               selectedPRNumber={selectedPRNumber}
               isLoading={isLoading}
               error={error}
-              activePRReviews={activePRReviews}
               getReviewStateForPR={getReviewStateForPR}
               onSelectPR={selectPR}
             />

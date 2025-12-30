@@ -71,11 +71,7 @@ function getPRComputedStatus(
     return 'ready_to_merge';
   }
 
-  // Has review result but not posted
-  if (result.hasPostedFindings) {
-    return 'posted';
-  }
-
+  // Has review result but not posted yet
   return 'reviewed';
 }
 

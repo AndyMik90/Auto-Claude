@@ -68,6 +68,15 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
   startFollowupReview: (projectId: string, prNumber: number) => set((state) => {
     const key = `${projectId}:${prNumber}`;
     const existing = state.prReviews[key];
+
+    // Log warning if starting follow-up without a previous result
+    if (!existing?.result) {
+      console.warn(
+        `[PRReviewStore] Starting follow-up review for PR #${prNumber} without a previous result. ` +
+        `This may indicate the follow-up was triggered incorrectly.`
+      );
+    }
+
     return {
       prReviews: {
         ...state.prReviews,

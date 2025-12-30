@@ -29,8 +29,11 @@ export interface ReviewStatusTreeProps {
   lastPostedAt?: number | null;
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
+// Helper function for formatting dates with validation and locale support
+function formatDate(dateString: string, locale: string = 'en-US'): string {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -55,8 +58,11 @@ export function ReviewStatusTree({
   newCommitsCheck,
   lastPostedAt
 }: ReviewStatusTreeProps) {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(true);
+
+  // Determine if this is a follow-up review in progress (for edge case handling)
+  const isFollowupInProgress = isReviewing && (previousReviewResult !== null || reviewResult?.isFollowupReview);
 
   // If not reviewed, show simple status
   if (status === 'not_reviewed' && !isReviewing) {
@@ -77,24 +83,34 @@ export function ReviewStatusTree({
   // Determine steps for the tree
   const steps: { id: string; label: string; status: string; date?: string | null; action?: React.ReactNode }[] = [];
 
-  // When follow-up is in progress AND we have previous review data, show continuation
-  if (isReviewing && previousReviewResult) {
-    // Show previous review as completed context
-    steps.push({
-      id: 'prev_review',
-      label: t('prReview.previousReview', { count: previousReviewResult.findings.length }),
-      status: 'completed',
-      date: previousReviewResult.reviewedAt
-    });
-
-    // Show posted findings from previous review
-    const prevPostedCount = previousReviewResult.postedFindingIds?.length ?? 0;
-    if (previousReviewResult.hasPostedFindings || prevPostedCount > 0) {
+  // When follow-up is in progress, show continuation (handle edge case where previousReviewResult may be null)
+  if (isFollowupInProgress) {
+    // Show previous review as completed context (if available)
+    if (previousReviewResult) {
       steps.push({
-        id: 'prev_posted',
-        label: t('prReview.findingsPosted', { count: prevPostedCount }),
+        id: 'prev_review',
+        label: t('prReview.previousReview', { count: previousReviewResult.findings.length }),
         status: 'completed',
-        date: previousReviewResult.postedAt
+        date: previousReviewResult.reviewedAt
+      });
+
+      // Show posted findings from previous review
+      const prevPostedCount = previousReviewResult.postedFindingIds?.length ?? 0;
+      if (previousReviewResult.hasPostedFindings || prevPostedCount > 0) {
+        steps.push({
+          id: 'prev_posted',
+          label: t('prReview.findingsPosted', { count: prevPostedCount }),
+          status: 'completed',
+          date: previousReviewResult.postedAt
+        });
+      }
+    } else {
+      // Edge case: Follow-up review starting but previous result hasn't loaded yet
+      steps.push({
+        id: 'prev_review',
+        label: t('prReview.reviewStatus'),
+        status: 'completed',
+        date: null
       });
     }
 
@@ -102,9 +118,7 @@ export function ReviewStatusTree({
     if (newCommitsCheck?.hasNewCommits) {
       steps.push({
         id: 'new_commits',
-        label: newCommitsCheck.newCommitCount === 1
-          ? t('prReview.newCommit', { count: newCommitsCheck.newCommitCount })
-          : t('prReview.newCommits', { count: newCommitsCheck.newCommitCount }),
+        label: t('prReview.newCommits', { count: newCommitsCheck.newCommitCount }),
         status: 'completed',
         date: null
       });
@@ -183,23 +197,49 @@ export function ReviewStatusTree({
     }
   }
 
-  // Status dot color
-  const statusDotColor = cn("h-2.5 w-2.5 shrink-0 rounded-full",
-    isReviewing ? "bg-blue-500 animate-pulse" :
-    status === 'ready_to_merge' ? "bg-success" :
-    status === 'waiting_for_changes' ? "bg-warning" :
-    status === 'reviewed_pending_post' ? "bg-primary" :
-    status === 'ready_for_followup' ? "bg-info" :
-    "bg-muted-foreground"
-  );
+  // Status dot color - explicitly handle all statuses
+  const getStatusDotColor = (): string => {
+    if (isReviewing) return "bg-blue-500 animate-pulse";
+    switch (status) {
+      case 'ready_to_merge':
+        return "bg-success";
+      case 'waiting_for_changes':
+        return "bg-warning";
+      case 'reviewed_pending_post':
+        return "bg-primary";
+      case 'ready_for_followup':
+        return "bg-info";
+      case 'needs_attention':
+        return "bg-destructive";
+      case 'followup_issues_remain':
+        return "bg-warning";
+      default:
+        return "bg-muted-foreground";
+    }
+  };
+  const statusDotColor = cn("h-2.5 w-2.5 shrink-0 rounded-full", getStatusDotColor());
 
-  // Status label
-  const statusLabel = isReviewing ? t('prReview.aiReviewInProgress') :
-    status === 'ready_to_merge' ? t('prReview.readyToMerge') :
-    status === 'waiting_for_changes' ? t('prReview.waitingForChanges') :
-    status === 'reviewed_pending_post' ? t('prReview.reviewComplete') :
-    status === 'ready_for_followup' ? t('prReview.readyForFollowup') :
-    t('prReview.reviewStatus');
+  // Status label - explicitly handle all statuses
+  const getStatusLabel = (): string => {
+    if (isReviewing) return t('prReview.aiReviewInProgress');
+    switch (status) {
+      case 'ready_to_merge':
+        return t('prReview.readyToMerge');
+      case 'waiting_for_changes':
+        return t('prReview.waitingForChanges');
+      case 'reviewed_pending_post':
+        return t('prReview.reviewComplete');
+      case 'ready_for_followup':
+        return t('prReview.readyForFollowup');
+      case 'needs_attention':
+        return t('prReview.needsAttention');
+      case 'followup_issues_remain':
+        return t('prReview.blockingIssues');
+      default:
+        return t('prReview.reviewStatus');
+    }
+  };
+  const statusLabel = getStatusLabel();
 
   return (
     <CollapsibleCard
@@ -247,7 +287,7 @@ export function ReviewStatusTree({
                 </div>
                 {step.date && (
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {formatDate(step.date)}
+                    {formatDate(step.date, i18n.language)}
                   </div>
                 )}
               </div>

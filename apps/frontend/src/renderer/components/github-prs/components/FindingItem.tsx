@@ -17,9 +17,29 @@ interface FindingItemProps {
   onToggle: () => void;
 }
 
+// Helper to translate category names
+function getCategoryTranslationKey(category: string): string {
+  // Map category values to translation keys
+  const categoryMap: Record<string, string> = {
+    'security': 'prReview.category.security',
+    'logic': 'prReview.category.logic',
+    'quality': 'prReview.category.quality',
+    'performance': 'prReview.category.performance',
+    'style': 'prReview.category.style',
+    'documentation': 'prReview.category.documentation',
+    'testing': 'prReview.category.testing',
+    'other': 'prReview.category.other',
+  };
+  return categoryMap[category.toLowerCase()] || category;
+}
+
 export function FindingItem({ finding, selected, posted = false, onToggle }: FindingItemProps) {
   const { t } = useTranslation('common');
   const CategoryIcon = getCategoryIcon(finding.category);
+
+  // Get translated category name (falls back to original if translation not found)
+  const categoryKey = getCategoryTranslationKey(finding.category);
+  const categoryLabel = t(categoryKey, { defaultValue: finding.category });
 
   return (
     <div
@@ -45,7 +65,7 @@ export function FindingItem({ finding, selected, posted = false, onToggle }: Fin
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-xs shrink-0">
               <CategoryIcon className="h-3 w-3 mr-1" />
-              {finding.category}
+              {categoryLabel}
             </Badge>
             {posted && (
               <Badge variant="outline" className="text-xs shrink-0 text-success border-success/50">

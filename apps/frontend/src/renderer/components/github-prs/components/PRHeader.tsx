@@ -5,8 +5,11 @@ import { Button } from '../../ui/button';
 import { cn } from '../../../lib/utils';
 import type { PRData } from '../hooks/useGitHubPRs';
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
+// Helper function for formatting dates with validation and locale support
+function formatDate(dateString: string, locale: string = 'en-US'): string {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -24,7 +27,7 @@ export interface PRHeaderProps {
  * Shows PR metadata: state, number, title, author, dates, branches, and file stats
  */
 export function PRHeader({ pr }: PRHeaderProps) {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
 
   return (
     <div className="mb-6">
@@ -67,7 +70,7 @@ export function PRHeader({ pr }: PRHeaderProps) {
 
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 opacity-70" />
-          <span>{formatDate(pr.createdAt)}</span>
+          <span>{formatDate(pr.createdAt, i18n.language)}</span>
         </div>
 
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 font-mono text-xs border border-border/50">

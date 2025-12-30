@@ -36,14 +36,17 @@ function PRStatusFlow({
   hasNewCommits,
   t,
 }: PRStatusFlowProps) {
-  // Determine flow state
+  // Determine flow state - prioritize more advanced states first
   let flowState: FlowState = 'not_started';
-  if (isReviewing) {
-    flowState = 'reviewing';
-  } else if (hasPosted) {
+  if (hasPosted) {
+    // Posted is the most advanced state
     flowState = 'posted';
   } else if (hasResult) {
+    // Has result but not posted yet
     flowState = 'reviewed';
+  } else if (isReviewing) {
+    // Currently reviewing (only if no result yet)
+    flowState = 'reviewing';
   }
 
   // Determine final status color for posted state
@@ -158,7 +161,6 @@ interface PRListProps {
   selectedPRNumber: number | null;
   isLoading: boolean;
   error: string | null;
-  activePRReviews?: number[];
   getReviewStateForPR: (prNumber: number) => PRReviewInfo | null;
   onSelectPR: (prNumber: number) => void;
 }
@@ -183,7 +185,7 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-export function PRList({ prs, selectedPRNumber, isLoading, error, activePRReviews: _activePRReviews, getReviewStateForPR, onSelectPR }: PRListProps) {
+export function PRList({ prs, selectedPRNumber, isLoading, error, getReviewStateForPR, onSelectPR }: PRListProps) {
   const { t } = useTranslation('common');
 
   if (isLoading && prs.length === 0) {

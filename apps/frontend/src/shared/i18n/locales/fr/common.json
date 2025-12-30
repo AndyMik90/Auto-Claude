@@ -170,6 +170,16 @@
       "mediumDesc": "À considérer",
       "lowDesc": "Optionnel"
     },
+    "category": {
+      "security": "Sécurité",
+      "logic": "Logique",
+      "quality": "Qualité",
+      "performance": "Performance",
+      "style": "Style",
+      "documentation": "Documentation",
+      "testing": "Tests",
+      "other": "Autre"
+    },
     "selectCriticalHigh": "Sélectionner Critique/Élevée ({{count}})",
     "selectAll": "Tout sélectionner",
     "clear": "Effacer",

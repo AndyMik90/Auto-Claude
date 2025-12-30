@@ -170,6 +170,16 @@
       "mediumDesc": "Consider fixing",
       "lowDesc": "Nice to have"
     },
+    "category": {
+      "security": "Security",
+      "logic": "Logic",
+      "quality": "Quality",
+      "performance": "Performance",
+      "style": "Style",
+      "documentation": "Documentation",
+      "testing": "Testing",
+      "other": "Other"
+    },
     "selectCriticalHigh": "Select Critical/High ({{count}})",
     "selectAll": "Select All",
     "clear": "Clear",

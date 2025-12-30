@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bot,
@@ -19,9 +19,11 @@ import { Card, CardContent } from '../../ui/card';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Progress } from '../../ui/progress';
 
-// Helper function for formatting dates
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
+// Helper function for formatting dates with validation and locale support
+function formatDate(dateString: string, locale: string = 'en-US'): string {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -81,7 +83,7 @@ export function PRDetail({
   onMergePR,
   onAssignPR: _onAssignPR,
 }: PRDetailProps) {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   // Selection state for findings
   const [selectedFindingIds, setSelectedFindingIds] = useState<Set<string>>(new Set());
   const [postedFindingIds, setPostedFindingIds] = useState<Set<string>>(new Set());
@@ -90,8 +92,18 @@ export function PRDetail({
   const [isPosting, setIsPosting] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [newCommitsCheck, setNewCommitsCheck] = useState<NewCommitsCheck | null>(null);
-  const [, setIsCheckingNewCommits] = useState(false);
+  const [isCheckingNewCommits, setIsCheckingNewCommits] = useState(false);
   const [analysisExpanded, setAnalysisExpanded] = useState(true);
+  const checkNewCommitsAbortRef = useRef<AbortController | null>(null);
+
+  // Sync local postedFindingIds with reviewResult.postedFindingIds when it changes
+  useEffect(() => {
+    if (reviewResult?.postedFindingIds) {
+      setPostedFindingIds(new Set(reviewResult.postedFindingIds));
+    } else {
+      setPostedFindingIds(new Set());
+    }
+  }, [reviewResult?.postedFindingIds, pr.number]);
 
   // Auto-select critical and high findings when review completes (excluding already posted)
   useEffect(() => {
@@ -108,23 +120,45 @@ export function PRDetail({
   const hasPostedFindings = postedFindingIds.size > 0 || reviewResult?.hasPostedFindings;
 
   const checkForNewCommits = useCallback(async () => {
+    // Prevent duplicate concurrent calls
+    if (isCheckingNewCommits) {
+      return;
+    }
+
+    // Cancel any pending check
+    if (checkNewCommitsAbortRef.current) {
+      checkNewCommitsAbortRef.current.abort();
+    }
+    checkNewCommitsAbortRef.current = new AbortController();
+
     // Only check for new commits if we have a review AND findings have been posted
     if (reviewResult?.success && reviewResult.reviewedCommitSha && hasPostedFindings) {
       setIsCheckingNewCommits(true);
       try {
         const result = await onCheckNewCommits();
-        setNewCommitsCheck(result);
+        // Only update state if not aborted
+        if (!checkNewCommitsAbortRef.current?.signal.aborted) {
+          setNewCommitsCheck(result);
+        }
       } finally {
-        setIsCheckingNewCommits(false);
+        if (!checkNewCommitsAbortRef.current?.signal.aborted) {
+          setIsCheckingNewCommits(false);
+        }
       }
     } else {
       // Clear any existing new commits check if we haven't posted yet
       setNewCommitsCheck(null);
     }
-  }, [reviewResult, onCheckNewCommits, hasPostedFindings]);
+  }, [reviewResult, onCheckNewCommits, hasPostedFindings, isCheckingNewCommits]);
 
   useEffect(() => {
     checkForNewCommits();
+    return () => {
+      // Cleanup abort controller on unmount
+      if (checkNewCommitsAbortRef.current) {
+        checkNewCommitsAbortRef.current.abort();
+      }
+    };
   }, [checkForNewCommits]);
 
   // Clear success message after 3 seconds
@@ -146,12 +180,19 @@ export function PRDetail({
   }, [reviewResult]);
 
   // Check if review is "clean" - only LOW severity findings (no MEDIUM, HIGH, or CRITICAL)
+  // Requires at least having a successful review to be considered clean
   const isCleanReview = useMemo(() => {
     if (!reviewResult || !reviewResult.success) return false;
     // Only LOW findings allowed - no medium, high, or critical
+    // A review with zero findings is also considered clean
     return !reviewResult.findings.some(f =>
       f.severity === 'critical' || f.severity === 'high' || f.severity === 'medium'
     );
+  }, [reviewResult]);
+
+  // Check if there are any findings at all (for auto-approve button label)
+  const hasFindings = useMemo(() => {
+    return reviewResult?.findings && reviewResult.findings.length > 0;
   }, [reviewResult]);
 
   // Get LOW severity findings for auto-posting
@@ -173,10 +214,12 @@ export function PRDetail({
       };
     }
 
-    const totalPosted = postedFindingIds.size + (reviewResult.postedFindingIds?.length ?? 0);
+    // Use a merged Set to avoid double-counting (local state may overlap with backend state)
+    const allPostedIds = new Set([...postedFindingIds, ...(reviewResult.postedFindingIds ?? [])]);
+    const totalPosted = allPostedIds.size;
     const hasPosted = totalPosted > 0 || reviewResult.hasPostedFindings;
     const hasBlockers = reviewResult.findings.some(f => f.severity === 'critical' || f.severity === 'high');
-    const unpostedFindings = reviewResult.findings.filter(f => !postedFindingIds.has(f.id) && !reviewResult.postedFindingIds?.includes(f.id));
+    const unpostedFindings = reviewResult.findings.filter(f => !allPostedIds.has(f.id));
     const hasUnpostedBlockers = unpostedFindings.some(f => f.severity === 'critical' || f.severity === 'high');
     const hasNewCommits = newCommitsCheck?.hasNewCommits ?? false;
     const newCommitCount = newCommitsCheck?.newCommitCount ?? 0;
@@ -348,7 +391,11 @@ export function PRDetail({
       // Step 1: Post any LOW findings as non-blocking suggestions
       const lowFindingIds = lowSeverityFindings.map(f => f.id);
       if (lowFindingIds.length > 0) {
-        await onPostReview(lowFindingIds);
+        const success = await onPostReview(lowFindingIds);
+        if (!success) {
+          // Failed to post findings, don't proceed with approval
+          return;
+        }
         // Mark them as posted locally
         setPostedFindingIds(prev => new Set([...prev, ...lowFindingIds]));
       }
@@ -367,7 +414,7 @@ export function PRDetail({
 ---
 **Review Details:**
 ${findingsNote}
-- Reviewed at: ${formatDate(reviewResult.reviewedAt)}
+- Reviewed at: ${formatDate(reviewResult.reviewedAt, i18n.language)}
 ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking issues resolved` : ''}
 
 *This automated review found no blocking issues. The PR can be safely merged.*
@@ -402,7 +449,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
           isReviewing={isReviewing}
           reviewResult={reviewResult}
           previousReviewResult={previousReviewResult}
-          postedCount={postedFindingIds.size + (reviewResult?.postedFindingIds?.length ?? 0)}
+          postedCount={new Set([...postedFindingIds, ...(reviewResult?.postedFindingIds ?? [])]).size}
           onRunReview={onRunReview}
           onRunFollowupReview={onRunFollowupReview}
           onCancelReview={onCancelReview}
@@ -429,7 +476,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
                 </Button>
              )}
 
-             {/* Auto-approve for clean PRs (only LOW findings) */}
+             {/* Auto-approve for clean PRs (only LOW findings or no findings) */}
              {isCleanReview && (
                 <Button
                   onClick={handleAutoApprove}
@@ -446,7 +493,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
                     <>
                       <CheckCheck className="h-4 w-4 mr-2" />
                       {t('prReview.autoApprovePR')}
-                      {lowSeverityFindings.length > 0 && (
+                      {hasFindings && lowSeverityFindings.length > 0 && (
                         <span className="ml-1 text-xs opacity-80">
                           {t('prReview.suggestions', { count: lowSeverityFindings.length })}
                         </span>
