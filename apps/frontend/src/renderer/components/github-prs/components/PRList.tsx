@@ -1,4 +1,4 @@
-import { GitPullRequest, User, Clock, FileDiff, Loader2, CheckCircle2, AlertCircle, MessageSquare, RefreshCw } from 'lucide-react';
+import { GitPullRequest, User, Clock, FileDiff, Loader2, CheckCircle2, AlertCircle, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Badge } from '../../ui/badge';
 import { cn } from '../../../lib/utils';
@@ -104,7 +104,6 @@ interface PRListProps {
   selectedPRNumber: number | null;
   isLoading: boolean;
   error: string | null;
-  activePRReviews: number[];
   getReviewStateForPR: (prNumber: number) => PRReviewInfo | null;
   onSelectPR: (prNumber: number) => void;
 }
@@ -129,7 +128,7 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-export function PRList({ prs, selectedPRNumber, isLoading, error, activePRReviews, getReviewStateForPR, onSelectPR }: PRListProps) {
+export function PRList({ prs, selectedPRNumber, isLoading, error, getReviewStateForPR, onSelectPR }: PRListProps) {
   const { t } = useTranslation('common');
 
   if (isLoading && prs.length === 0) {
@@ -137,7 +136,7 @@ export function PRList({ prs, selectedPRNumber, isLoading, error, activePRReview
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center text-muted-foreground">
           <GitPullRequest className="h-8 w-8 mx-auto mb-2 animate-pulse" />
-          <p>Loading pull requests...</p>
+          <p>{t('prReview.loadingPRs')}</p>
         </div>
       </div>
     );
@@ -158,7 +157,7 @@ export function PRList({ prs, selectedPRNumber, isLoading, error, activePRReview
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center text-muted-foreground">
           <GitPullRequest className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>No open pull requests</p>
+          <p>{t('prReview.noOpenPRs')}</p>
         </div>
       </div>
     );
@@ -200,10 +199,17 @@ export function PRList({ prs, selectedPRNumber, isLoading, error, activePRReview
                     {!isReviewingPR && hasReviewResult && reviewState?.result && (
                       <>
                         {/* Show "Reviewed" if AI review is complete but not yet posted to GitHub */}
-                        {!reviewState.result.reviewId && (
+                        {!reviewState.result.reviewId && !reviewState.result.hasPostedFindings && (
                           <Badge variant="outline" className="text-xs flex items-center gap-1 text-blue-500 border-blue-500/50">
                             <CheckCircle2 className="h-3 w-3" />
                             {t('prReview.reviewed')}
+                          </Badge>
+                        )}
+                        {/* Show "Posted" when findings posted to GitHub but no full review ID */}
+                        {!reviewState.result.reviewId && reviewState.result.hasPostedFindings && (
+                          <Badge variant="purple" className="text-xs flex items-center gap-1">
+                            <Send className="h-3 w-3" />
+                            {t('prReview.posted')}
                           </Badge>
                         )}
                         {/* Show actual status only after posted to GitHub (has reviewId) */}
