@@ -375,6 +375,10 @@ export function registerFileHandlers(): void {
         } catch (err) {
           const error = err as NodeJS.ErrnoException;
 
+          // On Windows, file mode parameter should be omitted or 0o666 (default)
+          // Unix octal permissions (0o644) can cause EINVAL on Windows
+          const fileMode = process.platform === 'win32' ? 0o666 : 0o644;
+
           // If file doesn't exist, try to create it
           // Windows may throw EINVAL instead of ENOENT when O_TRUNC is used on non-existent file
           if (error.code === 'ENOENT' || error.code === 'EINVAL') {
@@ -385,9 +389,6 @@ export function registerFileHandlers(): void {
                 ? constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL
                 : constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW;
 
-              // On Windows, file mode parameter should be omitted or 0o666 (default)
-              // Unix octal permissions (0o644) can cause EINVAL on Windows
-              const fileMode = process.platform === 'win32' ? 0o666 : 0o644;
               fd = openSync(absPath, createFlags, fileMode);
             } catch (createErr) {
               const createError = createErr as NodeJS.ErrnoException;
