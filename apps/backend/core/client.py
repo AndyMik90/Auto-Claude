@@ -152,6 +152,7 @@ def create_client(
     agent_type: str = "coder",
     max_thinking_tokens: int | None = None,
     output_format: dict | None = None,
+    agents: dict | None = None,
 ) -> ClaudeSDKClient:
     """
     Create a Claude Agent SDK client with multi-layered security.
@@ -174,6 +175,10 @@ def create_client(
         output_format: Optional structured output format for validated JSON responses.
                       Use {"type": "json_schema", "schema": Model.model_json_schema()}
                       See: https://platform.claude.com/docs/en/agent-sdk/structured-outputs
+        agents: Optional dict of subagent definitions for SDK parallel execution.
+               Format: {"agent-name": {"description": "...", "prompt": "...",
+                        "tools": [...], "model": "inherit"}}
+               See: https://platform.claude.com/docs/en/agent-sdk/subagents
 
     Returns:
         Configured ClaudeSDKClient
@@ -431,5 +436,10 @@ def create_client(
     # See: https://platform.claude.com/docs/en/agent-sdk/structured-outputs
     if output_format:
         options_kwargs["output_format"] = output_format
+
+    # Add subagent definitions if specified
+    # See: https://platform.claude.com/docs/en/agent-sdk/subagents
+    if agents:
+        options_kwargs["agents"] = agents
 
     return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))

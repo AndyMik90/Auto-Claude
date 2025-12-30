@@ -104,18 +104,45 @@ export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
             setPrs(result);
 
             // Preload review results for all PRs
-            result.forEach(pr => {
+            const preloadPromises = result.map(async (pr) => {
               const existingState = getPRReviewState(projectId, pr.number);
               // Only fetch from disk if we don't have a result in the store
               if (!existingState?.result) {
-                window.electronAPI.github.getPRReview(projectId, pr.number).then(reviewResult => {
-                  if (reviewResult) {
-                    // Update store with the loaded result
-                    usePRReviewStore.getState().setPRReviewResult(projectId, reviewResult);
-                  }
-                });
+                const reviewResult = await window.electronAPI.github.getPRReview(projectId, pr.number);
+                if (reviewResult) {
+                  // Update store with the loaded result
+                  usePRReviewStore.getState().setPRReviewResult(projectId, reviewResult);
+                  return { prNumber: pr.number, reviewResult };
+                }
+              } else {
+                return { prNumber: pr.number, reviewResult: existingState.result };
               }
+              return null;
             });
+
+            // Wait for all preloads to complete, then check for new commits
+            const preloadResults = await Promise.all(preloadPromises);
+
+            // Check for new commits on PRs that have posted findings
+            const prsWithPostedFindings = preloadResults.filter(
+              (r): r is { prNumber: number; reviewResult: PRReviewResult } =>
+                r !== null && r.reviewResult?.hasPostedFindings === true && !!r.reviewResult?.reviewedCommitSha
+            );
+
+            if (prsWithPostedFindings.length > 0) {
+              // Check new commits in parallel for all PRs with posted findings
+              await Promise.all(
+                prsWithPostedFindings.map(async ({ prNumber }) => {
+                  try {
+                    const newCommitsResult = await window.electronAPI.github.checkNewCommits(projectId, prNumber);
+                    usePRReviewStore.getState().setNewCommitsCheck(projectId, prNumber, newCommitsResult);
+                  } catch (err) {
+                    // Silently fail for individual PR checks - don't block the list
+                    console.warn(`Failed to check new commits for PR #${prNumber}:`, err);
+                  }
+                })
+              );
+            }
           }
         }
       } else {
