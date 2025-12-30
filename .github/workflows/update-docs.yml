@@ -47,7 +47,18 @@ jobs:
         uses: github/copilot-action@v1
         with:
           prompt: |
-            You are a technical documentation writer for the Auto-Claude project. Your task is to analyze recent code changes and update the documentation if the changes are relevant to the technical overview.
+            You are a technical documentation writer for the Auto-Claude project. Your task is to analyze recent code changes and update the documentation ONLY if changes are relevant to the technical overview.
+
+            ## IMPORTANT: Documentation Purpose
+
+            This documentation is a **technical overview** of how the Auto-Claude system works. It explains architecture, component relationships, data flows, and system design.
+
+            **This is NOT:**
+            - A changelog or commit log
+            - API reference documentation
+            - A place to document every code change
+
+            **Only update documentation when changes affect the fundamental understanding of how the system works.** Most code changes (bug fixes, refactors, minor features) do NOT require documentation updates.
 
             ## Recent Commits
             ${{ steps.commits.outputs.commits }}
@@ -57,41 +68,46 @@ jobs:
 
             ## Instructions
 
-            1. **Analyze the changes**: Review the recent commits and changed files to understand what was modified in the codebase.
+            1. **Analyze the changes**: Review the recent commits and changed files to understand what was modified.
 
             2. **Determine relevance**: Only update documentation if changes affect:
-               - Architecture or system design
-               - New components, modules, or services
-               - API changes or new endpoints
-               - Agent behavior or workflow changes
-               - IPC communication patterns
-               - State management changes
-               - Integration points between frontend and backend
+               - Architecture or system design patterns
+               - New major components, modules, or services
+               - Significant workflow or process changes
+               - New integration points between systems
+               - Changes to how agents, IPC, or core systems work
 
-            3. **Read existing documentation**: Before making changes, read these example documentation pages to understand the style and format:
+            3. **Skip documentation updates for**:
+               - Bug fixes
+               - Code refactoring without architectural changes
+               - Minor feature additions
+               - Performance improvements
+               - Dependency updates
+               - Test changes
+
+            4. **Read existing documentation**: Before making changes, read these example documentation pages to understand the style and format:
                - `docs/README.md` - Overview and structure
                - `docs/architecture/overview.md` - Architecture documentation style
                - `docs/components/backend/agents.md` - Component documentation style
                - `docs/diagrams/sequences.md` - How to use Mermaid diagrams
 
-            4. **Documentation style guidelines**:
+            5. **Documentation style guidelines**:
                - Use Mermaid diagrams for visualizing:
                  - Flowcharts for processes and workflows
                  - Sequence diagrams for component interactions
                  - Class diagrams for type structures
                - Keep explanations concise and technical
                - Use tables for listing properties, methods, or configurations
-               - Include code examples where helpful
                - Follow the existing heading hierarchy (h2 for main sections, h3 for subsections)
 
-            5. **Update the appropriate documentation file(s)**:
+            6. **Update the appropriate documentation file(s)**:
                - Architecture changes → `docs/architecture/`
                - Backend component changes → `docs/components/backend/`
                - Frontend component changes → `docs/components/frontend/`
                - New diagrams → `docs/diagrams/`
                - Update `docs/_sidebar.md` if adding new pages
 
-            6. **If no documentation updates are needed**: Simply respond with "No documentation updates required" and explain why the changes don't warrant documentation updates.
+            7. **If no documentation updates are needed**: Simply respond with "No documentation updates required" and briefly explain why.
 
             ## Mermaid Diagram Examples
 
@@ -113,22 +129,18 @@ jobs:
 
             Please analyze the changes and provide any necessary documentation updates.
 
-      - name: Create Pull Request
-        if: success()
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "docs: Auto-update documentation based on recent changes"
-          title: "docs: Auto-update documentation"
-          body: |
-            This PR contains automated documentation updates based on recent code changes.
+      - name: Commit documentation changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/
+          if git diff --staged --quiet; then
+            echo "No documentation changes to commit"
+          else
+            git commit -m "docs: Auto-update technical documentation
 
-            ## Changes analyzed
-            ```
-            ${{ steps.commits.outputs.commits }}
-            ```
+            Based on recent commits to develop branch.
 
-            Please review the documentation changes to ensure accuracy.
-          branch: docs/auto-update
-          base: develop
-          labels: documentation, automated
+            🤖 Generated with GitHub Copilot"
+            git push
+          fi
