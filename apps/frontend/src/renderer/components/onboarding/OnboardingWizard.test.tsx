@@ -122,7 +122,7 @@ describe('OnboardingWizard Integration Tests', () => {
       }
     });
 
-    it('should go from auth-choice to graphiti when profile created', async () => {
+    it('should not show OAuth step text on auth-choice screen', async () => {
       render(<OnboardingWizard {...defaultProps} />);
 
       // Navigate to auth-choice

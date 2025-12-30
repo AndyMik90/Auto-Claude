@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useSettingsStore } from '../../../stores/settings-store';
-import type { APIProfile } from '../../../../shared/types/profile';
 
 /**
  * Hook to check if the ideation feature has valid authentication.
@@ -22,19 +21,41 @@ export function useIdeationAuth() {
   // Get active API profile info from settings store
   const activeProfileId = useSettingsStore((state) => state.activeProfileId);
 
+  useEffect(() => {
+    const performCheck = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Check for OAuth token from source .env
+        const sourceTokenResult = await window.electronAPI.checkSourceToken();
+        const hasSourceOAuthToken = sourceTokenResult.success && sourceTokenResult.data?.hasToken;
+
+        // Check if active API profile is configured
+        const hasAPIProfile = Boolean(activeProfileId && activeProfileId !== '');
+
+        // Auth is valid if either source token or API profile exists
+        setHasToken(hasSourceOAuthToken || hasAPIProfile);
+      } catch (err) {
+        setHasToken(false);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    performCheck();
+  }, [activeProfileId]);
+
+  // Expose checkAuth for manual re-checks
   const checkAuth = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Check for OAuth token from source .env
       const sourceTokenResult = await window.electronAPI.checkSourceToken();
       const hasSourceOAuthToken = sourceTokenResult.success && sourceTokenResult.data?.hasToken;
-
-      // Check if active API profile is configured
       const hasAPIProfile = Boolean(activeProfileId && activeProfileId !== '');
-
-      // Auth is valid if either source token or API profile exists
       setHasToken(hasSourceOAuthToken || hasAPIProfile);
     } catch (err) {
       setHasToken(false);
@@ -43,10 +64,6 @@ export function useIdeationAuth() {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    checkAuth();
-  }, [activeProfileId]);
 
   return { hasToken, isLoading, error, checkAuth };
 }
