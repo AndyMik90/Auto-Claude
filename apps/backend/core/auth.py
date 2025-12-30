@@ -49,7 +49,7 @@ def get_token_from_keychain() -> str | None:
     if system == "Darwin":
         return _get_token_from_macos_keychain()
     elif system == "Windows":
-        return _get_token_from_windows_credential_manager()
+        return _get_token_from_windows_credential_files()
     else:
         # Linux: secret-service not yet implemented
         return None
@@ -94,8 +94,8 @@ def _get_token_from_macos_keychain() -> str | None:
         return None
 
 
-def _get_token_from_windows_credential_manager() -> str | None:
-    """Get token from Windows credential file.
+def _get_token_from_windows_credential_files() -> str | None:
+    """Get token from Windows credential files.
 
     Claude Code on Windows stores credentials in ~/.claude/.credentials.json
     """
@@ -160,7 +160,7 @@ def get_auth_token_source() -> str | None:
         if system == "Darwin":
             return "macOS Keychain"
         elif system == "Windows":
-            return "Windows Credential Manager"
+            return "Windows Credential Files"
         else:
             return "System Credential Store"
 
