@@ -5,6 +5,7 @@ Handles database connection, initialization, and lifecycle management.
 Uses LadybugDB as the embedded graph database (no Docker required, Python 3.12+).
 """
 
+import asyncio
 import logging
 import sys
 from datetime import datetime, timezone
@@ -72,6 +73,8 @@ class GraphitiClient:
         self._llm_client = None
         self._embedder = None
         self._initialized = False
+        # Guards against concurrent initialize() calls racing and doing duplicate work.
+        self._init_lock = asyncio.Lock()
 
     @property
     def graphiti(self):
@@ -83,9 +86,9 @@ class GraphitiClient:
         """Check if client is initialized."""
         return self._initialized
 
-    async def initialize(self, state: GraphitiState | None = None) -> bool:
+    async def _initialize_unlocked(self, state: GraphitiState | None = None) -> bool:
         """
-        Initialize the Graphiti client with configured providers.
+        Initialize the Graphiti client with configured providers (caller must synchronize).
 
         Args:
             state: Optional GraphitiState for tracking initialization status
@@ -93,9 +96,6 @@ class GraphitiClient:
         Returns:
             True if initialization succeeded
         """
-        if self._initialized:
-            return True
-
         try:
             # Import Graphiti core
             from graphiti_core import Graphiti
@@ -227,6 +227,29 @@ class GraphitiClient:
         except Exception as e:
             logger.warning(f"Failed to initialize Graphiti client: {e}")
             return False
+
+    async def initialize(self, state: GraphitiState | None = None) -> bool:
+        """
+        Initialize the Graphiti client with configured providers.
+
+        This method is concurrency-safe: concurrent callers will synchronize so that
+        initialization runs at most once.
+
+        Args:
+            state: Optional GraphitiState for tracking initialization status
+
+        Returns:
+            True if initialization succeeded
+        """
+        # Fast-path: common case when already initialized.
+        if self._initialized:
+            return True
+
+        async with self._init_lock:
+            # Double-check after acquiring lock (another task may have initialized).
+            if self._initialized:
+                return True
+            return await self._initialize_unlocked(state)
 
     async def close(self) -> None:
         """
