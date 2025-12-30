@@ -14,7 +14,6 @@ import json
 import re
 from pathlib import Path
 
-
 from .project_context import (
     detect_project_capabilities,
     get_mcp_tools_for_project,

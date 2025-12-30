@@ -20,7 +20,6 @@ BMAD Integration:
 import re
 from dataclasses import dataclass, field
 
-
 # BMAD Integration - Import agent loader
 try:
     from integrations.bmad.agent_loader import BMADAgentLoader

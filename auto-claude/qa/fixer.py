@@ -10,7 +10,6 @@ BMAD Integration:
 
 from pathlib import Path
 
-
 from claude_agent_sdk import ClaudeSDKClient
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from task_logger import (

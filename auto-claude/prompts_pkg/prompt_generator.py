@@ -21,7 +21,6 @@ BMAD Integration:
 import json
 from pathlib import Path
 
-
 # BMAD Integration - Import agent loader
 try:
     from integrations.bmad.agent_loader import BMADAgentLoader
