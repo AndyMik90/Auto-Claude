@@ -57,8 +57,12 @@ def sanitize_user_content(content: str, max_length: int = 100000) -> str:
 
     # Remove null bytes and control characters (except newline, tab, carriage return)
     sanitized = "".join(
-        char for char in content
-        if char == '\n' or char == '\t' or char == '\r' or (ord(char) >= 32 and ord(char) != 127)
+        char
+        for char in content
+        if char == "\n"
+        or char == "\t"
+        or char == "\r"
+        or (ord(char) >= 32 and ord(char) != 127)
     )
 
     # Truncate if too long
