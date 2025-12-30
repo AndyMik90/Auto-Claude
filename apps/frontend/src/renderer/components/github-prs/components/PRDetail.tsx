@@ -5,7 +5,7 @@ import {
   Clock,
   GitBranch,
   FileDiff,
-  Sparkles,
+  Bot,
   Send,
   XCircle,
   Loader2,
@@ -68,6 +68,65 @@ function getStatusColor(status: PRReviewResult['overallStatus']): string {
     default:
       return 'bg-muted';
   }
+}
+
+/**
+ * Reusable Collapsible Card Component
+ * Consistent styling for collapsible sections
+ */
+interface CollapsibleCardProps {
+  title: string;
+  icon?: React.ReactNode;
+  badge?: React.ReactNode;
+  headerAction?: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  className?: string;
+}
+
+function CollapsibleCard({
+  title,
+  icon,
+  badge,
+  headerAction,
+  children,
+  defaultOpen = true,
+  open: controlledOpen,
+  onOpenChange,
+  className,
+}: CollapsibleCardProps) {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setIsOpen = onOpenChange || setInternalOpen;
+
+  return (
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className={cn("border rounded-lg bg-card shadow-sm overflow-hidden", className)}
+    >
+      <CollapsibleTrigger asChild>
+        <div className="p-4 flex items-center justify-between gap-3 bg-muted/30 cursor-pointer hover:bg-muted/40 transition-colors">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="shrink-0">
+              {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+            </div>
+            {icon && <div className="shrink-0">{icon}</div>}
+            <span className="font-medium truncate">{title}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {headerAction}
+            {badge}
+          </div>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 // Compact Tree View for Review Process
@@ -219,87 +278,79 @@ function ReviewStatusTree({
     }
   }
 
+  // Status dot color
+  const statusDotColor = cn("h-2.5 w-2.5 shrink-0 rounded-full",
+    isReviewing ? "bg-blue-500 animate-pulse" :
+    status === 'ready_to_merge' ? "bg-success" :
+    status === 'waiting_for_changes' ? "bg-warning" :
+    status === 'reviewed_pending_post' ? "bg-primary" :
+    status === 'ready_for_followup' ? "bg-info" :
+    "bg-muted-foreground"
+  );
+
+  // Status label
+  const statusLabel = isReviewing ? 'AI Review in Progress' :
+    status === 'ready_to_merge' ? 'Ready to Merge' :
+    status === 'waiting_for_changes' ? 'Waiting for Changes' :
+    status === 'reviewed_pending_post' ? 'Review Complete' :
+    status === 'ready_for_followup' ? 'Ready for Follow-up' :
+    'Review Status';
+
   return (
-    <Collapsible 
-      open={isOpen} 
+    <CollapsibleCard
+      title={statusLabel}
+      icon={<div className={statusDotColor} />}
+      headerAction={isReviewing ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => { e.stopPropagation(); onCancelReview(); }}
+          className="h-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          Cancel
+        </Button>
+      ) : undefined}
+      open={isOpen}
       onOpenChange={setIsOpen}
-      className="border rounded-lg bg-card shadow-sm overflow-hidden"
     >
-      {/* Header / Status Bar */}
-      <div className="p-4 flex flex-wrap items-center justify-between gap-y-2 bg-muted/30">
-        <div className="flex items-center gap-3 min-w-0 pr-2">
-          <div className={cn("h-2.5 w-2.5 shrink-0 rounded-full",
-            isReviewing ? "bg-blue-500 animate-pulse" :
-            status === 'ready_to_merge' ? "bg-success" :
-            status === 'waiting_for_changes' ? "bg-warning" :
-            status === 'reviewed_pending_post' ? "bg-primary" :
-            status === 'ready_for_followup' ? "bg-info" :
-            "bg-muted-foreground"
-          )} />
-          <span className="font-medium truncate">
-            {isReviewing ? 'AI Review in Progress' :
-             status === 'ready_to_merge' ? 'Ready to Merge' :
-             status === 'waiting_for_changes' ? 'Waiting for Changes' :
-             status === 'reviewed_pending_post' ? 'Review Complete' :
-             status === 'ready_for_followup' ? 'Ready for Follow-up' :
-             'Review Status'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
-           {isReviewing && (
-             <Button variant="ghost" size="sm" onClick={onCancelReview} className="h-7 text-destructive hover:text-destructive">
-               Cancel
-             </Button>
-           )}
-           <CollapsibleTrigger asChild>
-             <Button variant="ghost" size="icon" className="h-6 w-6">
-               {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-             </Button>
-           </CollapsibleTrigger>
+      <div className="p-4 pt-0">
+        <div className="relative pl-2 ml-2 border-l border-border/50 space-y-4 pt-4">
+          {steps.map((step) => (
+            <div key={step.id} className="relative flex items-start gap-3 pl-4">
+              {/* Node Dot */}
+              <div className={cn("absolute -left-[13px] top-1 bg-background rounded-full p-0.5 border",
+                step.status === 'completed' ? "border-success text-success" :
+                step.status === 'current' ? "border-primary text-primary animate-pulse" :
+                step.status === 'alert' ? "border-warning text-warning" :
+                "border-muted-foreground text-muted-foreground"
+              )}>
+                {step.status === 'completed' ? <CheckCircle className="h-3 w-3" /> :
+                  step.status === 'current' ? <CircleDot className="h-3 w-3" /> :
+                  <Circle className="h-3 w-3" />}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className={cn("text-sm font-medium truncate max-w-full",
+                    step.status === 'completed' ? "text-foreground" :
+                    step.status === 'current' ? "text-primary" :
+                    "text-muted-foreground"
+                  )}>
+                    {step.label}
+                  </span>
+                  {step.action}
+                </div>
+                {step.date && (
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {formatDate(step.date)}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Collapsible Tree */}
-      <CollapsibleContent>
-        <div className="p-4 pt-0">
-          <div className="relative pl-2 ml-2 border-l border-border/50 space-y-4 pt-4">
-            {steps.map((step) => (
-              <div key={step.id} className="relative flex items-start gap-3 pl-4">
-                 {/* Node Dot */}
-                 <div className={cn("absolute -left-[13px] top-1 bg-background rounded-full p-0.5 border",
-                    step.status === 'completed' ? "border-success text-success" :
-                    step.status === 'current' ? "border-primary text-primary animate-pulse" :
-                    step.status === 'alert' ? "border-warning text-warning" :
-                    "border-muted-foreground text-muted-foreground"
-                 )}>
-                    {step.status === 'completed' ? <CheckCircle className="h-3 w-3" /> :
-                     step.status === 'current' ? <CircleDot className="h-3 w-3" /> :
-                     <Circle className="h-3 w-3" />}
-                 </div>
-
-                 <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className={cn("text-sm font-medium truncate max-w-full",
-                        step.status === 'completed' ? "text-foreground" :
-                        step.status === 'current' ? "text-primary" :
-                        "text-muted-foreground"
-                      )}>
-                        {step.label}
-                      </span>
-                      {step.action}
-                    </div>
-                    {step.date && (
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                         {formatDate(step.date)}
-                      </div>
-                    )}
-                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+    </CollapsibleCard>
   );
 }
 
@@ -386,6 +437,7 @@ export function PRDetail({
   const [isMerging, setIsMerging] = useState(false);
   const [newCommitsCheck, setNewCommitsCheck] = useState<NewCommitsCheck | null>(null);
   const [, setIsCheckingNewCommits] = useState(false);
+  const [analysisExpanded, setAnalysisExpanded] = useState(true);
 
   // Auto-select critical and high findings when review completes (excluding already posted)
   useEffect(() => {
@@ -462,7 +514,7 @@ export function PRDetail({
         status: 'not_reviewed',
         label: 'Not Reviewed',
         description: 'Run an AI review to analyze this PR',
-        icon: <Sparkles className="h-5 w-5" />,
+        icon: <Bot className="h-5 w-5" />,
         color: 'bg-muted text-muted-foreground border-muted',
       };
     }
@@ -795,25 +847,24 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
 
         {/* Review Result / Findings */}
         {reviewResult && reviewResult.success && (
-          <Card className="border shadow-sm">
-            <CardHeader className="pb-3 border-b bg-muted/20">
-              <CardTitle className="text-sm font-medium flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  {reviewResult.isFollowupReview ? (
-                    <RefreshCw className="h-4 w-4 text-blue-500" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 text-purple-500" />
-                  )}
-                  {reviewResult.isFollowupReview ? 'Follow-up Review Details' : 'AI Analysis Results'}
-                </span>
-                <Badge variant="outline" className={getStatusColor(reviewResult.overallStatus)}>
-                  {reviewResult.overallStatus === 'approve' && 'Approve'}
-                  {reviewResult.overallStatus === 'request_changes' && 'Changes Requested'}
-                  {reviewResult.overallStatus === 'comment' && 'Comment'}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
+          <CollapsibleCard
+            title={reviewResult.isFollowupReview ? 'Follow-up Review Details' : 'AI Analysis Results'}
+            icon={reviewResult.isFollowupReview ? (
+              <RefreshCw className="h-4 w-4 text-blue-500" />
+            ) : (
+              <Bot className="h-4 w-4 text-purple-500" />
+            )}
+            badge={
+              <Badge variant="outline" className={getStatusColor(reviewResult.overallStatus)}>
+                {reviewResult.overallStatus === 'approve' && 'Approve'}
+                {reviewResult.overallStatus === 'request_changes' && 'Changes Requested'}
+                {reviewResult.overallStatus === 'comment' && 'Comment'}
+              </Badge>
+            }
+            open={analysisExpanded}
+            onOpenChange={setAnalysisExpanded}
+          >
+            <div className="p-4 space-y-6">
               {/* Follow-up Review Resolution Status */}
               {reviewResult.isFollowupReview && (
                 <div className="flex flex-wrap gap-3 pb-4 border-b border-border/50">
@@ -839,7 +890,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
               )}
 
               <div className="bg-muted/30 p-4 rounded-lg text-sm text-muted-foreground leading-relaxed">
-                 {reviewResult.summary}
+                {reviewResult.summary}
               </div>
 
               {/* Interactive Findings with Selection */}
@@ -849,8 +900,8 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
                 postedIds={postedFindingIds}
                 onSelectionChange={setSelectedFindingIds}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </CollapsibleCard>
         )}
 
         {/* Review Error */}
