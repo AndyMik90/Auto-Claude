@@ -35,6 +35,15 @@ jobs:
           uv pip install -r requirements.txt
           uv pip install -r ../tests/requirements-test.txt
 
+      - name: Install pip-audit
+        working-directory: auto-claude
+        run: uv pip install pip-audit
+
+      - name: Run pip audit (non-fatal)
+        working-directory: auto-claude
+        continue-on-error: true
+        run: uv pip-audit --fail-on high || true
+
       - name: Run tests
         working-directory: auto-claude
         run: |
@@ -87,6 +96,11 @@ jobs:
       - name: Install dependencies
         working-directory: auto-claude-ui
         run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run pnpm audit (non-fatal)
+        working-directory: auto-claude-ui
+        continue-on-error: true
+        run: pnpm audit --audit-level=high || true
 
       - name: Lint
         working-directory: auto-claude-ui
