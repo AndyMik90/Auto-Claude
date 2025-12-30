@@ -8,8 +8,7 @@ import {
   FolderOpen,
   RefreshCw,
   ChevronRight,
-  ExternalLink,
-  Pencil
+  ExternalLink
 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Button } from '../ui/button';
