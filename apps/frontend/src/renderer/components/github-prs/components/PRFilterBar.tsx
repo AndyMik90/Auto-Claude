@@ -16,7 +16,8 @@ import {
   RefreshCw,
   X,
   Filter,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
@@ -49,6 +50,7 @@ const STATUS_OPTIONS: Array<{
   color: string;
   bgColor: string;
 }> = [
+  { value: 'reviewing', labelKey: 'prReview.reviewing', icon: Loader2, color: 'text-amber-400', bgColor: 'bg-amber-500/20' },
   { value: 'not_reviewed', labelKey: 'prReview.notReviewed', icon: Sparkles, color: 'text-slate-500', bgColor: 'bg-slate-500/20' },
   { value: 'reviewed', labelKey: 'prReview.reviewed', icon: CheckCircle2, color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
   { value: 'posted', labelKey: 'prReview.posted', icon: Send, color: 'text-purple-400', bgColor: 'bg-purple-500/20' },
@@ -208,7 +210,7 @@ function FilterDropdown<T extends string>({
             </div>
           )}
         </div>
-        
+
         <div
           className="max-h-[300px] overflow-y-auto custom-scrollbar p-1"
           role="listbox"
@@ -259,7 +261,7 @@ function FilterDropdown<T extends string>({
             })
           )}
         </div>
-        
+
         {selected.length > 0 && (
           <div className="p-1 border-t border-border/50 bg-muted/20">
             <Button
@@ -407,4 +409,3 @@ export function PRFilterBar({
     </div>
   );
 }
-

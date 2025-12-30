@@ -6,6 +6,7 @@
  * - Min/max width constraints
  * - Persists width to localStorage
  * - Visual feedback on hover and drag
+ * - Touch support for mobile devices
  */
 
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
