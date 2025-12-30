@@ -120,7 +120,20 @@
     "noOpenPRs": "No open pull requests",
     "notConnected": "GitHub Not Connected",
     "connectPrompt": "Connect your GitHub account to view and review pull requests.",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "runAIReview": "Run AI Review",
+    "reviewStarted": "Review Started",
+    "analysisInProgress": "AI Analysis in Progress...",
+    "analysisComplete": "Analysis Complete ({{count}} findings)",
+    "findingsPostedToGitHub": "Findings Posted to GitHub",
+    "newCommits": "{{count}} New Commits",
+    "runFollowup": "Run Follow-up",
+    "aiReviewInProgress": "AI Review in Progress",
+    "waitingForChanges": "Waiting for Changes",
+    "reviewComplete": "Review Complete",
+    "reviewStatus": "Review Status",
+    "files": "files",
+    "filesChanged": "{{count}} files changed"
   },
   "downloads": {
     "toggleExpand": "Toggle download details",

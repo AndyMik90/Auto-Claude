@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ExternalLink,
   User,
@@ -91,6 +92,7 @@ function ReviewStatusTree({
   newCommitsCheck: NewCommitsCheck | null;
   lastPostedAt?: number | null;
 }) {
+  const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(true);
 
   // If not reviewed, show simple status
@@ -99,11 +101,11 @@ function ReviewStatusTree({
       <div className="flex flex-wrap items-center justify-between gap-y-3 p-4 border rounded-lg bg-card shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/30" />
-          <span className="font-medium text-muted-foreground truncate">Not Reviewed</span>
+          <span className="font-medium text-muted-foreground truncate">{t('prReview.notReviewed')}</span>
         </div>
         <Button onClick={onRunReview} size="sm" className="gap-2 shrink-0 ml-auto sm:ml-0">
           <Play className="h-3.5 w-3.5" />
-          Run AI Review
+          {t('prReview.runAIReview')}
         </Button>
       </div>
     );
@@ -115,7 +117,7 @@ function ReviewStatusTree({
   // Step 1: Start
   steps.push({
     id: 'start',
-    label: 'Review Started',
+    label: t('prReview.reviewStarted'),
     status: 'completed',
     date: reviewResult?.reviewedAt || new Date().toISOString()
   });
@@ -124,14 +126,14 @@ function ReviewStatusTree({
   if (isReviewing) {
     steps.push({
       id: 'analysis',
-      label: 'AI Analysis in Progress...',
+      label: t('prReview.analysisInProgress'),
       status: 'current',
       date: null
     });
   } else if (reviewResult) {
     steps.push({
       id: 'analysis',
-      label: `Analysis Complete (${reviewResult.findings.length} findings)`,
+      label: t('prReview.analysisComplete', { count: reviewResult.findings.length }),
       status: 'completed',
       date: reviewResult.reviewedAt
     });
@@ -141,14 +143,14 @@ function ReviewStatusTree({
   if (postedCount > 0 || reviewResult?.hasPostedFindings) {
     steps.push({
       id: 'posted',
-      label: 'Findings Posted to GitHub',
+      label: t('prReview.findingsPostedToGitHub'),
       status: 'completed',
       date: reviewResult?.postedAt || (lastPostedAt ? new Date(lastPostedAt).toISOString() : null)
     });
   } else if (reviewResult && reviewResult.findings.length > 0) {
     steps.push({
       id: 'posted',
-      label: 'Pending Post',
+      label: t('prReview.pendingPost'),
       status: 'pending',
       date: null
     });
@@ -158,25 +160,25 @@ function ReviewStatusTree({
   if (newCommitsCheck?.hasNewCommits) {
     steps.push({
       id: 'new_commits',
-      label: `${newCommitsCheck.newCommitCount} New Commits`,
+      label: t('prReview.newCommits', { count: newCommitsCheck.newCommitCount }),
       status: 'alert',
       date: null
     });
     steps.push({
       id: 'followup',
-      label: 'Ready for Follow-up',
+      label: t('prReview.readyForFollowup'),
       status: 'pending',
       action: (
         <Button size="sm" variant="outline" onClick={onRunFollowupReview} className="ml-2 h-6 text-xs px-2">
-          Run Follow-up
+          {t('prReview.runFollowup')}
         </Button>
       )
     });
   }
 
   return (
-    <Collapsible 
-      open={isOpen} 
+    <Collapsible
+      open={isOpen}
       onOpenChange={setIsOpen}
       className="border rounded-lg bg-card shadow-sm overflow-hidden"
     >
@@ -192,18 +194,18 @@ function ReviewStatusTree({
             "bg-muted-foreground"
           )} />
           <span className="font-medium truncate">
-            {isReviewing ? 'AI Review in Progress' :
-             status === 'ready_to_merge' ? 'Ready to Merge' :
-             status === 'waiting_for_changes' ? 'Waiting for Changes' :
-             status === 'reviewed_pending_post' ? 'Review Complete' :
-             status === 'ready_for_followup' ? 'Ready for Follow-up' :
-             'Review Status'}
+            {isReviewing ? t('prReview.aiReviewInProgress') :
+             status === 'ready_to_merge' ? t('prReview.readyToMerge') :
+             status === 'waiting_for_changes' ? t('prReview.waitingForChanges') :
+             status === 'reviewed_pending_post' ? t('prReview.reviewComplete') :
+             status === 'ready_for_followup' ? t('prReview.readyForFollowup') :
+             t('prReview.reviewStatus')}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
            {isReviewing && (
              <Button variant="ghost" size="sm" onClick={onCancelReview} className="h-7 text-destructive hover:text-destructive">
-               Cancel
+               {t('buttons.cancel')}
              </Button>
            )}
            <CollapsibleTrigger asChild>
@@ -260,6 +262,7 @@ function ReviewStatusTree({
 
 // Modern Header Component
 function PRHeader({ pr }: { pr: PRData }) {
+  const { t } = useTranslation('common');
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
@@ -302,10 +305,10 @@ function PRHeader({ pr }: { pr: PRData }) {
         </div>
 
         <div className="flex items-center gap-4 ml-auto">
-           <div className="flex items-center gap-1.5" title={`${pr.changedFiles} files changed`}>
+           <div className="flex items-center gap-1.5" title={t('prReview.filesChanged', { count: pr.changedFiles })}>
               <FileDiff className="h-4 w-4" />
               <span className="font-medium text-foreground">{pr.changedFiles}</span>
-              <span className="text-xs">files</span>
+              <span className="text-xs">{t('prReview.files')}</span>
            </div>
            <div className="flex items-center gap-2 text-xs font-mono">
               <span className="text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">+{pr.additions}</span>

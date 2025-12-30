@@ -120,7 +120,20 @@
     "noOpenPRs": "Aucune pull request ouverte",
     "notConnected": "GitHub non connecté",
     "connectPrompt": "Connectez votre compte GitHub pour voir et réviser les pull requests.",
-    "openSettings": "Ouvrir les paramètres"
+    "openSettings": "Ouvrir les paramètres",
+    "runAIReview": "Lancer la révision IA",
+    "reviewStarted": "Révision commencée",
+    "analysisInProgress": "Analyse IA en cours...",
+    "analysisComplete": "Analyse terminée ({{count}} résultats)",
+    "findingsPostedToGitHub": "Résultats publiés sur GitHub",
+    "newCommits": "{{count}} nouveaux commits",
+    "runFollowup": "Lancer le suivi",
+    "aiReviewInProgress": "Révision IA en cours",
+    "waitingForChanges": "En attente de modifications",
+    "reviewComplete": "Révision terminée",
+    "reviewStatus": "Statut de révision",
+    "files": "fichiers",
+    "filesChanged": "{{count}} fichiers modifiés"
   },
   "downloads": {
     "toggleExpand": "Afficher/masquer les détails",
