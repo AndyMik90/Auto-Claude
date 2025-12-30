@@ -8,8 +8,6 @@ Tests for security/hooks.py - validate_command function.
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
 
 from security.hooks import validate_command
