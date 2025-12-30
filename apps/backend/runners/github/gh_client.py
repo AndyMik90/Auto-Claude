@@ -84,6 +84,7 @@ class GHClient:
         default_timeout: float = 30.0,
         max_retries: int = 3,
         enable_rate_limiting: bool = True,
+        repo: str | None = None,
     ):
         """
         Initialize GitHub CLI client.
@@ -93,11 +94,14 @@ class GHClient:
             default_timeout: Default timeout in seconds for commands
             max_retries: Maximum number of retry attempts
             enable_rate_limiting: Whether to enforce rate limiting (default: True)
+            repo: Repository in 'owner/repo' format. If provided, uses -R flag
+                  instead of inferring from git remotes.
         """
         self.project_dir = Path(project_dir)
         self.default_timeout = default_timeout
         self.max_retries = max_retries
         self.enable_rate_limiting = enable_rate_limiting
+        self.repo = repo
 
         # Initialize rate limiter singleton
         if enable_rate_limiting:
@@ -255,6 +259,28 @@ class GHClient:
         raise GHCommandError(f"gh {args[0]} failed after {self.max_retries} attempts")
 
     # =========================================================================
+    # Helper methods
+    # =========================================================================
+
+    def _add_repo_flag(self, args: list[str]) -> list[str]:
+        """
+        Add -R flag to command args if repo is configured.
+
+        This ensures gh CLI uses the correct repository instead of
+        inferring from git remotes, which can fail with multiple remotes
+        or when working in worktrees.
+
+        Args:
+            args: Command arguments list
+
+        Returns:
+            Modified args list with -R flag if repo is set
+        """
+        if self.repo:
+            return args + ["-R", self.repo]
+        return args
+
+    # =========================================================================
     # Convenience methods for common gh commands
     # =========================================================================
 
@@ -295,6 +321,7 @@ class GHClient:
             "--json",
             ",".join(json_fields),
         ]
+        args = self._add_repo_flag(args)
 
         result = await self.run(args)
         return json.loads(result.stdout)
@@ -334,6 +361,7 @@ class GHClient:
             "--json",
             ",".join(json_fields),
         ]
+        args = self._add_repo_flag(args)
 
         result = await self.run(args)
         return json.loads(result.stdout)
@@ -352,6 +380,7 @@ class GHClient:
             PRTooLargeError: If PR exceeds GitHub's 20,000 line diff limit
         """
         args = ["pr", "diff", str(pr_number)]
+        args = self._add_repo_flag(args)
         try:
             result = await self.run(args)
             return result.stdout
@@ -396,6 +425,7 @@ class GHClient:
             args.append("--comment")
 
         args.extend(["--body", body])
+        args = self._add_repo_flag(args)
 
         await self.run(args)
         return 0  # gh CLI doesn't return review ID
@@ -574,6 +604,7 @@ class GHClient:
             args.extend(["--subject", commit_title])
         if commit_message:
             args.extend(["--body", commit_message])
+        args = self._add_repo_flag(args)
 
         await self.run(args)
 
@@ -586,6 +617,7 @@ class GHClient:
             body: Comment body
         """
         args = ["pr", "comment", str(pr_number), "--body", body]
+        args = self._add_repo_flag(args)
         await self.run(args)
 
     async def pr_get_assignees(self, pr_number: int) -> list[str]:
@@ -694,6 +726,73 @@ class GHClient:
             "review_comments": review_comments,
             "issue_comments": issue_comments,
         }
+
+    async def get_reviews_since(
+        self, pr_number: int, since_timestamp: str
+    ) -> list[dict]:
+        """
+        Get all PR reviews (formal review submissions) since a timestamp.
+
+        This fetches formal reviews submitted via the GitHub review mechanism,
+        which is different from review comments (inline comments on files).
+
+        Reviews from AI tools like Cursor, CodeRabbit, Greptile etc. are
+        submitted as formal reviews with body text containing their findings.
+
+        Args:
+            pr_number: PR number
+            since_timestamp: ISO timestamp to filter from (e.g., "2025-12-25T10:30:00Z")
+
+        Returns:
+            List of review objects with fields:
+            - id: Review ID
+            - user: User who submitted the review
+            - body: Review body text (contains AI findings)
+            - state: APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING
+            - submitted_at: When the review was submitted
+            - commit_id: Commit SHA the review was made on
+        """
+        # Fetch all reviews for the PR
+        # Note: The reviews endpoint doesn't support 'since' parameter,
+        # so we fetch all and filter client-side
+        reviews_endpoint = f"repos/{{owner}}/{{repo}}/pulls/{pr_number}/reviews"
+        reviews_args = ["api", "--method", "GET", reviews_endpoint]
+        reviews_result = await self.run(reviews_args, raise_on_error=False)
+
+        reviews = []
+        if reviews_result.returncode == 0:
+            try:
+                all_reviews = json.loads(reviews_result.stdout)
+                # Filter reviews submitted after the timestamp
+                from datetime import datetime, timezone
+
+                # Parse since_timestamp, handling both naive and aware formats
+                since_dt = datetime.fromisoformat(
+                    since_timestamp.replace("Z", "+00:00")
+                )
+                # Ensure since_dt is timezone-aware (assume UTC if naive)
+                if since_dt.tzinfo is None:
+                    since_dt = since_dt.replace(tzinfo=timezone.utc)
+
+                for review in all_reviews:
+                    submitted_at = review.get("submitted_at", "")
+                    if submitted_at:
+                        try:
+                            review_dt = datetime.fromisoformat(
+                                submitted_at.replace("Z", "+00:00")
+                            )
+                            # Ensure review_dt is also timezone-aware
+                            if review_dt.tzinfo is None:
+                                review_dt = review_dt.replace(tzinfo=timezone.utc)
+                            if review_dt > since_dt:
+                                reviews.append(review)
+                        except ValueError:
+                            # If we can't parse the date, include the review
+                            reviews.append(review)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse reviews for PR #{pr_number}")
+
+        return reviews
 
     async def get_pr_head_sha(self, pr_number: int) -> str | None:
         """
