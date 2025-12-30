@@ -1,0 +1,133 @@
+[run]
+source = .
+omit =
+    # CLI entry points - require interactive input
+    cli/*.py
+
+    # Agent runners - require Claude SDK sessions
+    runners/*.py
+    runners/**/*.py
+
+    # Agent implementations - require SDK sessions
+    agents/coder.py
+    agents/planner.py
+    agents/session.py
+    agents/memory_manager.py
+    agents/tools_pkg/tools/*.py
+    agents/utils.py
+    agents/test_refactoring.py
+
+    # Graphiti integration - requires database
+    integrations/graphiti/queries_pkg/*.py
+    integrations/graphiti/providers_pkg/**/*.py
+    integrations/graphiti/memory.py
+    integrations/graphiti/config.py
+
+    # Linear integration - requires external API
+    integrations/linear/*.py
+    linear_updater.py
+
+    # Main entry points
+    run.py
+    spec_runner.py
+    agent.py
+
+    # Test files
+    **/test_*.py
+    **/*_test.py
+    tests/*.py
+
+    # Generated/config files
+    __init__.py
+    conftest.py
+
+    # UI interactive components
+    ui/menu.py
+    ui/statusline.py
+    ui/main.py
+    ui/progress.py
+    ui/status.py
+    ui/spinner.py
+
+    # Spec pipeline runners (require SDK)
+    spec/pipeline/orchestrator.py
+    spec/pipeline/agent_runner.py
+    spec/validate_spec.py
+    spec/discovery.py
+    spec/context.py
+
+    # Services requiring SDK
+    services/context.py
+    services/orchestrator.py
+
+    # Task logger interactive components
+    task_logger/main.py
+    task_logger/capture.py
+    task_logger/streaming.py
+
+    # Analysis modules requiring file system access
+    analysis/insight_extractor.py
+    analysis/analyzers/project_analyzer_module.py
+    analysis/project_analyzer.py
+    analysis/analyzer.py
+
+    # Task logger components requiring sessions
+    task_logger/logger.py
+
+    # Spec phase validators (require SDK)
+    spec/phases/planning_phases.py
+    spec/phases/requirements_phases.py
+    spec/phases/utils.py
+
+    # Spec validators requiring file system
+    spec/validate_pkg/validators/*.py
+    spec/validate_pkg/auto_fix.py
+
+    # Commit message generation
+    commit_message.py
+
+    # Core client (requires SDK)
+    core/client.py
+    core/auth.py
+    client.py
+
+    # QA modules (require SDK sessions)
+    qa/fixer.py
+    qa/loop.py
+    qa/qa_loop.py
+    qa/reviewer.py
+
+    # Query memory (requires database)
+    query_memory.py
+
+    # Review modules (require SDK/interactive)
+    review/formatters.py
+    review/main.py
+    review/reviewer.py
+
+    # Prompt generation (require SDK context)
+    prompts_pkg/project_context.py
+    prompts_pkg/prompt_generator.py
+    prompts_pkg/prompts.py
+
+    # Spec modules (require SDK sessions)
+    spec/compaction.py
+    spec/requirements.py
+    spec/phases.py
+    spec/pipeline.py
+
+    # Security main entry (interactive)
+    security/main.py
+    security.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    pass
+
+show_missing = true
