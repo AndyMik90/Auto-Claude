@@ -138,7 +138,9 @@ class GraphitiClient:
             # which hard-requires an OpenAI API key. If the user isn't using OpenAI,
             # pass a safe no-op cross-encoder to prevent accidental OpenAI init.
             cross_encoder = None
-            if not self.config.openai_api_key:
+            llm_provider = (self.config.llm_provider or "").lower()
+            embedder_provider = (self.config.embedder_provider or "").lower()
+            if llm_provider != "openai" and embedder_provider != "openai":
                 class _NoOpCrossEncoder(CrossEncoderClient):
                     async def rank(
                         self, query: str, passages: list[str]
