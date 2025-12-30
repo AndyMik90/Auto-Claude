@@ -384,7 +384,10 @@ export function registerFileHandlers(): void {
                 ? constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL
                 : constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW;
 
-              fd = openSync(absPath, createFlags, 0o644);
+              // On Windows, file mode parameter should be omitted or 0o666 (default)
+              // Unix octal permissions (0o644) can cause EINVAL on Windows
+              const fileMode = process.platform === 'win32' ? 0o666 : 0o644;
+              fd = openSync(absPath, createFlags, fileMode);
             } catch (createErr) {
               const createError = createErr as NodeJS.ErrnoException;
               if (createError.code === 'EEXIST') {
