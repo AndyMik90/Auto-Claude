@@ -4,7 +4,7 @@
  * Multi-select dropdowns with visible chip selections
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import {
   Search,
   Users,
@@ -89,26 +89,60 @@ function FilterDropdown<T extends string>({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const toggleItem = (item: T) => {
+  const toggleItem = useCallback((item: T) => {
     if (selected.includes(item)) {
       onChange(selected.filter((s) => s !== item));
     } else {
       onChange([...selected, item]);
     }
-  };
+  }, [selected, onChange]);
 
   const filteredItems = useMemo(() => {
     if (!searchTerm) return items;
-    return items.filter(item => 
+    return items.filter(item =>
       item.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [items, searchTerm]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (filteredItems.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusedIndex(prev =>
+          prev < filteredItems.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusedIndex(prev =>
+          prev > 0 ? prev - 1 : filteredItems.length - 1
+        );
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < filteredItems.length) {
+          toggleItem(filteredItems[focusedIndex]);
+        }
+        break;
+      case 'Escape':
+        setIsOpen(false);
+        break;
+    }
+  }, [filteredItems, focusedIndex, toggleItem]);
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={(open) => {
       setIsOpen(open);
-      if (!open) setSearchTerm(''); 
+      if (!open) {
+        setSearchTerm('');
+        setFocusedIndex(-1);
+      }
     }}>
       <DropdownMenuTrigger asChild>
         <Button
@@ -175,25 +209,43 @@ function FilterDropdown<T extends string>({
           )}
         </div>
         
-        <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
+        <div
+          className="max-h-[300px] overflow-y-auto custom-scrollbar p-1"
+          role="listbox"
+          aria-multiselectable="true"
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+        >
           {filteredItems.length === 0 ? (
             <div className="p-3 text-xs text-muted-foreground text-center">
               {noResultsLabel}
             </div>
           ) : (
-            filteredItems.map((item) => {
+            filteredItems.map((item, index) => {
               const isSelected = selected.includes(item);
+              const isFocused = index === focusedIndex;
               return (
                 <div
                   key={item}
+                  ref={(el) => { itemRefs.current[index] = el; }}
+                  role="option"
+                  aria-selected={isSelected}
                   className={cn(
                     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                    isSelected && "bg-accent/50"
+                    isSelected && "bg-accent/50",
+                    isFocused && "ring-2 ring-primary/50 bg-accent"
                   )}
                   onClick={(e) => {
                     e.preventDefault();
                     toggleItem(item);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleItem(item);
+                    }
+                  }}
+                  tabIndex={-1}
                 >
                   <div className={cn(
                     "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary/30",
@@ -256,6 +308,7 @@ export function PRFilterBar({
             <button
               onClick={() => onSearchChange('')}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={t('prReview.clearSearch')}
             >
               <X className="h-3 w-3" />
             </button>
@@ -307,7 +360,7 @@ export function PRFilterBar({
               const Icon = option.icon;
               return (
                 <div className="flex items-center gap-2">
-                  <div className={cn("p-1 rounded-full bg-background/50", option.color.replace('text-', 'bg-').replace('400', '500/20'))}>
+                  <div className={cn("p-1 rounded-full", option.bgColor)}>
                      <Icon className={cn("h-3 w-3", option.color)} />
                   </div>
                   <span className="text-sm">{t(option.labelKey)}</span>

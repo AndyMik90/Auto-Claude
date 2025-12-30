@@ -7,7 +7,6 @@ import type { PRData, PRReviewResult } from '../../../../preload/api/modules/git
 import type { NewCommitsCheck } from '../../../../preload/api/modules/github-api';
 
 export type PRStatusFilter =
-  | 'all'
   | 'not_reviewed'
   | 'reviewed'
   | 'posted'
@@ -65,11 +64,10 @@ function getPRComputedStatus(
     return 'ready_to_merge';
   }
 
-  // Has review result but not posted
-  if (result.hasPostedFindings) {
-    return 'posted';
-  }
-
+  // Has review result but not yet posted to GitHub
+  // Note: 'posted' is not returned here - it's a meta-filter that matches
+  // any posted state (ready_to_merge, changes_requested, ready_for_followup)
+  // and is handled specially in the filter logic below
   return 'reviewed';
 }
 

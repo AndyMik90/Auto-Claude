@@ -108,10 +108,19 @@
     "status": "Status",
     "filters": "Filters",
     "clearFilters": "Clear",
+    "clearSearch": "Clear search",
     "searchContributors": "Search contributors...",
     "selectedCount": "{{count}} selected",
     "noResultsFound": "No results found",
-    "reset": "Reset"
+    "reset": "Reset",
+    "pullRequests": "Pull Requests",
+    "open": "open",
+    "selectPRToView": "Select a pull request to view details",
+    "loadingPRs": "Loading pull requests...",
+    "noOpenPRs": "No open pull requests",
+    "notConnected": "GitHub Not Connected",
+    "connectPrompt": "Connect your GitHub account to view and review pull requests.",
+    "openSettings": "Open Settings"
   },
   "downloads": {
     "toggleExpand": "Toggle download details",

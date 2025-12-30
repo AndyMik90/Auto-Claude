@@ -108,10 +108,19 @@
     "status": "Statut",
     "filters": "Filtres",
     "clearFilters": "Effacer",
+    "clearSearch": "Effacer la recherche",
     "searchContributors": "Rechercher des contributeurs...",
     "selectedCount": "{{count}} sélectionné(s)",
     "noResultsFound": "Aucun résultat trouvé",
-    "reset": "Réinitialiser"
+    "reset": "Réinitialiser",
+    "pullRequests": "Pull Requests",
+    "open": "ouvert",
+    "selectPRToView": "Sélectionnez une pull request pour voir les détails",
+    "loadingPRs": "Chargement des pull requests...",
+    "noOpenPRs": "Aucune pull request ouverte",
+    "notConnected": "GitHub non connecté",
+    "connectPrompt": "Connectez votre compte GitHub pour voir et réviser les pull requests.",
+    "openSettings": "Ouvrir les paramètres"
   },
   "downloads": {
     "toggleExpand": "Afficher/masquer les détails",
