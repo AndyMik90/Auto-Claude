@@ -14,6 +14,7 @@ import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import { randomUUID } from 'crypto';
 import { IPC_CHANNELS, MODEL_ID_MAP, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING } from '../../../shared/constants';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import { readSettingsFile } from '../../settings-utils';
@@ -470,7 +471,7 @@ export function registerMRReviewHandlers(
           // Update the stored review result with posted findings
           // Use atomic write with temp file to prevent race conditions
           const reviewPath = path.join(getGitLabDir(project), 'mr', `review_${mrIid}.json`);
-          const tempPath = `${reviewPath}.tmp.${Date.now()}`;
+          const tempPath = `${reviewPath}.tmp.${randomUUID()}`;
           try {
             const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
             data.has_posted_findings = true;

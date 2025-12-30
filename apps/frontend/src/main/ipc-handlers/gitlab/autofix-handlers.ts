@@ -34,7 +34,13 @@ function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
   if (typeof rawUrl !== 'string') return '';
   try {
     const parsedUrl = new URL(rawUrl);
-    const expectedHost = new URL(instanceUrl).host;
+    const parsedInstanceUrl = new URL(instanceUrl);
+    // Validate that instance URL uses HTTPS for security
+    if (parsedInstanceUrl.protocol !== 'https:') {
+      console.warn(`[GitLab AutoFix] Instance URL does not use HTTPS: ${instanceUrl}`);
+      return '';
+    }
+    const expectedHost = parsedInstanceUrl.host;
     // Validate protocol is HTTPS for security
     if (parsedUrl.protocol !== 'https:') return '';
     // Reject URLs with embedded credentials (security risk)

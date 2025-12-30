@@ -11,6 +11,12 @@ import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIMergeRequest, CreateMergeRequestOptions } from './types';
 
 // Valid merge request states per GitLab API
+// - opened: MR is open and can be modified/merged
+// - closed: MR has been closed without merging
+// - merged: MR has been successfully merged
+// - locked: MR is temporarily locked (during merge/rebase operations or by admin)
+//   When locked, the MR cannot be modified or merged until unlocked
+// - all: Query parameter to retrieve MRs in any state
 const VALID_MR_STATES = ['opened', 'closed', 'merged', 'locked', 'all'] as const;
 type MergeRequestState = typeof VALID_MR_STATES[number];
 
@@ -21,7 +27,7 @@ function isValidMrState(state: string): state is MergeRequestState {
   return VALID_MR_STATES.includes(state as MergeRequestState);
 }
 
-// Debug logging helper
+// Debug logging helper - enabled in development OR when DEBUG flag is set
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
 
 function debugLog(message: string, data?: unknown): void {

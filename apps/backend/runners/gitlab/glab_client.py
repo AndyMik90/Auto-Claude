@@ -126,7 +126,13 @@ class GitLabClient:
                 ) as response:
                     if response.status == 204:
                         return None
-                    return json.loads(response.read().decode("utf-8"))
+                    response_body = response.read().decode("utf-8")
+                    try:
+                        return json.loads(response_body)
+                    except json.JSONDecodeError as e:
+                        raise Exception(
+                            f"Invalid JSON response from GitLab: {e}"
+                        ) from e
             except urllib.error.HTTPError as e:
                 error_body = e.read().decode("utf-8") if e.fp else ""
                 last_error = e

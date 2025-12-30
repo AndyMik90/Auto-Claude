@@ -12,7 +12,8 @@ import type { GitLabAuthStartResult } from './types';
 
 const DEFAULT_GITLAB_URL = 'https://gitlab.com';
 
-// Debug logging helper - only enabled in development, never in production
+// Debug logging helper - requires BOTH development mode AND DEBUG flag for OAuth handlers
+// This is intentionally more restrictive than other handlers to prevent accidental token logging
 const DEBUG = process.env.NODE_ENV === 'development' && process.env.DEBUG === 'true';
 
 /**

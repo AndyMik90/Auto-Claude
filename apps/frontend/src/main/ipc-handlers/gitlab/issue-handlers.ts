@@ -10,7 +10,7 @@ import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIIssue, GitLabAPINote } from './types';
 
-// Debug logging helper
+// Debug logging helper - enabled in development OR when DEBUG flag is set
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
 
 function debugLog(message: string, data?: unknown): void {
@@ -35,7 +35,7 @@ function transformIssue(apiIssue: GitLabAPIIssue, projectPath: string): GitLabIs
     if (rawState === 'active' || rawState === 'closed') {
       milestoneState = rawState;
     } else {
-      debugLog(`Unknown milestone state '${rawState}' for issue #${apiIssue.iid} (id: ${apiIssue.id}), defaulting to 'active'`);
+      console.warn(`[GitLab Issues] Unknown milestone state '${rawState}' for issue #${apiIssue.iid} (id: ${apiIssue.id}), defaulting to 'active'`);
       milestoneState = 'active';
     }
     milestone = {

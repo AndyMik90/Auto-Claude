@@ -45,6 +45,29 @@ class ProgressCallback:
     mr_iid: int | None = None
 
 
+def sanitize_user_content(content: str, max_length: int = 100000) -> str:
+    """
+    Sanitize user-provided content to prevent prompt injection.
+
+    - Strips null bytes and control characters (except newlines/tabs)
+    - Truncates excessive length
+    """
+    if not content:
+        return ""
+
+    # Remove null bytes and control characters (except newline, tab, carriage return)
+    sanitized = "".join(
+        char for char in content
+        if char == '\n' or char == '\t' or char == '\r' or (ord(char) >= 32 and ord(char) != 127)
+    )
+
+    # Truncate if too long
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length] + "\n\n... (content truncated for length)"
+
+    return sanitized
+
+
 class MRReviewEngine:
     """Handles MR review workflow using Claude AI."""
 
@@ -144,11 +167,12 @@ Provide your review in the following JSON format:
             files_list.append(f"- ... and {len(context.changed_files) - 30} more files")
         files_str = "\n".join(files_list)
 
-        # Truncate very large diffs
-        diff_content = context.diff
-        if len(diff_content) > 50000:
-            diff_content = diff_content[:50000]
-            diff_content += "\n\n... (diff truncated)"
+        # Sanitize and truncate user-provided content
+        sanitized_title = sanitize_user_content(context.title, max_length=500)
+        sanitized_description = sanitize_user_content(
+            context.description or "No description provided.", max_length=10000
+        )
+        diff_content = sanitize_user_content(context.diff, max_length=50000)
 
         # Wrap user-provided content in clear delimiters to prevent prompt injection
         # The AI should treat content between these markers as untrusted user input
@@ -161,12 +185,12 @@ Provide your review in the following JSON format:
 
 ### Title
 ---USER CONTENT START---
-{context.title}
+{sanitized_title}
 ---USER CONTENT END---
 
 ### Description
 ---USER CONTENT START---
-{context.description or "No description provided."}
+{sanitized_description}
 ---USER CONTENT END---
 
 ### Files Changed
