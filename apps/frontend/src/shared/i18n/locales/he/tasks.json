@@ -1,10 +1,10 @@
 {
   "status": {
-    "backlog": "רשימת משימות",
-    "todo": "לביצוע",
+    "backlog": "תכנון",
     "in_progress": "בתהליך",
-    "review": "בדיקה",
-    "complete": "הושלם",
+    "ai_review": "בדיקת AI",
+    "human_review": "בדיקת משתמש",
+    "done": "הושלם",
     "archived": "בארכיון"
   },
   "actions": {
@@ -14,7 +14,7 @@
     "resume": "המשך",
     "archive": "העבר לארכיון",
     "delete": "מחק",
-    "view": "הצג פרטים"
+    "view": "צפה בפרטים"
   },
   "labels": {
     "running": "רץ",
@@ -25,7 +25,17 @@
     "incomplete": "לא הושלם",
     "recovering": "משחזר...",
     "needsRecovery": "דורש שחזור",
-    "needsResume": "דורש המשך"
+    "needsResume": "דורש המשך",
+    "title": "כותרת",
+    "description": "תיאור",
+    "category": "קטגוריה",
+    "priority": "עדיפות",
+    "complexity": "מורכבות",
+    "impact": "השפעה",
+    "classification": "סיווג",
+    "imageAdded": "תמונה נוספה בהצלחה!",
+    "referenceImages": "תמונות התייחסות (אופציונלי)",
+    "optional": "אופציונלי"
   },
   "reviewReason": {
     "completed": "הושלם",
@@ -39,8 +49,24 @@
   },
   "creation": {
     "title": "צור משימה חדשה",
-    "description": "תאר מה ברצונך לבנות",
-    "placeholder": "תאר את המשימה שלך..."
+    "description": "תאר מה ברצונך לבנות. הבינה המלאכותית תנתח את הבקשה שלך ותיצור מפרט מפורט.",
+    "placeholder": "תאר את המשימה שלך...",
+    "draftRestored": "טיוטה שוחזרה",
+    "startFresh": "התחל מחדש",
+    "advanced": "אפשרויות מתקדמות",
+    "modelConfig": "תצורת מודל",
+    "gitOptions": "אפשרויות Git",
+    "requireReview": "דרוש סקירה אנושית לפני קידוד",
+    "requireReviewHint": "כאשר מופעל, תתבקש לסקור את המפרט ותוכנית היישום לפני ששלב הקידוד מתחיל. זה מאפשר לך לאשר, לבקש שינויים או לספק משוב.",
+    "createButton": "צור משימה",
+    "creating": "יוצר...",
+    "descriptionRequired": "נא לספק תיאור",
+    "gitOptionsOptional": "אפשרויות Git (אופציונלי)",
+    "baseBranch": "ערוץ בסיס (אופציונלי)",
+    "baseBranchPlaceholder": "השתמש בברירת מחדל של הפרויקט",
+    "baseBranchHint": "עקוף על הערוץ ממנו ייוצר עץ העבודה של משימה זו. השאר ריק כדי להשתמש בערוץ ברירת המחדל המוגדר של הפרויקט.",
+    "browseFiles": "עיון בקבצים",
+    "hideFiles": "הסתר קבצים"
   },
   "empty": {
     "title": "אין משימות עדיין",
@@ -82,5 +108,69 @@
       "code": "קוד",
       "qa": "בדיקה"
     }
+  },
+  "form": {
+    "descriptionPlaceholder": "תאר את התכונה, תיקון הבאג או השיפור שברצונך ליישם. היה מפורט כמה שאפשר לגבי דרישות, אילוצים והתנהגות צפויה. הקלד @ להפנות לקבצים.",
+    "descriptionLabel": "תיאור *",
+    "filesAndImagesHint": "קבצים ותמונות ניתנים להדבקה או לגרירה ושחרור אל תוך התיאור.",
+    "titleLabel": "כותרת (אופציונלי)",
+    "titleAutoGenerateHint": "כותרת קצרה ותיאורית תיווצר אוטומטית אם תישאר ריקה.",
+    "titlePlaceholder": "השאר ריק ליצירה אוטומטית מהתיאור",
+    "pasteImagesTip": "טיפ: הדבק צילומי מסך ישירות עם {{shortcut}} כדי להוסיף תמונות התייחסות.",
+    "classificationHint": "תוויות אלו עוזרות לארגן ולתעדף משימות. הן אופציונליות אך שימושיות לסינון.",
+    "imagesHint": "צרף צילומי מסך, דוגמאות או דיאגרמות כדי לספק הקשר חזותי ל-AI.",
+    "commitMessagePlaceholder": "הודעת commit...",
+    "feedbackPlaceholder": "תאר את הבעיות או השינויים הנדרשים...",
+    "selectCategory": "בחר קטגוריה",
+    "selectPriority": "בחר עדיפות",
+    "selectComplexity": "בחר מורכבות",
+    "selectImpact": "בחר השפעה"
+  },
+  "errors": {
+    "failedToDelete": "מחיקת המשימה נכשלה",
+    "failedToUpdate": "עדכון המשימה נכשל. אנא נסה שוב.",
+    "failedToMerge": "מיזוג השינויים נכשל",
+    "failedToDiscard": "התעלמות מהשינויים נכשלה",
+    "failedToLoad": "הטעינה נכשלה",
+    "maxImagesReached": "מקסימום {{max}} תמונות מותר",
+    "invalidImageType": "סוג תמונה לא תקין. מותר: {{allowed}}",
+    "imageProcessFailed": "עיבוד התמונה נכשל",
+    "descriptionRequired": "תיאור הוא שדה חובה",
+    "updateFailed": "עדכון המשימה נכשל. אנא נסה שוב.",
+    "filesSkipped": "ניתן להוסיף רק {{count}} תמונה/ות נוספות. חלק מהקבצים דולגו.",
+    "invalidFileType": "\"{{fileName}}\" אינו סוג תמונה תקין. מותר: {{allowed}}",
+    "fileTooLarge": "\"{{fileName}}\" גדול מ-10MB. שקול לדחוס אותו לביצועים טובים יותר.",
+    "fileProcessFailed": "עיבוד \"{{fileName}}\" נכשל",
+    "createFailed": "יצירת המשימה נכשלה. אנא נסה שוב."
+  },
+  "imageUpload": {
+    "dropOrBrowse": "גרור תמונות לכאן או לחץ לעיון",
+    "maxReached": "הגעת למספר התמונות המקסימלי",
+    "allowedTypes": "{{types}} עד 10MB לכל תמונה ({{current}}/{{max}})",
+    "maxMessage": "מקסימום {{max}} תמונות",
+    "largeFileWarning": "קובץ גדול - שקול דחיסה"
+  },
+  "editDialog": {
+    "title": "ערוך משימה",
+    "description": "עדכן פרטי משימה כולל כותרת, תיאור, סיווג, תמונות והגדרות. השינויים יישמרו בקבצי המפרט."
+  },
+  "tabs": {
+    "overview": "סקירה",
+    "subtasks": "תתי-משימות",
+    "logs": "יומנים"
+  },
+  "metadata": {
+    "created": "נוצר",
+    "updated": "עודכן",
+    "source": "מקור"
+  },
+  "buttons": {
+    "startTask": "התחל משימה",
+    "stopTask": "עצור משימה",
+    "deleteTask": "מחק משימה",
+    "close": "סגור",
+    "recoverTask": "שחזר משימה",
+    "resumeTask": "המשך משימה",
+    "recovering": "משחזר..."
   }
 }

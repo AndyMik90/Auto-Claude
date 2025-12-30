@@ -3,5 +3,42 @@
     "openTerminal": "פתח מסוף",
     "openInbuilt": "פתח במסוף מובנה",
     "openExternal": "פתח במסוף חיצוני"
+  },
+  "diffDialog": {
+    "title": "קבצים ששונו",
+    "noChanges": "לא נמצאו שינויים",
+    "noFiles": "לא נמצאו קבצים ששונו",
+    "close": "סגור"
+  },
+  "actions": {
+    "recovering": "משחזר...",
+    "recoverTask": "שחזר משימה",
+    "resumeTask": "המשך משימה",
+    "stopTask": "עצור משימה",
+    "startTask": "התחל משימה",
+    "completedSuccessfully": "המשימה הושלמה בהצלחה",
+    "deleteTask": "מחק משימה",
+    "deleteTitle": "מחק משימה",
+    "deleteConfirmTitle": "האם אתה בטוח שברצונך למחוק",
+    "deleteWarning": "פעולה זו לא ניתנת לביטול. כל קבצי המשימה, כולל המפרט, תוכנית היישום וכל קוד שנוצר, יימחקו לצמיתות מהפרויקט.",
+    "cancel": "ביטול",
+    "deleting": "מוחק...",
+    "deletePermanently": "מחק לצמיתות"
+  },
+  "subtasks": {
+    "noSubtasks": "אין תתי-משימות",
+    "afterPlanning": "תתי-משימות יישום יופיעו כאן לאחר התכנון",
+    "completedOf": "{{completed}} מתוך {{total}} הושלמו"
+  },
+  "warnings": {
+    "taskStuckTitle": "המשימה נראית תקועה",
+    "taskStuckDescription": "משימה זו מסומנת כפועלת אך לא נמצא תהליך פעיל. זה יכול לקרות אם האפליקציה קרסה או התהליך הופסק באופן בלתי צפוי.",
+    "recoverAndRestart": "שחזר והפעל מחדש משימה",
+    "taskIncompleteTitle": "משימה לא הושלמה",
+    "taskIncompleteDescription": "למשימה זו יש מפרט ותוכנית יישום אבל מעולם לא השלימה אף תת-משימה ({{completed}}/{{total}}). התהליך כנראה קרס במהלך יצירת המפרט. לחץ המשך כדי להמשיך ביישום."
+  },
+  "dialogs": {
+    "discardChanges": "האם אתה בטוח שברצונך למחוק את כל השינויים עבור",
+    "deleteTask": "האם אתה בטוח שברצונך למחוק"
   }
 }

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 import { readdirSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
@@ -56,6 +56,38 @@ export function registerFileHandlers(): void {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to list directory'
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Open File in Editor
+  // ============================================
+  
+  ipcMain.handle(
+    'open-file',
+    async (_, params: { filePath: string; lineStart?: number; lineEnd?: number }): Promise<IPCResult<void>> => {
+      try {
+        const { filePath, lineStart, lineEnd } = params;
+        
+        // Build VS Code URL with line numbers if provided
+        let url = `vscode://file/${filePath}`;
+        if (lineStart) {
+          url += `:${lineStart}`;
+          if (lineEnd && lineEnd !== lineStart) {
+            url += `:${lineEnd}`;
+          }
+        }
+        
+        // Open the file in VS Code
+        await shell.openExternal(url);
+        
+        return { success: true, data: undefined };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to open file'
         };
       }
     }

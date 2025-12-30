@@ -209,6 +209,12 @@ export function App() {
     if (settings.language && settings.language !== i18n.language) {
       i18n.changeLanguage(settings.language);
     }
+    
+    // Update document direction for RTL support
+    const htmlElement = document.documentElement;
+    const isRTL = settings.language === 'he';
+    htmlElement.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
+    htmlElement.setAttribute('lang', settings.language || 'en');
   }, [settings.language, i18n]);
 
   // Listen for open-app-settings events (e.g., from project settings)
@@ -637,7 +643,7 @@ export function App() {
                 <h1 className="font-semibold text-foreground">{selectedProject.name}</h1>
               ) : (
                 <div className="text-muted-foreground">
-                  Select a project to get started
+                  {t('common:labels.selectProjectToStart')}
                 </div>
               )}
             </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { ScrollArea } from '../ui/scroll-area';
@@ -22,6 +23,7 @@ interface TaskDetailPanelProps {
 }
 
 export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
+  const { t } = useTranslation('tasks');
   const state = useTaskDetail({ task });
   const _progress = calculateProgress(task.subtasks);
 
@@ -138,19 +140,19 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               value="overview"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
             >
-              Overview
+              {t('tabs.overview')}
             </TabsTrigger>
             <TabsTrigger
               value="subtasks"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
             >
-              Subtasks ({task.subtasks.length})
+              {t('tabs.subtasks')} ({task.subtasks.length})
             </TabsTrigger>
             <TabsTrigger
               value="logs"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
             >
-              Logs
+              {t('tabs.logs')}
             </TabsTrigger>
           </TabsList>
 

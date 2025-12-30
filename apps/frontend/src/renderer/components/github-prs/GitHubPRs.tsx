@@ -4,6 +4,7 @@ import { useProjectStore } from '../../stores/project-store';
 import { useGitHubPRs } from './hooks';
 import { PRList, PRDetail } from './components';
 import { Button } from '../ui/button';
+import { useTranslation } from 'react-i18next';
 
 interface GitHubPRsProps {
   onOpenSettings?: () => void;
@@ -16,18 +17,20 @@ function NotConnectedState({
   error: string | null;
   onOpenSettings?: () => void;
 }) {
+  const { t } = useTranslation('context');
+  
   return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="text-center max-w-md">
         <GitPullRequest className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-        <h3 className="text-lg font-medium mb-2">GitHub Not Connected</h3>
+        <h3 className="text-lg font-medium mb-2">{t('github.notConnected')}</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          {error || 'Connect your GitHub account to view and review pull requests.'}
+          {error || t('github.connectHint')}
         </p>
         {onOpenSettings && (
           <Button onClick={onOpenSettings} variant="outline">
             <Settings className="h-4 w-4 mr-2" />
-            Open Settings
+            {t('github.openSettings')}
           </Button>
         )}
       </div>

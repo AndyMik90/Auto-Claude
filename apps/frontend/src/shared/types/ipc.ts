@@ -525,6 +525,7 @@ export interface ElectronAPI {
   deleteInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string) => Promise<IPCResult>;
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
+  stopInsights: (projectId: string) => Promise<IPCResult>;
 
   // Insights event listeners
   onInsightsStreamChunk: (
@@ -535,6 +536,9 @@ export interface ElectronAPI {
   ) => () => void;
   onInsightsError: (
     callback: (projectId: string, error: string) => void
+  ) => () => void;
+  onInsightsStopped: (
+    callback: (projectId: string) => void
   ) => () => void;
 
   // Task logs operations

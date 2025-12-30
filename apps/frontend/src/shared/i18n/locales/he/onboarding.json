@@ -31,12 +31,87 @@
   "oauth": {
     "title": "אימות Claude",
     "description": "חבר את חשבון Claude שלך כדי להפעיל תכונות AI",
+    "setupTitle": "הגדר אימות Claude",
+    "setupDescription": "הוסף את חשבונות Claude שלך כדי להפעיל תכונות AI",
+    "infoMessage": "הוסף מספר מנויי Claude כדי לעבור ביניהם אוטומטית כשאתה מגיע למגבלות קצב.",
     "keychainTitle": "אחסון מאובטח",
-    "keychainDescription": "האסימונים שלך מוצפנים באמצעות מחזיק המפתחות של המערכת שלך. ייתכן שתראה בקשת סיסמה ממערכת הפעלה - לחץ על \"אפשר תמיד\" כדי להימנע מלראות אותה שוב."
+    "keychainDescription": "האסימונים שלך מוצפנים באמצעות מחזיק המפתחות של המערכת שלך. ייתכן שתראה בקשת סיסמה ממערכת הפעלה - לחץ על \"אפשר תמיד\" כדי להימנע מלראות אותה שוב.",
+    "accountNamePlaceholder": "שם חשבון (למשל, עבודה, אישי)",
+    "addAccount": "הוסף",
+    "default": "ברירת מחדל",
+    "active": "פעיל",
+    "authenticated": "מאומת",
+    "needsAuth": "דורש אימות",
+    "authenticate": "אמת",
+    "setActive": "הגדר כפעיל",
+    "validationMessage": "יש לך לפחות חשבון Claude מאומת אחד. אתה יכול להמשיך לשלב הבא.",
+    "errors": {
+      "profileAuthSuccess": "הפרופיל אומת בהצלחה!",
+      "account": "חשבון:",
+      "authComplete": "האימות הושלם.",
+      "canUseProfile": "כעת תוכל להשתמש בפרופיל זה.",
+      "authFailedStart": "אתחול האימות נכשל:",
+      "tryAgain": "אנא נסה שוב.",
+      "profileAddFailed": "הוספת הפרופיל נכשלה. אנא נסה שוב.",
+      "authFailed": "אתחול האימות נכשל. אנא נסה שוב.",
+      "tokenSaveFailed": "שמירת האסימון נכשלה:",
+      "tokenSaveFailedGeneric": "שמירת האסימון נכשלה. אנא נסה שוב.",
+      "profileDeleteFailed": "מחיקת הפרופיל נכשלה",
+      "profileRenameFailed": "שינוי שם הפרופיל נכשל",
+      "setActiveFailed": "הגדרת הפרופיל הפעיל נכשלה"
+    }
+  },
+  "firstSpec": {
+    "title": "צור את המשימה הראשונה שלך",
+    "subtitle": "תאר מה אתה רוצה לבנות ותן ל-Auto Claude לטפל בשאר",
+    "taskCreatorOpened": "יוצר המשימות נפתח",
+    "taskCreatorOpenedMessage": "מצוין! אתה יכול ליצור את המשימה הראשונה שלך עכשיו או להמשיך עם האשף. אתה תמיד יכול ליצור משימות מאוחר יותר מלוח הבקרה הראשי.",
+    "tipsTitle": "טיפים למשימות מעולות",
+    "tips": {
+      "beDescriptive": {
+        "title": "היה תיאורי",
+        "description": "תאר בבירור מה אתה רוצה לבנות. כלול דרישות, אילוצים והתנהגות צפויה."
+      },
+      "startSmall": {
+        "title": "התחל בקטן",
+        "description": "התחל עם משימה ממוקדת כמו הוספת תכונה או תיקון באג. משימות קטנות יותר קלות לאימות."
+      },
+      "includeContext": {
+        "title": "כלול הקשר",
+        "description": "ציין קבצים רלוונטיים, APIs או תבניות. ככל שתספק יותר הקשר, כך התוצאות יהיו טובות יותר."
+      },
+      "letAiHelp": {
+        "title": "תן ל-AI לעזור",
+        "description": "ה-AI יכול לייצר כותרות ולסווג משימות. התמקד בתיאור מה אתה רוצה, לא בפרטים."
+      }
+    },
+    "exampleTitle": "דוגמת תיאור משימה:",
+    "exampleDescription": "הוסף מתג מצב כהה לעמוד ההגדרות. זה צריך לשמור את העדפת המשתמש ב-localStorage ולהחיל את הערכה מיד ללא רענון דף. השתמש במשתני הצבע הקיימים ב-styles/theme.css.",
+    "openTaskCreator": "פתח יוצר משימות",
+    "continueMessage": "אתה יכול להמשיך עם האשף עכשיו או ליצור עוד משימות.",
+    "skipMessage": "אתה יכול לדלג על השלב הזה וליצור משימות מאוחר יותר מלוח הבקרה.",
+    "back": "חזור",
+    "skip": "דלג",
+    "continue": "המשך"
   },
   "memory": {
     "title": "זיכרון",
-    "description": "זיכרון Auto Claude עוזר לזכור הקשר לאורך הפעלות הקידוד שלך"
+    "description": "זיכרון Auto Claude עוזר לזכור הקשר לאורך הפעלות הקידוד שלך",
+    "whatDoesMemoryDo": "מה זיכרון עושה?",
+    "whatDoesMemoryDoDescription": "זיכרון שומר תגליות, דפוסים ותובנות על בסיס הקוד שלך כך שהפעלות עתידיות מתחילות עם הקשר שכבר נטען.",
+    "remembersPatterns": "זוכר דפוסים בין הפעלות",
+    "understandsCodebase": "מבין את בסיס הקוד שלך לאורך זמן",
+    "worksOffline": "עובד במצב לא מקוון - אין צורך בענן",
+    "memoryDatabase": "מסד נתוני זיכרון",
+    "storedIn": "שמור ב-~/.auto-claude/memories/",
+    "embeddingProvider": "ספק הטמעה (לחיפוש סמנטי)",
+    "selectEmbeddingModel": "בחר מודל הטמעה",
+    "noEmbeddingProvider": "אין ספק הטמעה? זיכרון עדיין עובד עם חיפוש מילות מפתח. חיפוש סמנטי הוא שדרוג.",
+    "databaseCreatedAutomatically": "מסד הנתונים ייווצר אוטומטית",
+    "databaseCreatedDescription": "זיכרון משתמש במסד נתונים מוטמע - אין צורך ב-Docker. הוא ייווצר כשתשתמש לראשונה בתכונות זיכרון.",
+    "back": "חזור",
+    "saving": "שומר...",
+    "saveContinue": "שמור והמשך"
   },
   "completion": {
     "title": "הכול מוכן!",
@@ -66,5 +141,18 @@
     "auth": "אימות",
     "memory": "זיכרון",
     "done": "סיום"
+  },
+  "ollama": {
+    "checkingModels": "בודק מודלים של Ollama...",
+    "notRunning": "Ollama לא פועל",
+    "notRunningDescription": "הפעל Ollama כדי להשתמש במודלים מקומיים. הזיכרון עדיין יעבוד עם חיפוש מילות מפתח.",
+    "retry": "נסה שוב",
+    "installed": "מותקן",
+    "downloading": "מוריד...",
+    "download": "הורד",
+    "selectModel": "בחר מודל מותקן לחיפוש סמנטי. הזיכרון עובד עם חיפוש מילות מפתח גם בלי embeddings.",
+    "googleLightweight": "מודל embedding קל ממשקל של Google (מומלץ)",
+    "popularGeneral": "embeddings רב-תכליתיים פופולריים",
+    "mixedBreadLarge": "embeddings גדולים של MixedBread AI"
   }
 }

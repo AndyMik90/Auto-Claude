@@ -1,0 +1,92 @@
+{
+  "title": "מחולל יומן שינויים",
+  "steps": {
+    "step1": "שלב 1: בחר משימות שהושלמו לכלול",
+    "step2": "שלב 2: צור יומן שינויים",
+    "step3": "שלב 3: צור גרסה"
+  },
+  "source": {
+    "title": "מקור יומן השינויים",
+    "completedTasks": "משימות שהושלמו",
+    "completedTasksDesc": "צור ממשימות מפרט שהושלמו",
+    "gitHistory": "היסטוריית Git",
+    "gitHistoryDesc": "צור מקומיטים אחרונים או טווח תגיות",
+    "branchComparison": "השוואת ענפים",
+    "branchComparisonDesc": "צור מקומיטים בין שני ענפים"
+  },
+  "selection": {
+    "selected": "{{count}} מתוך {{total}} משימות נבחרו",
+    "selectAll": "בחר הכל",
+    "clear": "נקה",
+    "select": "בחר",
+    "refresh": "רענן"
+  },
+  "empty": {
+    "title": "אין משימות שהושלמו",
+    "description": "השלם משימות בלוח הקנבאן וסמן אותן כ\\\"הושלם\\\" כדי לכלול אותן ביומן השינויים שלך."
+  },
+  "actions": {
+    "generate": "צור",
+    "release": "פרסם",
+    "loadCommits": "טען קומיטים"
+  },
+  "branches": {
+    "baseBranch": "ענף בסיס",
+    "baseBranchPlaceholder": "בחר ענף בסיס...",
+    "baseBranchHint": "הענף שאליו אתה ממזג",
+    "compareBranch": "ענף השוואה",
+    "compareBranchPlaceholder": "בחר ענף להשוואה...",
+    "compareBranchHint": "הענף עם השינויים שלך"
+  },
+  "hints": {
+    "configureHistory": "הגדר את אפשרויות ההיסטוריה ולחץ \"טען קומיטים\" לתצוגה מקדימה.",
+    "selectBranches": "בחר שני ענפים ולחץ \"טען קומיטים\" כדי לראות את השינויים."
+  },
+  "commits": {
+    "found_one": "נמצא קומיט {{count}}",
+    "found_two": "נמצאו {{count}} קומיטים",
+    "found_other": "נמצאו {{count}} קומיטים",
+    "loading": "טוען קומיטים...",
+    "noCommits": "לא נמצאו קומיטים",
+    "task": "משימה",
+    "tasks": "משימות",
+    "commit": "קומיט",
+    "commits": "קומיטים"
+  },
+  "buttons": {
+    "continue": "המשך"
+  },
+  "gitOptions": {
+    "title": "אפשרויות היסטוריית Git",
+    "historyType": "סוג היסטוריה",
+    "sinceVersion": "מאז גרסה",
+    "recentCommits": "קומיטים אחרונים",
+    "sinceDate": "מאז תאריך",
+    "betweenTags": "בין תגיות",
+    "commitCount": "מספר קומיטים",
+    "dateLabel": "מאז תאריך",
+    "fromTag": "מתגית",
+    "toTag": "עד תגית (אופציונלי)",
+    "versionLabel": "תגית גרסה",
+    "includeMergeCommits": "כלול קומיטי מיזוג",
+    "selectTag": "בחר תגית...",
+    "selectVersion": "בחר גרסה...",
+    "headLatest": "HEAD (אחרון)",
+    "allCommitsIncluded": "כל הקומיטים מאז גרסה זו ייכללו"
+  },
+  "branchDiff": {
+    "title": "השוואת ענפים",
+    "default": "ברירת מחדל",
+    "current": "נוכחי",
+    "mustBeDifferent": "הענפים חייבים להיות שונים",
+    "loading": "טוען..."
+  },
+  "release": {
+    "title": "צור פרסום GitHub",
+    "description": "צור פרסום חדש {{tag}} ב-GitHub עם יומן השינויים כהערות פרסום.",
+    "createdSuccess": "הפרסום נוצר בהצלחה!",
+    "viewOnGitHub": "צפה בפרסום ב-GitHub",
+    "creatingRelease": "יוצר פרסום...",
+    "createRelease": "צור פרסום {{tag}}"
+  }
+}

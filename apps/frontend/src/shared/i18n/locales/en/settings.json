@@ -106,11 +106,43 @@
     "description": "Customize how Auto Claude looks",
     "mode": "Mode",
     "modeDescription": "Choose between light and dark themes",
+    "appearanceMode": "Appearance Mode",
+    "appearanceModeDescription": "Choose light, dark, or system preference",
     "light": "Light",
     "dark": "Dark",
     "system": "System",
     "colorTheme": "Color Theme",
-    "colorThemeDescription": "Choose your preferred color palette"
+    "colorThemeDescription": "Select a color palette for the interface",
+    "themes": {
+      "default": {
+        "name": "Default",
+        "description": "Oscura-inspired with pale yellow accent"
+      },
+      "dusk": {
+        "name": "Dusk",
+        "description": "Warmer variant with slightly lighter dark mode"
+      },
+      "lime": {
+        "name": "Lime",
+        "description": "Fresh, energetic lime with purple accents"
+      },
+      "ocean": {
+        "name": "Ocean",
+        "description": "Calm, professional blue tones"
+      },
+      "retro": {
+        "name": "Retro",
+        "description": "Warm, nostalgic amber vibes"
+      },
+      "neo": {
+        "name": "Neo",
+        "description": "Modern cyberpunk pink/magenta"
+      },
+      "forest": {
+        "name": "Forest",
+        "description": "Natural, earthy green tones"
+      }
+    }
   },
   "devtools": {
     "title": "Developer Tools",
@@ -184,25 +216,38 @@
       "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context"
     },
     "claude": {
-      "title": "Claude Auth",
-      "description": "Claude authentication"
+      "title": "Claude Authentication",
+      "description": "Configure Claude CLI authentication for this project",
+      "guardTitle": "Claude Authentication",
+      "guardDescription": "Configure Claude CLI authentication",
+      "initMessage": "Initialize Auto-Build first to configure claude authentication"
     },
     "linear": {
-      "title": "Linear",
-      "description": "Linear integration"
+      "title": "Linear Integration",
+      "description": "Connect to Linear for issue tracking and task import",
+      "guardTitle": "Linear Integration",
+      "guardDescription": "Sync with Linear for issue tracking",
+      "initMessage": "Initialize Auto-Build first to configure linear integration"
     },
     "github": {
-      "title": "GitHub",
-      "description": "GitHub issues sync"
+      "title": "GitHub Integration",
+      "description": "Connect to GitHub for issue tracking",
+      "guardTitle": "GitHub Integration",
+      "guardDescription": "Sync with GitHub Issues",
+      "initMessage": "Initialize Auto-Build first to configure github integration"
     },
     "memory": {
       "title": "Memory",
-      "description": "Graphiti memory backend"
+      "description": "Configure persistent cross-session memory for agents",
+      "guardTitle": "Memory",
+      "guardDescription": "Configure persistent memory",
+      "initMessage": "Initialize Auto-Build first to configure memory"
     }
   },
   "agentProfile": {
     "label": "Agent Profile",
     "title": "Default Agent Profile",
+    "profilesTitle": "Agent Profiles",
     "sectionDescription": "Select a preset configuration for model and thinking level",
     "profilesInfo": "Agent profiles provide preset configurations for Claude model and thinking level. When you create a new task, these settings will be used as defaults. You can always override them in the task creation wizard.",
     "custom": "Custom",
@@ -219,6 +264,46 @@
     "perPhaseOptimization": "(per-phase optimization)",
     "resetToDefaults": "Reset to defaults",
     "phaseConfigNote": "These settings will be used as defaults when creating new tasks with the Auto profile. You can override them per-task in the task creation wizard.",
+    "profiles": {
+      "auto": {
+        "name": "Auto (Optimized)",
+        "description": "Uses Opus across all phases with optimized thinking levels"
+      },
+      "complex": {
+        "name": "Complex Tasks",
+        "description": "For intricate, multi-step implementations requiring deep analysis"
+      },
+      "balanced": {
+        "name": "Balanced",
+        "description": "Good balance of speed and quality for most tasks"
+      },
+      "quick": {
+        "name": "Quick Edits",
+        "description": "Fast iterations for simple changes and quick fixes"
+      }
+    },
+    "thinkingLevels": {
+      "none": {
+        "label": "None",
+        "description": "No extended thinking"
+      },
+      "low": {
+        "label": "Low",
+        "description": "Brief consideration"
+      },
+      "medium": {
+        "label": "Medium",
+        "description": "Moderate analysis"
+      },
+      "high": {
+        "label": "High",
+        "description": "Deep thinking"
+      },
+      "ultrathink": {
+        "label": "Ultra Think",
+        "description": "Maximum reasoning depth"
+      }
+    },
     "phases": {
       "spec": {
         "label": "Spec Creation",
@@ -235,6 +320,28 @@
       "qa": {
         "label": "QA Review",
         "description": "Quality assurance and validation"
+      }
+    },
+    "features": {
+      "insights": {
+        "label": "Insights Chat",
+        "description": "Ask questions about your codebase"
+      },
+      "ideation": {
+        "label": "Ideation",
+        "description": "Generate feature ideas and improvements"
+      },
+      "roadmap": {
+        "label": "Roadmap",
+        "description": "Create strategic feature roadmaps"
+      },
+      "githubIssues": {
+        "label": "GitHub Issues",
+        "description": "Automated issue triage and labeling"
+      },
+      "githubPrs": {
+        "label": "GitHub PR Review",
+        "description": "AI-powered pull request reviews"
       }
     }
   },
@@ -302,5 +409,59 @@
     "noRecentErrors": "No recent errors",
     "helpTitle": "Reporting Issues",
     "helpText": "When reporting bugs, click \"Copy Debug Info\" to get system information and recent errors that help us diagnose the issue."
+  },
+  "projectSettings": {
+    "general": "General",
+    "generalDescription": "Configure Auto-Build, agent model, and notifications for {{projectName}}",
+    "autoBuildIntegration": "Auto-Build Integration",
+    "notInitialized": "Not Initialized",
+    "initializeDescription": "Initialize Auto-Build to enable task creation and agent workflows.",
+    "initializeButton": "Initialize Auto-Build",
+    "initializing": "Initializing...",
+    "initialized": "Initialized",
+    "checkingStatus": "Checking status...",
+    "agentModel": "Agent Model",
+    "agentModelDescription": "Select the AI model for task execution",
+    "agentConfiguration": "Agent Configuration",
+    "model": "Model",
+    "useAppDefault": "Use App Default",
+    "projectNotifications": "Notifications",
+    "onTaskComplete": "On Task Complete",
+    "onTaskFailed": "On Task Failed",
+    "onReviewNeeded": "On Review Needed",
+    "sound": "Sound",
+    "showTaskCompletion": "Show task completion notifications",
+    "enableDesktopNotifications": "Enable desktop notifications when tasks finish"
+  },
+  "githubOAuth": {
+    "cliRequired": "GitHub CLI Required",
+    "cliRequiredDescription": "The GitHub CLI (gh) is required for OAuth authentication. This provides a secure way to authenticate without manually creating tokens.",
+    "installCli": "Install GitHub CLI",
+    "installedIt": "I've Installed It",
+    "installInstructions": "Installation instructions:",
+    "connectToGitHub": "Connect to GitHub",
+    "connectDescription": "Click the button below to authenticate with GitHub. This will open your browser where you can authorize the application.",
+    "usingCli": "Using GitHub CLI {{version}}",
+    "authenticateWith": "Authenticate with GitHub",
+    "authenticating": "Authenticating...",
+    "completeInBrowser": "Please complete the authentication in your browser. This window will update automatically.",
+    "waitingForAuth": "Waiting for authentication flow to start...",
+    "oneTimeCode": "Your one-time code",
+    "copied": "Copied",
+    "copy": "Copy",
+    "enterCodeInBrowser": "Enter this code in your browser to complete authentication.",
+    "copyCodeThenOpen": "Copy this code, then open the link below to authenticate.",
+    "open": "Open",
+    "successfullyConnected": "Successfully Connected",
+    "connectedAs": "Connected as {{username}}",
+    "accountConnected": "Your GitHub account is now connected",
+    "authTimedOut": "Authentication Timed Out",
+    "authFailed": "Authentication Failed",
+    "completeManually": "Complete Authentication Manually",
+    "browserFailedDescription": "The browser couldn't be opened automatically. Please visit the URL below to complete authentication:",
+    "openUrlInBrowser": "Open URL in Browser",
+    "enterCodePrompt": "When prompted, enter this code:",
+    "retry": "Retry",
+    "cancel": "Cancel"
   }
 }

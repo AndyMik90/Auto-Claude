@@ -79,7 +79,8 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         // Reload profiles to show updated state
         await loadClaudeProfiles();
         // Show simple success notification
-        alert(`✅ Profile authenticated successfully!\n\n${info.email ? `Account: ${info.email}` : 'Authentication complete.'}\n\nYou can now use this profile.`);
+        const accountInfo = info.email ? `${t('integrations.errors.account')} ${info.email}` : t('integrations.errors.authComplete');
+        alert(`✅ ${t('integrations.errors.profileAuthSuccess')}\n\n${accountInfo}\n\n${t('integrations.errors.canUseProfile')}`);
       }
     });
 
@@ -128,18 +129,18 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
           setNewProfileName('');
 
           alert(
-            `Authenticating "${profileName}"...\n\n` +
-            `A browser window will open for you to log in with your Claude account.\n\n` +
-            `The authentication will be saved automatically once complete.`
+            `${t('integrations.errors.authenticatingNamed', { name: profileName })}\n\n` +
+            `${t('integrations.errors.browserWillOpen')}\n\n` +
+            `${t('integrations.errors.authSavedAuto')}`
           );
         } else {
           await loadClaudeProfiles();
-          alert(`Failed to start authentication: ${initResult.error || 'Please try again.'}`);
+          alert(`${t('integrations.errors.authFailedStart')} ${initResult.error || t('integrations.errors.tryAgain')}`);
         }
       }
     } catch (err) {
       console.error('Failed to add profile:', err);
-      alert('Failed to add profile. Please try again.');
+      alert(t('integrations.errors.profileAddFailed'));
     } finally {
       setIsAddingProfile(false);
     }
@@ -203,16 +204,16 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       const initResult = await window.electronAPI.initializeClaudeProfile(profileId);
       if (initResult.success) {
         alert(
-          `Authenticating profile...\n\n` +
-          `A browser window will open for you to log in with your Claude account.\n\n` +
-          `The authentication will be saved automatically once complete.`
+          `${t('integrations.errors.authenticatingProfile')}\n\n` +
+          `${t('integrations.errors.browserWillOpen')}\n\n` +
+          `${t('integrations.errors.authSavedAuto')}`
         );
       } else {
-        alert(`Failed to start authentication: ${initResult.error || 'Please try again.'}`);
+        alert(`${t('integrations.errors.authFailedStart')} ${initResult.error || t('integrations.errors.tryAgain')}`);
       }
     } catch (err) {
       console.error('Failed to authenticate profile:', err);
-      alert('Failed to start authentication. Please try again.');
+      alert(t('integrations.errors.authFailed'));
     } finally {
       setAuthenticatingProfileId(null);
     }
@@ -249,11 +250,11 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         setManualTokenEmail('');
         setShowManualToken(false);
       } else {
-        alert(`Failed to save token: ${result.error || 'Please try again.'}`);
+        alert(`${t('integrations.errors.tokenSaveFailed')} ${result.error || t('integrations.errors.tryAgain')}`);
       }
     } catch (err) {
       console.error('Failed to save token:', err);
-      alert('Failed to save token. Please try again.');
+      alert(t('integrations.errors.tokenSaveFailedGeneric'));
     } finally {
       setSavingTokenProfileId(null);
     }
@@ -282,11 +283,11 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       if (result.success) {
         await loadAutoSwitchSettings();
       } else {
-        alert(`Failed to update settings: ${result.error || 'Please try again.'}`);
+        alert(`${t('integrations.errors.settingsUpdateFailed')} ${result.error || t('integrations.errors.tryAgain')}`);
       }
     } catch (err) {
       console.error('Failed to update auto-switch settings:', err);
-      alert('Failed to update settings. Please try again.');
+      alert(t('integrations.errors.settingsUpdateFailedGeneric'));
     } finally {
       setIsLoadingAutoSwitch(false);
     }
@@ -432,7 +433,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               onClick={() => handleAuthenticateProfile(profile.id)}
                               disabled={authenticatingProfileId === profile.id}
                               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                              title="Re-authenticate profile"
+                            title={t('integrations.tooltips.reauth')}
                             >
                               {authenticatingProfileId === profile.id ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -458,7 +459,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                             size="icon"
                             onClick={() => toggleTokenEntry(profile.id)}
                             className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            title={expandedTokenProfileId === profile.id ? "Hide token entry" : "Enter token manually"}
+                          title={expandedTokenProfileId === profile.id ? t('integrations.tooltips.hideTokenEntry') : t('integrations.tooltips.enterTokenManually')}
                           >
                             {expandedTokenProfileId === profile.id ? (
                               <ChevronDown className="h-3 w-3" />
@@ -471,7 +472,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                             size="icon"
                             onClick={() => startEditingProfile(profile)}
                             className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            title="Rename profile"
+                          title={t('integrations.tooltips.renameProfile')}
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
@@ -482,7 +483,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               onClick={() => handleDeleteProfile(profile.id)}
                               disabled={deletingProfileId === profile.id}
                               className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              title="Delete profile"
+                              title={t('integrations.tooltips.deleteProfile')}
                             >
                               {deletingProfileId === profile.id ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />

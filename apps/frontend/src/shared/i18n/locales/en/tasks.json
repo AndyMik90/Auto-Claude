@@ -1,10 +1,10 @@
 {
   "status": {
-    "backlog": "Backlog",
-    "todo": "To Do",
+    "backlog": "Planning",
     "in_progress": "In Progress",
-    "review": "Review",
-    "complete": "Complete",
+    "ai_review": "AI Review",
+    "human_review": "Human Review",
+    "done": "Done",
     "archived": "Archived"
   },
   "actions": {
@@ -25,7 +25,15 @@
     "incomplete": "Incomplete",
     "recovering": "Recovering...",
     "needsRecovery": "Needs Recovery",
-    "needsResume": "Needs Resume"
+    "needsResume": "Needs Resume",
+    "title": "Title",
+    "description": "Description",
+    "category": "Category",
+    "priority": "Priority",
+    "complexity": "Complexity",
+    "impact": "Impact",
+    "classification": "Classification (optional)",
+    "imageAdded": "Image added successfully!"
   },
   "reviewReason": {
     "completed": "Completed",
@@ -39,8 +47,24 @@
   },
   "creation": {
     "title": "Create New Task",
-    "description": "Describe what you want to build",
-    "placeholder": "Describe your task..."
+    "description": "Describe what you want to build. The AI will analyze your request and create a detailed specification.",
+    "placeholder": "Describe your task...",
+    "draftRestored": "Draft restored",
+    "startFresh": "Start Fresh",
+    "advanced": "Advanced Options",
+    "modelConfig": "Model Configuration",
+    "gitOptions": "Git Options",
+    "requireReview": "Require human review before coding",
+    "requireReviewHint": "When enabled, you'll be prompted to review the spec and implementation plan before the coding phase begins. This allows you to approve, request changes, or provide feedback.",
+    "createButton": "Create Task",
+    "creating": "Creating...",
+    "descriptionRequired": "Please provide a description",
+    "gitOptionsOptional": "Git Options (optional)",
+    "baseBranch": "Base Branch (optional)",
+    "baseBranchPlaceholder": "Use project default",
+    "baseBranchHint": "Override the branch this task's worktree will be created from. Leave empty to use the project's configured default branch.",
+    "browseFiles": "Browse Files",
+    "hideFiles": "Hide Files"
   },
   "empty": {
     "title": "No tasks yet",
@@ -82,5 +106,57 @@
       "code": "Code",
       "qa": "QA"
     }
+  },
+  "form": {
+    "descriptionPlaceholder": "Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior. Type @ to reference files.",
+    "descriptionLabel": "Description *",
+    "filesAndImagesHint": "Files and images can be copy/pasted or dragged & dropped into the description.",
+    "titleLabel": "Title (optional)",
+    "titleAutoGenerateHint": "A short, descriptive title will be generated automatically if left empty.",
+    "titlePlaceholder": "Leave empty to auto-generate from description",
+    "classificationHint": "These labels help organize and prioritize tasks. They're optional but useful for filtering.",
+    "commitMessagePlaceholder": "Commit message...",
+    "feedbackPlaceholder": "Describe the issues or changes needed...",
+    "selectCategory": "Select category",
+    "selectPriority": "Select priority",
+    "selectComplexity": "Select complexity",
+    "selectImpact": "Select impact"
+  },
+  "errors": {
+    "failedToDelete": "Failed to delete task",
+    "failedToUpdate": "Failed to update task. Please try again.",
+    "failedToMerge": "Failed to merge changes",
+    "failedToDiscard": "Failed to discard changes",
+    "failedToLoad": "Failed to load"
+  },
+  "editDialog": {
+    "title": "Edit Task",
+    "description": "Update task details including title, description, classification, images, and settings. Changes will be saved to the spec files."
+  },
+  "imageUpload": {
+    "dropOrBrowse": "Drop images here or browse",
+    "maxReached": "Maximum reached",
+    "allowedTypes": "PNG, JPG, GIF up to {{size}}",
+    "maxMessage": "Maximum {{max}} images",
+    "largeFileWarning": "Large file - consider compressing"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "subtasks": "Subtasks",
+    "logs": "Logs"
+  },
+  "metadata": {
+    "created": "Created",
+    "updated": "Updated",
+    "source": "Source"
+  },
+  "buttons": {
+    "startTask": "Start Task",
+    "stopTask": "Stop Task",
+    "deleteTask": "Delete Task",
+    "close": "Close",
+    "recoverTask": "Recover Task",
+    "resumeTask": "Resume Task",
+    "recovering": "Recovering..."
   }
 }

@@ -1,5 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import type { Project } from '../../shared/types';
@@ -25,6 +26,7 @@ export function SortableProjectTab({
   onSelect,
   onClose
 }: SortableProjectTabProps) {
+  const { t } = useTranslation('common');
   // Build tooltip with keyboard shortcut hint (only for tabs 1-9)
   const shortcutHint = tabIndex < 9 ? `${modKey}${tabIndex + 1}` : '';
   const closeShortcut = `${modKey}W`;
@@ -117,7 +119,7 @@ export function SortableProjectTab({
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="flex items-center gap-2">
-            <span>Close tab</span>
+            <span>{t('tooltips.closeTab')}</span>
             <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded border border-border font-mono">
               {closeShortcut}
             </kbd>

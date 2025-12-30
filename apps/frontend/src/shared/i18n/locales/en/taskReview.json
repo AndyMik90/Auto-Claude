@@ -3,5 +3,42 @@
     "openTerminal": "Open terminal",
     "openInbuilt": "Open in Inbuilt Terminal",
     "openExternal": "Open in External Terminal"
+  },
+  "diffDialog": {
+    "title": "Changed Files",
+    "noChanges": "No changes found",
+    "noFiles": "No changed files found",
+    "close": "Close"
+  },
+  "actions": {
+    "recovering": "Recovering...",
+    "recoverTask": "Recover Task",
+    "resumeTask": "Resume Task",
+    "stopTask": "Stop Task",
+    "startTask": "Start Task",
+    "completedSuccessfully": "Task completed successfully",
+    "deleteTask": "Delete Task",
+    "deleteTitle": "Delete Task",
+    "deleteConfirmTitle": "Are you sure you want to delete",
+    "deleteWarning": "This action cannot be undone. All task files, including the spec, implementation plan, and any generated code, will be permanently removed from the project.",
+    "cancel": "Cancel",
+    "deleting": "Deleting...",
+    "deletePermanently": "Delete Permanently"
+  },
+  "subtasks": {
+    "noSubtasks": "No subtasks",
+    "afterPlanning": "Implementation subtasks will appear here after planning",
+    "completedOf": "{{completed}} of {{total}} completed"
+  },
+  "warnings": {
+    "taskStuckTitle": "Task appears stuck",
+    "taskStuckDescription": "This task is marked as running but no active process was found. This can happen if the application crashed or the process was stopped unexpectedly.",
+    "recoverAndRestart": "Recover and restart task",
+    "taskIncompleteTitle": "Task incomplete",
+    "taskIncompleteDescription": "This task has a spec and implementation plan but never completed any subtasks ({{completed}}/{{total}}). The process likely crashed during spec creation. Click Resume to continue with implementation."
+  },
+  "dialogs": {
+    "discardChanges": "Are you sure you want to discard all changes for",
+    "deleteTask": "Are you sure you want to delete"
   }
 }

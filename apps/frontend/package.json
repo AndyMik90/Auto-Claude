@@ -53,7 +53,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@lydell/node-pty": "^1.1.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
-    "@radix-ui/react-checkbox": "^1.1.4",
+    "@radix-ui/react-checkbox": "1.1.2",
     "@radix-ui/react-collapsible": "^1.1.3",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -145,7 +145,8 @@
     },
     "files": [
       "out/**/*",
-      "package.json"
+      "package.json",
+      "src/shared/i18n/locales/**/*"
     ],
     "extraResources": [
       {
@@ -159,6 +160,10 @@
       {
         "from": "resources/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "src/shared/i18n/locales",
+        "to": "locales"
       },
       {
         "from": "python-runtime/${os}-${arch}/python",
@@ -204,7 +209,9 @@
       "target": [
         {
           "target": "dir",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "signAndEditExecutable": false

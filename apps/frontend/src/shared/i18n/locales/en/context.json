@@ -1,0 +1,54 @@
+{
+  "tabs": {
+    "projectIndex": "Project Index",
+    "memories": "Memories",
+    "projectStructure": "Project Structure",
+    "tools": "Tools",
+    "githubIssues": "GitHub Issues",
+    "githubPrs": "GitHub Pull Requests",
+    "worktrees": "Worktrees"
+  },
+  "projectIndex": {
+    "title": "AI-discovered knowledge about your codebase",
+    "refresh": "Refresh",
+    "analyze": "Analyze Project",
+    "empty": {
+      "title": "No Project Index Found",
+      "description": "Click the Refresh button to analyze your project structure and create an index."
+    },
+    "error": {
+      "title": "Failed to load project index",
+      "retry": "Try Again"
+    }
+  },
+  "memories": {
+    "title": "Memories",
+    "graphStatus": "Graph Memory Status",
+    "notAvailable": "Not Available",
+    "notConfigured": "Graphiti not configured",
+    "enableHint": "To enable graph memory, set GRAPHITI_ENABLED=true in project settings.",
+    "search": "Search Memories",
+    "searchPlaceholder": "Search for patterns, insights, gotchas...",
+    "recent": "Recent Memories",
+    "empty": "No memories recorded yet. Memories are created during AI agent sessions.",
+    "memoryCard": {
+      "whatWorked": "What Worked",
+      "whatFailed": "What Failed",
+      "approach": "Approach",
+      "recommendations": "Recommendations",
+      "patterns": "Patterns",
+      "gotchas": "Gotchas",
+      "changedFiles": "Changed Files",
+      "fileInsights": "File Insights",
+      "subtasksCompleted": "Subtasks Completed"
+    }
+  },
+  "github": {
+    "notConnected": "GitHub Not Connected",
+    "noToken": "No GitHub token or repository configured",
+    "connectHint": "Connect your GitHub account to view and review pull requests.",
+    "openSettings": "Open Settings",
+    "configureHint": "Configure your GitHub token and repository in project settings to sync issues.",
+    "noIssuesMatch": "No issues match your search"
+  }
+}

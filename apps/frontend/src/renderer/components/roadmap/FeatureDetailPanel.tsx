@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronRight,
   Lightbulb,
@@ -31,6 +32,7 @@ export function FeatureDetailPanel({
   onDelete,
   competitorInsights = [],
 }: FeatureDetailPanelProps) {
+  const { t } = useTranslation('roadmap');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleDelete = () => {
@@ -84,7 +86,7 @@ export function FeatureDetailPanel({
         <div className="p-4 space-y-6">
           {/* Description */}
           <div>
-            <h3 className="text-sm font-medium mb-2">Description</h3>
+            <h3 className="text-sm font-medium mb-2">{t('featureDetail.description')}</h3>
             <p className="text-sm text-muted-foreground">{feature.description}</p>
           </div>
 
@@ -92,7 +94,7 @@ export function FeatureDetailPanel({
         <div>
           <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
             <Lightbulb className="h-4 w-4" />
-            Rationale
+            {t('featureDetail.rationale')}
           </h3>
           <p className="text-sm text-muted-foreground">{feature.rationale}</p>
         </div>
@@ -105,17 +107,17 @@ export function FeatureDetailPanel({
             >
               {feature.complexity}
             </div>
-            <div className="text-xs text-muted-foreground">Complexity</div>
+            <div className="text-xs text-muted-foreground">{t('featureDetail.complexity')}</div>
           </Card>
           <Card className="p-3 text-center">
             <div className={`text-lg font-semibold ${ROADMAP_IMPACT_COLORS[feature.impact]}`}>
               {feature.impact}
             </div>
-            <div className="text-xs text-muted-foreground">Impact</div>
+            <div className="text-xs text-muted-foreground">{t('featureDetail.impact')}</div>
           </Card>
           <Card className="p-3 text-center">
             <div className="text-lg font-semibold">{feature.dependencies.length}</div>
-            <div className="text-xs text-muted-foreground">Dependencies</div>
+            <div className="text-xs text-muted-foreground">{t('featureDetail.dependencies')}</div>
           </Card>
         </div>
 
@@ -124,7 +126,7 @@ export function FeatureDetailPanel({
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <Users className="h-4 w-4" />
-              User Stories
+              {t('featureDetail.userStories')}
             </h3>
             <div className="space-y-2">
               {feature.userStories.map((story, i) => (
@@ -141,7 +143,7 @@ export function FeatureDetailPanel({
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
-              Acceptance Criteria
+              {t('featureDetail.acceptanceCriteria')}
             </h3>
             <ul className="space-y-1">
               {feature.acceptanceCriteria.map((criterion, i) => (
@@ -159,7 +161,7 @@ export function FeatureDetailPanel({
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <ArrowRight className="h-4 w-4" />
-              Dependencies
+              {t('featureDetail.dependencies')}
             </h3>
             <div className="flex flex-wrap gap-1">
               {feature.dependencies.map((dep) => (
@@ -176,7 +178,7 @@ export function FeatureDetailPanel({
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Addresses Competitor Pain Points
+              {t('featureDetail.competitorInsights')}
             </h3>
             <div className="space-y-2">
               {competitorInsights.map((insight) => (
@@ -237,17 +239,17 @@ export function FeatureDetailPanel({
               <Trash2 className="h-6 w-6 text-destructive" />
             </div>
             <div>
-              <h3 className="font-semibold">Delete Feature?</h3>
+              <h3 className="font-semibold">{t('deleteDialog.title')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                This will permanently remove "{feature.title}" from your roadmap.
+                {t('deleteDialog.description', { title: feature.title })}
               </p>
             </div>
             <div className="flex gap-2 justify-center">
               <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-                Cancel
+                {t('deleteDialog.cancel')}
               </Button>
               <Button variant="destructive" onClick={handleDelete}>
-                Delete
+                {t('deleteDialog.delete')}
               </Button>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
-import { TASK_STATUS_LABELS } from '../../../shared/constants';
+import { useTranslation } from 'react-i18next';
 import type { Task } from '../../../shared/types';
 
 interface TaskHeaderProps {
@@ -25,6 +25,8 @@ export function TaskHeader({
   onClose,
   onEdit
 }: TaskHeaderProps) {
+  const { t } = useTranslation('tasks');
+  
   return (
     <div className="flex items-start justify-between p-4 pb-3">
       <div className="flex-1 min-w-0 pr-2">
@@ -65,7 +67,7 @@ export function TaskHeader({
                 variant={task.status === 'done' ? 'success' : task.status === 'human_review' ? 'purple' : task.status === 'in_progress' ? 'info' : 'secondary'}
                 className={cn('text-xs', (task.status === 'in_progress' && !isStuck) && 'status-running')}
               >
-                {TASK_STATUS_LABELS[task.status]}
+                {t(`status.${task.status}`)}
               </Badge>
               {task.status === 'human_review' && task.reviewReason && (
                 <Badge

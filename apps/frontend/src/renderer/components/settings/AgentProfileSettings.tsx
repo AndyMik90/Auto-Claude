@@ -91,8 +91,7 @@ export function AgentProfileSettings() {
    * Get human-readable thinking level label
    */
   const getThinkingLabel = (thinkingValue: string): string => {
-    const level = THINKING_LEVELS.find((l) => l.value === thinkingValue);
-    return level?.label || thinkingValue;
+    return t(`agentProfile.thinkingLevels.${thinkingValue}.label`, thinkingValue);
   };
 
   /**
@@ -149,9 +148,9 @@ export function AgentProfileSettings() {
           </div>
 
           <div className="flex-1 min-w-0 pr-6">
-            <h3 className="font-medium text-sm text-foreground">{profile.name}</h3>
+            <h3 className="font-medium text-sm text-foreground">{t(`agentProfile.profiles.${profile.id}.name`)}</h3>
             <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-              {profile.description}
+              {t(`agentProfile.profiles.${profile.id}.description`)}
             </p>
 
             {/* Model and thinking level badges */}
@@ -272,7 +271,7 @@ export function AgentProfileSettings() {
                             <SelectContent>
                               {THINKING_LEVELS.map((level) => (
                                 <SelectItem key={level.value} value={level.value}>
-                                  {level.label}
+                                  {t(`agentProfile.thinkingLevels.${level.value}.label`)}
                                 </SelectItem>
                               ))}
                             </SelectContent>

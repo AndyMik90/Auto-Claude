@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { MemoryCard } from './MemoryCard';
 import { InfoItem } from './InfoItem';
@@ -36,6 +37,7 @@ export function MemoriesTab({
   searchLoading,
   onSearch
 }: MemoriesTabProps) {
+  const { t } = useTranslation('context');
   const [localSearchQuery, setLocalSearchQuery] = useState('');
 
   const handleSearch = () => {
@@ -59,7 +61,7 @@ export function MemoriesTab({
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Database className="h-4 w-4" />
-                Graph Memory Status
+                {t('memories.graphStatus')}
               </CardTitle>
               {memoryStatus?.available ? (
                 <Badge variant="outline" className="bg-success/10 text-success border-success/30">
@@ -69,7 +71,7 @@ export function MemoriesTab({
               ) : (
                 <Badge variant="outline" className="bg-muted text-muted-foreground">
                   <XCircle className="h-3 w-3 mr-1" />
-                  Not Available
+                  {t('memories.notAvailable')}
                 </Badge>
               )}
             </div>
@@ -92,9 +94,9 @@ export function MemoriesTab({
               </>
             ) : (
               <div className="text-sm text-muted-foreground">
-                <p>{memoryStatus?.reason || 'Graphiti memory is not configured'}</p>
+                <p>{memoryStatus?.reason || t('memories.notConfigured')}</p>
                 <p className="mt-2 text-xs">
-                  To enable graph memory, set <code className="bg-muted px-1 py-0.5 rounded">GRAPHITI_ENABLED=true</code> in project settings.
+                  {t('memories.enableHint')}
                 </p>
               </div>
             )}
@@ -104,11 +106,11 @@ export function MemoriesTab({
         {/* Search */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Search Memories
+            {t('memories.search')}
           </h3>
           <div className="flex gap-2">
             <Input
-              placeholder="Search for patterns, insights, gotchas..."
+              placeholder={t('memories.searchPlaceholder')}
               value={localSearchQuery}
               onChange={(e) => setLocalSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
@@ -148,7 +150,7 @@ export function MemoriesTab({
         {/* Recent Memories */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Recent Memories
+            {t('memories.recent')}
           </h3>
 
           {memoriesLoading && (
@@ -161,7 +163,7 @@ export function MemoriesTab({
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Brain className="h-10 w-10 text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground">
-                No memories recorded yet. Memories are created during AI agent sessions.
+                {t('memories.empty')}
               </p>
             </div>
           )}

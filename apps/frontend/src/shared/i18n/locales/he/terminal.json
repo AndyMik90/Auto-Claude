@@ -1,0 +1,12 @@
+{
+  "taskSelector": {
+    "currentTask": "משימה נוכחית",
+    "switchTo": "החלף ל...",
+    "clearTask": "נקה משימה",
+    "selectTask": "בחר משימה...",
+    "availableTasks": "משימות זמינות",
+    "noTasksAvailable": "אין משימות זמינות",
+    "createInKanban": "צור משימות בלוח הקנבאן",
+    "addNewTask": "הוסף משימה חדשה"
+  }
+}

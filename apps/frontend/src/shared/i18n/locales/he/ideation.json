@@ -1,0 +1,189 @@
+{
+  "title": "רעיונות",
+  "empty": {
+    "title": "עדיין אין רעיונות",
+    "description": "צור רעיונות לתכונות מונעי AI על בסיס ההקשר של הפרויקט שלך, דפוסים קיימים וקהל היעד.",
+    "enabledTypes": "סוגי יצירת רעיונות מופעלים",
+    "generateButton": "צור רעיונות",
+    "tokenWarning": "אסימון Claude לא מוגדר. תתבקש להזין אותו בעת היצירה."
+  },
+  "types": {
+    "code-improvements": "שיפורי קוד",
+    "ui-ux-improvements": "שיפורי ממשק משתמש וחוויה",
+    "documentation-gaps": "תיעוד",
+    "security-hardening": "אבטחה",
+    "performance-optimizations": "ביצועים",
+    "code-quality": "איכות קוד"
+  },
+  "auth": {
+    "title": "נדרש אימות Claude",
+    "description": "נדרש אסימון OAuth של Claude Code כדי ליצור רעיונות לתכונות מונעי AI.",
+    "useExisting": "השתמש בחשבון קיים",
+    "existingAccountsHint": "יש לך {count} חשבונות Claude מאומתים. בחר אחד לשימוש:",
+    "selectAccount": "בחר חשבון",
+    "default": "(ברירת מחדל)",
+    "useThisAccount": "השתמש בחשבון זה",
+    "orAuthNew": "או אמת חשבון חדש",
+    "authNewDescription": "הוסף חשבון Claude חדש על ידי התחברות בדפדפן שלך.",
+    "authNewButton": "אמת חשבון חדש",
+    "authWithBrowser": "אמת עם דפדפן",
+    "authDescription": "לחץ מתחת לפתוח את הדפדפן שלך ולהתחבר עם חשבון Claude שלך.",
+    "manualEntry": "הזן אסימון באופן ידני",
+    "steps": "שלבים:",
+    "step1": "התקן את Claude Code CLI אם עדיין לא עשית זאת",
+    "step2": "הרץ claude setup-token",
+    "step3": "העתק את האסימון והדבק אותו למטה",
+    "viewDocs": "הצג תיעוד",
+    "tokenLabel": "אסימון OAuth של Claude Code",
+    "tokenPlaceholder": "הזן את האסימון שלך...",
+    "saveLocation": "האסימון יישמר ב-{path}",
+    "cancel": "ביטול",
+    "waitingForAuth": "ממתין לאימות...",
+    "browserHint": "חלון דפדפן אמור להיפתח. השלם את האימות שם וחזור לכאן.",
+    "tokenConfigured": "האסימון הוגדר בהצלחה",
+    "tokenConfiguredHint": "כעת תוכל להשתמש בתכונות AI כמו יצירת רעיונות ומפת דרכים.",
+    "hideToken": "הסתר אסימון",
+    "showToken": "הצג אסימון",
+    "existingTokenInfo": "אסימון כבר מוגדר.",
+    "replaceTokenHint": "הזן אסימון חדש למעלה כדי להחליף אותו.",
+    "replaceAuthHint": "אמת שוב כדי להחליף אותו.",
+    "close": "סגור",
+    "saving": "שומר...",
+    "saveToken": "שמור אסימון"
+  },
+  "card": {
+    "convertToTask": "המר למשימה",
+    "dismiss": "התעלם",
+    "goToTask": "עבור למשימה",
+    "impact": "השפעה"
+  },
+  "status": {
+    "draft": "טיוטה",
+    "selected": "נבחר",
+    "converted": "הומר",
+    "dismissed": "התעלמו",
+    "archived": "בארכיון"
+  },
+  "effort": {
+    "trivial": "טריוויאלי",
+    "small": "קטן",
+    "medium": "בינוני",
+    "large": "גדול",
+    "complex": "מורכב"
+  },
+  "severity": {
+    "low": "נמוכה",
+    "medium": "בינונית",
+    "high": "גבוהה",
+    "critical": "קריטית",
+    "suggestion": "הצעה",
+    "minor": "קלה",
+    "major": "חמורה"
+  },
+  "impact": {
+    "low": "נמוכה",
+    "medium": "בינונית",
+    "high": "גבוהה",
+    "critical": "קריטית"
+  },
+  "uiuxCategories": {
+    "usability": "שימושיות",
+    "accessibility": "נגישות",
+    "performance": "ביצועים",
+    "visual": "עיצוב ויזואלי",
+    "interaction": "אינטראקציה"
+  },
+  "documentationCategories": {
+    "readme": "README",
+    "api_docs": "תיעוד API",
+    "inline_comments": "הערות בקוד",
+    "examples": "דוגמאות ומדריכים",
+    "architecture": "תיעוד ארכיטקטורה",
+    "troubleshooting": "מדריך פתרון בעיות"
+  },
+  "securityCategories": {
+    "authentication": "אימות",
+    "authorization": "הרשאות",
+    "input_validation": "אימות קלט",
+    "data_protection": "הגנת מידע",
+    "dependencies": "תלויות",
+    "configuration": "תצורה",
+    "secrets_management": "ניהול סודות"
+  },
+  "performanceCategories": {
+    "bundle_size": "גודל חבילה",
+    "runtime": "ביצועי זמן ריצה",
+    "memory": "שימוש בזיכרון",
+    "database": "שאילתות מסד נתונים",
+    "network": "בקשות רשת",
+    "rendering": "רינדור",
+    "caching": "מטמון"
+  },
+  "codeQualityCategories": {
+    "large_files": "קבצים גדולים",
+    "code_smells": "ריחות קוד",
+    "complexity": "מורכבות גבוהה",
+    "duplication": "כפילות קוד",
+    "naming": "מוסכמות שמות",
+    "structure": "מבנה קבצים",
+    "linting": "בעיות linting",
+    "testing": "כיסוי בדיקות",
+    "types": "בטיחות טיפוסים",
+    "dependencies": "בעיות תלויות",
+    "dead_code": "קוד מת",
+    "git_hygiene": "היגיינת Git"
+  },
+  "generation": {
+    "title": "יוצר רעיונות",
+    "complete": "הושלם",
+    "showLogs": "הצג לוגים",
+    "hideLogs": "הסתר לוגים",
+    "stop": "עצור",
+    "stopping": "עוצר...",
+    "stopGeneration": "עצור יצירה",
+    "waitingToStart": "ממתין להתחלה...",
+    "failed": "נכשל ביצירת רעיונות עבור קטגוריה זו",
+    "noIdeas": "לא נוצרו רעיונות עבור קטגוריה זו",
+    "ideas": "רעיונות"
+  },
+  "dialogs": {
+    "config": {
+      "title": "הגדרות רעיונות",
+      "description": "הגדר אילו סוגי רעיונות ליצור",
+      "ideationTypes": "סוגי רעיונות",
+      "contextSources": "מקורות הקשר",
+      "includeRoadmap": "כלול הקשר מתוכנית עבודה",
+      "includeKanban": "כלול הקשר מלוח קאנבאן",
+      "close": "סגור"
+    },
+    "addMore": {
+      "title": "הוסף רעיונות נוספים",
+      "description": "בחר סוגי רעיונות נוספים ליצירה. הרעיונות הקיימים שלך יישמרו.",
+      "allGenerated": "כבר יצרת את כל סוגי הרעיונות!",
+      "useRegenerate": "השתמש ב\"צור מחדש\" לרענן רעיונות קיימים.",
+      "selected": "נבחרו",
+      "cancel": "ביטול",
+      "generate": "צור",
+      "types": "סוגים",
+      "ideas": "רעיונות"
+    }
+  },
+  "header": {
+    "title": "רעיונות",
+    "subtitle": "רעיונות לתכונות שנוצרו על ידי בינה מלאכותית עבור הפרויקט שלך",
+    "ideasCount": "רעיונות",
+    "selected": "נבחרו",
+    "delete": "מחק",
+    "clearSelection": "נקה בחירה",
+    "selectAll": "בחר הכל",
+    "hideDismissed": "הסתר מופסקים",
+    "showDismissed": "הצג מופסקים",
+    "hideArchived": "הסתר מאורכסנים",
+    "showArchived": "הצג מאורכסנים",
+    "configure": "הגדרות",
+    "addMore": "הוסף עוד",
+    "addMoreTooltip": "הוסף סוגי רעיונות נוספים",
+    "dismissAll": "הפסק כל הרעיונות",
+    "regenerate": "צור רעיונות מחדש"
+  }
+}

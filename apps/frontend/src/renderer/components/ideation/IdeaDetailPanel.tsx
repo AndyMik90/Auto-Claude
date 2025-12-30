@@ -1,8 +1,8 @@
 import { ChevronRight, ExternalLink, Lightbulb, Play, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import {
-  IDEATION_TYPE_LABELS,
   IDEATION_TYPE_COLORS,
   IDEATION_STATUS_COLORS
 } from '../../../shared/constants';
@@ -32,6 +32,7 @@ interface IdeaDetailPanelProps {
 }
 
 export function IdeaDetailPanel({ idea, onClose, onConvert, onGoToTask, onDismiss }: IdeaDetailPanelProps) {
+  const { t } = useTranslation('ideation');
   const isDismissed = idea.status === 'dismissed';
   const isConverted = idea.status === 'converted';
 
@@ -44,7 +45,7 @@ export function IdeaDetailPanel({ idea, onClose, onConvert, onGoToTask, onDismis
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className={IDEATION_TYPE_COLORS[idea.type]}>
                 <TypeIcon type={idea.type} />
-                <span className="ml-1">{IDEATION_TYPE_LABELS[idea.type]}</span>
+                <span className="ml-1">{t(`types.${idea.type.replace(/_/g, '-')}`)}</span>
               </Badge>
               {idea.status !== 'draft' && (
                 <Badge variant="outline" className={IDEATION_STATUS_COLORS[idea.status]}>

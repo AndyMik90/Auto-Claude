@@ -28,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from './ui/alert-dialog';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import type { InsightsSessionSummary } from '../../shared/types';
 
@@ -50,6 +51,7 @@ export function ChatHistorySidebar({
   onDeleteSession,
   onRenameSession
 }: ChatHistorySidebarProps) {
+  const { t } = useTranslation('insights');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
@@ -86,13 +88,13 @@ export function ChatHistorySidebar({
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return 'Today';
+      return t('today');
     } else if (diffDays === 1) {
-      return 'Yesterday';
+      return t('yesterday');
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      return t('thisWeek');
     } else {
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return t('older');
     }
   };
 
@@ -110,13 +112,13 @@ export function ChatHistorySidebar({
     <div className="flex h-full w-64 flex-col border-r border-border bg-muted/30">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 py-3">
-        <h3 className="text-sm font-medium text-foreground">Chat History</h3>
+        <h3 className="text-sm font-medium text-foreground">{t('chatHistory')}</h3>
         <Button
           variant="ghost"
           size="icon"
           className="h-7 w-7"
           onClick={onNewSession}
-          title="New conversation"
+          title={t('newChat')}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -130,7 +132,7 @@ export function ChatHistorySidebar({
           </div>
         ) : sessions.length === 0 ? (
           <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-            No conversations yet
+            {t('noConversations')}
           </div>
         ) : (
           <div className="py-2">
@@ -164,15 +166,14 @@ export function ChatHistorySidebar({
       <AlertDialog open={!!deleteSessionId} onOpenChange={() => setDeleteSessionId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteConversation')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this conversation and all its messages.
-              This action cannot be undone.
+              {t('deleteConversationDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t('delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -205,6 +206,7 @@ function SessionItem({
   onEditTitleChange,
   onDelete
 }: SessionItemProps) {
+  const { t } = useTranslation('insights');
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -270,7 +272,7 @@ function SessionItem({
             {session.title}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            {session.messageCount} message{session.messageCount !== 1 ? 's' : ''}
+            {session.messageCount} {session.messageCount !== 1 ? t('messages') : t('message')}
           </p>
         </div>
       </div>
@@ -289,14 +291,14 @@ function SessionItem({
         <DropdownMenuContent align="end" sideOffset={5} className="w-36 z-[100]">
           <DropdownMenuItem onSelect={onStartEdit}>
             <Pencil className="mr-2 h-3.5 w-3.5" />
-            Rename
+            {t('rename')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={onDelete}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="mr-2 h-3.5 w-3.5" />
-            Delete
+            {t('delete')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

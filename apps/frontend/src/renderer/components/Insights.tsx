@@ -13,7 +13,8 @@ import {
   FileText,
   FolderSearch,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  StopCircle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -22,6 +23,7 @@ import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import {
   useInsightsStore,
@@ -33,11 +35,13 @@ import {
   renameSession,
   updateModelConfig,
   createTaskFromSuggestion,
-  setupInsightsListeners
+  setupInsightsListeners,
+  stopInsights
 } from '../stores/insights-store';
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
+import { MarkdownContent } from './MarkdownContent';
 import type { InsightsChatMessage, InsightsModelConfig } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
@@ -89,6 +93,7 @@ interface InsightsProps {
 }
 
 export function Insights({ projectId }: InsightsProps) {
+  const { t } = useTranslation('insights');
   const session = useInsightsStore((state) => state.session);
   const sessions = useInsightsStore((state) => state.sessions);
   const status = useInsightsStore((state) => state.status);
@@ -132,6 +137,10 @@ export function Insights({ projectId }: InsightsProps) {
 
     setInputValue('');
     sendMessage(projectId, message);
+  };
+
+  const handleStop = async () => {
+    await stopInsights(projectId);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -230,9 +239,9 @@ export function Insights({ projectId }: InsightsProps) {
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold text-foreground">Insights</h2>
+              <h2 className="font-semibold text-foreground">{t('title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Ask questions about your codebase
+                {t('subtitle')}
               </p>
             </div>
           </div>
@@ -248,7 +257,7 @@ export function Insights({ projectId }: InsightsProps) {
               onClick={handleNewSession}
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Chat
+              {t('newChat')}
             </Button>
           </div>
         </div>
@@ -261,30 +270,29 @@ export function Insights({ projectId }: InsightsProps) {
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="mb-2 text-lg font-medium text-foreground">
-              Start a Conversation
+              {t('empty.title')}
             </h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Ask questions about your codebase, get suggestions for improvements,
-              or discuss features you'd like to implement.
+              {t('empty.description')}
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {[
-                'What is the architecture of this project?',
-                'Suggest improvements for code quality',
-                'What features could I add next?',
-                'Are there any security concerns?'
+                { key: 'architecture', text: t('suggestions.architecture') },
+                { key: 'improvements', text: t('suggestions.improvements') },
+                { key: 'features', text: t('suggestions.features') },
+                { key: 'security', text: t('suggestions.security') }
               ].map((suggestion) => (
                 <Button
-                  key={suggestion}
+                  key={suggestion.key}
                   variant="outline"
                   size="sm"
                   className="text-xs"
                   onClick={() => {
-                    setInputValue(suggestion);
+                    setInputValue(suggestion.text);
                     textareaRef.current?.focus();
                   }}
                 >
-                  {suggestion}
+                  {suggestion.text}
                 </Button>
               ))}
             </div>
@@ -309,7 +317,7 @@ export function Insights({ projectId }: InsightsProps) {
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 text-sm font-medium text-foreground">
-                    Assistant
+                    {t('assistant')}
                   </div>
                   {streamingContent && (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -334,7 +342,7 @@ export function Insights({ projectId }: InsightsProps) {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Thinking...
+                  {t('thinking')}
                 </div>
               </div>
             )}
@@ -360,24 +368,35 @@ export function Insights({ projectId }: InsightsProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about your codebase..."
+            placeholder={t('placeholder')}
             className="min-h-[80px] resize-none"
             disabled={isLoading}
           />
-          <Button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
-            className="self-end"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
+          <div className="flex flex-col gap-2 self-end">
+            {isLoading && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleStop}
+                title={t('stop')}
+              >
+                <StopCircle className="h-4 w-4" />
+              </Button>
             )}
-          </Button>
+            <Button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line
+          {t('sendHint')}
         </p>
       </div>
       </div>
@@ -418,11 +437,7 @@ function MessageBubble({
         <div className="text-sm font-medium text-foreground">
           {isUser ? 'You' : 'Assistant'}
         </div>
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {message.content}
-          </ReactMarkdown>
-        </div>
+        <MarkdownContent content={message.content} className="prose prose-sm dark:prose-invert max-w-none" />
 
         {/* Tool usage history for assistant messages */}
         {!isUser && message.toolsUsed && message.toolsUsed.length > 0 && (
@@ -602,25 +617,27 @@ interface ToolIndicatorProps {
 }
 
 function ToolIndicator({ name, input }: ToolIndicatorProps) {
+  const { t } = useTranslation('insights');
+  
   // Get friendly name and icon for each tool
   const getToolInfo = (toolName: string) => {
     switch (toolName) {
       case 'Read':
         return {
           icon: FileText,
-          label: 'Reading file',
+          label: t('tools.reading'),
           color: 'text-blue-500 bg-blue-500/10'
         };
       case 'Glob':
         return {
           icon: FolderSearch,
-          label: 'Searching files',
+          label: t('tools.searching'),
           color: 'text-amber-500 bg-amber-500/10'
         };
       case 'Grep':
         return {
           icon: Search,
-          label: 'Searching code',
+          label: t('tools.searchingCode'),
           color: 'text-green-500 bg-green-500/10'
         };
       default:

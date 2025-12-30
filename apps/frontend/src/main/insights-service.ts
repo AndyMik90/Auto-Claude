@@ -194,6 +194,20 @@ export class InsightsService extends EventEmitter {
   updateSessionModelConfig(projectPath: string, sessionId: string, modelConfig: InsightsModelConfig): boolean {
     return this.sessionManager.updateSessionModelConfig(projectPath, sessionId, modelConfig);
   }
+
+  /**
+   * Stop active chat session
+   */
+  stopChat(projectId: string): boolean {
+    const stopped = this.executor.cancelSession(projectId);
+    if (stopped) {
+      this.emit('status', projectId, {
+        phase: 'idle',
+        message: ''
+      });
+    }
+    return stopped;
+  }
 }
 
 // Singleton instance

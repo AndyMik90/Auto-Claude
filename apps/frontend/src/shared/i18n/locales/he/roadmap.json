@@ -1,0 +1,95 @@
+{
+  "title": "מפת דרכים",
+  "empty": {
+    "title": "עדיין אין מפת דרכים",
+    "description": "צור מפת דרכים מונעת AI שמבינה את קהל היעד של הפרויקט שלך ויוצרת תוכנית אסטרטגית לתכונות.",
+    "generateButton": "צור מפת דרכים"
+  },
+  "header": {
+    "regenerate": "צור מפת דרכים מחדש",
+    "export": "ייצא",
+    "settings": "הגדרות"
+  },
+  "phases": {
+    "now": "עכשיו",
+    "next": "הבא",
+    "later": "מאוחר יותר",
+    "future": "עתיד"
+  },
+  "status": {
+    "planned": "מתוכנן",
+    "inProgress": "בתהליך",
+    "completed": "הושלם",
+    "onHold": "בהמתנה"
+  },
+  "actions": {
+    "addFeature": "הוסף תכונה",
+    "editFeature": "ערוך תכונה",
+    "deleteFeature": "מחק תכונה",
+    "moveToPhase": "העבר לשלב"
+  },
+  "competitorAnalysis": {
+    "title": "אפשרויות ניתוח מתחרים",
+    "description": "לפרויקט זה יש ניתוח מתחרים קיים מתאריך",
+    "recently": "לאחרונה",
+    "useExisting": "השתמש בניתוח הקיים",
+    "recommended": "(מומלץ)",
+    "useExistingDescription": "השתמש מחדש בתובנות המתחרים שכבר יש לך. מהיר יותר וללא חיפושי אינטרנט נוספים.",
+    "runNew": "הרץ ניתוח חדש",
+    "runNewDescription": "בצע חיפושי אינטרנט חדשים כדי לקבל מידע מתחרים מעודכן. לוקח יותר זמן.",
+    "skip": "דלג על ניתוח מתחרים",
+    "skipDescription": "צור מפת דרכים ללא תובנות מתחרים.",
+    "cancel": "ביטול"
+  },
+  "competitorDialog": {
+    "title": "לאפשר ניתוח מתחרים?",
+    "description": "שפר את מפת הדרכים שלך עם תובנות ממוצרי מתחרים",
+    "whatItDoes": "מה עושה ניתוח מתחרים:",
+    "identifiesCompetitors": "מזהה 3-5 מתחרים עיקריים בהתבסס על סוג הפרויקט שלך",
+    "searchesFeedback": "מחפש בחנויות אפליקציות, פורומים ורשתות חברתיות אחר משוב משתמשים ונקודות כאב",
+    "suggestsFeatures": "מציע תכונות שמטפלות בפערים במוצרי המתחרים",
+    "webSearchesTitle": "יבוצעו חיפושים באינטרנט",
+    "webSearchesDescription": "תכונה זו תבצע חיפושים באינטרנט כדי לאסוף מידע על מתחרים. שם הפרויקט וסוגו ישמשו בשאילתות החיפוש. לא משותף קוד או מידע רגיש.",
+    "optionalInfo": "אפשר ליצור מפת דרכים ללא ניתוח מתחרים אם אתה מעדיף. מפת הדרכים עדיין תתבסס על מבנה הפרויקט ושיטות עבודה מומלצות.",
+    "skipButton": "לא, דלג על ניתוח",
+    "enableButton": "כן, אפשר ניתוח"
+  },
+  "competitorViewer": {
+    "title": "תוצאות ניתוח מתחרים",
+    "description": "נותחו {count} מתחרים לזיהוי פערים והזדמנויות בשוק",
+    "visit": "בקר",
+    "painPointsTitle": "נקודות כאב שזוהו",
+    "noPainPoints": "לא זוהו נקודות כאב",
+    "source": "מקור:",
+    "frequency": "תדירות:",
+    "opportunity": "הזדמנות:",
+    "insightsSummary": "סיכום תובנות שוק",
+    "topPainPoints": "נקודות הכאב המובילות:",
+    "differentiatorOpportunities": "הזדמנויות להבדלה:",
+    "marketTrends": "טרנדים בשוק:"
+  },
+  "featureCard": {
+    "phase": "שלב:",
+    "competitorInsight": "תכונה זו מטפלת בנקודות כאב של מתחרים",
+    "task": "משימה",
+    "build": "בנה",
+    "votes": "{count} הצביעו ממשוב משתמשים",
+    "external": "חיצוני",
+    "importedFrom": "יובא מ-{provider}"
+  },
+  "deleteDialog": {
+    "title": "מחק תכונה?",
+    "description": "פעולה זו תסיר לצמיתות את \"{{title}}\" ממפת הדרכים שלך.",
+    "cancel": "ביטול",
+    "delete": "מחק"
+  },
+  "featureDetail": {
+    "description": "תיאור",
+    "rationale": "הנמקה",
+    "complexity": "מורכבות",
+    "impact": "השפעה",
+    "dependencies": "תלויות",
+    "userStories": "סיפורי משתמש",
+    "acceptanceCriteria": "קריטריוני קבלה",
+    "competitorInsights": "מטפל בנקודות כאב של מתחרים"
+  }}

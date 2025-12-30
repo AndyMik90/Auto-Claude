@@ -1,0 +1,86 @@
+{
+  "title": "Roadmap",
+  "empty": {
+    "title": "No Roadmap Yet",
+    "description": "Generate an AI-powered roadmap that understands your project's target audience and creates a strategic feature plan.",
+    "generateButton": "Generate Roadmap"
+  },
+  "header": {
+    "regenerate": "Regenerate Roadmap",
+    "export": "Export",
+    "settings": "Settings"
+  },
+  "phases": {
+    "now": "Now",
+    "next": "Next",
+    "later": "Later",
+    "future": "Future"
+  },
+  "status": {
+    "planned": "Planned",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "onHold": "On Hold"
+  },
+  "actions": {
+    "addFeature": "Add Feature",
+    "editFeature": "Edit Feature",
+    "deleteFeature": "Delete Feature",
+    "moveToPhase": "Move to Phase"
+  },
+  "competitorAnalysis": {
+    "title": "Competitor Analysis Options",
+    "description": "This project has an existing competitor analysis from",
+    "recently": "recently",
+    "useExisting": "Use existing analysis",
+    "recommended": "(Recommended)",
+    "useExistingDescription": "Reuse the competitor insights you already have. Faster and no additional web searches.",
+    "runNew": "Run new analysis",
+    "runNewDescription": "Perform fresh web searches to get updated competitor information. Takes longer.",
+    "skip": "Skip competitor analysis",
+    "skipDescription": "Generate roadmap without any competitor insights.",
+    "cancel": "Cancel"
+  },
+  "competitorDialog": {
+    "title": "Enable Competitor Analysis?",
+    "description": "Enhance your roadmap with insights from competitor products",
+    "whatItDoes": "What competitor analysis does:",
+    "identifiesCompetitors": "Identifies 3-5 main competitors based on your project type",
+    "searchesFeedback": "Searches app stores, forums, and social media for user feedback and pain points",
+    "suggestsFeatures": "Suggests features that address gaps in competitor products",
+    "webSearchesTitle": "Web searches will be performed",
+    "webSearchesDescription": "This feature will perform web searches to gather competitor information. Your project name and type will be used in search queries. No code or sensitive data is shared.",
+    "optionalInfo": "You can generate a roadmap without competitor analysis if you prefer. The roadmap will still be based on your project structure and best practices.",
+    "skipButton": "No, Skip Analysis",
+    "enableButton": "Yes, Enable Analysis"
+  },
+  "competitorViewer": {
+    "title": "Competitor Analysis Results",
+    "description": "Analyzed {count} competitors to identify market gaps and opportunities",
+    "visit": "Visit",
+    "painPointsTitle": "Identified Pain Points",
+    "noPainPoints": "No pain points identified",
+    "source": "Source:",
+    "frequency": "Frequency:",
+    "opportunity": "Opportunity:",
+    "insightsSummary": "Market Insights Summary",
+    "topPainPoints": "Top Pain Points:",
+    "differentiatorOpportunities": "Differentiator Opportunities:",
+    "marketTrends": "Market Trends:"
+  },
+  "featureCard": {
+    "phase": "Phase:",
+    "competitorInsight": "This feature addresses competitor pain points",
+    "task": "Task",
+    "build": "Build",
+    "votes": "{count} votes from user feedback",
+    "external": "External",
+    "importedFrom": "Imported from {provider}"
+  },
+  "deleteDialog": {
+    "title": "Delete Feature?",
+    "description": "This will permanently remove \"{{title}}\" from your roadmap.",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  }
+}

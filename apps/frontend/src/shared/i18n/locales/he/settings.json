@@ -52,7 +52,7 @@
     "large": "גדול"
   },
   "general": {
-    "otherAgentSettings": "הגדרות סוכן נוסxxx",
+    "otherAgentSettings": "הגדרות סוכן נוספות",
     "otherAgentSettingsDescription": "אפשרויות תצורת סוכן נוספות",
     "agentFramework": "מסגרת סוכן",
     "agentFrameworkDescription": "מסגרת הקידוד המשמשת למשימות אוטונומיות",
@@ -98,11 +98,43 @@
     "description": "התאם אישית את מראה Auto Claude",
     "mode": "מצב",
     "modeDescription": "בחר בין ערכות נושא בהירות וכהות",
+    "appearanceMode": "מצב תצוגה",
+    "appearanceModeDescription": "בחר בהיר, כהה או העדפת מערכת",
     "light": "בהיר",
     "dark": "כהה",
     "system": "מערכת",
     "colorTheme": "ערכת צבעים",
-    "colorThemeDescription": "בחר את לוח הצבעים המועדף עליך"
+    "colorThemeDescription": "בחר לוח צבעים לממשק",
+    "themes": {
+      "default": {
+        "name": "ברירת מחדל",
+        "description": "בהשראת Oscura עם מבטא צהוב חיוור"
+      },
+      "dusk": {
+        "name": "דמדומים",
+        "description": "גרסה חמה יותר עם מצב כהה מעט בהיר יותר"
+      },
+      "lime": {
+        "name": "ליים",
+        "description": "ליים רענן ואנרגטי עם מבטאי סגול"
+      },
+      "ocean": {
+        "name": "אוקיינוס",
+        "description": "גווני כחול רגועים ומקצועיים"
+      },
+      "retro": {
+        "name": "רטרו",
+        "description": "תחושת ענבר חמה ונוסטלגית"
+      },
+      "neo": {
+        "name": "ניאו",
+        "description": "ורוד/מגנטה סייברפאנק מודרני"
+      },
+      "forest": {
+        "name": "יער",
+        "description": "גוונים ירוקים טבעיים וארציים"
+      }
+    }
   },
   "updates": {
     "title": "עדכונים",
@@ -120,8 +152,8 @@
     "newVersionAvailable": "גרסה חדשה זמינה:",
     "latestVersion": "אתה מריץ את הגרסה העדכנית ביותר.",
     "viewRelease": "הצג שחרור מלא ב-GitHub",
-    "unableToCheck": "לא ניתן לבדוק עדכונים",
-    "checkForUpdates": "בדוק עדכונים",
+    "unableToCheck": "לא ניתן לבדוק אם יש עדכונים",
+    "checkForUpdates": "בדוק אם יש עדכונים",
     "autoUpdateProjects": "עדכן פרויקטים אוטומטית",
     "autoUpdateProjectsDescription": "עדכן אוטומטית את Auto Claude בפרויקטים כשגרסה חדשה זמינה",
     "betaUpdates": "עדכוני בטא",
@@ -151,24 +183,37 @@
     },
     "claude": {
       "title": "אימות Claude",
-      "description": "אימות Claude"
+      "description": "הגדר אימות Claude CLI לפרויקט זה",
+      "guardTitle": "אימות Claude",
+      "guardDescription": "הגדר אימות Claude CLI",
+      "initMessage": "אתחל את Auto-Build תחילה כדי להגדיר אימות Claude"
     },
     "linear": {
-      "title": "Linear",
-      "description": "אינטגרציה עם Linear"
+      "title": "אינטגרציית Linear",
+      "description": "התחבר ל-Linear למעקב אחר בעיות וייבוא משימות",
+      "guardTitle": "אינטגרציית Linear",
+      "guardDescription": "סנכרן עם Linear למעקב אחר בעיות",
+      "initMessage": "אתחל את Auto-Build תחילה כדי להגדיר אינטגרציית Linear"
     },
     "github": {
-      "title": "GitHub",
-      "description": "סנכרון בעיות GitHub"
+      "title": "אינטגרציית GitHub",
+      "description": "התחבר ל-GitHub למעקב אחר בעיות",
+      "guardTitle": "אינטגרציית GitHub",
+      "guardDescription": "סנכרן עם GitHub Issues",
+      "initMessage": "אתחל את Auto-Build תחילה כדי להגדיר אינטגרציית GitHub"
     },
     "memory": {
       "title": "זיכרון",
-      "description": "מערכת זיכרון Graphiti"
+      "description": "הגדר זיכרון מתמשך בין הפעלות עבור סוכנים",
+      "guardTitle": "זיכרון",
+      "guardDescription": "הגדר זיכרון מתמשך",
+      "initMessage": "אתחל את Auto-Build תחילה כדי להגדיר זיכרון"
     }
   },
   "agentProfile": {
     "label": "פרופיל סוכן",
     "title": "פרופיל סוכן ברירת מחדל",
+    "profilesTitle": "פרופילי סוכן",
     "sectionDescription": "בחר תצורה מוכנה למודל ורמת חשיבה",
     "profilesInfo": "פרופילי סוכן מספקים תצורות מוכנות למודל Claude ורמת חשיבה. כשאתה יוצר משימה חדשה, ההגדרות האלה ישמשו כברירות מחדל. אתה תמיד יכול לעקוף אותן באשף יצירת המשימה.",
     "custom": "מותאם אישית",
@@ -185,6 +230,46 @@
     "perPhaseOptimization": "(אופטימיזציה לפי שלב)",
     "resetToDefaults": "אפס לברירות מחדל",
     "phaseConfigNote": "ההגדרות האלה ישמשו כברירות מחדל בעת יצירת משימות חדשות עם פרופיל Auto. אתה יכול לעקוף אותן לכל משימה באשף יצירת המשימה.",
+    "profiles": {
+      "auto": {
+        "name": "אוטומטי (מותאם)",
+        "description": "משתמש ב-Opus בכל השלבים עם רמות חשיבה מותאמות"
+      },
+      "complex": {
+        "name": "משימות מורכבות",
+        "description": "עבור יישומים מורכבים בעלי מספר שלבים הדורשים ניתוח מעמיק"
+      },
+      "balanced": {
+        "name": "מאוזן",
+        "description": "איזון טוב בין מהירות ואיכות עבור רוב המשימות"
+      },
+      "quick": {
+        "name": "עריכות מהירות",
+        "description": "איטרציות מהירות עבור שינויים פשוטים ותיקונים מהירים"
+      }
+    },
+    "thinkingLevels": {
+      "none": {
+        "label": "ללא",
+        "description": "ללא חשיבה מורחבת"
+      },
+      "low": {
+        "label": "נמוכה",
+        "description": "שיקול קצר"
+      },
+      "medium": {
+        "label": "בינונית",
+        "description": "ניתוח מתון"
+      },
+      "high": {
+        "label": "גבוהה",
+        "description": "חשיבה עמוקה"
+      },
+      "ultrathink": {
+        "label": "אולטרה",
+        "description": "עומק חשיבה מקסימלי"
+      }
+    },
     "phases": {
       "spec": {
         "label": "יצירת מפרט",
@@ -202,16 +287,38 @@
         "label": "בדיקת QA",
         "description": "בטחת איכות ואימות"
       }
+    },
+    "features": {
+      "insights": {
+        "label": "צ'אט תובנות",
+        "description": "שאל שאלות על בסיס הקוד שלך"
+      },
+      "ideation": {
+        "label": "רעינון",
+        "description": "צור רעיונות לפיצ'רים ושיפורים"
+      },
+      "roadmap": {
+        "label": "מפת דרכים",
+        "description": "צור מפות דרכים אסטרטגיות לפיצ'רים"
+      },
+      "githubIssues": {
+        "label": "נושאי GitHub",
+        "description": "טריאז' אוטומטי ותיוג של נושאים"
+      },
+      "githubPrs": {
+        "label": "סקירת PR ב-GitHub",
+        "description": "סקירות pull request מונעות AI"
+      }
     }
   },
   "workspace": {
     "roles": {
-      "backend": "Backend",
-      "frontend": "Frontend",
-      "mobile": "Mobile",
+      "backend": "צד שרת",
+      "frontend": "צד לקוח",
+      "mobile": "נייד",
       "shared": "משותף",
       "apiGateway": "שער API",
-      "worker": "Worker",
+      "worker": "עובד",
       "other": "אחר"
     }
   },
@@ -253,6 +360,85 @@
     "apiKeys": "מפתחות API",
     "apiKeysInfo": "מפתחות שנקבעו כאן משמשים כברירות מחדל. פרויקטים בודדים יכולים לעקוף אותם בהגדרות שלהם.",
     "openaiKey": "מפתח API של OpenAI",
-    "openaiKeyDescription": "נדרש עבור מערכת זיכרון Graphiti (embeddings)"
-  }
-}
+    "openaiKeyDescription": "נדרש עבור מערכת זיכרון Graphiti (embeddings)",
+    "errors": {
+      "profileAuthSuccess": "הפרופיל אומת בהצלחה!",
+      "account": "חשבון:",
+      "authComplete": "האימות הושלם.",
+      "canUseProfile": "כעת תוכל להשתמש בפרופיל זה.",
+      "authenticatingNamed": "מאמת את \"{{name}}\"...",
+      "authenticatingProfile": "מאמת פרופיל...",
+      "browserWillOpen": "חלון דפדפן ייפתח עבורך כדי להיכנס עם חשבון Claude שלך.",
+      "authSavedAuto": "האימות יישמר אוטומטית לאחר השלמתו.",
+      "authFailedStart": "אתחול האימות נכשל:",
+      "tryAgain": "אנא נסה שוב.",
+      "profileAddFailed": "הוספת הפרופיל נכשלה. אנא נסה שוב.",
+      "authFailed": "אתחול האימות נכשל. אנא נסה שוב.",
+      "tokenSaveFailed": "שמירת האסימון נכשלה:",
+      "tokenSaveFailedGeneric": "שמירת האסימון נכשלה. אנא נסה שוב.",
+      "settingsUpdateFailed": "עדכון ההגדרות נכשל:",
+      "settingsUpdateFailedGeneric": "עדכון ההגדרות נכשל. אנא נסה שוב."
+    },
+    "tooltips": {
+      "reauth": "אמת מחדש את הפרופיל",
+      "hideTokenEntry": "הסתר הזנת אסימון",
+      "enterTokenManually": "הזן אסימון ידנית",
+      "renameProfile": "שנה שם פרופיל",
+      "deleteProfile": "מחק פרופיל"
+    }
+  },
+  "projectSettings": {
+    "general": "כללי",
+    "generalDescription": "הגדר Auto-Build, מודל סוכן והתראות עבור {{projectName}}",
+    "autoBuildIntegration": "אינטגרציית Auto-Build",
+    "notInitialized": "לא אותחל",
+    "initializeDescription": "אתחל Auto-Build כדי לאפשר יצירת משימות ותהליכי סוכן.",
+    "initializeButton": "אתחל Auto-Build",
+    "initializing": "מאתחל...",
+    "initialized": "אותחל",
+    "checkingStatus": "בודק סטטוס...",
+    "agentModel": "מודל סוכן",
+    "agentModelDescription": "בחר את מודל ה-AI עבור ביצוע משימות",
+    "agentConfiguration": "תצורת סוכן",
+    "model": "מודל",
+    "useAppDefault": "השתמש בברירת מחדל של אפליקציה",
+    "projectNotifications": "התראות",
+    "onTaskComplete": "בהשלמת משימה",
+    "onTaskFailed": "בכשלון משימה",
+    "onReviewNeeded": "כשנדרש סקירה",
+    "sound": "צליל",
+    "showTaskCompletion": "הצג התראות השלמת משימה",
+    "enableDesktopNotifications": "אפשר התראות שולחן עבודה כשמשימות מסתיימות"
+  },
+  "githubOAuth": {
+    "cliRequired": "נדרש GitHub CLI",
+    "cliRequiredDescription": "GitHub CLI (gh) נדרש עבור אימות OAuth. זה מספק דרך מאובטחת לאמת ללא יצירת אסימונים ידנית.",
+    "installCli": "התקן GitHub CLI",
+    "installedIt": "התקנתי אותו",
+    "installInstructions": "הוראות התקנה:",
+    "connectToGitHub": "התחבר ל-GitHub",
+    "connectDescription": "לחץ על הכפתור למטה כדי לאמת עם GitHub. זה יפתח את הדפדפן שלך שם תוכל לאשר את האפליקציה.",
+    "usingCli": "משתמש ב-GitHub CLI {{version}}",
+    "authenticateWith": "אמת עם GitHub",
+    "authenticating": "מאמת...",
+    "completeInBrowser": "אנא השלם את האימות בדפדפן שלך. חלון זה יתעדכן אוטומטית.",
+    "waitingForAuth": "מחכה שתהליך האימות יתחיל...",
+    "oneTimeCode": "הקוד החד-פעמי שלך",
+    "copied": "הועתק",
+    "copy": "העתק",
+    "enterCodeInBrowser": "הזן קוד זה בדפדפן שלך כדי להשלים את האימות.",
+    "copyCodeThenOpen": "העתק קוד זה, ואז פתח את הקישור למטה כדי לאמת.",
+    "open": "פתח",
+    "successfullyConnected": "התחבר בהצלחה",
+    "connectedAs": "מחובר כ-{{username}}",
+    "accountConnected": "חשבון GitHub שלך מחובר כעת",
+    "authTimedOut": "פג תוקף האימות",
+    "authFailed": "האימות נכשל",
+    "completeManually": "השלם אימות ידנית",
+    "browserFailedDescription": "לא ניתן היה לפתוח את הדפדפן אוטומטית. אנא בקר בכתובת למטה כדי להשלים את האימות:",
+    "openUrlInBrowser": "פתח URL בדפדפן",
+    "enterCodePrompt": "כשתתבקש, הזן קוד זה:",
+    "retry": "נסה שוב",
+    "cancel": "ביטול",
+    "authTimeout": "פג תוקף האימות. חלון האימות היה פתוח יותר מדי זמן. אנא נסה שוב."
+  }}

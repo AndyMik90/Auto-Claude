@@ -90,9 +90,9 @@ export function CustomModelModal({ currentConfig, onSave, onClose, open = true }
                 {THINKING_LEVELS.map((level) => (
                   <SelectItem key={level.value} value={level.value}>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{level.label}</span>
+                      <span className="font-medium">{t(`agentProfile.thinkingLevels.${level.value}.label`, { ns: 'settings' })}</span>
                       <span className="text-xs text-muted-foreground">
-                        {level.description}
+                        {t(`agentProfile.thinkingLevels.${level.value}.description`, { ns: 'settings' })}
                       </span>
                     </div>
                   </SelectItem>

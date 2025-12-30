@@ -1,0 +1,91 @@
+{
+  "title": "Changelog Generator",
+  "steps": {
+    "step1": "Step 1: Select completed tasks to include",
+    "step2": "Step 2: Generate changelog",
+    "step3": "Step 3: Create release"
+  },
+  "source": {
+    "title": "Changelog Source",
+    "completedTasks": "Completed Tasks",
+    "completedTasksDesc": "Generate from completed spec tasks",
+    "gitHistory": "Git History",
+    "gitHistoryDesc": "Generate from recent commits or tag range",
+    "branchComparison": "Branch Comparison",
+    "branchComparisonDesc": "Generate from commits between two branches"
+  },
+  "selection": {
+    "selected": "{{count}} of {{total}} tasks selected",
+    "selectAll": "Select All",
+    "clear": "Clear",
+    "select": "Select",
+    "refresh": "Refresh"
+  },
+  "empty": {
+    "title": "No Completed Tasks",
+    "description": "Complete tasks in the Kanban board and mark them as \"Done\" to include them in your changelog."
+  },
+  "actions": {
+    "generate": "Generate",
+    "release": "Release",
+    "loadCommits": "Load Commits"
+  },
+  "branches": {
+    "baseBranch": "Base Branch",
+    "baseBranchPlaceholder": "Select base branch...",
+    "baseBranchHint": "The branch you're merging into",
+    "compareBranch": "Compare Branch",
+    "compareBranchPlaceholder": "Select compare branch...",
+    "compareBranchHint": "The branch with your changes"
+  },
+  "hints": {
+    "configureHistory": "Configure the history options and click \"Load Commits\" to preview.",
+    "selectBranches": "Select both branches and click \"Load Commits\" to see the changes."
+  },
+  "commits": {
+    "found_one": "{{count}} commit found",
+    "found_other": "{{count}} commits found",
+    "loading": "Loading commits...",
+    "noCommits": "No Commits Found",
+    "task": "task",
+    "tasks": "tasks",
+    "commit": "commit",
+    "commits": "commits"
+  },
+  "buttons": {
+    "continue": "Continue"
+  },
+  "gitOptions": {
+    "title": "Git History Options",
+    "historyType": "History Type",
+    "sinceVersion": "Since Version",
+    "recentCommits": "Recent Commits",
+    "sinceDate": "Since Date",
+    "betweenTags": "Between Tags",
+    "commitCount": "Number of commits",
+    "dateLabel": "Since date",
+    "fromTag": "From tag",
+    "toTag": "To tag (optional)",
+    "versionLabel": "Version tag",
+    "includeMergeCommits": "Include merge commits",
+    "selectTag": "Select tag...",
+    "selectVersion": "Select version...",
+    "headLatest": "HEAD (latest)",
+    "allCommitsIncluded": "All commits since this version will be included"
+  },
+  "branchDiff": {
+    "title": "Branch Comparison",
+    "default": "default",
+    "current": "current",
+    "mustBeDifferent": "Branches must be different",
+    "loading": "Loading..."
+  },
+  "release": {
+    "title": "Create GitHub Release",
+    "description": "Create a new release {{tag}} on GitHub with the changelog as release notes.",
+    "createdSuccess": "Release created successfully!",
+    "viewOnGitHub": "View Release on GitHub",
+    "creatingRelease": "Creating Release...",
+    "createRelease": "Create Release {{tag}}"
+  }
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Brain, Scale, Zap, Sparkles, Sliders, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ export function InsightsModelSelector({
   onConfigChange,
   disabled
 }: InsightsModelSelectorProps) {
+  const { t } = useTranslation('insights');
   const [showCustomModal, setShowCustomModal] = useState(false);
 
   // Default to 'balanced' if no config, or if 'auto' profile was selected (not applicable for insights)
@@ -91,7 +93,7 @@ export function InsightsModelSelector({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
-          <DropdownMenuLabel>Agent Profile</DropdownMenuLabel>
+          <DropdownMenuLabel>{t('profileSelector.label')}</DropdownMenuLabel>
           {DEFAULT_AGENT_PROFILES.filter(p => !p.isAutoProfile).map((p) => {
             const ProfileIcon = iconMap[p.icon || 'Brain'];
             const isSelected = selectedProfileId === p.id;
@@ -122,9 +124,9 @@ export function InsightsModelSelector({
           >
             <Sliders className="h-4 w-4 shrink-0" />
             <div className="flex-1">
-              <div className="font-medium">Custom...</div>
+              <div className="font-medium">{t('profileSelector.custom')}</div>
               <div className="text-xs text-muted-foreground">
-                Choose model & thinking level
+                {t('profileSelector.customDescription')}
               </div>
             </div>
             {selectedProfileId === 'custom' && (

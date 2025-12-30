@@ -1,0 +1,54 @@
+{
+  "tabs": {
+    "projectIndex": "אינדקס הפרויקט",
+    "memories": "זיכרונות",
+    "projectStructure": "מבנה הפרויקט",
+    "tools": "כלים",
+    "githubIssues": "בעיות GitHub",
+    "githubPrs": "בקשות משיכה GitHub",
+    "worktrees": "עצי עבודה"
+  },
+  "projectIndex": {
+    "title": "ידע שהתגלה על ידי AI אודות בסיס הקוד שלך",
+    "refresh": "רענן",
+    "analyze": "נתח פרויקט",
+    "empty": {
+      "title": "אינדקס פרויקט לא נמצא",
+      "description": "לחץ על כפתור הרענון כדי לנתח את מבנה הפרויקט שלך וליצור אינדקס."
+    },
+    "error": {
+      "title": "נכשל בטעינת אינדקס הפרויקט",
+      "retry": "נסה שוב"
+    }
+  },
+  "memories": {
+    "title": "זיכרונות",
+    "graphStatus": "מצב זיכרון גרף",
+    "notAvailable": "לא זמין",
+    "notConfigured": "Graphiti לא מוגדר",
+    "enableHint": "כדי להפעיל זיכרון גרף, הגדר GRAPHITI_ENABLED=true בהגדרות הפרויקט.",
+    "search": "חפש זיכרונות",
+    "searchPlaceholder": "חפש דפוסים, תובנות, מלכודות...",
+    "recent": "זיכרונות אחרונים",
+    "empty": "עדיין לא נרשמו זיכרונות. זיכרונות נוצרים במהלך הפעלות סוכן AI.",
+    "memoryCard": {
+      "whatWorked": "מה עבד",
+      "whatFailed": "מה נכשל",
+      "approach": "גישה",
+      "recommendations": "המלצות",
+      "patterns": "דפוסים",
+      "gotchas": "מלכודות",
+      "changedFiles": "קבצים ששונו",
+      "fileInsights": "תובנות קבצים",
+      "subtasksCompleted": "תתי משימות שהושלמו"
+    }
+  },
+  "github": {
+    "notConnected": "GitHub לא מחובר",
+    "noToken": "אין אסימון GitHub או מאגר מוגדר",
+    "connectHint": "חבר את חשבון GitHub שלך כדי לצפות ולסקור בקשות משיכה.",
+    "openSettings": "פתח הגדרות",
+    "configureHint": "הגדר את אסימון GitHub והמאגר בהגדרות הפרויקט כדי לסנכרן בעיות.",
+    "noIssuesMatch": "אין בעיות שמתאימות לחיפוש שלך"
+  }
+}

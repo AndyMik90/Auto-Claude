@@ -31,12 +31,72 @@
   "oauth": {
     "title": "Claude Authentication",
     "description": "Connect your Claude account to enable AI features",
+    "setupTitle": "Configure Claude Authentication",
+    "setupDescription": "Add your Claude accounts to enable AI features",
+    "infoMessage": "Add multiple Claude subscriptions to automatically switch between them when you hit rate limits.",
     "keychainTitle": "Secure Storage",
-    "keychainDescription": "Your tokens are encrypted using your system's keychain. You may see a password prompt from macOS — click \"Always Allow\" to avoid seeing it again."
+    "keychainDescription": "Your tokens are encrypted using your system's keychain. You may see a password prompt from macOS — click \"Always Allow\" to avoid seeing it again.",
+    "accountNamePlaceholder": "Account name (e.g., Work, Personal)",
+    "addAccount": "Add",
+    "default": "Default",
+    "active": "Active",
+    "authenticated": "Authenticated",
+    "needsAuth": "Needs Auth",
+    "authenticate": "Authenticate",
+    "setActive": "Set Active",
+    "validationMessage": "You have at least one authenticated Claude account. You can continue to the next step."
+  },
+  "firstSpec": {
+    "title": "Create Your First Task",
+    "subtitle": "Describe what you want to build and let Auto Claude handle the rest",
+    "taskCreatorOpened": "Task Creator Opened",
+    "taskCreatorOpenedMessage": "Great! You can create your first task now or continue with the wizard. You can always create tasks later from the main dashboard.",
+    "tipsTitle": "Tips for Great Tasks",
+    "tips": {
+      "beDescriptive": {
+        "title": "Be Descriptive",
+        "description": "Clearly describe what you want to build. Include requirements, constraints, and expected behavior."
+      },
+      "startSmall": {
+        "title": "Start Small",
+        "description": "Begin with a focused task like adding a feature or fixing a bug. Smaller tasks are easier to verify."
+      },
+      "includeContext": {
+        "title": "Include Context",
+        "description": "Mention relevant files, APIs, or patterns. The more context you provide, the better the results."
+      },
+      "letAiHelp": {
+        "title": "Let AI Help",
+        "description": "The AI can generate titles and classify tasks. Focus on describing what you want, not the details."
+      }
+    },
+    "exampleTitle": "Example Task Description:",
+    "exampleDescription": "Add a dark mode toggle to the settings page. It should persist the user's preference in localStorage and apply the theme immediately without page reload. Use the existing color variables in styles/theme.css.",
+    "openTaskCreator": "Open Task Creator",
+    "continueMessage": "You can continue with the wizard now or create more tasks.",
+    "skipMessage": "You can skip this step and create tasks later from the dashboard.",
+    "back": "Back",
+    "skip": "Skip",
+    "continue": "Continue"
   },
   "memory": {
     "title": "Memory",
-    "description": "Auto Claude Memory helps remember context across your coding sessions"
+    "description": "Auto Claude Memory helps remember context across your coding sessions",
+    "whatDoesMemoryDo": "What does Memory do?",
+    "whatDoesMemoryDoDescription": "Memory stores discoveries, patterns, and insights about your codebase so future sessions start with context already loaded.",
+    "remembersPatterns": "Remembers patterns across sessions",
+    "understandsCodebase": "Understands your codebase over time",
+    "worksOffline": "Works offline - no cloud required",
+    "memoryDatabase": "Memory Database",
+    "storedIn": "Stored in ~/.auto-claude/memories/",
+    "embeddingProvider": "Embedding Provider (for semantic search)",
+    "selectEmbeddingModel": "Select Embedding Model",
+    "noEmbeddingProvider": "No embedding provider? Memory still works with keyword search. Semantic search is an upgrade.",
+    "databaseCreatedAutomatically": "Database will be created automatically",
+    "databaseCreatedDescription": "Memory uses an embedded database - no Docker required. It will be created when you first use memory features.",
+    "back": "Back",
+    "saving": "Saving...",
+    "saveContinue": "Save & Continue"
   },
   "completion": {
     "title": "You're All Set!",
@@ -89,5 +149,18 @@
     "noToolsDetected": "No additional tools detected (VS Code and system terminal will be used)",
     "custom": "Custom...",
     "saveAndContinue": "Save & Continue"
+  },
+  "ollama": {
+    "checkingModels": "Checking Ollama models...",
+    "notRunning": "Ollama not running",
+    "notRunningDescription": "Start Ollama to use local embedding models. Memory will still work with keyword search.",
+    "retry": "Retry",
+    "installed": "Installed",
+    "downloading": "Downloading...",
+    "download": "Download",
+    "selectModel": "Select an installed model for semantic search. Memory works with keyword search even without embeddings.",
+    "googleLightweight": "Google's lightweight embedding model (Recommended)",
+    "popularGeneral": "Popular general-purpose embeddings",
+    "mixedBreadLarge": "MixedBread AI large embeddings"
   }
 }

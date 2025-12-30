@@ -339,6 +339,26 @@ export async function createTaskFromSuggestion(
   return null;
 }
 
+/**
+ * Stop the current Insights chat response
+ */
+export async function stopInsights(projectId: string): Promise<boolean> {
+  const result = await window.electronAPI.stopInsights(projectId);
+  if (result.success) {
+    const store = useInsightsStore.getState();
+    // Clear streaming state
+    store.clearStreamingContent();
+    store.setCurrentTool(null);
+    store.clearToolsUsed();
+    store.setStatus({
+      phase: 'idle',
+      message: ''
+    });
+    return true;
+  }
+  return false;
+}
+
 // IPC listener setup - call this once when the app initializes
 export function setupInsightsListeners(): () => void {
   const store = useInsightsStore.getState;
@@ -415,10 +435,22 @@ export function setupInsightsListeners(): () => void {
     });
   });
 
+  // Listen for stopped event
+  const unsubStopped = window.electronAPI.onInsightsStopped((_projectId) => {
+    store().clearStreamingContent();
+    store().setCurrentTool(null);
+    store().clearToolsUsed();
+    store().setStatus({
+      phase: 'idle',
+      message: ''
+    });
+  });
+
   // Return cleanup function
   return () => {
     unsubStreamChunk();
     unsubStatus();
     unsubError();
+    unsubStopped();
   };
 }

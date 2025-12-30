@@ -42,7 +42,7 @@ export function DiscardDialog({
           <AlertDialogDescription asChild>
             <div className="text-sm text-muted-foreground space-y-3">
               <p>
-                Are you sure you want to discard all changes for <strong className="text-foreground">"{task.title}"</strong>?
+                {t('dialogs.discardChanges')} <strong className="text-foreground">"{task.title}"</strong>?
               </p>
               <p className="text-destructive">
                 This will permanently delete the isolated workspace and all uncommitted changes.

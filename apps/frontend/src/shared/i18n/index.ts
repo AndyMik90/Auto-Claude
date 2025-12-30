@@ -10,6 +10,13 @@ import enWelcome from './locales/en/welcome.json';
 import enOnboarding from './locales/en/onboarding.json';
 import enDialogs from './locales/en/dialogs.json';
 import enTaskReview from './locales/en/taskReview.json';
+import enChangelog from './locales/en/changelog.json';
+import enContext from './locales/en/context.json';
+import enInsights from './locales/en/insights.json';
+import enRoadmap from './locales/en/roadmap.json';
+import enIdeation from './locales/en/ideation.json';
+import enRateLimit from './locales/en/rateLimit.json';
+import enWorktrees from './locales/en/worktrees.json';
 
 // Import French translation resources
 import frCommon from './locales/fr/common.json';
@@ -20,6 +27,13 @@ import frWelcome from './locales/fr/welcome.json';
 import frOnboarding from './locales/fr/onboarding.json';
 import frDialogs from './locales/fr/dialogs.json';
 import frTaskReview from './locales/fr/taskReview.json';
+import frChangelog from './locales/en/changelog.json';
+import frContext from './locales/en/context.json';
+import frInsights from './locales/en/insights.json';
+import frRoadmap from './locales/en/roadmap.json';
+import frIdeation from './locales/en/ideation.json';
+import frRateLimit from './locales/en/rateLimit.json';
+import frWorktrees from './locales/en/worktrees.json';
 
 // Import Hebrew translation resources
 import heCommon from './locales/he/common.json';
@@ -30,6 +44,13 @@ import heWelcome from './locales/he/welcome.json';
 import heOnboarding from './locales/he/onboarding.json';
 import heDialogs from './locales/he/dialogs.json';
 import heTaskReview from './locales/he/taskReview.json';
+import heChangelog from './locales/he/changelog.json';
+import heContext from './locales/he/context.json';
+import heInsights from './locales/he/insights.json';
+import heRoadmap from './locales/he/roadmap.json';
+import heIdeation from './locales/he/ideation.json';
+import heRateLimit from './locales/he/rateLimit.json';
+import heWorktrees from './locales/he/worktrees.json';
 
 export const defaultNS = 'common';
 
@@ -42,7 +63,14 @@ export const resources = {
     welcome: enWelcome,
     onboarding: enOnboarding,
     dialogs: enDialogs,
-    taskReview: enTaskReview
+    taskReview: enTaskReview,
+    changelog: enChangelog,
+    context: enContext,
+    insights: enInsights,
+    roadmap: enRoadmap,
+    ideation: enIdeation,
+    rateLimit: enRateLimit,
+    worktrees: enWorktrees
   },
   fr: {
     common: frCommon,
@@ -52,7 +80,14 @@ export const resources = {
     welcome: frWelcome,
     onboarding: frOnboarding,
     dialogs: frDialogs,
-    taskReview: frTaskReview
+    taskReview: frTaskReview,
+    changelog: frChangelog,
+    context: frContext,
+    insights: frInsights,
+    roadmap: frRoadmap,
+    ideation: frIdeation,
+    rateLimit: frRateLimit,
+    worktrees: frWorktrees
   },
   he: {
     common: heCommon,
@@ -62,7 +97,14 @@ export const resources = {
     welcome: heWelcome,
     onboarding: heOnboarding,
     dialogs: heDialogs,
-    taskReview: heTaskReview
+    taskReview: heTaskReview,
+    changelog: heChangelog,
+    context: heContext,
+    insights: heInsights,
+    roadmap: heRoadmap,
+    ideation: heIdeation,
+    rateLimit: heRateLimit,
+    worktrees: heWorktrees
   }
 } as const;
 
@@ -73,7 +115,7 @@ i18n
     lng: 'en', // Default language (will be overridden by settings)
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'taskReview'],
+    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'taskReview', 'changelog', 'context', 'insights', 'roadmap', 'ideation', 'rateLimit', 'worktrees'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

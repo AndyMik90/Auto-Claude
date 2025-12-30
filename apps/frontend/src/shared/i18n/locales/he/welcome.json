@@ -5,12 +5,15 @@
   },
   "actions": {
     "newProject": "פרויקט חדש",
-    "openProject": "פתח פרויקט"
+    "openProject": "פתח פרויקט",
+    "addProject": "הוסף פרויקט..."
   },
   "recentProjects": {
     "title": "פרויקטים אחרונים",
     "empty": "אין פרויקטים עדיין",
     "emptyDescription": "צור פרויקט חדש או פתח פרויקט קיים כדי להתחיל",
-    "openFolder": "פתח תיקייה"
+    "openFolder": "פתח תיקייה",
+    "selectProject": "בחר פרויקט...",
+    "initialized": "אותחל"
   }
 }

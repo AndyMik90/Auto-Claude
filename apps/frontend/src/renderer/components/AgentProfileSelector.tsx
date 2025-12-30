@@ -148,15 +148,15 @@ export function AgentProfileSelector({
     if (profile) {
       return {
         icon: iconMap[profile.icon || 'Scale'] || Scale,
-        label: profile.name,
-        description: profile.description
+        label: t(`agentProfile.profiles.${profile.id}.name`),
+        description: t(`agentProfile.profiles.${profile.id}.description`)
       };
     }
     // Default to auto profile (the actual default)
     return {
       icon: Sparkles,
-      label: 'Auto (Optimized)',
-      description: 'Uses Opus across all phases with optimized thinking levels'
+      label: t('agentProfile.profiles.auto.name'),
+      description: t('agentProfile.profiles.auto.description')
     };
   };
 
@@ -191,10 +191,10 @@ export function AgentProfileSelector({
                   <div className="flex items-center gap-2">
                     <ProfileIcon className="h-4 w-4 shrink-0" />
                     <div>
-                      <span className="font-medium">{profile.name}</span>
+                      <span className="font-medium">{t(`agentProfile.profiles.${profile.id}.name`)}</span>
                       <span className="ml-2 text-xs text-muted-foreground">
                         {profile.isAutoProfile
-                          ? '(per-phase optimization)'
+                          ? t('agentProfile.perPhaseOptimization')
                           : `(${modelLabel} + ${profile.thinkingLevel})`
                         }
                       </span>
@@ -314,7 +314,7 @@ export function AgentProfileSelector({
                         <SelectContent>
                           {THINKING_LEVELS.map((level) => (
                             <SelectItem key={level.value} value={level.value}>
-                              {level.label}
+                              {t(`agentProfile.thinkingLevels.${level.value}.label`)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -371,9 +371,9 @@ export function AgentProfileSelector({
                 {THINKING_LEVELS.map((level) => (
                   <SelectItem key={level.value} value={level.value}>
                     <div className="flex items-center gap-2">
-                      <span>{level.label}</span>
+                      <span>{t(`agentProfile.thinkingLevels.${level.value}.label`)}</span>
                       <span className="text-xs text-muted-foreground">
-                        - {level.description}
+                        - {t(`agentProfile.thinkingLevels.${level.value}.description`)}
                       </span>
                     </div>
                   </SelectItem>

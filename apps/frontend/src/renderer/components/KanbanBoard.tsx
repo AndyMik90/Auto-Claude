@@ -127,7 +127,7 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
       <div className="flex items-center justify-between p-4 border-b border-white/5">
         <div className="flex items-center gap-2.5">
           <h2 className="font-semibold text-sm text-foreground">
-            {TASK_STATUS_LABELS[status]}
+            {t(`status.${status}`, { ns: 'tasks' })}
           </h2>
           <span className="column-count-badge">
             {tasks.length}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Brain,
   Database,
@@ -72,6 +73,7 @@ interface MemoryConfig {
  * - Keyword search works as fallback without embeddings
  */
 export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
+  const { t } = useTranslation();
   const { settings, updateSettings } = useSettingsStore();
   const [config, setConfig] = useState<MemoryConfig>({
     database: 'auto_claude_memory',
@@ -194,7 +196,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
         <div className="space-y-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-foreground">
-              Select Embedding Model
+              {t('onboarding.memory.selectEmbeddingModel')}
             </Label>
             <OllamaModelSelector
               selectedModel={config.ollamaEmbeddingModel}
@@ -210,7 +212,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
       return (
         <div className="space-y-2">
           <Label htmlFor="openai-key" className="text-sm font-medium text-foreground">
-            OpenAI API Key
+            {t('onboarding.memory.openaiApiKey')}
           </Label>
           <div className="relative">
             <Input
@@ -231,7 +233,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Get your key from{' '}
+            {t('onboarding.memory.getKeyFrom')}{' '}
             <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
               OpenAI
             </a>
@@ -244,7 +246,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
       return (
         <div className="space-y-2">
           <Label htmlFor="voyage-key" className="text-sm font-medium text-foreground">
-            Voyage API Key
+            {t('onboarding.memory.voyageApiKey')}
           </Label>
           <div className="relative">
             <Input
@@ -265,7 +267,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Get your key from{' '}
+            {t('onboarding.memory.getKeyFrom')}{' '}
             <a href="https://dash.voyageai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
               Voyage AI
             </a>
@@ -278,7 +280,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
       return (
         <div className="space-y-2">
           <Label htmlFor="google-key" className="text-sm font-medium text-foreground">
-            Google API Key
+            {t('onboarding.memory.googleApiKey')}
           </Label>
           <div className="relative">
             <Input
@@ -299,7 +301,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Get your key from{' '}
+            {t('onboarding.memory.getKeyFrom')}{' '}
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
               Google AI Studio
             </a>
@@ -311,9 +313,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
     if (embeddingProvider === 'azure_openai') {
       return (
         <div className="space-y-3 p-3 rounded-md bg-muted/50">
-          <p className="text-sm font-medium text-foreground">Azure OpenAI Settings</p>
+          <p className="text-sm font-medium text-foreground">{t('onboarding.memory.azureSettings')}</p>
           <div className="space-y-2">
-            <Label htmlFor="azure-key" className="text-xs text-muted-foreground">API Key</Label>
+            <Label htmlFor="azure-key" className="text-xs text-muted-foreground">{t('onboarding.memory.apiKey')}</Label>
             <div className="relative">
               <Input
                 id="azure-key"
@@ -334,7 +336,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="azure-url" className="text-xs text-muted-foreground">Base URL</Label>
+            <Label htmlFor="azure-url" className="text-xs text-muted-foreground">{t('onboarding.memory.baseUrl')}</Label>
             <Input
               id="azure-url"
               type="text"
@@ -346,7 +348,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="azure-embedding-deployment" className="text-xs text-muted-foreground">Embedding Deployment Name</Label>
+            <Label htmlFor="azure-embedding-deployment" className="text-xs text-muted-foreground">{t('onboarding.memory.embeddingDeploymentName')}</Label>
             <Input
               id="azure-embedding-deployment"
               type="text"
@@ -375,10 +377,10 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            Memory
+            {t('onboarding.memory.title')}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Auto Claude Memory helps remember context across your coding sessions
+            {t('onboarding.memory.description')}
           </p>
         </div>
 
@@ -412,11 +414,10 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                     <Info className="h-5 w-5 text-info shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-info">
-                        Database will be created automatically
+                        {t('onboarding.memory.databaseCreatedAutomatically')}
                       </p>
                       <p className="text-sm text-info/80 mt-1">
-                        Memory uses an embedded database - no Docker required.
-                        It will be created when you first use memory features.
+                        {t('onboarding.memory.databaseCreatedDescription')}
                       </p>
                     </div>
                   </div>
@@ -431,16 +432,15 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                   <Info className="h-5 w-5 text-info shrink-0 mt-0.5" />
                   <div className="flex-1 space-y-3">
                     <p className="text-sm font-medium text-foreground">
-                      What does Memory do?
+                      {t('onboarding.memory.whatDoesMemoryDo')}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Memory stores discoveries, patterns, and insights about your codebase
-                      so future sessions start with context already loaded.
+                      {t('onboarding.memory.whatDoesMemoryDoDescription')}
                     </p>
                     <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
-                      <li>Remembers patterns across sessions</li>
-                      <li>Understands your codebase over time</li>
-                      <li>Works offline - no cloud required</li>
+                      <li>{t('onboarding.memory.remembersPatterns')}</li>
+                      <li>{t('onboarding.memory.understandsCodebase')}</li>
+                      <li>{t('onboarding.memory.worksOffline')}</li>
                     </ul>
                   </div>
                 </div>
@@ -452,10 +452,10 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
               <Database className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Memory Database
+                  {t('onboarding.memory.memoryDatabase')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Stored in ~/.auto-claude/memories/
+                  {t('onboarding.memory.storedIn')}
                 </p>
               </div>
               {kuzuAvailable && (
@@ -467,7 +467,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">
-                  Embedding Provider (for semantic search)
+                  {t('onboarding.memory.embeddingProvider')}
                 </Label>
                 <Select
                   value={config.embeddingProvider}
@@ -498,7 +498,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
 
             {/* Fallback info */}
             <p className="text-xs text-muted-foreground text-center">
-              No embedding provider? Memory still works with keyword search. Semantic search is an upgrade.
+              {t('onboarding.memory.noEmbeddingProvider')}
             </p>
           </div>
         )}
@@ -510,7 +510,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             onClick={onBack}
             className="text-muted-foreground hover:text-foreground"
           >
-            Back
+            {t('onboarding.memory.back')}
           </Button>
           <Button
             onClick={handleContinue}
@@ -519,10 +519,10 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Saving...
+                {t('onboarding.memory.saving')}
               </>
             ) : (
-              'Save & Continue'
+              t('onboarding.memory.saveContinue')
             )}
           </Button>
         </div>

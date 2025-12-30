@@ -1,0 +1,43 @@
+{
+  "title": "Insights",
+  "subtitle": "Ask questions about your codebase",
+  "chatHistory": "Chat History",
+  "newChat": "New Chat",
+  "noConversations": "No conversations yet",
+  "deleteConversation": "Delete conversation?",
+  "deleteConversationDescription": "This will permanently delete this conversation and all its messages. This action cannot be undone.",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "rename": "Rename",
+  "message": "message",
+  "messages": "messages",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "thisWeek": "This Week",
+  "older": "Older",
+  "placeholder": "Ask about your codebase...",
+  "sendHint": "Press Enter to send, Shift+Enter for new line",
+  "stop": "Stop",
+  "profileSelector": {
+    "label": "Agent Profile",
+    "custom": "Custom...",
+    "customDescription": "Choose model & thinking level"
+  },
+  "tools": {
+    "reading": "Reading file",
+    "searching": "Searching files",
+    "searchingCode": "Searching code"
+  },
+  "thinking": "Thinking...",
+  "assistant": "Assistant",
+  "suggestions": {
+    "architecture": "What is the architecture of this project?",
+    "improvements": "Suggest improvements for code quality",
+    "features": "What features could I add next?",
+    "security": "Are there any security concerns?"
+  },
+  "empty": {
+    "title": "No chat history",
+    "description": "Start a conversation to analyze your codebase"
+  }
+}

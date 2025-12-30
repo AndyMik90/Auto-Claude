@@ -1,4 +1,5 @@
 import { AlertTriangle, GitMerge } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ export function ConflictDetailsDialog({
   onOpenChange,
   onMerge
 }: ConflictDetailsDialogProps) {
+  const { t } = useTranslation('tasks');
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
@@ -104,7 +106,7 @@ export function ConflictDetailsDialog({
           )}
         </div>
         <AlertDialogFooter className="mt-4">
-          <AlertDialogCancel>Close</AlertDialogCancel>
+          <AlertDialogCancel>{t('buttons.close')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();

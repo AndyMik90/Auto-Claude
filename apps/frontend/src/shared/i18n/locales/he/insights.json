@@ -1,0 +1,43 @@
+{
+  "title": "תובנות",
+  "subtitle": "שאל שאלות על בסיס הקוד שלך",
+  "chatHistory": "היסטוריית צ'אט",
+  "newChat": "צ'אט חדש",
+  "noConversations": "עדיין אין שיחות",
+  "deleteConversation": "למחוק שיחה?",
+  "deleteConversationDescription": "פעולה זו תמחק לצמיתות את השיחה הזו ואת כל ההודעות שלה. לא ניתן לבטל פעולה זו.",
+  "cancel": "ביטול",
+  "delete": "מחק",
+  "rename": "שנה שם",
+  "message": "הודעה",
+  "messages": "הודעות",
+  "today": "היום",
+  "yesterday": "אתמול",
+  "thisWeek": "השבוע",
+  "older": "ישנים יותר",
+  "placeholder": "שאל על בסיס הקוד שלך...",
+  "sendHint": "לחץ Enter לשליחה, Shift+Enter לשורה חדשה",
+  "stop": "עצור",
+  "profileSelector": {
+    "label": "פרופיל סוכן",
+    "custom": "מותאם אישית...",
+    "customDescription": "בחר מודל ורמת חשיבה"
+  },
+  "tools": {
+    "reading": "קורא קובץ",
+    "searching": "מחפש קבצים",
+    "searchingCode": "מחפש בקוד"
+  },
+  "thinking": "חושב...",
+  "assistant": "עוזר",
+  "suggestions": {
+    "architecture": "מה הארכיטקטורה של הפרויקט הזה?",
+    "improvements": "הצע שיפורים לאיכות הקוד",
+    "features": "אילו תכונות אוכל להוסיף לאחר מכן?",
+    "security": "האם יש חששות אבטחה?"
+  },
+  "empty": {
+    "title": "אין היסטוריית צ'אט",
+    "description": "התחל שיחה כדי לנתח את בסיס הקוד שלך"
+  }
+}

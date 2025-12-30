@@ -6,6 +6,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { useDownloadStore } from '../../stores/download-store';
@@ -104,6 +105,7 @@ export function OllamaModelSelector({
   disabled = false,
   className,
 }: OllamaModelSelectorProps) {
+  const { t } = useTranslation('onboarding');
   const [models, setModels] = useState<OllamaModel[]>(RECOMMENDED_MODELS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -240,7 +242,7 @@ export function OllamaModelSelector({
     return (
       <div className={cn('flex items-center justify-center py-8', className)}>
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">Checking Ollama models...</span>
+        <span className="ml-2 text-sm text-muted-foreground">{t('ollama.checkingModels')}</span>
       </div>
     );
   }
@@ -251,9 +253,9 @@ export function OllamaModelSelector({
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-warning">Ollama not running</p>
+            <p className="text-sm font-medium text-warning">{t('ollama.notRunning')}</p>
             <p className="text-sm text-warning/80 mt-1">
-              Start Ollama to use local embedding models. Memory will still work with keyword search.
+              {t('ollama.notRunningDescription')}
             </p>
             <Button
               variant="outline"
@@ -262,7 +264,7 @@ export function OllamaModelSelector({
               className="mt-3"
             >
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-              Retry
+              {t('ollama.retry')}
             </Button>
           </div>
         </div>
@@ -337,7 +339,7 @@ export function OllamaModelSelector({
                        )}
                        {model.installed && (
                          <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">
-                           Installed
+                           {t('ollama.installed')}
                          </span>
                        )}
                      </div>
@@ -360,12 +362,12 @@ export function OllamaModelSelector({
                      {isCurrentlyDownloading ? (
                        <>
                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                         Downloading...
+                         {t('ollama.downloading')}
                        </>
                      ) : (
                        <>
                          <Download className="h-3.5 w-3.5 mr-1.5" />
-                         Download
+                         {t('ollama.download')}
                          {model.size_estimate && (
                            <span className="ml-1 text-muted-foreground">
                              ({model.size_estimate})
@@ -410,7 +412,7 @@ export function OllamaModelSelector({
        </div>
 
       <p className="text-xs text-muted-foreground">
-        Select an installed model for semantic search. Memory works with keyword search even without embeddings.
+        {t('ollama.selectModel')}
       </p>
     </div>
   );

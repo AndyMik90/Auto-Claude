@@ -1,0 +1,69 @@
+{
+  "title": "Claude Code Rate Limit",
+  "interrupted": "was interrupted due to usage limits.",
+  "profile": "Profile:",
+  "sources": {
+    "changelog": "Changelog Generation",
+    "task": "Task Execution",
+    "roadmap": "Roadmap Generation",
+    "ideation": "Ideation",
+    "titleGenerator": "Title Generation",
+    "default": "Claude Operation"
+  },
+  "swap": {
+    "proactive": "✓ Proactive Swap",
+    "reactive": "⚡ Reactive Swap",
+    "proactiveDescription": "Automatically switched from {from} to {to} before hitting rate limit.",
+    "reactiveDescription": "Rate limit hit on {from}. Automatically switched to {to} and restarted.",
+    "continuedWithoutInterruption": "Your work continued without interruption.",
+    "rateLimitReached": "Rate limit reached",
+    "operationStopped": "The operation was stopped because {profile} reached its usage limit.",
+    "switchBelow": "Switch to another account below to continue.",
+    "addAccount": "Add another Claude account to continue working."
+  },
+  "upgrade": {
+    "button": "Upgrade to Pro for Higher Limits",
+    "title": "Upgrade for more usage",
+    "description": "Upgrade your Claude subscription for higher usage limits.",
+    "subscriptionButton": "Upgrade Subscription"
+  },
+  "reset": {
+    "title": "Resets {time}",
+    "weekly": "Weekly limit - resets in about a week",
+    "session": "Session limit - resets in a few hours"
+  },
+  "switching": {
+    "title": "Switch Account & Retry",
+    "useAnother": "Use Another Account",
+    "recommended": "Recommended: {profile} has more capacity available.",
+    "switchTo": "Switch to another Claude account and retry the operation:",
+    "selectAccount": "Select account...",
+    "retrying": "Retrying...",
+    "retry": "Retry",
+    "autoSwitch": "Auto-switch & retry on rate limit",
+    "addAnother": "Add another Claude subscription to automatically switch when you hit rate limits.",
+    "addAnotherPrompt": "Add another account:",
+    "connectPrompt": "Connect a Claude account:",
+    "accountNamePlaceholder": "Account name (e.g., Work, Personal)",
+    "add": "Add",
+    "addNewAccount": "Add new account...",
+    "loginPrompt": "This will open Claude login to authenticate the new account."
+  },
+  "info": {
+    "title": "What happened:",
+    "description": "The {source} operation was stopped because your Claude account ({profile}) reached its usage limit.",
+    "switchOrAdd": "You can switch to another account and retry, or add more accounts above.",
+    "addOrWait": "Add another Claude account above to continue working, or wait for the limit to reset."
+  },
+  "close": "Close",
+  "alert": {
+    "title": "A terminal has been opened to authenticate \"{name}\".",
+    "steps": "Steps to complete:",
+    "step1": "1. Check the \"Agent Terminals\" section in the sidebar",
+    "step2": "2. Complete the OAuth login in your browser",
+    "step3": "3. The token will be saved automatically",
+    "return": "Once done, return here and the account will be available.",
+    "failed": "Failed to start authentication: {error} Please try again.",
+    "addFailed": "Failed to add profile. Please try again."
+  }
+}

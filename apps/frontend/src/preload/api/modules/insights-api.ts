@@ -31,6 +31,7 @@ export interface InsightsAPI {
   deleteInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string) => Promise<IPCResult>;
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
+  stopInsights: (projectId: string) => Promise<IPCResult>;
 
   // Event Listeners
   onInsightsStreamChunk: (
@@ -41,6 +42,9 @@ export interface InsightsAPI {
   ) => IpcListenerCleanup;
   onInsightsError: (
     callback: (projectId: string, error: string) => void
+  ) => IpcListenerCleanup;
+  onInsightsStopped: (
+    callback: (projectId: string) => void
   ) => IpcListenerCleanup;
 }
 
@@ -84,6 +88,9 @@ export const createInsightsAPI = (): InsightsAPI => ({
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_UPDATE_MODEL_CONFIG, projectId, sessionId, modelConfig),
 
+  stopInsights: (projectId: string): Promise<IPCResult> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_STOP, projectId),
+
   // Event Listeners
   onInsightsStreamChunk: (
     callback: (projectId: string, chunk: InsightsStreamChunk) => void
@@ -98,5 +105,10 @@ export const createInsightsAPI = (): InsightsAPI => ({
   onInsightsError: (
     callback: (projectId: string, error: string) => void
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.INSIGHTS_ERROR, callback)
+    createIpcListener(IPC_CHANNELS.INSIGHTS_ERROR, callback),
+
+  onInsightsStopped: (
+    callback: (projectId: string) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.INSIGHTS_STOPPED, callback)
 });

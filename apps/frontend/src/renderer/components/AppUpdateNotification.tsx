@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Download,
   RefreshCw,
@@ -62,6 +63,7 @@ function ReleaseNotesRenderer({ markdown }: { markdown: string }) {
  * Shows when a new app version is available and handles download/install workflow
  */
 export function AppUpdateNotification() {
+  const { t } = useTranslation('dialogs');
   const [isOpen, setIsOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<AppUpdateAvailableEvent | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<AppUpdateProgress | null>(null);
@@ -137,10 +139,10 @@ export function AppUpdateNotification() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            App Update Available
+            {t('appUpdate.title')}
           </DialogTitle>
           <DialogDescription>
-            A new version of Auto Claude is ready to download
+            {t('appUpdate.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -150,14 +152,14 @@ export function AppUpdateNotification() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                  New Version
+                  {t('appUpdate.newVersion')}
                 </p>
                 <p className="text-base font-medium text-foreground">
                   {updateInfo.version}
                 </p>
                 {updateInfo.releaseDate && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Released {new Date(updateInfo.releaseDate).toLocaleDateString()}
+                    {t('appUpdate.released')} {new Date(updateInfo.releaseDate).toLocaleDateString()}
                   </p>
                 )}
               </div>
@@ -182,7 +184,7 @@ export function AppUpdateNotification() {
           {isDownloading && downloadProgress && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Downloading...</span>
+                <span className="text-muted-foreground">{t('appUpdate.downloading')}</span>
                 <span className="text-foreground font-medium">
                   {Math.round(downloadProgress.percent)}%
                 </span>
@@ -206,7 +208,7 @@ export function AppUpdateNotification() {
           {isDownloaded && (
             <div className="flex items-center gap-3 text-sm text-success bg-success/10 border border-success/30 rounded-lg p-3">
               <CheckCircle2 className="h-5 w-5 shrink-0" />
-              <span>Update downloaded successfully! Click Install to restart and apply the update.</span>
+              <span>{t('appUpdate.downloadSuccess')}</span>
             </div>
           )}
         </div>
@@ -217,13 +219,13 @@ export function AppUpdateNotification() {
             onClick={handleDismiss}
             disabled={isDownloading}
           >
-            {isDownloaded ? 'Install Later' : 'Remind Me Later'}
+            {isDownloaded ? t('appUpdate.installLater') : t('appUpdate.remindLater')}
           </Button>
 
           {isDownloaded ? (
             <Button onClick={handleInstall}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              Install and Restart
+              {t('appUpdate.installAndRestart')}
             </Button>
           ) : (
             <Button
@@ -233,12 +235,12 @@ export function AppUpdateNotification() {
               {isDownloading ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Downloading...
+                  {t('appUpdate.downloading')}
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  Download Update
+                  {t('appUpdate.downloadUpdate')}
                 </>
               )}
             </Button>

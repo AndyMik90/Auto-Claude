@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn, formatRelativeTime } from '../../lib/utils';
@@ -48,6 +49,7 @@ interface TaskMetadataProps {
 }
 
 export function TaskMetadata({ task }: TaskMetadataProps) {
+  const { t } = useTranslation('tasks');
   const hasClassification = task.metadata && (
     task.metadata.category ||
     task.metadata.priority ||
@@ -129,10 +131,10 @@ export function TaskMetadata({ task }: TaskMetadataProps) {
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Clock className="h-3 w-3" />
-            Created {formatRelativeTime(task.createdAt)}
+            {t('metadata.created')} {formatRelativeTime(task.createdAt)}
           </span>
           <span className="text-border">•</span>
-          <span>Updated {formatRelativeTime(task.updatedAt)}</span>
+          <span>{t('metadata.updated')} {formatRelativeTime(task.updatedAt)}</span>
         </div>
       </div>
 

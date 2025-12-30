@@ -4,6 +4,7 @@ interface InitializationGuardProps {
   initialized: boolean;
   title: string;
   description: string;
+  initMessage?: string;
   children: ReactNode;
 }
 
@@ -13,14 +14,15 @@ interface InitializationGuardProps {
  */
 export function InitializationGuard({
   initialized,
-  title,
+  title: _title,
   description: _description,
+  initMessage,
   children
 }: InitializationGuardProps) {
   if (!initialized) {
     return (
       <div className="rounded-lg border border-border bg-muted/50 p-4 text-center text-sm text-muted-foreground">
-        Initialize Auto-Build first to configure {title.toLowerCase()}
+        {initMessage || `Initialize Auto-Build first to configure ${_title.toLowerCase()}`}
       </div>
     );
   }

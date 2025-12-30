@@ -331,14 +331,17 @@ export const IPC_CHANNELS = {
   INSIGHTS_DELETE_SESSION: 'insights:deleteSession',
   INSIGHTS_RENAME_SESSION: 'insights:renameSession',
   INSIGHTS_UPDATE_MODEL_CONFIG: 'insights:updateModelConfig',
+  INSIGHTS_STOP: 'insights:stop',
 
   // Insights events (main -> renderer)
   INSIGHTS_STREAM_CHUNK: 'insights:streamChunk',
   INSIGHTS_STATUS: 'insights:status',
   INSIGHTS_ERROR: 'insights:error',
+  INSIGHTS_STOPPED: 'insights:stopped',
 
   // File explorer operations
   FILE_EXPLORER_LIST: 'fileExplorer:list',
+  FILE_OPEN: 'open-file',
 
   // Git operations
   GIT_GET_BRANCHES: 'git:getBranches',

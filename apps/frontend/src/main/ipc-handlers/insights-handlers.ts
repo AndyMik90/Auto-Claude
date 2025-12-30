@@ -258,6 +258,22 @@ export function registerInsightsHandlers(
     }
   );
 
+  // Stop insights chat response
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_STOP,
+    async (_, projectId: string): Promise<IPCResult> => {
+      const stopped = insightsService.stopChat(projectId);
+      if (stopped) {
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+          mainWindow.webContents.send(IPC_CHANNELS.INSIGHTS_STOPPED, projectId);
+        }
+        return { success: true };
+      }
+      return { success: false, error: 'No active chat session to stop' };
+    }
+  );
+
   // ============================================
   // Insights Event Forwarding (Service -> Renderer)
   // ============================================

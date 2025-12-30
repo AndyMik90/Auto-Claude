@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useDroppable } from '@dnd-kit/core';
+import { useTranslation } from 'react-i18next';
 import '@xterm/xterm/css/xterm.css';
 import { FileDown } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -22,6 +23,7 @@ export function Terminal({
   onNewTaskClick,
   terminalCount = 1
 }: TerminalProps) {
+  const { t } = useTranslation('common');
   const isMountedRef = useRef(true);
   const isCreatedRef = useRef(false);
 
@@ -167,14 +169,14 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
         <div className="absolute inset-0 bg-info/10 z-10 flex items-center justify-center pointer-events-none">
           <div className="flex items-center gap-2 bg-info/90 text-info-foreground px-3 py-2 rounded-md">
             <FileDown className="h-4 w-4" />
-            <span className="text-sm font-medium">Drop to insert path</span>
+            <span className="text-sm font-medium">{t('terminal.dropToInsert')}</span>
           </div>
         </div>
       )}
 
       <TerminalHeader
         terminalId={id}
-        title={terminal?.title || 'Terminal'}
+        title={terminal?.title || t('terminal.title')}
         status={terminal?.status || 'idle'}
         isClaudeMode={terminal?.isClaudeMode || false}
         tasks={tasks}
