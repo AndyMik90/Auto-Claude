@@ -260,5 +260,19 @@ class TokenBudget:
 
 # Convenience function for quick estimation
 def estimate_tokens(text: str) -> int:
-    """Quick token estimation (~4 chars per token)."""
-    return len(text) // 4
+    """
+    Token estimation with safety margin.
+
+    Uses ~3.5 chars per token (more conservative than 4) to account for:
+    - Code/YAML having more tokens per character
+    - Non-English text having more tokens
+    - Special characters requiring more tokens
+
+    Adds 10% safety margin to prevent budget overruns.
+
+    For production accuracy, consider using tiktoken library.
+    """
+    # More conservative estimate: ~3.5 chars per token
+    base_estimate = int(len(text) / 3.5)
+    # Add 10% safety margin
+    return int(base_estimate * 1.1)

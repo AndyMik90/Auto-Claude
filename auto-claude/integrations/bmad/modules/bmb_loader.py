@@ -10,11 +10,14 @@ BMB (BMAD Builder) contains:
 Based on BMAD Full Integration Product Brief Phase 5.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 from ..shared.cache import DiskLRUCache
 from ..shared.token_budget import TokenBudget, TokenCategory, estimate_tokens
@@ -180,7 +183,8 @@ class BMBModuleLoader:
 
         try:
             data = yaml.safe_load(content)
-        except yaml.YAMLError:
+        except yaml.YAMLError as e:
+            logger.warning("Failed to parse YAML file %s: %s", agent_path, e)
             return None
 
         if not isinstance(data, dict) or "agent" not in data:

@@ -188,7 +188,7 @@ class WorkflowParser:
 
         return workflow
 
-    def _parse_yaml(self, content: str, file_path: Path) -> ParsedWorkflow:
+    def _parse_yaml(self, content: str, file_path: Path) -> ParsedWorkflow | None:
         """Parse YAML workflow format."""
         try:
             data = yaml.safe_load(content)

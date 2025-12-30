@@ -92,8 +92,20 @@ class ModuleType(Enum):
     BMB = "bmb"
 
 
-def _get_attr(obj, attr: str, default=None):
-    """Get attribute from dataclass or dict."""
+def _get_attr(obj: Any, attr: str, default: Any = None) -> Any:
+    """
+    Safely get attribute from dataclass or dict.
+
+    Args:
+        obj: A dataclass instance or dict
+        attr: Attribute name to retrieve
+        default: Value to return if attribute not found
+
+    Returns:
+        The attribute value, or default if not found
+    """
+    if obj is None:
+        return default
     if isinstance(obj, dict):
         return obj.get(attr, default)
     return getattr(obj, attr, default)
