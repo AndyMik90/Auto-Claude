@@ -158,7 +158,7 @@ interface PRListProps {
   selectedPRNumber: number | null;
   isLoading: boolean;
   error: string | null;
-  activePRReviews?: Map<number, PRReviewInfo>;
+  activePRReviews?: number[];
   getReviewStateForPR: (prNumber: number) => PRReviewInfo | null;
   onSelectPR: (prNumber: number) => void;
 }
