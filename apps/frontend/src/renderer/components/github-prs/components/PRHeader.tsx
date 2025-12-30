@@ -1,4 +1,5 @@
 import { ExternalLink, User, Clock, GitBranch, FileDiff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { cn } from '../../../lib/utils';
@@ -23,6 +24,8 @@ export interface PRHeaderProps {
  * Shows PR metadata: state, number, title, author, dates, branches, and file stats
  */
 export function PRHeader({ pr }: PRHeaderProps) {
+  const { t } = useTranslation('common');
+
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
@@ -75,10 +78,10 @@ export function PRHeader({ pr }: PRHeaderProps) {
         </div>
 
         <div className="flex items-center gap-4 ml-auto">
-          <div className="flex items-center gap-1.5" title={`${pr.changedFiles} files changed`}>
+          <div className="flex items-center gap-1.5" title={t('prReview.filesChanged', { count: pr.changedFiles })}>
             <FileDiff className="h-4 w-4" />
             <span className="font-medium text-foreground">{pr.changedFiles}</span>
-            <span className="text-xs">files</span>
+            <span className="text-xs">{t('prReview.files')}</span>
           </div>
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, Circle, CircleDot, Play } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { cn } from '../../../lib/utils';
 import { CollapsibleCard } from './CollapsibleCard';
@@ -54,6 +55,7 @@ export function ReviewStatusTree({
   newCommitsCheck,
   lastPostedAt
 }: ReviewStatusTreeProps) {
+  const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(true);
 
   // If not reviewed, show simple status
@@ -62,11 +64,11 @@ export function ReviewStatusTree({
       <div className="flex flex-wrap items-center justify-between gap-y-3 p-4 border rounded-lg bg-card shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/30" />
-          <span className="font-medium text-muted-foreground truncate">Not Reviewed</span>
+          <span className="font-medium text-muted-foreground truncate">{t('prReview.notReviewed')}</span>
         </div>
         <Button onClick={onRunReview} size="sm" className="gap-2 shrink-0 ml-auto sm:ml-0">
           <Play className="h-3.5 w-3.5" />
-          Run AI Review
+          {t('prReview.runAIReview')}
         </Button>
       </div>
     );
@@ -80,7 +82,7 @@ export function ReviewStatusTree({
     // Show previous review as completed context
     steps.push({
       id: 'prev_review',
-      label: `Previous Review (${previousReviewResult.findings.length} findings)`,
+      label: t('prReview.previousReview', { count: previousReviewResult.findings.length }),
       status: 'completed',
       date: previousReviewResult.reviewedAt
     });
@@ -90,7 +92,7 @@ export function ReviewStatusTree({
     if (previousReviewResult.hasPostedFindings || prevPostedCount > 0) {
       steps.push({
         id: 'prev_posted',
-        label: `${prevPostedCount || 'Findings'} Posted`,
+        label: t('prReview.findingsPosted', { count: prevPostedCount }),
         status: 'completed',
         date: previousReviewResult.postedAt
       });
@@ -100,7 +102,9 @@ export function ReviewStatusTree({
     if (newCommitsCheck?.hasNewCommits) {
       steps.push({
         id: 'new_commits',
-        label: `${newCommitsCheck.newCommitCount} New Commit${newCommitsCheck.newCommitCount !== 1 ? 's' : ''}`,
+        label: newCommitsCheck.newCommitCount === 1
+          ? t('prReview.newCommit', { count: newCommitsCheck.newCommitCount })
+          : t('prReview.newCommits', { count: newCommitsCheck.newCommitCount }),
         status: 'completed',
         date: null
       });
@@ -109,7 +113,7 @@ export function ReviewStatusTree({
     // Show follow-up in progress
     steps.push({
       id: 'followup_analysis',
-      label: 'Follow-up Analysis in Progress...',
+      label: t('prReview.followupInProgress'),
       status: 'current',
       date: null
     });
@@ -119,7 +123,7 @@ export function ReviewStatusTree({
     // Step 1: Start
     steps.push({
       id: 'start',
-      label: 'Review Started',
+      label: t('prReview.reviewStarted'),
       status: 'completed',
       date: reviewResult?.reviewedAt || new Date().toISOString()
     });
@@ -128,14 +132,14 @@ export function ReviewStatusTree({
     if (isReviewing) {
       steps.push({
         id: 'analysis',
-        label: 'AI Analysis in Progress...',
+        label: t('prReview.analysisInProgress'),
         status: 'current',
         date: null
       });
     } else if (reviewResult) {
       steps.push({
         id: 'analysis',
-        label: `Analysis Complete (${reviewResult.findings.length} findings)`,
+        label: t('prReview.analysisComplete', { count: reviewResult.findings.length }),
         status: 'completed',
         date: reviewResult.reviewedAt
       });
@@ -145,14 +149,14 @@ export function ReviewStatusTree({
     if (postedCount > 0 || reviewResult?.hasPostedFindings) {
       steps.push({
         id: 'posted',
-        label: 'Findings Posted to GitHub',
+        label: t('prReview.findingsPostedToGitHub'),
         status: 'completed',
         date: reviewResult?.postedAt || (lastPostedAt ? new Date(lastPostedAt).toISOString() : null)
       });
     } else if (reviewResult && reviewResult.findings.length > 0) {
       steps.push({
         id: 'posted',
-        label: 'Pending Post',
+        label: t('prReview.pendingPost'),
         status: 'pending',
         date: null
       });
@@ -162,17 +166,17 @@ export function ReviewStatusTree({
     if (!isReviewing && newCommitsCheck?.hasNewCommits) {
       steps.push({
         id: 'new_commits',
-        label: `${newCommitsCheck.newCommitCount} New Commits`,
+        label: t('prReview.newCommits', { count: newCommitsCheck.newCommitCount }),
         status: 'alert',
         date: null
       });
       steps.push({
         id: 'followup',
-        label: 'Ready for Follow-up',
+        label: t('prReview.readyForFollowup'),
         status: 'pending',
         action: (
           <Button size="sm" variant="outline" onClick={onRunFollowupReview} className="ml-2 h-6 text-xs px-2">
-            Run Follow-up
+            {t('prReview.runFollowup')}
           </Button>
         )
       });
@@ -190,12 +194,12 @@ export function ReviewStatusTree({
   );
 
   // Status label
-  const statusLabel = isReviewing ? 'AI Review in Progress' :
-    status === 'ready_to_merge' ? 'Ready to Merge' :
-    status === 'waiting_for_changes' ? 'Waiting for Changes' :
-    status === 'reviewed_pending_post' ? 'Review Complete' :
-    status === 'ready_for_followup' ? 'Ready for Follow-up' :
-    'Review Status';
+  const statusLabel = isReviewing ? t('prReview.aiReviewInProgress') :
+    status === 'ready_to_merge' ? t('prReview.readyToMerge') :
+    status === 'waiting_for_changes' ? t('prReview.waitingForChanges') :
+    status === 'reviewed_pending_post' ? t('prReview.reviewComplete') :
+    status === 'ready_for_followup' ? t('prReview.readyForFollowup') :
+    t('prReview.reviewStatus');
 
   return (
     <CollapsibleCard
@@ -208,7 +212,7 @@ export function ReviewStatusTree({
           onClick={(e) => { e.stopPropagation(); onCancelReview(); }}
           className="h-7 text-destructive hover:text-destructive hover:bg-destructive/10"
         >
-          Cancel
+          {t('prReview.cancel')}
         </Button>
       ) : undefined}
       open={isOpen}

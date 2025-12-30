@@ -167,7 +167,7 @@ export function PRDetail({
       return {
         status: 'not_reviewed',
         label: t('prReview.notReviewed'),
-        description: 'Run an AI review to analyze this PR',
+        description: t('prReview.runAIReviewDesc'),
         icon: <Bot className="h-5 w-5" />,
         color: 'bg-muted text-muted-foreground border-muted',
       };
@@ -197,7 +197,7 @@ export function PRDetail({
         return {
           status: 'ready_for_followup',
           label: t('prReview.readyForFollowup'),
-          description: `${newCommitCount} new commit${newCommitCount !== 1 ? 's' : ''} since follow-up. Run another follow-up review.`,
+          description: t('prReview.newCommitsSinceFollowup', { count: newCommitCount }),
           icon: <RefreshCw className="h-5 w-5" />,
           color: 'bg-info/20 text-info border-info/50',
         };
@@ -208,7 +208,7 @@ export function PRDetail({
         return {
           status: 'ready_to_merge',
           label: t('prReview.readyToMerge'),
-          description: `All ${resolvedCount} issue${resolvedCount !== 1 ? 's' : ''} resolved. This PR can be merged.`,
+          description: t('prReview.allIssuesResolved', { count: resolvedCount }),
           icon: <CheckCheck className="h-5 w-5" />,
           color: 'bg-success/20 text-success border-success/50',
         };
@@ -220,7 +220,7 @@ export function PRDetail({
         return {
           status: 'ready_to_merge',
           label: t('prReview.readyToMerge'),
-          description: `${resolvedCount} resolved. ${suggestionsCount} non-blocking suggestion${suggestionsCount !== 1 ? 's' : ''} remain.`,
+          description: t('prReview.nonBlockingSuggestions', { resolved: resolvedCount, suggestions: suggestionsCount }),
           icon: <CheckCheck className="h-5 w-5" />,
           color: 'bg-success/20 text-success border-success/50',
         };
@@ -229,8 +229,8 @@ export function PRDetail({
       // Blocking issues still remain after follow-up
       return {
         status: 'followup_issues_remain',
-        label: 'Blocking Issues',
-        description: `${resolvedCount} resolved, ${unresolvedCount} blocking issue${unresolvedCount !== 1 ? 's' : ''} still open.`,
+        label: t('prReview.blockingIssues'),
+        description: t('prReview.blockingIssuesDesc', { resolved: resolvedCount, unresolved: unresolvedCount }),
         icon: <AlertTriangle className="h-5 w-5" />,
         color: 'bg-warning/20 text-warning border-warning/50',
       };
@@ -243,7 +243,7 @@ export function PRDetail({
       return {
         status: 'ready_for_followup',
         label: t('prReview.readyForFollowup'),
-        description: `${newCommitCount} new commit${newCommitCount !== 1 ? 's' : ''} since review. Run follow-up to check if issues are resolved.`,
+        description: t('prReview.newCommitsSinceReview', { count: newCommitCount }),
         icon: <RefreshCw className="h-5 w-5" />,
         color: 'bg-info/20 text-info border-info/50',
       };
@@ -254,7 +254,7 @@ export function PRDetail({
       return {
         status: 'ready_to_merge',
         label: t('prReview.readyToMerge'),
-        description: 'No blocking issues found. This PR can be merged.',
+        description: t('prReview.noBlockingIssues'),
         icon: <CheckCheck className="h-5 w-5" />,
         color: 'bg-success/20 text-success border-success/50',
       };
@@ -265,7 +265,7 @@ export function PRDetail({
       return {
         status: 'waiting_for_changes',
         label: t('prReview.waitingForChanges'),
-        description: `${totalPosted} finding${totalPosted !== 1 ? 's' : ''} posted. Waiting for contributor to address issues.`,
+        description: t('prReview.findingsPostedWaiting', { count: totalPosted }),
         icon: <AlertTriangle className="h-5 w-5" />,
         color: 'bg-warning/20 text-warning border-warning/50',
       };
@@ -276,7 +276,7 @@ export function PRDetail({
       return {
         status: 'ready_to_merge',
         label: t('prReview.readyToMerge'),
-        description: `${totalPosted} finding${totalPosted !== 1 ? 's' : ''} posted. No blocking issues remain.`,
+        description: t('prReview.findingsPostedNoBlockers', { count: totalPosted }),
         icon: <CheckCheck className="h-5 w-5" />,
         color: 'bg-success/20 text-success border-success/50',
       };
@@ -286,8 +286,8 @@ export function PRDetail({
     if (hasUnpostedBlockers) {
       return {
         status: 'needs_attention',
-        label: 'Needs Attention',
-        description: `${unpostedFindings.length} finding${unpostedFindings.length !== 1 ? 's' : ''} need to be posted to GitHub.`,
+        label: t('prReview.needsAttention'),
+        description: t('prReview.findingsNeedPosting', { count: unpostedFindings.length }),
         icon: <AlertCircle className="h-5 w-5" />,
         color: 'bg-destructive/20 text-destructive border-destructive/50',
       };
@@ -297,7 +297,7 @@ export function PRDetail({
     return {
       status: 'reviewed_pending_post',
       label: t('prReview.reviewComplete'),
-      description: `${reviewResult.findings.length} finding${reviewResult.findings.length !== 1 ? 's' : ''} found. Select and post to GitHub.`,
+      description: t('prReview.findingsFoundSelectPost', { count: reviewResult.findings.length }),
       icon: <MessageSquare className="h-5 w-5" />,
       color: 'bg-primary/20 text-primary border-primary/50',
     };
