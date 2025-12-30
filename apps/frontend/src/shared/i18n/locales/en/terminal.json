@@ -1,0 +1,12 @@
+{
+  "taskSelector": {
+    "currentTask": "Current Task",
+    "switchTo": "Switch to...",
+    "clearTask": "Clear Task",
+    "selectTask": "Select task...",
+    "availableTasks": "Available Tasks",
+    "noTasksAvailable": "No tasks available",
+    "createInKanban": "Create tasks in Kanban board",
+    "addNewTask": "Add New Task"
+  }
+}

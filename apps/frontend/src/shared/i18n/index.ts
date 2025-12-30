@@ -18,6 +18,7 @@ import enIdeation from './locales/en/ideation.json';
 import enRateLimit from './locales/en/rateLimit.json';
 import enWorktrees from './locales/en/worktrees.json';
 import enAgentTools from './locales/en/agentTools.json';
+import enTerminal from './locales/en/terminal.json';
 
 // Import French translation resources
 import frCommon from './locales/fr/common.json';
@@ -36,6 +37,7 @@ import frIdeation from './locales/en/ideation.json';
 import frRateLimit from './locales/en/rateLimit.json';
 import frWorktrees from './locales/en/worktrees.json';
 import frAgentTools from './locales/en/agentTools.json';
+import frTerminal from './locales/en/terminal.json';
 
 // Import Hebrew translation resources
 import heCommon from './locales/he/common.json';
@@ -54,6 +56,7 @@ import heIdeation from './locales/he/ideation.json';
 import heRateLimit from './locales/he/rateLimit.json';
 import heAgentTools from './locales/he/agentTools.json';
 import heWorktrees from './locales/he/worktrees.json';
+import heTerminal from './locales/he/terminal.json';
 
 export const defaultNS = 'common';
 
@@ -74,7 +77,8 @@ export const resources = {
     ideation: enIdeation,
     rateLimit: enRateLimit,
     agentTools: enAgentTools,
-    worktrees: enWorktrees
+    worktrees: enWorktrees,
+    terminal: enTerminal
   },
   fr: {
     common: frCommon,
@@ -92,7 +96,8 @@ export const resources = {
     ideation: frIdeation,
     rateLimit: frRateLimit,
     agentTools: frAgentTools,
-    worktrees: frWorktrees
+    worktrees: frWorktrees,
+    terminal: frTerminal
   },
   he: {
     common: heCommon,
@@ -110,7 +115,8 @@ export const resources = {
     ideation: heIdeation,
     rateLimit: heRateLimit,
     worktrees: heWorktrees,
-    agentTools: heAgentTools
+    agentTools: heAgentTools,
+    terminal: heTerminal
   }
 } as const;
 
@@ -121,7 +127,7 @@ i18n
     lng: 'en', // Default language (will be overridden by settings)
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'taskReview', 'changelog', 'context', 'insights', 'roadmap', 'ideation', 'rateLimit', 'worktrees', 'agentTools'],
+    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'taskReview', 'changelog', 'context', 'insights', 'roadmap', 'ideation', 'rateLimit', 'worktrees', 'agentTools', 'terminal'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

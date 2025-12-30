@@ -5,12 +5,15 @@
   },
   "actions": {
     "newProject": "Nouveau projet",
-    "openProject": "Ouvrir un projet"
+    "openProject": "Ouvrir un projet",
+    "addProject": "Add Project..."
   },
   "recentProjects": {
     "title": "Projets récents",
     "empty": "Aucun projet",
     "emptyDescription": "Créez un nouveau projet ou ouvrez-en un existant pour commencer",
-    "openFolder": "Ouvrir le dossier"
+    "openFolder": "Ouvrir le dossier",
+    "selectProject": "Select a project...",
+    "initialized": "Initialized"
   }
 }

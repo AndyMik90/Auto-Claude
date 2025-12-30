@@ -248,6 +248,8 @@ export interface AppSettings {
   featureThinking?: FeatureThinkingConfig;
   // Changelog preferences
   changelogFormat?: ChangelogFormat;
+  // Preferred IDE for opening files (defaults to VS Code)
+  preferredIDE?: SupportedIDE;
   changelogAudience?: ChangelogAudience;
   changelogEmojiLevel?: ChangelogEmojiLevel;
   // UI Scale setting (75-200%, default 100)
