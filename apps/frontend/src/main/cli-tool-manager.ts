@@ -674,10 +674,15 @@ class CLIToolManager {
    */
   private validateClaude(claudeCmd: string): ToolValidation {
     try {
+      // On Windows, .cmd files need shell: true to execute properly
+      const needsShell = process.platform === 'win32' &&
+        (claudeCmd.endsWith('.cmd') || claudeCmd.endsWith('.bat'));
+
       const version = execFileSync(claudeCmd, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
+        shell: needsShell,
       }).trim();
 
       // Claude CLI version output format: "claude-code version X.Y.Z" or similar
