@@ -18,7 +18,13 @@ import {
   Monitor,
   Globe,
   Code,
-  Bug
+  Bug,
+  Cpu,
+  Search,
+  Chrome,
+  Beaker,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 // GitLab icon component (lucide-react doesn't have one)
@@ -47,10 +53,14 @@ import { ThemeSettings } from './ThemeSettings';
 import { DisplaySettings } from './DisplaySettings';
 import { LanguageSettings } from './LanguageSettings';
 import { GeneralSettings } from './GeneralSettings';
+import { ZenModeSettings } from './ZenModeSettings';
 import { IntegrationSettings } from './IntegrationSettings';
+import { ModelProviderSettings } from './ModelProviderSettings';
 import { AdvancedSettings } from './AdvancedSettings';
 import { DevToolsSettings } from './DevToolsSettings';
 import { DebugSettings } from './DebugSettings';
+import { CDPSettings } from './CDPSettings';
+import { ExperimentalSettings } from './ExperimentalSettings';
 import { ProjectSelector } from './ProjectSelector';
 import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
 import { useProjectStore } from '../../stores/project-store';
@@ -65,7 +75,7 @@ interface AppSettingsDialogProps {
 }
 
 // App-level settings sections
-export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'agent' | 'paths' | 'integrations' | 'updates' | 'notifications' | 'debug';
+export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'cdp' | 'agent' | 'zenMode' | 'modelProvider' | 'paths' | 'integrations' | 'updates' | 'notifications' | 'debug' | 'experimental';
 
 interface NavItemConfig<T extends string> {
   id: T;
@@ -77,12 +87,16 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: 'display', icon: Monitor },
   { id: 'language', icon: Globe },
   { id: 'devtools', icon: Code },
+  { id: 'cdp', icon: Chrome },
   { id: 'agent', icon: Bot },
+  { id: 'zenMode', icon: Search },
+  { id: 'modelProvider', icon: Cpu },
   { id: 'paths', icon: FolderOpen },
   { id: 'integrations', icon: Key },
   { id: 'updates', icon: Package },
   { id: 'notifications', icon: Bell },
-  { id: 'debug', icon: Bug }
+  { id: 'debug', icon: Bug },
+  { id: 'experimental', icon: Beaker }
 ];
 
 const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
@@ -107,6 +121,21 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
   const [activeTopLevel, setActiveTopLevel] = useState<'app' | 'project'>('app');
   const [appSection, setAppSection] = useState<AppSection>(initialSection || 'appearance');
   const [projectSection, setProjectSection] = useState<ProjectSettingsSection>('general');
+
+  // Collapsible section state - devtools and experimental are collapsed by default
+  const [collapsedSections, setCollapsedSections] = useState<Set<AppSection>>(new Set(['devtools', 'experimental']));
+
+  const toggleSectionCollapsed = (section: AppSection) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(section)) {
+        newSet.delete(section);
+      } else {
+        newSet.add(section);
+      }
+      return newSet;
+    });
+  };
 
   // Navigate to initial section when dialog opens with a specific section
   useEffect(() => {
@@ -163,7 +192,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
     if (appSaveSuccess) {
       // Commit the theme so future cancels won't revert to old values
       commitTheme();
-      onOpenChange(false);
+      // Don't close the dialog - just save and show success feedback
     }
   };
 
@@ -186,8 +215,14 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         return <LanguageSettings settings={settings} onSettingsChange={setSettings} />;
       case 'devtools':
         return <DevToolsSettings settings={settings} onSettingsChange={setSettings} />;
+      case 'cdp':
+        return <CDPSettings section="advanced" />;
       case 'agent':
         return <GeneralSettings settings={settings} onSettingsChange={setSettings} section="agent" />;
+      case 'zenMode':
+        return <ZenModeSettings settings={settings} onSettingsChange={setSettings} />;
+      case 'modelProvider':
+        return <ModelProviderSettings settings={settings} onSettingsChange={setSettings} />;
       case 'paths':
         return <GeneralSettings settings={settings} onSettingsChange={setSettings} section="paths" />;
       case 'integrations':
@@ -198,6 +233,8 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="notifications" version={version} />;
       case 'debug':
         return <DebugSettings />;
+      case 'experimental':
+        return <ExperimentalSettings settings={settings} onSettingsChange={setSettings} />;
       default:
         return null;
     }
@@ -255,12 +292,20 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
                       {appNavItemsConfig.map((item) => {
                         const Icon = item.icon;
                         const isActive = activeTopLevel === 'app' && appSection === item.id;
+
+                        // Devtools and experimental are collapsible sections
+                        const isCollapsible = item.id === 'devtools' || item.id === 'experimental';
+                        const isCollapsed = collapsedSections.has(item.id);
+
                         return (
                           <button
                             key={item.id}
                             onClick={() => {
                               setActiveTopLevel('app');
                               setAppSection(item.id);
+                              if (isCollapsible) {
+                                toggleSectionCollapsed(item.id);
+                              }
                             }}
                             className={cn(
                               'w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all',
@@ -270,9 +315,22 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
                             )}
                           >
                             <Icon className="h-5 w-5 mt-0.5 shrink-0" />
-                            <div className="min-w-0">
-                              <div className="font-medium text-sm">{t(`sections.${item.id}.title`)}</div>
-                              <div className="text-xs text-muted-foreground truncate">{t(`sections.${item.id}.description`)}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm">{t(`sections.${item.id}.title`)}</div>
+                                  <div className="text-xs text-muted-foreground truncate">{t(`sections.${item.id}.description`)}</div>
+                                </div>
+                                {isCollapsible && (
+                                  <div className="ml-2 shrink-0">
+                                    {isCollapsed ? (
+                                      <ChevronDown className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronUp className="h-4 w-4" />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </button>
                         );

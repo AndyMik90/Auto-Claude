@@ -3,6 +3,16 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { cn } from '../../lib/utils';
 import { buttonVariants } from './button';
 
+/* Apple HIG-inspired alert dialog component
+   Key principles:
+   - Clear, centered presentation
+   - Smooth animations for appearance
+   - Proper spacing and visual hierarchy
+   - Destructive actions clearly indicated
+   - Rounded corners matching design system
+   - Backdrop blur for focus
+*/
+
 const AlertDialog = AlertDialogPrimitive.Root;
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
@@ -15,9 +25,13 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     className={cn(
+      /* Apple-style backdrop overlay */
       'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm',
+      /* Smooth fade animations */
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      /* Apple easing */
+      'transition-all duration-200 ease-out',
       className
     )}
     {...props}
@@ -35,16 +49,19 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
+        /* Apple-style alert dialog content */
         'fixed left-[50%] top-[50%] z-50 w-full max-w-lg max-h-[90vh]',
         'translate-x-[-50%] translate-y-[-50%]',
         'bg-card border border-border rounded-2xl p-6',
         'shadow-xl',
+        /* Smooth animations */
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
         'data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]',
         'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
-        'duration-200',
+        /* Apple easing */
+        'duration-200 ease-out',
         className
       )}
       {...props}

@@ -247,7 +247,7 @@ export function OllamaModelSelector({
 
   if (!ollamaAvailable) {
     return (
-      <div className={cn('rounded-lg border border-warning/30 bg-warning/10 p-4', className)}>
+      <div className={cn('rounded-xl border border-warning/30 bg-warning/10 p-4', className)}>
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
           <div className="flex-1">
@@ -289,7 +289,7 @@ export function OllamaModelSelector({
              <div
                key={model.name}
                className={cn(
-                 'rounded-lg border transition-colors',
+                 'rounded-xl border transition-colors',
                  model.installed && !disabled
                    ? 'cursor-pointer hover:bg-accent/50'
                    : 'cursor-default',

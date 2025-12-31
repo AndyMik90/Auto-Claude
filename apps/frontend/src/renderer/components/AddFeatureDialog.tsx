@@ -188,7 +188,7 @@ export function AddFeatureDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="rounded-xl sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('addFeature.title')}</DialogTitle>
           <DialogDescription>
@@ -208,6 +208,7 @@ export function AddFeatureDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isSaving}
+              className="tap-target focus:ring-2 focus:ring-ring/40 focus:ring-offset-2"
             />
           </div>
 
@@ -223,6 +224,7 @@ export function AddFeatureDialog({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               disabled={isSaving}
+              className="tap-target focus:ring-2 focus:ring-ring/40 focus:ring-offset-2"
             />
           </div>
 
@@ -238,6 +240,7 @@ export function AddFeatureDialog({
               onChange={(e) => setRationale(e.target.value)}
               rows={2}
               disabled={isSaving}
+              className="tap-target focus:ring-2 focus:ring-ring/40 focus:ring-offset-2"
             />
           </div>
 
@@ -253,7 +256,7 @@ export function AddFeatureDialog({
                 onValueChange={setPhaseId}
                 disabled={isSaving}
               >
-                <SelectTrigger id="add-feature-phase">
+                <SelectTrigger id="add-feature-phase" className="tap-target focus:ring-2 focus:ring-ring/40 focus:ring-offset-2">
                   <SelectValue placeholder={t('addFeature.selectPhase')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -276,7 +279,7 @@ export function AddFeatureDialog({
                 onValueChange={(value) => setPriority(value as RoadmapFeaturePriority)}
                 disabled={isSaving}
               >
-                <SelectTrigger id="add-feature-priority">
+                <SelectTrigger id="add-feature-priority" className="tap-target focus:ring-2 focus:ring-ring/40 focus:ring-offset-2">
                   <SelectValue placeholder={t('addFeature.selectPriority')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -299,7 +302,7 @@ export function AddFeatureDialog({
                 onValueChange={(value) => setComplexity(value as 'low' | 'medium' | 'high')}
                 disabled={isSaving}
               >
-                <SelectTrigger id="add-feature-complexity">
+                <SelectTrigger id="add-feature-complexity" className="tap-target focus:ring-2 focus:ring-ring/40 focus:ring-offset-2">
                   <SelectValue placeholder={t('addFeature.selectComplexity')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -322,7 +325,7 @@ export function AddFeatureDialog({
                 onValueChange={(value) => setImpact(value as 'low' | 'medium' | 'high')}
                 disabled={isSaving}
               >
-                <SelectTrigger id="add-feature-impact">
+                <SelectTrigger id="add-feature-impact" className="tap-target focus:ring-2 focus:ring-ring/40 focus:ring-offset-2">
                   <SelectValue placeholder={t('addFeature.selectImpact')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -346,12 +349,13 @@ export function AddFeatureDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
+          <Button variant="outline" onClick={handleClose} disabled={isSaving} className="tap-target">
             {t('addFeature.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={isSaving || !isValid}
+            className="tap-target h-11"
           >
             {isSaving ? (
               <>

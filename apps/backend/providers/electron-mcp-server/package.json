@@ -1,0 +1,33 @@
+{
+  "name": "@auto-claude/electron-mcp-server",
+  "version": "1.0.0",
+  "description": "Extended Electron MCP server with enhanced CDP tools for Auto Claude",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "electron-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "electron",
+    "cdp",
+    "chrome-devtools-protocol"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "chrome-remote-interface": "^0.33.0"
+  },
+  "devDependencies": {
+    "@types/chrome-remote-interface": "^0.33.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

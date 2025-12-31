@@ -20,6 +20,9 @@
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.cjs",
+    "ui:add": "node scripts/add-component.cjs",
+    "ui:list": "node scripts/add-component.cjs --list",
+    "ui:help": "node scripts/add-component.cjs --help",
     "dev": "electron-vite dev",
     "dev:debug": "cross-env DEBUG=true electron-vite dev",
     "dev:mcp": "electron-vite dev -- --remote-debugging-port=9222",

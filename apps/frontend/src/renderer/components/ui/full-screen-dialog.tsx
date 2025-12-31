@@ -3,6 +3,16 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
+/* Apple HIG-inspired full screen dialog component
+   Key principles:
+   - Large, immersive presentation for complex tasks
+   - Smooth animations for open/close
+   - Clear close button with proper tap target
+   - Rounded corners matching design system
+   - Backdrop blur for focus
+   - Proper spacing for header, body, and footer
+*/
+
 const FullScreenDialog = DialogPrimitive.Root;
 
 const FullScreenDialogTrigger = DialogPrimitive.Trigger;
@@ -18,9 +28,13 @@ const FullScreenDialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
+      /* Apple-style backdrop overlay */
       'fixed inset-0 z-50 bg-background/95 backdrop-blur-sm',
+      /* Smooth fade animations */
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      /* Apple easing */
+      'transition-all duration-200 ease-out',
       className
     )}
     {...props}
@@ -37,13 +51,16 @@ const FullScreenDialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
+        /* Apple-style full-screen dialog content */
         'fixed inset-4 z-50 flex flex-col',
         'bg-card border border-border rounded-2xl',
         'shadow-2xl overflow-hidden',
+        /* Smooth animations */
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-98 data-[state=open]:zoom-in-98',
-        'duration-200',
+        /* Apple easing */
+        'duration-200 ease-out',
         className
       )}
       {...props}
@@ -51,10 +68,14 @@ const FullScreenDialogContent = React.forwardRef<
       {children}
       <DialogPrimitive.Close
         className={cn(
-          'absolute right-4 top-4 rounded-lg p-2',
+          /* Apple-style close button */
+          'absolute right-4 top-4 rounded-xl p-2 tap-target',
           'text-muted-foreground hover:text-foreground',
-          'hover:bg-accent transition-colors',
-          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background',
+          'hover:bg-accent',
+          /* Smooth transitions with Apple easing */
+          'transition-all duration-150 ease-out',
+          /* Focus ring */
+          'focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-2 focus:ring-offset-background',
           'disabled:pointer-events-none z-10'
         )}
       >

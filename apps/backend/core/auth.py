@@ -25,6 +25,10 @@ AUTH_TOKEN_ENV_VARS = [
 SDK_ENV_VARS = [
     "ANTHROPIC_BASE_URL",
     "ANTHROPIC_AUTH_TOKEN",
+    # Provider-specific API keys for alternative model providers
+    "OPENROUTER_API_KEY",
+    "ZAI_API_KEY",
+    # Proxy and telemetry settings
     "NO_PROXY",
     "DISABLE_TELEMETRY",
     "DISABLE_COST_WARNINGS",

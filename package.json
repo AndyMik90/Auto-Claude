@@ -36,5 +36,8 @@
     "coding",
     "agents",
     "electron"
-  ]
+  ],
+  "dependencies": {
+    "chrome-remote-interface": "^0.33.3"
+  }
 }

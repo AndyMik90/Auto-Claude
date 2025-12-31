@@ -54,6 +54,10 @@ let agentManager: AgentManager | null = null;
 let terminalManager: TerminalManager | null = null;
 
 function createWindow(): void {
+  // Load settings to check if fullscreen is enabled
+  const settings = loadSettingsSync();
+  const fullscreen = settings.fullscreenByDefault ?? false;
+
   // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -61,6 +65,7 @@ function createWindow(): void {
     minWidth: 1000,
     minHeight: 700,
     show: false,
+    fullscreen,
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 15, y: 10 },

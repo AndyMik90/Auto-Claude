@@ -71,7 +71,7 @@ export function AgentProfiles() {
         <div className="flex items-start gap-4">
           <div
             className={cn(
-              'flex h-12 w-12 items-center justify-center rounded-lg',
+              'flex h-12 w-12 items-center justify-center rounded-xl',
               isSelected ? 'bg-primary/10' : 'bg-muted'
             )}
           >
@@ -122,7 +122,7 @@ export function AgentProfiles() {
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-2xl mx-auto space-y-4">
           {/* Description */}
-          <div className="rounded-lg bg-muted/50 p-4 mb-6">
+          <div className="rounded-xl bg-muted/50 p-4 mb-6">
             <p className="text-sm text-muted-foreground">
               Agent profiles provide preset configurations for Claude model and thinking level.
               When you create a new task, these settings will be used as defaults. You can always

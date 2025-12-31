@@ -2,6 +2,14 @@ import * as React from 'react';
 import * as SeparatorPrimitive from '@radix-ui/react-separator';
 import { cn } from '../../lib/utils';
 
+/* Apple HIG-inspired separator component
+   Key principles:
+   - Subtle, thin lines for visual separation
+   - Consistent 1px thickness
+   - Proper spacing with surrounding content
+   - No distraction from main content
+*/
+
 const Separator = React.forwardRef<
   React.ElementRef<typeof SeparatorPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>

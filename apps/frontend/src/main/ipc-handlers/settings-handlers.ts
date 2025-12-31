@@ -124,6 +124,16 @@ export function registerSettingsHandlers(
         needsSave = true;
       }
 
+      // Migration: Model provider settings
+      // Initialize provider-related fields for existing users
+      if (!settings._migratedProviderSettings) {
+        settings.modelProvider = settings.modelProvider || 'anthropic';
+        settings.providerConfigs = settings.providerConfigs || {};
+        settings.useDirectReplacement = settings.useDirectReplacement ?? true;
+        settings._migratedProviderSettings = true;
+        needsSave = true;
+      }
+
       // If no manual autoBuildPath is set, try to auto-detect
       if (!settings.autoBuildPath) {
         const detectedPath = detectAutoBuildSourcePath();

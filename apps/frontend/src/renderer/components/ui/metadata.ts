@@ -1,0 +1,428 @@
+/**
+ * Component metadata registry
+ * Tracks all UI components with their variants, dependencies, and usage
+ *
+ * This registry provides:
+ * - Component discovery and documentation
+ * - Dependency tracking for tree-shaking
+ * - Glass effect support indicators
+ * - Apple HIG compliance status
+ */
+
+export interface ComponentMetadata {
+  name: string;
+  description: string;
+  category: 'layout' | 'forms' | 'navigation' | 'feedback' | 'overlays' | 'typography' | 'data-display';
+  radixPrimitive?: string;
+  dependencies: string[];
+  variants?: string[];
+  glassSupported?: boolean;
+  appleHIGCompliant: boolean;
+  status: 'stable' | 'beta' | 'experimental';
+  since?: string; // Version when component was added
+}
+
+export const COMPONENT_REGISTRY: Record<string, ComponentMetadata> = {
+  // ===== Existing Core Components =====
+  button: {
+    name: 'Button',
+    description: 'Apple-style button with haptic feedback and glass variants',
+    category: 'forms',
+    dependencies: ['@radix-ui/react-slot', 'class-variance-authority'],
+    variants: ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link', 'success', 'warning', 'glass-primary', 'glass-outline', 'glass-ghost'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  card: {
+    name: 'Card',
+    description: 'Container component with compound API',
+    category: 'layout',
+    dependencies: [],
+    variants: ['default', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  dialog: {
+    name: 'Dialog',
+    description: 'Modal dialog with backdrop blur',
+    category: 'overlays',
+    radixPrimitive: '@radix-ui/react-dialog',
+    dependencies: ['@radix-ui/react-dialog'],
+    variants: ['default', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  input: {
+    name: 'Input',
+    description: 'Text input with Apple-style focus states',
+    category: 'forms',
+    dependencies: [],
+    variants: ['default', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  'input-group': {
+    name: 'InputGroup',
+    description: 'Compound input components with labels, hints, and errors',
+    category: 'forms',
+    dependencies: ['input'],
+    variants: ['default'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.8.0',
+  },
+  table: {
+    name: 'Table',
+    description: 'Data table with compound API for flexible composition',
+    category: 'data-display',
+    dependencies: [],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.8.0',
+  },
+  badge: {
+    name: 'Badge',
+    description: 'Pill-shaped status indicator with glass support',
+    category: 'feedback',
+    dependencies: ['class-variance-authority'],
+    variants: ['default', 'secondary', 'destructive', 'outline', 'success', 'warning', 'info', 'purple', 'muted', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  progress: {
+    name: 'Progress',
+    description: 'Progress bar with animated working state',
+    category: 'feedback',
+    radixPrimitive: '@radix-ui/react-progress',
+    dependencies: ['@radix-ui/react-progress'],
+    variants: ['default', 'working'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  select: {
+    name: 'Select',
+    description: 'Dropdown select with Radix UI primitive',
+    category: 'forms',
+    radixPrimitive: '@radix-ui/react-select',
+    dependencies: ['@radix-ui/react-select'],
+    variants: ['default', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  tabs: {
+    name: 'Tabs',
+    description: 'Tabbed interface with smooth transitions',
+    category: 'navigation',
+    radixPrimitive: '@radix-ui/react-tabs',
+    dependencies: ['@radix-ui/react-tabs'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  tooltip: {
+    name: 'Tooltip',
+    description: 'Hover tooltip with Apple-style animations',
+    category: 'overlays',
+    radixPrimitive: '@radix-ui/react-tooltip',
+    dependencies: ['@radix-ui/react-tooltip'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  switch: {
+    name: 'Switch',
+    description: 'Toggle switch with smooth transitions',
+    category: 'forms',
+    radixPrimitive: '@radix-ui/react-switch',
+    dependencies: ['@radix-ui/react-switch'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  separator: {
+    name: 'Separator',
+    description: 'Visual separator/divider',
+    category: 'layout',
+    radixPrimitive: '@radix-ui/react-separator',
+    dependencies: ['@radix-ui/react-separator'],
+    variants: ['horizontal', 'vertical'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  skeleton: {
+    name: 'Skeleton',
+    description: 'Loading placeholder with shimmer animation',
+    category: 'feedback',
+    dependencies: [],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  'scroll-area': {
+    name: 'ScrollArea',
+    description: 'Custom scrollable area with Apple-style scrollbar',
+    category: 'layout',
+    radixPrimitive: '@radix-ui/react-scroll-area',
+    dependencies: ['@radix-ui/react-scroll-area'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  textarea: {
+    name: 'Textarea',
+    description: 'Multi-line text input with Apple-style focus',
+    category: 'forms',
+    dependencies: [],
+    variants: ['default', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  label: {
+    name: 'Label',
+    description: 'Form label with proper accessibility',
+    category: 'forms',
+    dependencies: [],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+
+  // ===== Newly Created Components =====
+  alert: {
+    name: 'Alert',
+    description: 'Dismissible alert with variant styles and glass support',
+    category: 'feedback',
+    dependencies: ['class-variance-authority'],
+    variants: ['default', 'destructive', 'success', 'warning', 'info'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  avatar: {
+    name: 'Avatar',
+    description: 'User avatar with fallback initials and multiple sizes',
+    category: 'data-display',
+    dependencies: [],
+    variants: ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'circular', 'square'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  accordion: {
+    name: 'Accordion',
+    description: 'Collapsible content with smooth animations',
+    category: 'layout',
+    dependencies: [],
+    variants: ['default', 'ghost', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  slider: {
+    name: 'Slider',
+    description: 'Range slider with single and dual thumb support',
+    category: 'forms',
+    dependencies: [],
+    variants: ['sm', 'md', 'lg', 'default', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  'toggle-group': {
+    name: 'ToggleGroup',
+    description: 'Segmented control for mutually exclusive options',
+    category: 'forms',
+    dependencies: [],
+    variants: ['sm', 'md', 'lg', 'horizontal', 'vertical', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  toast: {
+    name: 'Toast',
+    description: 'Non-intrusive notifications with auto-dismiss',
+    category: 'feedback',
+    radixPrimitive: '@radix-ui/react-toast',
+    dependencies: ['@radix-ui/react-toast'],
+    variants: ['default', 'destructive', 'success', 'warning', 'info'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  popover: {
+    name: 'Popover',
+    description: 'Floating content with smart positioning and glass support',
+    category: 'overlays',
+    dependencies: [],
+    variants: ['default', 'glass'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  calendar: {
+    name: 'Calendar',
+    description: 'Date selection calendar with navigation and glass support',
+    category: 'forms',
+    dependencies: [],
+    variants: ['default', 'glass', 'sm', 'md', 'lg'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  'date-picker': {
+    name: 'DatePicker',
+    description: 'Date input with calendar popup dropdown',
+    category: 'forms',
+    dependencies: ['calendar', 'popover'],
+    variants: ['default', 'glass', 'sm', 'md', 'lg'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+  'time-picker': {
+    name: 'TimePicker',
+    description: 'Time input with hours, minutes, and AM/PM selection',
+    category: 'forms',
+    dependencies: [],
+    variants: ['default', 'glass', 'sm', 'md', 'lg'],
+    glassSupported: true,
+    appleHIGCompliant: true,
+    status: 'stable',
+    since: '2.9.0',
+  },
+
+  // ===== Existing Unregistered Components =====
+  collapsible: {
+    name: 'Collapsible',
+    description: 'Show/hide content with smooth transitions',
+    category: 'layout',
+    radixPrimitive: '@radix-ui/react-collapsible',
+    dependencies: ['@radix-ui/react-collapsible'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  'alert-dialog': {
+    name: 'AlertDialog',
+    description: 'Modal dialog for critical confirmations',
+    category: 'overlays',
+    radixPrimitive: '@radix-ui/react-alert-dialog',
+    dependencies: ['@radix-ui/react-alert-dialog'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  checkbox: {
+    name: 'Checkbox',
+    description: 'Boolean input with custom styling',
+    category: 'forms',
+    radixPrimitive: '@radix-ui/react-checkbox',
+    dependencies: ['@radix-ui/react-checkbox'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  'radio-group': {
+    name: 'RadioGroup',
+    description: 'Single selection from multiple options',
+    category: 'forms',
+    radixPrimitive: '@radix-ui/react-radio-group',
+    dependencies: ['@radix-ui/react-radio-group'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  'dropdown-menu': {
+    name: 'DropdownMenu',
+    description: 'Context menu with keyboard navigation',
+    category: 'navigation',
+    radixPrimitive: '@radix-ui/react-dropdown-menu',
+    dependencies: ['@radix-ui/react-dropdown-menu'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  'resizable-panels': {
+    name: 'ResizablePanels',
+    description: 'Resizable split panes with drag handles',
+    category: 'layout',
+    dependencies: ['react-resizable-panels'],
+    variants: ['horizontal', 'vertical'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  'full-screen-dialog': {
+    name: 'FullScreenDialog',
+    description: 'Full-screen modal for immersive content',
+    category: 'overlays',
+    dependencies: ['dialog'],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+  'error-boundary': {
+    name: 'ErrorBoundary',
+    description: 'React error boundary for graceful failure',
+    category: 'feedback',
+    dependencies: [],
+    variants: ['default'],
+    glassSupported: false,
+    appleHIGCompliant: true,
+    status: 'stable',
+  },
+};
+
+// Helper functions for querying the registry
+export function getComponentsByCategory(category: ComponentMetadata['category']): ComponentMetadata[] {
+  return Object.values(COMPONENT_REGISTRY).filter((c) => c.category === category);
+}
+
+export function getComponentsWithGlassSupport(): ComponentMetadata[] {
+  return Object.values(COMPONENT_REGISTRY).filter((c) => c.glassSupported);
+}
+
+export function getStableComponents(): ComponentMetadata[] {
+  return Object.values(COMPONENT_REGISTRY).filter((c) => c.status === 'stable');
+}
+
+export function getComponent(id: string): ComponentMetadata | undefined {
+  return COMPONENT_REGISTRY[id];
+}
+
+export function getAllComponents(): ComponentMetadata[] {
+  return Object.values(COMPONENT_REGISTRY);
+}

@@ -14,6 +14,7 @@ the Claude Agent SDK client. Tool lists are organized by category:
 """
 
 import os
+from core.cdp_config import get_cdp_tools_for_agent
 
 # =============================================================================
 # Base Tools (Built-in Claude Code tools)
@@ -87,6 +88,8 @@ GRAPHITI_MCP_TOOLS = [
 # Used for web frontend validation (non-Electron web apps)
 # NOTE: Screenshots must be compressed (1280x720, quality 60, JPEG) to stay under
 # Claude SDK's 1MB JSON message buffer limit. See GitHub issue #74.
+
+# Base Puppeteer tools (always included when browser automation is enabled)
 PUPPETEER_TOOLS = [
     "mcp__puppeteer__puppeteer_connect_active_tab",
     "mcp__puppeteer__puppeteer_navigate",
@@ -98,17 +101,135 @@ PUPPETEER_TOOLS = [
     "mcp__puppeteer__puppeteer_evaluate",
 ]
 
+# Extended Puppeteer tools - Network domain
+PUPPETEER_NETWORK_TOOLS = [
+    "mcp__puppeteer__get_network_logs",
+    "mcp__puppeteer__get_request_details",
+]
+
+# Extended Puppeteer tools - Storage domain
+PUPPETEER_STORAGE_TOOLS = [
+    "mcp__puppeteer__get_storage",
+    "mcp__puppeteer__set_storage",
+    "mcp__puppeteer__get_cookies",
+    "mcp__puppeteer__get_app_state",
+]
+
+# Extended Puppeteer tools - Performance domain
+PUPPETEER_PERFORMANCE_TOOLS = [
+    "mcp__puppeteer__get_metrics",
+    "mcp__puppeteer__get_memory_usage",
+]
+
+# Extended Puppeteer tools - Emulation domain
+PUPPETEER_EMULATION_TOOLS = [
+    "mcp__puppeteer__set_device",
+    "mcp__puppeteer__set_network_throttle",
+    "mcp__puppeteer__set_geolocation",
+]
+
+# Extended Puppeteer tools - Enhanced DOM interactions
+PUPPETEER_DOM_TOOLS = [
+    "mcp__puppeteer__drag_and_drop",
+    "mcp__puppeteer__right_click",
+    "mcp__puppeteer__scroll_to_element",
+    "mcp__puppeteer__get_element_state",
+]
+
+# Extended Puppeteer tools - Console domain
+PUPPETEER_CONSOLE_TOOLS = [
+    "mcp__puppeteer__get_console_logs",
+    "mcp__puppeteer__track_exceptions",
+]
+
+# All extended Puppeteer tools
+PUPPETEER_EXTENDED_TOOLS = (
+    PUPPETEER_TOOLS +
+    PUPPETEER_NETWORK_TOOLS +
+    PUPPETEER_STORAGE_TOOLS +
+    PUPPETEER_PERFORMANCE_TOOLS +
+    PUPPETEER_EMULATION_TOOLS +
+    PUPPETEER_DOM_TOOLS +
+    PUPPETEER_CONSOLE_TOOLS
+)
+
 # Electron MCP tools for desktop app automation (when ELECTRON_MCP_ENABLED is set)
 # Uses electron-mcp-server to connect to Electron apps via Chrome DevTools Protocol.
 # Electron app must be started with --remote-debugging-port=9222 (or ELECTRON_DEBUG_PORT).
-# These tools are only available to QA agents (qa_reviewer, qa_fixer), not Coder/Planner.
 # NOTE: Screenshots must be compressed to stay under Claude SDK's 1MB JSON message buffer limit.
+
+# Base Electron tools (always included when CDP is enabled for an agent)
 ELECTRON_TOOLS = [
     "mcp__electron__get_electron_window_info",  # Get info about running Electron windows
     "mcp__electron__take_screenshot",  # Capture screenshot of Electron window
     "mcp__electron__send_command_to_electron",  # Send commands (click, fill, evaluate JS)
     "mcp__electron__read_electron_logs",  # Read console logs from Electron app
 ]
+
+# Extended CDP tools - Network domain
+# Monitor HTTP requests/responses, performance timing
+ELECTRON_NETWORK_TOOLS = [
+    "mcp__electron__get_network_logs",  # Get request/response history
+    "mcp__electron__get_request_details",  # Full request headers/body
+    "mcp__electron__get_performance_timing",  # Resource timing metrics
+]
+
+# Extended CDP tools - Storage domain
+# localStorage, sessionStorage, cookies, application state
+ELECTRON_STORAGE_TOOLS = [
+    "mcp__electron__get_storage",  # Read localStorage/sessionStorage
+    "mcp__electron__set_storage",  # Write storage items
+    "mcp__electron__clear_storage",  # Clear all storage
+    "mcp__electron__get_cookies",  # Cookie inspection
+    "mcp__electron__get_app_state",  # Full application state snapshot
+]
+
+# Extended CDP tools - Performance domain
+# Metrics, memory usage, CPU profiling
+ELECTRON_PERFORMANCE_TOOLS = [
+    "mcp__electron__get_metrics",  # FCP, LCP, TTI, FPS
+    "mcp__electron__get_memory_usage",  # Heap size, used memory
+    "mcp__electron__start_profiling",  # Start CPU profiling
+    "mcp__electron__stop_profiling",  # Stop CPU profiling
+]
+
+# Extended CDP tools - Emulation domain
+# Device emulation, network throttling, geolocation, theme
+ELECTRON_EMULATION_TOOLS = [
+    "mcp__electron__set_device",  # Mobile/tablet emulation
+    "mcp__electron__set_network_throttle",  # Offline/3G/4G
+    "mcp__electron__set_geolocation",  # GPS simulation
+    "mcp__electron__set_theme",  # Dark/light mode
+]
+
+# Extended CDP tools - Enhanced DOM interactions
+# Drag and drop, right-click, hover, scroll
+ELECTRON_DOM_TOOLS = [
+    "mcp__electron__drag_and_drop",  # Drag element to target
+    "mcp__electron__right_click",  # Context menu interaction
+    "mcp__electron__hover",  # Hover over element
+    "mcp__electron__scroll_to_element",  # Smooth scroll
+    "mcp__electron__get_element_state",  # Disabled/hidden/visible status
+]
+
+# Extended CDP tools - Console enhancements
+# Filtered logs, exception tracking
+ELECTRON_CONSOLE_TOOLS = [
+    "mcp__electron__get_logs_filtered",  # Filter by level/regex
+    "mcp__electron__track_exceptions",  # Exception tracking
+    "mcp__electron__get_console_history",  # Full history
+]
+
+# All extended CDP tools (for reference)
+ELECTRON_EXTENDED_TOOLS = (
+    ELECTRON_TOOLS +
+    ELECTRON_NETWORK_TOOLS +
+    ELECTRON_STORAGE_TOOLS +
+    ELECTRON_PERFORMANCE_TOOLS +
+    ELECTRON_EMULATION_TOOLS +
+    ELECTRON_DOM_TOOLS +
+    ELECTRON_CONSOLE_TOOLS
+)
 
 # =============================================================================
 # Configuration
@@ -140,19 +261,19 @@ AGENT_CONFIGS = {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],  # No MCP needed - just reads project
         "auto_claude_tools": [],
-        "thinking_default": "medium",
+        "thinking_default": "ultrathink",
     },
     "spec_researcher": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],  # Needs docs lookup
         "auto_claude_tools": [],
-        "thinking_default": "medium",
+        "thinking_default": "ultrathink",
     },
     "spec_writer": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS,
         "mcp_servers": [],  # Just writes spec.md
         "auto_claude_tools": [],
-        "thinking_default": "high",
+        "thinking_default": "ultrathink",
     },
     "spec_critic": {
         "tools": BASE_READ_TOOLS,
@@ -164,25 +285,25 @@ AGENT_CONFIGS = {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "medium",
+        "thinking_default": "ultrathink",
     },
     "spec_context": {
         "tools": BASE_READ_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "medium",
+        "thinking_default": "ultrathink",
     },
     "spec_validation": {
         "tools": BASE_READ_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "high",
+        "thinking_default": "ultrathink",
     },
     "spec_compaction": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "medium",
+        "thinking_default": "ultrathink",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # BUILD PHASES (Full tools + Graphiti memory)
@@ -197,7 +318,7 @@ AGENT_CONFIGS = {
             TOOL_GET_SESSION_CONTEXT,
             TOOL_RECORD_DISCOVERY,
         ],
-        "thinking_default": "high",
+        "thinking_default": "ultrathink",
     },
     "coder": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
@@ -210,7 +331,7 @@ AGENT_CONFIGS = {
             TOOL_RECORD_GOTCHA,
             TOOL_GET_SESSION_CONTEXT,
         ],
-        "thinking_default": "none",  # Coding doesn't use extended thinking
+        "thinking_default": "ultrathink",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # QA PHASES (Read + test + browser + Graphiti memory)
@@ -225,7 +346,7 @@ AGENT_CONFIGS = {
             TOOL_UPDATE_QA_STATUS,
             TOOL_GET_SESSION_CONTEXT,
         ],
-        "thinking_default": "high",
+        "thinking_default": "ultrathink",
     },
     "qa_fixer": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
@@ -237,7 +358,7 @@ AGENT_CONFIGS = {
             TOOL_UPDATE_QA_STATUS,
             TOOL_RECORD_GOTCHA,
         ],
-        "thinking_default": "medium",
+        "thinking_default": "ultrathink",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # UTILITY PHASES (Minimal, no MCP)
@@ -246,25 +367,25 @@ AGENT_CONFIGS = {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "medium",
+        "thinking_default": "ultrathink",
     },
     "merge_resolver": {
         "tools": [],  # Text-only analysis
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "low",
+        "thinking_default": "ultrathink",
     },
     "commit_message": {
         "tools": [],
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "low",
+        "thinking_default": "ultrathink",
     },
     "pr_reviewer": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,  # Read-only
         "mcp_servers": ["context7"],
         "auto_claude_tools": [],
-        "thinking_default": "high",
+        "thinking_default": "ultrathink",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # ANALYSIS PHASES
@@ -273,19 +394,19 @@ AGENT_CONFIGS = {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],
         "auto_claude_tools": [],
-        "thinking_default": "medium",
+        "thinking_default": "ultrathink",
     },
     "batch_analysis": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "low",
+        "thinking_default": "ultrathink",
     },
     "batch_validation": {
         "tools": BASE_READ_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "low",
+        "thinking_default": "ultrathink",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # ROADMAP & IDEATION
@@ -294,19 +415,19 @@ AGENT_CONFIGS = {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],
         "auto_claude_tools": [],
-        "thinking_default": "high",
+        "thinking_default": "ultrathink",
     },
     "competitor_analysis": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],  # WebSearch for competitor research
         "auto_claude_tools": [],
-        "thinking_default": "high",
+        "thinking_default": "ultrathink",
     },
     "ideation": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "high",
+        "thinking_default": "ultrathink",
     },
 }
 
@@ -401,3 +522,40 @@ def get_default_thinking_level(agent_type: str) -> str:
     """
     config = get_agent_config(agent_type)
     return config.get("thinking_default", "medium")
+
+
+def get_allowed_tools(
+    agent_type: str,
+    project_capabilities: dict | None = None,
+    linear_enabled: bool = False,
+) -> list[str]:
+    """
+    Get the list of allowed tools for an agent type.
+
+    This function builds the complete tool list including:
+    - Base tools from agent config
+    - Browser tools (Electron or Puppeteer) if applicable
+    - Dynamic CDP tools based on agent type and configuration
+
+    Args:
+        agent_type: The agent type identifier
+        project_capabilities: Dict from detect_project_capabilities() or None
+        linear_enabled: Whether Linear integration is enabled for this project
+
+    Returns:
+        List of allowed tool names for this agent
+    """
+    config = get_agent_config(agent_type)
+    tools = list(config.get("tools", []))
+
+    # Add browser tools if the agent has CDP enabled
+    if project_capabilities:
+        is_electron = project_capabilities.get("is_electron", False)
+
+        if is_electron and is_electron_mcp_enabled():
+            # Get CDP tools based on agent configuration
+            cdp_tools = get_cdp_tools_for_agent(agent_type)
+            if cdp_tools:
+                tools.extend(cdp_tools)
+
+    return tools

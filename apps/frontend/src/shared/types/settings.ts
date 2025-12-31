@@ -7,7 +7,7 @@ import type { ChangelogFormat, ChangelogAudience, ChangelogEmojiLevel } from './
 import type { SupportedLanguage } from '../constants/i18n';
 
 // Color theme types for multi-theme support
-export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest';
+export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest' | 'apple';
 
 // Developer tools preferences - IDE and terminal selection
 // Comprehensive list based on Stack Overflow Developer Survey 2024, JetBrains Survey, and market research
@@ -163,6 +163,44 @@ export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
 // Model type shorthand
 export type ModelTypeShort = 'haiku' | 'sonnet' | 'opus';
 
+// ============================================
+// Model Provider Types (NEW)
+// ============================================
+
+/**
+ * Main model provider options
+ * - anthropic: Native Claude models (default)
+ * - openrouter: Multi-provider aggregator (supports GLM via OpenRouter)
+ * - zai: Direct Z.AI GLM API
+ */
+export type ModelProvider = 'anthropic' | 'openrouter' | 'zai';
+
+/**
+ * Model tier mapping across providers
+ * Allows "direct replacement" where opus/sonnet/haiku map to provider equivalents
+ */
+export type ModelTier = 'opus' | 'sonnet' | 'haiku';
+
+/**
+ * Provider configuration interface
+ */
+export interface ModelProviderConfig {
+  /** Selected provider */
+  provider: ModelProvider;
+  /** Custom base URL for provider (optional) */
+  baseUrl?: string;
+  /** API key (optional - can use global/project settings) */
+  apiKey?: string;
+  /** Custom headers for provider requests (optional) */
+  customHeaders?: Record<string, string>;
+  /** Model ID mapping for direct replacement mode */
+  modelMapping?: Partial<Record<ModelTier, string>>;
+  /** Enable extended thinking support */
+  supportsExtendedThinking: boolean;
+  /** Maximum thinking tokens supported */
+  maxThinkingTokens?: number;
+}
+
 // Phase-based model configuration for Auto profile
 // Each phase can use a different model optimized for that task type
 export interface PhaseModelConfig {
@@ -235,6 +273,17 @@ export interface AppSettings {
   // Graphiti LLM provider settings
   graphitiLlmProvider?: 'openai' | 'anthropic' | 'google' | 'groq' | 'ollama';
   ollamaBaseUrl?: string;
+  // ============================================
+  // Model Provider Settings (NEW)
+  // ============================================
+  /** Global model provider selection */
+  modelProvider?: ModelProvider;
+  /** Provider configurations */
+  providerConfigs?: Partial<Record<ModelProvider, ModelProviderConfig>>;
+  /** Whether to use direct replacement mode (auto-map opus/sonnet/haiku) */
+  useDirectReplacement?: boolean;
+  /** Provider-specific API keys (Z.AI, OpenRouter) */
+  globalZaiApiKey?: string;
   // Onboarding wizard completion state
   onboardingCompleted?: boolean;
   // Selected agent profile for preset model/thinking configurations
@@ -256,6 +305,7 @@ export interface AppSettings {
   // Migration flags (internal use)
   _migratedAgentProfileToAuto?: boolean;
   _migratedDefaultModelSync?: boolean;
+  _migratedProviderSettings?: boolean;  // NEW: Provider settings migration
   // Language preference for UI (i18n)
   language?: SupportedLanguage;
   // Developer tools preferences
@@ -263,6 +313,29 @@ export interface AppSettings {
   customIDEPath?: string;      // For 'custom' IDE
   preferredTerminal?: SupportedTerminal;
   customTerminalPath?: string; // For 'custom' terminal
+
+  // ============================================
+  // Zen Mode Settings (NEW)
+  // ============================================
+  /** Open app in zen mode by default (minimalist interface) */
+  zenModeByDefault?: boolean;
+  /** Stay in zen mode after task creation (otherwise exit to full UI) */
+  stayInZenAfterCreate?: boolean;
+  /** Show recent intents as suggestions in zen mode */
+  zenModeSuggestions?: boolean;
+  // ============================================
+  // Experimental Features (NEW)
+  // ============================================
+  /** Enable experimental features (feature flags) */
+  experimentalFeatures?: {
+    /** Feature flag names and their enabled states */
+    [key: string]: boolean;
+  };
+  // ============================================
+  // Window Settings (NEW)
+  // ============================================
+  /** Open app in fullscreen by default */
+  fullscreenByDefault?: boolean;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

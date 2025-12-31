@@ -4,11 +4,15 @@ Phase Configuration Module
 
 Handles model and thinking level configuration for different execution phases.
 Reads configuration from task_metadata.json and provides resolved model IDs.
+
+EXTENDED: Now supports multiple model providers (Anthropic, OpenRouter, Z.AI).
 """
 
 import json
 from pathlib import Path
 from typing import Literal, TypedDict
+
+from providers.config import resolve_model_id
 
 # Model shorthand to full model ID mapping
 MODEL_ID_MAP: dict[str, str] = {
@@ -55,10 +59,10 @@ DEFAULT_PHASE_MODELS: dict[str, str] = {
 }
 
 DEFAULT_PHASE_THINKING: dict[str, str] = {
-    "spec": "medium",
-    "planning": "high",
-    "coding": "medium",
-    "qa": "high",
+    "spec": "ultrathink",
+    "planning": "ultrathink",
+    "coding": "ultrathink",
+    "qa": "ultrathink",
 }
 
 
@@ -84,28 +88,35 @@ class TaskMetadataConfig(TypedDict, total=False):
     phaseThinking: PhaseThinkingConfig
     model: str
     thinkingLevel: str
+    provider: str  # NEW: Model provider (anthropic, openrouter, zai)
 
 
 Phase = Literal["spec", "planning", "coding", "qa"]
 
 
-def resolve_model_id(model: str) -> str:
+def resolve_model_id(model: str, provider: str = "anthropic") -> str:
     """
     Resolve a model shorthand (haiku, sonnet, opus) to a full model ID.
     If the model is already a full ID, return it unchanged.
 
+    EXTENDED: Now provider-aware. Uses providers.config.resolve_model_id().
+
     Args:
         model: Model shorthand or full ID
+        provider: Provider name (anthropic, openrouter, zai)
 
     Returns:
-        Full Claude model ID
+        Full Claude model ID (provider-specific)
     """
-    # Check if it's a shorthand
-    if model in MODEL_ID_MAP:
-        return MODEL_ID_MAP[model]
+    # Use provider-aware resolution from providers.config
+    from providers.config import resolve_model_id as provider_resolve_id
 
-    # Already a full model ID
-    return model
+    # Check if it's a provider-qualified ID (e.g., "openrouter/glm-4-plus")
+    if "/" in model:
+        return model
+
+    # Use provider-aware resolution
+    return provider_resolve_id(model, provider)
 
 
 def get_thinking_budget(thinking_level: str) -> int | None:
@@ -166,34 +177,42 @@ def get_phase_model(
     3. Single model from task_metadata.json (if not auto profile)
     4. Default phase configuration
 
+    EXTENDED: Now provider-aware. Respects provider configuration from task_metadata.json.
+
     Args:
         spec_dir: Path to the spec directory
         phase: Execution phase (spec, planning, coding, qa)
         cli_model: Model from CLI argument (optional)
 
     Returns:
-        Resolved full model ID
+        Resolved full model ID (provider-qualified if needed)
     """
     # CLI argument takes precedence
     if cli_model:
-        return resolve_model_id(cli_model)
+        # Check for provider specification in CLI arg
+        if "/" in cli_model:
+            return cli_model  # Already provider-qualified
+        return resolve_model_id(cli_model, "anthropic")  # Default provider
 
     # Load task metadata
     metadata = load_task_metadata(spec_dir)
+
+    # Get provider from metadata (defaults to anthropic)
+    provider = metadata.get("provider", "anthropic") if metadata else "anthropic"
 
     if metadata:
         # Check for auto profile with phase-specific config
         if metadata.get("isAutoProfile") and metadata.get("phaseModels"):
             phase_models = metadata["phaseModels"]
             model = phase_models.get(phase, DEFAULT_PHASE_MODELS[phase])
-            return resolve_model_id(model)
+            return resolve_model_id(model, provider)
 
         # Non-auto profile: use single model
         if metadata.get("model"):
-            return resolve_model_id(metadata["model"])
+            return resolve_model_id(metadata["model"], provider)
 
     # Fall back to default phase configuration
-    return resolve_model_id(DEFAULT_PHASE_MODELS[phase])
+    return resolve_model_id(DEFAULT_PHASE_MODELS[phase], provider)
 
 
 def get_phase_thinking(

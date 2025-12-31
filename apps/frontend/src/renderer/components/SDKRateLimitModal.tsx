@@ -249,7 +249,7 @@ export function SDKRateLimitModal() {
 
         <div className="py-4 space-y-4">
           {/* Swap notification info */}
-          <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
+          <div className="text-xs text-muted-foreground bg-muted/30 rounded-xl p-3">
             {swapInfo?.wasAutoSwapped ? (
               <>
                 <p className="font-medium mb-1">
@@ -291,7 +291,7 @@ export function SDKRateLimitModal() {
 
           {/* Reset time info */}
           {sdkRateLimitInfo.resetTime && (
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-4">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-4">
               <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">
@@ -475,7 +475,7 @@ export function SDKRateLimitModal() {
           </div>
 
           {/* Info about what was interrupted */}
-          <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
+          <div className="text-xs text-muted-foreground bg-muted/30 rounded-xl p-3">
             <p className="font-medium mb-1">What happened:</p>
             <p>
               The {sourceName.toLowerCase()} operation was stopped because your Claude account

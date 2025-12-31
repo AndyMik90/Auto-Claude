@@ -1,12 +1,13 @@
 /**
  * ResizablePanels - A split panel layout with a draggable divider
  *
- * Features:
- * - Smooth drag-to-resize functionality
- * - Min/max width constraints
- * - Persists width to localStorage
- * - Visual feedback on hover and drag
+ * Apple HIG-inspired features:
+ * - Smooth drag-to-resize with cursor feedback
+ * - Min/max width constraints for usability
+ * - Persists width to localStorage for consistency
+ * - Visual feedback on hover and drag states
  * - Touch support for mobile devices
+ * - Subtle divider that becomes visible on interaction
  */
 
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
@@ -141,10 +142,15 @@ export function ResizablePanels({
       {/* Resizable divider */}
       <div
         className={cn(
+          /* Apple-style resizable divider: subtle until interaction */
           "w-1 flex-shrink-0 relative cursor-col-resize touch-none",
-          "bg-border transition-colors duration-150",
-          "hover:bg-primary/40",
-          isDragging && "bg-primary/60"
+          "bg-border",
+          /* Smooth transitions with Apple easing */
+          "transition-all duration-150 ease-out",
+          /* Hover state: subtle highlight */
+          "hover:bg-primary/40 hover:w-1.5",
+          /* Drag state: more visible */
+          isDragging && "bg-primary/60 w-1.5"
         )}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}

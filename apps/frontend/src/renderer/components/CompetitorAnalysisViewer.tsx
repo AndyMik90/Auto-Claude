@@ -41,7 +41,7 @@ export function CompetitorAnalysisViewer({
             {analysis.competitors.map((competitor) => (
               <div
                 key={competitor.id}
-                className="rounded-lg border border-border p-4 space-y-3"
+                className="rounded-xl border border-border p-4 space-y-3"
               >
                 {/* Competitor Header */}
                 <div className="flex items-start justify-between">
@@ -143,7 +143,7 @@ export function CompetitorAnalysisViewer({
 
             {/* Insights Summary */}
             {analysis.insightsSummary && (
-              <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 space-y-3">
+              <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-3">
                 <h4 className="text-sm font-semibold">Market Insights Summary</h4>
 
                 {analysis.insightsSummary.topPainPoints.length > 0 && (

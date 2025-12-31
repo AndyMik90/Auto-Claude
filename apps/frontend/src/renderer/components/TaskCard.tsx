@@ -21,6 +21,16 @@ import {
 import { startTask, stopTask, checkTaskRunning, recoverStuckTask, isIncompleteHumanReview, archiveTasks } from '../stores/task-store';
 import type { Task, TaskCategory, ReviewReason } from '../../shared/types';
 
+/* Apple HIG-inspired Task Card component
+   Key principles:
+   - Clear visual hierarchy with title, description, metadata
+   - Proper spacing and padding for breathing room
+   - Pill-shaped badges for status and categories
+   - Smooth transitions for interactive states
+   - Action buttons with proper tap targets
+   - Progress indicators with subtle animations
+*/
+
 // Category icon mapping
 const CategoryIcon: Record<TaskCategory, typeof Zap> = {
   feature: Target,
@@ -176,9 +186,14 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
   return (
     <Card
       className={cn(
+        /* Apple-style card surface */
         'card-surface task-card-enhanced cursor-pointer',
-        isRunning && !isStuck && 'ring-2 ring-primary border-primary task-running-pulse',
-        isStuck && 'ring-2 ring-warning border-warning task-stuck-pulse',
+        /* Smooth transitions with Apple easing */
+        'transition-all duration-200 ease-out',
+        /* Active state indicators */
+        isRunning && !isStuck && 'ring-2 ring-primary/50 border-primary task-running-pulse',
+        isStuck && 'ring-2 ring-warning/50 border-warning task-stuck-pulse',
+        /* Archived state */
         isArchived && 'opacity-60 hover:opacity-80'
       )}
       onClick={onClick}
@@ -187,7 +202,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         {/* Header - improved visual hierarchy */}
         <div className="flex items-start justify-between gap-3">
           <h3
-            className="font-semibold text-sm text-foreground line-clamp-2 leading-snug flex-1 min-w-0"
+            className="font-medium text-sm text-foreground line-clamp-2 leading-snug flex-1 min-w-0"
             title={task.title}
           >
             {task.title}
@@ -197,9 +212,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {isStuck && (
               <Badge
                 variant="outline"
-                className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-warning/10 text-warning border-warning/30 badge-priority-urgent"
+                className="text-[10px] px-2 py-0.5 flex items-center gap-1 rounded-full bg-warning/10 text-warning border-warning/30 badge-priority-urgent font-medium"
               >
-                <AlertTriangle className="h-2.5 w-2.5" />
+                <AlertTriangle className="h-2.5 w-2.5" strokeWidth={2.5} />
                 {t('labels.stuck')}
               </Badge>
             )}
@@ -207,9 +222,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {isIncomplete && !isStuck && (
               <Badge
                 variant="outline"
-                className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-orange-500/10 text-orange-400 border-orange-500/30"
+                className="text-[10px] px-2 py-0.5 flex items-center gap-1 rounded-full bg-orange-500/10 text-orange-400 border-orange-500/30 font-medium"
               >
-                <AlertTriangle className="h-2.5 w-2.5" />
+                <AlertTriangle className="h-2.5 w-2.5" strokeWidth={2.5} />
                 {t('labels.incomplete')}
               </Badge>
             )}
@@ -217,9 +232,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {task.metadata?.archivedAt && (
               <Badge
                 variant="outline"
-                className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-muted text-muted-foreground border-border"
+                className="text-[10px] px-2 py-0.5 flex items-center gap-1 rounded-full bg-muted text-muted-foreground border-border font-medium"
               >
-                <Archive className="h-2.5 w-2.5" />
+                <Archive className="h-2.5 w-2.5" strokeWidth={2.5} />
                 {t('status.archived')}
               </Badge>
             )}
@@ -228,11 +243,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               <Badge
                 variant="outline"
                 className={cn(
-                  'text-[10px] px-1.5 py-0.5 flex items-center gap-1',
+                  'text-[10px] px-2 py-0.5 flex items-center gap-1 rounded-full font-medium',
                   EXECUTION_PHASE_BADGE_COLORS[executionPhase]
                 )}
               >
-                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                <Loader2 className="h-2.5 w-2.5 animate-spin" strokeWidth={2.5} />
                 {EXECUTION_PHASE_LABELS[executionPhase]}
               </Badge>
             )}
@@ -240,7 +255,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {!hasActiveExecution && (
               <Badge
                 variant={isStuck ? 'warning' : isIncomplete ? 'warning' : getStatusBadgeVariant(task.status)}
-                className="text-[10px] px-1.5 py-0.5"
+                className="text-[10px] px-2 py-0.5 rounded-full font-medium"
               >
                 {isStuck ? t('labels.needsRecovery') : isIncomplete ? t('labels.needsResume') : getStatusLabel(task.status)}
               </Badge>
@@ -249,7 +264,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {reviewReasonInfo && !isStuck && !isIncomplete && (
               <Badge
                 variant={reviewReasonInfo.variant}
-                className="text-[10px] px-1.5 py-0.5"
+                className="text-[10px] px-2 py-0.5 rounded-full font-medium"
               >
                 {reviewReasonInfo.label}
               </Badge>
@@ -259,7 +274,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
         {/* Description - sanitized to handle markdown content */}
         {task.description && (
-          <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+          <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
             {sanitizeMarkdownForDisplay(task.description, 150)}
           </p>
         )}
@@ -271,12 +286,12 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {task.metadata.category && (
               <Badge
                 variant="outline"
-                className={cn('text-[10px] px-1.5 py-0', TASK_CATEGORY_COLORS[task.metadata.category])}
+                className={cn('text-[10px] px-2 py-0 rounded-full', TASK_CATEGORY_COLORS[task.metadata.category])}
               >
                 {CategoryIcon[task.metadata.category] && (
                   (() => {
                     const Icon = CategoryIcon[task.metadata.category!];
-                    return <Icon className="h-2.5 w-2.5 mr-0.5" />;
+                    return <Icon className="h-2.5 w-2.5 mr-0.5" strokeWidth={2.5} />;
                   })()
                 )}
                 {TASK_CATEGORY_LABELS[task.metadata.category]}
@@ -286,7 +301,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {task.metadata.impact && (task.metadata.impact === 'high' || task.metadata.impact === 'critical') && (
               <Badge
                 variant="outline"
-                className={cn('text-[10px] px-1.5 py-0', TASK_IMPACT_COLORS[task.metadata.impact])}
+                className={cn('text-[10px] px-2 py-0 rounded-full', TASK_IMPACT_COLORS[task.metadata.impact])}
               >
                 {TASK_IMPACT_LABELS[task.metadata.impact]}
               </Badge>
@@ -295,7 +310,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {task.metadata.complexity && (
               <Badge
                 variant="outline"
-                className={cn('text-[10px] px-1.5 py-0', TASK_COMPLEXITY_COLORS[task.metadata.complexity])}
+                className={cn('text-[10px] px-2 py-0 rounded-full', TASK_COMPLEXITY_COLORS[task.metadata.complexity])}
               >
                 {TASK_COMPLEXITY_LABELS[task.metadata.complexity]}
               </Badge>
@@ -304,7 +319,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {task.metadata.priority && (task.metadata.priority === 'urgent' || task.metadata.priority === 'high') && (
               <Badge
                 variant="outline"
-                className={cn('text-[10px] px-1.5 py-0', TASK_PRIORITY_COLORS[task.metadata.priority])}
+                className={cn('text-[10px] px-2 py-0 rounded-full', TASK_PRIORITY_COLORS[task.metadata.priority])}
               >
                 {TASK_PRIORITY_LABELS[task.metadata.priority]}
               </Badge>
@@ -313,7 +328,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             {task.metadata.securitySeverity && (
               <Badge
                 variant="outline"
-                className={cn('text-[10px] px-1.5 py-0', TASK_IMPACT_COLORS[task.metadata.securitySeverity])}
+                className={cn('text-[10px] px-2 py-0 rounded-full', TASK_IMPACT_COLORS[task.metadata.securitySeverity])}
               >
                 {task.metadata.securitySeverity} severity
               </Badge>
@@ -336,7 +351,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         {/* Footer */}
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
+            <Clock className="h-3 w-3" strokeWidth={2.5} />
             <span>{formatRelativeTime(task.updatedAt)}</span>
           </div>
 
@@ -345,18 +360,18 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             <Button
               variant="warning"
               size="sm"
-              className="h-7 px-2.5"
+              className="h-8 px-3 rounded-xl font-medium"
               onClick={handleRecover}
               disabled={isRecovering}
             >
               {isRecovering ? (
                 <>
-                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" strokeWidth={2.5} />
                   {t('labels.recovering')}
                 </>
               ) : (
                 <>
-                  <RotateCcw className="mr-1.5 h-3 w-3" />
+                  <RotateCcw className="mr-1.5 h-3 w-3" strokeWidth={2.5} />
                   {t('actions.recover')}
                 </>
               )}
@@ -365,38 +380,38 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             <Button
               variant="default"
               size="sm"
-              className="h-7 px-2.5"
+              className="h-8 px-3 rounded-xl font-medium"
               onClick={handleStartStop}
             >
-              <Play className="mr-1.5 h-3 w-3" />
+              <Play className="mr-1.5 h-3 w-3" strokeWidth={2.5} />
               {t('actions.resume')}
             </Button>
           ) : task.status === 'done' && !task.metadata?.archivedAt ? (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2.5 hover:bg-muted-foreground/10"
+              className="h-8 px-3 rounded-xl hover:bg-muted-foreground/10 font-medium"
               onClick={handleArchive}
               title={t('tooltips.archiveTask')}
             >
-              <Archive className="mr-1.5 h-3 w-3" />
+              <Archive className="mr-1.5 h-3 w-3" strokeWidth={2.5} />
               {t('actions.archive')}
             </Button>
           ) : (task.status === 'backlog' || task.status === 'in_progress') && (
             <Button
               variant={isRunning ? 'destructive' : 'default'}
               size="sm"
-              className="h-7 px-2.5"
+              className="h-8 px-3 rounded-xl font-medium"
               onClick={handleStartStop}
             >
               {isRunning ? (
                 <>
-                  <Square className="mr-1.5 h-3 w-3" />
+                  <Square className="mr-1.5 h-3 w-3" strokeWidth={2.5} />
                   {t('actions.stop')}
                 </>
               ) : (
                 <>
-                  <Play className="mr-1.5 h-3 w-3" />
+                  <Play className="mr-1.5 h-3 w-3" strokeWidth={2.5} />
                   {t('actions.start')}
                 </>
               )}

@@ -461,7 +461,7 @@ ${reviewResult.isFollowupReview ? `- Follow-up review: All previous blocking iss
 
         {/* Action Bar (Legacy Actions that fit under the tree context) */}
         {reviewResult && reviewResult.success && !isReviewing && (
-          <div className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200 ease-out">
              {selectedCount > 0 && (
                 <Button onClick={handlePostReview} variant="secondary" disabled={isPostingFindings} className="flex-1 sm:flex-none">
                   {isPostingFindings ? (

@@ -1,0 +1,27 @@
+/**
+ * Apple HIG Staggered Animations
+ * Sequential reveal for list items and cards
+ */
+
+@keyframes apple-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.apple-reveal-stagger {
+  animation: apple-reveal 0.2s ease-out backwards;
+}
+
+/* Stagger delays (applied via inline style or nth-child) */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 50ms; }
+.stagger-3 { animation-delay: 100ms; }
+.stagger-4 { animation-delay: 150ms; }
+.stagger-5 { animation-delay: 200ms; }
+.stagger-6 { animation-delay: 250ms; }

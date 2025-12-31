@@ -2,6 +2,15 @@ import * as React from 'react';
 import * as ProgressPrimitive from '@radix-ui/react-progress';
 import { cn } from '../../lib/utils';
 
+/* Apple HIG-inspired progress component
+   Key principles:
+   - Pill-shaped track with rounded corners
+   - Smooth fill animation
+   - Subtle appearance that doesn't distract
+   - Proper height for visibility
+   - Animated working state for indeterminate progress
+*/
+
 interface ProgressProps extends React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> {
   animated?: boolean;
 }

@@ -22,16 +22,28 @@ from agents.tools_pkg import (
     GRAPHITI_MCP_TOOLS,
     LINEAR_TOOLS,
     PUPPETEER_TOOLS,
+    PUPPETEER_EXTENDED_TOOLS,
     create_auto_claude_mcp_server,
     get_allowed_tools,
     get_required_mcp_servers,
     is_tools_available,
+)
+from core.cdp_config import (
+    get_cdp_config_summary,
+    get_cdp_tools_for_agent,
+    validate_cdp_config,
 )
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
 from core.auth import get_sdk_env_vars, require_auth_token
 from linear_updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
+from providers.config import (
+    get_provider_config,
+    get_provider_for_model,
+    infer_provider_from_url,
+    resolve_model_id,
+)
 from security import bash_security_hook
 
 
@@ -140,6 +152,40 @@ def create_client(
     # Collect env vars to pass to SDK (ANTHROPIC_BASE_URL, etc.)
     sdk_env = get_sdk_env_vars()
 
+    # ============================================
+    # Provider Detection and Model Resolution
+    # ============================================
+
+    # Detect provider from model ID or environment
+    provider = get_provider_for_model(model)
+
+    # Resolve to full model ID based on provider
+    resolved_model = resolve_model_id(model, provider)
+
+    # Get provider configuration
+    provider_config = get_provider_config(provider)
+
+    # Check if provider supports extended thinking
+    if max_thinking_tokens and not provider_config.supports_extended_thinking:
+        print(f"   - Warning: {provider.value} does not support extended thinking. Disabling.")
+        max_thinking_tokens = None
+
+    # Set up custom base URL if configured
+    # Priority: ANTHROPIC_BASE_URL env var > provider default
+    base_url = sdk_env.get("ANTHROPIC_BASE_URL")
+
+    # If ANTHROPIC_BASE_URL is set, infer provider from URL
+    if base_url:
+        provider = infer_provider_from_url(base_url)
+        provider_config = get_provider_config(provider)
+
+    # Add provider-specific base URL to SDK env
+    if base_url:
+        sdk_env["ANTHROPIC_BASE_URL"] = base_url
+    elif provider != "anthropic":
+        # Use provider's default base URL
+        sdk_env["ANTHROPIC_BASE_URL"] = provider_config.base_url
+
     # Check if Linear integration is enabled
     linear_enabled = is_linear_enabled()
     linear_api_key = os.environ.get("LINEAR_API_KEY", "")
@@ -172,11 +218,14 @@ def create_client(
     graphiti_mcp_enabled = "graphiti" in required_servers
 
     # Determine browser tools for permissions (already in allowed_tools_list)
+    # Use dynamic CDP tool selection for Electron and Puppeteer agents
     browser_tools_permissions = []
     if "electron" in required_servers:
-        browser_tools_permissions = ELECTRON_TOOLS
+        # Get CDP tools based on agent type and configuration
+        browser_tools_permissions = get_cdp_tools_for_agent(agent_type)
     elif "puppeteer" in required_servers:
-        browser_tools_permissions = PUPPETEER_TOOLS
+        # Use extended Puppeteer tools for web frontend automation
+        browser_tools_permissions = PUPPETEER_EXTENDED_TOOLS
 
     # Create comprehensive security settings
     # Note: Using both relative paths ("./**") and absolute paths to handle
@@ -276,7 +325,24 @@ def create_client(
             if v
         ]
         print(f"   - Project capabilities: {', '.join(caps)}")
+
+    # Show CDP configuration for agents with Electron tools
+    if "electron" in required_servers and browser_tools_permissions:
+        from core.cdp_config import get_cdp_categories_for_agent
+
+        cdp_categories = get_cdp_categories_for_agent(agent_type)
+        if cdp_categories:
+            print(f"   - CDP categories: {', '.join(cdp_categories)}")
+            print(f"   - CDP tools: {len(browser_tools_permissions)} tools enabled")
     print()
+
+    # Validate CDP configuration and show warnings
+    cdp_warnings = validate_cdp_config()
+    if cdp_warnings:
+        print("   - CDP Configuration Warnings:")
+        for warning in cdp_warnings:
+            print(f"     - {warning}")
+        print()
 
     # Configure MCP servers - ONLY start servers that are required
     # This is the key optimization to reduce context bloat and startup latency
@@ -290,17 +356,19 @@ def create_client(
 
     if "electron" in required_servers:
         # Electron MCP for desktop apps
+        # Use the local extended MCP server with enhanced CDP tools
         # Electron app must be started with --remote-debugging-port=<port>
         mcp_servers["electron"] = {
-            "command": "npm",
-            "args": ["exec", "electron-mcp-server"],
+            "command": "node",
+            "args": [str(Path(__file__).parent.parent / "providers" / "electron-mcp-server" / "dist" / "index.js")],
         }
 
     if "puppeteer" in required_servers:
         # Puppeteer for web frontends (not Electron)
+        # Use the local extended MCP server with enhanced browser tools
         mcp_servers["puppeteer"] = {
-            "command": "npx",
-            "args": ["puppeteer-mcp-server"],
+            "command": "node",
+            "args": [str(Path(__file__).parent.parent / "providers" / "puppeteer-mcp-server" / "dist" / "index.js")],
         }
 
     if "linear" in required_servers:
@@ -349,7 +417,7 @@ def create_client(
 
     # Build options dict, conditionally including output_format
     options_kwargs = {
-        "model": model,
+        "model": resolved_model,  # Use provider-resolved model ID
         "system_prompt": base_prompt,
         "allowed_tools": allowed_tools_list,
         "mcp_servers": mcp_servers,

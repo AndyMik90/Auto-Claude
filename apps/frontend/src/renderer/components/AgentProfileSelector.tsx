@@ -223,7 +223,7 @@ export function AgentProfileSelector({
 
       {/* Auto Profile - Phase Configuration */}
       {isAuto && (
-        <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+        <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
           {/* Clickable Header */}
           <button
             type="button"
@@ -330,7 +330,7 @@ export function AgentProfileSelector({
 
       {/* Custom Configuration (shown only when custom is selected) */}
       {isCustom && (
-        <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
+        <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
           {/* Model Selection */}
           <div className="space-y-2">
             <Label htmlFor="custom-model" className="text-xs font-medium text-muted-foreground">

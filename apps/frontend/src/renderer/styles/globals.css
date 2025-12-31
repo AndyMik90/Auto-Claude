@@ -1,3 +1,6 @@
+@import "./typography.css";
+@import "./safe-area.css";
+@import "./animations.css";
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -6,9 +9,32 @@
 
 /* Define custom theme colors for Tailwind CSS v4 */
 @theme {
-  /* Font families */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  /* Font families - Apple SF Pro-inspired system
+     SF Pro has 9 weights: Ultralight (100), Thin (200), Light (300), Regular (400), Medium (500),
+     Semibold (600), Bold (700), Heavy (800), Black (900)
+  */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'SF Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: 'SF Mono', 'SF Mono Text', 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace;
+
+  /* Apple typography scale - based on SF Pro's optical sizing */
+  /* Text sizes follow Apple's Dynamic Type system */
+  --text-xs: 11px;      /* caption2, footnote */
+  --text-sm: 13px;      /* subheadline, footnote, caption1 */
+  --text-base: 17px;    /* body, callout, headline */
+  --text-lg: 20px;      /* body-emphasized, title3 */
+  --text-xl: 22px;      /* title2 */
+  --text-2xl: 28px;     /* title1 */
+  --text-3xl: 34px;     /* largeTitle */
+
+  /* Apple line heights - optimized for readability */
+  --leading-tight: 1.2;      /* For headlines */
+  --leading-normal: 1.4;     /* For body text */
+  --leading-relaxed: 1.6;    /* For extended reading */
+
+  /* Apple letter spacing - tighter than web defaults */
+  --tracking-tight: -0.02em;  /* SF Pro's natural letter spacing */
+  --tracking-normal: 0;
+  --tracking-wide: 0.01em;    /* Only for all-caps text */
 
   /* Colors - using CSS variables for theme switching */
   --color-border: var(--border);
@@ -65,6 +91,10 @@
   --animate-slide-up: slide-up 0.25s cubic-bezier(0, 0, 0.2, 1);
   --animate-scale-in: scale-in 0.2s cubic-bezier(0, 0, 0.2, 1);
 
+  /* Apple-style spring animations */
+  --animate-spring-smooth: spring-smooth 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-spring-bounce: spring-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
   @keyframes accordion-down {
     from { height: 0 }
     to { height: var(--radix-accordion-content-height) }
@@ -94,6 +124,31 @@
   @keyframes indeterminate {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(400%); }
+  }
+
+  @keyframes spring-smooth {
+    0% {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes spring-bounce {
+    0% {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.02);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 }
 
@@ -221,6 +276,146 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.8);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.9);
   --shadow-focus: 0 0 0 2px rgba(214, 216, 118, 0.2);
+}
+
+/* ============================================
+   APPLE NATIVE THEME (Light)
+   Native macOS-inspired design system
+   ============================================ */
+[data-theme="apple"] {
+  /* Font - SF Pro-inspired */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+
+  /* Backgrounds - Apple's signature light gray */
+  --background: #F5F5F7;
+  --foreground: #1D1D1F;
+
+  /* Card surfaces - clean white with subtle borders */
+  --card: #FFFFFF;
+  --card-foreground: #1D1D1F;
+
+  /* Primary accent - Apple system blue */
+  --primary: #007AFF;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary - subtle gray */
+  --secondary: #F5F5F7;
+  --secondary-foreground: #1D1D1F;
+
+  /* Muted - very subtle gray */
+  --muted: #E8E8ED;
+  --muted-foreground: #86868B;
+
+  /* Accent hover */
+  --accent: #E5E5EA;
+  --accent-foreground: #007AFF;
+
+  /* Destructive - Apple red */
+  --destructive: #FF3B30;
+  --destructive-foreground: #FFFFFF;
+
+  /* Borders - subtle */
+  --border: #E5E5EA;
+  --input: #E5E5EA;
+  --ring: #007AFF;
+
+  /* Sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1D1D1F;
+
+  /* Popover */
+  --popover: #FFFFFF;
+  --popover-foreground: #1D1D1F;
+
+  /* Semantic colors */
+  --success: #34C759;
+  --success-foreground: #FFFFFF;
+  --success-light: #E8F5E9;
+  --warning: #FF9500;
+  --warning-foreground: #FFFFFF;
+  --warning-light: #FFF4E5;
+  --info: #007AFF;
+  --info-foreground: #FFFFFF;
+  --info-light: #E5F1FF;
+  --error: #FF3B30;
+  --error-light: #FFEBE9;
+
+  /* Shadows - Apple-style soft shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-focus: 0 0 0 4px rgba(0, 122, 255, 0.15);
+
+  /* Border radius - more rounded, Apple-style */
+  --radius: 14px;
+}
+
+/* ============================================
+   APPLE NATIVE THEME (Dark)
+   Pure black OLED-optimized dark mode
+   ============================================ */
+[data-theme="apple"].dark {
+  /* Pure black backgrounds - Apple's OLED dark mode */
+  --background: #000000;
+  --foreground: #F5F5F7;
+
+  /* Card surfaces - pure black with subtle borders */
+  --card: #1C1C1E;
+  --card-foreground: #F5F5F7;
+
+  /* Primary accent - lighter blue for dark mode */
+  --primary: #0A84FF;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary - raised surface */
+  --secondary: #1C1C1E;
+  --secondary-foreground: #F5F5F7;
+
+  /* Muted - subtle gray */
+  --muted: #2C2C2E;
+  --muted-foreground: #8E8E93;
+
+  /* Accent hover */
+  --accent: #2C2C2E;
+  --accent-foreground: #0A84FF;
+
+  /* Destructive */
+  --destructive: #FF453A;
+  --destructive-foreground: #FFFFFF;
+
+  /* Borders - subtle dark borders */
+  --border: #38383A;
+  --input: #38383A;
+  --ring: #0A84FF;
+
+  /* Sidebar */
+  --sidebar: #1C1C1E;
+  --sidebar-foreground: #F5F5F7;
+
+  /* Popover */
+  --popover: #1C1C1E;
+  --popover-foreground: #F5F5F7;
+
+  /* Semantic colors - slightly desaturated for dark mode */
+  --success: #32D74B;
+  --success-foreground: #000000;
+  --success-light: #1C3A22;
+  --warning: #FF9F0A;
+  --warning-foreground: #000000;
+  --warning-light: #3D2D0F;
+  --info: #0A84FF;
+  --info-foreground: #FFFFFF;
+  --info-light: #0D2138;
+  --error: #FF453A;
+  --error-light: #3D1111;
+
+  /* Shadows - deeper for dark mode */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+  --shadow-focus: 0 0 0 4px rgba(10, 132, 255, 0.2);
 }
 
 /* ============================================
@@ -1027,11 +1222,93 @@
   --shadow-focus: 0 0 0 3px rgba(74, 222, 128, 0.3);
 }
 
+/* ============================================
+   Liquid Glass Effect System
+   Preserves all existing Apple glassmorphism effects
+   while adding composable glass modifiers
+   ============================================ */
+
+:root {
+  /* Glass opacity levels for different components */
+  --glass-opacity-card: 0.6;
+  --glass-opacity-dialog: 0.8;
+  --glass-opacity-dropdown: 0.9;
+  --glass-opacity-sidebar: 0.5;
+
+  /* Blur amounts - preserving Apple's backdrop-filter approach */
+  --glass-blur-sm: blur(8px);
+  --glass-blur-md: blur(12px);
+  --glass-blur-lg: blur(20px);
+  --glass-blur-xl: blur(30px);
+
+  /* Border opacity for glass effects */
+  --glass-border-opacity: 0.1;
+
+  /* Shadow for glass surfaces */
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark mode glass adjustments */
+.dark {
+  --glass-opacity-card: 0.7;
+  --glass-opacity-dialog: 0.85;
+  --glass-opacity-dropdown: 0.95;
+  --glass-opacity-sidebar: 0.6;
+
+  --glass-border-opacity: 0.15;
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Glass modifier utility classes */
+.glass-surface {
+  background: color-mix(in srgb, var(--card), transparent calc(100% - var(--glass-opacity-card) * 100%));
+  backdrop-filter: var(--glass-blur-lg);
+  -webkit-backdrop-filter: var(--glass-blur-lg);
+  border: 1px solid color-mix(in srgb, var(--border), transparent calc(100% - var(--glass-border-opacity) * 100%));
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-dialog {
+  background: color-mix(in srgb, var(--popover), transparent calc(100% - var(--glass-opacity-dialog) * 100%));
+  backdrop-filter: var(--glass-blur-xl);
+  -webkit-backdrop-filter: var(--glass-blur-xl);
+  border: 1px solid color-mix(in srgb, var(--border), transparent calc(100% - var(--glass-border-opacity) * 100%));
+}
+
+.glass-dropdown {
+  background: color-mix(in srgb, var(--popover), transparent calc(100% - var(--glass-opacity-dropdown) * 100%));
+  backdrop-filter: var(--glass-blur-lg);
+  -webkit-backdrop-filter: var(--glass-blur-lg);
+}
+
+.glass-sidebar {
+  background: color-mix(in srgb, var(--sidebar), transparent calc(100% - var(--glass-opacity-sidebar) * 100%));
+  backdrop-filter: var(--glass-blur-md);
+  -webkit-backdrop-filter: var(--glass-blur-md);
+}
+
+.glass-button {
+  backdrop-filter: var(--glass-blur-md);
+  -webkit-backdrop-filter: var(--glass-blur-md);
+  border: 1px solid color-mix(in srgb, currentColor, transparent 80%);
+}
+
+/* Theme-specific glass overrides */
+[data-theme="apple"] {
+  --glass-border-opacity: 0.08;
+}
+
+[data-theme="apple"].dark {
+  --glass-border-opacity: 0.15;
+  --glass-blur-lg: blur(30px);
+}
+
 /* Base styles */
 * {
   border-color: var(--border);
 }
 
+/* Apple HIG-inspired body styles */
 body {
   background-color: var(--background);
   color: var(--foreground);
@@ -1039,6 +1316,87 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-font-variant-ligatures: common-ligatures;
+  font-variant-ligatures: common-ligatures;
+
+  /* Apple's text rendering optimizations */
+  text-rendering: optimizeLegibility;
+  overflow-wrap: break-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
+/* ============================================
+   Apple HIG 12-Point Grid System
+   ============================================ */
+
+/* Apple's layout uses a 12pt grid for consistent spacing */
+/* Spacing scale based on 8pt base (8, 12, 16, 20, 24, 32, 40, 48, 64, 96) */
+:root {
+  --spacing-xs: 4px;    /* 0.25rem - micro spacing */
+  --spacing-sm: 8px;    /* 0.5rem - tight spacing */
+  --spacing-md: 12px;   /* 0.75rem - compact spacing */
+  --spacing-lg: 16px;   /* 1rem - default spacing */
+  --spacing-xl: 20px;   /* 1.25rem - comfortable spacing */
+  --spacing-2xl: 24px;  /* 1.5rem - section spacing */
+  --spacing-3xl: 32px;  /* 2rem - large spacing */
+  --spacing-4xl: 40px;  /* 2.5rem - extra large spacing */
+  --spacing-5xl: 48px;  /* 3rem - major sections */
+  --spacing-6xl: 64px;  /* 4rem - hero sections */
+}
+
+/* Apple HIG layout utilities */
+.apple-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
+.apple-section {
+  padding: var(--spacing-3xl) 0;
+}
+
+.apple-content {
+  padding: var(--spacing-2xl);
+  max-width: 680px; /* Apple's optimal reading width */
+}
+
+/* Apple HIG spacing utilities */
+.stack-sm > * + * {
+  margin-top: var(--spacing-sm);
+}
+
+.stack-md > * + * {
+  margin-top: var(--spacing-md);
+}
+
+.stack-lg > * + * {
+  margin-top: var(--spacing-lg);
+}
+
+.stack-xl > * + * {
+  margin-top: var(--spacing-xl);
+}
+
+/* Apple HIG grid alignment */
+.grid-12 {
+  display: grid;
+  gap: var(--spacing-lg);
+  grid-template-columns: repeat(12, 1fr);
+}
+
+/* Apple's safe area insets for native-like spacing */
+.safe-area {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Apple HIG tap target sizes (minimum 44x44pt) */
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Typography utilities */
@@ -1708,3 +2066,524 @@ body {
 [data-ui-scale="190"] { font-size: 30.4px; }
 [data-ui-scale="195"] { font-size: 31.2px; }
 [data-ui-scale="200"] { font-size: 32px; }
+
+/* ============================================
+   APPLE NATIVE THEME - Specific Enhancements
+   ============================================ */
+
+/* Apple-style glassmorphism effects for the theme */
+[data-theme="apple"] {
+  /* Enhanced card styling with subtle depth */
+  --apple-glass: rgba(255, 255, 255, 0.7);
+  --apple-glass-border: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="apple"].dark {
+  --apple-glass: rgba(28, 28, 30, 0.8);
+  --apple-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Apple-style card surfaces */
+[data-theme="apple"] .card-surface {
+  background: var(--card);
+  border: 1px solid var(--apple-glass-border);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+[data-theme="apple"].dark .card-surface {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="apple"] .card-surface:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+[data-theme="apple"].dark .card-surface:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Apple-style buttons with smooth hover */
+[data-theme="apple"] button,
+[data-theme="apple"] .btn-primary {
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+[data-theme="apple"] button:active {
+  transform: scale(0.97);
+}
+
+/* Apple-style inputs with refined focus */
+[data-theme="apple"] input,
+[data-theme="apple"] textarea,
+[data-theme="apple"] select {
+  border-radius: 10px;
+  transition: all 0.15s ease-out;
+}
+
+[data-theme="apple"] input:focus,
+[data-theme="apple"] textarea:focus,
+[data-theme="apple"] select:focus {
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+}
+
+[data-theme="apple"].dark input:focus,
+[data-theme="apple"].dark textarea:focus,
+[data-theme="apple"].dark select:focus {
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15);
+}
+
+/* Apple-style sidebar */
+[data-theme="apple"] .sidebar {
+  background: var(--sidebar);
+  border-right: 1px solid var(--apple-glass-border);
+}
+
+[data-theme="apple"] .sidebar-item {
+  border-radius: 8px;
+  transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+[data-theme="apple"] .sidebar-item:hover {
+  background: var(--accent);
+}
+
+[data-theme="apple"] .sidebar-item.active {
+  background: var(--primary);
+  color: white;
+}
+
+/* Apple-style modal/dialog backdrop */
+[data-theme="apple"] [data-radix-overlay] {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="apple"].dark [data-radix-overlay] {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Apple-style popover with glassmorphism */
+[data-theme="apple"] .popover-content {
+  background: var(--popover);
+  border: 1px solid var(--apple-glass-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+[data-theme="apple"].dark .popover-content {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Apple-style tooltips */
+[data-theme="apple"] .tooltip {
+  background: rgba(28, 28, 30, 0.95);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 10px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+[data-theme="apple"].dark .tooltip {
+  background: rgba(255, 255, 255, 0.95);
+  color: #1D1D1F;
+}
+
+/* Apple-style progress bars */
+[data-theme="apple"] progress {
+  border-radius: 9999px;
+  height: 6px;
+}
+
+[data-theme="apple"] progress::-webkit-progress-bar {
+  background: var(--secondary);
+  border-radius: 9999px;
+}
+
+[data-theme="apple"] progress::-webkit-progress-value {
+  background: var(--primary);
+  border-radius: 9999px;
+  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Apple-style badges */
+[data-theme="apple"] .badge {
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  letter-spacing: 0.01em;
+}
+
+/* Apple-style scrollbar - more visible and refined */
+[data-theme="apple"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="apple"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="apple"]::-webkit-scrollbar-thumb {
+  background: rgba(134, 134, 139, 0.3);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s;
+}
+
+[data-theme="apple"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(134, 134, 139, 0.5);
+  background-clip: padding-box;
+}
+
+[data-theme="apple"].dark::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: padding-box;
+}
+
+[data-theme="apple"].dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+  background-clip: padding-box;
+}
+
+/* Apple-style focus ring - thinner and more subtle */
+[data-theme="apple"] *:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.5);
+}
+
+[data-theme="apple"].dark *:focus-visible {
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.6);
+}
+
+/* Apple-style switch/toggle */
+[data-theme="apple"] [role="switch"] {
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Apple-style tabs */
+[data-theme="apple"] [role="tablist"] {
+  border-bottom: 1px solid var(--border);
+}
+
+[data-theme="apple"] [role="tab"] {
+  transition: all 0.15s ease-out;
+  border-radius: 8px 8px 0 0;
+}
+
+[data-theme="apple"] [role="tab"][aria-selected="true"] {
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary);
+}
+
+/* Apple-style separator/divider */
+[data-theme="apple"] hr,
+[data-theme="apple"] .separator {
+  border-color: var(--border);
+  opacity: 0.6;
+}
+
+/* Apple-style select dropdown */
+[data-theme="apple"] [data-radix-select-content] {
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="apple"] [data-radix-select-item] {
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all 0.1s ease-out;
+}
+
+[data-theme="apple"] [data-radix-select-item]:hover {
+  background: var(--accent);
+}
+
+[data-theme="apple"] [data-radix-select-item][data-state="checked"] {
+  background: var(--primary);
+  color: white;
+}
+
+/* Apple-style dialog close button */
+[data-theme="apple"] [data-radix-dialog-close] {
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease-out;
+}
+
+[data-theme="apple"] [data-radix-dialog-close]:hover {
+  background: var(--accent);
+}
+
+/* ============================================
+   Apple Motion Design Principles
+   ============================================ */
+
+/*
+  Apple's motion philosophy:
+  - Motion should be meaningful and purposeful
+  - Animations should feel natural, not mechanical
+  - Use spring physics for organic movement
+  - Respect user's motion preferences
+  - Keep durations short (200-400ms) for UI feedback
+*/
+
+/* Apple's easing functions */
+:root {
+  /* Apple's standard easing (used in most UI transitions) */
+  --ease-apple: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Apple's spring easing (for bouncy, playful interactions) */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* Apple's ease-in (for elements entering) */
+  --ease-apple-in: cubic-bezier(0.42, 0, 1, 1);
+
+  /* Apple's ease-out (for elements leaving) */
+  --ease-apple-out: cubic-bezier(0, 0, 0.58, 1);
+}
+
+/* Apple's animation durations */
+:root {
+  /* Instant feedback (taps, clicks) */
+  --duration-instant: 100ms;
+
+  /* Quick transitions (hover states, color changes) */
+  --duration-quick: 150ms;
+
+  /* Standard transitions (modals, sheets) */
+  --duration-standard: 200ms;
+
+  /* Deliberate transitions (page changes, complex animations) */
+  --duration-deliberate: 300ms;
+
+  /* Slow transitions (rare, only for major changes) */
+  --duration-slow: 400ms;
+}
+
+/* Apply Apple's motion to all interactive elements */
+button,
+a,
+[role="button"],
+.input,
+select,
+textarea {
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
+  transition-timing-function: var(--ease-apple);
+  transition-duration: var(--duration-quick);
+}
+
+/* Apple's hover scale effect (subtle, not jarring) */
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Apple's fade-in animation */
+@keyframes apple-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Apple's slide-up animation */
+@keyframes apple-slide-up {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Apple's scale-in animation */
+@keyframes apple-scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Apple's spring animation for playful elements */
+@keyframes apple-spring-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Apply Apple's animations via utility classes */
+.animate-apple-fade-in {
+  animation: apple-fade-in var(--duration-standard) var(--ease-apple-out);
+}
+
+.animate-apple-slide-up {
+  animation: apple-slide-up var(--duration-deliberate) var(--ease-apple-out);
+}
+
+.animate-apple-scale-in {
+  animation: apple-scale-in var(--duration-standard) var(--ease-spring);
+}
+
+.animate-apple-spring-in {
+  animation: apple-spring-in var(--duration-slow) var(--ease-spring);
+}
+
+/* Apple's staggered animation delays for lists */
+@for $i from 1 through 10 {
+  .stagger-$i {
+    animation-delay: calc($i * 50ms);
+  }
+}
+
+/* Apple's parallax-like depth effect */
+.apple-depth-hover {
+  transition: transform var(--duration-quick) var(--ease-apple),
+              box-shadow var(--duration-quick) var(--ease-apple);
+}
+
+.apple-depth-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="apple"].dark .apple-depth-hover:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Apple's "breathing" animation for loading states */
+@keyframes apple-breathe {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-apple-breathe {
+  animation: apple-breathe 2s ease-in-out infinite;
+}
+
+/* Apple's shimmer effect for skeleton loading */
+@keyframes apple-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-apple-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: apple-shimmer 1.5s ease-in-out infinite;
+}
+
+[data-theme="apple"] .animate-apple-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Apple's haptic-style feedback (visual representation) */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch devices: more pronounced feedback */
+  button:active,
+  [role="button"]:active {
+    transform: scale(0.95);
+    transition-duration: var(--duration-instant);
+  }
+}
+
+/* Apple's smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ============================================
+   End of Apple Motion Design Principles
+   ============================================ */
+
+/* ============================================
+   Apple HIG Shimmer Animation (Skeleton Loading)
+   ============================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-apple-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted) / 0.5) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+}

@@ -37,6 +37,17 @@ export const DEFAULT_APP_SETTINGS = {
   // Global API keys (used as defaults for all projects)
   globalClaudeOAuthToken: undefined as string | undefined,
   globalOpenAIApiKey: undefined as string | undefined,
+  // ============================================
+  // Model Provider Settings (NEW)
+  // ============================================
+  /** Default model provider (Anthropic Claude) */
+  modelProvider: 'anthropic' as const,
+  /** Empty provider configs (user can configure) */
+  providerConfigs: undefined as Record<string, unknown> | undefined,
+  /** Direct replacement mode (auto-map opus/sonnet/haiku) */
+  useDirectReplacement: true,
+  /** Z.AI API key (optional) */
+  globalZaiApiKey: undefined as string | undefined,
   // Selected agent profile - defaults to 'auto' for per-phase optimized model selection
   selectedAgentProfile: 'auto',
   // Changelog preferences (persisted between sessions)
@@ -48,7 +59,28 @@ export const DEFAULT_APP_SETTINGS = {
   // Beta updates opt-in (receive pre-release versions)
   betaUpdates: false,
   // Language preference (default to English)
-  language: 'en' as const
+  language: 'en' as const,
+  // ============================================
+  // Zen Mode Settings (NEW)
+  // ============================================
+  /** Open app in zen mode by default */
+  zenModeByDefault: false,
+  /** Stay in zen mode after task creation */
+  stayInZenAfterCreate: true,
+  /** Show recent intents as suggestions */
+  zenModeSuggestions: true,
+  // ============================================
+  // Window Settings (NEW)
+  // ============================================
+  /** Open app in fullscreen by default */
+  fullscreenByDefault: false,
+  // ============================================
+  // Experimental Features (NEW)
+  // ============================================
+  /** Experimental feature flags */
+  experimentalFeatures: {
+    /** Feature flags - add new experimental features here */
+  }
 };
 
 // ============================================

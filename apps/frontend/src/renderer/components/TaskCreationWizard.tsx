@@ -710,7 +710,7 @@ export function TaskCreationWizard({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className={cn(
-          "max-h-[90vh] p-0 overflow-hidden transition-all duration-300 ease-out",
+          "rounded-xl max-h-[90vh] p-0 overflow-hidden transition-all duration-200 ease-out",
           showFileExplorer ? "sm:max-w-[900px]" : "sm:max-w-[550px]"
         )}
         hideCloseButton={showFileExplorer}
@@ -797,7 +797,7 @@ export function TaskCreationWizard({
                 rows={5}
                 disabled={isCreating}
                 className={cn(
-                  "resize-y min-h-[120px] max-h-[400px] relative bg-transparent",
+                  "resize-y min-h-[120px] max-h-[400px] relative bg-transparent tap-target focus:ring-2 focus:ring-ring/40",
                   // Visual feedback when dragging over textarea
                   isDragOverTextarea && !isCreating && "border-primary bg-primary/5 ring-2 ring-primary/20"
                 )}
@@ -872,6 +872,7 @@ export function TaskCreationWizard({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isCreating}
+              className="tap-target focus:ring-2 focus:ring-ring/40"
             />
             <p className="text-xs text-muted-foreground">
               A short, descriptive title will be generated automatically if left empty.
@@ -910,8 +911,8 @@ export function TaskCreationWizard({
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
             className={cn(
-              'flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors',
-              'w-full justify-between py-2 px-3 rounded-md hover:bg-muted/50'
+              'flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-all duration-150 ease-out',
+              'w-full justify-between py-2 px-3 rounded-md hover:bg-muted/50 tap-target'
             )}
             disabled={isCreating}
           >
@@ -925,7 +926,7 @@ export function TaskCreationWizard({
 
           {/* Advanced Options */}
           {showAdvanced && (
-            <div className="space-y-4 p-4 rounded-lg border border-border bg-muted/30">
+            <div className="space-y-4 p-4 rounded-xl border border-border bg-muted/30">
               <div className="grid grid-cols-2 gap-4">
                 {/* Category */}
                 <div className="space-y-2">
@@ -937,7 +938,7 @@ export function TaskCreationWizard({
                     onValueChange={(value) => setCategory(value as TaskCategory)}
                     disabled={isCreating}
                   >
-                    <SelectTrigger id="category" className="h-9">
+                    <SelectTrigger id="category" className="h-9 tap-target focus:ring-2 focus:ring-ring/40">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -960,7 +961,7 @@ export function TaskCreationWizard({
                     onValueChange={(value) => setPriority(value as TaskPriority)}
                     disabled={isCreating}
                   >
-                    <SelectTrigger id="priority" className="h-9">
+                    <SelectTrigger id="priority" className="h-9 tap-target focus:ring-2 focus:ring-ring/40">
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
@@ -983,7 +984,7 @@ export function TaskCreationWizard({
                     onValueChange={(value) => setComplexity(value as TaskComplexity)}
                     disabled={isCreating}
                   >
-                    <SelectTrigger id="complexity" className="h-9">
+                    <SelectTrigger id="complexity" className="h-9 tap-target focus:ring-2 focus:ring-ring/40">
                       <SelectValue placeholder="Select complexity" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1006,7 +1007,7 @@ export function TaskCreationWizard({
                     onValueChange={(value) => setImpact(value as TaskImpact)}
                     disabled={isCreating}
                   >
-                    <SelectTrigger id="impact" className="h-9">
+                    <SelectTrigger id="impact" className="h-9 tap-target focus:ring-2 focus:ring-ring/40">
                       <SelectValue placeholder="Select impact" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1027,7 +1028,7 @@ export function TaskCreationWizard({
           )}
 
           {/* Review Requirement Toggle */}
-          <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
+          <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-muted/30">
             <Checkbox
               id="require-review"
               checked={requireReviewBeforeCoding}
@@ -1053,8 +1054,8 @@ export function TaskCreationWizard({
             type="button"
             onClick={() => setShowGitOptions(!showGitOptions)}
             className={cn(
-              'flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors',
-              'w-full justify-between py-2 px-3 rounded-md hover:bg-muted/50'
+              'flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-all duration-150 ease-out',
+              'w-full justify-between py-2 px-3 rounded-md hover:bg-muted/50 tap-target'
             )}
             disabled={isCreating}
           >
@@ -1076,7 +1077,7 @@ export function TaskCreationWizard({
 
           {/* Git Options */}
           {showGitOptions && (
-            <div className="space-y-4 p-4 rounded-lg border border-border bg-muted/30">
+            <div className="space-y-4 p-4 rounded-xl border border-border bg-muted/30">
               <div className="space-y-2">
                 <Label htmlFor="base-branch" className="text-sm font-medium text-foreground">
                   Base Branch (optional)
@@ -1086,7 +1087,7 @@ export function TaskCreationWizard({
                   onValueChange={setBaseBranch}
                   disabled={isCreating || isLoadingBranches}
                 >
-                  <SelectTrigger id="base-branch" className="h-9">
+                  <SelectTrigger id="base-branch" className="h-9 tap-target focus:ring-2 focus:ring-ring/40">
                     <SelectValue placeholder={`Use project default${projectDefaultBranch ? ` (${projectDefaultBranch})` : ''}`} />
                   </SelectTrigger>
                   <SelectContent>
@@ -1109,7 +1110,7 @@ export function TaskCreationWizard({
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
+            <div className="flex items-start gap-2 rounded-xl bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
               <X className="h-4 w-4 mt-0.5 shrink-0" />
               <span>{error}</span>
             </div>
@@ -1126,7 +1127,7 @@ export function TaskCreationWizard({
                 size="sm"
                 onClick={() => setShowFileExplorer(!showFileExplorer)}
                 disabled={isCreating}
-                className="gap-1.5"
+                className="gap-1.5 tap-target"
               >
                 <FolderTree className="h-4 w-4" />
                 {showFileExplorer ? 'Hide Files' : 'Browse Files'}
@@ -1134,10 +1135,10 @@ export function TaskCreationWizard({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isCreating}>
+            <Button variant="outline" onClick={handleClose} disabled={isCreating} className="tap-target">
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={isCreating || !description.trim()}>
+            <Button onClick={handleCreate} disabled={isCreating || !description.trim()} className="tap-target h-11">
               {isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -42,6 +42,7 @@ import { GitLabMergeRequests } from './components/gitlab-merge-requests';
 import { Changelog } from './components/Changelog';
 import { Worktrees } from './components/Worktrees';
 import { AgentTools } from './components/AgentTools';
+import { ZenMode } from './components/ZenMode';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { RateLimitModal } from './components/RateLimitModal';
 import { SDKRateLimitModal } from './components/SDKRateLimitModal';
@@ -625,7 +626,27 @@ export function App() {
     <ViewStateProvider>
       <TooltipProvider>
         <ProactiveSwapListener />
-      <div className="flex h-screen bg-background">
+        {/* Zen Mode - fullscreen overlay when active */}
+        {activeView === 'zen' ? (
+          <ZenMode
+            onExit={() => setActiveView('kanban')}
+            onTaskCreated={(taskId) => {
+              // Load tasks and switch to kanban view
+              const currentProjectId = activeProjectId || selectedProjectId;
+              if (currentProjectId) {
+                loadTasks(currentProjectId);
+              }
+              // Find the created task and select it
+              const createdTask = tasks.find(t => t.id === taskId);
+              if (createdTask) {
+                setSelectedTask(createdTask);
+              }
+              // Switch to kanban view to see the task
+              setActiveView('kanban');
+            }}
+          />
+        ) : (
+        <div className="flex h-screen bg-background">
         {/* Sidebar */}
         <Sidebar
           onSettingsClick={() => setIsSettingsDialogOpen(true)}
@@ -756,6 +777,8 @@ export function App() {
             )}
           </main>
         </div>
+        </div>
+        )}
 
         {/* Task detail modal */}
         <TaskDetailModal
@@ -919,7 +942,6 @@ export function App() {
 
         {/* Global Download Indicator - shows Ollama model download progress */}
         <GlobalDownloadIndicator />
-      </div>
       </TooltipProvider>
     </ViewStateProvider>
   );

@@ -359,9 +359,9 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
             )}
 
             {/* Profile list */}
-            <div className="rounded-lg bg-muted/30 border border-border p-4">
+            <div className="rounded-xl bg-muted/30 border border-border p-4">
               {claudeProfiles.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border p-4 text-center mb-4">
+                <div className="rounded-xl border border-dashed border-border p-4 text-center mb-4">
                   <p className="text-sm text-muted-foreground">No accounts configured yet</p>
                 </div>
               ) : (
@@ -370,7 +370,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                     <div
                       key={profile.id}
                       className={cn(
-                        "rounded-lg border transition-colors",
+                        "rounded-xl border transition-colors",
                         profile.id === activeProfileId
                           ? "border-primary bg-primary/5"
                           : "border-border bg-background"
@@ -526,7 +526,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                       {/* Expanded token entry section */}
                       {expandedTokenProfileId === profile.id && (
                         <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
-                          <div className="bg-muted/30 rounded-lg p-3 mt-3 space-y-3">
+                          <div className="bg-muted/30 rounded-xl p-3 mt-3 space-y-3">
                             <div className="flex items-center justify-between">
                               <Label className="text-xs font-medium text-muted-foreground">
                                 Manual Token Entry

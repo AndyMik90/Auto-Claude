@@ -1,0 +1,113 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "postcss.config.cjs",
+    "css": "src/renderer/styles/globals.css",
+    "baseColor": "zinc",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "src/renderer/components",
+    "utils": "src/renderer/lib/utils",
+    "ui": "src/renderer/components/ui",
+    "lib": "src/renderer/lib",
+    "hooks": "src/renderer/hooks"
+  },
+  "iconLibrary": "lucide-react",
+  "libraries": [
+    {
+      "name": "@radix-ui/react-dialog",
+      "version": "^1.1.15",
+      "type": "components"
+    },
+    {
+      "name": "@radix-ui/react-dropdown-menu",
+      "version": "^2.1.16",
+      "type": "components"
+    },
+    {
+      "name": "@radix-ui/react-select",
+      "version": "^2.2.6",
+      "type": "components"
+    },
+    {
+      "name": "@radix-ui/react-slot",
+      "version": "^1.2.4",
+      "type": "utilities"
+    },
+    {
+      "name": "class-variance-authority",
+      "version": "^0.7.1",
+      "type": "utilities"
+    },
+    {
+      "name": "tailwind-merge",
+      "version": "^3.4.0",
+      "type": "utilities"
+    },
+    {
+      "name": "clsx",
+      "version": "^2.1.1",
+      "type": "utilities"
+    }
+  ],
+  "theme": {
+    "name": "apple-hig-liquid-glass",
+    "variants": {
+      "button": {
+        "default": {
+          "base": "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow active:scale-[0.97] transition-all duration-150",
+          "glass": "bg-primary/80 backdrop-blur-md text-primary-foreground border border-primary/20 shadow-lg hover:bg-primary/90 hover:shadow-xl active:scale-[0.97] transition-all duration-200"
+        },
+        "outline": {
+          "base": "border border-border bg-transparent hover:bg-accent hover:text-accent-foreground active:scale-[0.97] transition-all duration-150",
+          "glass": "border border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 hover:border-white/20 active:scale-[0.97] transition-all duration-200"
+        }
+      },
+      "card": {
+        "default": {
+          "base": "bg-card border border-border rounded-2xl",
+          "glass": "bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl"
+        }
+      },
+      "input": {
+        "default": {
+          "base": "bg-card border border-border rounded-xl",
+          "glass": "bg-card/60 backdrop-blur-md border border-border/50 rounded-xl"
+        }
+      }
+    },
+    "glassModifiers": {
+      "enabled": true,
+      "cssVariable": "--glass-opacity",
+      "blurAmount": "backdrop-blur-xl",
+      "borderOpacity": "border-white/10 dark:border-white/5"
+    },
+    "appleHIG": {
+      "tapTargetMin": "44px",
+      "gridUnit": "4px",
+      "borderRadius": {
+        "sm": "8px",
+        "md": "12px",
+        "lg": "14px",
+        "xl": "16px"
+      },
+      "motion": {
+        "duration": {
+          "instant": "100ms",
+          "quick": "150ms",
+          "standard": "200ms",
+          "deliberate": "300ms"
+        },
+        "easing": {
+          "apple": "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          "spring": "cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+        }
+      }
+    }
+  }
+}

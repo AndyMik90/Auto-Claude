@@ -15,6 +15,12 @@ import type { ColorThemeDefinition } from '../types/settings';
  */
 export const COLOR_THEMES: ColorThemeDefinition[] = [
   {
+    id: 'apple',
+    name: 'Apple Native',
+    description: 'Native macOS-inspired with refined blue accent',
+    previewColors: { bg: '#F5F5F7', accent: '#007AFF', darkBg: '#000000', darkAccent: '#0A84FF' }
+  },
+  {
     id: 'default',
     name: 'Default',
     description: 'Oscura-inspired with pale yellow accent',

@@ -29,6 +29,16 @@ import { cn } from '../lib/utils';
 import { persistTaskStatus, archiveTasks } from '../stores/task-store';
 import type { Task, TaskStatus } from '../../shared/types';
 
+/* Apple HIG-inspired Kanban Board component
+   Key principles:
+   - Card-based columns with subtle elevation
+   - Smooth drag interactions with visual feedback
+   - Proper spacing (12pt grid system)
+   - Clear visual hierarchy with status colors
+   - Rounded corners (16-20px) for modern appearance
+   - Empty states with friendly, helpful messaging
+*/
+
 interface KanbanBoardProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
@@ -49,37 +59,37 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   switch (status) {
     case 'backlog':
       return {
-        icon: <Inbox className="h-6 w-6 text-muted-foreground/50" />,
+        icon: <Inbox className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />,
         message: t('kanban.emptyBacklog'),
         subtext: t('kanban.emptyBacklogHint')
       };
     case 'in_progress':
       return {
-        icon: <Loader2 className="h-6 w-6 text-muted-foreground/50" />,
+        icon: <Loader2 className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />,
         message: t('kanban.emptyInProgress'),
         subtext: t('kanban.emptyInProgressHint')
       };
     case 'ai_review':
       return {
-        icon: <Eye className="h-6 w-6 text-muted-foreground/50" />,
+        icon: <Eye className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />,
         message: t('kanban.emptyAiReview'),
         subtext: t('kanban.emptyAiReviewHint')
       };
     case 'human_review':
       return {
-        icon: <Eye className="h-6 w-6 text-muted-foreground/50" />,
+        icon: <Eye className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />,
         message: t('kanban.emptyHumanReview'),
         subtext: t('kanban.emptyHumanReviewHint')
       };
     case 'done':
       return {
-        icon: <CheckCircle2 className="h-6 w-6 text-muted-foreground/50" />,
+        icon: <CheckCircle2 className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />,
         message: t('kanban.emptyDone'),
         subtext: t('kanban.emptyDoneHint')
       };
     default:
       return {
-        icon: <Inbox className="h-6 w-6 text-muted-foreground/50" />,
+        icon: <Inbox className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />,
         message: t('kanban.emptyDefault')
       };
   }
@@ -116,16 +126,20 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
     <div
       ref={setNodeRef}
       className={cn(
-        'flex w-72 shrink-0 flex-col rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200',
+        /* Apple-style column card */
+        'card-surface flex w-80 shrink-0 flex-col rounded-2xl border',
+        /* Smooth transitions with Apple easing */
+        'transition-all duration-200 ease-out',
         getColumnBorderColor(),
         'border-t-2',
-        isOver && 'drop-zone-highlight'
+        /* Drop zone feedback */
+        isOver && 'drop-zone-highlight scale-[1.02]'
       )}
     >
-      {/* Column header - enhanced styling */}
-      <div className="flex items-center justify-between p-4 border-b border-white/5">
+      {/* Column header - Apple-style */}
+      <div className="flex items-center justify-between p-5 border-b border-border/50">
         <div className="flex items-center gap-2.5">
-          <h2 className="font-semibold text-sm text-foreground">
+          <h2 className="font-semibold text-sm text-foreground tracking-tight">
             {TASK_STATUS_LABELS[status]}
           </h2>
           <span className="column-count-badge">
@@ -137,21 +151,21 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 hover:bg-primary/10 hover:text-primary transition-colors"
+              className="h-8 w-8 rounded-xl hover:bg-primary/10 hover:text-primary transition-all duration-150 ease-out"
               onClick={onAddClick}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
             </Button>
           )}
           {status === 'done' && onArchiveAll && tasks.length > 0 && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 hover:bg-muted-foreground/10 hover:text-muted-foreground transition-colors"
+              className="h-8 w-8 rounded-xl hover:bg-muted-foreground/10 hover:text-muted-foreground transition-all duration-150 ease-out"
               onClick={onArchiveAll}
               title={t('tooltips.archiveAllDone')}
             >
-              <Archive className="h-4 w-4" />
+              <Archive className="h-4 w-4" strokeWidth={2.5} />
             </Button>
           )}
         </div>
@@ -159,34 +173,34 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
 
       {/* Task list */}
       <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full px-3 pb-3 pt-2">
+        <ScrollArea className="h-full px-4 pb-4 pt-3">
           <SortableContext
             items={taskIds}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-3 min-h-[120px]">
+            <div className="space-y-2.5 min-h-[120px]">
               {tasks.length === 0 ? (
                 <div
                   className={cn(
-                    'empty-column-dropzone flex flex-col items-center justify-center py-6',
+                    'empty-column-dropzone flex flex-col items-center justify-center py-8 rounded-xl',
                     isOver && 'active'
                   )}
                 >
                   {isOver ? (
                     <>
-                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mb-2">
-                        <Plus className="h-4 w-4 text-primary" />
+                      <div className="h-10 w-10 rounded-2xl bg-primary/15 flex items-center justify-center mb-3">
+                        <Plus className="h-5 w-5 text-primary" strokeWidth={2.5} />
                       </div>
                       <span className="text-sm font-medium text-primary">{t('kanban.dropHere')}</span>
                     </>
                   ) : (
                     <>
                       {emptyState.icon}
-                      <span className="mt-2 text-sm font-medium text-muted-foreground/70">
+                      <span className="mt-3 text-sm font-medium text-muted-foreground/70">
                         {emptyState.message}
                       </span>
                       {emptyState.subtext && (
-                        <span className="mt-0.5 text-xs text-muted-foreground/50">
+                        <span className="mt-1 text-xs text-muted-foreground/50">
                           {emptyState.subtext}
                         </span>
                       )}
@@ -194,11 +208,12 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
                   )}
                 </div>
               ) : (
-                tasks.map((task) => (
+                tasks.map((task, index) => (
                   <SortableTaskCard
                     key={task.id}
                     task={task}
                     onClick={() => onTaskClick(task)}
+                    index={index}
                   />
                 ))
               )}
@@ -353,7 +368,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 gap-4 overflow-x-auto p-6">
+        <div className="flex flex-1 gap-6 overflow-x-auto p-6 max-w-[1280px] mx-auto">
           {TASK_STATUS_COLUMNS.map((status) => (
             <DroppableColumn
               key={status}
@@ -370,7 +385,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
         {/* Drag overlay - enhanced visual feedback */}
         <DragOverlay>
           {activeTask ? (
-            <div className="drag-overlay-card">
+            <div className="drag-overlay-card rounded-2xl">
               <TaskCard task={activeTask} onClick={() => {}} />
             </div>
           ) : null}

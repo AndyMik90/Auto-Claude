@@ -400,7 +400,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
         <div className="flex flex-1 overflow-hidden">
           {/* Terminal grid using resizable panels */}
           <div className={cn(
-            "flex-1 overflow-hidden p-2 transition-all duration-300 ease-out",
+            "flex-1 overflow-hidden p-2 transition-all duration-200 ease-out",
             fileExplorerOpen && "pr-0"
           )}>
             <PanelGroup direction="vertical" className="h-full">
@@ -411,7 +411,10 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
                       {row.map((terminal, colIndex) => (
                         <div key={terminal.id} className="contents">
                           <Panel id={terminal.id} order={colIndex} defaultSize={100 / row.length} minSize={20}>
-                            <div className="h-full p-1">
+                            <div
+                              className="h-full p-1 apple-reveal-stagger"
+                              style={{ animationDelay: `${(rowIndex * row.length + colIndex) * 50}ms` }}
+                            >
                               <Terminal
                                 id={terminal.id}
                                 cwd={terminal.cwd || projectPath}

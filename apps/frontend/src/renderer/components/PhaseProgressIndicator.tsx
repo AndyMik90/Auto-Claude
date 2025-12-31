@@ -93,9 +93,9 @@ export function PhaseProgressIndicator({
                 opacity: [1, 0.5, 1],
               }}
               transition={{
-                duration: 1,
+                duration: 0.3,
                 repeat: Infinity,
-                ease: 'easeInOut',
+                ease: 'easeOut',
               }}
             />
           )}
@@ -128,7 +128,7 @@ export function PhaseProgressIndicator({
               className="absolute inset-0 bg-warning/40"
               initial={{ opacity: 0 }}
               animate={{ opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{ duration: 0.3, repeat: Infinity, ease: 'easeOut' }}
             />
           ) : showSubtaskProgress ? (
             // Determinate progress for coding phase
@@ -148,9 +148,9 @@ export function PhaseProgressIndicator({
                 x: ['-100%', '400%'],
               }}
               transition={{
-                duration: 1.5,
+                duration: 0.3,
                 repeat: Infinity,
-                ease: 'easeInOut',
+                ease: 'easeOut',
               }}
             />
           ) : totalSubtasks > 0 ? (
@@ -270,7 +270,7 @@ function PhaseStepsIndicator({
               }
               transition={
                 state === 'active' && !isStuck
-                  ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
+                  ? { duration: 0.3, repeat: Infinity, ease: 'easeOut' }
                   : undefined
               }
             >

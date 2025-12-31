@@ -56,18 +56,16 @@ export function WelcomeScreen({
         {/* Action Buttons */}
         <div className="flex gap-4 justify-center mb-10">
           <Button
-            size="lg"
             onClick={onNewProject}
-            className="gap-2 px-6"
+            className="gap-2 px-6 h-11 tap-target"
           >
             <FolderPlus className="h-5 w-5" />
             {t('welcome:actions.newProject')}
           </Button>
           <Button
-            size="lg"
             variant="secondary"
             onClick={onOpenProject}
-            className="gap-2 px-6"
+            className="gap-2 px-6 h-11 tap-target"
           >
             <FolderOpen className="h-5 w-5" />
             {t('welcome:actions.openProject')}
@@ -76,7 +74,7 @@ export function WelcomeScreen({
 
         {/* Recent Projects Section */}
         {recentProjects.length > 0 && (
-          <Card className="border border-border bg-card/50 backdrop-blur-sm">
+          <Card className="rounded-xl border border-border bg-card/50 backdrop-blur-sm">
             <div className="p-4 pb-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Clock className="h-4 w-4" />
@@ -90,9 +88,9 @@ export function WelcomeScreen({
                   <button
                     key={project.id}
                     onClick={() => onSelectProject(project.id)}
-                    className="w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-accent/50 group"
+                    className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left tap-target transition-all duration-150 ease-out hover:bg-accent/50 group"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-accent-foreground shrink-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/20 text-accent-foreground shrink-0">
                       <Folder className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -114,7 +112,7 @@ export function WelcomeScreen({
                       <span className="text-xs text-muted-foreground">
                         {formatRelativeTime(project.updatedAt)}
                       </span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-150 ease-out" />
                     </div>
                   </button>
                 ))}

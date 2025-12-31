@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Monitor, ZoomIn, ZoomOut, RotateCcw, Check } from 'lucide-react';
+import { Monitor, ZoomIn, ZoomOut, RotateCcw, Check, Maximize } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
 import { SettingsSection } from './SettingsSection';
 import { useSettingsStore } from '../../stores/settings-store';
 import { UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT, UI_SCALE_STEP } from '../../../shared/constants';
@@ -238,6 +239,27 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>{UI_SCALE_MIN}%</span>
             <span>{UI_SCALE_MAX}%</span>
+          </div>
+        </div>
+
+        {/* Fullscreen by default */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Maximize className="h-4 w-4" />
+                Fullscreen by Default
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Open the app in fullscreen mode when it starts
+              </p>
+            </div>
+            <Switch
+              checked={settings.fullscreenByDefault || false}
+              onCheckedChange={(checked) =>
+                onSettingsChange({ ...settings, fullscreenByDefault: checked })
+              }
+            />
           </div>
         </div>
       </div>

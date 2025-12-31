@@ -30,7 +30,7 @@ function TipCard({ icon, title, description }: TipCardProps) {
     <Card className="border border-border bg-card/50">
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             {icon}
           </div>
           <div>

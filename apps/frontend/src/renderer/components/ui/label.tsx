@@ -2,6 +2,13 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
+/* Apple HIG-inspired label component
+   Key principles:
+   - Small text (13px) with medium weight for clarity
+   - Proper spacing from associated controls
+   - Clear disabled states
+   - Leading-none for tight line height with form controls
+*/
 const labelVariants = cva(
   'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
 );

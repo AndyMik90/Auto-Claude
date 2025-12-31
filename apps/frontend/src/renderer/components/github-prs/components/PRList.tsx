@@ -59,7 +59,7 @@ function PRStatusFlow({
 
   // Dot styles based on state
   const getDotStyle = (dotIndex: 0 | 1 | 2) => {
-    const baseClasses = 'h-2 w-2 rounded-full transition-all duration-300';
+    const baseClasses = 'h-2 w-2 rounded-full transition-all duration-200 ease-out';
 
     // Not started - all gray
     if (flowState === 'not_started') {
