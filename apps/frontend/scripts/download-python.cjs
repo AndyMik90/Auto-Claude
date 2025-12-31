@@ -46,6 +46,8 @@ const STRIP_PATTERNS = {
     '.pytest_cache',
     '.mypy_cache',
     '__pypackages__',
+    // Windows-specific bloat
+    'pythonwin',       // PyWin32 IDE - not needed (9MB)
   ],
   // File extensions to remove
   extensions: [
@@ -68,6 +70,7 @@ const STRIP_PATTERNS = {
     '.gitignore',
     '.gitattributes',
     '.editorconfig',
+    '.chm',      // Windows help files - not needed
   ],
   // Specific files to remove
   files: [
@@ -96,6 +99,12 @@ const STRIP_PATTERNS = {
     '.travis.yml',
     'conftest.py',
     'pytest.ini',
+  ],
+  // Specific paths within packages to remove (relative to package directory)
+  // Format: 'package_name/subpath' - removes the entire subpath
+  packagePaths: [
+    'googleapiclient/discovery_cache/documents',  // Cached Google API discovery docs (92MB!)
+    'claude_agent_sdk/_bundled',                  // Bundled Claude CLI (224MB!) - users have it installed separately
   ],
   // Packages that should NEVER be bundled (too large, specialized)
   // If these appear in dependencies, warn and skip
@@ -454,6 +463,23 @@ function stripSitePackages(sitePackagesDir) {
 
   const sizeBefore = getDirectorySize(sitePackagesDir);
   let removedCount = 0;
+
+  // First, remove specific package paths (e.g., googleapiclient/discovery_cache/documents)
+  if (STRIP_PATTERNS.packagePaths) {
+    for (const pkgPath of STRIP_PATTERNS.packagePaths) {
+      const fullPath = path.join(sitePackagesDir, pkgPath);
+      if (fs.existsSync(fullPath)) {
+        try {
+          const pathSize = getDirectorySize(fullPath);
+          fs.rmSync(fullPath, { recursive: true, force: true });
+          console.log(`[download-python] Removed ${pkgPath} (${formatBytes(pathSize)})`);
+          removedCount++;
+        } catch (err) {
+          console.warn(`[download-python] Failed to remove ${pkgPath}: ${err.message}`);
+        }
+      }
+    }
+  }
 
   function shouldRemoveDir(name) {
     return STRIP_PATTERNS.dirs.includes(name.toLowerCase());
