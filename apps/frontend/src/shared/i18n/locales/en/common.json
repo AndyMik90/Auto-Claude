@@ -1,4 +1,12 @@
 {
+  "projectTab": {
+    "settings": "Project settings",
+    "showArchived": "Show archived",
+    "hideArchived": "Hide archived",
+    "showArchivedTasks": "Show archived tasks",
+    "hideArchivedTasks": "Hide archived tasks",
+    "closeTab": "Close tab"
+  },
   "buttons": {
     "save": "Save",
     "cancel": "Cancel",

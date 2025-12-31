@@ -1,4 +1,12 @@
 {
+  "projectTab": {
+    "settings": "Paramètres du projet",
+    "showArchived": "Afficher archivés",
+    "hideArchived": "Masquer archivés",
+    "showArchivedTasks": "Afficher les tâches archivées",
+    "hideArchivedTasks": "Masquer les tâches archivées",
+    "closeTab": "Fermer l'onglet"
+  },
   "buttons": {
     "save": "Enregistrer",
     "cancel": "Annuler",
