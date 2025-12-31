@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { FolderOpen, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Label } from '../ui/label';
@@ -6,7 +5,50 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import type { ProjectEnvConfig } from '../../../shared/types';
 
-const path = window.require('path');
+// Browser-compatible path utilities
+const isAbsolutePath = (p: string): boolean => {
+  // Unix absolute path starts with /
+  // Windows absolute path starts with drive letter (C:\) or UNC path (\\)
+  return p.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(p) || p.startsWith('\\\\');
+};
+
+const joinPath = (...parts: string[]): string => {
+  // Simple path join that works in browser
+  return parts.join('/').replace(/\/+/g, '/');
+};
+
+const getRelativePath = (from: string, to: string): string => {
+  // Normalize paths
+  const fromParts = from.split(/[/\\]/).filter(Boolean);
+  const toParts = to.split(/[/\\]/).filter(Boolean);
+
+  // Find common base
+  let commonLength = 0;
+  const minLength = Math.min(fromParts.length, toParts.length);
+  for (let i = 0; i < minLength; i++) {
+    if (fromParts[i] === toParts[i]) {
+      commonLength = i + 1;
+    } else {
+      break;
+    }
+  }
+
+  // If no common base, paths are on different roots
+  if (commonLength === 0) {
+    return to; // Return absolute path
+  }
+
+  // Build relative path
+  const upCount = fromParts.length - commonLength;
+  const downParts = toParts.slice(commonLength);
+
+  if (upCount === 0 && downParts.length === 0) {
+    return '.';
+  }
+
+  const ups = Array(upCount).fill('..');
+  return [...ups, ...downParts].join('/');
+};
 
 interface WorktreeSettingsProps {
   envConfig: ProjectEnvConfig | null;
@@ -24,10 +66,10 @@ export function WorktreeSettings({
 
   // Resolve the actual path that will be used
   const resolvedPath = worktreePath
-    ? (path.isAbsolute(worktreePath)
+    ? (isAbsolutePath(worktreePath)
         ? worktreePath
-        : path.join(projectPath, worktreePath))
-    : path.join(projectPath, '.worktrees');
+        : joinPath(projectPath, worktreePath))
+    : joinPath(projectPath, '.worktrees');
 
   const handleBrowse = async () => {
     const result = await window.electronAPI.dialog.showOpenDialog({
@@ -39,7 +81,7 @@ export function WorktreeSettings({
     if (!result.canceled && result.filePaths.length > 0) {
       const selectedPath = result.filePaths[0];
       // Convert to relative path if inside project
-      const relativePath = path.relative(projectPath, selectedPath);
+      const relativePath = getRelativePath(projectPath, selectedPath);
       const finalPath = relativePath.startsWith('..')
         ? selectedPath // Absolute if outside project
         : relativePath; // Relative if inside project
