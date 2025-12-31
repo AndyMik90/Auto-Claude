@@ -325,6 +325,18 @@
       "description": "Sélectionnez un projet dans la barre latérale pour configurer ses paramètres."
     }
   },
+  "morph": {
+    "title": "Morph Fast Apply",
+    "description": "Application de code rapide par IA",
+    "info": "Morph Fast Apply utilise l'IA pour appliquer intelligemment les modifications de code. Lorsqu'il est activé, il sera utilisé à la place des outils Edit/Write par défaut pour des modifications de code plus rapides et plus précises.",
+    "learnMore": "En savoir plus sur Morph",
+    "enableLabel": "Activer Morph Fast Apply",
+    "enableDescription": "Utiliser Morph pour l'application de code par IA au lieu des outils par défaut",
+    "apiKeyLabel": "Clé API Morph",
+    "apiKeyDescription": "Entrez votre clé API Morph pour activer le service",
+    "apiKeyPlaceholder": "morph_...",
+    "noApiKeyWarning": "Morph est activé mais aucune clé API n'est configurée. Le système utilisera les outils d'application par défaut jusqu'à ce qu'une clé API valide soit fournie."
+  },
   "mcp": {
     "title": "Aperçu des serveurs MCP",
     "titleWithProject": "Aperçu des serveurs MCP pour {{projectName}}",
