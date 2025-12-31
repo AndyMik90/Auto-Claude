@@ -98,5 +98,18 @@
       "description": "Définir le nombre maximum de tâches pouvant s'exécuter en parallèle",
       "save": "Enregistrer les paramètres"
     }
+  },
+  "files": {
+    "title": "Fichiers",
+    "tab": "Fichiers",
+    "noSpecPath": "Aucun fichier de spécification disponible",
+    "noFiles": "Aucun fichier trouvé",
+    "loading": "Chargement des fichiers...",
+    "loadingContent": "Chargement du contenu...",
+    "errorLoading": "Échec du chargement des fichiers",
+    "errorLoadingContent": "Échec du chargement du contenu du fichier",
+    "retry": "Réessayer",
+    "selectFile": "Sélectionnez un fichier pour voir son contenu",
+    "openInIDE": "Ouvrir dans l'IDE"
   }
 }

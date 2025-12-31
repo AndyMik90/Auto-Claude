@@ -22,12 +22,14 @@ import { registerContextHandlers } from './context-handlers';
 import { registerEnvHandlers } from './env-handlers';
 import { registerLinearHandlers } from './linear-handlers';
 import { registerGithubHandlers } from './github-handlers';
+import { registerGitlabHandlers } from './gitlab-handlers';
 import { registerAutobuildSourceHandlers } from './autobuild-source-handlers';
 import { registerIdeationHandlers } from './ideation-handlers';
 import { registerChangelogHandlers } from './changelog-handlers';
 import { registerInsightsHandlers } from './insights-handlers';
 import { registerMemoryHandlers } from './memory-handlers';
 import { registerAppUpdateHandlers } from './app-update-handlers';
+import { registerDebugHandlers } from './debug-handlers';
 import { notificationService } from '../notification-service';
 
 /**
@@ -80,6 +82,9 @@ export function setupIpcHandlers(
   // GitHub integration handlers
   registerGithubHandlers(agentManager, getMainWindow);
 
+  // GitLab integration handlers
+  registerGitlabHandlers(agentManager, getMainWindow);
+
   // Auto-build source update handlers
   registerAutobuildSourceHandlers(getMainWindow);
 
@@ -98,6 +103,9 @@ export function setupIpcHandlers(
   // App auto-update handlers
   registerAppUpdateHandlers();
 
+  // Debug handlers (logs, debug info, etc.)
+  registerDebugHandlers();
+
   console.warn('[IPC] All handler modules registered successfully');
 }
 
@@ -114,10 +122,12 @@ export {
   registerEnvHandlers,
   registerLinearHandlers,
   registerGithubHandlers,
+  registerGitlabHandlers,
   registerAutobuildSourceHandlers,
   registerIdeationHandlers,
   registerChangelogHandlers,
   registerInsightsHandlers,
   registerMemoryHandlers,
-  registerAppUpdateHandlers
+  registerAppUpdateHandlers,
+  registerDebugHandlers
 };

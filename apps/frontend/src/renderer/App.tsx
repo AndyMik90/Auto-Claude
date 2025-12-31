@@ -41,7 +41,9 @@ import { Context } from './components/Context';
 import { Ideation } from './components/Ideation';
 import { Insights } from './components/Insights';
 import { GitHubIssues } from './components/GitHubIssues';
+import { GitLabIssues } from './components/GitLabIssues';
 import { GitHubPRs } from './components/github-prs';
+import { GitLabMergeRequests } from './components/gitlab-merge-requests';
 import { Changelog } from './components/Changelog';
 import { Worktrees } from './components/Worktrees';
 import { AgentTools } from './components/AgentTools';
@@ -390,11 +392,12 @@ export function App() {
       const updatedTask = tasks.find(
         (t) => t.id === selectedTask.id || t.specId === selectedTask.specId
       );
-      if (updatedTask) {
+      if (updatedTask && updatedTask !== selectedTask) {
         setSelectedTask(updatedTask);
       }
     }
-  }, [tasks, selectedTask?.id, selectedTask?.specId, selectedTask]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally omit selectedTask object to prevent infinite re-render loop
+  }, [tasks, selectedTask?.id, selectedTask?.specId]);
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -700,10 +703,28 @@ export function App() {
                     onNavigateToTask={handleGoToTask}
                   />
                 )}
+                {activeView === 'gitlab-issues' && (activeProjectId || selectedProjectId) && (
+                  <GitLabIssues
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('gitlab');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                    onNavigateToTask={handleGoToTask}
+                  />
+                )}
                 {activeView === 'github-prs' && (activeProjectId || selectedProjectId) && (
                   <GitHubPRs
                     onOpenSettings={() => {
                       setSettingsInitialProjectSection('github');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                  />
+                )}
+                {activeView === 'gitlab-merge-requests' && (activeProjectId || selectedProjectId) && (
+                  <GitLabMergeRequests
+                    projectId={activeProjectId || selectedProjectId!}
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('gitlab');
                       setIsSettingsDialogOpen(true);
                     }}
                   />

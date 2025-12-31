@@ -977,6 +977,20 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
       }
     }
 
+    // Special handling for Windows batch files (.cmd, .bat)
+    // execFile doesn't search PATH, so we need shell: true for batch files
+    if (platform === 'win32' && (command.endsWith('.cmd') || command.endsWith('.bat'))) {
+      return new Promise((resolve) => {
+        const child = spawn(command, [dirPath], {
+          shell: true,
+          detached: true,
+          stdio: 'ignore'
+        });
+        child.unref();
+        resolve({ success: true });
+      });
+    }
+
     // Use command line tool with execFileAsync
     await execFileAsync(command, [dirPath]);
     return { success: true };
@@ -1563,9 +1577,8 @@ export function registerWorktreeHandlers(
                     try {
                       // Check if current branch contains all commits from spec branch
                       // git merge-base --is-ancestor returns exit code 0 if true, 1 if false
-                      execFileSync(
-                        getToolPath('git'),
-                        ['merge-base', '--is-ancestor', specBranch, 'HEAD'],
+                      execSync(
+                        `git merge-base --is-ancestor ${specBranch} HEAD`,
                         { cwd: project.path, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
                       );
                       // If we reach here, the command succeeded (exit code 0) - branch is merged

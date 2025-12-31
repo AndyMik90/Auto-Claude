@@ -40,6 +40,10 @@
     "notifications": {
       "title": "Notifications",
       "description": "Préférences d'alertes"
+    },
+    "debug": {
+      "title": "Debug & Logs",
+      "description": "Outils de dépannage"
     }
   },
   "language": {
@@ -185,15 +189,31 @@
     },
     "linear": {
       "title": "Linear",
-      "description": "Intégration Linear"
+      "description": "Intégration Linear",
+      "integrationTitle": "Intégration Linear",
+      "integrationDescription": "Se connecter à Linear pour le suivi des issues et l'import de tâches",
+      "syncDescription": "Synchroniser avec Linear pour le suivi des issues"
     },
     "github": {
       "title": "GitHub",
-      "description": "Synchronisation issues GitHub"
+      "description": "Synchronisation issues GitHub",
+      "integrationTitle": "Intégration GitHub",
+      "integrationDescription": "Se connecter à GitHub pour le suivi des issues",
+      "syncDescription": "Synchroniser avec GitHub Issues"
+    },
+    "gitlab": {
+      "title": "GitLab",
+      "description": "Synchronisation issues GitLab",
+      "integrationTitle": "Intégration GitLab",
+      "integrationDescription": "Se connecter à GitLab pour le suivi des issues",
+      "syncDescription": "Synchroniser avec GitLab Issues"
     },
     "memory": {
       "title": "Mémoire",
-      "description": "Backend mémoire Graphiti"
+      "description": "Backend mémoire Graphiti",
+      "integrationTitle": "Mémoire",
+      "integrationDescription": "Configurer la mémoire persistante inter-sessions pour les agents",
+      "syncDescription": "Configurer la mémoire persistante"
     }
   },
   "agentProfile": {
@@ -284,5 +304,19 @@
     "apiKeysInfo": "Les clés définies ici sont utilisées par défaut. Les projets individuels peuvent les remplacer dans leurs paramètres.",
     "openaiKey": "Clé API OpenAI",
     "openaiKeyDescription": "Requise pour le backend mémoire Graphiti (embeddings)"
+  },
+  "debug": {
+    "title": "Debug & Logs",
+    "description": "Accédez aux logs et informations de débogage pour le dépannage",
+    "openLogsFolder": "Ouvrir le dossier des logs",
+    "copyDebugInfo": "Copier les infos de débogage",
+    "copied": "Copié !",
+    "loadInfo": "Charger les infos de débogage",
+    "systemInfo": "Informations système",
+    "logsLocation": "Emplacement des logs",
+    "recentErrors": "Erreurs récentes",
+    "noRecentErrors": "Aucune erreur récente",
+    "helpTitle": "Signaler des problèmes",
+    "helpText": "Lors du signalement de bugs, cliquez sur \"Copier les infos de débogage\" pour obtenir les informations système et les erreurs récentes qui nous aident à diagnostiquer le problème."
   }
 }

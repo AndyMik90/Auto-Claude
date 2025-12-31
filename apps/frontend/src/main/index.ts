@@ -1,6 +1,6 @@
 import { app, BrowserWindow, shell, nativeImage } from 'electron';
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { accessSync, readFileSync, writeFileSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { setupIpcHandlers } from './ipc-setup';
 import { AgentManager } from './agent';
@@ -11,7 +11,11 @@ import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handle
 import { initializeAppUpdater } from './app-updater';
 import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
+import { setupErrorLogging } from './app-logger';
 import type { AppSettings } from '../shared/types';
+
+// Setup error logging early (captures uncaught exceptions)
+setupErrorLogging();
 
 /**
  * Load app settings synchronously (for use during startup).
@@ -140,10 +144,19 @@ app.whenReady().then(() => {
     const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
 
     // Validate and migrate autoBuildPath - must contain runners/spec_runner.py
+    // Uses EAFP pattern (try/catch with accessSync) instead of existsSync to avoid TOCTOU race conditions
     let validAutoBuildPath = settings.autoBuildPath;
     if (validAutoBuildPath) {
       const specRunnerPath = join(validAutoBuildPath, 'runners', 'spec_runner.py');
-      if (!existsSync(specRunnerPath)) {
+      let specRunnerExists = false;
+      try {
+        accessSync(specRunnerPath);
+        specRunnerExists = true;
+      } catch {
+        // File doesn't exist or isn't accessible
+      }
+
+      if (!specRunnerExists) {
         // Migration: Try to fix stale paths from old project structure
         // Old structure: /path/to/project/auto-claude
         // New structure: /path/to/project/apps/backend
@@ -153,7 +166,15 @@ app.whenReady().then(() => {
           const correctedPath = join(basePath, 'apps', 'backend');
           const correctedSpecRunnerPath = join(correctedPath, 'runners', 'spec_runner.py');
 
-          if (existsSync(correctedSpecRunnerPath)) {
+          let correctedPathExists = false;
+          try {
+            accessSync(correctedSpecRunnerPath);
+            correctedPathExists = true;
+          } catch {
+            // Corrected path doesn't exist
+          }
+
+          if (correctedPathExists) {
             console.log('[main] Migrating autoBuildPath from old structure:', validAutoBuildPath, '->', correctedPath);
             settings.autoBuildPath = correctedPath;
             validAutoBuildPath = correctedPath;
@@ -274,11 +295,5 @@ app.on('before-quit', async () => {
   }
 });
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
-});
-
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
-});
+// Note: Uncaught exceptions and unhandled rejections are now
+// logged by setupErrorLogging() in app-logger.ts

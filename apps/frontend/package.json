@@ -21,7 +21,7 @@
   "scripts": {
     "postinstall": "node scripts/postinstall.cjs",
     "dev": "electron-vite dev",
-    "dev:debug": "DEBUG=true electron-vite dev",
+    "dev:debug": "cross-env DEBUG=true electron-vite dev",
     "dev:mcp": "electron-vite dev -- --remote-debugging-port=9222",
     "build": "electron-vite build",
     "start": "electron .",
@@ -35,6 +35,7 @@
     "package:mac": "npm run python:download && electron-vite build && electron-builder --mac --publish never",
     "package:win": "npm run python:download && electron-vite build && electron-builder --win --publish never",
     "package:linux": "npm run python:download && electron-vite build && electron-builder --linux --publish never",
+    "package:flatpak": "npm run python:download && electron-vite build && electron-builder --linux flatpak --publish never",
     "start:packaged:mac": "open dist/mac-arm64/Auto-Claude.app || open dist/mac/Auto-Claude.app",
     "start:packaged:win": "start \"\" \"dist\\win-unpacked\\Auto-Claude.exe\"",
     "start:packaged:linux": "./dist/linux-unpacked/auto-claude",
@@ -76,6 +77,7 @@
     "chokidar": "^5.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
     "i18next": "^25.7.3",
     "lucide-react": "^0.560.0",
@@ -105,6 +107,7 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.22",
+    "cross-env": "^10.1.0",
     "electron": "^39.2.7",
     "electron-builder": "^26.0.12",
     "electron-vite": "^5.0.0",
@@ -204,9 +207,26 @@
       "icon": "resources/icon.png",
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "flatpak"
       ],
       "category": "Development"
+    },
+    "flatpak": {
+      "runtime": "org.freedesktop.Platform",
+      "runtimeVersion": "25.08",
+      "sdk": "org.freedesktop.Sdk",
+      "base": "org.electronjs.Electron2.BaseApp",
+      "baseVersion": "25.08",
+      "finishArgs": [
+        "--socket=wayland",
+        "--socket=x11",
+        "--share=ipc",
+        "--share=network",
+        "--device=dri",
+        "--filesystem=home",
+        "--talk-name=org.freedesktop.Notifications"
+      ]
     }
   },
   "lint-staged": {
