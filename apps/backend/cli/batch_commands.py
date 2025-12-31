@@ -184,8 +184,10 @@ def handle_batch_cleanup_command(project_dir: str, dry_run: bool = True) -> bool
     Returns:
         True if successful
     """
+    from core.config import get_worktree_base_path
+
     specs_dir = Path(project_dir) / ".auto-claude" / "specs"
-    worktree_base_path = os.getenv("WORKTREE_BASE_PATH", ".worktrees")
+    worktree_base_path = get_worktree_base_path(Path(project_dir))
     worktrees_dir = Path(project_dir) / worktree_base_path
 
     if not specs_dir.exists():

@@ -214,6 +214,20 @@
       "integrationTitle": "Memory",
       "integrationDescription": "Configure persistent cross-session memory for agents",
       "syncDescription": "Configure persistent memory"
+    },
+    "worktree": {
+      "title": "Worktree Location",
+      "description": "Worktrees are isolated Git branches where Auto Claude builds features safely.",
+      "defaultInfo": "Default: <1>.worktrees/</1> in your project root",
+      "basePathLabel": "Worktree Base Path",
+      "basePathPlaceholder": ".worktrees (default)",
+      "selectLocation": "Select Worktree Location",
+      "pathTypeDescription": "Supports relative paths (e.g., <1>worktrees</1>) or absolute paths (e.g., <2>/tmp/worktrees</2>)",
+      "resolvedPath": "Resolved Path:",
+      "commonUseCases": "Common Use Cases:",
+      "externalDrive": "External drive: <1>/Volumes/FastSSD/worktrees</1>",
+      "tempDirectory": "Temp directory: <1>/tmp/my-project-worktrees</1>",
+      "sharedBuilds": "Shared builds: <1>../shared-worktrees</1>"
     }
   },
   "agentProfile": {

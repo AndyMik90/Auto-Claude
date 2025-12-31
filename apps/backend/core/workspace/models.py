@@ -250,7 +250,9 @@ class SpecNumberLock:
         max_number = max(max_number, self._scan_specs_dir(main_specs_dir))
 
         # 2. Scan all worktree specs
-        worktree_base_path = os.getenv("WORKTREE_BASE_PATH", ".worktrees")
+        from core.config import get_worktree_base_path
+
+        worktree_base_path = get_worktree_base_path(self.project_dir)
         worktrees_dir = self.project_dir / worktree_base_path
         if worktrees_dir.exists():
             for worktree in worktrees_dir.iterdir():

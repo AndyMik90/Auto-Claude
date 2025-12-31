@@ -82,7 +82,9 @@ def find_spec(project_dir: Path, spec_identifier: str) -> Path | None:
                     return spec_folder
 
     # Check worktree specs (for merge-preview, merge, review, discard operations)
-    worktree_base_path = os.getenv("WORKTREE_BASE_PATH", ".worktrees")
+    from core.config import get_worktree_base_path
+
+    worktree_base_path = get_worktree_base_path(project_dir)
     worktree_base = project_dir / worktree_base_path
     if worktree_base.exists():
         # Try exact match in worktree

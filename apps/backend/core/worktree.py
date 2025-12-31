@@ -53,11 +53,13 @@ class WorktreeManager:
     """
 
     def __init__(self, project_dir: Path, base_branch: str | None = None):
+        from core.config import get_worktree_base_path
+
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
 
-        # Use custom worktree path from environment variable, default to .worktrees
-        worktree_base_path = os.getenv("WORKTREE_BASE_PATH", ".worktrees")
+        # Use custom worktree path from environment variable with validation
+        worktree_base_path = get_worktree_base_path(project_dir)
         self.worktrees_dir = project_dir / worktree_base_path
 
         self._merge_lock = asyncio.Lock()

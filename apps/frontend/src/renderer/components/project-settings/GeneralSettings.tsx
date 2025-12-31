@@ -158,7 +158,7 @@ export function GeneralSettings({
 
           {/* Worktree Location */}
           <section className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Worktree Location</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t('projectSections.worktree.title')}</h3>
             <WorktreeSettings
               envConfig={envConfig}
               updateEnvConfig={updateEnvConfig}

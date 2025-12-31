@@ -1,9 +1,10 @@
 import { FolderOpen, Info } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import type { ProjectEnvConfig } from '../../../shared/types';
+import { DEFAULT_WORKTREE_PATH } from '../../../shared/constants';
 
 // Browser-compatible path utilities
 const isAbsolutePath = (p: string): boolean => {
@@ -69,13 +70,13 @@ export function WorktreeSettings({
     ? (isAbsolutePath(worktreePath)
         ? worktreePath
         : joinPath(projectPath, worktreePath))
-    : joinPath(projectPath, '.worktrees');
+    : joinPath(projectPath, DEFAULT_WORKTREE_PATH);
 
   const handleBrowse = async () => {
     const result = await window.electronAPI.dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory'],
       defaultPath: projectPath,
-      title: 'Select Worktree Location'
+      title: t('settings:worktree.selectLocation')
     });
 
     if (!result.canceled && result.filePaths.length > 0) {
@@ -95,17 +96,21 @@ export function WorktreeSettings({
       <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/50 p-3">
         <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
         <div className="text-xs text-muted-foreground space-y-1">
-          <p>Worktrees are isolated Git branches where Auto Claude builds features safely.</p>
-          <p className="font-medium">Default: <code>.worktrees/</code> in your project root</p>
+          <p>{t('settings:worktree.description')}</p>
+          <p className="font-medium">
+            <Trans i18nKey="settings:worktree.defaultInfo">
+              Default: <code>.worktrees/</code> in your project root
+            </Trans>
+          </p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="worktreePath">Worktree Base Path</Label>
+        <Label htmlFor="worktreePath">{t('settings:worktree.basePathLabel')}</Label>
         <div className="flex gap-2">
           <Input
             id="worktreePath"
-            placeholder=".worktrees (default)"
+            placeholder={t('settings:worktree.basePathPlaceholder')}
             value={worktreePath}
             onChange={(e) => updateEnvConfig({ worktreePath: e.target.value })}
           />
@@ -119,21 +124,35 @@ export function WorktreeSettings({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Supports relative paths (e.g., <code>worktrees</code>) or absolute paths (e.g., <code>/tmp/worktrees</code>)
+          <Trans i18nKey="settings:worktree.pathTypeDescription">
+            Supports relative paths (e.g., <code>worktrees</code>) or absolute paths (e.g., <code>/tmp/worktrees</code>)
+          </Trans>
         </p>
       </div>
 
       <div className="rounded-lg border border-border bg-muted/50 p-3">
-        <p className="text-xs font-medium text-foreground">Resolved Path:</p>
+        <p className="text-xs font-medium text-foreground">{t('settings:worktree.resolvedPath')}</p>
         <code className="text-xs text-muted-foreground break-all">{resolvedPath}</code>
       </div>
 
       <div className="text-xs text-muted-foreground space-y-1">
-        <p className="font-medium">Common Use Cases:</p>
+        <p className="font-medium">{t('settings:worktree.commonUseCases')}</p>
         <ul className="list-disc list-inside space-y-0.5 ml-2">
-          <li>External drive: <code>/Volumes/FastSSD/worktrees</code></li>
-          <li>Temp directory: <code>/tmp/my-project-worktrees</code></li>
-          <li>Shared builds: <code>../shared-worktrees</code></li>
+          <li>
+            <Trans i18nKey="settings:worktree.externalDrive">
+              External drive: <code>/Volumes/FastSSD/worktrees</code>
+            </Trans>
+          </li>
+          <li>
+            <Trans i18nKey="settings:worktree.tempDirectory">
+              Temp directory: <code>/tmp/my-project-worktrees</code>
+            </Trans>
+          </li>
+          <li>
+            <Trans i18nKey="settings:worktree.sharedBuilds">
+              Shared builds: <code>../shared-worktrees</code>
+            </Trans>
+          </li>
         </ul>
       </div>
     </section>

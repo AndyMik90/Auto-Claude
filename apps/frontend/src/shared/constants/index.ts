@@ -32,3 +32,6 @@ export * from './github';
 
 // Configuration and paths
 export * from './config';
+
+// Worktree configuration constants
+export * from './worktree';
