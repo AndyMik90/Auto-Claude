@@ -10,6 +10,69 @@ import { getGitHubConfig, githubFetch, normalizeRepoReference } from './utils';
 import type { GitHubAPIRepository } from './types';
 
 /**
+ * Result of fork detection via GitHub API
+ */
+export interface ForkStatus {
+  isFork: boolean;
+  parentRepo?: string;  // owner/repo format
+  parentUrl?: string;   // full GitHub URL
+}
+
+/**
+ * GitHub API response type for repository with fork information
+ */
+interface GitHubRepoWithForkInfo {
+  full_name: string;
+  description?: string;
+  fork: boolean;
+  parent?: {
+    full_name: string;
+    html_url: string;
+  };
+}
+
+/**
+ * Detect if a repository is a fork via the GitHub API
+ *
+ * Queries the GitHub API /repos/{owner}/{repo} endpoint and checks the `fork`
+ * boolean field. If the repository is a fork, extracts the parent repository
+ * information from the `parent` object in the response.
+ *
+ * @param token - GitHub API token for authentication
+ * @param repo - Repository in owner/repo format
+ * @returns ForkStatus object with isFork boolean and optional parent info
+ */
+export async function detectForkStatus(
+  token: string,
+  repo: string
+): Promise<ForkStatus> {
+  const normalizedRepo = normalizeRepoReference(repo);
+  if (!normalizedRepo) {
+    return { isFork: false };
+  }
+
+  const repoData = await githubFetch(
+    token,
+    `/repos/${normalizedRepo}`
+  ) as GitHubRepoWithForkInfo;
+
+  // Check if repository is a fork
+  if (!repoData.fork) {
+    return { isFork: false };
+  }
+
+  // If it's a fork, extract parent repository info
+  const result: ForkStatus = { isFork: true };
+
+  if (repoData.parent) {
+    result.parentRepo = repoData.parent.full_name;
+    result.parentUrl = repoData.parent.html_url;
+  }
+
+  return result;
+}
+
+/**
  * Check GitHub connection status
  */
 export function registerCheckConnection(): void {
@@ -59,15 +122,27 @@ export function registerCheckConnection(): void {
 
         const openCount = Array.isArray(issuesData) ? issuesData.length : 0;
 
+        // Build response data with fork status
+        const data: GitHubSyncStatus = {
+          connected: true,
+          repoFullName: repoData.full_name,
+          repoDescription: repoData.description,
+          issueCount: openCount,
+          lastSyncedAt: new Date().toISOString(),
+          isFork: config.isFork ?? false
+        };
+
+        // Add parent repository info if available
+        if (config.isFork && config.parentRepo) {
+          data.parentRepository = {
+            fullName: config.parentRepo,
+            url: `https://github.com/${config.parentRepo}`
+          };
+        }
+
         return {
           success: true,
-          data: {
-            connected: true,
-            repoFullName: repoData.full_name,
-            repoDescription: repoData.description,
-            issueCount: openCount,
-            lastSyncedAt: new Date().toISOString()
-          }
+          data
         };
       } catch (error) {
         return {
@@ -76,6 +151,46 @@ export function registerCheckConnection(): void {
             connected: false,
             error: error instanceof Error ? error.message : 'Failed to connect to GitHub'
           }
+        };
+      }
+    }
+  );
+}
+
+/**
+ * Detect if a repository is a fork via the GitHub API
+ * IPC handler for github:detectFork channel
+ */
+export function registerDetectFork(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_DETECT_FORK,
+    async (_, projectId: string): Promise<IPCResult<ForkStatus>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      const config = getGitHubConfig(project);
+      if (!config) {
+        return { success: false, error: 'No GitHub token or repository configured' };
+      }
+
+      try {
+        // Normalize repo reference (handles full URLs, git URLs, etc.)
+        const normalizedRepo = normalizeRepoReference(config.repo);
+        if (!normalizedRepo) {
+          return {
+            success: false,
+            error: 'Invalid repository format. Use owner/repo or GitHub URL.'
+          };
+        }
+
+        const forkStatus = await detectForkStatus(config.token, normalizedRepo);
+        return { success: true, data: forkStatus };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to detect fork status'
         };
       }
     }
@@ -137,5 +252,6 @@ export function registerGetRepositories(): void {
  */
 export function registerRepositoryHandlers(): void {
   registerCheckConnection();
+  registerDetectFork();
   registerGetRepositories();
 }

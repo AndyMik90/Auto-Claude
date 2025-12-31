@@ -200,6 +200,7 @@ export const IPC_CHANNELS = {
   GITHUB_GET_USER: 'github:getUser',
   GITHUB_LIST_USER_REPOS: 'github:listUserRepos',
   GITHUB_DETECT_REPO: 'github:detectRepo',
+  GITHUB_DETECT_FORK: 'github:detectFork',
   GITHUB_GET_BRANCHES: 'github:getBranches',
   GITHUB_CREATE_REPO: 'github:createRepo',
   GITHUB_ADD_REMOTE: 'github:addRemote',

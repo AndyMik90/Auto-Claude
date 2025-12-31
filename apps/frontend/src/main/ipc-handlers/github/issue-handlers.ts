@@ -6,7 +6,7 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult, GitHubIssue } from '../../../shared/types';
 import { projectStore } from '../../project-store';
-import { getGitHubConfig, githubFetch, normalizeRepoReference } from './utils';
+import { getGitHubConfig, githubFetch, normalizeRepoReference, getTargetRepo } from './utils';
 import type { GitHubAPIIssue, GitHubAPIComment } from './types';
 
 /**
@@ -57,7 +57,9 @@ export function registerGetIssues(): void {
       }
 
       try {
-        const normalizedRepo = normalizeRepoReference(config.repo);
+        // Use getTargetRepo to route to parent repo for forks
+        const targetRepo = getTargetRepo(config, 'issues');
+        const normalizedRepo = normalizeRepoReference(targetRepo);
         if (!normalizedRepo) {
           return {
             success: false,
@@ -114,7 +116,9 @@ export function registerGetIssue(): void {
       }
 
       try {
-        const normalizedRepo = normalizeRepoReference(config.repo);
+        // Use getTargetRepo to route to parent repo for forks
+        const targetRepo = getTargetRepo(config, 'issues');
+        const normalizedRepo = normalizeRepoReference(targetRepo);
         if (!normalizedRepo) {
           return {
             success: false,
@@ -158,7 +162,9 @@ export function registerGetIssueComments(): void {
       }
 
       try {
-        const normalizedRepo = normalizeRepoReference(config.repo);
+        // Use getTargetRepo to route to parent repo for forks
+        const targetRepo = getTargetRepo(config, 'issues');
+        const normalizedRepo = normalizeRepoReference(targetRepo);
         if (!normalizedRepo) {
           return {
             success: false,
