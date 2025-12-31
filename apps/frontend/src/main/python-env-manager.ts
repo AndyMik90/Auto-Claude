@@ -181,6 +181,147 @@ if sys.version_info >= (3, 12):
   }
 
   /**
+   * Validate both bundled and venv Python environments.
+   * Calls the backend environment_validator.py to check that both interpreters
+   * have all required dependencies installed. This ensures features like
+   * Insights, Roadmap, and Ideation don't fail with "Process exited with code 1".
+   *
+   * @returns Object with validation results for both environments
+   */
+  async validateBothEnvironments(): Promise<{
+    success: boolean;
+    bundled: { success: boolean; errors: string[] } | null;
+    venv: { success: boolean; errors: string[] } | null;
+    summary: string;
+  }> {
+    console.log('[PythonEnvManager] Validating both Python environments');
+
+    // Find a Python interpreter to run the validator
+    const python = this.pythonPath || this.findSystemPython();
+    if (!python) {
+      return {
+        success: false,
+        bundled: null,
+        venv: null,
+        summary: 'No Python interpreter available to run validation'
+      };
+    }
+
+    // Locate the environment_validator.py script
+    const validatorPath = this.autoBuildSourcePath
+      ? path.join(this.autoBuildSourcePath, 'services', 'environment_validator.py')
+      : null;
+
+    if (!validatorPath || !existsSync(validatorPath)) {
+      // Fallback: try to find it in resources for packaged apps
+      const resourcesPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'auto-claude', 'services', 'environment_validator.py')
+        : null;
+
+      if (!resourcesPath || !existsSync(resourcesPath)) {
+        console.log('[PythonEnvManager] environment_validator.py not found, skipping dual validation');
+        return {
+          success: true, // Don't block if validator not found
+          bundled: null,
+          venv: null,
+          summary: 'Validator script not found (skipping dual environment check)'
+        };
+      }
+
+      // Use the resources path
+      return this._runEnvironmentValidator(python, resourcesPath);
+    }
+
+    return this._runEnvironmentValidator(python, validatorPath);
+  }
+
+  /**
+   * Internal method to run the environment validator script.
+   * @param pythonPath Path to Python interpreter
+   * @param validatorPath Path to environment_validator.py
+   */
+  private async _runEnvironmentValidator(
+    pythonPath: string,
+    validatorPath: string
+  ): Promise<{
+    success: boolean;
+    bundled: { success: boolean; errors: string[] } | null;
+    venv: { success: boolean; errors: string[] } | null;
+    summary: string;
+  }> {
+    return new Promise((resolve) => {
+      try {
+        // Run with --check-bundled --check-venv --json for structured output
+        const result = execSync(
+          `"${pythonPath}" "${validatorPath}" --check-bundled --check-venv --json`,
+          {
+            stdio: 'pipe',
+            timeout: 60000, // 60 second timeout for validation
+            encoding: 'utf-8'
+          }
+        );
+
+        // Parse JSON output
+        const output = JSON.parse(result.trim());
+
+        console.log('[PythonEnvManager] Dual environment validation result:', output.success ? 'OK' : 'FAILED');
+
+        if (output.bundled) {
+          console.log('[PythonEnvManager] Bundled Python:', output.bundled.success ? 'OK' : 'FAILED');
+        }
+        if (output.venv) {
+          console.log('[PythonEnvManager] Venv Python:', output.venv.success ? 'OK' : 'FAILED');
+        }
+
+        resolve({
+          success: output.success,
+          bundled: output.bundled
+            ? { success: output.bundled.success, errors: output.bundled.errors || [] }
+            : null,
+          venv: output.venv
+            ? { success: output.venv.success, errors: output.venv.errors || [] }
+            : null,
+          summary: output.summary || ''
+        });
+      } catch (error) {
+        // Handle exec errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[PythonEnvManager] Failed to run environment validator:', errorMessage);
+
+        // If the command failed but returned JSON (exit code 1 with valid output)
+        if (error && typeof error === 'object' && 'stdout' in error) {
+          const stdout = (error as { stdout: string }).stdout;
+          if (stdout) {
+            try {
+              const output = JSON.parse(stdout.trim());
+              resolve({
+                success: output.success,
+                bundled: output.bundled
+                  ? { success: output.bundled.success, errors: output.bundled.errors || [] }
+                  : null,
+                venv: output.venv
+                  ? { success: output.venv.success, errors: output.venv.errors || [] }
+                  : null,
+                summary: output.summary || ''
+              });
+              return;
+            } catch {
+              // JSON parse failed, continue to default error handling
+            }
+          }
+        }
+
+        resolve({
+          success: false,
+          bundled: null,
+          venv: null,
+          summary: `Validation failed: ${errorMessage}`
+        });
+      }
+    });
+  }
+
+  /**
    * Find Python 3.10+ (bundled or system).
    * Uses the shared python-detector logic which validates version requirements.
    * Priority: bundled Python (packaged apps) > system Python
