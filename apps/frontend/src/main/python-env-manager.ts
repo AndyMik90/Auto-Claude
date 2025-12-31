@@ -236,6 +236,152 @@ if sys.version_info >= (3, 12):
   }
 
   /**
+   * Validate system build tools (make, cmake) are available.
+   * Calls the backend system_check.py to verify build tools required for
+   * compiling native packages like real_ladybug are installed.
+   * This should be called BEFORE pip install to provide clear error messages
+   * instead of cryptic build failures.
+   *
+   * @returns Object with validation results including missing tools and install instructions
+   */
+  async validateBuildTools(): Promise<{
+    success: boolean;
+    platform: string;
+    missingTools: string[];
+    errors: string[];
+    installationInstructions: string;
+  }> {
+    console.log('[PythonEnvManager] Validating system build tools');
+
+    // Find a Python interpreter to run the system check
+    const python = this.pythonPath || this.findSystemPython();
+    if (!python) {
+      return {
+        success: false,
+        platform: process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'Darwin' : 'Linux',
+        missingTools: [],
+        errors: ['No Python interpreter available to run system check'],
+        installationInstructions: ''
+      };
+    }
+
+    // Locate the system_check.py script
+    const systemCheckPath = this.autoBuildSourcePath
+      ? path.join(this.autoBuildSourcePath, 'services', 'system_check.py')
+      : null;
+
+    if (!systemCheckPath || !existsSync(systemCheckPath)) {
+      // Fallback: try to find it in resources for packaged apps
+      const resourcesPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'auto-claude', 'services', 'system_check.py')
+        : null;
+
+      if (!resourcesPath || !existsSync(resourcesPath)) {
+        console.log('[PythonEnvManager] system_check.py not found, skipping build tools validation');
+        return {
+          success: true, // Don't block if validator not found
+          platform: process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'Darwin' : 'Linux',
+          missingTools: [],
+          errors: [],
+          installationInstructions: ''
+        };
+      }
+
+      // Use the resources path
+      return this._runSystemCheck(python, resourcesPath);
+    }
+
+    return this._runSystemCheck(python, systemCheckPath);
+  }
+
+  /**
+   * Internal method to run the system check script.
+   * @param pythonPath Path to Python interpreter
+   * @param systemCheckPath Path to system_check.py
+   */
+  private async _runSystemCheck(
+    pythonPath: string,
+    systemCheckPath: string
+  ): Promise<{
+    success: boolean;
+    platform: string;
+    missingTools: string[];
+    errors: string[];
+    installationInstructions: string;
+  }> {
+    const defaultPlatform = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'Darwin' : 'Linux';
+
+    return new Promise((resolve) => {
+      try {
+        // Run with --json for structured output
+        const result = execSync(
+          `"${pythonPath}" "${systemCheckPath}" --json`,
+          {
+            stdio: 'pipe',
+            timeout: 30000, // 30 second timeout for system check
+            encoding: 'utf-8'
+          }
+        );
+
+        // Parse JSON output
+        const output = JSON.parse(result.trim());
+
+        console.log('[PythonEnvManager] Build tools validation result:', output.success ? 'OK' : 'FAILED');
+
+        if (output.missing_tools && output.missing_tools.length > 0) {
+          console.log('[PythonEnvManager] Missing build tools:', output.missing_tools.join(', '));
+        }
+
+        resolve({
+          success: output.success,
+          platform: output.platform || defaultPlatform,
+          missingTools: output.missing_tools || [],
+          errors: output.errors || [],
+          installationInstructions: output.installation_instructions || ''
+        });
+      } catch (error) {
+        // Handle exec errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[PythonEnvManager] Failed to run system check:', errorMessage);
+
+        // If the command failed but returned JSON (exit code 1 with valid output)
+        if (error && typeof error === 'object' && 'stdout' in error) {
+          const stdout = (error as { stdout: string }).stdout;
+          if (stdout) {
+            try {
+              const output = JSON.parse(stdout.trim());
+              console.log('[PythonEnvManager] Build tools validation result:', output.success ? 'OK' : 'FAILED');
+
+              if (output.missing_tools && output.missing_tools.length > 0) {
+                console.log('[PythonEnvManager] Missing build tools:', output.missing_tools.join(', '));
+              }
+
+              resolve({
+                success: output.success,
+                platform: output.platform || defaultPlatform,
+                missingTools: output.missing_tools || [],
+                errors: output.errors || [],
+                installationInstructions: output.installation_instructions || ''
+              });
+              return;
+            } catch {
+              // JSON parse failed, continue to default error handling
+            }
+          }
+        }
+
+        resolve({
+          success: false,
+          platform: defaultPlatform,
+          missingTools: [],
+          errors: [`System check failed: ${errorMessage}`],
+          installationInstructions: ''
+        });
+      }
+    });
+  }
+
+  /**
    * Internal method to run the environment validator script.
    * @param pythonPath Path to Python interpreter
    * @param validatorPath Path to environment_validator.py
