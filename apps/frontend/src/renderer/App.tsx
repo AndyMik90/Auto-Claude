@@ -396,6 +396,7 @@ export function App() {
         setSelectedTask(updatedTask);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally omit selectedTask object to prevent infinite re-render loop
   }, [tasks, selectedTask?.id, selectedTask?.specId]);
 
   const handleTaskClick = (task: Task) => {
