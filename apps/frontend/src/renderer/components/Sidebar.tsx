@@ -223,12 +223,14 @@ export function Sidebar({
   const renderNavItem = (item: NavItem) => {
     const isActive = activeView === item.id;
     const Icon = item.icon;
+    // agent-tools can be viewed without a selected project
+    const requiresProject = item.id !== 'agent-tools';
 
     return (
       <button
         key={item.id}
         onClick={() => handleNavClick(item.id)}
-        disabled={!selectedProjectId}
+        disabled={requiresProject && !selectedProjectId}
         className={cn(
           'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200',
           'hover:bg-accent hover:text-accent-foreground',

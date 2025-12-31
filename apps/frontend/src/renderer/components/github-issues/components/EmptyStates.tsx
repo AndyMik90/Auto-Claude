@@ -21,6 +21,9 @@ export function EmptyState({ searchQuery, icon: Icon = Github, message }: EmptyS
 export function NotConnectedState({ error, onOpenSettings }: NotConnectedStateProps) {
   const { t } = useTranslation('context');
   
+  // Translate error if it's a translation key (starts with namespace:)
+  const displayError = error && error.includes(':') ? t(error) : error;
+  
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
       <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
@@ -30,7 +33,7 @@ export function NotConnectedState({ error, onOpenSettings }: NotConnectedStatePr
         {t('github.notConnected')}
       </h3>
       <p className="text-sm text-muted-foreground mb-4 max-w-md">
-        {error || t('github.configureHint')}
+        {displayError || t('github.configureHint')}
       </p>
       {onOpenSettings && (
         <Button onClick={onOpenSettings} variant="outline">

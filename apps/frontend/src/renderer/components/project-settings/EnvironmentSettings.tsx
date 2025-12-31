@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Key,
   ExternalLink,
@@ -46,6 +47,8 @@ export function EnvironmentSettings({
   expanded,
   onToggle
 }: EnvironmentSettingsProps) {
+  const { t } = useTranslation('settings');
+  
   // Load global Claude profiles to show active account
   const [claudeProfiles, setClaudeProfiles] = useState<ClaudeProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
@@ -71,6 +74,9 @@ export function EnvironmentSettings({
 
   const activeProfile = claudeProfiles.find(p => p.id === activeProfileId);
   const hasAuthenticatedProfiles = claudeProfiles.some(p => p.oauthToken);
+  
+  // Determine effective connection status: connected if using global authenticated profiles
+  const effectiveAuthStatus = hasAuthenticatedProfiles ? 'authenticated' : claudeAuthStatus;
 
   return (
     <section className="space-y-3">
@@ -80,15 +86,15 @@ export function EnvironmentSettings({
       >
         <div className="flex items-center gap-2">
           <Key className="h-4 w-4" />
-          Claude Authentication
-          {claudeAuthStatus === 'authenticated' && (
+          {t('settings:sections.claudeAuth.title')}
+          {effectiveAuthStatus === 'authenticated' && (
             <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
-              Connected
+              {t('settings:sections.claudeAuth.connected')}
             </span>
           )}
-          {claudeAuthStatus === 'not_authenticated' && (
+          {effectiveAuthStatus === 'not_authenticated' && (
             <span className="px-2 py-0.5 text-xs bg-warning/10 text-warning rounded-full">
-              Not Connected
+              {t('settings:sections.claudeAuth.notConnected')}
             </span>
           )}
         </div>
@@ -104,7 +110,7 @@ export function EnvironmentSettings({
           {isLoadingEnv || isLoadingProfiles ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading configuration...
+              {t('settings:sections.claudeAuth.loadingConfig')}
             </div>
           ) : envConfig ? (
             <>
@@ -114,12 +120,12 @@ export function EnvironmentSettings({
                   <Globe className="h-5 w-5 text-info mt-0.5 shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">
-                      Using Global Authentication
+                      {t('settings:sections.claudeAuth.usingGlobal')}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Claude authentication is managed in{' '}
-                      <span className="font-medium text-info">Settings → Integrations</span>.
-                      All projects share the same Claude accounts.
+                      {t('settings:sections.claudeAuth.managedIn')}{' '}
+                      <span className="font-medium text-info">{t('settings:sections.claudeAuth.settingsPath')}</span>.
+                      {' '}{t('settings:sections.claudeAuth.allProjectsShare')}
                     </p>
                   </div>
                 </div>
@@ -132,7 +138,7 @@ export function EnvironmentSettings({
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4 text-muted-foreground" />
-                        <Label className="text-sm font-medium text-foreground">Active Account</Label>
+                        <Label className="text-sm font-medium text-foreground">{t('settings:sections.claudeAuth.activeAccount')}</Label>
                       </div>
                     </div>
                     <Button
@@ -146,7 +152,7 @@ export function EnvironmentSettings({
                       ) : (
                         <>
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          Re-authenticate
+                          {t('settings:sections.claudeAuth.reAuthenticate')}
                         </>
                       )}
                     </Button>
@@ -165,16 +171,16 @@ export function EnvironmentSettings({
                           <span className="text-sm font-medium text-foreground">{activeProfile.name}</span>
                           <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded flex items-center gap-1">
                             <Star className="h-3 w-3" />
-                            Active
+                            {t('settings:sections.claudeAuth.active')}
                           </span>
                           {(activeProfile.oauthToken || (activeProfile.isDefault && activeProfile.configDir)) ? (
                             <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
                               <Check className="h-3 w-3" />
-                              Authenticated
+                              {t('settings:sections.claudeAuth.authenticated')}
                             </span>
                           ) : (
                             <span className="text-xs bg-warning/20 text-warning px-1.5 py-0.5 rounded">
-                              Needs Auth
+                              {t('settings:sections.claudeAuth.needsAuth')}
                             </span>
                           )}
                         </div>
@@ -185,7 +191,7 @@ export function EnvironmentSettings({
                     </div>
                   ) : claudeProfiles.length > 0 ? (
                     <p className="text-xs text-warning mt-2">
-                      No active account selected. Go to Settings → Integrations to select an account.
+                      {t('settings:sections.claudeAuth.noActiveAccount')}
                     </p>
                   ) : null}
 
@@ -193,7 +199,7 @@ export function EnvironmentSettings({
                   {claudeProfiles.filter(p => p.id !== activeProfileId && p.oauthToken).length > 0 && (
                     <div className="mt-3 pt-3 border-t border-border/50">
                       <p className="text-xs text-muted-foreground mb-2">
-                        Other authenticated accounts (used for rate limit fallback):
+                        {t('settings:sections.claudeAuth.otherAccounts')}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {claudeProfiles
@@ -219,9 +225,9 @@ export function EnvironmentSettings({
                 <div className="rounded-lg border border-warning/30 bg-warning/5 p-4">
                   <div className="flex flex-col items-center text-center">
                     <Users className="h-8 w-8 text-warning mb-2" />
-                    <p className="text-sm font-medium text-foreground">No Claude Accounts Configured</p>
+                    <p className="text-sm font-medium text-foreground">{t('environmentSettings.noClaudeAccountsConfigured')}</p>
                     <p className="text-xs text-muted-foreground mt-1 mb-3">
-                      Add a Claude account in the global settings to use Auto-Build.
+                      {t('environmentSettings.addClaudeAccountInSettings')}
                     </p>
                     <Button
                       size="sm"
@@ -232,7 +238,7 @@ export function EnvironmentSettings({
                       }}
                     >
                       <Settings className="h-4 w-4 mr-2" />
-                      Open Integrations Settings
+                      {t('environmentSettings.openIntegrationsSettings')}
                     </Button>
                   </div>
                 </div>

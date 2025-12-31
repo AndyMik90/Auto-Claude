@@ -153,6 +153,11 @@
     "selectModel": "בחר מודל מותקן לחיפוש סמנטי. הזיכרון עובד עם חיפוש מילות מפתח גם בלי embeddings.",
     "googleLightweight": "מודל embedding קל ממשקל של Google (מומלץ)",
     "popularGeneral": "embeddings רב-תכליתיים פופולריים",
-    "mixedBreadLarge": "embeddings גדולים של MixedBread AI"
-  }
+    "mixedBreadLarge": "embeddings גדולים של MixedBread AI"  },
+  "embeddingModels": {
+    "qwen3_4b": "Qwen3 4B - איזון איכות ומהירות",
+    "qwen3_8b": "Qwen3 8B - איכות embedding הטובה ביותר",
+    "qwen3_0_6b": "Qwen3 0.6B - הקטן והמהיר ביותר",
+    "embeddinggemma": "מודל embedding קל משקל של Google",
+    "nomicEmbed": "embeddings כלליים פופולריים"  }
 }

@@ -1,6 +1,6 @@
-import { ipcMain, BrowserWindow } from 'electron';
-import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
-import type { IPCResult, TaskStartOptions, TaskStatus } from '../../../shared/types';
+import { ipcMain, BrowserWindow, app } from 'electron';
+import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir, DEFAULT_APP_SETTINGS } from '../../../shared/constants';
+import type { IPCResult, TaskStartOptions, TaskStatus, AppSettings } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { spawnSync } from 'child_process';
@@ -125,10 +125,22 @@ export function registerTaskExecutionHandlers(
         const taskDescription = task.description || task.title;
         console.warn('[TASK_START] Starting spec creation for:', task.specId, 'in:', specDir, 'baseBranch:', baseBranch);
 
+        // Get language from settings
+        let language = 'en';
+        try {
+          const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+          if (existsSync(settingsPath)) {
+            const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(readFileSync(settingsPath, 'utf-8')) };
+            language = settings.language || 'en';
+          }
+        } catch (err) {
+          console.warn('[TASK_START] Failed to read language from settings:', err);
+        }
+
         // Start spec creation process - pass the existing spec directory
         // so spec_runner uses it instead of creating a new one
         // Also pass baseBranch so worktrees are created from the correct branch
-        agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDir, task.metadata, baseBranch);
+        agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDir, task.metadata, baseBranch, language);
       } else if (needsImplementation) {
         // Spec exists but no subtasks - run run.py to create implementation plan and execute
         // Read the spec.md to get the task description
@@ -491,7 +503,20 @@ export function registerTaskExecutionHandlers(
             // No spec file - need to run spec_runner.py to create the spec
             const taskDescription = task.description || task.title;
             console.warn('[TASK_UPDATE_STATUS] Starting spec creation for:', task.specId);
-            agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDir, task.metadata, baseBranchForUpdate);
+            
+            // Get language from settings
+            let language = 'en';
+            try {
+              const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+              if (existsSync(settingsPath)) {
+                const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(readFileSync(settingsPath, 'utf-8')) };
+                language = settings.language || 'en';
+              }
+            } catch (err) {
+              console.warn('[TASK_UPDATE_STATUS] Failed to read language from settings:', err);
+            }
+            
+            agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDir, task.metadata, baseBranchForUpdate, language);
           } else if (needsImplementation) {
             // Spec exists but no subtasks - run run.py to create implementation plan and execute
             console.warn('[TASK_UPDATE_STATUS] Starting task execution (no subtasks) for:', task.specId);
@@ -768,7 +793,20 @@ export function registerTaskExecutionHandlers(
               // No spec file - need to run spec_runner.py to create the spec
               const taskDescription = task.description || task.title;
               console.warn(`[Recovery] Starting spec creation for: ${task.specId}`);
-              agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDirForWatcher, task.metadata, baseBranchForRecovery);
+              
+              // Get language from settings
+              let language = 'en';
+              try {
+                const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+                if (existsSync(settingsPath)) {
+                  const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(readFileSync(settingsPath, 'utf-8')) };
+                  language = settings.language || 'en';
+                }
+              } catch (err) {
+                console.warn('[Recovery] Failed to read language from settings:', err);
+              }
+              
+              agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDirForWatcher, task.metadata, baseBranchForRecovery, language);
             } else {
               // Spec exists - run task execution
               console.warn(`[Recovery] Starting task execution for: ${task.specId}`);

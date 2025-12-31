@@ -233,6 +233,12 @@ export interface AppSettings {
   globalGoogleApiKey?: string;
   globalGroqApiKey?: string;
   globalOpenRouterApiKey?: string;
+  // Global Proxy settings (for Electron and all API requests)
+  proxyEnabled?: boolean;    // Enable/disable proxy globally (default: true when configured)
+  globalHttpProxy?: string;  // HTTP proxy URL (e.g., http://localhost:8888)
+  globalHttpsProxy?: string; // HTTPS proxy URL
+  globalNoProxy?: string;    // Comma-separated list of hosts to exclude
+  globalAnthropicBaseUrl?: string; // Claude API proxy base URL (e.g., http://localhost:8889)
   // Graphiti LLM provider settings
   graphitiLlmProvider?: 'openai' | 'anthropic' | 'google' | 'groq' | 'ollama';
   ollamaBaseUrl?: string;

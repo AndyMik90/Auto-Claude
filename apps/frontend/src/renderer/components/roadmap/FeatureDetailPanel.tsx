@@ -50,13 +50,13 @@ export function FeatureDetailPanel({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Badge variant="outline" className={ROADMAP_PRIORITY_COLORS[feature.priority]}>
-                {ROADMAP_PRIORITY_LABELS[feature.priority]}
+                {t(ROADMAP_PRIORITY_LABELS[feature.priority])}
               </Badge>
               <Badge
                 variant="outline"
                 className={`${ROADMAP_COMPLEXITY_COLORS[feature.complexity]}`}
               >
-                {feature.complexity}
+                {t(`complexity.${feature.complexity}`)}
               </Badge>
             </div>
             <h2 className="font-semibold truncate">{feature.title}</h2>
@@ -105,13 +105,13 @@ export function FeatureDetailPanel({
             <div
               className={`text-lg font-semibold ${ROADMAP_COMPLEXITY_COLORS[feature.complexity]}`}
             >
-              {feature.complexity}
+              {t(`complexity.${feature.complexity}`)}
             </div>
             <div className="text-xs text-muted-foreground">{t('featureDetail.complexity')}</div>
           </Card>
           <Card className="p-3 text-center">
             <div className={`text-lg font-semibold ${ROADMAP_IMPACT_COLORS[feature.impact]}`}>
-              {feature.impact}
+              {t(`impact.${feature.impact}`)}
             </div>
             <div className="text-xs text-muted-foreground">{t('featureDetail.impact')}</div>
           </Card>
@@ -201,7 +201,7 @@ export function FeatureDetailPanel({
                           : 'text-green-500 border-green-500/50'
                       }`}
                     >
-                      {insight.severity} severity
+                      {insight.severity} {t('featureDetail.severity')}
                     </Badge>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export function FeatureDetailPanel({
           <div className="shrink-0 p-4 border-t border-border">
             <Button className="w-full" onClick={() => onConvertToSpec(feature)}>
               <Zap className="h-4 w-4 mr-2" />
-              Convert to Auto-Build Task
+              {t('featureDetail.convertToTask')}
             </Button>
           </div>
         )

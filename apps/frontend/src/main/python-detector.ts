@@ -63,60 +63,78 @@ function findHomebrewPython(): string | null {
  */
 export function findPythonCommand(): string | null {
   const isWindows = process.platform === 'win32';
+  console.log(`[Python] ========== Starting Python Detection ==========`);
+  console.log(`[Python] Platform: ${process.platform} (isWindows: ${isWindows})`);
+  console.log(`[Python] isPackaged: ${app.isPackaged}`);
+  console.log(`[Python] resourcesPath: ${process.resourcesPath || 'N/A'}`);
 
   // 1. Check for bundled Python first (packaged apps only)
   const bundledPython = getBundledPythonPath();
+  console.log(`[Python] Bundled Python path: ${bundledPython || 'N/A'}`);
+  
   if (bundledPython) {
     try {
       const validation = validatePythonVersion(bundledPython);
+      console.log(`[Python] Bundled Python validation: valid=${validation.valid}, version=${validation.version}, message=${validation.message}`);
       if (validation.valid) {
-        console.log(`[Python] Using bundled Python: ${bundledPython} (${validation.version})`);
+        console.log(`[Python] ✓ Using bundled Python: ${bundledPython} (${validation.version})`);
         return bundledPython;
       } else {
-        console.warn(`[Python] Bundled Python version issue: ${validation.message}`);
+        console.warn(`[Python] ✗ Bundled Python version issue: ${validation.message}`);
       }
     } catch (err) {
-      console.warn(`[Python] Bundled Python error: ${err}`);
+      console.warn(`[Python] ✗ Bundled Python error: ${err}`);
     }
   }
 
   // 2. Fall back to system Python
-  console.log(`[Python] Searching for system Python...`);
+  console.log(`[Python] Falling back to system Python search...`);
 
   // Build candidate list prioritizing Homebrew Python on macOS
   let candidates: string[];
   if (isWindows) {
-    candidates = ['python', 'python3', 'py -3', 'py'];
+    // On Windows, prefer 'py' launcher as it's more reliable
+    // and doesn't depend on python.exe being in PATH
+    candidates = ['py', 'py -3', 'python', 'python3'];
   } else {
     const homebrewPython = findHomebrewPython();
+    console.log(`[Python] Homebrew Python: ${homebrewPython || 'N/A'}`);
     candidates = homebrewPython
       ? [homebrewPython, 'python3', 'python']
       : ['python3', 'python'];
   }
 
-  for (const cmd of candidates) {
+  console.log(`[Python] Candidates to try: [${candidates.join(', ')}]`);
+
+  for (let i = 0; i < candidates.length; i++) {
+    const cmd = candidates[i];
+    console.log(`[Python] [${i + 1}/${candidates.length}] Testing candidate: "${cmd}"`);
+    
     try {
       // Validate version meets minimum requirement (Python 3.10+)
       const validation = validatePythonVersion(cmd);
+      console.log(`[Python]   → Result: valid=${validation.valid}, version=${validation.version || 'N/A'}, message=${validation.message}`);
+      
       if (validation.valid) {
-        console.log(`[Python] Found valid system Python: ${cmd} (${validation.version})`);
+        console.log(`[Python] ✓ SELECTED: ${cmd} (${validation.version})`);
+        console.log(`[Python] ========== Python Detection Complete ==========`);
         return cmd;
       } else {
-        console.warn(`[Python] ${cmd} version too old: ${validation.message}`);
+        console.warn(`[Python]   ✗ Rejected: ${validation.message}`);
         continue;
       }
-    } catch {
+    } catch (err) {
       // Command not found or errored, try next
-      console.warn(`[Python] Command not found or errored: ${cmd}`);
+      console.warn(`[Python]   ✗ Error testing "${cmd}": ${err}`);
       continue;
     }
   }
 
   // Fallback to platform-specific default
-  if (isWindows) {
-    return 'python';
-  }
-  return findHomebrewPython() || 'python3';
+  const fallback = isWindows ? 'python' : (findHomebrewPython() || 'python3');
+  console.warn(`[Python] ⚠ No valid Python found, using fallback: "${fallback}"`);
+  console.log(`[Python] ========== Python Detection Complete (fallback) ==========`);
+  return fallback;
 }
 
 /**
@@ -127,16 +145,23 @@ export function findPythonCommand(): string | null {
  */
 function getPythonVersion(pythonCmd: string): string | null {
   try {
+    console.log(`[Python]     Executing: ${pythonCmd} --version`);
     const version = execSync(`${pythonCmd} --version`, {
       stdio: 'pipe',
       timeout: 5000,
       windowsHide: true
     }).toString().trim();
 
+    console.log(`[Python]     Raw output: "${version}"`);
+    
     // Extract version number from "Python 3.10.5" format
     const match = version.match(/Python (\d+\.\d+\.\d+)/);
-    return match ? match[1] : null;
-  } catch {
+    const extractedVersion = match ? match[1] : null;
+    console.log(`[Python]     Extracted version: ${extractedVersion || 'FAILED TO PARSE'}`);
+    
+    return extractedVersion;
+  } catch (err) {
+    console.log(`[Python]     Exception in getPythonVersion: ${err}`);
     return null;
   }
 }

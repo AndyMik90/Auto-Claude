@@ -27,7 +27,7 @@ export function registerCheckConnection(): void {
           success: true,
           data: {
             connected: false,
-            error: 'No GitHub token or repository configured'
+            error: 'context:github.noToken'
           }
         };
       }
@@ -40,7 +40,7 @@ export function registerCheckConnection(): void {
             success: true,
             data: {
               connected: false,
-              error: 'Invalid repository format. Use owner/repo or GitHub URL.'
+              error: 'context:github.invalidRepoFormat'
             }
           };
         }
@@ -74,7 +74,7 @@ export function registerCheckConnection(): void {
           success: true,
           data: {
             connected: false,
-            error: error instanceof Error ? error.message : 'Failed to connect to GitHub'
+            error: error instanceof Error ? error.message : 'context:github.connectionFailed'
           }
         };
       }
@@ -96,7 +96,7 @@ export function registerGetRepositories(): void {
 
       const config = getGitHubConfig(project);
       if (!config) {
-        return { success: false, error: 'No GitHub token configured' };
+        return { success: false, error: 'context:github.noToken' };
       }
 
       try {

@@ -53,7 +53,7 @@ export function registerGetIssues(): void {
 
       const config = getGitHubConfig(project);
       if (!config) {
-        return { success: false, error: 'No GitHub token or repository configured' };
+        return { success: false, error: 'context:github.noToken' };
       }
 
       try {
@@ -110,7 +110,7 @@ export function registerGetIssue(): void {
 
       const config = getGitHubConfig(project);
       if (!config) {
-        return { success: false, error: 'No GitHub token or repository configured' };
+        return { success: false, error: 'context:github.noToken' };
       }
 
       try {
@@ -154,7 +154,7 @@ export function registerGetIssueComments(): void {
 
       const config = getGitHubConfig(project);
       if (!config) {
-        return { success: false, error: 'No GitHub token or repository configured' };
+        return { success: false, error: 'context:github.noToken' };
       }
 
       try {

@@ -721,14 +721,23 @@ if (typeof app?.on === 'function') {
  * don't have external dependencies (like ollama_model_detector.py).
  */
 export function getConfiguredPythonPath(): string {
+  console.log(`[PythonConfig] getConfiguredPythonPath() called`);
+  
   // If venv is ready, always prefer it (has dependencies installed)
-  if (pythonEnvManager.isEnvReady()) {
+  const isReady = pythonEnvManager.isEnvReady();
+  console.log(`[PythonConfig] Venv ready: ${isReady}`);
+  
+  if (isReady) {
     const venvPath = pythonEnvManager.getPythonPath();
+    console.log(`[PythonConfig] Venv path: ${venvPath || 'N/A'}`);
     if (venvPath) {
+      console.log(`[PythonConfig] ✓ Using venv Python: ${venvPath}`);
       return venvPath;
     }
   }
 
   // Fall back to system/bundled Python
-  return findPythonCommand() || 'python';
+  const fallback = findPythonCommand() || 'python';
+  console.log(`[PythonConfig] ✓ Using fallback Python: ${fallback}`);
+  return fallback;
 }

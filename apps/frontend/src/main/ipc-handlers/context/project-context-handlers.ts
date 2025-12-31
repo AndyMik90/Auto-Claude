@@ -153,7 +153,7 @@ export function registerProjectContextHandlers(
         if (!autoBuildSource) {
           return {
             success: false,
-            error: 'Auto-build source path not configured'
+            error: 'context:autoBuild.pathNotConfigured'
           };
         }
 

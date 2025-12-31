@@ -153,6 +153,12 @@ export const IPC_CHANNELS = {
   ENV_CHECK_CLAUDE_AUTH: 'env:checkClaudeAuth',
   ENV_INVOKE_CLAUDE_SETUP: 'env:invokeClaudeSetup',
 
+  // Proxy server management
+  PROXY_START: 'proxy:start',
+  PROXY_STOP: 'proxy:stop',
+  PROXY_STATUS: 'proxy:status',
+  PROXY_TEST: 'proxy:test',
+
   // Ideation operations
   IDEATION_GET: 'ideation:get',
   IDEATION_GENERATE: 'ideation:generate',

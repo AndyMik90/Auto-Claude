@@ -59,6 +59,7 @@ class IdeationGenerator:
         model: str = "claude-opus-4-5-20251101",
         thinking_level: str = "medium",
         max_ideas_per_type: int = 5,
+        language: str = "en",
     ):
         self.project_dir = Path(project_dir)
         self.output_dir = Path(output_dir)
@@ -66,6 +67,7 @@ class IdeationGenerator:
         self.thinking_level = thinking_level
         self.thinking_budget = get_thinking_budget(thinking_level)
         self.max_ideas_per_type = max_ideas_per_type
+        self.language = language
         self.prompts_dir = Path(__file__).parent.parent / "prompts"
 
     async def run_agent(

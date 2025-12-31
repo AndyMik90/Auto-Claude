@@ -43,11 +43,15 @@ const AUTH_TIMEOUT_MS = 5 * 60 * 1000;
  */
 export function GitHubOAuthFlow({ onSuccess, onCancel }: GitHubOAuthFlowProps) {
   const { t } = useTranslation('settings');
-  const [status, setStatus] = useState<'checking' | 'need-install' | 'need-auth' | 'authenticating' | 'success' | 'error'>('checking');
+  const [status, setStatus] = useState<'checking' | 'need-install' | 'need-auth' | 'authenticating' | 'success' | 'error' | 'manual-token'>('checking');
   const [error, setError] = useState<string | null>(null);
   const [_cliInstalled, setCliInstalled] = useState(false);
   const [cliVersion, setCliVersion] = useState<string | undefined>();
   const [username, setUsername] = useState<string | undefined>();
+
+  // Manual token input
+  const [manualToken, setManualToken] = useState<string>('');
+  const [isValidatingToken, setIsValidatingToken] = useState<boolean>(false);
 
   // Device flow state for displaying code and auth URL
   const [deviceCode, setDeviceCode] = useState<string | null>(null);
@@ -402,10 +406,112 @@ export function GitHubOAuthFlow({ onSuccess, onCancel }: GitHubOAuthFlowProps) {
             </CardContent>
           </Card>
 
-          <div className="flex justify-center">
+          <div className="flex flex-col gap-3">
             <Button onClick={handleStartAuth} size="lg" className="gap-2">
               <Github className="h-5 w-5" />
               {t('githubOAuth.authenticateWith')}
+            </Button>
+            <Button onClick={() => setStatus('manual-token')} variant="outline" size="lg" className="gap-2">
+              <Terminal className="h-5 w-5" />
+              השתמש בטוקן ידני
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Token Input */}
+      {status === 'manual-token' && (
+        <div className="space-y-4">
+          <Card className="border border-info/30 bg-info/10">
+            <CardContent className="p-5">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Terminal className="h-5 w-5 text-info shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium text-foreground">
+                      הזן טוקן GitHub ידנית
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      צור טוקן אישי ב-GitHub והזן אותו כאן. זה דורש הרשאות repo.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      GitHub Personal Access Token
+                    </label>
+                    <input
+                      type="password"
+                      value={manualToken}
+                      onChange={(e) => setManualToken(e.target.value)}
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={async () => {
+                      if (!manualToken.trim()) return;
+                      setIsValidatingToken(true);
+                      setError(null);
+                      try {
+                        // Simple validation - check if it starts with ghp_ or github_pat_
+                        if (!manualToken.startsWith('ghp_') && !manualToken.startsWith('github_pat_')) {
+                          throw new Error('הטוקן חייב להתחיל ב-ghp_ או github_pat_');
+                        }
+                        // Call success with the token
+                        onSuccess(manualToken);
+                        setStatus('success');
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : 'טוקן לא תקין');
+                        setIsValidatingToken(false);
+                      }
+                    }}
+                    disabled={!manualToken.trim() || isValidatingToken}
+                    className="w-full"
+                  >
+                    {isValidatingToken ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        מאמת...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        שמור טוקן
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="pt-3 border-t border-border">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    איך ליצור טוקן אישי:
+                  </p>
+                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>לחץ על הכפתור למטה כדי לפתוח את דף יצירת הטוקן</li>
+                    <li>בחר את ההרשאה "repo" (גישה מלאה למאגרים פרטיים)</li>
+                    <li>צור את הטוקן והעתק אותו לשדה למעלה</li>
+                  </ol>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => window.open('https://github.com/settings/tokens/new?scopes=repo&description=Auto-Claude', '_blank')}
+                    className="text-info hover:text-info/80 p-0 h-auto mt-2 gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    פתח דף יצירת טוקן ב-GitHub
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-2">
+            <Button onClick={() => setStatus('need-auth')} variant="outline" className="flex-1">
+              חזרה
             </Button>
           </div>
         </div>

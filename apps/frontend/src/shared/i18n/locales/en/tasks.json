@@ -206,7 +206,16 @@
     "showOutput": "Show output",
     "hideOutput": "Hide output",
     "entries": "entries",
-    "entry": "entry"
+    "entry": "entry",
+    "tools": {
+      "reading": "Reading",
+      "searchingFiles": "Searching files",
+      "searchingCode": "Searching code",
+      "editing": "Editing",
+      "writing": "Writing",
+      "running": "Running",
+      "done": "Done"
+    }
   },
   "buttons": {
     "startTask": "Start Task",

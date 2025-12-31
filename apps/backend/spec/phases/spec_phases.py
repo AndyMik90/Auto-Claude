@@ -35,7 +35,28 @@ class SpecPhaseMixin:
                 f"Running quick spec agent (attempt {attempt + 1})...", "progress"
             )
 
+            # Get language name for AI instructions
+            language_map = {
+                "en": "English",
+                "he": "Hebrew",
+                "fr": "French",
+                "es": "Spanish",
+                "de": "German",
+                "it": "Italian",
+                "pt": "Portuguese",
+                "ru": "Russian",
+                "ja": "Japanese",
+                "zh": "Chinese",
+                "ko": "Korean",
+                "ar": "Arabic",
+            }
+            language_name = language_map.get(self.language, self.language)
+
             context_str = f"""
+**LANGUAGE REQUIREMENT**: Write ALL user-facing content in {language_name}.
+Keep JSON keys and technical identifiers in English, but all DESCRIPTIONS, EXPLANATIONS, and DOCUMENTATION must be in {language_name}.
+This is CRITICAL for user experience.
+
 **Task**: {self.task_description}
 **Spec Directory**: {self.spec_dir}
 **Complexity**: SIMPLE (1-2 files expected)
@@ -139,7 +160,27 @@ Create:
                 f"Running self-critique agent (attempt {attempt + 1})...", "progress"
             )
 
+            # Get language name for AI instructions
+            language_map = {
+                "en": "English",
+                "he": "Hebrew",
+                "fr": "French",
+                "es": "Spanish",
+                "de": "German",
+                "it": "Italian",
+                "pt": "Portuguese",
+                "ru": "Russian",
+                "ja": "Japanese",
+                "zh": "Chinese",
+                "ko": "Korean",
+                "ar": "Arabic",
+            }
+            language_name = language_map.get(self.language, self.language)
+
             context_str = f"""
+**LANGUAGE REQUIREMENT**: Write ALL critique documentation and fixes in {language_name}.
+Keep JSON keys in English, but all DESCRIPTIONS and EXPLANATIONS must be in {language_name}.
+
 **Spec File**: {spec_file}
 **Research File**: {research_file}
 **Critique Output**: {critique_file}

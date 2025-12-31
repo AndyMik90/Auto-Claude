@@ -270,7 +270,7 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, p
       <CollapsibleContent>
         <div className="mt-1 ml-6 border-l-2 border-border pl-4 py-2 space-y-1">
           {!hasEntries ? (
-            <p className="text-xs text-muted-foreground italic">No logs yet</p>
+            <p className="text-xs text-muted-foreground italic">{t('logs.noLogs')}</p>
           ) : (
             phaseLog?.entries.map((entry, idx) => (
               <LogEntry key={`${entry.timestamp}-${idx}`} entry={entry} />
@@ -288,23 +288,24 @@ interface LogEntryProps {
 }
 
 function LogEntry({ entry }: LogEntryProps) {
+  const { t } = useTranslation('tasks');
   const [isExpanded, setIsExpanded] = useState(false);
   const hasDetail = Boolean(entry.detail);
 
   const getToolInfo = (toolName: string) => {
     switch (toolName) {
       case 'Read':
-        return { icon: FileText, label: 'Reading', color: 'text-blue-500 bg-blue-500/10' };
+        return { icon: FileText, label: t('logs.tools.reading'), color: 'text-blue-500 bg-blue-500/10' };
       case 'Glob':
-        return { icon: FolderSearch, label: 'Searching files', color: 'text-amber-500 bg-amber-500/10' };
+        return { icon: FolderSearch, label: t('logs.tools.searchingFiles'), color: 'text-amber-500 bg-amber-500/10' };
       case 'Grep':
-        return { icon: Search, label: 'Searching code', color: 'text-green-500 bg-green-500/10' };
+        return { icon: Search, label: t('logs.tools.searchingCode'), color: 'text-green-500 bg-green-500/10' };
       case 'Edit':
-        return { icon: Pencil, label: 'Editing', color: 'text-purple-500 bg-purple-500/10' };
+        return { icon: Pencil, label: t('logs.tools.editing'), color: 'text-purple-500 bg-purple-500/10' };
       case 'Write':
-        return { icon: FileCode, label: 'Writing', color: 'text-cyan-500 bg-cyan-500/10' };
+        return { icon: FileCode, label: t('logs.tools.writing'), color: 'text-cyan-500 bg-cyan-500/10' };
       case 'Bash':
-        return { icon: Terminal, label: 'Running', color: 'text-orange-500 bg-orange-500/10' };
+        return { icon: Terminal, label: t('logs.tools.running'), color: 'text-orange-500 bg-orange-500/10' };
       default:
         return { icon: Wrench, label: toolName, color: 'text-muted-foreground bg-muted' };
     }
@@ -354,7 +355,7 @@ function LogEntry({ entry }: LogEntryProps) {
           <div className={cn('inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs', color, 'opacity-60')}>
             <Icon className="h-3 w-3" />
             <CheckCircle2 className="h-3 w-3 text-success" />
-            <span className="text-muted-foreground">Done</span>
+            <span className="text-muted-foreground">{t('logs.tools.done')}</span>
           </div>
           {hasDetail && (
             <button

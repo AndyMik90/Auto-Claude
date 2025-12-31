@@ -279,7 +279,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                     return <Icon className="h-2.5 w-2.5 mr-0.5" />;
                   })()
                 )}
-                {TASK_CATEGORY_LABELS[task.metadata.category]}
+                {t(`categories.${task.metadata.category}`)}
               </Badge>
             )}
             {/* Impact badge - high visibility for important tasks */}
@@ -288,7 +288,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                 variant="outline"
                 className={cn('text-[10px] px-1.5 py-0', TASK_IMPACT_COLORS[task.metadata.impact])}
               >
-                {TASK_IMPACT_LABELS[task.metadata.impact]}
+                {t(`impact.${task.metadata.impact}`)}
               </Badge>
             )}
             {/* Complexity badge */}
@@ -297,7 +297,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                 variant="outline"
                 className={cn('text-[10px] px-1.5 py-0', TASK_COMPLEXITY_COLORS[task.metadata.complexity])}
               >
-                {TASK_COMPLEXITY_LABELS[task.metadata.complexity]}
+                {t(`complexity.${task.metadata.complexity}`)}
               </Badge>
             )}
             {/* Priority badge - only show urgent/high */}

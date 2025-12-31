@@ -286,6 +286,23 @@ class PhaseExecutor:
 
         errors = []
 
+        # Get language name for AI instructions
+        language_map = {
+            "en": "English",
+            "he": "Hebrew",
+            "fr": "French",
+            "es": "Spanish",
+            "de": "German",
+            "it": "Italian",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "ja": "Japanese",
+            "zh": "Chinese",
+            "ko": "Korean",
+            "ar": "Arabic",
+        }
+        language_name = language_map.get(self.generator.language, self.generator.language)
+
         # First attempt: run the full ideation agent
         print_status(
             f"Running {self.generator.get_type_label(ideation_type)} agent...",
@@ -293,6 +310,10 @@ class PhaseExecutor:
         )
 
         context = f"""
+**LANGUAGE REQUIREMENT**: Write ALL user-facing content in {language_name}.
+The JSON structure keys must remain in English, but all TEXT VALUES (titles, descriptions, benefits, etc.) must be in {language_name}.
+This is CRITICAL for user experience - all generated idea content must be in {language_name}.
+
 **Ideation Context**: {self.output_dir / "ideation_context.json"}
 **Project Index**: {self.output_dir / "project_index.json"}
 **Output File**: {output_file}

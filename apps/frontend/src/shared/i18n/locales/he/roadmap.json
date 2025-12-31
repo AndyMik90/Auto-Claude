@@ -8,7 +8,13 @@
   "header": {
     "regenerate": "צור מפת דרכים מחדש",
     "export": "ייצא",
-    "settings": "הגדרות"
+    "settings": "הגדרות",
+    "addFeature": "הוסף תכונה",
+    "addFeatureTooltip": "הוסף תכונה חדשה למפת הדרכים",
+    "regenerateTooltip": "צור מפת דרכים מחדש",
+    "competitorAnalysis": "ניתוח מתחרים",
+    "competitorAnalysisTooltip": "לחץ לצפייה בניתוח מפורט",
+    "analyzedCompetitors": "נותחו {count} מתחרים עם {painPoints} נקודות כאב שזוהו"
   },
   "phases": {
     "now": "עכשיו",
@@ -17,9 +23,12 @@
     "future": "עתיד"
   },
   "status": {
+    "draft": "טיוטה",
+    "underReview": "בבדיקה",
     "planned": "מתוכנן",
     "inProgress": "בתהליך",
     "completed": "הושלם",
+    "done": "בוצע",
     "onHold": "בהמתנה"
   },
   "actions": {
@@ -95,13 +104,82 @@
     "build": "בנה",
     "votes": "{count} הצביעו ממשוב משתמשים",
     "external": "חיצוני",
-    "importedFrom": "יובא מ-{provider}"
+    "importedFrom": "יובא מ-{provider}",
+    "impact": "השפעה",
+    "competitorInsightTooltip": "תכונה זו מטפלת בנקודות כאב של מתחרים",
+    "insight": "תובנה",
+    "goToTask": "עבור למשימה"
   },
   "deleteDialog": {
     "title": "מחק תכונה?",
     "description": "פעולה זו תסיר לצמיתות את \"{{title}}\" ממפת הדרכים שלך.",
     "cancel": "ביטול",
     "delete": "מחק"
+  },
+  "complexity": {
+    "low": "נמוך",
+    "medium": "בינוני",
+    "high": "גבוה"
+  },
+  "impact": {
+    "low": "נמוך",
+    "medium": "בינוני",
+    "high": "גבוה"
+  },
+  "impactFull": {
+    "low": "השפעה נמוכה",
+    "medium": "השפעה בינונית",
+    "high": "השפעה גבוהה"
+  },
+  "complexityFull": {
+    "low": "מורכבות נמוכה",
+    "medium": "מורכבות בינונית",
+    "high": "מורכבות גבוהה"
+  },
+  "priority": {
+    "must": "חובה",
+    "should": "רצוי",
+    "could": "אפשרי",
+    "wont": "לא בשלב זה"
+  },
+  "complexity": {
+    "low": "נמוכה",
+    "medium": "בינונית",
+    "high": "גבוהה"
+  },
+  "impact": {
+    "low": "נמוכה",
+    "medium": "בינונית",
+    "high": "גבוהה"
+  },
+  "kanban": {
+    "underReview": "בבדיקה",
+    "byPriority": "לפי עדיפות",
+    "allFeatures": "כל התכונות",
+    "noFeatures": "אין תכונות",
+    "dragFeaturesHere": "גרור תכונות לכאן",
+    "dropHere": "שחרר כאן"
+  },
+  "summary": {
+    "target": "יעד:",
+    "morePersonas": "+{count} פרסונות נוספות",
+    "secondaryPersonas": "פרסונות משניות:",
+    "features": "תכונות",
+    "phases": "שלבים"
+  },
+  "views": {
+    "kanban": "קנבן",
+    "phases": "שלבים",
+    "allFeatures": "כל התכונות",
+    "byPriority": "לפי עדיפות"
+  },
+  "phaseCard": {
+    "progress": "התקדמות",
+    "milestones": "אבני דרך",
+    "featuresCount": "תכונות ({count})",
+    "moreFeatures": "+{count} תכונות נוספות",
+    "viewTask": "הצג משימה",
+    "goToTask": "עבור למשימה"
   },
   "featureDetail": {
     "description": "תיאור",
@@ -111,6 +189,15 @@
     "dependencies": "תלויות",
     "userStories": "סיפורי משתמש",
     "acceptanceCriteria": "קריטריוני קבלה",
-    "competitorInsights": "מטפל בנקודות כאב של מתחרים"
+    "competitorInsights": "מטפל בנקודות כאב של מתחרים",
+    "severity": "חומרה",
+    "goToTask": "עבור למשימה",
+    "convertToTask": "המר למשימת Auto-Build"
+  },
+  "severity": {
+    "low": "נמוך",
+    "medium": "בינוני",
+    "high": "גבוה",
+    "critical": "קריטי"
   }
 }

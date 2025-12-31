@@ -120,21 +120,28 @@ async function executeQuery(
   args: string[],
   timeout: number = 10000
 ): Promise<QueryResult> {
+  console.log(`[Memory] spawnGraphitiProcess called`);
   const pythonCmd = getConfiguredPythonPath();
+  console.log(`[Memory] Python command: ${pythonCmd}`);
 
   const scriptPath = getQueryScriptPath();
+  console.log(`[Memory] Script path: ${scriptPath || 'NOT FOUND'}`);
   if (!scriptPath) {
     return { success: false, error: 'query_memory.py script not found' };
   }
 
   const [pythonExe, baseArgs] = parsePythonCommand(pythonCmd);
+  console.log(`[Memory] Parsed: pythonExe="${pythonExe}", baseArgs=[${baseArgs.join(', ')}]`);
 
   return new Promise((resolve) => {
     const fullArgs = [...baseArgs, scriptPath, command, ...args];
+    console.log(`[Memory] Full spawn command: ${pythonExe} ${fullArgs.join(' ')}`);
+    
     const proc = spawn(pythonExe, fullArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout,
     });
+    console.log(`[Memory] ✓ Process spawned successfully, PID: ${proc.pid}`);
 
     let stdout = '';
     let stderr = '';
@@ -145,6 +152,11 @@ async function executeQuery(
 
     proc.stderr.on('data', (data) => {
       stderr += data.toString();
+    });
+
+    proc.on('error', (err) => {
+      console.error(`[Memory] ✗ Process error: ${err.message}`);
+      resolve({ success: false, error: `Process error: ${err.message}` });
     });
 
     proc.on('close', (code) => {

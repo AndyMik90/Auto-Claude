@@ -29,6 +29,7 @@ class RoadmapOrchestrator:
         output_dir: Path | None = None,
         model: str = "claude-opus-4-5-20251101",
         thinking_level: str = "medium",
+        language: str = "en",
         refresh: bool = False,
         enable_competitor_analysis: bool = False,
         refresh_competitor_analysis: bool = False,
@@ -37,6 +38,7 @@ class RoadmapOrchestrator:
         self.model = model
         self.thinking_level = thinking_level
         self.thinking_budget = get_thinking_budget(thinking_level)
+        self.language = language
         self.refresh = refresh
         self.enable_competitor_analysis = enable_competitor_analysis
         self.refresh_competitor_analysis = refresh_competitor_analysis
@@ -75,10 +77,10 @@ class RoadmapOrchestrator:
             self.output_dir, self.refresh, self.script_executor
         )
         self.discovery_phase = DiscoveryPhase(
-            self.output_dir, self.refresh, self.agent_executor
+            self.output_dir, self.refresh, self.agent_executor, self.language
         )
         self.features_phase = FeaturesPhase(
-            self.output_dir, self.refresh, self.agent_executor
+            self.output_dir, self.refresh, self.agent_executor, self.language
         )
 
         debug_section("roadmap_orchestrator", "Roadmap Orchestrator Initialized")

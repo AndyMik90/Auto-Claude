@@ -13,72 +13,145 @@ const IGNORED_DIRS = new Set([
   'vendor', 'target', '.gradle', '.maven'
 ]);
 
+/**
+ * Normalize file path for URI usage (convert backslashes to forward slashes)
+ */
+function normalizePathForUri(filePath: string): string {
+  return filePath.replace(/\\/g, '/');
+}
+
 // IDE URI schemes mapping
 const IDE_URI_SCHEMES: Record<SupportedIDE, (filePath: string, line?: number) => string> = {
-  vscode: (filePath, line) => `vscode://file/${filePath}${line ? `:${line}` : ''}`,
-  vscodium: (filePath, line) => `vscodium://file/${filePath}${line ? `:${line}` : ''}`,
-  cursor: (filePath, line) => `cursor://file/${filePath}${line ? `:${line}` : ''}`,
-  windsurf: (filePath, line) => `windsurf://file/${filePath}${line ? `:${line}` : ''}`,
-  intellij: (filePath, line) => `idea://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  pycharm: (filePath, line) => `pycharm://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  webstorm: (filePath, line) => `webstorm://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  phpstorm: (filePath, line) => `phpstorm://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  goland: (filePath, line) => `goland://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  rider: (filePath, line) => `rider://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  clion: (filePath, line) => `clion://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  rubymine: (filePath, line) => `rubymine://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  datagrip: (filePath, line) => `datagrip://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  androidstudio: (filePath, line) => `studio://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  fleet: (filePath, line) => `fleet://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  sublime: (filePath, line) => `subl://open?url=file://${filePath}${line ? `&line=${line}` : ''}`,
-  zed: (filePath, line) => `zed://file/${filePath}${line ? `:${line}` : ''}`,
-  // Fallback for editors without URI scheme support
-  visualstudio: (filePath) => filePath,
-  vim: (filePath) => filePath,
-  neovim: (filePath) => filePath,
-  emacs: (filePath) => filePath,
-  nano: (filePath) => filePath,
-  micro: (filePath) => filePath,
-  helix: (filePath) => filePath,
-  kakoune: (filePath) => filePath,
-  xcode: (filePath) => filePath,
-  eclipse: (filePath) => filePath,
-  netbeans: (filePath) => filePath,
-  qtcreator: (filePath) => filePath,
-  codeblocks: (filePath) => filePath,
-  nova: (filePath) => filePath,
-  bbedit: (filePath) => filePath,
-  textmate: (filePath) => filePath,
-  coteditor: (filePath) => filePath,
-  notepadpp: (filePath) => filePath,
-  ultraedit: (filePath) => filePath,
-  kate: (filePath) => filePath,
-  gedit: (filePath) => filePath,
-  geany: (filePath) => filePath,
-  lapce: (filePath) => filePath,
-  'lite-xl': (filePath) => filePath,
-  codespaces: (filePath) => filePath,
-  gitpod: (filePath) => filePath,
-  replit: (filePath) => filePath,
-  codesandbox: (filePath) => filePath,
-  stackblitz: (filePath) => filePath,
-  cloud9: (filePath) => filePath,
-  cloudshell: (filePath) => filePath,
-  coder: (filePath) => filePath,
-  glitch: (filePath) => filePath,
-  codepen: (filePath) => filePath,
-  jsfiddle: (filePath) => filePath,
-  colab: (filePath) => filePath,
-  jupyter: (filePath) => filePath,
-  dataspell: (filePath) => filePath,
-  atom: (filePath) => filePath,
-  brackets: (filePath) => filePath,
-  void: (filePath, line) => `void://file/${filePath}${line ? `:${line}` : ''}`,
-  pearai: (filePath, line) => `pearai://file/${filePath}${line ? `:${line}` : ''}`,
-  kiro: (filePath, line) => `kiro://file/${filePath}${line ? `:${line}` : ''}`,
-  aqua: (filePath, line) => `aqua://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  rustrover: (filePath, line) => `rustrover://open?file=${encodeURIComponent(filePath)}${line ? `&line=${line}` : ''}`,
-  custom: (filePath) => filePath
+  vscode: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `vscode://file/${encodeURIComponent(normalized)}${line ? `:${line}` : ''}`;
+  },
+  vscodium: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `vscodium://file/${encodeURIComponent(normalized)}${line ? `:${line}` : ''}`;
+  },
+  cursor: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `cursor://file/${encodeURIComponent(normalized)}${line ? `:${line}` : ''}`;
+  },
+  windsurf: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `windsurf://file/${encodeURIComponent(normalized)}${line ? `:${line}` : ''}`;
+  },
+  intellij: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `idea://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  pycharm: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `pycharm://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  webstorm: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `webstorm://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  phpstorm: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `phpstorm://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  goland: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `goland://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  rider: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `rider://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  clion: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `clion://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  rubymine: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `rubymine://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  datagrip: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `datagrip://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  androidstudio: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `studio://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  fleet: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `fleet://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  sublime: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `subl://open?url=file://${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  zed: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `zed://file/${encodeURIComponent(normalized)}${line ? `:${line}` : ''}`;
+  },
+  void: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `void://file/${encodeURIComponent(normalized)}${line ? `:${line}` : ''}`;
+  },
+  pearai: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `pearai://file/${encodeURIComponent(normalized)}${line ? `:${line}` : ''}`;
+  },
+  kiro: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `kiro://file/${encodeURIComponent(normalized)}${line ? `:${line}` : ''}`;
+  },
+  aqua: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `aqua://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  rustrover: (filePath, line) => {
+    const normalized = normalizePathForUri(filePath);
+    return `rustrover://open?file=${encodeURIComponent(normalized)}${line ? `&line=${line}` : ''}`;
+  },
+  // Fallback for editors without custom URI schemes - return file:// URL
+  visualstudio: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  vim: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  neovim: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  emacs: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  nano: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  micro: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  helix: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  kakoune: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  xcode: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  eclipse: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  netbeans: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  qtcreator: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  codeblocks: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  nova: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  bbedit: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  textmate: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  coteditor: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  notepadpp: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  ultraedit: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  kate: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  gedit: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  geany: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  lapce: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  'lite-xl': (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  codespaces: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  gitpod: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  replit: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  codesandbox: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  stackblitz: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  cloud9: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  cloudshell: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  coder: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  glitch: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  codepen: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  jsfiddle: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  colab: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  jupyter: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  dataspell: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  atom: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  brackets: (filePath) => `file:///${normalizePathForUri(filePath)}`,
+  custom: (filePath) => `file:///${normalizePathForUri(filePath)}`
 };
 
 /**
@@ -144,7 +217,7 @@ export function registerFileHandlers(): void {
   
   ipcMain.handle(
     'open-file',
-    async (_, params: { filePath: string; lineStart?: number; lineEnd?: number }): Promise<IPCResult<void>> => {
+    async (_, params: { filePath: string; lineStart?: number }): Promise<IPCResult<void>> => {
       try {
         const { filePath, lineStart } = params;
         

@@ -40,5 +40,45 @@
   "dialogs": {
     "discardChanges": "האם אתה בטוח שברצונך למחוק את כל השינויים עבור",
     "deleteTask": "האם אתה בטוח שברצונך למחוק"
+  },
+  "workspace": {
+    "loadingInfo": "טוען מידע על סביבת העבודה...",
+    "noWorkspaceTitle": "לא נמצאה סביבת עבודה",
+    "noWorkspaceMessage": "לא נמצאה סביבת עבודה מבודדת עבור משימה זו. השינויים אולי בוצעו ישירות בפרויקט שלך.",
+    "updating": "מעדכן...",
+    "markAsDone": "סמן כהושלם"
+  },
+  "feedback": {
+    "requestChangesTitle": "בקש שינויים",
+    "requestChangesDescription": "מצאת בעיות? תאר מה צריך לתקן והבינה המלאכותית תמשיך לעבוד על זה.",
+    "placeholder": "תאר את הבעיות או השינויים הנדרשים...",
+    "submitting": "שולח...",
+    "requestChanges": "בקש שינויים"
+  },
+  "staged": {
+    "title": "השינויים הועלו בהצלחה",
+    "aiCommitMessage": "הודעת commit שנוצרה ע\"י AI",
+    "copied": "הועתק!",
+    "copy": "העתק",
+    "commitPlaceholder": "הודעת commit...",
+    "editNote": "ערוך לפי הצורך, ואז העתק והשתמש עם",
+    "nextStepsTitle": "צעדים הבאים:",
+    "step1": "פתח את הפרויקט ב-IDE או במסוף",
+    "step2": "סקור את השינויים המועלים עם",
+    "step2And": "ו",
+    "step3": "בצע commit כשאתה מוכן:"
+  },
+  "stagedInProject": {
+    "title": "שינויים הועלו בפרויקט",
+    "description": "השינויים של משימה זו הועלו בפרויקט הראשי שלך",
+    "stagedOn": "בתאריך {{date}}",
+    "nextStepsTitle": "צעדים הבאים:",
+    "reviewChanges": "סקור שינויים מועלים עם",
+    "and": "ו",
+    "commitWhenReady": "בצע commit כשאתה מוכן:",
+    "pushWhenSatisfied": "דחוף ל-remote כשאתה מרוצה",
+    "cleaningUp": "מנקה...",
+    "deleteWorktreeAndMarkDone": "מחק Worktree וסמן כהושלם",
+    "deleteNote": "פעולה זו תמחק את סביבת העבודה המבודדת ותסמן את המשימה כהושלמה."
   }
 }

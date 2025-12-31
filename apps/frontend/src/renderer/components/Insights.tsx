@@ -17,7 +17,8 @@ import {
   StopCircle,
   Edit2,
   X,
-  Check
+  Check,
+  Copy
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -268,7 +269,7 @@ export function Insights({ projectId }: InsightsProps) {
               size="icon"
               className="h-8 w-8"
               onClick={() => setShowSidebar(!showSidebar)}
-              title={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
+              title={showSidebar ? t('sidebar.hide') : t('sidebar.show')}
             >
               {showSidebar ? (
                 <PanelLeftClose className="h-4 w-4" />
@@ -497,6 +498,7 @@ function MessageBubble({
   onStartEdit,
   onCancelEdit
 }: MessageBubbleProps) {
+  const { t } = useTranslation('insights');
   const [editValue, setEditValue] = useState(message.content);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -544,7 +546,7 @@ function MessageBubble({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-foreground">
-              {isUser ? 'You' : 'Assistant'}
+              {isUser ? t('you') : t('assistant')}
             </span>
             {message.edited && (
               <span className="text-xs text-muted-foreground italic">
@@ -558,7 +560,7 @@ function MessageBubble({
               size="icon"
               className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={onStartEdit}
-              title="Edit message"
+              title={t('edit.button')}
             >
               <Edit2 className="h-3 w-3" />
             </Button>
@@ -595,8 +597,153 @@ function MessageBubble({
             </div>
           </div>
         ) : (
-          <div dir={textDir} className={isRTL ? 'text-right' : 'text-left'}>
-            <MarkdownContent content={message.content} className="prose prose-sm dark:prose-invert max-w-none" />
+          <div dir={textDir} className={cn(
+            'prose prose-sm dark:prose-invert max-w-none',
+            isRTL ? 'text-right [&>*]:text-right' : 'text-left'
+          )}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // כותרות בגדלי גופן שונים
+                h1: ({ children }: any) => (
+                  <h1 className="text-2xl font-bold mt-6 mb-4 text-foreground border-b border-border pb-2">
+                    {children}
+                  </h1>
+                ),
+                h2: ({ children }: any) => (
+                  <h2 className="text-xl font-bold mt-5 mb-3 text-foreground">
+                    {children}
+                  </h2>
+                ),
+                h3: ({ children }: any) => (
+                  <h3 className="text-lg font-semibold mt-4 mb-2 text-foreground">
+                    {children}
+                  </h3>
+                ),
+                h4: ({ children }: any) => (
+                  <h4 className="text-base font-semibold mt-3 mb-2 text-foreground">
+                    {children}
+                  </h4>
+                ),
+                h5: ({ children }: any) => (
+                  <h5 className="text-sm font-semibold mt-2 mb-1 text-foreground">
+                    {children}
+                  </h5>
+                ),
+                h6: ({ children }: any) => (
+                  <h6 className="text-sm font-medium mt-2 mb-1 text-muted-foreground">
+                    {children}
+                  </h6>
+                ),
+                // הדגשות
+                strong: ({ children }: any) => (
+                  <strong className="font-bold text-foreground">
+                    {children}
+                  </strong>
+                ),
+                em: ({ children }: any) => (
+                  <em className="italic text-foreground/90">
+                    {children}
+                  </em>
+                ),
+                // רשימות
+                ul: ({ children }: any) => (
+                  <ul className="list-disc list-inside space-y-1 my-3">
+                    {children}
+                  </ul>
+                ),
+                ol: ({ children }: any) => (
+                  <ol className="list-decimal list-inside space-y-1 my-3">
+                    {children}
+                  </ol>
+                ),
+                li: ({ children }: any) => (
+                  <li className="text-sm leading-relaxed">
+                    {children}
+                  </li>
+                ),
+                // blockquote
+                blockquote: ({ children }: any) => (
+                  <blockquote className="border-l-4 border-primary/50 pl-4 my-3 italic text-muted-foreground">
+                    {children}
+                  </blockquote>
+                ),
+                // קוד
+                code: ({ inline, className, children, ...props }: any) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  const language = match ? match[1] : '';
+                  const [copied, setCopied] = useState(false);
+                  
+                  const handleCopy = () => {
+                    const code = String(children).replace(/\n$/, '');
+                    navigator.clipboard.writeText(code);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  };
+                  
+                  return !inline ? (
+                    <div className="relative group my-4 not-prose" dir="ltr">
+                      <div className="flex items-center justify-between bg-muted/30 border-t border-x border-border rounded-t-lg px-4 py-2">
+                        {language && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {language}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleCopy}
+                          className="ml-auto flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded"
+                          title={t('code.copy')}
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="h-3 w-3" />
+                              {t('code.copied')}
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              {t('code.copy')}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <pre className="overflow-x-auto bg-muted/50 border border-border rounded-b-lg p-4 text-sm font-mono m-0" dir="ltr">
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    </div>
+                  ) : (
+                    <code className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono border border-border/30" dir="ltr" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                // לינקים
+                a: ({ href, children }: any) => (
+                  <a 
+                    href={href} 
+                    className="text-blue-600 dark:text-blue-400 hover:underline font-medium underline-offset-2" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    {children}
+                  </a>
+                ),
+                // קו הפרדה
+                hr: () => (
+                  <hr className="my-4 border-t border-border" />
+                ),
+                // פסקאות
+                p: ({ children }: any) => (
+                  <p className="text-sm leading-relaxed my-2 text-foreground">
+                    {children}
+                  </p>
+                )
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
           </div>
         )}
 
@@ -612,7 +759,7 @@ function MessageBubble({
               <div className="mb-2 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-primary">
-                  Suggested Task
+                  {t('task.suggested')}
                 </span>
               </div>
               <h4 className="mb-2 font-medium text-foreground">
@@ -631,8 +778,7 @@ function MessageBubble({
                         TASK_CATEGORY_COLORS[message.suggestedTask.metadata.category]
                       )}
                     >
-                      {TASK_CATEGORY_LABELS[message.suggestedTask.metadata.category] ||
-                        message.suggestedTask.metadata.category}
+                      {t(`categories.${message.suggestedTask.metadata.category}`, { ns: 'tasks' })}
                     </Badge>
                   )}
                   {message.suggestedTask.metadata.complexity && (
@@ -643,8 +789,7 @@ function MessageBubble({
                         TASK_COMPLEXITY_COLORS[message.suggestedTask.metadata.complexity]
                       )}
                     >
-                      {TASK_COMPLEXITY_LABELS[message.suggestedTask.metadata.complexity] ||
-                        message.suggestedTask.metadata.complexity}
+                      {t(`complexity.${message.suggestedTask.metadata.complexity}`, { ns: 'tasks' })}
                     </Badge>
                   )}
                 </div>
@@ -657,17 +802,17 @@ function MessageBubble({
                 {isCreatingTask ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {t('task.creating')}
                   </>
                 ) : taskCreated ? (
                   <>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Task Created
+                    {t('task.created')}
                   </>
                 ) : (
                   <>
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Task
+                    {t('task.create')}
                   </>
                 )}
               </Button>
@@ -689,6 +834,7 @@ interface ToolUsageHistoryProps {
 }
 
 function ToolUsageHistory({ tools }: ToolUsageHistoryProps) {
+  const { t } = useTranslation('insights');
   const [expanded, setExpanded] = useState(false);
 
   if (tools.length === 0) return null;
@@ -742,7 +888,7 @@ function ToolUsageHistory({ tools }: ToolUsageHistoryProps) {
             );
           })}
         </span>
-        <span>{tools.length} tool{tools.length !== 1 ? 's' : ''} used</span>
+        <span>{tools.length} {tools.length !== 1 ? t('tools.usedPlural') : t('tools.used')}</span>
         <span className="text-[10px]">{expanded ? '▲' : '▼'}</span>
       </button>
 

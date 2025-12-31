@@ -65,12 +65,6 @@ function getModelLabel(modelShort: ModelTypeShort): string {
   return model?.label.replace('Claude ', '') || modelShort;
 }
 
-// Helper to get thinking label from level
-function getThinkingLabel(level: ThinkingLevel): string {
-  const thinking = THINKING_LEVELS.find(t => t.value === level);
-  return thinking?.label || level;
-}
-
 const AGENT_CONFIGS: Record<string, AgentConfig> = {
   // Spec Creation Phases - all use 'spec' phase settings
   spec_gatherer: {
@@ -609,7 +603,7 @@ export function AgentTools() {
                           id={id}
                           config={config}
                           modelLabel={getModelLabel(model)}
-                          thinkingLabel={getThinkingLabel(thinking)}
+                          thinkingLabel={t(`agentProfile.thinkingLevels.${thinking}.label`, { ns: 'settings' })}
                         />
                       );
                     })}

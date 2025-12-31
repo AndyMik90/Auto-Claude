@@ -70,9 +70,10 @@ export function InsightsModelSelector({
   const getDisplayText = () => {
     if (selectedProfileId === 'custom' && currentConfig) {
       const modelLabel = AVAILABLE_MODELS.find(m => m.value === currentConfig.model)?.label || currentConfig.model;
-      return `${modelLabel} + ${currentConfig.thinkingLevel}`;
+      return `${modelLabel} + ${t(`thinkingLevels.${currentConfig.thinkingLevel}`)}`;
     }
-    return profile?.name || 'Balanced';
+    // Always use translation instead of hardcoded profile name
+    return t(`profileSelector.${selectedProfileId}`) || t('profileSelector.balanced');
   };
 
   return (
@@ -106,9 +107,9 @@ export function InsightsModelSelector({
               >
                 <ProfileIcon className="h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{p.name}</div>
+                  <div className="font-medium">{t(`profileSelector.${p.id}`)}</div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {modelLabel} + {p.thinkingLevel}
+                    {modelLabel} + {t(`thinkingLevels.${p.thinkingLevel}`)}
                   </div>
                 </div>
                 {isSelected && (

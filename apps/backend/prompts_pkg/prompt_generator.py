@@ -13,7 +13,10 @@ This approach:
 """
 
 import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def get_relative_spec_path(spec_dir: Path, project_dir: Path) -> str:
@@ -76,10 +79,32 @@ def generate_environment_context(project_dir: Path, spec_dir: Path) -> str:
                         "ru": "Russian (Русский)",
                         "pt": "Portuguese (Português)"
                     }
-                    lang_name = lang_names.get(preferred_lang, preferred_lang.upper())
-                    language_instruction = f"\n\n**IMPORTANT:** Write all your progress messages, status updates, and explanations in {lang_name}. The user interface language is set to {lang_name}.\n"
-        except Exception:
-            pass  # Silently ignore if file doesn't exist or parsing fails
+                    lang_name = lang_names.get(
+                        preferred_lang, preferred_lang.upper()
+                    )
+                    language_instruction = (
+                        f"\n\n**IMPORTANT:** Write all your progress messages, "
+                        f"status updates, and explanations in {lang_name}. "
+                        f"The user interface language is set to {lang_name}.\n"
+                    )
+        except FileNotFoundError:
+            # File doesn't exist - this is expected and not an error
+            pass
+        except PermissionError as e:
+            logger.error(
+                f"Permission denied reading requirements.json: {e}",
+                exc_info=True
+            )
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"Failed to parse requirements.json: {e}",
+                exc_info=True
+            )
+        except Exception as e:
+            logger.error(
+                f"Unexpected error reading requirements.json: {e}",
+                exc_info=True
+            )
 
     return f"""## YOUR ENVIRONMENT
 

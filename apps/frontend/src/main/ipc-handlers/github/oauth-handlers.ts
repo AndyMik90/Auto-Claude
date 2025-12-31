@@ -242,9 +242,14 @@ export function registerStartGhAuth(): void {
           const args = ['auth', 'login', '--web', '--scopes', 'repo'];
           debugLog('Spawning: gh', args);
 
+          // Remove GITHUB_TOKEN from environment to allow gh auth login to work
+          // gh CLI refuses to authenticate when GITHUB_TOKEN is set
+          const env = getAugmentedEnv();
+          delete env.GITHUB_TOKEN;
+
           const ghProcess = spawn('gh', args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            env: getAugmentedEnv()
+            env
           });
 
           let output = '';

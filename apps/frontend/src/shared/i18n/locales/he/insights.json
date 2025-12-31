@@ -46,12 +46,36 @@
   "profileSelector": {
     "label": "פרופיל סוכן",
     "custom": "מותאם אישית...",
-    "customDescription": "בחר מודל ורמת חשיבה"
+    "customDescription": "בחר מודל ורמת חשיבה",
+    "balanced": "מאוזן",
+    "complex": "מורכב",
+    "quick": "מהיר",
+    "auto": "אוטומטי"
+  },
+  "thinkingLevels": {
+    "none": "ללא",
+    "low": "נמוכה",
+    "medium": "בינונית",
+    "high": "גבוהה",
+    "ultrathink": "חשיבה עמוקה"
+  },
+  "sidebar": {
+    "show": "הצג סרגל צד",
+    "hide": "הסתר סרגל צד"
+  },
+  "you": "את/ה",
+  "task": {
+    "suggested": "משימה מוצעת",
+    "creating": "יוצר...",
+    "created": "משימה נוצרה",
+    "create": "צור משימה"
   },
   "tools": {
     "reading": "קורא קובץ",
     "searching": "מחפש קבצים",
-    "searchingCode": "מחפש בקוד"
+    "searchingCode": "מחפש בקוד",
+    "used": "כלי נוצל",
+    "usedPlural": "כלים נוצלו"
   },
   "thinking": "חושב...",
   "assistant": "עוזר",
@@ -64,5 +88,9 @@
   "empty": {
     "title": "אין היסטוריית צ'אט",
     "description": "התחל שיחה כדי לנתח את בסיס הקוד שלך"
+  },
+  "code": {
+    "copy": "העתק",
+    "copied": "הועתק!"
   }
 }

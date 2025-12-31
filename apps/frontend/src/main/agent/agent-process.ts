@@ -11,6 +11,8 @@ import { projectStore } from '../project-store';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { parsePythonCommand, validatePythonPath } from '../python-detector';
 import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager';
+import { readSettingsFile } from '../settings-utils';
+import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 
 /**
  * Process spawning and lifecycle management
@@ -50,10 +52,36 @@ export class AgentProcessManager {
     extraEnv: Record<string, string>
   ): NodeJS.ProcessEnv {
     const profileEnv = getProfileEnv();
+    
+    // Load global settings for proxy configuration
+    const savedSettings = readSettingsFile();
+    const settings = { ...DEFAULT_APP_SETTINGS, ...savedSettings };
+    
+    // Build environment with global proxy settings
+    const globalEnv: Record<string, string> = {};
+    
+    // Add proxy settings if configured
+    if (settings.globalHttpProxy) {
+      globalEnv.HTTP_PROXY = settings.globalHttpProxy;
+    }
+    if (settings.globalHttpsProxy) {
+      globalEnv.HTTPS_PROXY = settings.globalHttpsProxy;
+    }
+    if (settings.globalNoProxy) {
+      globalEnv.NO_PROXY = settings.globalNoProxy;
+    }
+    
+    // Add Claude API proxy (ANTHROPIC_BASE_URL) if configured
+    if (settings.globalAnthropicBaseUrl) {
+      globalEnv.ANTHROPIC_BASE_URL = settings.globalAnthropicBaseUrl;
+      console.log(`[AgentProcess] 🎯 Setting ANTHROPIC_BASE_URL=${settings.globalAnthropicBaseUrl}`);
+    }
+    
     return {
       ...process.env,
-      ...extraEnv,
-      ...profileEnv,
+      ...globalEnv,     // Global settings (proxy, ANTHROPIC_BASE_URL)
+      ...extraEnv,      // Task-specific overrides
+      ...profileEnv,    // Claude profile environment
       PYTHONUNBUFFERED: '1',
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1'

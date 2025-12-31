@@ -24,7 +24,7 @@ function checkGhCli(): { installed: boolean; error?: string } {
   } catch {
     return {
       installed: false,
-      error: 'GitHub CLI (gh) not found. Please install it: https://cli.github.com/'
+      error: 'context:github.cliNotFound'
     };
   }
 }

@@ -99,10 +99,12 @@ class DiscoveryPhase:
         output_dir: Path,
         refresh: bool,
         agent_executor: "AgentExecutor",
+        language: str = "en",
     ):
         self.output_dir = output_dir
         self.refresh = refresh
         self.agent_executor = agent_executor
+        self.language = language
         self.discovery_file = output_dir / "roadmap_discovery.json"
         self.project_index_file = output_dir / "project_index.json"
 
@@ -151,6 +153,22 @@ class DiscoveryPhase:
 
     def _build_context(self) -> str:
         """Build context string for the discovery agent."""
+        language_map = {
+            "en": "English",
+            "he": "Hebrew",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "it": "Italian",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "zh": "Chinese",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "ar": "Arabic"
+        }
+        language_name = language_map.get(self.language, self.language)
+        
         return f"""
 **Project Index**: {self.project_index_file}
 **Output Directory**: {self.output_dir}
@@ -158,10 +176,12 @@ class DiscoveryPhase:
 
 IMPORTANT: This runs NON-INTERACTIVELY. Do NOT ask questions or wait for user input.
 
+**LANGUAGE REQUIREMENT**: Write ALL user-facing content (project name, descriptions, vision, audience descriptions, etc.) in {language_name}. The JSON structure and field names remain in English, but all TEXT VALUES must be in {language_name}.
+
 Your task:
 1. Analyze the project (read README, code structure, git history)
 2. Infer target audience, vision, and constraints from your analysis
-3. IMMEDIATELY create {self.discovery_file} with your findings
+3. IMMEDIATELY create {self.discovery_file} with your findings IN {language_name}
 
 Do NOT ask questions. Make educated inferences and create the file.
 """
@@ -205,10 +225,12 @@ class FeaturesPhase:
         output_dir: Path,
         refresh: bool,
         agent_executor: "AgentExecutor",
+        language: str = "en",
     ):
         self.output_dir = output_dir
         self.refresh = refresh
         self.agent_executor = agent_executor
+        self.language = language
         self.roadmap_file = output_dir / "roadmap.json"
         self.discovery_file = output_dir / "roadmap_discovery.json"
         self.project_index_file = output_dir / "project_index.json"
@@ -267,19 +289,37 @@ class FeaturesPhase:
 
     def _build_context(self) -> str:
         """Build context string for the features agent."""
+        language_map = {
+            "en": "English",
+            "he": "Hebrew",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "it": "Italian",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "zh": "Chinese",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "ar": "Arabic"
+        }
+        language_name = language_map.get(self.language, self.language)
+        
         return f"""
 **Discovery File**: {self.discovery_file}
 **Project Index**: {self.project_index_file}
 **Output File**: {self.roadmap_file}
 
+**LANGUAGE REQUIREMENT**: Write ALL user-facing content (feature titles, descriptions, rationales, user stories, acceptance criteria, phase names, milestone names, vision, etc.) in {language_name}. The JSON structure and field names remain in English, but all TEXT VALUES must be in {language_name}.
+
 Based on the discovery data:
-1. Generate features that address user pain points
+1. Generate features that address user pain points - ALL CONTENT IN {language_name}
 2. Prioritize using MoSCoW framework
-3. Organize into phases
-4. Create milestones
+3. Organize into phases with {language_name} names and descriptions
+4. Create milestones with {language_name} names
 5. Map dependencies
 
-Output the complete roadmap to roadmap.json.
+Output the complete roadmap to roadmap.json with all content in {language_name}.
 """
 
     def _validate_features(self, attempt: int) -> RoadmapPhaseResult | None:

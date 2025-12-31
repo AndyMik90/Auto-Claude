@@ -40,6 +40,16 @@ export function registerEnvHandlers(
     if (config.autoBuildModel !== undefined) {
       existingVars['AUTO_BUILD_MODEL'] = config.autoBuildModel;
     }
+    // Proxy settings
+    if (config.httpProxy !== undefined) {
+      existingVars['HTTP_PROXY'] = config.httpProxy;
+    }
+    if (config.httpsProxy !== undefined) {
+      existingVars['HTTPS_PROXY'] = config.httpsProxy;
+    }
+    if (config.noProxy !== undefined) {
+      existingVars['NO_PROXY'] = config.noProxy;
+    }
     if (config.linearApiKey !== undefined) {
       existingVars['LINEAR_API_KEY'] = config.linearApiKey;
     }
@@ -118,6 +128,13 @@ CLAUDE_CODE_OAUTH_TOKEN=${existingVars['CLAUDE_CODE_OAUTH_TOKEN'] || ''}
 
 # Model override (OPTIONAL)
 ${existingVars['AUTO_BUILD_MODEL'] ? `AUTO_BUILD_MODEL=${existingVars['AUTO_BUILD_MODEL']}` : '# AUTO_BUILD_MODEL=claude-opus-4-5-20251101'}
+
+# =============================================================================
+# PROXY SETTINGS (OPTIONAL)
+# =============================================================================
+${existingVars['HTTP_PROXY'] ? `HTTP_PROXY=${existingVars['HTTP_PROXY']}` : '# HTTP_PROXY=http://proxy.example.com:8080'}
+${existingVars['HTTPS_PROXY'] ? `HTTPS_PROXY=${existingVars['HTTPS_PROXY']}` : '# HTTPS_PROXY=http://proxy.example.com:8080'}
+${existingVars['NO_PROXY'] ? `NO_PROXY=${existingVars['NO_PROXY']}` : '# NO_PROXY=localhost,127.0.0.1,.local'}
 
 # =============================================================================
 # LINEAR INTEGRATION (OPTIONAL)
@@ -245,6 +262,17 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
 
       if (vars['AUTO_BUILD_MODEL']) {
         config.autoBuildModel = vars['AUTO_BUILD_MODEL'];
+      }
+
+      // Proxy settings
+      if (vars['HTTP_PROXY']) {
+        config.httpProxy = vars['HTTP_PROXY'];
+      }
+      if (vars['HTTPS_PROXY']) {
+        config.httpsProxy = vars['HTTPS_PROXY'];
+      }
+      if (vars['NO_PROXY']) {
+        config.noProxy = vars['NO_PROXY'];
       }
 
       if (vars['LINEAR_API_KEY']) {

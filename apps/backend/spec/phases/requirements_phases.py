@@ -205,7 +205,27 @@ class RequirementsPhaseMixin:
                 f"Running research agent (attempt {attempt + 1})...", "progress"
             )
 
+            # Get language name for AI instructions
+            language_map = {
+                "en": "English",
+                "he": "Hebrew",
+                "fr": "French",
+                "es": "Spanish",
+                "de": "German",
+                "it": "Italian",
+                "pt": "Portuguese",
+                "ru": "Russian",
+                "ja": "Japanese",
+                "zh": "Chinese",
+                "ko": "Korean",
+                "ar": "Arabic",
+            }
+            language_name = language_map.get(self.language, self.language)
+
             context_str = f"""
+**LANGUAGE REQUIREMENT**: Write ALL research findings and descriptions in {language_name}.
+Keep JSON keys and package names in English, but all EXPLANATIONS and NOTES must be in {language_name}.
+
 **Requirements File**: {requirements_file}
 **Research Output**: {research_file}
 

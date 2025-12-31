@@ -14,6 +14,7 @@ import { getEffectiveVersion } from '../auto-claude-updater';
 import { setUpdateChannel } from '../app-updater';
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo } from '../cli-tool-manager';
+import { configureElectronProxy } from '../proxy-config';
 
 const settingsPath = getSettingsPath();
 
@@ -175,6 +176,20 @@ export function registerSettingsHandlers(
         if (settings.betaUpdates !== undefined) {
           const channel = settings.betaUpdates ? 'beta' : 'latest';
           setUpdateChannel(channel);
+        }
+
+        // Update Electron proxy configuration if proxy settings changed
+        if (
+          settings.globalHttpProxy !== undefined ||
+          settings.globalHttpsProxy !== undefined ||
+          settings.globalNoProxy !== undefined
+        ) {
+          const mainWindow = getMainWindow();
+          if (mainWindow) {
+            configureElectronProxy(mainWindow, newSettings).catch(err => {
+              console.error('[proxy] Failed to update proxy configuration:', err);
+            });
+          }
         }
 
         return { success: true };

@@ -41,6 +41,7 @@ class PhaseExecutor(
         run_agent_fn: Callable,
         task_logger,
         ui_module,
+        language: str = "en",
     ):
         """
         Initialize the phase executor.
@@ -53,11 +54,13 @@ class PhaseExecutor(
             run_agent_fn: Async function to run agent with a prompt
             task_logger: Logger for task progress
             ui_module: UI module for status messages
+            language: UI language for content generation (en, he, fr, etc.)
         """
         self.project_dir = project_dir
         self.spec_dir = spec_dir
         self.task_description = task_description
         self.spec_validator = spec_validator
+        self.language = language
         self.run_agent_fn = run_agent_fn
         self.task_logger = task_logger
         self.ui = ui_module

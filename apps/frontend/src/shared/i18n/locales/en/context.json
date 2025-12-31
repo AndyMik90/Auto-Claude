@@ -107,6 +107,13 @@
     "connectHint": "Connect your GitHub account to view and review pull requests.",
     "openSettings": "Open Settings",
     "configureHint": "Configure your GitHub token and repository in project settings to sync issues.",
-    "noIssuesMatch": "No issues match your search"
+    "noIssuesMatch": "No issues match your search",
+    "runnerNotFound": "GitHub runner not found. Make sure the GitHub automation module is installed.",
+    "cliNotFound": "GitHub CLI (gh) not found. Please install it: https://cli.github.com/",
+    "invalidRepoFormat": "Invalid repository format. Use owner/repo or GitHub URL.",
+    "connectionFailed": "Failed to connect to GitHub"
+  },
+  "autoBuild": {
+    "pathNotConfigured": "Auto-build source path not configured"
   }
 }

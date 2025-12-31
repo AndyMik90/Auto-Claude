@@ -91,6 +91,7 @@ export function AddFeatureDialog({
   defaultPhaseId
 }: AddFeatureDialogProps) {
   const { t } = useTranslation('dialogs');
+  const { t: tRoadmap } = useTranslation('roadmap');
 
   // Form state
   const [title, setTitle] = useState('');
@@ -282,7 +283,7 @@ export function AddFeatureDialog({
                 <SelectContent>
                   {Object.entries(ROADMAP_PRIORITY_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
-                      {label}
+                      {tRoadmap(label)}
                     </SelectItem>
                   ))}
                 </SelectContent>

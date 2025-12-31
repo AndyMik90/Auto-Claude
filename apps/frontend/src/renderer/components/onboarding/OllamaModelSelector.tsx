@@ -27,50 +27,6 @@ interface OllamaModelSelectorProps {
   className?: string;
 }
 
-// Recommended embedding models for Auto Claude Memory
-// qwen3-embedding:4b is first as the recommended default (balanced quality/speed)
-const RECOMMENDED_MODELS: OllamaModel[] = [
-  {
-    name: 'qwen3-embedding:4b',
-    description: 'Qwen3 4B - Balanced quality and speed',
-    size_estimate: '3.1 GB',
-    dim: 2560,
-    installed: false,
-    badge: 'recommended',
-  },
-  {
-    name: 'qwen3-embedding:8b',
-    description: 'Qwen3 8B - Best embedding quality',
-    size_estimate: '6.0 GB',
-    dim: 4096,
-    installed: false,
-    badge: 'quality',
-  },
-  {
-    name: 'qwen3-embedding:0.6b',
-    description: 'Qwen3 0.6B - Smallest and fastest',
-    size_estimate: '494 MB',
-    dim: 1024,
-    installed: false,
-    badge: 'fast',
-  },
-  {
-    name: 'embeddinggemma',
-    description: "Google's lightweight embedding model",
-    size_estimate: '621 MB',
-    dim: 768,
-    installed: false,
-  },
-  {
-    name: 'nomic-embed-text',
-    description: 'Popular general-purpose embeddings',
-    size_estimate: '274 MB',
-    dim: 768,
-    installed: false,
-  },
-];
-
-
 /**
  * OllamaModelSelector Component
  *
@@ -106,6 +62,50 @@ export function OllamaModelSelector({
   className,
 }: OllamaModelSelectorProps) {
   const { t } = useTranslation('onboarding');
+  
+  // Recommended embedding models for Auto Claude Memory
+  // qwen3-embedding:4b is first as the recommended default (balanced quality/speed)
+  const RECOMMENDED_MODELS: OllamaModel[] = [
+    {
+      name: 'qwen3-embedding:4b',
+      description: t('embeddingModels.qwen3_4b'),
+      size_estimate: '3.1 GB',
+      dim: 2560,
+      installed: false,
+      badge: 'recommended',
+    },
+    {
+      name: 'qwen3-embedding:8b',
+      description: t('embeddingModels.qwen3_8b'),
+      size_estimate: '6.0 GB',
+      dim: 4096,
+      installed: false,
+      badge: 'quality',
+    },
+    {
+      name: 'qwen3-embedding:0.6b',
+      description: t('embeddingModels.qwen3_0_6b'),
+      size_estimate: '494 MB',
+      dim: 1024,
+      installed: false,
+      badge: 'fast',
+    },
+    {
+      name: 'embeddinggemma',
+      description: t('embeddingModels.embeddinggemma'),
+      size_estimate: '621 MB',
+      dim: 768,
+      installed: false,
+    },
+    {
+      name: 'nomic-embed-text',
+      description: t('embeddingModels.nomicEmbed'),
+      size_estimate: '274 MB',
+      dim: 768,
+      installed: false,
+    },
+  ];
+  
   const [models, setModels] = useState<OllamaModel[]>(RECOMMENDED_MODELS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

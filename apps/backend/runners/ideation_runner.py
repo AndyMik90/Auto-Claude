@@ -105,6 +105,12 @@ def main():
         help="Thinking level for extended reasoning (default: medium)",
     )
     parser.add_argument(
+        "--language",
+        type=str,
+        default="en",
+        help="UI language for content generation (en, he, fr, etc.) - AI will generate content in this language (default: en)",
+    )
+    parser.add_argument(
         "--refresh",
         action="store_true",
         help="Force regeneration even if ideation exists",
@@ -142,6 +148,7 @@ def main():
         max_ideas_per_type=args.max_ideas,
         model=args.model,
         thinking_level=args.thinking_level,
+        language=args.language,
         refresh=args.refresh,
         append=args.append,
     )

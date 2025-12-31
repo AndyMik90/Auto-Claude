@@ -1,4 +1,5 @@
 import { FolderX, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,8 @@ export function DiscardDialog({
   onOpenChange,
   onDiscard
 }: DiscardDialogProps) {
+  const { t } = useTranslation('dialogs');
+  
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>

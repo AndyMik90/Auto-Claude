@@ -162,5 +162,12 @@
     "googleLightweight": "Google's lightweight embedding model (Recommended)",
     "popularGeneral": "Popular general-purpose embeddings",
     "mixedBreadLarge": "MixedBread AI large embeddings"
+  },
+  "embeddingModels": {
+    "qwen3_4b": "Qwen3 4B - Balanced quality and speed",
+    "qwen3_8b": "Qwen3 8B - Best embedding quality",
+    "qwen3_0_6b": "Qwen3 0.6B - Smallest and fastest",
+    "embeddinggemma": "Google's lightweight embedding model",
+    "nomicEmbed": "Popular general-purpose embeddings"
   }
 }

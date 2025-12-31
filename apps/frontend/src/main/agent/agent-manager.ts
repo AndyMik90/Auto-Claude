@@ -93,7 +93,8 @@ export class AgentManager extends EventEmitter {
     taskDescription: string,
     specDir?: string,
     metadata?: SpecCreationMetadata,
-    baseBranch?: string
+    baseBranch?: string,
+    language?: string
   ): void {
     // Pre-flight auth check: Verify active profile has valid authentication
     const profileManager = getClaudeProfileManager();
@@ -136,6 +137,11 @@ export class AgentManager extends EventEmitter {
     if (!metadata?.requireReviewBeforeCoding) {
       // Auto-approve: When user starts a task from the UI without requiring review
       args.push('--auto-approve');
+    }
+
+    // Pass language for content generation
+    if (language) {
+      args.push('--language', language);
     }
 
     // Pass model and thinking level configuration

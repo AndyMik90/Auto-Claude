@@ -82,5 +82,22 @@
       "code": "Code",
       "qa": "QA"
     }
+  },
+  "logs": {
+    "noLogs": "No logs yet",
+    "loadingLogs": "Loading logs...",
+    "showOutput": "Show output",
+    "hideOutput": "Hide output",
+    "entries": "entries",
+    "entry": "entry",
+    "tools": {
+      "reading": "Reading",
+      "searchingFiles": "Searching files",
+      "searchingCode": "Searching code",
+      "editing": "Editing",
+      "writing": "Writing",
+      "running": "Running",
+      "done": "Done"
+    }
   }
 }

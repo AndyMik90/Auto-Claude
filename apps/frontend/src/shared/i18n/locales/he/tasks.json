@@ -210,7 +210,16 @@
     "showOutput": "הצג פלט",
     "hideOutput": "הסתר פלט",
     "entries": "ערכים",
-    "entry": "ערך"
+    "entry": "ערך",
+    "tools": {
+      "reading": "קורא",
+      "searchingFiles": "מחפש קבצים",
+      "searchingCode": "מחפש קוד",
+      "editing": "עורך",
+      "writing": "כותב",
+      "running": "מריץ",
+      "done": "הושלם"
+    }
   },
   "metadata": {
     "created": "נוצר",

@@ -97,6 +97,7 @@ export function useProjectSettings(
   // Collapsible sections
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     claude: true,
+    proxy: false,
     linear: false,
     github: false,
     graphiti: false

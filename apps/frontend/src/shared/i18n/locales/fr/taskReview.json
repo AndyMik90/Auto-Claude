@@ -3,5 +3,19 @@
     "openTerminal": "Ouvrir le terminal",
     "openInbuilt": "Ouvrir dans le terminal intégré",
     "openExternal": "Ouvrir dans le terminal externe"
+  },
+  "workspace": {
+    "loadingInfo": "Loading workspace info...",
+    "noWorkspaceTitle": "No Workspace Found",
+    "noWorkspaceMessage": "No isolated workspace was found for this task. The changes may have been made directly in your project.",
+    "updating": "Updating...",
+    "markAsDone": "Mark as Done"
+  },
+  "feedback": {
+    "requestChangesTitle": "Request Changes",
+    "requestChangesDescription": "Found issues? Describe what needs to be fixed and the AI will continue working on it.",
+    "placeholder": "Describe the issues or changes needed...",
+    "submitting": "Submitting...",
+    "requestChanges": "Request Changes"
   }
 }

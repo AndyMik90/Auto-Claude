@@ -43,6 +43,7 @@ class IdeationOrchestrator:
         max_ideas_per_type: int = 5,
         model: str = "claude-opus-4-5-20251101",
         thinking_level: str = "medium",
+        language: str = "en",
         refresh: bool = False,
         append: bool = False,
     ):
@@ -57,6 +58,7 @@ class IdeationOrchestrator:
             max_ideas_per_type: Maximum ideas to generate per type
             model: Claude model to use
             thinking_level: Thinking level for extended reasoning
+            language: UI language for content generation
             refresh: Force regeneration of existing files
             append: Preserve existing ideas when merging
         """
@@ -70,6 +72,7 @@ class IdeationOrchestrator:
             max_ideas_per_type=max_ideas_per_type,
             model=model,
             thinking_level=thinking_level,
+            language=language,
             refresh=refresh,
             append=append,
         )
@@ -78,6 +81,7 @@ class IdeationOrchestrator:
         self.project_dir = self.config_manager.project_dir
         self.output_dir = self.config_manager.output_dir
         self.model = self.config_manager.model
+        self.language = language
         self.refresh = self.config_manager.refresh
         self.append = self.config_manager.append
         self.enabled_types = self.config_manager.enabled_types

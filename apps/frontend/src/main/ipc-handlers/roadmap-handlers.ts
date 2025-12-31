@@ -204,18 +204,20 @@ export function registerRoadmapHandlers(
 
   ipcMain.on(
     IPC_CHANNELS.ROADMAP_GENERATE,
-    (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => {
+    (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean, language?: string) => {
       // Get feature settings for roadmap
       const featureSettings = getFeatureSettings();
       const config: RoadmapConfig = {
         model: featureSettings.model,
-        thinkingLevel: featureSettings.thinkingLevel
+        thinkingLevel: featureSettings.thinkingLevel,
+        language: language || 'en' // Default to English if not provided
       };
 
       debugLog('[Roadmap Handler] Generate request:', {
         projectId,
         enableCompetitorAnalysis,
         refreshCompetitorAnalysis,
+        language,
         config
       });
 
@@ -264,18 +266,20 @@ export function registerRoadmapHandlers(
 
   ipcMain.on(
     IPC_CHANNELS.ROADMAP_REFRESH,
-    (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean) => {
+    (_, projectId: string, enableCompetitorAnalysis?: boolean, refreshCompetitorAnalysis?: boolean, language?: string) => {
       // Get feature settings for roadmap
       const featureSettings = getFeatureSettings();
       const config: RoadmapConfig = {
         model: featureSettings.model,
-        thinkingLevel: featureSettings.thinkingLevel
+        thinkingLevel: featureSettings.thinkingLevel,
+        language: language || 'en'
       };
 
       debugLog('[Roadmap Handler] Refresh request:', {
         projectId,
         enableCompetitorAnalysis,
         refreshCompetitorAnalysis,
+        language,
         config
       });
 

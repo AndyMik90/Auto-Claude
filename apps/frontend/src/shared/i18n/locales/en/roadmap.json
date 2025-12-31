@@ -8,7 +8,13 @@
   "header": {
     "regenerate": "Regenerate Roadmap",
     "export": "Export",
-    "settings": "Settings"
+    "settings": "Settings",
+    "addFeature": "Add Feature",
+    "addFeatureTooltip": "Add a new feature to the roadmap",
+    "regenerateTooltip": "Regenerate Roadmap",
+    "competitorAnalysis": "Competitor Analysis",
+    "competitorAnalysisTooltip": "Click to view detailed analysis",
+    "analyzedCompetitors": "Analyzed {count} competitors with {painPoints} pain points identified"
   },
   "phases": {
     "now": "Now",
@@ -17,9 +23,12 @@
     "future": "Future"
   },
   "status": {
+    "draft": "Draft",
+    "underReview": "Under Review",
     "planned": "Planned",
     "inProgress": "In Progress",
     "completed": "Completed",
+    "done": "Done",
     "onHold": "On Hold"
   },
   "actions": {
@@ -95,12 +104,101 @@
     "build": "Build",
     "votes": "{count} votes from user feedback",
     "external": "External",
-    "importedFrom": "Imported from {provider}"
+    "importedFrom": "Imported from {provider}",
+    "impact": "Impact",
+    "competitorInsightTooltip": "This feature addresses competitor pain points",
+    "insight": "Insight",
+    "goToTask": "Go to Task"
   },
   "deleteDialog": {
     "title": "Delete Feature?",
     "description": "This will permanently remove \"{{title}}\" from your roadmap.",
     "cancel": "Cancel",
     "delete": "Delete"
+  },
+  "complexity": {
+    "low": "low",
+    "medium": "medium",
+    "high": "high"
+  },
+  "impact": {
+    "low": "low",
+    "medium": "medium",
+    "high": "high"
+  },
+  "impactFull": {
+    "low": "Low Impact",
+    "medium": "Medium Impact",
+    "high": "High Impact"
+  },
+  "complexityFull": {
+    "low": "Low Complexity",
+    "medium": "Medium Complexity",
+    "high": "High Complexity"
+  },
+  "priority": {
+    "must": "Must Have",
+    "should": "Should Have",
+    "could": "Could Have",
+    "wont": "Won't Have"
+  },
+  "complexity": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
+  "impact": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
+  "kanban": {
+    "underReview": "Under Review",
+    "byPriority": "By Priority",
+    "allFeatures": "All Features",
+    "noFeatures": "No features",
+    "dragFeaturesHere": "Drag features here",
+    "dropHere": "Drop here"
+  },
+  "summary": {
+    "target": "Target:",
+    "morePersonas": "+{count} more personas",
+    "secondaryPersonas": "Secondary Personas:",
+    "features": "features",
+    "phases": "phases"
+  },
+  "views": {
+    "kanban": "Kanban",
+    "phases": "Phases",
+    "allFeatures": "All Features",
+    "byPriority": "By Priority"
+  },
+  "phaseCard": {
+    "progress": "Progress",
+    "milestones": "Milestones",
+    "featuresCount": "Features ({count})",
+    "moreFeatures": "+{count} more features",
+    "viewTask": "View Task",
+    "goToTask": "Go to Task"
+  },
+
+  "featureDetail": {
+    "description": "Description",
+    "rationale": "Rationale",
+    "complexity": "Complexity",
+    "impact": "Impact",
+    "dependencies": "Dependencies",
+    "userStories": "User Stories",
+    "acceptanceCriteria": "Acceptance Criteria",
+    "competitorInsights": "Addresses competitor pain points",
+    "severity": "severity",
+    "goToTask": "Go to Task",
+    "convertToTask": "Convert to Auto-Build Task"
+  },
+  "severity": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical"
   }
 }

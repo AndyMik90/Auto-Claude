@@ -263,7 +263,7 @@ export function validateRunner(backendPath: string | null): { valid: boolean; er
   if (!backendPath) {
     return {
       valid: false,
-      error: 'GitHub runner not found. Make sure the GitHub automation module is installed.',
+      error: 'context:github.runnerNotFound',
     };
   }
 

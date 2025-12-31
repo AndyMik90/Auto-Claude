@@ -77,7 +77,12 @@
     "tokens": "טוקנים",
     "mcpServers": "שרתי MCP:",
     "showLogs": "הצג יומנים",
-    "hideLogs": "הסתר יומנים"
+    "hideLogs": "הסתר יומנים",
+    "stopGeneration": "עצור יצירה",
+    "waitingToStart": "ממתין להתחלה...",
+    "failed": "נכשל ביצירת רעיונות עבור קטגוריה זו",
+    "noIdeas": "לא נוצרו רעיונות עבור קטגוריה זו",
+    "ideas": "רעיונות"
   },
   "card": {
     "convertToTask": "המר למשימה",
@@ -160,19 +165,6 @@
     "dependencies": "בעיות תלויות",
     "dead_code": "קוד מת",
     "git_hygiene": "היגיינת Git"
-  },
-  "generation": {
-    "title": "יוצר רעיונות",
-    "complete": "הושלם",
-    "showLogs": "הצג לוגים",
-    "hideLogs": "הסתר לוגים",
-    "stop": "עצור",
-    "stopping": "עוצר...",
-    "stopGeneration": "עצור יצירה",
-    "waitingToStart": "ממתין להתחלה...",
-    "failed": "נכשל ביצירת רעיונות עבור קטגוריה זו",
-    "noIdeas": "לא נוצרו רעיונות עבור קטגוריה זו",
-    "ideas": "רעיונות"
   },
   "dialogs": {
     "config": {

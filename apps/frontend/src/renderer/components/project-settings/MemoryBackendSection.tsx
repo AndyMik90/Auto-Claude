@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Database, Globe, RefreshCw, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { InfrastructureStatus } from './InfrastructureStatus';
@@ -43,6 +44,7 @@ export function MemoryBackendSection({
   infrastructureStatus,
   isCheckingInfrastructure,
 }: MemoryBackendSectionProps) {
+  const { t } = useTranslation('settings');
   // Ollama model detection state
   const [ollamaModels, setOllamaModels] = useState<OllamaEmbeddingModel[]>([]);
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'checking' | 'connected' | 'disconnected'>('idle');
@@ -447,7 +449,7 @@ export function MemoryBackendSection({
                   />
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Recommended: qwen3-embedding:4b (balanced), :8b (quality), :0.6b (fast)
+                  {t('embeddingModels.recommendedNote')}
                 </p>
               </div>
 

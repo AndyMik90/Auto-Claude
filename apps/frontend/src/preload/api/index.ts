@@ -9,6 +9,7 @@ import { InsightsAPI, createInsightsAPI } from './modules/insights-api';
 import { AppUpdateAPI, createAppUpdateAPI } from './app-update-api';
 import { GitHubAPI, createGitHubAPI } from './modules/github-api';
 import { DebugAPI, createDebugAPI } from './modules/debug-api';
+import { ProxyAPI, createProxyAPI } from './modules/proxy-api';
 
 export interface ElectronAPI extends
   ProjectAPI,
@@ -20,7 +21,8 @@ export interface ElectronAPI extends
   IdeationAPI,
   InsightsAPI,
   AppUpdateAPI,
-  DebugAPI {
+  DebugAPI,
+  ProxyAPI {
   github: GitHubAPI;
 }
 
@@ -35,6 +37,7 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createInsightsAPI(),
   ...createAppUpdateAPI(),
   ...createDebugAPI(),
+  ...createProxyAPI(),
   github: createGitHubAPI()
 });
 
@@ -50,7 +53,8 @@ export {
   createInsightsAPI,
   createAppUpdateAPI,
   createGitHubAPI,
-  createDebugAPI
+  createDebugAPI,
+  createProxyAPI
 };
 
 export type {
@@ -64,5 +68,6 @@ export type {
   InsightsAPI,
   AppUpdateAPI,
   GitHubAPI,
-  DebugAPI
+  DebugAPI,
+  ProxyAPI
 };

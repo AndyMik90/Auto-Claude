@@ -192,6 +192,12 @@ Examples:
         action="store_true",
         help="Skip human review checkpoint and automatically approve spec for building",
     )
+    parser.add_argument(
+        "--language",
+        type=str,
+        default="en",
+        help="UI language for content generation (en, he, fr, etc.). Determines the language used in spec descriptions and documentation.",
+    )
 
     args = parser.parse_args()
 
@@ -256,6 +262,7 @@ Examples:
         thinking_level=args.thinking_level,
         complexity_override=args.complexity,
         use_ai_assessment=not args.no_ai_assessment,
+        language=args.language,
     )
 
     try:

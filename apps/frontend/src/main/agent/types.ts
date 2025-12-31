@@ -38,6 +38,7 @@ export interface AgentManagerEvents {
 export interface RoadmapConfig {
   model?: string;          // Model shorthand (opus, sonnet, haiku)
   thinkingLevel?: string;  // Thinking level (none, low, medium, high, ultrathink)
+  language?: string;       // UI language for content generation (en, he, etc.)
 }
 
 export interface TaskExecutionOptions {

@@ -161,6 +161,31 @@ The following files exist in the spec directory:
 
 Read the failed files, understand the errors, and fix them.
 """
+                # Get language name for AI instructions
+                language_map = {
+                    "en": "English",
+                    "he": "Hebrew",
+                    "fr": "French",
+                    "es": "Spanish",
+                    "de": "German",
+                    "it": "Italian",
+                    "pt": "Portuguese",
+                    "ru": "Russian",
+                    "ja": "Japanese",
+                    "zh": "Chinese",
+                    "ko": "Korean",
+                    "ar": "Arabic",
+                }
+                language_name = language_map.get(self.language, self.language)
+                
+                # Prepend language requirement to context
+                context_str = f"""
+**LANGUAGE REQUIREMENT**: Write ALL fixes and documentation in {language_name}.
+Keep JSON keys in English, but all DESCRIPTIONS must be in {language_name}.
+
+{context_str}
+"""
+                
                 success, output = await self.run_agent_fn(
                     "validation_fixer.md",
                     additional_context=context_str,

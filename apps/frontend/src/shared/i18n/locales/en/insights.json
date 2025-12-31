@@ -46,12 +46,36 @@
   "profileSelector": {
     "label": "Agent Profile",
     "custom": "Custom...",
-    "customDescription": "Choose model & thinking level"
+    "customDescription": "Choose model & thinking level",
+    "balanced": "Balanced",
+    "complex": "Complex",
+    "quick": "Quick",
+    "auto": "Auto"
+  },
+  "thinkingLevels": {
+    "none": "None",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "ultrathink": "Ultra Think"
+  },
+  "sidebar": {
+    "show": "Show sidebar",
+    "hide": "Hide sidebar"
+  },
+  "you": "You",
+  "task": {
+    "suggested": "Suggested Task",
+    "creating": "Creating...",
+    "created": "Task Created",
+    "create": "Create Task"
   },
   "tools": {
     "reading": "Reading file",
     "searching": "Searching files",
-    "searchingCode": "Searching code"
+    "searchingCode": "Searching code",
+    "used": "tool used",
+    "usedPlural": "tools used"
   },
   "thinking": "Thinking...",
   "assistant": "Assistant",
@@ -64,5 +88,9 @@
   "empty": {
     "title": "No chat history",
     "description": "Start a conversation to analyze your codebase"
+  },
+  "code": {
+    "copy": "Copy",
+    "copied": "Copied!"
   }
 }

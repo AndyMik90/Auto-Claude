@@ -78,7 +78,7 @@ export function registerInvestigateIssue(
 
       const config = getGitHubConfig(project);
       if (!config) {
-        sendError(mainWindow, projectId, 'No GitHub token or repository configured');
+        sendError(mainWindow, projectId, 'context:github.noToken');
         return;
       }
 

@@ -61,6 +61,7 @@ class SpecOrchestrator:
         thinking_level: str = "medium",  # Thinking level for extended thinking
         complexity_override: str | None = None,  # Force a specific complexity
         use_ai_assessment: bool = True,  # Use AI for complexity assessment (vs heuristics)
+        language: str = "en",  # UI language for content generation
     ):
         """Initialize the spec orchestrator.
 
@@ -73,6 +74,7 @@ class SpecOrchestrator:
             thinking_level: Thinking level (none, low, medium, high, ultrathink)
             complexity_override: Force a specific complexity level
             use_ai_assessment: Whether to use AI for complexity assessment
+            language: UI language for content generation (en, he, fr, etc.)
         """
         self.project_dir = Path(project_dir)
         self.task_description = task_description
@@ -80,6 +82,7 @@ class SpecOrchestrator:
         self.thinking_level = thinking_level
         self.complexity_override = complexity_override
         self.use_ai_assessment = use_ai_assessment
+        self.language = language
 
         # Get the appropriate specs directory (within the project)
         self.specs_dir = get_specs_dir(self.project_dir)
@@ -256,6 +259,7 @@ class SpecOrchestrator:
             run_agent_fn=self._run_agent,
             task_logger=task_logger,
             ui_module=ui,
+            language=self.language,
         )
 
         results = []

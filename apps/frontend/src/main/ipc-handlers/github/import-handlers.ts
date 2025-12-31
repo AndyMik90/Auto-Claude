@@ -24,7 +24,7 @@ export function registerImportIssues(agentManager: AgentManager): void {
 
       const config = getGitHubConfig(project);
       if (!config) {
-        return { success: false, error: 'No GitHub token or repository configured' };
+        return { success: false, error: 'context:github.noToken' };
       }
 
       let imported = 0;

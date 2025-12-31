@@ -294,40 +294,48 @@ export async function loadRoadmap(projectId: string): Promise<void> {
   }
 }
 
-export function generateRoadmap(
+export async function generateRoadmap(
   projectId: string,
   enableCompetitorAnalysis?: boolean,
   refreshCompetitorAnalysis?: boolean
-): void {
+): Promise<void> {
   // Debug logging
   if (window.DEBUG) {
     console.log('[Roadmap] Starting generation:', { projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis });
   }
+
+  // Get current language from settings
+  const settings = await window.electronAPI.getSettings();
+  const language = settings.success ? settings.data?.language : undefined;
 
   useRoadmapStore.getState().setGenerationStatus({
     phase: 'analyzing',
     progress: 0,
     message: 'Starting roadmap generation...'
   });
-  window.electronAPI.generateRoadmap(projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis);
+  window.electronAPI.generateRoadmap(projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis, language);
 }
 
-export function refreshRoadmap(
+export async function refreshRoadmap(
   projectId: string,
   enableCompetitorAnalysis?: boolean,
   refreshCompetitorAnalysis?: boolean
-): void {
+): Promise<void> {
   // Debug logging
   if (window.DEBUG) {
     console.log('[Roadmap] Starting refresh:', { projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis });
   }
+
+  // Get current language from settings
+  const settings = await window.electronAPI.getSettings();
+  const language = settings.success ? settings.data?.language : undefined;
 
   useRoadmapStore.getState().setGenerationStatus({
     phase: 'analyzing',
     progress: 0,
     message: 'Refreshing roadmap...'
   });
-  window.electronAPI.refreshRoadmap(projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis);
+  window.electronAPI.refreshRoadmap(projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis, language);
 }
 
 export async function stopRoadmap(projectId: string): Promise<boolean> {

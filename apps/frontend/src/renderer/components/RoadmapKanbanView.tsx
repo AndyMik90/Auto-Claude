@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DndContext,
   DragOverlay,
@@ -47,6 +48,7 @@ interface DroppableStatusColumnProps {
   onConvertToSpec?: (feature: RoadmapFeature) => void;
   onGoToTask?: (specId: string) => void;
   isOver: boolean;
+  t: (key: string) => string;
 }
 
 // Get icon component for status
@@ -72,7 +74,8 @@ function DroppableStatusColumn({
   onFeatureClick,
   onConvertToSpec,
   onGoToTask,
-  isOver
+  isOver,
+  t
 }: DroppableStatusColumnProps) {
   const { setNodeRef } = useDroppable({
     id: column.id
@@ -108,7 +111,7 @@ function DroppableStatusColumn({
             {getStatusIcon(column.icon)}
           </div>
           <h2 className="font-semibold text-sm text-foreground">
-            {column.label}
+            {t(column.label)}
           </h2>
           <span className="column-count-badge">
             {features.length}
@@ -136,16 +139,16 @@ function DroppableStatusColumn({
                       <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mb-2">
                         <Plus className="h-4 w-4 text-primary" />
                       </div>
-                      <span className="text-sm font-medium text-primary">Drop here</span>
+                      <span className="text-sm font-medium text-primary">{t('kanban.dropHere')}</span>
                     </>
                   ) : (
                     <>
                       <Inbox className="h-6 w-6 text-muted-foreground/50" />
                       <span className="mt-2 text-sm font-medium text-muted-foreground/70">
-                        No features
+                        {t('kanban.noFeatures')}
                       </span>
                       <span className="mt-0.5 text-xs text-muted-foreground/50">
-                        Drag features here
+                        {t('kanban.dragFeaturesHere')}
                       </span>
                     </>
                   )}
@@ -177,6 +180,7 @@ export function RoadmapKanbanView({
   onGoToTask,
   onSave
 }: RoadmapKanbanViewProps) {
+  const { t } = useTranslation('roadmap');
   const [activeFeature, setActiveFeature] = useState<RoadmapFeature | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
 
@@ -278,7 +282,7 @@ export function RoadmapKanbanView({
   // Get status label for a feature (for display in drag overlay)
   const getStatusLabelForFeature = (feature: RoadmapFeature) => {
     const statusColumn = ROADMAP_STATUS_COLUMNS.find((c) => c.id === feature.status);
-    return statusColumn?.label || 'Unknown Status';
+    return statusColumn ? t(statusColumn.label) : t('status.underReview');
   };
 
   return (
@@ -302,6 +306,7 @@ export function RoadmapKanbanView({
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
               isOver={overColumnId === column.id}
+              t={t}
             />
           ))}
         </div>

@@ -66,6 +66,12 @@ def main():
         help="Thinking level for extended reasoning (default: medium)",
     )
     parser.add_argument(
+        "--language",
+        type=str,
+        default="en",
+        help="UI language for content generation (en, he, etc.) - AI will generate content in this language (default: en)",
+    )
+    parser.add_argument(
         "--refresh",
         action="store_true",
         help="Force regeneration even if roadmap exists",
@@ -114,6 +120,7 @@ def main():
         output_dir=args.output,
         model=args.model,
         thinking_level=args.thinking_level,
+        language=args.language,
         refresh=args.refresh,
         enable_competitor_analysis=args.enable_competitor_analysis,
         refresh_competitor_analysis=args.refresh_competitor_analysis,

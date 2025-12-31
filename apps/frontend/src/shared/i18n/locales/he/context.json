@@ -108,6 +108,13 @@
     "connectHint": "חבר את חשבון GitHub שלך כדי לצפות ולסקור בקשות משיכה.",
     "openSettings": "פתח הגדרות",
     "configureHint": "הגדר את אסימון GitHub והמאגר בהגדרות הפרויקט כדי לסנכרן בעיות.",
-    "noIssuesMatch": "אין בעיות שמתאימות לחיפוש שלך"
+    "noIssuesMatch": "אין בעיות שמתאימות לחיפוש שלך",
+    "runnerNotFound": "GitHub runner לא נמצא. ודא שמודול אוטומציית GitHub מותקן.",
+    "cliNotFound": "GitHub CLI (gh) לא נמצא. אנא התקן אותו: https://cli.github.com/",
+    "invalidRepoFormat": "פורמט מאגר לא תקין. השתמש ב-owner/repo או URL של GitHub.",
+    "connectionFailed": "נכשל להתחבר ל-GitHub"
+  },
+  "autoBuild": {
+    "pathNotConfigured": "נתיב מקור Auto-build לא מוגדר"
   }
 }

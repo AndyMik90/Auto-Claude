@@ -85,7 +85,7 @@ export function SortableFeatureCard({
                 variant="outline"
                 className={cn('text-[10px] px-1.5 py-0', ROADMAP_PRIORITY_COLORS[feature.priority])}
               >
-                {ROADMAP_PRIORITY_LABELS[feature.priority]}
+                {t(ROADMAP_PRIORITY_LABELS[feature.priority])}
               </Badge>
               {phaseName && (
                 <Tooltip>
@@ -166,13 +166,13 @@ export function SortableFeatureCard({
             variant="outline"
             className={cn('text-[10px] px-1.5 py-0', ROADMAP_COMPLEXITY_COLORS[feature.complexity])}
           >
-            {feature.complexity}
+            {t(`complexity.${feature.complexity}`)}
           </Badge>
           <Badge
             variant="outline"
             className={cn('text-[10px] px-1.5 py-0', ROADMAP_IMPACT_COLORS[feature.impact])}
           >
-            {feature.impact}
+            {t(`impact.${feature.impact}`)}
           </Badge>
           {/* Show vote count if from external source */}
           {feature.votes !== undefined && feature.votes > 0 && (

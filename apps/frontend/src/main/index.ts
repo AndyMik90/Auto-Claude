@@ -12,6 +12,7 @@ import { initializeAppUpdater } from './app-updater';
 import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
+import { configureElectronProxy } from './proxy-config';
 import type { AppSettings } from '../shared/types';
 
 // Setup error logging early (captures uncaught exceptions)
@@ -221,6 +222,12 @@ app.whenReady().then(() => {
 
   // Create window
   createWindow();
+
+  // Configure proxy after window is created
+  const settings = loadSettingsSync();
+  configureElectronProxy(mainWindow, settings).catch(err => {
+    console.error('[proxy] Failed to configure proxy on startup:', err);
+  });
 
   // Initialize usage monitoring after window is created
   if (mainWindow) {
