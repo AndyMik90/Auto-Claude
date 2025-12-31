@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings2, Download, RefreshCw, AlertCircle } from 'lucide-react';
+import { Download, RefreshCw, AlertCircle } from 'lucide-react';
 import {
   DndContext,
   DragOverlay,
@@ -24,11 +24,6 @@ import {
   DialogHeader,
   DialogTitle
 } from './components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from './components/ui/tooltip';
 import { Sidebar, type SidebarView } from './components/Sidebar';
 import { KanbanBoard } from './components/KanbanBoard';
 import { TaskDetailModal } from './components/task-detail/TaskDetailModal';
@@ -52,7 +47,6 @@ import { RateLimitModal } from './components/RateLimitModal';
 import { SDKRateLimitModal } from './components/SDKRateLimitModal';
 import { OnboardingWizard } from './components/onboarding';
 import { AppUpdateNotification } from './components/AppUpdateNotification';
-import { UsageIndicator } from './components/UsageIndicator';
 import { ProactiveSwapListener } from './components/ProactiveSwapListener';
 import { GitHubSetupModal } from './components/GitHubSetupModal';
 import { useProjectStore, loadProjects, addProject, initializeProject } from './stores/project-store';
@@ -67,6 +61,46 @@ import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../s
 import type { Task, Project, ColorTheme } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
 import { AddProjectModal } from './components/AddProjectModal';
+import { ViewStateProvider, useViewState } from './contexts/ViewStateContext';
+
+// Wrapper component that connects ProjectTabBar to ViewStateContext
+// (needed because App renders the Provider and can't use useViewState directly)
+interface ProjectTabBarWithContextProps {
+  projects: Project[];
+  activeProjectId: string | null;
+  onProjectSelect: (projectId: string) => void;
+  onProjectClose: (projectId: string) => void;
+  onAddProject: () => void;
+  onSettingsClick: () => void;
+  tasks: Task[];
+}
+
+function ProjectTabBarWithContext({
+  projects,
+  activeProjectId,
+  onProjectSelect,
+  onProjectClose,
+  onAddProject,
+  onSettingsClick,
+  tasks
+}: ProjectTabBarWithContextProps) {
+  const { showArchived, toggleShowArchived } = useViewState();
+  const archivedCount = tasks.filter(t => t.metadata?.archivedAt).length;
+
+  return (
+    <ProjectTabBar
+      projects={projects}
+      activeProjectId={activeProjectId}
+      onProjectSelect={onProjectSelect}
+      onProjectClose={onProjectClose}
+      onAddProject={onAddProject}
+      onSettingsClick={onSettingsClick}
+      showArchived={showArchived}
+      archivedCount={archivedCount}
+      onToggleArchived={toggleShowArchived}
+    />
+  );
+}
 
 export function App() {
   // Load IPC listeners for real-time updates
@@ -588,8 +622,9 @@ export function App() {
   };
 
   return (
-    <TooltipProvider>
-      <ProactiveSwapListener />
+    <ViewStateProvider>
+      <TooltipProvider>
+        <ProactiveSwapListener />
       <div className="flex h-screen bg-background">
         {/* Sidebar */}
         <Sidebar
@@ -610,12 +645,14 @@ export function App() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext items={projectTabs.map(p => p.id)} strategy={horizontalListSortingStrategy}>
-                <ProjectTabBar
+                <ProjectTabBarWithContext
                   projects={projectTabs}
                   activeProjectId={activeProjectId}
                   onProjectSelect={handleProjectTabSelect}
                   onProjectClose={handleProjectTabClose}
                   onAddProject={handleAddProject}
+                  onSettingsClick={() => setIsSettingsDialogOpen(true)}
+                  tasks={tasks}
                 />
               </SortableContext>
 
@@ -632,36 +669,6 @@ export function App() {
               </DragOverlay>
             </DndContext>
           )}
-
-          {/* Header */}
-          <header className="electron-drag flex h-14 items-center justify-between border-b border-border bg-card/50 backdrop-blur-sm px-6">
-            <div className="electron-no-drag">
-              {selectedProject ? (
-                <h1 className="font-semibold text-foreground">{selectedProject.name}</h1>
-              ) : (
-                <div className="text-muted-foreground">
-                  Select a project to get started
-                </div>
-              )}
-            </div>
-            {selectedProject && (
-              <div className="electron-no-drag flex items-center gap-3">
-                <UsageIndicator />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsSettingsDialogOpen(true)}
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Settings</TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-          </header>
 
           {/* Main content area */}
           <main className="flex-1 overflow-hidden">
@@ -913,6 +920,7 @@ export function App() {
         {/* Global Download Indicator - shows Ollama model download progress */}
         <GlobalDownloadIndicator />
       </div>
-    </TooltipProvider>
+      </TooltipProvider>
+    </ViewStateProvider>
   );
 }
