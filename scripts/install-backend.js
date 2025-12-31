@@ -26,11 +26,11 @@ function run(cmd, options = {}) {
   }
 }
 
-// Find Python 3.12
+// Find Python 3.12+
 function findPython() {
   const candidates = isWindows
-    ? ['py -3.12', 'python3.12', 'python']
-    : ['python3.12', 'python3', 'python'];
+    ? ['py -3.14', 'py -3.13', 'py -3.12', 'python3.14', 'python3.13', 'python3.12', 'python3', 'python']
+    : ['python3.14', 'python3.13', 'python3.12', 'python3', 'python'];
 
   for (const cmd of candidates) {
     try {
@@ -38,8 +38,9 @@ function findPython() {
         encoding: 'utf8',
         shell: true,
       });
-      if (result.status === 0 && result.stdout.includes('3.12')) {
-        console.log(`Found Python 3.12: ${cmd} -> ${result.stdout.trim()}`);
+      // Accept Python 3.12, 3.13, or 3.14
+      if (result.status === 0 && (result.stdout.includes('3.12') || result.stdout.includes('3.13') || result.stdout.includes('3.14'))) {
+        console.log(`Found Python 3.12+: ${cmd} -> ${result.stdout.trim()}`);
         return cmd;
       }
     } catch (e) {
@@ -61,8 +62,8 @@ async function main() {
   // Check for Python 3.12
   const python = findPython();
   if (!python) {
-    console.error('\nError: Python 3.12 is required but not found.');
-    console.error('Please install Python 3.12:');
+    console.error('\nError: Python 3.12+ is required but not found.');
+    console.error('Please install Python 3.12 or higher:');
     if (isWindows) {
       console.error('  winget install Python.Python.3.12');
     } else if (os.platform() === 'darwin') {
