@@ -184,15 +184,13 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
       onClick={onClick}
     >
       <CardContent className="p-4">
-        {/* Header - improved visual hierarchy */}
-        <div>
-          <h3
-            className="font-semibold text-sm text-foreground line-clamp-2 leading-snug"
-            title={task.title}
-          >
-            {task.title}
-          </h3>
-        </div>
+        {/* Title - full width, no wrapper */}
+        <h3
+          className="font-semibold text-sm text-foreground line-clamp-2 leading-snug"
+          title={task.title}
+        >
+          {task.title}
+        </h3>
 
         {/* Description - sanitized to handle markdown content */}
         {task.description && (
