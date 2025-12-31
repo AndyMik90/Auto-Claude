@@ -198,13 +198,9 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   // Track if we've already loaded preview for this task to prevent infinite loops
   const hasLoadedPreviewRef = useRef<string | null>(null);
 
-  // Clear merge preview cache when task changes to ensure fresh data is fetched
-  // This invalidates any stale cached data (e.g., old uncommitted changes status)
+  // Clear merge preview state when switching to a different task
   useEffect(() => {
-    // Only clear if we're switching to a different task
     if (hasLoadedPreviewRef.current !== task.id) {
-      const storageKey = `mergePreview-${task.id}`;
-      sessionStorage.removeItem(storageKey);
       setMergePreview(null);
       hasLoadedPreviewRef.current = null;
     }
@@ -216,14 +212,12 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     try {
       const result = await window.electronAPI.mergeWorktreePreview(task.id);
       if (result.success && result.data?.preview) {
-        const previewData = result.data.preview;
-        setMergePreview(previewData);
-        hasLoadedPreviewRef.current = task.id;
-        sessionStorage.setItem(`mergePreview-${task.id}`, JSON.stringify(previewData));
+        setMergePreview(result.data.preview);
       }
     } catch (err) {
       console.error('[useTaskDetail] Failed to load merge preview:', err);
     } finally {
+      hasLoadedPreviewRef.current = task.id;
       setIsLoadingPreview(false);
     }
   }, [task.id]);
