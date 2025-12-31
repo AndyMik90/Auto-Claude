@@ -228,7 +228,34 @@ const browserMockAPI: ElectronAPI = {
   openLogsFolder: async () => ({ success: false, error: 'Not available in browser mode' }),
   copyDebugInfo: async () => ({ success: false, error: 'Not available in browser mode' }),
   getRecentErrors: async () => [],
-  listLogFiles: async () => []
+  listLogFiles: async () => [],
+
+  // Environment Validation Operations
+  getValidationStatus: async () => ({
+    success: true,
+    data: {
+      isValidating: false,
+      isComplete: true,
+      buildToolsResult: null,
+      environmentResult: null,
+      overallSuccess: true,
+      lastValidatedAt: null
+    }
+  }),
+  startValidation: async () => ({
+    success: true,
+    data: {
+      isValidating: false,
+      isComplete: true,
+      buildToolsResult: null,
+      environmentResult: null,
+      overallSuccess: true,
+      lastValidatedAt: new Date().toISOString()
+    }
+  }),
+  onValidationProgress: () => () => {},
+  onValidationComplete: () => () => {},
+  onValidationError: () => () => {}
 };
 
 /**

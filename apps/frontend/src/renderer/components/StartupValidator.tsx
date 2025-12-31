@@ -14,29 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
-
-/**
- * Environment validation status types (matches environment-handlers.ts)
- */
-export interface EnvironmentValidationStatus {
-  isValidating: boolean;
-  isComplete: boolean;
-  buildToolsResult: {
-    success: boolean;
-    platform: string;
-    missingTools: string[];
-    errors: string[];
-    installationInstructions: string;
-  } | null;
-  environmentResult: {
-    success: boolean;
-    bundled: { success: boolean; errors: string[] } | null;
-    venv: { success: boolean; errors: string[] } | null;
-    summary: string;
-  } | null;
-  overallSuccess: boolean;
-  lastValidatedAt: string | null;
-}
+import type { EnvironmentValidationStatus } from '../../shared/types/ipc';
 
 /**
  * Validation phase enum for UI display

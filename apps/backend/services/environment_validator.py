@@ -40,7 +40,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 # =============================================================================
 # CONSTANTS
 # =============================================================================
@@ -150,13 +149,15 @@ def get_bundled_python_path() -> Path | None:
         # Try multiple possible locations
         candidates = [
             Path("/Applications/Auto-Claude.app/Contents/Resources/python/bin/python3"),
-            Path.home() / "Applications/Auto-Claude.app/Contents/Resources/python/bin/python3",
+            Path.home()
+            / "Applications/Auto-Claude.app/Contents/Resources/python/bin/python3",
         ]
     elif system == "Windows":
         appdata_local = Path.home() / "AppData/Local"
         candidates = [
             appdata_local / "Programs/auto-claude-ui/resources/python/python.exe",
-            Path.home() / "AppData/Roaming/../Local/Programs/auto-claude-ui/resources/python/python.exe",
+            Path.home()
+            / "AppData/Roaming/../Local/Programs/auto-claude-ui/resources/python/python.exe",
         ]
     else:  # Linux
         candidates = [
@@ -181,9 +182,15 @@ def get_venv_python_path() -> Path | None:
     system = platform.system()
 
     if system == "Darwin":  # macOS
-        venv_path = Path.home() / "Library/Application Support/auto-claude-ui/python-venv/bin/python"
+        venv_path = (
+            Path.home()
+            / "Library/Application Support/auto-claude-ui/python-venv/bin/python"
+        )
     elif system == "Windows":
-        venv_path = Path.home() / "AppData/Roaming/auto-claude-ui/python-venv/Scripts/python.exe"
+        venv_path = (
+            Path.home()
+            / "AppData/Roaming/auto-claude-ui/python-venv/Scripts/python.exe"
+        )
     else:  # Linux
         venv_path = Path.home() / ".config/auto-claude-ui/python-venv/bin/python"
 
@@ -238,7 +245,9 @@ class EnvironmentValidator:
         # Check Python version
         version_result = self._check_python_version(python_path)
         if not version_result["success"]:
-            result.errors.append(version_result.get("error", "Failed to get Python version"))
+            result.errors.append(
+                version_result.get("error", "Failed to get Python version")
+            )
             return result
 
         result.python_version = version_result["version"]
@@ -269,7 +278,9 @@ class EnvironmentValidator:
                 )
 
         # Set overall success
-        result.success = len(result.missing_required) == 0 and result.python_version_valid
+        result.success = (
+            len(result.missing_required) == 0 and result.python_version_valid
+        )
 
         if result.missing_required:
             result.errors.append(
@@ -337,7 +348,9 @@ class EnvironmentValidator:
                 "error": f"Error checking Python version: {e}",
             }
 
-    def _check_dependency(self, python_path: str | Path, module_name: str) -> DependencyStatus:
+    def _check_dependency(
+        self, python_path: str | Path, module_name: str
+    ) -> DependencyStatus:
         """
         Check if a dependency is importable.
 
@@ -355,16 +368,22 @@ class EnvironmentValidator:
             # Handle dotted module names (e.g., "google.generativeai")
             import_name = module_name.split(".")[0]
             # Use string concatenation to avoid f-string escaping issues
-            version_code = """
+            version_code = (
+                """
 import sys
 import json
 try:
-    import """ + import_name + """
-    version = getattr(""" + import_name + """, '__version__', 'unknown')
+    import """
+                + import_name
+                + """
+    version = getattr("""
+                + import_name
+                + """, '__version__', 'unknown')
     print(json.dumps({"installed": True, "version": version}))
 except ImportError as e:
     print(json.dumps({"installed": False, "error": str(e)}))
 """
+            )
 
             cmd = [str(python_path), "-c", version_code]
 
@@ -422,9 +441,13 @@ except ImportError as e:
             if result.bundled.success:
                 summaries.append(f"Bundled Python ({bundled_path}): OK")
             else:
-                summaries.append(f"Bundled Python ({bundled_path}): FAILED - {', '.join(result.bundled.errors)}")
+                summaries.append(
+                    f"Bundled Python ({bundled_path}): FAILED - {', '.join(result.bundled.errors)}"
+                )
         else:
-            summaries.append("Bundled Python: Not found (expected for development environment)")
+            summaries.append(
+                "Bundled Python: Not found (expected for development environment)"
+            )
 
         # Validate venv Python
         if venv_path is None:
@@ -435,9 +458,13 @@ except ImportError as e:
             if result.venv.success:
                 summaries.append(f"Venv Python ({venv_path}): OK")
             else:
-                summaries.append(f"Venv Python ({venv_path}): FAILED - {', '.join(result.venv.errors)}")
+                summaries.append(
+                    f"Venv Python ({venv_path}): FAILED - {', '.join(result.venv.errors)}"
+                )
         else:
-            summaries.append("Venv Python: Not found (run 'pip install -r requirements.txt' in venv)")
+            summaries.append(
+                "Venv Python: Not found (run 'pip install -r requirements.txt' in venv)"
+            )
 
         # Overall success requires at least one valid environment
         # In production, both should be valid, but in dev mode venv is sufficient
@@ -523,7 +550,9 @@ Examples:
     return _output_dual_result(result, args)
 
 
-def _output_single_result(result: ValidationResult, as_json: bool, verbose: bool) -> int:
+def _output_single_result(
+    result: ValidationResult, as_json: bool, verbose: bool
+) -> int:
     """Output single validation result."""
     if as_json:
         output = {
@@ -551,7 +580,9 @@ def _output_single_result(result: ValidationResult, as_json: bool, verbose: bool
         status = "OK" if result.success else "FAILED"
         print(f"Python Environment Validation: {status}")
         print(f"  Path: {result.python_path}")
-        print(f"  Version: {result.python_version} (valid: {result.python_version_valid})")
+        print(
+            f"  Version: {result.python_version} (valid: {result.python_version_valid})"
+        )
 
         if verbose:
             print("\nDependencies:")

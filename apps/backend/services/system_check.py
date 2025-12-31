@@ -37,7 +37,6 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # =============================================================================
 # CONSTANTS
 # =============================================================================
@@ -308,7 +307,9 @@ class SystemChecker:
             if tool in platform_instructions:
                 instructions.append(f"  {tool}: {platform_instructions[tool]}")
             else:
-                instructions.append(f"  {tool}: Install using your system package manager")
+                instructions.append(
+                    f"  {tool}: Install using your system package manager"
+                )
 
         if instructions:
             header = f"Missing build tools on {self.platform_name}:\n"
@@ -435,8 +436,8 @@ def _output_result(result: SystemCheckResult, as_json: bool, verbose: bool) -> i
         if result.installation_instructions:
             print(f"\n{result.installation_instructions}")
 
-    if result.success:
-        print("\nBuild tools validation completed")
+        if result.success:
+            print("\nBuild tools validation completed")
 
     return 0 if result.success else 1
 

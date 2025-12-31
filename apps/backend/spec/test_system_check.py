@@ -22,13 +22,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "services"))
 
 from system_check import (
-    PLATFORM_REQUIREMENTS,
     INSTALLATION_INSTRUCTIONS,
-    ToolStatus,
-    SystemCheckResult,
+    PLATFORM_REQUIREMENTS,
     SystemChecker,
+    SystemCheckResult,
+    ToolStatus,
 )
-
 
 # =============================================================================
 # DATA CLASS TESTS
@@ -269,7 +268,9 @@ class TestToolCheck:
         mock_path_result.returncode = 0
         mock_path_result.stdout = "/usr/local/bin/cmake\n"
 
-        with patch("subprocess.run", side_effect=[mock_version_result, mock_path_result]):
+        with patch(
+            "subprocess.run", side_effect=[mock_version_result, mock_path_result]
+        ):
             status = checker._check_tool("cmake")
 
         assert status.installed is True
@@ -327,7 +328,9 @@ class TestToolCheck:
         mock_path_result.returncode = 0
         mock_path_result.stdout = "C:\\Program Files\\CMake\\bin\\cmake.exe\n"
 
-        with patch("subprocess.run", side_effect=[mock_version_result, mock_path_result]) as mock_run:
+        with patch(
+            "subprocess.run", side_effect=[mock_version_result, mock_path_result]
+        ) as mock_run:
             checker._check_tool("cmake")
 
         # Second call should use 'where' on Windows
@@ -348,7 +351,9 @@ class TestToolCheck:
         mock_path_result.returncode = 0
         mock_path_result.stdout = "/usr/local/bin/cmake\n"
 
-        with patch("subprocess.run", side_effect=[mock_version_result, mock_path_result]) as mock_run:
+        with patch(
+            "subprocess.run", side_effect=[mock_version_result, mock_path_result]
+        ) as mock_run:
             checker._check_tool("cmake")
 
         # Second call should use 'which' on macOS
@@ -424,7 +429,9 @@ class TestValidateBuildTools:
         mock_path_result.returncode = 0
         mock_path_result.stdout = "/usr/local/bin/cmake\n"
 
-        with patch("subprocess.run", side_effect=[mock_version_result, mock_path_result]):
+        with patch(
+            "subprocess.run", side_effect=[mock_version_result, mock_path_result]
+        ):
             result = checker.validate_build_tools()
 
         assert result.success is True
@@ -647,7 +654,9 @@ class TestEdgeCases:
         mock_path_result.returncode = 0
         mock_path_result.stdout = "C:\\CMake\\bin\\cmake.exe\nC:\\Tools\\cmake.exe\n"
 
-        with patch("subprocess.run", side_effect=[mock_version_result, mock_path_result]):
+        with patch(
+            "subprocess.run", side_effect=[mock_version_result, mock_path_result]
+        ):
             status = checker._check_tool("cmake")
 
         # Should return first path

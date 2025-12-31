@@ -22,17 +22,16 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "services"))
 
 from environment_validator import (
-    MIN_PYTHON_VERSION,
     CORE_DEPENDENCIES,
+    MIN_PYTHON_VERSION,
     OPTIONAL_DEPENDENCIES,
     DependencyStatus,
-    ValidationResult,
     DualValidationResult,
     EnvironmentValidator,
+    ValidationResult,
     get_bundled_python_path,
     get_venv_python_path,
 )
-
 
 # =============================================================================
 # DATA CLASS TESTS
@@ -376,10 +375,12 @@ class TestDependencyCheck:
 
         mock_result = MagicMock()
         mock_result.returncode = 0
-        mock_result.stdout = json.dumps({
-            "installed": False,
-            "error": "No module named 'missing'",
-        })
+        mock_result.stdout = json.dumps(
+            {
+                "installed": False,
+                "error": "No module named 'missing'",
+            }
+        )
 
         with patch("environment_validator.subprocess.run", return_value=mock_result):
             status = validator._check_dependency("/usr/bin/python3", "missing")
@@ -458,7 +459,9 @@ class TestValidateEnvironment:
 
             return result
 
-        with patch("environment_validator.subprocess.run", side_effect=mock_subprocess_run):
+        with patch(
+            "environment_validator.subprocess.run", side_effect=mock_subprocess_run
+        ):
             result = validator.validate_environment("/usr/bin/python3")
 
         assert result.success is True
@@ -499,14 +502,18 @@ class TestValidateEnvironment:
             if call_count == 1:  # Version check
                 result.stdout = "3.12.0"
             else:  # Dependency check
-                result.stdout = json.dumps({
-                    "installed": False,
-                    "error": "No module named 'missing_core'",
-                })
+                result.stdout = json.dumps(
+                    {
+                        "installed": False,
+                        "error": "No module named 'missing_core'",
+                    }
+                )
 
             return result
 
-        with patch("environment_validator.subprocess.run", side_effect=mock_subprocess_run):
+        with patch(
+            "environment_validator.subprocess.run", side_effect=mock_subprocess_run
+        ):
             result = validator.validate_environment("/usr/bin/python3")
 
         assert result.success is False
@@ -531,14 +538,18 @@ class TestValidateEnvironment:
             if call_count == 1:  # Version check
                 result.stdout = "3.12.0"
             else:  # Dependency check
-                result.stdout = json.dumps({
-                    "installed": False,
-                    "error": "No module named 'optional_dep'",
-                })
+                result.stdout = json.dumps(
+                    {
+                        "installed": False,
+                        "error": "No module named 'optional_dep'",
+                    }
+                )
 
             return result
 
-        with patch("environment_validator.subprocess.run", side_effect=mock_subprocess_run):
+        with patch(
+            "environment_validator.subprocess.run", side_effect=mock_subprocess_run
+        ):
             result = validator.validate_environment("/usr/bin/python3")
 
         assert result.success is True  # Still succeeds

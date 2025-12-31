@@ -41,7 +41,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 # =============================================================================
 # CONSTANTS
 # =============================================================================
@@ -167,13 +166,15 @@ def get_bundled_python_path() -> Path | None:
     if system == "Darwin":  # macOS
         candidates = [
             Path("/Applications/Auto-Claude.app/Contents/Resources/python/bin/python3"),
-            Path.home() / "Applications/Auto-Claude.app/Contents/Resources/python/bin/python3",
+            Path.home()
+            / "Applications/Auto-Claude.app/Contents/Resources/python/bin/python3",
         ]
     elif system == "Windows":
         appdata_local = Path.home() / "AppData/Local"
         candidates = [
             appdata_local / "Programs/auto-claude-ui/resources/python/python.exe",
-            Path.home() / "AppData/Roaming/../Local/Programs/auto-claude-ui/resources/python/python.exe",
+            Path.home()
+            / "AppData/Roaming/../Local/Programs/auto-claude-ui/resources/python/python.exe",
         ]
     else:  # Linux
         candidates = [
@@ -198,9 +199,15 @@ def get_venv_python_path() -> Path | None:
     system = platform.system()
 
     if system == "Darwin":  # macOS
-        venv_path = Path.home() / "Library/Application Support/auto-claude-ui/python-venv/bin/python"
+        venv_path = (
+            Path.home()
+            / "Library/Application Support/auto-claude-ui/python-venv/bin/python"
+        )
     elif system == "Windows":
-        venv_path = Path.home() / "AppData/Roaming/auto-claude-ui/python-venv/Scripts/python.exe"
+        venv_path = (
+            Path.home()
+            / "AppData/Roaming/auto-claude-ui/python-venv/Scripts/python.exe"
+        )
     else:  # Linux
         venv_path = Path.home() / ".config/auto-claude-ui/python-venv/bin/python"
 
@@ -230,16 +237,26 @@ def get_requirements_path() -> Path | None:
     # Platform-specific bundled locations
     system = platform.system()
     if system == "Darwin":
-        candidates.extend([
-            Path("/Applications/Auto-Claude.app/Contents/Resources/auto-claude/requirements.txt"),
-            Path("/Applications/Auto-Claude.app/Contents/Resources/backend/requirements.txt"),
-        ])
+        candidates.extend(
+            [
+                Path(
+                    "/Applications/Auto-Claude.app/Contents/Resources/auto-claude/requirements.txt"
+                ),
+                Path(
+                    "/Applications/Auto-Claude.app/Contents/Resources/backend/requirements.txt"
+                ),
+            ]
+        )
     elif system == "Windows":
         appdata_local = Path.home() / "AppData/Local"
-        candidates.extend([
-            appdata_local / "Programs/auto-claude-ui/resources/auto-claude/requirements.txt",
-            appdata_local / "Programs/auto-claude-ui/resources/backend/requirements.txt",
-        ])
+        candidates.extend(
+            [
+                appdata_local
+                / "Programs/auto-claude-ui/resources/auto-claude/requirements.txt",
+                appdata_local
+                / "Programs/auto-claude-ui/resources/backend/requirements.txt",
+            ]
+        )
 
     for candidate in candidates:
         if candidate.exists():
@@ -276,7 +293,9 @@ class DependencyInstaller:
             requirements_path: Path to requirements.txt (auto-detected if None)
             timeout: Timeout for pip operations in seconds
         """
-        self.requirements_path = Path(requirements_path) if requirements_path else get_requirements_path()
+        self.requirements_path = (
+            Path(requirements_path) if requirements_path else get_requirements_path()
+        )
         self.timeout = timeout
 
     def install_to_interpreter(
@@ -304,7 +323,9 @@ class DependencyInstaller:
             return result
 
         if not self.requirements_path.exists():
-            result.errors.append(f"requirements.txt not found at: {self.requirements_path}")
+            result.errors.append(
+                f"requirements.txt not found at: {self.requirements_path}"
+            )
             return result
 
         python_path = Path(python_path)
@@ -349,9 +370,7 @@ class DependencyInstaller:
                     result.errors.append(f"STDOUT: {proc_result.stdout.strip()}")
 
         except subprocess.TimeoutExpired:
-            result.errors.append(
-                f"pip install timed out after {self.timeout} seconds"
-            )
+            result.errors.append(f"pip install timed out after {self.timeout} seconds")
         except FileNotFoundError:
             result.errors.append(f"Python interpreter not found: {python_path}")
         except Exception as e:
@@ -418,7 +437,9 @@ class DependencyInstaller:
                     f"Bundled Python ({bundled_path}): FAILED - {', '.join(result.bundled.errors)}"
                 )
         else:
-            summaries.append("Bundled Python: Not found (expected for development environment)")
+            summaries.append(
+                "Bundled Python: Not found (expected for development environment)"
+            )
 
         # Install to venv Python
         venv_path = get_venv_python_path()
@@ -448,7 +469,9 @@ class DependencyInstaller:
         if result.synchronized:
             result.summary += "\n\nDependencies synchronized across both interpreters"
         elif result.differences:
-            result.summary += f"\n\nSynchronization differences:\n  " + "\n  ".join(result.differences)
+            result.summary += "\n\nSynchronization differences:\n  " + "\n  ".join(
+                result.differences
+            )
 
         return result
 
@@ -514,8 +537,13 @@ class DependencyInstaller:
                     result.differences.append(f"{pkg}: missing in venv")
 
             # Check version differences for common packages
-            bundled_lower = {k.lower().replace("_", "-"): v for k, v in result.bundled_packages.items()}
-            venv_lower = {k.lower().replace("_", "-"): v for k, v in result.venv_packages.items()}
+            bundled_lower = {
+                k.lower().replace("_", "-"): v
+                for k, v in result.bundled_packages.items()
+            }
+            venv_lower = {
+                k.lower().replace("_", "-"): v for k, v in result.venv_packages.items()
+            }
 
             for pkg in set(bundled_lower.keys()) & set(venv_lower.keys()):
                 if bundled_lower[pkg] != venv_lower[pkg]:
@@ -523,7 +551,9 @@ class DependencyInstaller:
                         f"{pkg}: bundled={bundled_lower[pkg]}, venv={venv_lower[pkg]}"
                     )
 
-            result.synchronized = len(result.missing_in_bundled) == 0 and len(result.missing_in_venv) == 0
+            result.synchronized = (
+                len(result.missing_in_bundled) == 0 and len(result.missing_in_venv) == 0
+            )
         elif result.bundled_packages or result.venv_packages:
             # Only one interpreter available
             result.synchronized = True  # Can't compare, assume OK
@@ -676,7 +706,9 @@ Examples:
     )
 
     # Default to verify-only if no action specified
-    if not any([args.verify_only, args.install_all, args.install_bundled, args.install_venv]):
+    if not any(
+        [args.verify_only, args.install_all, args.install_bundled, args.install_venv]
+    ):
         args.verify_only = True
 
     # Handle verify-only mode
@@ -802,7 +834,9 @@ def _output_sync_result(result: SyncResult, as_json: bool, verbose: bool) -> int
                 "errors": result.bundled.errors,
             }
             if verbose:
-                output["bundled"]["packages_installed"] = result.bundled.packages_installed
+                output["bundled"]["packages_installed"] = (
+                    result.bundled.packages_installed
+                )
 
         if result.venv:
             output["venv"] = {
