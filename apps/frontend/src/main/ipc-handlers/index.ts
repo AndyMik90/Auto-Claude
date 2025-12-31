@@ -20,6 +20,7 @@ import { registerFileHandlers } from './file-handlers';
 import { registerRoadmapHandlers } from './roadmap-handlers';
 import { registerContextHandlers } from './context-handlers';
 import { registerEnvHandlers } from './env-handlers';
+import { registerEnvironmentHandlers } from './environment-handlers';
 import { registerLinearHandlers } from './linear-handlers';
 import { registerGithubHandlers } from './github-handlers';
 import { registerGitlabHandlers } from './gitlab-handlers';
@@ -76,6 +77,9 @@ export function setupIpcHandlers(
   // Environment configuration handlers
   registerEnvHandlers(getMainWindow);
 
+  // Environment validation handlers (startup health check)
+  registerEnvironmentHandlers(pythonEnvManager, getMainWindow);
+
   // Linear integration handlers
   registerLinearHandlers(agentManager, getMainWindow);
 
@@ -120,6 +124,7 @@ export {
   registerRoadmapHandlers,
   registerContextHandlers,
   registerEnvHandlers,
+  registerEnvironmentHandlers,
   registerLinearHandlers,
   registerGithubHandlers,
   registerGitlabHandlers,

@@ -153,6 +153,13 @@ export const IPC_CHANNELS = {
   ENV_CHECK_CLAUDE_AUTH: 'env:checkClaudeAuth',
   ENV_INVOKE_CLAUDE_SETUP: 'env:invokeClaudeSetup',
 
+  // Environment validation (startup health check)
+  ENV_VALIDATE_STATUS: 'env:validateStatus',       // Get current validation status
+  ENV_VALIDATE_START: 'env:validateStart',         // Start validation process
+  ENV_VALIDATE_PROGRESS: 'env:validateProgress',   // Event: validation progress (main -> renderer)
+  ENV_VALIDATE_COMPLETE: 'env:validateComplete',   // Event: validation complete (main -> renderer)
+  ENV_VALIDATE_ERROR: 'env:validateError',         // Event: validation error (main -> renderer)
+
   // Ideation operations
   IDEATION_GET: 'ideation:get',
   IDEATION_GENERATE: 'ideation:generate',
