@@ -264,7 +264,8 @@ export class ProjectStore {
     // NOTE FOR MAINTAINERS: Worktree tasks are only included if the spec also exists in main.
     // This prevents deleted tasks from "coming back" when the worktree isn't cleaned up.
     // Alternative behavior: include all worktree tasks (remove the mainSpecIds check below).
-    const worktreesDir = path.join(project.path, '.worktrees');
+    const worktreeBasePath = process.env.WORKTREE_BASE_PATH || '.worktrees';
+    const worktreesDir = path.join(project.path, worktreeBasePath);
     if (existsSync(worktreesDir)) {
       try {
         const worktrees = readdirSync(worktreesDir, { withFileTypes: true });

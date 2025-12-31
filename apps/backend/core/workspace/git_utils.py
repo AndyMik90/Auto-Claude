@@ -7,6 +7,7 @@ Utility functions for git operations used in workspace management.
 """
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -221,8 +222,9 @@ def get_existing_build_worktree(project_dir: Path, spec_name: str) -> Path | Non
     Returns:
         Path to the worktree if it exists for this spec, None otherwise
     """
-    # Per-spec worktree path: .worktrees/{spec-name}/
-    worktree_path = project_dir / ".worktrees" / spec_name
+    # Per-spec worktree path: .worktrees/{spec-name}/ (or custom WORKTREE_BASE_PATH)
+    worktree_base_path = os.getenv("WORKTREE_BASE_PATH", ".worktrees")
+    worktree_path = project_dir / worktree_base_path / spec_name
     if worktree_path.exists():
         return worktree_path
     return None

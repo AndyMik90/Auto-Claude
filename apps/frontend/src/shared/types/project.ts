@@ -304,6 +304,7 @@ export interface ProjectEnvConfig {
 
   // Git/Worktree Settings
   defaultBranch?: string; // Base branch for worktree creation (e.g., 'main', 'develop')
+  worktreePath?: string; // Custom worktree base path (relative or absolute)
 
   // Graphiti Memory Integration (V2 - Multi-provider support)
   // Uses LadybugDB embedded database (no Docker required, Python 3.12+)

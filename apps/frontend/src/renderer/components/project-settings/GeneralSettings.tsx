@@ -21,8 +21,10 @@ import { AVAILABLE_MODELS } from '../../../shared/constants';
 import type {
   Project,
   ProjectSettings as ProjectSettingsType,
-  AutoBuildVersionInfo
+  AutoBuildVersionInfo,
+  ProjectEnvConfig
 } from '../../../shared/types';
+import { WorktreeSettings } from './WorktreeSettings';
 
 interface GeneralSettingsProps {
   project: Project;
@@ -32,6 +34,8 @@ interface GeneralSettingsProps {
   isCheckingVersion: boolean;
   isUpdating: boolean;
   handleInitialize: () => Promise<void>;
+  envConfig: ProjectEnvConfig | null;
+  updateEnvConfig: (updates: Partial<ProjectEnvConfig>) => void;
 }
 
 export function GeneralSettings({
@@ -41,7 +45,9 @@ export function GeneralSettings({
   versionInfo,
   isCheckingVersion,
   isUpdating,
-  handleInitialize
+  handleInitialize,
+  envConfig,
+  updateEnvConfig
 }: GeneralSettingsProps) {
   const { t } = useTranslation(['settings']);
 
@@ -146,6 +152,18 @@ export function GeneralSettings({
                 }
               />
             </div>
+          </section>
+
+          <Separator />
+
+          {/* Worktree Location */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Worktree Location</h3>
+            <WorktreeSettings
+              envConfig={envConfig}
+              updateEnvConfig={updateEnvConfig}
+              projectPath={project.path}
+            />
           </section>
 
           <Separator />

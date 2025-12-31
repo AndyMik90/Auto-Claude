@@ -6,6 +6,7 @@ Workspace Models
 Data classes and enums for workspace management.
 """
 
+import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -249,7 +250,8 @@ class SpecNumberLock:
         max_number = max(max_number, self._scan_specs_dir(main_specs_dir))
 
         # 2. Scan all worktree specs
-        worktrees_dir = self.project_dir / ".worktrees"
+        worktree_base_path = os.getenv("WORKTREE_BASE_PATH", ".worktrees")
+        worktrees_dir = self.project_dir / worktree_base_path
         if worktrees_dir.exists():
             for worktree in worktrees_dir.iterdir():
                 if worktree.is_dir():
