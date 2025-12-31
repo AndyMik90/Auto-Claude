@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useViewState } from '../contexts/ViewStateContext';
 import {
   DndContext,
   DragOverlay,
@@ -21,8 +22,6 @@ import {
 import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
-import { Checkbox } from './ui/checkbox';
-import { Label } from './ui/label';
 import { TaskCard } from './TaskCard';
 import { SortableTaskCard } from './SortableTaskCard';
 import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
@@ -117,7 +116,7 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
     <div
       ref={setNodeRef}
       className={cn(
-        'flex w-72 shrink-0 flex-col rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200',
+        'flex min-w-72 max-w-[30rem] flex-1 flex-col rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200',
         getColumnBorderColor(),
         'border-t-2',
         isOver && 'drop-zone-highlight'
@@ -215,12 +214,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
   const { t } = useTranslation('tasks');
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
-
-  // Count archived tasks for display
-  const archivedCount = useMemo(() => {
-    return tasks.filter((t) => t.metadata?.archivedAt).length;
-  }, [tasks]);
+  const { showArchived } = useViewState();
 
   // Filter tasks based on archive status
   const filteredTasks = useMemo(() => {
@@ -351,29 +345,6 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
 
   return (
     <div className="flex h-full flex-col">
-      {/* Kanban header with filters */}
-      <div className="flex items-center justify-end px-6 py-3 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="showArchived"
-            checked={showArchived}
-            onCheckedChange={(checked) => setShowArchived(checked === true)}
-          />
-          <Label
-            htmlFor="showArchived"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer"
-          >
-            <Archive className="h-3.5 w-3.5" />
-            {t('kanban.showArchived')}
-            {archivedCount > 0 && (
-              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-muted">
-                {archivedCount}
-              </span>
-            )}
-          </Label>
-        </div>
-      </div>
-
       {/* Kanban columns */}
       <DndContext
         sensors={sensors}
