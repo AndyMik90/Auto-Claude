@@ -1,0 +1,34 @@
+{
+  "name": "@auto-claude/chrome-devtools-mcp",
+  "version": "1.0.0",
+  "description": "Chrome DevTools Protocol MCP server for Auto Claude",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "chrome-devtools-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "chrome-devtools",
+    "cdp",
+    "browser",
+    "automation"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "chrome-remote-interface": "^0.33.0",
+    "puppeteer-core": "^23.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

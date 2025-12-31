@@ -68,19 +68,7 @@ export const DEFAULT_APP_SETTINGS = {
   /** Stay in zen mode after task creation */
   stayInZenAfterCreate: true,
   /** Show recent intents as suggestions */
-  zenModeSuggestions: true,
-  // ============================================
-  // Window Settings (NEW)
-  // ============================================
-  /** Open app in fullscreen by default */
-  fullscreenByDefault: false,
-  // ============================================
-  // Experimental Features (NEW)
-  // ============================================
-  /** Experimental feature flags */
-  experimentalFeatures: {
-    /** Feature flags - add new experimental features here */
-  }
+  zenModeSuggestions: true
 };
 
 // ============================================

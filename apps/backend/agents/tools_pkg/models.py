@@ -13,7 +13,8 @@ the Claude Agent SDK client. Tool lists are organized by category:
 - Auto-Claude tools: Custom build management tools
 """
 
-import os
+from core.cdp_config import get_cdp_tools_for_agent
+from core.mcp_config import is_electron_mcp_enabled
 
 from core.cdp_config import get_cdp_tools_for_agent
 from core.mcp_config import is_electron_mcp_enabled

@@ -21,10 +21,6 @@
       "title": "Developer Tools",
       "description": "IDE and terminal preferences"
     },
-    "cdp": {
-      "title": "Chrome DevTools",
-      "description": "Browser automation & debugging"
-    },
     "agent": {
       "title": "Agent Settings",
       "description": "Default model and framework"
@@ -56,10 +52,6 @@
     "zenMode": {
       "title": "Zen Mode",
       "description": "Minimalist quick task creation"
-    },
-    "experimental": {
-      "title": "Experimental",
-      "description": "Experimental features and flags"
     }
   },
   "language": {

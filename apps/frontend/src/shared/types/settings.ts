@@ -323,19 +323,6 @@ export interface AppSettings {
   stayInZenAfterCreate?: boolean;
   /** Show recent intents as suggestions in zen mode */
   zenModeSuggestions?: boolean;
-  // ============================================
-  // Experimental Features (NEW)
-  // ============================================
-  /** Enable experimental features (feature flags) */
-  experimentalFeatures?: {
-    /** Feature flag names and their enabled states */
-    [key: string]: boolean;
-  };
-  // ============================================
-  // Window Settings (NEW)
-  // ============================================
-  /** Open app in fullscreen by default */
-  fullscreenByDefault?: boolean;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

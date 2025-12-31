@@ -337,6 +337,26 @@ Focus on completing your specific step. Trust that other steps are handled by th
             Step-specific instructions
         """
         instructions = {
+<<<<<<< HEAD
+            # Bug resolution steps
+            "investigate_issue": "Investigate the reported issue. Read relevant code files, identify the root cause, and document your findings.",
+            "implement_fix": "Implement the fix based on the investigation. Modify code files, test the fix locally if possible, and ensure the issue is resolved.",
+            "verify_fix": "Verify that the fix resolves the issue. Run tests, check for regressions, and confirm the original issue no longer occurs.",
+            # Feature development steps
+            "plan_feature": "Create an implementation plan for the feature. Break down the work into clear steps, identify dependencies, and document the approach.",
+            "implement_feature": "Implement the feature according to the plan. Write clean, well-structured code following existing patterns in the codebase.",
+            "verify_feature": "Verify the feature works correctly. Test the implementation, check acceptance criteria, and ensure the feature meets requirements.",
+            # Refactoring steps
+            "plan_refactor": "Analyze the code to be refactored. Identify improvement opportunities, plan the restructuring approach, and document potential risks.",
+            "implement_refactor": "Implement the refactoring according to the plan. Preserve functionality while improving code structure, readability, or performance.",
+            "verify_refactor": "Verify that refactoring maintains functionality. Run tests to ensure no regressions were introduced.",
+            # Investigation steps
+            "investigate": "Thoroughly investigate the topic or code. Read relevant files, analyze the implementation, and document your findings clearly.",
+            "document_findings": "Create clear documentation of investigation findings. Include code examples, diagrams if helpful, and actionable recommendations.",
+            # Code review steps
+            "review_code": "Review the code thoroughly. Check for bugs, security issues, performance problems, and adherence to best practices. Provide constructive feedback.",
+            "document_review": "Summarize the review findings in a clear document. Highlight issues found, severity levels, and recommendations for improvement.",
+            # Bug resolution steps (from develop)
             "investigate_issue": "Investigate the reported issue. Read relevant code files, identify the root cause, and document your findings.",
             "implement_fix": "Implement the fix based on the investigation. Modify code files, test the fix locally if possible, and ensure the issue is resolved.",
             "verify_fix": "Verify that the fix resolves the issue. Run tests, check for regressions, and confirm the original issue no longer occurs.",

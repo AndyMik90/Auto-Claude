@@ -11,6 +11,5 @@ export { IntegrationSettings } from './IntegrationSettings';
 export { ModelProviderSettings } from './ModelProviderSettings';
 export { AdvancedSettings } from './AdvancedSettings';
 export { CDPSettings } from './CDPSettings';
-export { ExperimentalSettings } from './ExperimentalSettings';
 export { SettingsSection } from './SettingsSection';
 export { useSettings } from './hooks/useSettings';
