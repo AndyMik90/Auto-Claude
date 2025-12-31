@@ -178,6 +178,15 @@ export function registerEnvHandlers(
       });
     }
 
+    // Custom MCP servers (user-defined)
+    if (config.customMcpServers !== undefined) {
+      if (config.customMcpServers.length > 0) {
+        existingVars['CUSTOM_MCP_SERVERS'] = JSON.stringify(config.customMcpServers);
+      } else {
+        delete existingVars['CUSTOM_MCP_SERVERS'];
+      }
+    }
+
     // Generate content with sections
     const content = `# Auto Claude Framework Environment Variables
 # Managed by Auto Claude UI
@@ -246,6 +255,13 @@ ${Object.entries(existingVars)
   .filter(([key]) => key.startsWith('AGENT_MCP_'))
   .map(([key, value]) => `${key}=${value}`)
   .join('\n') || '# No per-agent overrides configured'}
+
+# =============================================================================
+# CUSTOM MCP SERVERS
+# User-defined MCP servers (command-based or HTTP-based)
+# JSON format: [{"id":"...","name":"...","type":"command|http",...}]
+# =============================================================================
+${existingVars['CUSTOM_MCP_SERVERS'] ? `CUSTOM_MCP_SERVERS=${existingVars['CUSTOM_MCP_SERVERS']}` : '# CUSTOM_MCP_SERVERS=[]'}
 
 # =============================================================================
 # MEMORY INTEGRATION
@@ -475,6 +491,16 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
 
       if (Object.keys(agentMcpOverrides).length > 0) {
         config.agentMcpOverrides = agentMcpOverrides;
+      }
+
+      // Parse custom MCP servers (user-defined)
+      if (vars['CUSTOM_MCP_SERVERS']) {
+        try {
+          config.customMcpServers = JSON.parse(vars['CUSTOM_MCP_SERVERS']);
+        } catch {
+          // Invalid JSON, ignore
+          config.customMcpServers = [];
+        }
       }
 
       return { success: true, data: config };

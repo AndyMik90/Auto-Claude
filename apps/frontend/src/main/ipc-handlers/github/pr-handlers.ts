@@ -393,15 +393,20 @@ function addLogEntry(logs: PRLogs, entry: PRLogEntry): void {
 
 /**
  * PR Log Collector - collects logs during review
+ * Saves incrementally to disk so frontend can stream logs in real-time
  */
 class PRLogCollector {
   private logs: PRLogs;
   private project: Project;
   private currentPhase: PRLogPhase = 'context';
+  private entryCount: number = 0;
+  private saveInterval: number = 3; // Save every N entries for real-time streaming
 
   constructor(project: Project, prNumber: number, repo: string, isFollowup: boolean) {
     this.project = project;
     this.logs = createEmptyPRLogs(prNumber, repo, isFollowup);
+    // Save initial empty logs so frontend sees the structure immediately
+    this.save();
   }
 
   processLine(line: string): void {
@@ -420,6 +425,12 @@ class PRLogCollector {
     };
 
     addLogEntry(this.logs, entry);
+    this.entryCount++;
+
+    // Save periodically for real-time streaming (every N entries)
+    if (this.entryCount % this.saveInterval === 0) {
+      this.save();
+    }
   }
 
   markPhaseComplete(phase: PRLogPhase, success: boolean): void {

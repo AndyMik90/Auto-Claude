@@ -113,13 +113,14 @@ export function PRDetail({
     }
   }, [reviewResult?.postedFindingIds, pr.number]);
 
-  // Auto-select critical and high findings when review completes (excluding already posted)
+  // Auto-select ALL findings when review completes (excluding already posted)
+  // All findings should reach the contributor - even LOW suggestions are valuable feedback
   useEffect(() => {
     if (reviewResult?.success && reviewResult.findings.length > 0) {
-      const importantFindings = reviewResult.findings
-        .filter(f => (f.severity === 'critical' || f.severity === 'high') && !postedFindingIds.has(f.id))
+      const allFindings = reviewResult.findings
+        .filter(f => !postedFindingIds.has(f.id))
         .map(f => f.id);
-      setSelectedFindingIds(new Set(importantFindings));
+      setSelectedFindingIds(new Set(allFindings));
     }
   }, [reviewResult, postedFindingIds]);
 
@@ -176,6 +177,13 @@ export function PRDetail({
     }
   }, [postSuccess]);
 
+  // Auto-expand logs section when review starts
+  useEffect(() => {
+    if (isReviewing) {
+      setLogsExpanded(true);
+    }
+  }, [isReviewing]);
+
   // Load logs when logs section is expanded or when reviewing (for live logs)
   useEffect(() => {
     if (logsExpanded && !logsLoadedRef.current && !isLoadingLogs) {
@@ -188,9 +196,9 @@ export function PRDetail({
     }
   }, [logsExpanded, onGetLogs, isLoadingLogs]);
 
-  // Refresh logs periodically while reviewing
+  // Refresh logs periodically while reviewing (even faster during active review)
   useEffect(() => {
-    if (!isReviewing || !logsExpanded) return;
+    if (!isReviewing) return;
 
     const refreshLogs = async () => {
       try {
@@ -201,10 +209,11 @@ export function PRDetail({
       }
     };
 
-    // Refresh logs every 2 seconds while reviewing
-    const interval = setInterval(refreshLogs, 2000);
+    // Refresh immediately, then every 1.5 seconds while reviewing for smoother streaming
+    refreshLogs();
+    const interval = setInterval(refreshLogs, 1500);
     return () => clearInterval(interval);
-  }, [isReviewing, logsExpanded, onGetLogs]);
+  }, [isReviewing, onGetLogs]);
 
   // Reset logs state when PR changes
   useEffect(() => {
