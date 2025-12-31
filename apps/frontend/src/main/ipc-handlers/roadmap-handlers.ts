@@ -553,6 +553,9 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join('\n'
         };
         writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS), JSON.stringify(requirements, null, 2));
 
+	      // Create spec.md (required by backend spec creation process)
+	      writeFileSync(path.join(specDir, 'spec.md'), taskDescription);
+
         // Build metadata
         const metadata: TaskMetadata = {
           sourceType: 'roadmap',
