@@ -179,7 +179,7 @@ class BMADWorkflowLoader:
         try:
             with open(workflow_path, encoding="utf-8") as f:
                 return yaml.safe_load(f)
-        except (yaml.YAMLError, OSError, IOError):
+        except (yaml.YAMLError, OSError):
             return None
 
     def get_workflow(self, name: str) -> dict | None:
