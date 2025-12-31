@@ -1,9 +1,131 @@
 import { spawn, execSync, ChildProcess } from 'child_process';
-import { existsSync, readdirSync } from 'fs';
+import { existsSync, readdirSync, mkdirSync, appendFileSync } from 'fs';
 import path from 'path';
+import os from 'os';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
 import { findPythonCommand, getBundledPythonPath } from './python-detector';
+
+/**
+ * Logger for Python environment validation.
+ * Writes startup validation logs to ~/Library/Logs/auto-claude/env-validation.log
+ *
+ * Following patterns from log-service.ts for consistent logging across the application.
+ */
+class EnvValidationLogger {
+  private logDir: string;
+  private logFile: string;
+  private initialized = false;
+
+  constructor() {
+    // ~/Library/Logs/auto-claude/ on macOS
+    // For cross-platform support, fall back to userData/logs on other platforms
+    if (process.platform === 'darwin') {
+      this.logDir = path.join(os.homedir(), 'Library', 'Logs', 'auto-claude');
+    } else if (process.platform === 'win32') {
+      this.logDir = path.join(os.homedir(), 'AppData', 'Local', 'auto-claude', 'logs');
+    } else {
+      this.logDir = path.join(os.homedir(), '.local', 'share', 'auto-claude', 'logs');
+    }
+    this.logFile = path.join(this.logDir, 'env-validation.log');
+  }
+
+  /**
+   * Ensure log directory exists and initialize the log file
+   */
+  private ensureInitialized(): void {
+    if (this.initialized) return;
+
+    try {
+      if (!existsSync(this.logDir)) {
+        mkdirSync(this.logDir, { recursive: true });
+      }
+      this.initialized = true;
+    } catch (error) {
+      console.error('[EnvValidationLogger] Failed to create log directory:', error);
+    }
+  }
+
+  /**
+   * Write a log entry with timestamp
+   */
+  log(level: 'INFO' | 'WARN' | 'ERROR', message: string, details?: Record<string, unknown>): void {
+    this.ensureInitialized();
+    if (!this.initialized) return;
+
+    try {
+      const timestamp = new Date().toISOString();
+      let logLine = `[${timestamp}] [${level}] ${message}`;
+
+      if (details) {
+        logLine += ` | ${JSON.stringify(details)}`;
+      }
+
+      logLine += '\n';
+      appendFileSync(this.logFile, logLine);
+    } catch (error) {
+      console.error('[EnvValidationLogger] Failed to write log:', error);
+    }
+  }
+
+  /**
+   * Log the start of a validation session with header
+   */
+  logSessionStart(): void {
+    this.ensureInitialized();
+    if (!this.initialized) return;
+
+    try {
+      const timestamp = new Date().toISOString();
+      const header = [
+        '',
+        '='.repeat(80),
+        `PYTHON ENV VALIDATION SESSION: ${timestamp}`,
+        `Platform: ${process.platform}`,
+        `Arch: ${process.arch}`,
+        `Node: ${process.version}`,
+        `App Packaged: ${app?.isPackaged ?? 'unknown'}`,
+        '='.repeat(80),
+        ''
+      ].join('\n');
+
+      appendFileSync(this.logFile, header);
+    } catch (error) {
+      console.error('[EnvValidationLogger] Failed to write session header:', error);
+    }
+  }
+
+  /**
+   * Log validation step with result
+   */
+  logValidationStep(step: string, success: boolean, details?: Record<string, unknown>): void {
+    const level = success ? 'INFO' : 'WARN';
+    const status = success ? 'PASS' : 'FAIL';
+    this.log(level, `[${status}] ${step}`, details);
+  }
+
+  /**
+   * Log Python path discovery
+   */
+  logPythonPath(type: string, pythonPath: string | null): void {
+    if (pythonPath) {
+      this.log('INFO', `Python path (${type}): ${pythonPath}`);
+    } else {
+      this.log('WARN', `Python path (${type}): NOT FOUND`);
+    }
+  }
+
+  /**
+   * Log validation summary
+   */
+  logSummary(success: boolean, summary: string): void {
+    const level = success ? 'INFO' : 'ERROR';
+    this.log(level, `VALIDATION SUMMARY: ${summary}`);
+  }
+}
+
+// Singleton logger instance
+const envValidationLogger = new EnvValidationLogger();
 
 export interface PythonEnvStatus {
   ready: boolean;
@@ -196,14 +318,22 @@ if sys.version_info >= (3, 12):
   }> {
     console.log('[PythonEnvManager] Validating both Python environments');
 
+    // Start a new validation session in the log file
+    envValidationLogger.logSessionStart();
+    envValidationLogger.log('INFO', 'Starting Python environment validation');
+
     // Find a Python interpreter to run the validator
     const python = this.pythonPath || this.findSystemPython();
+    envValidationLogger.logPythonPath('validator', python);
+
     if (!python) {
+      const summary = 'No Python interpreter available to run validation';
+      envValidationLogger.logSummary(false, summary);
       return {
         success: false,
         bundled: null,
         venv: null,
-        summary: 'No Python interpreter available to run validation'
+        summary
       };
     }
 
@@ -212,14 +342,26 @@ if sys.version_info >= (3, 12):
       ? path.join(this.autoBuildSourcePath, 'services', 'environment_validator.py')
       : null;
 
+    envValidationLogger.log('INFO', 'Looking for validator script', {
+      autoBuildSourcePath: this.autoBuildSourcePath,
+      validatorPath,
+      exists: validatorPath ? existsSync(validatorPath) : false
+    });
+
     if (!validatorPath || !existsSync(validatorPath)) {
       // Fallback: try to find it in resources for packaged apps
       const resourcesPath = app.isPackaged
         ? path.join(process.resourcesPath, 'auto-claude', 'services', 'environment_validator.py')
         : null;
 
+      envValidationLogger.log('INFO', 'Trying resources fallback', {
+        resourcesPath,
+        exists: resourcesPath ? existsSync(resourcesPath) : false
+      });
+
       if (!resourcesPath || !existsSync(resourcesPath)) {
         console.log('[PythonEnvManager] environment_validator.py not found, skipping dual validation');
+        envValidationLogger.log('WARN', 'Validator script not found in any location');
         return {
           success: true, // Don't block if validator not found
           bundled: null,
@@ -229,9 +371,11 @@ if sys.version_info >= (3, 12):
       }
 
       // Use the resources path
+      envValidationLogger.log('INFO', 'Using resources validator path', { path: resourcesPath });
       return this._runEnvironmentValidator(python, resourcesPath);
     }
 
+    envValidationLogger.log('INFO', 'Using source validator path', { path: validatorPath });
     return this._runEnvironmentValidator(python, validatorPath);
   }
 
@@ -395,6 +539,11 @@ if sys.version_info >= (3, 12):
     venv: { success: boolean; errors: string[] } | null;
     summary: string;
   }> {
+    envValidationLogger.log('INFO', 'Running environment validator', {
+      pythonPath,
+      validatorPath
+    });
+
     return new Promise((resolve) => {
       try {
         // Run with --check-bundled --check-venv --json for structured output
@@ -412,12 +561,23 @@ if sys.version_info >= (3, 12):
 
         console.log('[PythonEnvManager] Dual environment validation result:', output.success ? 'OK' : 'FAILED');
 
+        // Log validation results
+        envValidationLogger.logValidationStep('Dual environment validation', output.success);
+
         if (output.bundled) {
           console.log('[PythonEnvManager] Bundled Python:', output.bundled.success ? 'OK' : 'FAILED');
+          envValidationLogger.logValidationStep('Bundled Python', output.bundled.success, {
+            errors: output.bundled.errors || []
+          });
         }
         if (output.venv) {
           console.log('[PythonEnvManager] Venv Python:', output.venv.success ? 'OK' : 'FAILED');
+          envValidationLogger.logValidationStep('Venv Python', output.venv.success, {
+            errors: output.venv.errors || []
+          });
         }
+
+        envValidationLogger.logSummary(output.success, output.summary || 'Validation completed');
 
         resolve({
           success: output.success,
@@ -433,6 +593,7 @@ if sys.version_info >= (3, 12):
         // Handle exec errors
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('[PythonEnvManager] Failed to run environment validator:', errorMessage);
+        envValidationLogger.log('ERROR', 'Validator execution failed', { error: errorMessage });
 
         // If the command failed but returned JSON (exit code 1 with valid output)
         if (error && typeof error === 'object' && 'stdout' in error) {
@@ -440,6 +601,11 @@ if sys.version_info >= (3, 12):
           if (stdout) {
             try {
               const output = JSON.parse(stdout.trim());
+              envValidationLogger.logValidationStep('Validator (with errors)', output.success, {
+                bundled: output.bundled,
+                venv: output.venv
+              });
+              envValidationLogger.logSummary(output.success, output.summary || 'Completed with errors');
               resolve({
                 success: output.success,
                 bundled: output.bundled
@@ -453,15 +619,19 @@ if sys.version_info >= (3, 12):
               return;
             } catch {
               // JSON parse failed, continue to default error handling
+              envValidationLogger.log('ERROR', 'Failed to parse validator output');
             }
           }
         }
+
+        const summary = `Validation failed: ${errorMessage}`;
+        envValidationLogger.logSummary(false, summary);
 
         resolve({
           success: false,
           bundled: null,
           venv: null,
-          summary: `Validation failed: ${errorMessage}`
+          summary
         });
       }
     });
@@ -755,13 +925,25 @@ if sys.version_info >= (3, 12):
 
     console.warn('[PythonEnvManager] Initializing with path:', autoBuildSourcePath);
 
+    // Log initialization start
+    envValidationLogger.logSessionStart();
+    envValidationLogger.log('INFO', 'Python environment initialization started', {
+      autoBuildSourcePath,
+      isPackaged: app.isPackaged,
+      platform: process.platform
+    });
+
     try {
       // For packaged apps, try to use bundled packages first (no pip install needed!)
       if (app.isPackaged && this.hasBundledPackages()) {
         console.warn('[PythonEnvManager] Using bundled Python packages (no pip install needed)');
+        envValidationLogger.logValidationStep('Bundled packages check', true);
 
         const bundledPython = getBundledPythonPath();
         const bundledSitePackages = this.getBundledSitePackagesPath();
+
+        envValidationLogger.logPythonPath('bundled', bundledPython);
+        envValidationLogger.log('INFO', 'Bundled site-packages path', { path: bundledSitePackages });
 
         if (bundledPython && bundledSitePackages) {
           this.pythonPath = bundledPython;
@@ -773,6 +955,8 @@ if sys.version_info >= (3, 12):
           this.emit('ready', this.pythonPath);
           console.warn('[PythonEnvManager] Ready with bundled Python:', this.pythonPath);
           console.warn('[PythonEnvManager] Using bundled site-packages:', this.sitePackagesPath);
+
+          envValidationLogger.logSummary(true, 'Initialized with bundled Python');
 
           return {
             ready: true,
@@ -787,14 +971,22 @@ if sys.version_info >= (3, 12):
 
       // Fallback to venv-based setup (for development or if bundled packages missing)
       console.warn('[PythonEnvManager] Using venv-based setup (development mode or bundled packages missing)');
+      envValidationLogger.log('INFO', 'Using venv-based setup (development mode or bundled packages missing)');
       this.usingBundledPackages = false;
 
       // Check if venv exists
+      const venvPath = this.getVenvBasePath();
+      const venvPythonPath = this.getVenvPythonPath();
+      envValidationLogger.log('INFO', 'Venv paths', { venvPath, venvPythonPath });
+
       if (!this.venvExists()) {
         console.warn('[PythonEnvManager] Venv not found, creating...');
+        envValidationLogger.log('INFO', 'Venv not found, creating...');
         const created = await this.createVenv();
+        envValidationLogger.logValidationStep('Venv creation', created);
         if (!created) {
           this.isInitializing = false;
+          envValidationLogger.logSummary(false, 'Failed to create virtual environment');
           return {
             ready: false,
             pythonPath: null,
@@ -807,15 +999,21 @@ if sys.version_info >= (3, 12):
         }
       } else {
         console.warn('[PythonEnvManager] Venv already exists');
+        envValidationLogger.logValidationStep('Venv exists', true);
       }
 
       // Check if deps are installed
       const depsInstalled = await this.checkDepsInstalled();
+      envValidationLogger.logValidationStep('Dependencies check', depsInstalled);
+
       if (!depsInstalled) {
         console.warn('[PythonEnvManager] Dependencies not installed, installing...');
+        envValidationLogger.log('INFO', 'Dependencies not installed, installing...');
         const installed = await this.installDeps();
+        envValidationLogger.logValidationStep('Dependencies installation', installed);
         if (!installed) {
           this.isInitializing = false;
+          envValidationLogger.logSummary(false, 'Failed to install dependencies');
           return {
             ready: false,
             pythonPath: this.getVenvPythonPath(),
@@ -865,6 +1063,10 @@ if sys.version_info >= (3, 12):
       this.emit('ready', this.pythonPath);
       console.warn('[PythonEnvManager] Ready with Python path:', this.pythonPath);
 
+      envValidationLogger.logPythonPath('venv', this.pythonPath);
+      envValidationLogger.log('INFO', 'Site-packages path', { path: this.sitePackagesPath });
+      envValidationLogger.logSummary(true, 'Initialized with venv Python');
+
       return {
         ready: true,
         pythonPath: this.pythonPath,
@@ -876,6 +1078,8 @@ if sys.version_info >= (3, 12):
     } catch (error) {
       this.isInitializing = false;
       const message = error instanceof Error ? error.message : String(error);
+      envValidationLogger.log('ERROR', 'Initialization failed with exception', { error: message });
+      envValidationLogger.logSummary(false, `Initialization failed: ${message}`);
       return {
         ready: false,
         pythonPath: null,
