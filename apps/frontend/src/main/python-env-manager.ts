@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
-import { findPythonCommand, getBundledPythonPath } from './python-detector';
+import { findPythonCommand, getBundledPythonPath, parsePythonCommand } from './python-detector';
 
 export interface PythonEnvStatus {
   ready: boolean;

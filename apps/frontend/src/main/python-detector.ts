@@ -304,9 +304,8 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   /^.*\/\.?virtualenv\/bin\/python\d*(\.\d+)?$/,
   /^.*\/env\/bin\/python\d*(\.\d+)?$/,
   // macOS Application Support paths (Electron userData with spaces)
-  // Matches: /Users/<user>/Library/Application Support/<app>/python-venv/bin/python
-  /^\/Users\/[^/]+\/Library\/Application Support\/[^/]+\/python-venv\/bin\/python\d*(\.\d+)?$/,
-  /^\/Users\/[^/]+\/Library\/Application Support\/[^/]+\/\.?venv\/bin\/python\d*(\.\d+)?$/,
+  // Matches: /Users/<user>/Library/Application Support/<app>/(python-venv|.venv|venv)/bin/python
+  /^\/Users\/[^/]+\/Library\/Application Support\/[^/]+\/(python-venv|\.?venv)\/bin\/python\d*(\.\d+)?$/,
   // Windows virtual environments
   /^.*\\\.?venv\\Scripts\\python\.exe$/i,
   /^.*\\\.?virtualenv\\Scripts\\python\.exe$/i,
@@ -317,8 +316,8 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   /^[A-Za-z]:\\Program Files \(x86\)\\Python\d+\\python\.exe$/i,
   /^[A-Za-z]:\\Users\\[^\\]+\\AppData\\Local\\Programs\\Python\\Python\d+\\python\.exe$/i,
   // Windows Application Data paths (Electron userData)
-  /^[A-Za-z]:\\Users\\[^\\]+\\AppData\\Roaming\\[^\\]+\\python-venv\\Scripts\\python\.exe$/i,
-  /^[A-Za-z]:\\Users\\[^\\]+\\AppData\\Roaming\\[^\\]+\\\.?venv\\Scripts\\python\.exe$/i,
+  // Matches: C:\Users\<user>\AppData\Roaming\<app>\(python-venv|.venv|venv)\Scripts\python.exe
+  /^[A-Za-z]:\\Users\\[^\\]+\\AppData\\Roaming\\[^\\]+\\(python-venv|\.?venv)\\Scripts\\python\.exe$/i,
   // Conda environments
   /^.*\/anaconda\d*\/bin\/python\d*(\.\d+)?$/,
   /^.*\/miniconda\d*\/bin\/python\d*(\.\d+)?$/,
