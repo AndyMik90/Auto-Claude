@@ -9,7 +9,7 @@ import { SectionRouter } from './sections/SectionRouter';
 import { createHookProxy } from './utils/hookProxyFactory';
 import type { Project } from '../../../shared/types';
 
-export type ProjectSettingsSection = 'general' | 'claude' | 'linear' | 'github' | 'gitlab' | 'memory';
+export type ProjectSettingsSection = 'general' | 'linear' | 'github' | 'gitlab' | 'memory';
 
 interface ProjectSettingsContentProps {
   project: Project | undefined;
@@ -81,8 +81,6 @@ function ProjectSettingsContentInner({
     isLoadingEnv,
     envError,
     updateEnvConfig,
-    showClaudeToken,
-    setShowClaudeToken,
     showLinearKey,
     setShowLinearKey,
     showOpenAIKey,
@@ -97,14 +95,11 @@ function ProjectSettingsContentInner({
     setShowGitLabToken,
     gitLabConnectionStatus,
     isCheckingGitLab,
-    isCheckingClaudeAuth,
-    claudeAuthStatus,
     showLinearImportModal,
     setShowLinearImportModal,
     linearConnectionStatus,
     isCheckingLinear,
     handleInitialize,
-    handleClaudeSetup,
     error
   } = hook;
 
@@ -134,8 +129,6 @@ function ProjectSettingsContentInner({
         isLoadingEnv={isLoadingEnv}
         envError={envError}
         updateEnvConfig={updateEnvConfig}
-        showClaudeToken={showClaudeToken}
-        setShowClaudeToken={setShowClaudeToken}
         showLinearKey={showLinearKey}
         setShowLinearKey={setShowLinearKey}
         showOpenAIKey={showOpenAIKey}
@@ -148,12 +141,9 @@ function ProjectSettingsContentInner({
         setShowGitLabToken={setShowGitLabToken}
         gitLabConnectionStatus={gitLabConnectionStatus}
         isCheckingGitLab={isCheckingGitLab}
-        isCheckingClaudeAuth={isCheckingClaudeAuth}
-        claudeAuthStatus={claudeAuthStatus}
         linearConnectionStatus={linearConnectionStatus}
         isCheckingLinear={isCheckingLinear}
         handleInitialize={handleInitialize}
-        handleClaudeSetup={handleClaudeSetup}
         onOpenLinearImport={() => setShowLinearImportModal(true)}
       />
 
