@@ -33,6 +33,7 @@ try:
         ReviewCategory,
         ReviewSeverity,
     )
+    from .category_utils import map_category
     from .prompt_manager import PromptManager
     from .pydantic_models import FollowupReviewResponse
 except (ImportError, ValueError, SystemError):
@@ -43,40 +44,11 @@ except (ImportError, ValueError, SystemError):
         ReviewCategory,
         ReviewSeverity,
     )
+    from services.category_utils import map_category
     from services.prompt_manager import PromptManager
     from services.pydantic_models import FollowupReviewResponse
 
 logger = logging.getLogger(__name__)
-
-# Category mapping for AI responses
-_CATEGORY_MAPPING = {
-    # Direct matches (already valid)
-    "security": ReviewCategory.SECURITY,
-    "quality": ReviewCategory.QUALITY,
-    "style": ReviewCategory.STYLE,
-    "test": ReviewCategory.TEST,
-    "docs": ReviewCategory.DOCS,
-    "pattern": ReviewCategory.PATTERN,
-    "performance": ReviewCategory.PERFORMANCE,
-    "verification_failed": ReviewCategory.VERIFICATION_FAILED,
-    "redundancy": ReviewCategory.REDUNDANCY,
-    # AI-generated alternatives that need mapping
-    "correctness": ReviewCategory.QUALITY,  # Logic/code correctness → quality
-    "consistency": ReviewCategory.PATTERN,  # Code consistency → pattern adherence
-    "testing": ReviewCategory.TEST,  # Testing → test
-    "documentation": ReviewCategory.DOCS,  # Documentation → docs
-    "bug": ReviewCategory.QUALITY,  # Bug → quality
-    "logic": ReviewCategory.QUALITY,  # Logic error → quality
-    "error_handling": ReviewCategory.QUALITY,  # Error handling → quality
-    "maintainability": ReviewCategory.QUALITY,  # Maintainability → quality
-    "readability": ReviewCategory.STYLE,  # Readability → style
-    "best_practices": ReviewCategory.PATTERN,  # Best practices → pattern
-    "best-practices": ReviewCategory.PATTERN,  # With hyphen
-    "architecture": ReviewCategory.PATTERN,  # Architecture → pattern
-    "complexity": ReviewCategory.QUALITY,  # Complexity → quality
-    "dead_code": ReviewCategory.REDUNDANCY,  # Dead code → redundancy
-    "unused": ReviewCategory.REDUNDANCY,  # Unused → redundancy
-}
 
 # Severity mapping for AI responses
 _SEVERITY_MAPPING = {
@@ -794,7 +766,7 @@ Analyze this follow-up review context and provide your structured response.
                 PRReviewFinding(
                     id=f.id,
                     severity=_SEVERITY_MAPPING.get(f.severity, ReviewSeverity.MEDIUM),
-                    category=_CATEGORY_MAPPING.get(f.category, ReviewCategory.QUALITY),
+                    category=map_category(f.category),
                     title=f.title,
                     description=f.description,
                     file=f.file,
@@ -811,7 +783,7 @@ Analyze this follow-up review context and provide your structured response.
                 PRReviewFinding(
                     id=f.id,
                     severity=_SEVERITY_MAPPING.get(f.severity, ReviewSeverity.LOW),
-                    category=_CATEGORY_MAPPING.get(f.category, ReviewCategory.QUALITY),
+                    category=map_category(f.category),
                     title=f.title,
                     description=f.description,
                     file=f.file,

@@ -34,10 +34,11 @@ try:
         MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
-        ReviewCategory,
         ReviewSeverity,
     )
+    from .category_utils import map_category
     from .pydantic_models import ParallelOrchestratorResponse
+    from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
     from context_gatherer import PRContext
     from core.client import create_client
@@ -46,52 +47,18 @@ except (ImportError, ValueError, SystemError):
         MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
-        ReviewCategory,
         ReviewSeverity,
     )
     from phase_config import get_thinking_budget
+    from services.category_utils import map_category
     from services.pydantic_models import ParallelOrchestratorResponse
+    from services.sdk_utils import process_sdk_stream
 
 
 logger = logging.getLogger(__name__)
 
 # Check if debug mode is enabled
 DEBUG_MODE = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
-
-# Map AI-generated category names to valid ReviewCategory enum values
-_CATEGORY_MAPPING = {
-    # Direct matches
-    "security": ReviewCategory.SECURITY,
-    "quality": ReviewCategory.QUALITY,
-    "logic": ReviewCategory.QUALITY,  # Logic maps to quality
-    "codebase_fit": ReviewCategory.PATTERN,  # Codebase fit maps to pattern
-    "style": ReviewCategory.STYLE,
-    "test": ReviewCategory.TEST,
-    "docs": ReviewCategory.DOCS,
-    "pattern": ReviewCategory.PATTERN,
-    "performance": ReviewCategory.PERFORMANCE,
-    "redundancy": ReviewCategory.REDUNDANCY,
-    # AI-generated alternatives
-    "correctness": ReviewCategory.QUALITY,
-    "consistency": ReviewCategory.PATTERN,
-    "testing": ReviewCategory.TEST,
-    "documentation": ReviewCategory.DOCS,
-    "bug": ReviewCategory.QUALITY,
-    "error_handling": ReviewCategory.QUALITY,
-    "maintainability": ReviewCategory.QUALITY,
-    "readability": ReviewCategory.STYLE,
-    "best_practices": ReviewCategory.PATTERN,
-    "architecture": ReviewCategory.PATTERN,
-    "complexity": ReviewCategory.QUALITY,
-    "dead_code": ReviewCategory.REDUNDANCY,
-    "unused": ReviewCategory.REDUNDANCY,
-}
-
-
-def _map_category(category_str: str) -> ReviewCategory:
-    """Map an AI-generated category string to a valid ReviewCategory enum."""
-    normalized = category_str.lower().strip().replace("-", "_")
-    return _CATEGORY_MAPPING.get(normalized, ReviewCategory.QUALITY)
 
 
 class ParallelOrchestratorReviewer:
@@ -301,6 +268,124 @@ The SDK will run invoked agents in parallel automatically.
 
         return base_prompt + pr_context
 
+    def _create_sdk_client(
+        self, project_root: Path, model: str, thinking_budget: int | None
+    ):
+        """Create SDK client with subagents and configuration.
+
+        Args:
+            project_root: Root directory of the project
+            model: Model to use for orchestrator
+            thinking_budget: Max thinking tokens budget
+
+        Returns:
+            Configured SDK client instance
+        """
+        return create_client(
+            project_dir=project_root,
+            spec_dir=self.github_dir,
+            model=model,
+            agent_type="pr_orchestrator_parallel",
+            max_thinking_tokens=thinking_budget,
+            agents=self._define_specialist_agents(),
+            output_format={
+                "type": "json_schema",
+                "schema": ParallelOrchestratorResponse.model_json_schema(),
+            },
+        )
+
+    def _extract_structured_output(
+        self, structured_output: dict[str, Any] | None, result_text: str
+    ) -> tuple[list[PRReviewFinding], list[str]]:
+        """Parse and extract findings from structured output or text fallback.
+
+        Args:
+            structured_output: Structured JSON output from agent
+            result_text: Raw text output as fallback
+
+        Returns:
+            Tuple of (findings list, agents_invoked list)
+        """
+        agents_from_structured: list[str] = []
+
+        if structured_output:
+            findings, agents_from_structured = self._parse_structured_output(
+                structured_output
+            )
+            if findings is None and result_text:
+                findings = self._parse_text_output(result_text)
+            elif findings is None:
+                findings = []
+        else:
+            findings = self._parse_text_output(result_text)
+
+        return findings, agents_from_structured
+
+    def _log_agents_invoked(self, agents: list[str]) -> None:
+        """Log invoked agents with clear formatting.
+
+        Args:
+            agents: List of agent names that were invoked
+        """
+        if agents:
+            print(
+                f"[ParallelOrchestrator] Specialist agents invoked: {', '.join(agents)}",
+                flush=True,
+            )
+            for agent in agents:
+                print(f"[Agent:{agent}] Analysis complete", flush=True)
+
+    def _log_findings_summary(self, findings: list[PRReviewFinding]) -> None:
+        """Log findings summary for verification.
+
+        Args:
+            findings: List of findings to summarize
+        """
+        if findings:
+            print(
+                f"[ParallelOrchestrator] Parsed {len(findings)} findings from structured output",
+                flush=True,
+            )
+            print("[ParallelOrchestrator] Findings summary:", flush=True)
+            for i, f in enumerate(findings, 1):
+                print(
+                    f"  [{f.severity.value.upper()}] {i}. {f.title} ({f.file}:{f.line})",
+                    flush=True,
+                )
+
+    def _create_finding_from_structured(self, finding_data: Any) -> PRReviewFinding:
+        """Create a PRReviewFinding from structured output data.
+
+        Args:
+            finding_data: Finding data from structured output
+
+        Returns:
+            PRReviewFinding instance
+        """
+        finding_id = hashlib.md5(
+            f"{finding_data.file}:{finding_data.line}:{finding_data.title}".encode(),
+            usedforsecurity=False,
+        ).hexdigest()[:12]
+
+        category = map_category(finding_data.category)
+
+        try:
+            severity = ReviewSeverity(finding_data.severity.lower())
+        except ValueError:
+            severity = ReviewSeverity.MEDIUM
+
+        return PRReviewFinding(
+            id=finding_id,
+            file=finding_data.file,
+            line=finding_data.line,
+            title=finding_data.title,
+            description=finding_data.description,
+            category=category,
+            severity=severity,
+            suggested_fix=finding_data.suggested_fix or "",
+            confidence=self._normalize_confidence(finding_data.confidence),
+        )
+
     async def review(self, context: PRContext) -> PRReviewResult:
         """
         Main review entry point.
@@ -345,18 +430,7 @@ The SDK will run invoked agents in parallel automatically.
 
             # Create client with subagents defined
             # SDK handles parallel execution when Claude invokes multiple Task tools
-            client = create_client(
-                project_dir=project_root,
-                spec_dir=self.github_dir,
-                model=model,
-                agent_type="pr_orchestrator_parallel",
-                max_thinking_tokens=thinking_budget,
-                agents=self._define_specialist_agents(),
-                output_format={
-                    "type": "json_schema",
-                    "schema": ParallelOrchestratorResponse.model_json_schema(),
-                },
-            )
+            client = self._create_sdk_client(project_root, model, thinking_budget)
 
             self._report_progress(
                 "orchestrating",
@@ -365,14 +439,7 @@ The SDK will run invoked agents in parallel automatically.
                 pr_number=context.pr_number,
             )
 
-            # Run orchestrator session
-            result_text = ""
-            structured_output = None
-            agents_invoked = []
-            msg_count = 0
-            # Track subagent tool IDs to log their results
-            subagent_tool_ids: dict[str, str] = {}  # tool_id -> agent_name
-
+            # Run orchestrator session using shared SDK stream processor
             async with client:
                 await client.query(prompt)
 
@@ -380,209 +447,17 @@ The SDK will run invoked agents in parallel automatically.
                     f"[ParallelOrchestrator] Running orchestrator ({model})...",
                     flush=True,
                 )
-                if DEBUG_MODE:
-                    print(
-                        "[DEBUG ParallelOrchestrator] Sent query, awaiting response stream...",
-                        flush=True,
-                    )
 
-                async for msg in client.receive_response():
-                    msg_type = type(msg).__name__
-                    msg_count += 1
-
-                    if DEBUG_MODE:
-                        # Log every message type for visibility
-                        msg_details = ""
-                        if hasattr(msg, "type"):
-                            msg_details = f" (type={msg.type})"
-                        print(
-                            f"[DEBUG ParallelOrchestrator] Message #{msg_count}: {msg_type}{msg_details}",
-                            flush=True,
-                        )
-
-                    # Track thinking blocks
-                    if msg_type == "ThinkingBlock" or (
-                        hasattr(msg, "type") and msg.type == "thinking"
-                    ):
-                        thinking_text = getattr(msg, "thinking", "") or getattr(
-                            msg, "text", ""
-                        )
-                        if thinking_text:
-                            print(
-                                f"[ParallelOrchestrator] AI thinking: {len(thinking_text)} chars",
-                                flush=True,
-                            )
-                            if DEBUG_MODE:
-                                # Show first 200 chars of thinking
-                                preview = thinking_text[:200].replace("\n", " ")
-                                print(
-                                    f"[DEBUG ParallelOrchestrator] Thinking preview: {preview}...",
-                                    flush=True,
-                                )
-
-                    # Track subagent invocations (Task tool calls)
-                    if msg_type == "ToolUseBlock" or (
-                        hasattr(msg, "type") and msg.type == "tool_use"
-                    ):
-                        tool_name = getattr(msg, "name", "")
-                        if DEBUG_MODE:
-                            tool_id = getattr(msg, "id", "unknown")
-                            print(
-                                f"[DEBUG ParallelOrchestrator] Tool call: {tool_name} (id={tool_id})",
-                                flush=True,
-                            )
-                        if tool_name == "Task":
-                            # Extract which agent was invoked
-                            tool_input = getattr(msg, "input", {})
-                            agent_name = tool_input.get("subagent_type", "unknown")
-                            tool_id = getattr(msg, "id", "unknown")
-                            agents_invoked.append(agent_name)
-                            # Track this tool ID to log its result later
-                            subagent_tool_ids[tool_id] = agent_name
-                            print(
-                                f"[ParallelOrchestrator] Invoked agent: {agent_name}",
-                                flush=True,
-                            )
-                        elif tool_name == "StructuredOutput":
-                            structured_data = getattr(msg, "input", None)
-                            if structured_data:
-                                structured_output = structured_data
-                                print(
-                                    "[ParallelOrchestrator] Received structured output",
-                                    flush=True,
-                                )
-                        elif DEBUG_MODE:
-                            # Log other tool calls in debug mode
-                            print(
-                                f"[DEBUG ParallelOrchestrator] Other tool: {tool_name}",
-                                flush=True,
-                            )
-
-                    # Track tool results
-                    if msg_type == "ToolResultBlock" or (
-                        hasattr(msg, "type") and msg.type == "tool_result"
-                    ):
-                        tool_id = getattr(msg, "tool_use_id", "unknown")
-                        is_error = getattr(msg, "is_error", False)
-
-                        # Check if this is a subagent result
-                        if tool_id in subagent_tool_ids:
-                            agent_name = subagent_tool_ids[tool_id]
-                            status = "ERROR" if is_error else "complete"
-                            # Get the result content
-                            result_content = getattr(msg, "content", "")
-                            if isinstance(result_content, list):
-                                # Handle list of content blocks
-                                result_content = " ".join(
-                                    str(getattr(c, "text", c)) for c in result_content
-                                )
-                            result_preview = (
-                                str(result_content)[:600].replace("\n", " ").strip()
-                            )
-                            print(
-                                f"[Agent:{agent_name}] {status}: {result_preview}{'...' if len(str(result_content)) > 600 else ''}",
-                                flush=True,
-                            )
-                        elif DEBUG_MODE:
-                            status = "ERROR" if is_error else "OK"
-                            print(
-                                f"[DEBUG ParallelOrchestrator] Tool result: {tool_id} [{status}]",
-                                flush=True,
-                            )
-
-                    # Collect text output and check for tool uses in content blocks
-                    if msg_type == "AssistantMessage" and hasattr(msg, "content"):
-                        for block in msg.content:
-                            block_type = type(block).__name__
-
-                            # Check for tool use blocks within content
-                            if (
-                                block_type == "ToolUseBlock"
-                                or getattr(block, "type", "") == "tool_use"
-                            ):
-                                tool_name = getattr(block, "name", "")
-                                if tool_name == "Task":
-                                    tool_input = getattr(block, "input", {})
-                                    agent_name = tool_input.get(
-                                        "subagent_type", "unknown"
-                                    )
-                                    tool_id = getattr(block, "id", "unknown")
-                                    if agent_name not in agents_invoked:
-                                        agents_invoked.append(agent_name)
-                                        subagent_tool_ids[tool_id] = agent_name
-                                        print(
-                                            f"[ParallelOrchestrator] Invoking agent: {agent_name}",
-                                            flush=True,
-                                        )
-                                elif tool_name == "StructuredOutput":
-                                    structured_data = getattr(block, "input", None)
-                                    if structured_data:
-                                        structured_output = structured_data
-
-                            if hasattr(block, "text"):
-                                result_text += block.text
-                                # Always print text content preview (not just in DEBUG_MODE)
-                                text_preview = (
-                                    block.text[:500].replace("\n", " ").strip()
-                                )
-                                if text_preview:
-                                    print(
-                                        f"[ParallelOrchestrator] AI response: {text_preview}{'...' if len(block.text) > 500 else ''}",
-                                        flush=True,
-                                    )
-                            # Check for StructuredOutput in content (legacy check)
-                            if getattr(block, "name", "") == "StructuredOutput":
-                                structured_data = getattr(block, "input", None)
-                                if structured_data:
-                                    structured_output = structured_data
-
-                    # Check for structured_output attribute
-                    if hasattr(msg, "structured_output") and msg.structured_output:
-                        structured_output = msg.structured_output
-
-                    # Check for tool results in UserMessage (subagent results come back here)
-                    if msg_type == "UserMessage" and hasattr(msg, "content"):
-                        for block in msg.content:
-                            block_type = type(block).__name__
-                            # Check for tool result blocks
-                            if (
-                                block_type == "ToolResultBlock"
-                                or getattr(block, "type", "") == "tool_result"
-                            ):
-                                tool_id = getattr(block, "tool_use_id", "unknown")
-                                is_error = getattr(block, "is_error", False)
-
-                                # Check if this is a subagent result
-                                if tool_id in subagent_tool_ids:
-                                    agent_name = subagent_tool_ids[tool_id]
-                                    status = "ERROR" if is_error else "complete"
-                                    # Get the result content
-                                    result_content = getattr(block, "content", "")
-                                    if isinstance(result_content, list):
-                                        result_content = " ".join(
-                                            str(getattr(c, "text", c))
-                                            for c in result_content
-                                        )
-                                    result_preview = (
-                                        str(result_content)[:600]
-                                        .replace("\n", " ")
-                                        .strip()
-                                    )
-                                    print(
-                                        f"[Agent:{agent_name}] {status}: {result_preview}{'...' if len(str(result_content)) > 600 else ''}",
-                                        flush=True,
-                                    )
-
-            if DEBUG_MODE:
-                print(
-                    f"[DEBUG ParallelOrchestrator] Session ended. Total messages: {msg_count}",
-                    flush=True,
+                # Process SDK stream with shared utility
+                stream_result = await process_sdk_stream(
+                    client=client,
+                    context_name="ParallelOrchestrator",
                 )
 
-            print(
-                f"[ParallelOrchestrator] Session ended. Total messages: {msg_count}",
-                flush=True,
-            )
+                result_text = stream_result["result_text"]
+                structured_output = stream_result["structured_output"]
+                agents_invoked = stream_result["agents_invoked"]
+                msg_count = stream_result["msg_count"]
 
             self._report_progress(
                 "finalizing",
@@ -592,17 +467,9 @@ The SDK will run invoked agents in parallel automatically.
             )
 
             # Parse findings from output (structured output also returns agents)
-            agents_from_structured: list[str] = []
-            if structured_output:
-                findings, agents_from_structured = self._parse_structured_output(
-                    structured_output
-                )
-                if findings is None and result_text:
-                    findings = self._parse_text_output(result_text)
-                elif findings is None:
-                    findings = []
-            else:
-                findings = self._parse_text_output(result_text)
+            findings, agents_from_structured = self._extract_structured_output(
+                structured_output, result_text
+            )
 
             # Use agents from structured output (more reliable than streaming detection)
             final_agents = (
@@ -705,53 +572,15 @@ The SDK will run invoked agents in parallel automatically.
             )
 
             # Log agents invoked with clear formatting
-            if agents_from_output:
-                print(
-                    f"[ParallelOrchestrator] Specialist agents invoked: {', '.join(agents_from_output)}",
-                    flush=True,
-                )
-                for agent in agents_from_output:
-                    print(f"[Agent:{agent}] Analysis complete", flush=True)
+            self._log_agents_invoked(agents_from_output)
 
+            # Convert structured findings to PRReviewFinding objects
             for f in result.findings:
-                finding_id = hashlib.md5(
-                    f"{f.file}:{f.line}:{f.title}".encode(),
-                    usedforsecurity=False,
-                ).hexdigest()[:12]
-
-                category = _map_category(f.category)
-
-                try:
-                    severity = ReviewSeverity(f.severity.lower())
-                except ValueError:
-                    severity = ReviewSeverity.MEDIUM
-
-                finding = PRReviewFinding(
-                    id=finding_id,
-                    file=f.file,
-                    line=f.line,
-                    title=f.title,
-                    description=f.description,
-                    category=category,
-                    severity=severity,
-                    suggested_fix=f.suggested_fix or "",
-                    confidence=self._normalize_confidence(f.confidence),
-                )
+                finding = self._create_finding_from_structured(f)
                 findings.append(finding)
 
-            print(
-                f"[ParallelOrchestrator] Parsed {len(findings)} findings from structured output",
-                flush=True,
-            )
-
             # Log findings summary for verification
-            if findings:
-                print("[ParallelOrchestrator] Findings summary:", flush=True)
-                for i, f in enumerate(findings, 1):
-                    print(
-                        f"  [{f.severity.value.upper()}] {i}. {f.title} ({f.file}:{f.line})",
-                        flush=True,
-                    )
+            self._log_findings_summary(findings)
 
         except Exception as e:
             logger.error(
@@ -761,70 +590,97 @@ The SDK will run invoked agents in parallel automatically.
 
         return findings, agents_from_output
 
-    def _parse_text_output(self, output: str) -> list[PRReviewFinding]:
-        """Parse findings from text output (fallback)."""
+    def _extract_json_from_text(self, output: str) -> dict[str, Any] | None:
+        """Extract JSON object from text output.
+
+        Args:
+            output: Text output to parse
+
+        Returns:
+            Parsed JSON dict or None if not found
+        """
         import json
         import re
 
+        # Try to find JSON in code blocks
+        code_block_pattern = r"```(?:json)?\s*(\{[\s\S]*?\})\s*```"
+        code_block_match = re.search(code_block_pattern, output)
+
+        if code_block_match:
+            json_str = code_block_match.group(1)
+            return json.loads(json_str)
+
+        # Try to find raw JSON object
+        start = output.find("{")
+        if start == -1:
+            return None
+
+        brace_count = 0
+        end = -1
+        for i in range(start, len(output)):
+            if output[i] == "{":
+                brace_count += 1
+            elif output[i] == "}":
+                brace_count -= 1
+                if brace_count == 0:
+                    end = i
+                    break
+
+        if end != -1:
+            json_str = output[start : end + 1]
+            return json.loads(json_str)
+
+        return None
+
+    def _create_finding_from_dict(self, f_data: dict[str, Any]) -> PRReviewFinding:
+        """Create a PRReviewFinding from dictionary data.
+
+        Args:
+            f_data: Finding data as dictionary
+
+        Returns:
+            PRReviewFinding instance
+        """
+        finding_id = hashlib.md5(
+            f"{f_data.get('file', 'unknown')}:{f_data.get('line', 0)}:{f_data.get('title', 'Untitled')}".encode(),
+            usedforsecurity=False,
+        ).hexdigest()[:12]
+
+        category = map_category(f_data.get("category", "quality"))
+
+        try:
+            severity = ReviewSeverity(f_data.get("severity", "medium").lower())
+        except ValueError:
+            severity = ReviewSeverity.MEDIUM
+
+        return PRReviewFinding(
+            id=finding_id,
+            file=f_data.get("file", "unknown"),
+            line=f_data.get("line", 0),
+            title=f_data.get("title", "Untitled"),
+            description=f_data.get("description", ""),
+            category=category,
+            severity=severity,
+            suggested_fix=f_data.get("suggested_fix", ""),
+            confidence=self._normalize_confidence(f_data.get("confidence", 85)),
+        )
+
+    def _parse_text_output(self, output: str) -> list[PRReviewFinding]:
+        """Parse findings from text output (fallback)."""
         findings = []
 
         try:
-            # Try to find JSON in code blocks
-            code_block_pattern = r"```(?:json)?\s*(\{[\s\S]*?\})\s*```"
-            code_block_match = re.search(code_block_pattern, output)
+            # Extract JSON from text
+            data = self._extract_json_from_text(output)
+            if not data:
+                return findings
 
-            if code_block_match:
-                json_str = code_block_match.group(1)
-                data = json.loads(json_str)
-                findings_data = data.get("findings", [])
-            else:
-                # Try to find raw JSON object
-                start = output.find("{")
-                if start != -1:
-                    brace_count = 0
-                    end = -1
-                    for i in range(start, len(output)):
-                        if output[i] == "{":
-                            brace_count += 1
-                        elif output[i] == "}":
-                            brace_count -= 1
-                            if brace_count == 0:
-                                end = i
-                                break
-                    if end != -1:
-                        json_str = output[start : end + 1]
-                        data = json.loads(json_str)
-                        findings_data = data.get("findings", [])
-                    else:
-                        return findings
-                else:
-                    return findings
+            # Get findings array from JSON
+            findings_data = data.get("findings", [])
 
-            # Process findings
+            # Convert each finding dict to PRReviewFinding
             for f_data in findings_data:
-                finding_id = hashlib.md5(
-                    f"{f_data.get('file', 'unknown')}:{f_data.get('line', 0)}:{f_data.get('title', 'Untitled')}".encode(),
-                    usedforsecurity=False,
-                ).hexdigest()[:12]
-
-                category = _map_category(f_data.get("category", "quality"))
-
-                try:
-                    severity = ReviewSeverity(f_data.get("severity", "medium").lower())
-                except ValueError:
-                    severity = ReviewSeverity.MEDIUM
-
-                finding = PRReviewFinding(
-                    id=finding_id,
-                    file=f_data.get("file", "unknown"),
-                    line=f_data.get("line", 0),
-                    title=f_data.get("title", "Untitled"),
-                    description=f_data.get("description", ""),
-                    category=category,
-                    severity=severity,
-                    suggested_fix=f_data.get("suggested_fix", ""),
-                    confidence=self._normalize_confidence(f_data.get("confidence", 85)),
-                )
+                finding = self._create_finding_from_dict(f_data)
                 findings.append(finding)
 
         except Exception as e:

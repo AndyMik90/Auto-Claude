@@ -37,10 +37,11 @@ try:
         MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
-        ReviewCategory,
         ReviewSeverity,
     )
+    from .category_utils import map_category
     from .pydantic_models import ParallelFollowupResponse
+    from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
     from core.client import create_client
     from models import (
@@ -48,11 +49,12 @@ except (ImportError, ValueError, SystemError):
         MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
-        ReviewCategory,
         ReviewSeverity,
     )
     from phase_config import get_thinking_budget
+    from services.category_utils import map_category
     from services.pydantic_models import ParallelFollowupResponse
+    from services.sdk_utils import process_sdk_stream
 
 
 logger = logging.getLogger(__name__)
@@ -60,42 +62,13 @@ logger = logging.getLogger(__name__)
 # Check if debug mode is enabled
 DEBUG_MODE = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
 
-# Map AI-generated category names to valid ReviewCategory enum values
-_CATEGORY_MAPPING = {
-    # Direct matches
-    "security": ReviewCategory.SECURITY,
-    "quality": ReviewCategory.QUALITY,
-    "logic": ReviewCategory.QUALITY,
-    "test": ReviewCategory.TEST,
-    "docs": ReviewCategory.DOCS,
-    "pattern": ReviewCategory.PATTERN,
-    "performance": ReviewCategory.PERFORMANCE,
-    "redundancy": ReviewCategory.REDUNDANCY,
-    # Follow-up specific
-    "regression": ReviewCategory.QUALITY,
-    "incomplete_fix": ReviewCategory.QUALITY,
-    # AI-generated alternatives
-    "correctness": ReviewCategory.QUALITY,
-    "consistency": ReviewCategory.PATTERN,
-    "testing": ReviewCategory.TEST,
-    "documentation": ReviewCategory.DOCS,
-    "bug": ReviewCategory.QUALITY,
-    "error_handling": ReviewCategory.QUALITY,
-    "maintainability": ReviewCategory.QUALITY,
-}
-
+# Severity mapping for AI responses
 _SEVERITY_MAPPING = {
     "critical": ReviewSeverity.CRITICAL,
     "high": ReviewSeverity.HIGH,
     "medium": ReviewSeverity.MEDIUM,
     "low": ReviewSeverity.LOW,
 }
-
-
-def _map_category(category_str: str) -> ReviewCategory:
-    """Map an AI-generated category string to a valid ReviewCategory enum."""
-    normalized = category_str.lower().strip().replace("-", "_")
-    return _CATEGORY_MAPPING.get(normalized, ReviewCategory.QUALITY)
 
 
 def _map_severity(severity_str: str) -> ReviewSeverity:
@@ -402,14 +375,7 @@ The SDK will run invoked agents in parallel automatically.
                 pr_number=context.pr_number,
             )
 
-            # Run orchestrator session
-            result_text = ""
-            structured_output = None
-            agents_invoked = []
-            msg_count = 0
-            # Track subagent tool IDs to log their results
-            subagent_tool_ids: dict[str, str] = {}  # tool_id -> agent_name
-
+            # Run orchestrator session using shared SDK stream processor
             async with client:
                 await client.query(prompt)
 
@@ -417,208 +383,17 @@ The SDK will run invoked agents in parallel automatically.
                     f"[ParallelFollowup] Running orchestrator ({model})...",
                     flush=True,
                 )
-                if DEBUG_MODE:
-                    print(
-                        "[DEBUG ParallelFollowup] Sent query, awaiting response stream...",
-                        flush=True,
-                    )
 
-                async for msg in client.receive_response():
-                    msg_type = type(msg).__name__
-                    msg_count += 1
-
-                    if DEBUG_MODE:
-                        # Log every message type for visibility
-                        msg_details = ""
-                        if hasattr(msg, "type"):
-                            msg_details = f" (type={msg.type})"
-                        print(
-                            f"[DEBUG ParallelFollowup] Message #{msg_count}: {msg_type}{msg_details}",
-                            flush=True,
-                        )
-
-                    # Track thinking blocks
-                    if msg_type == "ThinkingBlock" or (
-                        hasattr(msg, "type") and msg.type == "thinking"
-                    ):
-                        thinking_text = getattr(msg, "thinking", "") or getattr(
-                            msg, "text", ""
-                        )
-                        if thinking_text:
-                            print(
-                                f"[ParallelFollowup] AI thinking: {len(thinking_text)} chars",
-                                flush=True,
-                            )
-                            if DEBUG_MODE:
-                                # Show first 200 chars of thinking
-                                preview = thinking_text[:200].replace("\n", " ")
-                                print(
-                                    f"[DEBUG ParallelFollowup] Thinking preview: {preview}...",
-                                    flush=True,
-                                )
-
-                    # Track subagent invocations (Task tool calls)
-                    if msg_type == "ToolUseBlock" or (
-                        hasattr(msg, "type") and msg.type == "tool_use"
-                    ):
-                        tool_name = getattr(msg, "name", "")
-                        if DEBUG_MODE:
-                            tool_id = getattr(msg, "id", "unknown")
-                            print(
-                                f"[DEBUG ParallelFollowup] Tool call: {tool_name} (id={tool_id})",
-                                flush=True,
-                            )
-                        if tool_name == "Task":
-                            tool_input = getattr(msg, "input", {})
-                            agent_name = tool_input.get("subagent_type", "unknown")
-                            tool_id = getattr(msg, "id", "unknown")
-                            agents_invoked.append(agent_name)
-                            # Track this tool ID to log its result later
-                            subagent_tool_ids[tool_id] = agent_name
-                            print(
-                                f"[ParallelFollowup] Invoked agent: {agent_name}",
-                                flush=True,
-                            )
-                        elif tool_name == "StructuredOutput":
-                            structured_data = getattr(msg, "input", None)
-                            if structured_data:
-                                structured_output = structured_data
-                                print(
-                                    "[ParallelFollowup] Received structured output",
-                                    flush=True,
-                                )
-                        elif DEBUG_MODE:
-                            # Log other tool calls in debug mode
-                            print(
-                                f"[DEBUG ParallelFollowup] Other tool: {tool_name}",
-                                flush=True,
-                            )
-
-                    # Track tool results
-                    if msg_type == "ToolResultBlock" or (
-                        hasattr(msg, "type") and msg.type == "tool_result"
-                    ):
-                        tool_id = getattr(msg, "tool_use_id", "unknown")
-                        is_error = getattr(msg, "is_error", False)
-
-                        # Check if this is a subagent result
-                        if tool_id in subagent_tool_ids:
-                            agent_name = subagent_tool_ids[tool_id]
-                            status = "ERROR" if is_error else "complete"
-                            # Get the result content
-                            result_content = getattr(msg, "content", "")
-                            if isinstance(result_content, list):
-                                # Handle list of content blocks
-                                result_content = " ".join(
-                                    str(getattr(c, "text", c)) for c in result_content
-                                )
-                            result_preview = (
-                                str(result_content)[:600].replace("\n", " ").strip()
-                            )
-                            print(
-                                f"[Agent:{agent_name}] {status}: {result_preview}{'...' if len(str(result_content)) > 600 else ''}",
-                                flush=True,
-                            )
-                        elif DEBUG_MODE:
-                            status = "ERROR" if is_error else "OK"
-                            print(
-                                f"[DEBUG ParallelFollowup] Tool result: {tool_id} [{status}]",
-                                flush=True,
-                            )
-
-                    # Collect text output and check for tool uses in content blocks
-                    if msg_type == "AssistantMessage" and hasattr(msg, "content"):
-                        for block in msg.content:
-                            block_type = type(block).__name__
-
-                            # Check for tool use blocks within content
-                            if (
-                                block_type == "ToolUseBlock"
-                                or getattr(block, "type", "") == "tool_use"
-                            ):
-                                tool_name = getattr(block, "name", "")
-                                if tool_name == "Task":
-                                    tool_input = getattr(block, "input", {})
-                                    agent_name = tool_input.get(
-                                        "subagent_type", "unknown"
-                                    )
-                                    tool_id = getattr(block, "id", "unknown")
-                                    if agent_name not in agents_invoked:
-                                        agents_invoked.append(agent_name)
-                                        subagent_tool_ids[tool_id] = agent_name
-                                        print(
-                                            f"[ParallelFollowup] Invoking agent: {agent_name}",
-                                            flush=True,
-                                        )
-                                elif tool_name == "StructuredOutput":
-                                    structured_data = getattr(block, "input", None)
-                                    if structured_data:
-                                        structured_output = structured_data
-
-                            if hasattr(block, "text"):
-                                result_text += block.text
-                                # Always print text content preview (not just in DEBUG_MODE)
-                                text_preview = (
-                                    block.text[:500].replace("\n", " ").strip()
-                                )
-                                if text_preview:
-                                    print(
-                                        f"[ParallelFollowup] AI response: {text_preview}{'...' if len(block.text) > 500 else ''}",
-                                        flush=True,
-                                    )
-                            # Check for StructuredOutput in content (legacy check)
-                            if getattr(block, "name", "") == "StructuredOutput":
-                                structured_data = getattr(block, "input", None)
-                                if structured_data:
-                                    structured_output = structured_data
-
-                    # Check for structured_output attribute
-                    if hasattr(msg, "structured_output") and msg.structured_output:
-                        structured_output = msg.structured_output
-
-                    # Check for tool results in UserMessage (subagent results come back here)
-                    if msg_type == "UserMessage" and hasattr(msg, "content"):
-                        for block in msg.content:
-                            block_type = type(block).__name__
-                            # Check for tool result blocks
-                            if (
-                                block_type == "ToolResultBlock"
-                                or getattr(block, "type", "") == "tool_result"
-                            ):
-                                tool_id = getattr(block, "tool_use_id", "unknown")
-                                is_error = getattr(block, "is_error", False)
-
-                                # Check if this is a subagent result
-                                if tool_id in subagent_tool_ids:
-                                    agent_name = subagent_tool_ids[tool_id]
-                                    status = "ERROR" if is_error else "complete"
-                                    # Get the result content
-                                    result_content = getattr(block, "content", "")
-                                    if isinstance(result_content, list):
-                                        result_content = " ".join(
-                                            str(getattr(c, "text", c))
-                                            for c in result_content
-                                        )
-                                    result_preview = (
-                                        str(result_content)[:600]
-                                        .replace("\n", " ")
-                                        .strip()
-                                    )
-                                    print(
-                                        f"[Agent:{agent_name}] {status}: {result_preview}{'...' if len(str(result_content)) > 600 else ''}",
-                                        flush=True,
-                                    )
-
-            if DEBUG_MODE:
-                print(
-                    f"[DEBUG ParallelFollowup] Session ended. Total messages: {msg_count}",
-                    flush=True,
+                # Process SDK stream with shared utility
+                stream_result = await process_sdk_stream(
+                    client=client,
+                    context_name="ParallelFollowup",
                 )
 
-            print(
-                f"[ParallelFollowup] Session ended. Total messages: {msg_count}",
-                flush=True,
-            )
+                result_text = stream_result["result_text"]
+                structured_output = stream_result["structured_output"]
+                agents_invoked = stream_result["agents_invoked"]
+                msg_count = stream_result["msg_count"]
 
             self._report_progress(
                 "finalizing",
@@ -803,7 +578,7 @@ The SDK will run invoked agents in parallel automatically.
                     PRReviewFinding(
                         id=finding_id,
                         severity=_map_severity(nf.severity),
-                        category=_map_category(nf.category),
+                        category=map_category(nf.category),
                         title=nf.title,
                         description=nf.description,
                         file=nf.file,
@@ -823,7 +598,7 @@ The SDK will run invoked agents in parallel automatically.
                     PRReviewFinding(
                         id=finding_id,
                         severity=_map_severity(cf.severity),
-                        category=_map_category(cf.category),
+                        category=map_category(cf.category),
                         title=f"[FROM COMMENTS] {cf.title}",
                         description=cf.description,
                         file=cf.file,
