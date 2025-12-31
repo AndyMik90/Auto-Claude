@@ -38,6 +38,10 @@ try:
 except ImportError:
     HAS_YAML = False
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 # =============================================================================
 # DATA CLASSES

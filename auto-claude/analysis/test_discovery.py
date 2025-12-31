@@ -25,6 +25,8 @@ Usage:
 """
 
 import json
+import logging
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -671,19 +673,19 @@ def main() -> None:
     if args.json:
         print(json.dumps(discovery.to_dict(result), indent=2))
     else:
-        print(f"Package Manager: {result.package_manager or 'unknown'}")
-        print(f"Has Tests: {result.has_tests}")
-        print(f"Test Command: {result.test_command or 'none'}")
-        print(f"Test Directories: {', '.join(result.test_directories) or 'none'}")
-        print(f"Coverage Command: {result.coverage_command or 'none'}")
-        print(f"\nFrameworks ({len(result.frameworks)}):")
+        logger.info(f"Package Manager: {result.package_manager or 'unknown'}")
+        logger.info(f"Has Tests: {result.has_tests}")
+        logger.info(f"Test Command: {result.test_command or 'none'}")
+        logger.info(f"Test Directories: {', '.join(result.test_directories) or 'none'}")
+        logger.info(f"Coverage Command: {result.coverage_command or 'none'}")
+        logger.info(f"\nFrameworks ({len(result.frameworks)}):")
         for f in result.frameworks:
-            print(f"  - {f.name} ({f.type})")
-            print(f"    Command: {f.command}")
+            logger.info(f"  - {f.name} ({f.type})")
+            logger.info(f"    Command: {f.command}")
             if f.config_file:
-                print(f"    Config: {f.config_file}")
+                logger.info(f"    Config: {f.config_file}")
             if f.version:
-                print(f"    Version: {f.version}")
+                logger.info(f"    Version: {f.version}")
 
 
 if __name__ == "__main__":
