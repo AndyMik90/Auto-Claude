@@ -22,6 +22,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from core.config import get_worktree_base_path
+
 
 class WorktreeError(Exception):
     """Error during worktree operations."""
@@ -53,8 +55,6 @@ class WorktreeManager:
     """
 
     def __init__(self, project_dir: Path, base_branch: str | None = None):
-        from core.config import get_worktree_base_path
-
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
 

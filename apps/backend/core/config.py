@@ -93,9 +93,9 @@ def get_worktree_base_path(project_dir: Path | None = None) -> str:
 
     # If no project_dir provided, return as-is (basic validation only)
     if not project_dir:
-        # Check for obviously dangerous patterns
-        normalized = Path(worktree_base_path).as_posix()
-        if ".auto-claude" in normalized or ".git" in normalized:
+        # Check for .auto-claude or .git as path components, not substrings
+        parts = set(Path(worktree_base_path).parts)
+        if ".auto-claude" in parts or ".git" in parts:
             return DEFAULT_WORKTREE_PATH
         return worktree_base_path
 

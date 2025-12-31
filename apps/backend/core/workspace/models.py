@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from core.config import get_worktree_base_path
+
 
 class WorkspaceMode(Enum):
     """How auto-claude should work."""
@@ -250,8 +252,6 @@ class SpecNumberLock:
         max_number = max(max_number, self._scan_specs_dir(main_specs_dir))
 
         # 2. Scan all worktree specs
-        from core.config import get_worktree_base_path
-
         worktree_base_path = get_worktree_base_path(self.project_dir)
         worktrees_dir = self.project_dir / worktree_base_path
         if worktrees_dir.exists():

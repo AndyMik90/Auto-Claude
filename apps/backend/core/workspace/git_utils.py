@@ -11,6 +11,8 @@ import os
 import subprocess
 from pathlib import Path
 
+from core.config import get_worktree_base_path
+
 # Constants for merge limits
 MAX_FILE_LINES_FOR_AI = 5000  # Skip AI for files larger than this
 MAX_PARALLEL_AI_MERGES = 5  # Limit concurrent AI merge operations
@@ -222,8 +224,6 @@ def get_existing_build_worktree(project_dir: Path, spec_name: str) -> Path | Non
     Returns:
         Path to the worktree if it exists for this spec, None otherwise
     """
-    from core.config import get_worktree_base_path
-
     # Per-spec worktree path: .worktrees/{spec-name}/ (or custom WORKTREE_BASE_PATH)
     worktree_base_path = get_worktree_base_path(project_dir)
     worktree_path = project_dir / worktree_base_path / spec_name
