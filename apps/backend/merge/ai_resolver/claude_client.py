@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import sys
 from typing import TYPE_CHECKING
 
@@ -20,9 +19,6 @@ if TYPE_CHECKING:
     from .resolver import AIResolver
 
 logger = logging.getLogger(__name__)
-
-# Default model ID for merge resolution (haiku for speed)
-DEFAULT_MERGE_MODEL = "claude-haiku-4-5-20251001"
 
 
 def create_claude_resolver() -> AIResolver:
@@ -39,6 +35,7 @@ def create_claude_resolver() -> AIResolver:
     """
     # Import here to avoid circular dependency
     from core.auth import ensure_claude_code_oauth_token, get_auth_token
+    from core.model_config import get_utility_model_config
 
     from .resolver import AIResolver
 
@@ -55,23 +52,8 @@ def create_claude_resolver() -> AIResolver:
         logger.warning("core.simple_client not available, AI resolution unavailable")
         return AIResolver()
 
-    # Read model settings from environment (passed from frontend)
-    model = os.environ.get("UTILITY_MODEL_ID", DEFAULT_MERGE_MODEL)
-    thinking_budget_str = os.environ.get("UTILITY_THINKING_BUDGET", "")
-
-    # Parse thinking budget: empty string = disabled (None), number = budget tokens
-    thinking_budget: int | None
-    if not thinking_budget_str:
-        # Empty string means "none" level - disable extended thinking
-        thinking_budget = None
-    else:
-        try:
-            thinking_budget = int(thinking_budget_str)
-        except ValueError:
-            logger.warning(
-                f"Invalid UTILITY_THINKING_BUDGET value '{thinking_budget_str}', using default 1024"
-            )
-            thinking_budget = 1024
+    # Get model settings from environment (passed from frontend)
+    model, thinking_budget = get_utility_model_config()
 
     logger.info(
         f"Merge resolver using model={model}, thinking_budget={thinking_budget}"

@@ -38,6 +38,87 @@ from prompts_pkg.project_context import detect_project_capabilities, load_projec
 from security import bash_security_hook
 
 
+def _validate_custom_mcp_server(server: dict) -> bool:
+    """
+    Validate a custom MCP server configuration for security.
+
+    Ensures only expected fields with valid types are present.
+    Rejects configurations that could lead to command injection.
+
+    Args:
+        server: Dict representing a custom MCP server configuration
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not isinstance(server, dict):
+        return False
+
+    # Required fields
+    required_fields = {"id", "name", "type"}
+    if not all(field in server for field in required_fields):
+        logger.warning(
+            f"Custom MCP server missing required fields: {required_fields - server.keys()}"
+        )
+        return False
+
+    # Validate field types
+    if not isinstance(server.get("id"), str) or not server["id"]:
+        return False
+    if not isinstance(server.get("name"), str) or not server["name"]:
+        return False
+    if server.get("type") not in ("command", "url"):
+        logger.warning(f"Invalid MCP server type: {server.get('type')}")
+        return False
+
+    # Type-specific validation
+    if server["type"] == "command":
+        if not isinstance(server.get("command"), str) or not server["command"]:
+            logger.warning("Command-type MCP server missing 'command' field")
+            return False
+        # Validate args is a list of strings if present
+        if "args" in server:
+            if not isinstance(server["args"], list):
+                return False
+            if not all(isinstance(arg, str) for arg in server["args"]):
+                return False
+    elif server["type"] == "url":
+        if not isinstance(server.get("url"), str) or not server["url"]:
+            logger.warning("URL-type MCP server missing 'url' field")
+            return False
+        # Validate headers is a dict of strings if present
+        if "headers" in server:
+            if not isinstance(server["headers"], dict):
+                return False
+            if not all(
+                isinstance(k, str) and isinstance(v, str)
+                for k, v in server["headers"].items()
+            ):
+                return False
+
+    # Optional description must be string if present
+    if "description" in server and not isinstance(server.get("description"), str):
+        return False
+
+    # Reject any unexpected fields that could be exploited
+    allowed_fields = {
+        "id",
+        "name",
+        "type",
+        "command",
+        "args",
+        "url",
+        "headers",
+        "description",
+    }
+    unexpected_fields = set(server.keys()) - allowed_fields
+    if unexpected_fields:
+        logger.warning(f"Custom MCP server has unexpected fields: {unexpected_fields}")
+        return False
+
+    return True
+
+
 def load_project_mcp_config(project_dir: Path) -> dict:
     """
     Load MCP configuration from project's .auto-claude/.env file.
@@ -85,10 +166,26 @@ def load_project_mcp_config(project_dir: Path) -> dict:
                     # Include per-agent MCP overrides (AGENT_MCP_<agent>_ADD/REMOVE)
                     elif key.startswith("AGENT_MCP_"):
                         config[key] = value
-                    # Include custom MCP servers (parse JSON)
+                    # Include custom MCP servers (parse JSON with schema validation)
                     elif key == "CUSTOM_MCP_SERVERS":
                         try:
-                            config["CUSTOM_MCP_SERVERS"] = json.loads(value)
+                            parsed = json.loads(value)
+                            if not isinstance(parsed, list):
+                                logger.warning(
+                                    "CUSTOM_MCP_SERVERS must be a JSON array"
+                                )
+                                config["CUSTOM_MCP_SERVERS"] = []
+                            else:
+                                # Validate each server and filter out invalid ones
+                                valid_servers = []
+                                for i, server in enumerate(parsed):
+                                    if _validate_custom_mcp_server(server):
+                                        valid_servers.append(server)
+                                    else:
+                                        logger.warning(
+                                            f"Skipping invalid custom MCP server at index {i}"
+                                        )
+                                config["CUSTOM_MCP_SERVERS"] = valid_servers
                         except json.JSONDecodeError:
                             logger.warning(
                                 f"Failed to parse CUSTOM_MCP_SERVERS JSON: {value}"

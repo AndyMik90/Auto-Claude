@@ -193,9 +193,8 @@ async def _call_claude(prompt: str) -> str:
     - UTILITY_MODEL_ID: Full model ID (e.g., "claude-haiku-4-5-20251001")
     - UTILITY_THINKING_BUDGET: Thinking budget tokens (e.g., "1024")
     """
-    import os
-
     from core.auth import ensure_claude_code_oauth_token, get_auth_token
+    from core.model_config import get_utility_model_config
 
     if not get_auth_token():
         logger.warning("No authentication token found")
@@ -209,24 +208,8 @@ async def _call_claude(prompt: str) -> str:
         logger.warning("core.simple_client not available")
         return ""
 
-    # Read model settings from environment (passed from frontend)
-    default_model = "claude-haiku-4-5-20251001"
-    model = os.environ.get("UTILITY_MODEL_ID", default_model)
-    thinking_budget_str = os.environ.get("UTILITY_THINKING_BUDGET", "")
-
-    # Parse thinking budget: empty string = disabled (None), number = budget tokens
-    thinking_budget: int | None
-    if not thinking_budget_str:
-        # Empty string means "none" level - disable extended thinking
-        thinking_budget = None
-    else:
-        try:
-            thinking_budget = int(thinking_budget_str)
-        except ValueError:
-            logger.warning(
-                f"Invalid UTILITY_THINKING_BUDGET value '{thinking_budget_str}', using default 1024"
-            )
-            thinking_budget = 1024
+    # Get model settings from environment (passed from frontend)
+    model, thinking_budget = get_utility_model_config()
 
     logger.info(
         f"Commit message using model={model}, thinking_budget={thinking_budget}"

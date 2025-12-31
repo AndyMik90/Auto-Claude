@@ -644,6 +644,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
 }
 
 export function AgentTools() {
+  const { t } = useTranslation(['settings']);
   const settings = useSettingsStore((state) => state.settings);
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
@@ -653,7 +654,7 @@ export function AgentTools() {
     new Set(['spec', 'build', 'qa'])
   );
   const [envConfig, setEnvConfig] = useState<ProjectEnvConfig | null>(null);
-  const [_isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
 
   // Custom MCP server dialog state
   const [showCustomMcpDialog, setShowCustomMcpDialog] = useState(false);
@@ -1058,14 +1059,13 @@ export function AgentTools() {
             </div>
             <p className="text-sm text-muted-foreground">
               {selectedProject
-                ? `Configure which MCP servers are available for agents in this project`
-                : 'Select a project to configure MCP servers'}
+                ? t('settings:mcp.description')
+                : t('settings:mcp.descriptionNoProject')}
             </p>
           </div>
           {envConfig && (
             <div className="text-right">
-              <span className="text-sm font-medium text-foreground">{enabledCount}</span>
-              <span className="text-sm text-muted-foreground"> servers enabled</span>
+              <span className="text-sm text-muted-foreground">{t('settings:mcp.serversEnabled', { count: enabledCount })}</span>
             </div>
           )}
         </div>
@@ -1078,9 +1078,9 @@ export function AgentTools() {
           {!selectedProject && (
             <div className="rounded-lg border border-border bg-card p-6 text-center">
               <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <h2 className="text-sm font-medium text-foreground mb-1">No Project Selected</h2>
+              <h2 className="text-sm font-medium text-foreground mb-1">{t('settings:mcp.noProjectSelected')}</h2>
               <p className="text-sm text-muted-foreground">
-                Select a project from the dropdown to view and configure MCP servers.
+                {t('settings:mcp.noProjectSelectedDescription')}
               </p>
             </div>
           )}
@@ -1089,9 +1089,9 @@ export function AgentTools() {
           {selectedProject && !selectedProject.autoBuildPath && (
             <div className="rounded-lg border border-border bg-card p-6 text-center">
               <Info className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <h2 className="text-sm font-medium text-foreground mb-1">Project Not Initialized</h2>
+              <h2 className="text-sm font-medium text-foreground mb-1">{t('settings:mcp.projectNotInitialized')}</h2>
               <p className="text-sm text-muted-foreground">
-                Initialize Auto Claude for this project to configure MCP servers.
+                {t('settings:mcp.projectNotInitializedDescription')}
               </p>
             </div>
           )}
@@ -1100,9 +1100,9 @@ export function AgentTools() {
           {envConfig && (
             <div className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-medium text-foreground">MCP Server Configuration</h2>
+                <h2 className="text-sm font-medium text-foreground">{t('settings:mcp.configuration')}</h2>
                 <span className="text-xs text-muted-foreground">
-                  Disabled servers reduce context usage and startup time
+                  {t('settings:mcp.configurationHint')}
                 </span>
               </div>
 
@@ -1112,8 +1112,8 @@ export function AgentTools() {
                   <div className="flex items-center gap-3">
                     <Search className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-sm font-medium">Context7</span>
-                      <p className="text-xs text-muted-foreground">Documentation lookup for libraries</p>
+                      <span className="text-sm font-medium">{t('settings:mcp.servers.context7.name')}</span>
+                      <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.context7.description')}</p>
                     </div>
                   </div>
                   <Switch
@@ -1127,11 +1127,11 @@ export function AgentTools() {
                   <div className="flex items-center gap-3">
                     <Brain className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-sm font-medium">Graphiti Memory</span>
+                      <span className="text-sm font-medium">{t('settings:mcp.servers.graphiti.name')}</span>
                       <p className="text-xs text-muted-foreground">
                         {envConfig.graphitiProviderConfig
-                          ? 'Knowledge graph for cross-session context'
-                          : 'Requires memory configuration (see Memory settings)'}
+                          ? t('settings:mcp.servers.graphiti.description')
+                          : t('settings:mcp.servers.graphiti.notConfigured')}
                       </p>
                     </div>
                   </div>
@@ -1147,11 +1147,11 @@ export function AgentTools() {
                   <div className="flex items-center gap-3">
                     <ClipboardList className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-sm font-medium">Linear</span>
+                      <span className="text-sm font-medium">{t('settings:mcp.servers.linear.name')}</span>
                       <p className="text-xs text-muted-foreground">
                         {envConfig.linearEnabled
-                          ? 'Project management integration'
-                          : 'Requires Linear integration (see Linear settings)'}
+                          ? t('settings:mcp.servers.linear.description')
+                          : t('settings:mcp.servers.linear.notConfigured')}
                       </p>
                     </div>
                   </div>
@@ -1167,7 +1167,7 @@ export function AgentTools() {
                   <div className="flex items-center gap-2 mb-3">
                     <Info className="h-3 w-3 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                      Browser Automation (QA agents only)
+                      {t('settings:mcp.browserAutomation')}
                     </span>
                   </div>
 
@@ -1176,8 +1176,8 @@ export function AgentTools() {
                     <div className="flex items-center gap-3">
                       <Monitor className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <span className="text-sm font-medium">Electron</span>
-                        <p className="text-xs text-muted-foreground">Desktop app automation via Chrome DevTools</p>
+                        <span className="text-sm font-medium">{t('settings:mcp.servers.electron.name')}</span>
+                        <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.electron.description')}</p>
                       </div>
                     </div>
                     <Switch
@@ -1191,8 +1191,8 @@ export function AgentTools() {
                     <div className="flex items-center gap-3">
                       <Globe className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <span className="text-sm font-medium">Puppeteer</span>
-                        <p className="text-xs text-muted-foreground">Web browser automation for testing</p>
+                        <span className="text-sm font-medium">{t('settings:mcp.servers.puppeteer.name')}</span>
+                        <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.puppeteer.description')}</p>
                       </div>
                     </div>
                     <Switch
@@ -1207,8 +1207,8 @@ export function AgentTools() {
                   <div className="flex items-center gap-3">
                     <ListChecks className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-sm font-medium">Auto-Claude Tools</span>
-                      <p className="text-xs text-muted-foreground">Build progress tracking (always enabled)</p>
+                      <span className="text-sm font-medium">{t('settings:mcp.servers.autoClaude.name')}</span>
+                      <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.autoClaude.description')} ({t('settings:mcp.alwaysEnabled')})</p>
                     </div>
                   </div>
                   <Switch checked={true} disabled />
@@ -1220,7 +1220,7 @@ export function AgentTools() {
                     <div className="flex items-center gap-2">
                       <Terminal className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                        Custom Servers
+                        {t('settings:mcp.customServers')}
                       </span>
                     </div>
                     <button
@@ -1229,7 +1229,7 @@ export function AgentTools() {
                       className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
                     >
                       <Plus className="h-3 w-3" />
-                      Add Custom Server
+                      {t('settings:mcp.addCustomServer')}
                     </button>
                   </div>
 
@@ -1329,7 +1329,7 @@ export function AgentTools() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-3">
-                      No custom servers configured. Add one to use with your agents.
+                      {t('settings:mcp.noCustomServers')}
                     </p>
                   )}
                 </div>
