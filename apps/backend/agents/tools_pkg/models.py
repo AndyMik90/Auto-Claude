@@ -21,7 +21,7 @@ import os
 
 # Core file operation tools
 BASE_READ_TOOLS = ["Read", "Glob", "Grep"]
-BASE_WRITE_TOOLS = ["Write", "Edit", "Bash"]
+BASE_WRITE_TOOLS = ["Write", "Edit", "Bash", "Morph"]
 
 # Web tools for documentation lookup and research
 # Always available to all agents for accessing external information
