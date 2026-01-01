@@ -45,6 +45,8 @@ jobs:
 
       - name: Install Rust toolchain (for building native Python packages)
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.83.0'
 
       - name: Cache bundled Python
         uses: actions/cache@v4
