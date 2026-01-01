@@ -81,7 +81,7 @@
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
     "i18next": "^25.7.3",
-    "lucide-react": "^0.560.0",
+    "lucide-react": "^0.562.0",
     "motion": "^12.23.26",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
