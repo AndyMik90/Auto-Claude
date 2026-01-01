@@ -27,6 +27,7 @@ import os from 'os';
 import { app } from 'electron';
 import { findExecutable } from './env-utils';
 import type { ToolDetectionResult } from '../shared/types';
+import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
 /**
  * Supported CLI tools managed by this system
@@ -731,56 +732,15 @@ class CLIToolManager {
 
   /**
    * Find Homebrew Python on macOS
-   *
-   * Checks both Apple Silicon and Intel Homebrew locations.
-   * Searches for specific Python versions first (3.14, 3.13, 3.12, 3.11, 3.10), then generic python3.
-   * Validates that found Python meets version requirements (3.10+).
-   *
-   * Note: This list should be updated when new Python versions are released.
+   * Delegates to shared utility function.
    *
    * @returns Path to Homebrew Python or null if not found
    */
   private findHomebrewPython(): string | null {
-    const homebrewDirs = [
-      '/opt/homebrew/bin', // Apple Silicon
-      '/usr/local/bin', // Intel Mac
-    ];
-
-    // Check for specific Python versions first (newest to oldest), then fall back to generic python3.
-    // This ensures we find the latest available version that meets our requirements.
-    const pythonNames = [
-      'python3.14',
-      'python3.13',
-      'python3.12',
-      'python3.11',
-      'python3.10',
-      'python3',
-    ];
-
-    for (const dir of homebrewDirs) {
-      for (const name of pythonNames) {
-        const pythonPath = path.join(dir, name);
-        if (existsSync(pythonPath)) {
-          try {
-            // Validate that this Python meets our version requirements
-            const validation = this.validatePython(pythonPath);
-            if (validation.valid) {
-              console.warn(`[CLI Tools] Found valid Homebrew Python: ${pythonPath} (${validation.version})`);
-              return pythonPath;
-            } else {
-              console.warn(`[CLI Tools] ${pythonPath} rejected: ${validation.message}`);
-            }
-          } catch (error) {
-            // Version check failed (e.g., timeout, permission issue), try next candidate
-            console.warn(`[CLI Tools] Failed to validate ${pythonPath}: ${error}`);
-            continue;
-          }
-        }
-      }
-    }
-
-    console.warn(`[CLI Tools] No valid Homebrew Python found in ${homebrewDirs.join(', ')}`);
-    return null;
+    return findHomebrewPythonUtil(
+      (pythonPath) => this.validatePython(pythonPath),
+      '[CLI Tools]'
+    );
   }
 
   /**

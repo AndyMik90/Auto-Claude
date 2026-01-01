@@ -2,6 +2,7 @@ import { execSync, execFileSync } from 'child_process';
 import { existsSync, accessSync, constants } from 'fs';
 import path from 'path';
 import { app } from 'electron';
+import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
 /**
  * Get the path to the bundled Python executable.
@@ -34,55 +35,12 @@ export function getBundledPythonPath(): string | null {
 
 /**
  * Find the first existing Homebrew Python installation.
- * Checks common Homebrew paths for Python 3, including versioned installations.
- * Prioritizes newer Python versions (3.14, 3.13, 3.12, 3.11, 3.10).
- *
- * Note: This list should be updated when new Python versions are released.
- * Check for specific versions first to ensure we find the latest available version.
+ * Delegates to shared utility function.
  *
  * @returns The path to Homebrew Python, or null if not found
  */
 function findHomebrewPython(): string | null {
-  const homebrewDirs = [
-    '/opt/homebrew/bin',  // Apple Silicon (M1/M2/M3)
-    '/usr/local/bin'      // Intel Mac
-  ];
-
-  // Check for specific Python versions first (newest to oldest), then fall back to generic python3.
-  // This ensures we find the latest available version that meets our requirements.
-  const pythonNames = [
-    'python3.14',
-    'python3.13',
-    'python3.12',
-    'python3.11',
-    'python3.10',
-    'python3',
-  ];
-
-  for (const dir of homebrewDirs) {
-    for (const name of pythonNames) {
-      const pythonPath = path.join(dir, name);
-      if (existsSync(pythonPath)) {
-        try {
-          // Validate that this Python meets our version requirements
-          const validation = validatePythonVersion(pythonPath);
-          if (validation.valid) {
-            console.log(`[Python] Found valid Homebrew Python: ${pythonPath} (${validation.version})`);
-            return pythonPath;
-          } else {
-            console.warn(`[Python] ${pythonPath} rejected: ${validation.message}`);
-          }
-        } catch (error) {
-          // Version check failed (e.g., timeout, permission issue), try next candidate
-          console.warn(`[Python] Failed to validate ${pythonPath}: ${error}`);
-          continue;
-        }
-      }
-    }
-  }
-
-  console.log(`[Python] No valid Homebrew Python found in ${homebrewDirs.join(', ')}`);
-  return null;
+  return findHomebrewPythonUtil(validatePythonVersion, '[Python]');
 }
 
 /**
