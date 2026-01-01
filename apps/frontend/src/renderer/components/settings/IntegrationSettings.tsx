@@ -60,6 +60,12 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   const [showManualToken, setShowManualToken] = useState(false);
   const [savingTokenProfileId, setSavingTokenProfileId] = useState<string | null>(null);
 
+  // Environment Variables state
+  const [expandedEnvProfileId, setExpandedEnvProfileId] = useState<string | null>(null);
+  const [envVariables, setEnvVariables] = useState<Record<string, Array<{ key: string; value: string }>>>({});
+  const [newEnvKey, setNewEnvKey] = useState('');
+  const [newEnvValue, setNewEnvValue] = useState('');
+
   // Auto-swap settings state
   const [autoSwitchSettings, setAutoSwitchSettings] = useState<ClaudeAutoSwitchSettings | null>(null);
   const [isLoadingAutoSwitch, setIsLoadingAutoSwitch] = useState(false);
@@ -257,6 +263,40 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
     } finally {
       setSavingTokenProfileId(null);
     }
+  };
+
+  // Environment Variables handlers
+  const toggleEnvVariables = (profileId: string) => {
+    if (expandedEnvProfileId === profileId) {
+      setExpandedEnvProfileId(null);
+      setNewEnvKey('');
+      setNewEnvValue('');
+    } else {
+      setExpandedEnvProfileId(profileId);
+      setNewEnvKey('');
+      setNewEnvValue('');
+    }
+  };
+
+  const handleAddEnvVariable = (profileId: string) => {
+    if (!newEnvKey.trim()) return;
+
+    const profileEnvVars = envVariables[profileId] || [];
+    setEnvVariables({
+      ...envVariables,
+      [profileId]: [...profileEnvVars, { key: newEnvKey.trim(), value: newEnvValue }]
+    });
+    setNewEnvKey('');
+    setNewEnvValue('');
+  };
+
+  const handleRemoveEnvVariable = (profileId: string, index: number) => {
+    const profileEnvVars = envVariables[profileId] || [];
+    const updatedVars = profileEnvVars.filter((_, i) => i !== index);
+    setEnvVariables({
+      ...envVariables,
+      [profileId]: updatedVars
+    });
   };
 
   // Load auto-swap settings
@@ -466,6 +506,20 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               <ChevronRight className="h-3 w-3" />
                             )}
                           </Button>
+                          {/* Toggle environment variables button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleEnvVariables(profile.id)}
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            title={expandedEnvProfileId === profile.id ? "Hide environment variables" : "Manage environment variables"}
+                          >
+                            {expandedEnvProfileId === profile.id ? (
+                              <ChevronDown className="h-3 w-3" />
+                            ) : (
+                              <ChevronRight className="h-3 w-3" />
+                            )}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -556,6 +610,99 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                 <Check className="h-3 w-3" />
                               )}
                               {t('integrations.saveToken')}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Expanded environment variables section */}
+                    {expandedEnvProfileId === profile.id && (
+                      <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
+                        <div className="bg-muted/30 rounded-lg p-3 mt-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Environment Variables
+                            </Label>
+                            <span className="text-xs text-muted-foreground">
+                              Key-value pairs for this profile
+                            </span>
+                          </div>
+
+                          {/* Existing environment variables */}
+                          {(envVariables[profile.id] || []).length > 0 && (
+                            <div className="space-y-2">
+                              {(envVariables[profile.id] || []).map((envVar, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                  <Input
+                                    value={envVar.key}
+                                    readOnly
+                                    className="flex-1 h-8 text-xs font-mono"
+                                  />
+                                  <Input
+                                    value={envVar.value}
+                                    readOnly
+                                    className="flex-1 h-8 text-xs font-mono"
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveEnvVariable(profile.id, index)}
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    title="Remove environment variable"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Add new environment variable */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                placeholder="KEY"
+                                value={newEnvKey}
+                                onChange={(e) => setNewEnvKey(e.target.value)}
+                                className="flex-1 h-8 text-xs font-mono"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleAddEnvVariable(profile.id);
+                                  }
+                                }}
+                              />
+                              <Input
+                                placeholder="value"
+                                value={newEnvValue}
+                                onChange={(e) => setNewEnvValue(e.target.value)}
+                                className="flex-1 h-8 text-xs font-mono"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleAddEnvVariable(profile.id);
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => handleAddEnvVariable(profile.id)}
+                                disabled={!newEnvKey.trim()}
+                                className="h-8 text-xs gap-1"
+                              >
+                                <Plus className="h-3 w-3" />
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleEnvVariables(profile.id)}
+                              className="h-7 text-xs"
+                            >
+                              Done
                             </Button>
                           </div>
                         </div>
