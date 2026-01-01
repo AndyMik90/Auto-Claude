@@ -108,6 +108,8 @@ class MorphConfig:
         health_cache_ttl: Seconds to cache health check results. Set to 300 (5 min)
                          by default to minimize API credit usage since health checks
                          use real apply operations (Morph has no dedicated health endpoint).
+        stream: Whether to use streaming responses (default: False)
+        max_tokens: Maximum tokens to generate (optional, uses API default if not set)
     """
 
     api_key: str = ""
@@ -117,15 +119,22 @@ class MorphConfig:
     max_retries: int = 3
     backoff_factor: float = 1.5
     health_cache_ttl: int = 300  # 5 minutes - reduces API credit usage
+    stream: bool = False
+    max_tokens: int | None = None
 
     @classmethod
     def from_env(cls) -> MorphConfig:
         """Create configuration from environment variables."""
+        max_tokens_str = os.environ.get("MORPH_MAX_TOKENS")
+        max_tokens = int(max_tokens_str) if max_tokens_str else None
+
         return cls(
             api_key=os.environ.get("MORPH_API_KEY", ""),
             base_url=os.environ.get("MORPH_BASE_URL", "https://api.morphllm.com/v1"),
             model=os.environ.get("MORPH_MODEL", "auto"),
             timeout=float(os.environ.get("MORPH_TIMEOUT", "60")),
+            stream=os.environ.get("MORPH_STREAM", "").lower() == "true",
+            max_tokens=max_tokens,
         )
 
     def has_api_key(self) -> bool:
@@ -623,6 +632,12 @@ class MorphClient:
             "temperature": 0,  # Deterministic output as recommended by Morph docs
         }
 
+        # Add optional parameters if configured
+        if self.config.stream:
+            payload["stream"] = True
+        if self.config.max_tokens is not None:
+            payload["max_tokens"] = self.config.max_tokens
+
         data = await self._make_request("POST", "/chat/completions", json_data=payload)
 
         # Extract merged code from OpenAI-compatible response format
@@ -678,6 +693,14 @@ class MorphClient:
                 raise MorphAPIError(
                     code=MorphErrorCode.PROCESSING_ERROR,
                     message=f"Expected content to be string, got {type(merged_content).__name__}",
+                    status_code=500,
+                )
+
+            # Validate that merged content is non-empty
+            if not merged_content.strip():
+                raise MorphAPIError(
+                    code=MorphErrorCode.PROCESSING_ERROR,
+                    message="Morph returned empty content. The apply operation may have failed.",
                     status_code=500,
                 )
 
@@ -741,6 +764,33 @@ class MorphClient:
     # These methods provide synchronous access to async methods for use in
     # contexts where async/await is not available (e.g., ApplyToolManager).
 
+    def _run_sync(self, coro: Any) -> Any:
+        """
+        Helper to run async code from sync context safely.
+
+        Handles the case where we might already be inside an event loop
+        (e.g., in Jupyter notebooks or nested async contexts) by using
+        a thread pool executor.
+
+        Args:
+            coro: The coroutine to run
+
+        Returns:
+            The result of the coroutine
+        """
+        try:
+            # Check if we're already in an event loop
+            asyncio.get_running_loop()
+            # If we are, we need to use a thread pool to avoid nesting
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, coro)
+                return future.result()
+        except RuntimeError:
+            # No running loop, safe to use asyncio.run()
+            return asyncio.run(coro)
+
     def validate_api_key_sync(self) -> ValidationResult:
         """
         Synchronous wrapper for validate_api_key().
@@ -751,7 +801,7 @@ class MorphClient:
         Returns:
             ValidationResult with validity status
         """
-        return asyncio.get_event_loop().run_until_complete(self.validate_api_key())
+        return self._run_sync(self.validate_api_key())
 
     def check_health_sync(self, use_cache: bool = True) -> bool:
         """
@@ -763,9 +813,7 @@ class MorphClient:
         Returns:
             True if service appears healthy
         """
-        return asyncio.get_event_loop().run_until_complete(
-            self.check_health(use_cache=use_cache)
-        )
+        return self._run_sync(self.check_health(use_cache=use_cache))
 
     def apply_sync(
         self,
@@ -788,7 +836,7 @@ class MorphClient:
         Returns:
             ApplyResult with the transformed content
         """
-        return asyncio.get_event_loop().run_until_complete(
+        return self._run_sync(
             self.apply(
                 file_path=file_path,
                 original_content=original_content,
@@ -808,13 +856,11 @@ class MorphClient:
         Returns:
             True if service is available and API key is valid
         """
-        return asyncio.get_event_loop().run_until_complete(
-            self.is_available(use_cache=use_cache)
-        )
+        return self._run_sync(self.is_available(use_cache=use_cache))
 
     def close_sync(self) -> None:
         """Synchronous wrapper for close()."""
-        asyncio.get_event_loop().run_until_complete(self.close())
+        self._run_sync(self.close())
 
     async def close(self) -> None:
         """Close the async HTTP client and release resources."""

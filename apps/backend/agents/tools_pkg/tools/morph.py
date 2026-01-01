@@ -105,14 +105,14 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
         "MorphApply",
         MORPH_APPLY_DESCRIPTION,
         {
-            "target_file": str,
+            "target_filepath": str,
             "instruction": str,
             "code_edit": str,
         },
     )
     async def morph_apply(args: dict[str, Any]) -> dict[str, Any]:
         """Apply code edits using Morph Fast Apply."""
-        target_file = args.get("target_file", "")
+        target_file = args.get("target_filepath", "")
         instruction = args.get("instruction", "")
         code_edit = args.get("code_edit", "")
 
@@ -122,7 +122,7 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
                 "content": [
                     {
                         "type": "text",
-                        "text": "Error: target_file is required",
+                        "text": "Error: target_filepath is required",
                     }
                 ]
             }
