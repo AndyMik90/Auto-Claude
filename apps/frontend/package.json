@@ -87,7 +87,7 @@
     "react-dom": "^19.2.3",
     "react-i18next": "^16.5.0",
     "react-markdown": "^10.1.0",
-    "react-resizable-panels": "^3.0.6",
+    "react-resizable-panels": "^4.1.1",
     "remark-gfm": "^4.0.1",
     "semver": "^7.7.3",
     "tailwind-merge": "^3.4.0",
