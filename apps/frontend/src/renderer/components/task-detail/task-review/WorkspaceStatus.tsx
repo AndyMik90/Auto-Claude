@@ -5,6 +5,7 @@ import {
   Minus,
   Eye,
   GitMerge,
+  GitPullRequest,
   FolderX,
   Loader2,
   RotateCcw,
@@ -28,12 +29,14 @@ interface WorkspaceStatusProps {
   isLoadingPreview: boolean;
   isMerging: boolean;
   isDiscarding: boolean;
+  isCreatingPR: boolean;
   onShowDiffDialog: (show: boolean) => void;
   onShowDiscardDialog: (show: boolean) => void;
   onShowConflictDialog: (show: boolean) => void;
   onLoadMergePreview: () => void;
   onStageOnlyChange: (value: boolean) => void;
   onMerge: () => void;
+  onCreatePR: () => void;
   onClose?: () => void;
   onSwitchToTerminals?: () => void;
   onOpenInbuiltTerminal?: (id: string, cwd: string) => void;
@@ -84,12 +87,14 @@ export function WorkspaceStatus({
   isLoadingPreview,
   isMerging,
   isDiscarding,
+  isCreatingPR,
   onShowDiffDialog,
   onShowDiscardDialog,
   onShowConflictDialog,
   onLoadMergePreview,
   onStageOnlyChange,
   onMerge,
+  onCreatePR,
   onClose,
   onSwitchToTerminals,
   onOpenInbuiltTerminal
@@ -399,6 +404,24 @@ export function WorkspaceStatus({
                 {hasGitConflicts || isBranchBehind || hasPathMappedMerges
                   ? (stageOnly ? 'Stage with AI Merge' : 'Merge with AI')
                   : (stageOnly ? 'Stage Changes' : 'Merge to Main')}
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onCreatePR}
+            disabled={isMerging || isDiscarding || isCreatingPR}
+            className="flex-1"
+          >
+            {isCreatingPR ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating PR...
+              </>
+            ) : (
+              <>
+                <GitPullRequest className="mr-2 h-4 w-4" />
+                Create PR
               </>
             )}
           </Button>

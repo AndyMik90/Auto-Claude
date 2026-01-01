@@ -20,6 +20,7 @@ interface TaskReviewProps {
   isLoadingWorktree: boolean;
   isMerging: boolean;
   isDiscarding: boolean;
+  isCreatingPR: boolean;
   showDiscardDialog: boolean;
   showDiffDialog: boolean;
   workspaceError: string | null;
@@ -34,6 +35,7 @@ interface TaskReviewProps {
   onReject: () => void;
   onMerge: () => void;
   onDiscard: () => void;
+  onCreatePR: () => void;
   onShowDiscardDialog: (show: boolean) => void;
   onShowDiffDialog: (show: boolean) => void;
   onStageOnlyChange: (value: boolean) => void;
@@ -62,6 +64,7 @@ export function TaskReview({
   isLoadingWorktree,
   isMerging,
   isDiscarding,
+  isCreatingPR,
   showDiscardDialog,
   showDiffDialog,
   workspaceError,
@@ -76,6 +79,7 @@ export function TaskReview({
   onReject,
   onMerge,
   onDiscard,
+  onCreatePR,
   onShowDiscardDialog,
   onShowDiffDialog,
   onStageOnlyChange,
@@ -110,12 +114,14 @@ export function TaskReview({
           isLoadingPreview={isLoadingPreview}
           isMerging={isMerging}
           isDiscarding={isDiscarding}
+          isCreatingPR={isCreatingPR}
           onShowDiffDialog={onShowDiffDialog}
           onShowDiscardDialog={onShowDiscardDialog}
           onShowConflictDialog={onShowConflictDialog}
           onLoadMergePreview={onLoadMergePreview}
           onStageOnlyChange={onStageOnlyChange}
           onMerge={onMerge}
+          onCreatePR={onCreatePR}
           onClose={onClose}
           onSwitchToTerminals={onSwitchToTerminals}
           onOpenInbuiltTerminal={onOpenInbuiltTerminal}

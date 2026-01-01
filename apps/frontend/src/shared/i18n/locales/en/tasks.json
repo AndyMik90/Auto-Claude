@@ -95,5 +95,24 @@
     "retry": "Retry",
     "selectFile": "Select a file to view its contents",
     "openInIDE": "Open in IDE"
+  },
+  "mergedChanges": {
+    "title": "Merged Changes",
+    "tab": "Changes",
+    "loading": "Loading changes...",
+    "loadError": "Failed to load merged changes",
+    "notFound": "No merged changes found for this task",
+    "commit": "commit",
+    "commits": "commits",
+    "commitsTitle": "Commits",
+    "file": "file changed",
+    "files": "files changed",
+    "filesTitle": "Changed Files",
+    "fileStatus": {
+      "added": "Added",
+      "deleted": "Deleted",
+      "modified": "Modified",
+      "renamed": "Renamed"
+    }
   }
 }

@@ -95,5 +95,24 @@
     "retry": "Réessayer",
     "selectFile": "Sélectionnez un fichier pour voir son contenu",
     "openInIDE": "Ouvrir dans l'IDE"
+  },
+  "mergedChanges": {
+    "title": "Modifications fusionnées",
+    "tab": "Modifications",
+    "loading": "Chargement des modifications...",
+    "loadError": "Échec du chargement des modifications",
+    "notFound": "Aucune modification trouvée pour cette tâche",
+    "commit": "commit",
+    "commits": "commits",
+    "commitsTitle": "Commits",
+    "file": "fichier modifié",
+    "files": "fichiers modifiés",
+    "filesTitle": "Fichiers modifiés",
+    "fileStatus": {
+      "added": "Ajouté",
+      "deleted": "Supprimé",
+      "modified": "Modifié",
+      "renamed": "Renommé"
+    }
   }
 }

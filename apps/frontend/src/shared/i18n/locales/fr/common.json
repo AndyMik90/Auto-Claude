@@ -241,5 +241,10 @@
     "done": "Terminé",
     "failedLabel": "Échoué",
     "starting": "Démarrage..."
-  }
+  },
+  "changedFiles": "Fichiers modifiés",
+  "added": "Ajouté",
+  "deleted": "Supprimé",
+  "modified": "Modifié",
+  "renamed": "Renommé"
 }

@@ -24,6 +24,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   const [isLoadingWorktree, setIsLoadingWorktree] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
+  const [isCreatingPR, setIsCreatingPR] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [showDiffDialog, setShowDiffDialog] = useState(false);
@@ -254,6 +255,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     isLoadingWorktree,
     isMerging,
     isDiscarding,
+    isCreatingPR,
     showDiscardDialog,
     workspaceError,
     showDiffDialog,
@@ -294,6 +296,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     setIsLoadingWorktree,
     setIsMerging,
     setIsDiscarding,
+    setIsCreatingPR,
     setShowDiscardDialog,
     setWorkspaceError,
     setShowDiffDialog,

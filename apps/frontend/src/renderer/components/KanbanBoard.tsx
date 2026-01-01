@@ -116,7 +116,7 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
     <div
       ref={setNodeRef}
       className={cn(
-        'flex min-w-72 max-w-[30rem] flex-1 flex-col rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200',
+        'flex min-w-72 max-w-[30rem] flex-1 flex-col rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200 overflow-hidden',
         getColumnBorderColor(),
         'border-t-2',
         isOver && 'drop-zone-highlight'
@@ -158,13 +158,13 @@ function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArc
       </div>
 
       {/* Task list */}
-      <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full px-3 pb-3 pt-2">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <ScrollArea className="h-full px-3 pb-3 pt-2 w-full">
           <SortableContext
             items={taskIds}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-3 min-h-[120px]">
+            <div className="space-y-3 min-h-[120px] w-full">
               {tasks.length === 0 ? (
                 <div
                   className={cn(

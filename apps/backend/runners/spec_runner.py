@@ -212,6 +212,23 @@ Examples:
             print(f"Error: Task file is empty: {args.task_file}")
             sys.exit(1)
 
+    # Load task description from requirements.json when spec-dir is provided
+    # This avoids passing huge descriptions on the command line (Windows ENAMETOOLONG)
+    if not task_description and args.spec_dir:
+        requirements_file = args.spec_dir / "requirements.json"
+        if requirements_file.exists():
+            try:
+                import json
+                requirements_data = json.loads(requirements_file.read_text(encoding="utf-8"))
+                task_description = requirements_data.get("task_description", "")
+                if task_description:
+                    debug(
+                        "spec_runner",
+                        f"Loaded task description from requirements.json ({len(task_description)} chars)",
+                    )
+            except (json.JSONDecodeError, OSError) as e:
+                debug_error("spec_runner", f"Failed to load requirements.json: {e}")
+
     # Validate task description isn't problematic
     if task_description:
         # Warn about very long descriptions but don't block

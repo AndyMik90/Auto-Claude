@@ -45,6 +45,20 @@ export interface TaskAPI {
   ) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
 
+  // GitHub PR Operations
+  createPR: (
+    projectId: string,
+    specDir: string,
+    base: string,
+    head: string,
+    title: string,
+    body: string,
+    draft?: boolean
+  ) => void;
+  onPRCreateProgress: (callback: (data: { progress: number; message: string }) => void) => () => void;
+  onPRCreateComplete: (callback: (result: { number: number; url: string; title: string; state: string }) => void) => () => void;
+  onPRCreateError: (callback: (error: string) => void) => () => void;
+
   // Workspace Management (for human review)
   getWorktreeStatus: (taskId: string) => Promise<IPCResult<import('../../shared/types').WorktreeStatus>>;
   getWorktreeDiff: (taskId: string) => Promise<IPCResult<import('../../shared/types').WorktreeDiff>>;
@@ -57,6 +71,7 @@ export interface TaskAPI {
   worktreeDetectTools: () => Promise<IPCResult<{ ides: Array<{ id: string; name: string; path: string; installed: boolean }>; terminals: Array<{ id: string; name: string; path: string; installed: boolean }> }>>;
   archiveTasks: (projectId: string, taskIds: string[], version?: string) => Promise<IPCResult<boolean>>;
   unarchiveTasks: (projectId: string, taskIds: string[]) => Promise<IPCResult<boolean>>;
+  getTaskMergedChanges: (taskId: string) => Promise<IPCResult<import('../../shared/types').TaskMergedChanges>>;
 
   // Task Event Listeners
   onTaskProgress: (callback: (taskId: string, plan: ImplementationPlan) => void) => () => void;
@@ -141,6 +156,47 @@ export const createTaskAPI = (): TaskAPI => ({
   discardWorktree: (taskId: string): Promise<IPCResult<import('../../shared/types').WorktreeDiscardResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_DISCARD, taskId),
 
+  createPR: (
+    projectId: string,
+    specDir: string,
+    base: string,
+    head: string,
+    title: string,
+    body: string,
+    draft: boolean = false
+  ): void =>
+    ipcRenderer.send(IPC_CHANNELS.GITHUB_PR_CREATE, projectId, specDir, base, head, title, body, draft),
+
+  onPRCreateProgress: (callback: (data: { progress: number; message: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { progress: number; message: string }) => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.GITHUB_PR_CREATE_PROGRESS, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.GITHUB_PR_CREATE_PROGRESS, handler);
+    };
+  },
+
+  onPRCreateComplete: (callback: (result: { number: number; url: string; title: string; state: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, result: { number: number; url: string; title: string; state: string }) => {
+      callback(result);
+    };
+    ipcRenderer.on(IPC_CHANNELS.GITHUB_PR_CREATE_COMPLETE, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.GITHUB_PR_CREATE_COMPLETE, handler);
+    };
+  },
+
+  onPRCreateError: (callback: (error: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, error: string) => {
+      callback(error);
+    };
+    ipcRenderer.on(IPC_CHANNELS.GITHUB_PR_CREATE_ERROR, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.GITHUB_PR_CREATE_ERROR, handler);
+    };
+  },
+
   listWorktrees: (projectId: string): Promise<IPCResult<import('../../shared/types').WorktreeListResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_LIST_WORKTREES, projectId),
 
@@ -158,6 +214,9 @@ export const createTaskAPI = (): TaskAPI => ({
 
   unarchiveTasks: (projectId: string, taskIds: string[]): Promise<IPCResult<boolean>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_UNARCHIVE, projectId, taskIds),
+
+  getTaskMergedChanges: (taskId: string): Promise<IPCResult<import('../../shared/types').TaskMergedChanges>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_GET_MERGED_CHANGES, taskId),
 
   // Task Event Listeners
   onTaskProgress: (

@@ -185,23 +185,28 @@ export function EnvConfigModal({
   };
 
   const handleAuthenticateWithBrowser = async () => {
-    if (!projectId) {
-      setError('No project selected. Please select a project first.');
-      return;
-    }
-
     setIsAuthenticating(true);
     setError(null);
 
     try {
-      // Invoke the Claude setup-token flow in terminal
-      const result = await window.electronAPI.invokeClaudeSetup(projectId);
+      // Get the active profile ID
+      const profilesResult = await window.electronAPI.getClaudeProfiles();
+
+      if (!profilesResult.success || !profilesResult.data) {
+        throw new Error('Failed to get Claude profiles');
+      }
+
+      const activeProfileId = profilesResult.data.activeProfileId;
+
+      // Initialize the profile - this opens a terminal and runs 'claude setup-token'
+      // The terminal approach works properly in Electron (unlike stdio: 'inherit')
+      const result = await window.electronAPI.initializeClaudeProfile(activeProfileId);
 
       if (!result.success) {
         setError(result.error || 'Failed to start authentication');
         setIsAuthenticating(false);
       }
-      // Keep isAuthenticating true - will be cleared when token is received
+      // Keep isAuthenticating true - will be cleared when token is received via onTerminalOAuthToken
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start authentication');
       setIsAuthenticating(false);
@@ -262,7 +267,7 @@ export function EnvConfigModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Key className="h-5 w-5" />

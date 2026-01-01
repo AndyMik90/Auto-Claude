@@ -58,6 +58,32 @@ class TestGHClient:
         with pytest.raises((GHCommandError, GHTimeoutError)):
             await client.issue_list()
 
+    @pytest.mark.asyncio
+    async def test_pr_create_timeout_protection(self, client):
+        """Test that pr_create() has timeout protection."""
+        # This will fail because repo doesn't exist, but should not hang
+        with pytest.raises((GHCommandError, GHTimeoutError)):
+            await client.pr_create(
+                base="main",
+                head="feature/test",
+                title="Test PR",
+                body="Test description",
+                draft=False,
+            )
+
+    @pytest.mark.asyncio
+    async def test_pr_create_validates_args(self, client):
+        """Test that pr_create() requires all arguments."""
+        # Test with empty strings
+        with pytest.raises((GHCommandError, GHTimeoutError, ValueError)):
+            await client.pr_create(
+                base="",
+                head="",
+                title="",
+                body="",
+                draft=False,
+            )
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

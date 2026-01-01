@@ -84,6 +84,26 @@ export const taskMock = {
 
   unwatchTaskLogs: async () => ({ success: true }),
 
+  // PR Creation
+  createPR: (
+    _projectId: string,
+    _specDir: string,
+    _base: string,
+    _head: string,
+    _title: string,
+    _body: string,
+    _draft?: boolean
+  ) => {
+    console.log('[Browser Mock] createPR called - simulating PR creation');
+    // Simulate async PR creation
+    setTimeout(() => {
+      console.log('[Browser Mock] PR creation complete');
+    }, 1000);
+  },
+  onPRCreateProgress: () => () => {},
+  onPRCreateComplete: () => () => {},
+  onPRCreateError: () => () => {},
+
   // Event Listeners (no-op in browser)
   onTaskProgress: () => () => {},
   onTaskError: () => () => {},

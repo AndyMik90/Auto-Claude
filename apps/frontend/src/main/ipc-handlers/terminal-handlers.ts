@@ -353,10 +353,11 @@ export function registerTerminalHandlers(
         // Notify the renderer that a login terminal was created
         const mainWindow = getMainWindow();
         if (mainWindow) {
-          mainWindow.webContents.send('claude-profile-login-terminal', {
+          mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_PROFILE_LOGIN_TERMINAL, {
             terminalId,
             profileId,
-            profileName: profile.name
+            profileName: profile.name,
+            cwd: homeDir
           });
         }
 

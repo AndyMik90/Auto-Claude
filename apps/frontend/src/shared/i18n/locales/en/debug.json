@@ -1,0 +1,68 @@
+{
+  "tabs": {
+    "ipc": "IPC Tester",
+    "runner": "Backend Runner",
+    "logs": "Logs",
+    "config": "Configuration"
+  },
+  "ipc": {
+    "title": "IPC Channel Testing",
+    "description": "Test IPC communication between main and renderer processes",
+    "channelLabel": "IPC Channel",
+    "channelPlaceholder": "Select channel...",
+    "paramsLabel": "Parameters (JSON)",
+    "paramsPlaceholder": "{\"projectId\": \"...\", ...}",
+    "sendButton": "Send IPC Request",
+    "clearButton": "Clear Results",
+    "responseTitle": "Response",
+    "noResponse": "No response yet. Send a request to see results.",
+    "error": "Error",
+    "success": "Success"
+  },
+  "runner": {
+    "title": "Backend Runner Testing",
+    "description": "Execute GitHub commands and view output",
+    "commandLabel": "Command",
+    "commandPlaceholder": "gh pr list",
+    "argsLabel": "Arguments (JSON)",
+    "argsPlaceholder": "{\"limit\": 10}",
+    "executeButton": "Execute Command",
+    "clearButton": "Clear Output",
+    "outputTitle": "Output",
+    "noOutput": "No output yet. Execute a command to see results.",
+    "stdoutLabel": "stdout",
+    "stderrLabel": "stderr",
+    "exitCodeLabel": "Exit Code"
+  },
+  "logs": {
+    "title": "Log Viewer",
+    "description": "Real-time log streaming from backend, IPC, and frontend",
+    "sourceLabel": "Log Source",
+    "sources": {
+      "backend": "Backend Logs",
+      "ipc": "IPC Communication",
+      "frontend": "Frontend Logs"
+    },
+    "clearButton": "Clear Logs",
+    "noLogs": "No logs available for this source.",
+    "timestampLabel": "Timestamp",
+    "levelLabel": "Level",
+    "messageLabel": "Message"
+  },
+  "config": {
+    "title": "Configuration Inspector",
+    "description": "View environment variables and application configuration",
+    "envTitle": "Environment Variables",
+    "settingsTitle": "Application Settings",
+    "projectTitle": "Project Configuration",
+    "refreshButton": "Refresh",
+    "noData": "No configuration data available."
+  },
+  "common": {
+    "loading": "Loading...",
+    "copied": "Copied to clipboard",
+    "copyButton": "Copy",
+    "expandButton": "Expand",
+    "collapseButton": "Collapse"
+  }
+}

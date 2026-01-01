@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FileText,
@@ -33,13 +33,17 @@ function getFileIcon(filename: string) {
   return <FileText className="h-4 w-4 text-blue-500" />;
 }
 
+// Cache for file lists to avoid re-fetching on tab switches
+const fileListCache = new Map<string, { files: FileNode[]; timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds
+
 export function TaskFiles({ task }: TaskFilesProps) {
   const { t } = useTranslation(['tasks']);
   const { settings } = useSettingsStore();
 
-  // State for file listing
+  // State for file listing - start loading true to show spinner immediately
   const [files, setFiles] = useState<FileNode[]>([]);
-  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
   const [filesError, setFilesError] = useState<string | null>(null);
 
   // State for file content
@@ -51,9 +55,22 @@ export function TaskFiles({ task }: TaskFilesProps) {
   // Ref for keyboard navigation
   const fileListRef = useRef<HTMLDivElement>(null);
 
-  // Load files from spec directory
-  const loadFiles = useCallback(async () => {
-    if (!task.specsPath) return;
+  // Load files from spec directory with caching
+  const loadFiles = useCallback(async (forceRefresh = false) => {
+    if (!task.specsPath) {
+      setIsLoadingFiles(false);
+      return;
+    }
+
+    // Check cache first (unless force refresh)
+    if (!forceRefresh) {
+      const cached = fileListCache.get(task.specsPath);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        setFiles(cached.files);
+        setIsLoadingFiles(false);
+        return;
+      }
+    }
 
     setIsLoadingFiles(true);
     setFilesError(null);
@@ -75,6 +92,9 @@ export function TaskFiles({ task }: TaskFilesProps) {
         if (b.name === 'spec.md') return 1;
         return a.name.localeCompare(b.name);
       });
+
+      // Update cache
+      fileListCache.set(task.specsPath, { files: filteredFiles, timestamp: Date.now() });
 
       setFiles(filteredFiles);
     } catch (err) {
@@ -273,7 +293,7 @@ export function TaskFiles({ task }: TaskFilesProps) {
             variant="ghost"
             size="icon"
             className="h-6 w-6"
-            onClick={loadFiles}
+            onClick={() => loadFiles(true)}
             disabled={isLoadingFiles}
           >
             <RefreshCw className={cn("h-3 w-3", isLoadingFiles && "animate-spin")} />
@@ -299,7 +319,7 @@ export function TaskFiles({ task }: TaskFilesProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={loadFiles}
+                  onClick={() => loadFiles(true)}
                   className="text-xs"
                 >
                   <RefreshCw className="h-3 w-3 mr-1" />

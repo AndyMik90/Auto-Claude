@@ -16,6 +16,64 @@ import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ip
 import { transformRoadmapFromSnakeCase } from '../ipc-handlers/roadmap/transformers';
 import type { RawIdea } from '../ipc-handlers/ideation/types';
 
+// Essential environment variables needed for Python processes
+// On Windows, passing the full process.env can cause ENAMETOOLONG errors
+// because the environment block has a 32KB limit
+const ESSENTIAL_ENV_VARS = new Set([
+  // System essentials
+  'PATH', 'PATHEXT', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'TEMP', 'TMP',
+  'HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'USERNAME', 'USER',
+  'APPDATA', 'LOCALAPPDATA', 'PROGRAMDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)',
+  // Python specific
+  'PYTHONPATH', 'PYTHONHOME', 'PYTHONUNBUFFERED', 'PYTHONIOENCODING',
+  'PYTHONDONTWRITEBYTECODE', 'PYTHONNOUSERSITE', 'PYTHONUTF8',
+  'VIRTUAL_ENV', 'CONDA_PREFIX', 'CONDA_DEFAULT_ENV',
+  // Claude/OAuth
+  'CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY',
+  // Node.js
+  'NODE_ENV', 'NODE_OPTIONS',
+  // Git
+  'GIT_EXEC_PATH', 'GIT_DIR',
+  // Locale
+  'LANG', 'LC_ALL', 'LC_CTYPE', 'LANGUAGE',
+  // Terminal
+  'TERM', 'COLORTERM', 'FORCE_COLOR', 'NO_COLOR',
+  // OpenSSL/SSL
+  'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE',
+  // OS detection
+  'OS', 'PROCESSOR_ARCHITECTURE', 'NUMBER_OF_PROCESSORS'
+]);
+
+/**
+ * Filter environment variables to only include essential ones.
+ * This prevents ENAMETOOLONG errors on Windows where the environment
+ * block has a 32KB limit.
+ */
+function filterEssentialEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const filtered: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) continue;
+
+    const upperKey = key.toUpperCase();
+    // Include if it's in our essential set
+    if (ESSENTIAL_ENV_VARS.has(upperKey)) {
+      filtered[key] = value;
+      continue;
+    }
+    // Also include any vars starting with PYTHON, CLAUDE, GRAPHITI, or AUTO_CLAUDE
+    if (upperKey.startsWith('PYTHON') ||
+        upperKey.startsWith('CLAUDE') ||
+        upperKey.startsWith('GRAPHITI') ||
+        upperKey.startsWith('AUTO_CLAUDE') ||
+        upperKey.startsWith('ANTHROPIC')) {
+      filtered[key] = value;
+    }
+  }
+
+  return filtered;
+}
+
 /**
  * Queue management for ideation and roadmap generation
  */
@@ -231,13 +289,13 @@ export class AgentQueueManager {
     const combinedPythonPath = pythonPathParts.join(process.platform === 'win32' ? ';' : ':');
 
     // Build final environment with proper precedence:
-    // 1. process.env (system)
+    // 1. Filtered process.env (system essentials only - prevents ENAMETOOLONG on Windows)
     // 2. pythonEnv (bundled packages environment)
     // 3. combinedEnv (auto-claude/.env for CLI usage)
     // 4. profileEnv (Electron app OAuth token - highest priority)
     // 5. Our specific overrides
     const finalEnv = {
-      ...process.env,
+      ...filterEssentialEnv(process.env),
       ...pythonEnv,
       ...combinedEnv,
       ...profileEnv,
@@ -544,13 +602,13 @@ export class AgentQueueManager {
     const combinedPythonPath = pythonPathParts.join(process.platform === 'win32' ? ';' : ':');
 
     // Build final environment with proper precedence:
-    // 1. process.env (system)
+    // 1. Filtered process.env (system essentials only - prevents ENAMETOOLONG on Windows)
     // 2. pythonEnv (bundled packages environment)
     // 3. combinedEnv (auto-claude/.env for CLI usage)
     // 4. profileEnv (Electron app OAuth token - highest priority)
     // 5. Our specific overrides
     const finalEnv = {
-      ...process.env,
+      ...filterEssentialEnv(process.env),
       ...pythonEnv,
       ...combinedEnv,
       ...profileEnv,

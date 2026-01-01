@@ -318,6 +318,78 @@ async def cmd_followup_review_pr(args) -> int:
         return 1
 
 
+async def cmd_pr_create(args) -> int:
+    """Create a pull request."""
+    import sys
+    import json
+
+    # Force unbuffered output so Electron sees it in real-time
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(line_buffering=True)
+
+    debug = os.environ.get("DEBUG")
+    if debug:
+        print(f"[DEBUG] Creating PR: {args.title}", flush=True)
+        print(f"[DEBUG] Base: {args.base}, Head: {args.head}", flush=True)
+        print(f"[DEBUG] Project directory: {args.project}", flush=True)
+
+    config = get_config(args)
+
+    if debug:
+        print(
+            f"[DEBUG] Config built: repo={config.repo}, model={config.model}",
+            flush=True,
+        )
+        print("[DEBUG] Creating GitHub client...", flush=True)
+
+    gh_client = GHClient(
+        project_dir=args.project,
+        repo_name=config.repo.name,
+        repo_owner=config.repo.owner,
+    )
+
+    # Parse draft argument (comes as string from IPC)
+    draft = args.draft.lower() == 'true' if isinstance(args.draft, str) else bool(args.draft)
+
+    if debug:
+        print(f"[DEBUG] Draft mode: {draft}", flush=True)
+
+    print(f"Creating pull request: {args.title}", file=sys.stderr)
+    print(f"Base: {args.base}, Head: {args.head}", file=sys.stderr)
+
+    try:
+        print("Checking for merge conflicts...", file=sys.stderr)
+
+        result = await gh_client.pr_create(
+            base=args.base,
+            head=args.head,
+            title=args.title,
+            body=args.body,
+            draft=draft,
+        )
+
+        if debug:
+            print(f"[DEBUG] PR created successfully: {result}", flush=True)
+
+        # Print JSON result to stdout for IPC handler to parse
+        print(json.dumps(result))
+
+        print(f"\nPull request created: #{result['number']}", file=sys.stderr)
+        print(f"URL: {result.get('html_url', result['url'])}", file=sys.stderr)
+
+        return 0
+
+    except Exception as e:
+        print(f"Error creating pull request: {e}", file=sys.stderr)
+        if debug:
+            import traceback
+            print(f"[DEBUG] Traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+        return 1
+
+
 async def cmd_triage(args) -> int:
     """Triage issues."""
     config = get_config(args)
@@ -696,6 +768,19 @@ def main():
     )
     followup_parser.add_argument("pr_number", type=int, help="PR number to review")
 
+    # pr-create command
+    pr_create_parser = subparsers.add_parser("pr-create", help="Create a pull request")
+    pr_create_parser.add_argument("base", type=str, help="Base branch (e.g., 'main')")
+    pr_create_parser.add_argument("head", type=str, help="Head branch (e.g., 'feature/my-feature')")
+    pr_create_parser.add_argument("title", type=str, help="PR title")
+    pr_create_parser.add_argument("body", type=str, help="PR description")
+    pr_create_parser.add_argument(
+        "draft",
+        type=str,
+        default="false",
+        help="Create as draft PR (true/false)",
+    )
+
     # triage command
     triage_parser = subparsers.add_parser("triage", help="Triage issues")
     triage_parser.add_argument(
@@ -755,8 +840,8 @@ def main():
     analyze_parser.add_argument(
         "--max-issues",
         type=int,
-        default=200,
-        help="Maximum number of issues to analyze (default: 200)",
+        default=50,
+        help="Maximum number of issues to analyze (default: 50, max 200)",
     )
     analyze_parser.add_argument(
         "--json",
@@ -785,6 +870,7 @@ def main():
     commands = {
         "review-pr": cmd_review_pr,
         "followup-review-pr": cmd_followup_review_pr,
+        "pr-create": cmd_pr_create,
         "triage": cmd_triage,
         "auto-fix": cmd_auto_fix,
         "check-auto-fix-labels": cmd_check_labels,

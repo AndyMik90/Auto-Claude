@@ -789,6 +789,7 @@ export function registerPRHandlers(
             additions: number;
             deletions: number;
             status: string;
+            patch?: string;
           }>;
 
           return {
@@ -808,6 +809,7 @@ export function registerPRHandlers(
               additions: f.additions,
               deletions: f.deletions,
               status: f.status,
+              patch: f.patch,
             })),
             createdAt: pr.created_at,
             updatedAt: pr.updated_at,
@@ -1541,6 +1543,127 @@ export function registerPRHandlers(
           projectId
         );
         sendError({ prNumber, error: error instanceof Error ? error.message : 'Failed to run follow-up review' });
+      }
+    }
+  );
+
+  // Create PR
+  ipcMain.on(
+    IPC_CHANNELS.GITHUB_PR_CREATE,
+    async (
+      _,
+      projectId: string,
+      specDir: string,
+      base: string,
+      head: string,
+      title: string,
+      body: string,
+      draft: boolean = false
+    ) => {
+      debugLog('handleGitHubPRCreate called', { projectId, specDir, base, head, title, draft });
+
+      const mainWindow = getMainWindow();
+      if (!mainWindow) {
+        debugLog('No main window available');
+        return;
+      }
+
+      try {
+        await withProjectOrNull(projectId, async (project) => {
+          const { sendProgress, sendComplete, sendError } = createIPCCommunicators<
+            { progress: number; message: string },
+            { number: number; url: string; title: string; state: string }
+          >(
+            mainWindow,
+            {
+              progress: IPC_CHANNELS.GITHUB_PR_CREATE_PROGRESS,
+              error: IPC_CHANNELS.GITHUB_PR_CREATE_ERROR,
+              complete: IPC_CHANNELS.GITHUB_PR_CREATE_COMPLETE,
+            },
+            projectId
+          );
+
+          const config = getGitHubConfig(project);
+          if (!config) {
+            debugLog('No GitHub config found for project');
+            sendError({ error: 'GitHub configuration not found' });
+            return;
+          }
+
+          // Comprehensive validation of GitHub module
+          const validation = await validateGitHubModule(project);
+          if (!validation.valid) {
+            debugLog('GitHub module validation failed');
+            sendError({ error: validation.error || 'GitHub module validation failed' });
+            return;
+          }
+
+          const backendPath = validation.backendPath!;
+
+          sendProgress({ progress: 10, message: 'Checking for merge conflicts...' });
+
+          // Build arguments for pr_create runner
+          const args = buildRunnerArgs(
+            getRunnerPath(backendPath),
+            project.path,
+            'pr-create',
+            [base, head, title, body, draft.toString()],
+            {}
+          );
+
+          debugLog('Spawning PR create process', { args });
+
+          sendProgress({ progress: 30, message: 'Creating pull request...' });
+
+          const { promise } = runPythonSubprocess<{ number: number; url: string; title: string; state: string }>({
+            pythonPath: getPythonPath(backendPath),
+            args,
+            cwd: backendPath,
+            env: {},
+            onProgress: (percent, message) => {
+              debugLog('Progress update', { percent, message });
+              sendProgress({
+                progress: Math.max(30, Math.min(90, percent)),
+                message,
+              });
+            },
+            onStdout: (line) => debugLog('STDOUT:', line),
+            onStderr: (line) => debugLog('STDERR:', line),
+            onComplete: () => {
+              debugLog('PR create subprocess completed');
+            },
+          });
+
+          // Wait for completion
+          const result = await promise;
+
+          if (result.success && result.data) {
+            debugLog('PR created successfully', { prData: result.data });
+            sendProgress({
+              progress: 100,
+              message: 'Pull request created successfully!',
+            });
+            sendComplete(result.data);
+          } else {
+            debugLog('PR create failed', { error: result.error });
+            sendError({ error: result.error || 'Failed to create pull request' });
+          }
+        });
+      } catch (error) {
+        debugLog('PR create handler error', { error: error instanceof Error ? error.message : error });
+        const { sendError } = createIPCCommunicators<
+          { progress: number; message: string },
+          { number: number; url: string; title: string; state: string }
+        >(
+          mainWindow,
+          {
+            progress: IPC_CHANNELS.GITHUB_PR_CREATE_PROGRESS,
+            error: IPC_CHANNELS.GITHUB_PR_CREATE_ERROR,
+            complete: IPC_CHANNELS.GITHUB_PR_CREATE_COMPLETE,
+          },
+          projectId
+        );
+        sendError({ error: error instanceof Error ? error.message : 'Failed to create pull request' });
       }
     }
   );

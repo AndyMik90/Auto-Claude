@@ -283,6 +283,7 @@ export interface PRData {
     additions: number;
     deletions: number;
     status: string;
+    patch?: string; // Unified diff patch for this file
   }>;
   createdAt: string;
   updatedAt: string;
@@ -329,6 +330,16 @@ export interface PRReviewResult {
   hasPostedFindings?: boolean;
   postedFindingIds?: string[];
   postedAt?: string;
+}
+
+/**
+ * PR creation result
+ */
+export interface PRCreateResult {
+  number: number;
+  url: string;
+  title: string;
+  state: string;
 }
 
 /**

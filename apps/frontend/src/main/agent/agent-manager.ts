@@ -120,7 +120,16 @@ export class AgentManager extends EventEmitter {
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
     // spec_runner.py will auto-start run.py after spec creation completes
-    const args = [specRunnerPath, '--task', taskDescription, '--project-dir', projectPath];
+    // When specDir is provided, requirements.json already contains the task description,
+    // so we skip passing --task to avoid Windows ENAMETOOLONG errors with large descriptions.
+    // spec_runner.py will read the task description from requirements.json instead.
+    const args = [specRunnerPath, '--project-dir', projectPath];
+
+    // Only pass task description if specDir is NOT provided (new tasks without a spec dir)
+    // This avoids command line length issues on Windows with large GitHub issue descriptions
+    if (!specDir && taskDescription) {
+      args.push('--task', taskDescription);
+    }
 
     // Pass spec directory if provided (for UI-created tasks that already have a directory)
     if (specDir) {

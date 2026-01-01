@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow, shell, app } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP } from '../../../shared/constants';
-import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
+import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, SupportedIDE, SupportedTerminal, AppSettings, TaskMergedChanges, MergedCommit, MergedFileChange, DiffHunk, DiffLine } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
@@ -12,6 +12,177 @@ import { findTaskAndProject } from './shared';
 import { parsePythonCommand } from '../../python-detector';
 import { getToolPath } from '../../cli-tool-manager';
 import { promisify } from 'util';
+
+// Essential environment variables needed for Python processes
+// On Windows, passing the full process.env can cause ENAMETOOLONG errors
+// because the environment block has a 32KB limit
+const ESSENTIAL_ENV_VARS = new Set([
+  // System essentials
+  'PATH', 'PATHEXT', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'TEMP', 'TMP',
+  'HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'USERNAME', 'USER',
+  'APPDATA', 'LOCALAPPDATA', 'PROGRAMDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)',
+  // Python specific
+  'PYTHONPATH', 'PYTHONHOME', 'PYTHONUNBUFFERED', 'PYTHONIOENCODING',
+  'PYTHONDONTWRITEBYTECODE', 'PYTHONNOUSERSITE', 'PYTHONUTF8',
+  'VIRTUAL_ENV', 'CONDA_PREFIX', 'CONDA_DEFAULT_ENV',
+  // Claude/OAuth
+  'CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY',
+  // Node.js
+  'NODE_ENV', 'NODE_OPTIONS',
+  // Git
+  'GIT_EXEC_PATH', 'GIT_DIR',
+  // Locale
+  'LANG', 'LC_ALL', 'LC_CTYPE', 'LANGUAGE',
+  // Terminal
+  'TERM', 'COLORTERM', 'FORCE_COLOR', 'NO_COLOR',
+  // OpenSSL/SSL
+  'SSL_CERT_FILE', 'SSL_CERT_DIR', 'REQUESTS_CA_BUNDLE', 'CURL_CA_BUNDLE',
+  // OS detection
+  'OS', 'PROCESSOR_ARCHITECTURE', 'NUMBER_OF_PROCESSORS'
+]);
+
+/**
+ * Filter environment variables to only include essential ones.
+ * This prevents ENAMETOOLONG errors on Windows where the environment
+ * block has a 32KB limit.
+ */
+function filterEssentialEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const filtered: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) continue;
+
+    const upperKey = key.toUpperCase();
+    // Include if it's in our essential set
+    if (ESSENTIAL_ENV_VARS.has(upperKey)) {
+      filtered[key] = value;
+      continue;
+    }
+    // Also include any vars starting with PYTHON, CLAUDE, GRAPHITI, or AUTO_CLAUDE
+    if (upperKey.startsWith('PYTHON') ||
+        upperKey.startsWith('CLAUDE') ||
+        upperKey.startsWith('GRAPHITI') ||
+        upperKey.startsWith('AUTO_CLAUDE') ||
+        upperKey.startsWith('ANTHROPIC') ||
+        upperKey.startsWith('UTILITY_')) {
+      filtered[key] = value;
+    }
+  }
+
+  return filtered;
+}
+
+/**
+ * Parse git diff output into structured hunks with line-level changes
+ * @param diffOutput - Raw output from git diff command
+ * @returns Array of diff hunks with parsed lines
+ */
+function parseDiffToHunks(diffOutput: string): DiffHunk[] {
+  const hunks: DiffHunk[] = [];
+  const lines = diffOutput.split('\n');
+
+  let currentHunk: DiffHunk | null = null;
+  let oldLineNum = 0;
+  let newLineNum = 0;
+
+  for (const line of lines) {
+    // Match hunk header: @@ -oldStart,oldCount +newStart,newCount @@
+    const hunkMatch = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+
+    if (hunkMatch) {
+      // Save previous hunk if exists
+      if (currentHunk) {
+        hunks.push(currentHunk);
+      }
+
+      const oldStart = parseInt(hunkMatch[1], 10);
+      const oldCount = hunkMatch[2] ? parseInt(hunkMatch[2], 10) : 1;
+      const newStart = parseInt(hunkMatch[3], 10);
+      const newCount = hunkMatch[4] ? parseInt(hunkMatch[4], 10) : 1;
+
+      currentHunk = {
+        oldStart,
+        oldCount,
+        newStart,
+        newCount,
+        lines: []
+      };
+
+      oldLineNum = oldStart;
+      newLineNum = newStart;
+    } else if (currentHunk) {
+      // Skip diff header lines (---, +++, diff, index, etc.)
+      if (line.startsWith('---') || line.startsWith('+++') ||
+          line.startsWith('diff ') || line.startsWith('index ') ||
+          line.startsWith('new file') || line.startsWith('deleted file') ||
+          line.startsWith('similarity') || line.startsWith('rename') ||
+          line === '\\ No newline at end of file') {
+        continue;
+      }
+
+      if (line.startsWith('+')) {
+        currentHunk.lines.push({
+          type: 'added',
+          content: line.substring(1),
+          newLineNumber: newLineNum++
+        });
+      } else if (line.startsWith('-')) {
+        currentHunk.lines.push({
+          type: 'removed',
+          content: line.substring(1),
+          oldLineNumber: oldLineNum++
+        });
+      } else if (line.startsWith(' ') || line === '') {
+        // Context line
+        currentHunk.lines.push({
+          type: 'context',
+          content: line.startsWith(' ') ? line.substring(1) : line,
+          oldLineNumber: oldLineNum++,
+          newLineNumber: newLineNum++
+        });
+      }
+    }
+  }
+
+  // Don't forget the last hunk
+  if (currentHunk) {
+    hunks.push(currentHunk);
+  }
+
+  return hunks;
+}
+
+/**
+ * Get diff content for a specific file
+ */
+function getFileDiffHunks(
+  projectPath: string,
+  baseBranch: string,
+  targetBranch: string,
+  filePath: string
+): DiffHunk[] {
+  try {
+    const diffOutput = execFileSync(getToolPath('git'), [
+      'diff',
+      '-U3', // 3 lines of context
+      `${baseBranch}...${targetBranch}`,
+      '--',
+      filePath
+    ], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large diffs
+    }).trim();
+
+    if (diffOutput) {
+      return parseDiffToHunks(diffOutput);
+    }
+  } catch {
+    // File may be binary or diff failed
+  }
+  return [];
+}
 
 /**
  * Read utility feature settings (for commit message, merge resolver) from settings file
@@ -1501,7 +1672,7 @@ export function registerWorktreeHandlers(
           const mergeProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
             cwd: sourcePath,
             env: {
-              ...process.env,
+              ...filterEssentialEnv(process.env), // Filter to prevent ENAMETOOLONG on Windows
               ...pythonEnv, // Include bundled packages PYTHONPATH
               ...profileEnv, // Include active Claude profile OAuth token
               PYTHONUNBUFFERED: '1',
@@ -1922,7 +2093,7 @@ export function registerWorktreeHandlers(
           const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
           const previewProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
             cwd: sourcePath,
-            env: { ...process.env, ...previewPythonEnv, ...previewProfileEnv, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1', DEBUG: 'true' }
+            env: { ...filterEssentialEnv(process.env), ...previewPythonEnv, ...previewProfileEnv, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1', DEBUG: 'true' }
           });
 
           let stdout = '';
@@ -2269,6 +2440,289 @@ export function registerWorktreeHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to open in terminal'
+        };
+      }
+    }
+  );
+
+  /**
+   * Get merged changes for a completed task
+   * After a task is merged and the worktree deleted, this retrieves the commit history
+   * from the task's branch (auto-claude/{spec-name}) that was merged into the base branch
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_GET_MERGED_CHANGES,
+    async (_, taskId: string): Promise<IPCResult<TaskMergedChanges>> => {
+      try {
+        const { task, project } = findTaskAndProject(taskId);
+        if (!task || !project) {
+          return { success: false, error: 'Task not found' };
+        }
+
+        // Task branch is auto-claude/{spec-name}
+        const taskBranch = `auto-claude/${task.specId}`;
+
+        // Check if branch still exists (it may have been deleted after merge)
+        let branchExists = false;
+        try {
+          execFileSync(getToolPath('git'), ['rev-parse', '--verify', taskBranch], {
+            cwd: project.path,
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe']
+          });
+          branchExists = true;
+        } catch {
+          branchExists = false;
+        }
+
+        // Get the base branch (current branch or main)
+        let baseBranch = 'main';
+        try {
+          baseBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
+            cwd: project.path,
+            encoding: 'utf-8'
+          }).trim();
+        } catch {
+          baseBranch = 'main';
+        }
+
+        // If branch exists, get commits directly from it
+        // If branch was deleted, try to find the merge commit
+        let commits: MergedCommit[] = [];
+        let files: MergedFileChange[] = [];
+        let totalAdditions = 0;
+        let totalDeletions = 0;
+
+        if (branchExists) {
+          // Get commits from the task branch that aren't in base
+          try {
+            const logOutput = execFileSync(getToolPath('git'), [
+              'log',
+              '--format=%H|%h|%s|%an|%ai',
+              `${baseBranch}..${taskBranch}`
+            ], {
+              cwd: project.path,
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'pipe']
+            }).trim();
+
+            if (logOutput) {
+              commits = logOutput.split('\n').map(line => {
+                const [hash, shortHash, message, author, date] = line.split('|');
+                return { hash, shortHash, message, author, date };
+              });
+            }
+          } catch {
+            // No commits found
+          }
+
+          // Get file changes between base and task branch
+          try {
+            const diffOutput = execFileSync(getToolPath('git'), [
+              'diff',
+              '--numstat',
+              `${baseBranch}...${taskBranch}`
+            ], {
+              cwd: project.path,
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'pipe']
+            }).trim();
+
+            if (diffOutput) {
+              files = diffOutput.split('\n').map(line => {
+                const parts = line.split('\t');
+                const additions = parts[0] === '-' ? 0 : parseInt(parts[0], 10) || 0;
+                const deletions = parts[1] === '-' ? 0 : parseInt(parts[1], 10) || 0;
+                const filePath = parts[2] || '';
+
+                totalAdditions += additions;
+                totalDeletions += deletions;
+
+                // Check for renames (format: old => new)
+                const renameMatch = filePath.match(/(.+?)\s*=>\s*(.+)/);
+                if (renameMatch) {
+                  return {
+                    path: renameMatch[2].trim(),
+                    oldPath: renameMatch[1].trim(),
+                    additions,
+                    deletions,
+                    status: 'renamed' as const
+                  };
+                }
+
+                // Determine status based on additions/deletions
+                let status: 'added' | 'modified' | 'deleted' | 'renamed' = 'modified';
+                if (deletions === 0 && additions > 0) {
+                  // Could be added, check if file exists in base
+                  try {
+                    execFileSync(getToolPath('git'), ['cat-file', '-e', `${baseBranch}:${filePath}`], {
+                      cwd: project.path,
+                      stdio: ['pipe', 'pipe', 'pipe']
+                    });
+                    // File exists in base, so it's modified
+                    status = 'modified';
+                  } catch {
+                    // File doesn't exist in base, it's added
+                    status = 'added';
+                  }
+                } else if (additions === 0 && deletions > 0) {
+                  status = 'deleted';
+                }
+
+                return { path: filePath, additions, deletions, status };
+              });
+            }
+          } catch {
+            // No file changes found
+          }
+
+          // Add diff hunks for each file (for showing line-level changes)
+          files = files.map(file => ({
+            ...file,
+            hunks: getFileDiffHunks(project.path, baseBranch, taskBranch, file.path)
+          }));
+
+          return {
+            success: true,
+            data: {
+              found: true,
+              taskBranch,
+              baseBranch,
+              commits,
+              files,
+              totalAdditions,
+              totalDeletions
+            }
+          };
+        } else {
+          // Branch was deleted, try to find merge commit by searching for the spec name
+          let mergeCommit: string | null = null;
+          try {
+            const grepOutput = execFileSync(getToolPath('git'), [
+              'log',
+              '--all',
+              '--grep', task.specId,
+              '--format=%H',
+              '-1'
+            ], {
+              cwd: project.path,
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'pipe']
+            }).trim();
+
+            if (grepOutput) {
+              mergeCommit = grepOutput;
+            }
+          } catch {
+            // No merge commit found
+          }
+
+          if (mergeCommit) {
+            // Get commit info
+            try {
+              const logOutput = execFileSync(getToolPath('git'), [
+                'log',
+                '--format=%H|%h|%s|%an|%ai',
+                '-1',
+                mergeCommit
+              ], {
+                cwd: project.path,
+                encoding: 'utf-8',
+                stdio: ['pipe', 'pipe', 'pipe']
+              }).trim();
+
+              if (logOutput) {
+                const [hash, shortHash, message, author, date] = logOutput.split('|');
+                commits = [{ hash, shortHash, message, author, date }];
+              }
+            } catch {
+              // Ignore
+            }
+
+            // Get files changed in merge commit
+            try {
+              const diffOutput = execFileSync(getToolPath('git'), [
+                'diff',
+                '--numstat',
+                `${mergeCommit}^..${mergeCommit}`
+              ], {
+                cwd: project.path,
+                encoding: 'utf-8',
+                stdio: ['pipe', 'pipe', 'pipe']
+              }).trim();
+
+              if (diffOutput) {
+                files = diffOutput.split('\n').map(line => {
+                  const parts = line.split('\t');
+                  const additions = parts[0] === '-' ? 0 : parseInt(parts[0], 10) || 0;
+                  const deletions = parts[1] === '-' ? 0 : parseInt(parts[1], 10) || 0;
+                  const filePath = parts[2] || '';
+
+                  totalAdditions += additions;
+                  totalDeletions += deletions;
+
+                  // Get diff hunks for merge commit
+                  let hunks: DiffHunk[] = [];
+                  try {
+                    const fileDiffOutput = execFileSync(getToolPath('git'), [
+                      'diff',
+                      '-U3',
+                      `${mergeCommit}^..${mergeCommit}`,
+                      '--',
+                      filePath
+                    ], {
+                      cwd: project.path,
+                      encoding: 'utf-8',
+                      stdio: ['pipe', 'pipe', 'pipe'],
+                      maxBuffer: 10 * 1024 * 1024
+                    }).trim();
+                    if (fileDiffOutput) {
+                      hunks = parseDiffToHunks(fileDiffOutput);
+                    }
+                  } catch {
+                    // Binary file or diff failed
+                  }
+
+                  return { path: filePath, additions, deletions, status: 'modified' as const, hunks };
+                });
+              }
+            } catch {
+              // Ignore
+            }
+
+            return {
+              success: true,
+              data: {
+                found: true,
+                taskBranch,
+                baseBranch,
+                commits,
+                files,
+                totalAdditions,
+                totalDeletions,
+                message: 'Branch was deleted. Showing merge commit info.'
+              }
+            };
+          }
+
+          // No branch and no merge commit found
+          return {
+            success: true,
+            data: {
+              found: false,
+              commits: [],
+              files: [],
+              totalAdditions: 0,
+              totalDeletions: 0,
+              message: 'Branch not found and no merge commit detected. The branch may have been deleted.'
+            }
+          };
+        }
+      } catch (error) {
+        console.error('Failed to get merged changes:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get merged changes'
         };
       }
     }

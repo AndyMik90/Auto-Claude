@@ -40,6 +40,7 @@ import { TaskSubtasks } from './TaskSubtasks';
 import { TaskLogs } from './TaskLogs';
 import { TaskFiles } from './TaskFiles';
 import { TaskReview } from './TaskReview';
+import { TaskMergedChanges } from './TaskMergedChanges';
 import type { Task } from '../../../shared/types';
 
 interface TaskDetailModalProps {
@@ -159,6 +160,94 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
       state.setWorkspaceError(result.data?.message || result.error || 'Failed to discard changes');
     }
     state.setIsDiscarding(false);
+  };
+
+  const handleCreatePR = async () => {
+    if (!state.selectedProject) {
+      state.setWorkspaceError('No project selected');
+      return;
+    }
+
+    if (!state.worktreeStatus) {
+      state.setWorkspaceError('No worktree information available');
+      return;
+    }
+
+    state.setIsCreatingPR(true);
+    state.setWorkspaceError(null);
+
+    // Set up event listeners for PR creation
+    const cleanupProgress = window.electronAPI.onPRCreateProgress((data) => {
+      console.log('PR creation progress:', data);
+      // TODO: Could show progress in UI if desired
+    });
+
+    const cleanupComplete = window.electronAPI.onPRCreateComplete((result) => {
+      console.log('PR created successfully:', result);
+      state.setIsCreatingPR(false);
+      state.setWorkspaceError(null);
+      // Show success message with PR URL
+      state.setStagedSuccess(`Pull request created successfully! PR #${result.number}: ${result.title}`);
+      cleanupProgress();
+      cleanupComplete();
+      cleanupError();
+    });
+
+    const cleanupError = window.electronAPI.onPRCreateError((error) => {
+      console.error('PR creation failed:', error);
+      state.setIsCreatingPR(false);
+      state.setWorkspaceError(error);
+      cleanupProgress();
+      cleanupComplete();
+      cleanupError();
+    });
+
+    try {
+      // Build specDir path from task specId
+      const specDir = `${state.selectedProject.path}/.auto-claude/specs/${task.specId}`;
+
+      // Get branch names from worktree status
+      const baseBranch = state.worktreeStatus.baseBranch || 'main';
+      const headBranch = state.worktreeStatus.branch || `auto-claude/${task.specId}`;
+
+      // Read spec.md to get title and body
+      const specPath = `${specDir}/spec.md`;
+      let title = task.title;
+      let body = task.description || '';
+
+      try {
+        const specResult = await window.electronAPI.readFile(specPath);
+        if (specResult.success && specResult.data) {
+          const specContent = specResult.data;
+          // Extract title from first line (usually "# Title")
+          const titleMatch = specContent.match(/^#\s+(.+)$/m);
+          if (titleMatch) {
+            title = titleMatch[1];
+          }
+          // Use full spec content as body
+          body = specContent;
+        }
+      } catch (err) {
+        console.warn('Could not read spec.md, using task info:', err);
+      }
+
+      // Create the PR (event-based, no await)
+      window.electronAPI.createPR(
+        state.selectedProject.id,
+        specDir,
+        baseBranch,
+        headBranch,
+        title,
+        body,
+        false // draft
+      );
+    } catch (error) {
+      state.setWorkspaceError(error instanceof Error ? error.message : 'Failed to create pull request');
+      state.setIsCreatingPR(false);
+      cleanupProgress();
+      cleanupComplete();
+      cleanupError();
+    }
   };
 
   const handleClose = () => {
@@ -388,6 +477,14 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                       {t('tasks:files.tab')}
                     </TabsTrigger>
                   )}
+                  {task.status === 'done' && (
+                    <TabsTrigger
+                      value="changes"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
+                    >
+                      {t('tasks:mergedChanges.tab')}
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 {/* Overview Tab */}
@@ -410,6 +507,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                             isLoadingWorktree={state.isLoadingWorktree}
                             isMerging={state.isMerging}
                             isDiscarding={state.isDiscarding}
+                            isCreatingPR={state.isCreatingPR}
                             showDiscardDialog={state.showDiscardDialog}
                             showDiffDialog={state.showDiffDialog}
                             workspaceError={state.workspaceError}
@@ -424,6 +522,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                             onReject={handleReject}
                             onMerge={handleMerge}
                             onDiscard={handleDiscard}
+                            onCreatePR={handleCreatePR}
                             onShowDiscardDialog={state.setShowDiscardDialog}
                             onShowDiffDialog={state.setShowDiffDialog}
                             onStageOnlyChange={state.setStageOnly}
@@ -463,6 +562,17 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                 {showFilesTab && (
                   <TabsContent value="files" className="flex-1 min-h-0 overflow-hidden mt-0">
                     <TaskFiles task={task} />
+                  </TabsContent>
+                )}
+
+                {/* Changes Tab - for completed tasks */}
+                {task.status === 'done' && (
+                  <TabsContent value="changes" className="flex-1 min-h-0 overflow-hidden mt-0">
+                    <ScrollArea className="h-full">
+                      <div className="p-5">
+                        <TaskMergedChanges task={task} />
+                      </div>
+                    </ScrollArea>
                   </TabsContent>
                 )}
               </Tabs>

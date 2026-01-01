@@ -107,6 +107,40 @@ class GHClient:
         if enable_rate_limiting:
             self._rate_limiter = RateLimiter.get_instance()
 
+        # Cache for owner/repo
+        self._owner_repo_cache: tuple[str, str] | None = None
+
+    async def _get_owner_repo(self) -> tuple[str, str]:
+        """
+        Get the owner and repo name for GraphQL queries.
+
+        Returns:
+            Tuple of (owner, repo_name)
+        """
+        # Return cached value if available
+        if self._owner_repo_cache:
+            return self._owner_repo_cache
+
+        # If repo was provided in constructor, parse it
+        if self.repo and "/" in self.repo:
+            parts = self.repo.split("/", 1)
+            self._owner_repo_cache = (parts[0], parts[1])
+            return self._owner_repo_cache
+
+        # Otherwise, query gh CLI for repo info
+        try:
+            result = await self.run(["repo", "view", "--json", "owner,name"])
+            data = json.loads(result.stdout)
+            owner = data.get("owner", {}).get("login", "")
+            name = data.get("name", "")
+            if owner and name:
+                self._owner_repo_cache = (owner, name)
+                return self._owner_repo_cache
+        except (GHCommandError, json.JSONDecodeError) as e:
+            logger.warning(f"Failed to get owner/repo from gh CLI: {e}")
+
+        return ("", "")
+
     async def run(
         self,
         args: list[str],
@@ -226,6 +260,21 @@ class GHClient:
                             self._rate_limiter.record_github_error()
                         raise RateLimitExceeded(
                             f"GitHub API rate limit (HTTP 403/429): {stderr_str}"
+                        )
+
+                    # Check for gateway timeout (504) - retry with backoff
+                    if "504" in stderr_str or "couldn't respond" in error_lower:
+                        if attempt < self.max_retries:
+                            backoff_delay = 2 ** attempt  # 2s, 4s, 8s
+                            logger.warning(
+                                f"GitHub API timeout (HTTP 504), retrying in {backoff_delay}s... "
+                                f"(attempt {attempt}/{self.max_retries})"
+                            )
+                            await asyncio.sleep(backoff_delay)
+                            continue
+                        # Final attempt failed
+                        raise GHCommandError(
+                            f"GitHub API timeout after {self.max_retries} retries: {stderr_str}"
                         )
 
                     if raise_on_error:
@@ -435,14 +484,16 @@ class GHClient:
         state: str = "open",
         limit: int = 100,
         json_fields: list[str] | None = None,
+        batch_size: int = 20,
     ) -> list[dict[str, Any]]:
         """
-        List issues.
+        List issues with pagination to avoid API timeouts.
 
         Args:
             state: Issue state (open, closed, all)
             limit: Maximum number of issues to return
             json_fields: Fields to include in JSON output
+            batch_size: Number of issues to fetch per request (smaller = faster)
 
         Returns:
             List of issue data dictionaries
@@ -459,19 +510,195 @@ class GHClient:
                 "comments",
             ]
 
-        args = [
-            "issue",
-            "list",
-            "--state",
-            state,
-            "--limit",
-            str(limit),
-            "--json",
-            ",".join(json_fields),
-        ]
+        # For small requests, use the simple non-paginated approach
+        if limit <= batch_size:
+            args = [
+                "issue",
+                "list",
+                "--state",
+                state,
+                "--limit",
+                str(limit),
+                "--json",
+                ",".join(json_fields),
+            ]
+            result = await self.run(args)
+            return json.loads(result.stdout)
 
-        result = await self.run(args)
-        return json.loads(result.stdout)
+        # For larger requests, use GraphQL pagination to avoid timeouts
+        return await self._issue_list_paginated(state, limit, json_fields, batch_size)
+
+    async def _issue_list_paginated(
+        self,
+        state: str,
+        limit: int,
+        json_fields: list[str],
+        batch_size: int,
+    ) -> list[dict[str, Any]]:
+        """
+        Fetch issues using GraphQL pagination to avoid API timeouts.
+
+        This uses the GitHub GraphQL API with cursor-based pagination,
+        fetching issues in smaller batches to prevent 504 timeout errors.
+        """
+        all_issues: list[dict[str, Any]] = []
+        cursor: str | None = None
+
+        # Get owner and repo name
+        owner, repo_name = await self._get_owner_repo()
+        if not owner or not repo_name:
+            # Fall back to simple list if we can't determine owner/repo
+            logger.warning("Could not determine owner/repo, falling back to simple list")
+            args = [
+                "issue",
+                "list",
+                "--state",
+                state,
+                "--limit",
+                str(limit),
+                "--json",
+                ",".join(json_fields),
+            ]
+            result = await self.run(args)
+            return json.loads(result.stdout)
+
+        # Map state to GraphQL format
+        state_filter = state.upper() if state != "all" else None
+
+        # Build field selection for GraphQL
+        # Map json_fields to GraphQL fields
+        graphql_fields = self._build_graphql_issue_fields(json_fields)
+
+        while len(all_issues) < limit:
+            # Calculate how many to fetch in this batch
+            remaining = limit - len(all_issues)
+            fetch_count = min(batch_size, remaining)
+
+            # Build GraphQL query
+            after_clause = f', after: "{cursor}"' if cursor else ""
+            state_clause = f', states: [{state_filter}]' if state_filter else ""
+
+            query = f'''
+            query {{
+                repository(owner: "{owner}", name: "{repo_name}") {{
+                    issues(first: {fetch_count}{after_clause}{state_clause}, orderBy: {{field: CREATED_AT, direction: DESC}}) {{
+                        pageInfo {{
+                            hasNextPage
+                            endCursor
+                        }}
+                        nodes {{
+                            {graphql_fields}
+                        }}
+                    }}
+                }}
+            }}
+            '''
+
+            try:
+                args = ["api", "graphql", "-f", f"query={query}"]
+                result = await self.run(args)
+                data = json.loads(result.stdout)
+
+                issues_data = data.get("data", {}).get("repository", {}).get("issues", {})
+                nodes = issues_data.get("nodes", [])
+                page_info = issues_data.get("pageInfo", {})
+
+                if not nodes:
+                    break
+
+                # Transform GraphQL response to match CLI output format
+                for node in nodes:
+                    issue = self._transform_graphql_issue(node)
+                    all_issues.append(issue)
+
+                # Check if there are more pages
+                if not page_info.get("hasNextPage", False):
+                    break
+
+                cursor = page_info.get("endCursor")
+                if not cursor:
+                    break
+
+                # Log progress for debugging
+                logger.debug(f"Fetched {len(all_issues)}/{limit} issues...")
+
+            except GHCommandError as e:
+                # If GraphQL fails, fall back to simple list (might timeout but worth trying)
+                logger.warning(f"GraphQL pagination failed, falling back to simple list: {e}")
+                args = [
+                    "issue",
+                    "list",
+                    "--state",
+                    state,
+                    "--limit",
+                    str(limit),
+                    "--json",
+                    ",".join(json_fields),
+                ]
+                result = await self.run(args)
+                return json.loads(result.stdout)
+
+        return all_issues
+
+    def _build_graphql_issue_fields(self, json_fields: list[str]) -> str:
+        """Build GraphQL field selection from json_fields list."""
+        field_mapping = {
+            "number": "number",
+            "title": "title",
+            "body": "body",
+            "state": "state",
+            "createdAt": "createdAt",
+            "updatedAt": "updatedAt",
+            "author": "author { login }",
+            "labels": "labels(first: 20) { nodes { name } }",
+            "comments": "comments(first: 50) { nodes { body author { login } createdAt } }",
+            "assignees": "assignees(first: 10) { nodes { login } }",
+            "milestone": "milestone { title }",
+        }
+
+        fields = []
+        for field in json_fields:
+            if field in field_mapping:
+                fields.append(field_mapping[field])
+
+        return "\n".join(fields)
+
+    def _transform_graphql_issue(self, node: dict) -> dict:
+        """Transform GraphQL issue response to match CLI output format."""
+        issue: dict[str, Any] = {}
+
+        # Direct mappings
+        for key in ["number", "title", "body", "state", "createdAt", "updatedAt"]:
+            if key in node:
+                issue[key] = node[key]
+
+        # Author
+        if "author" in node and node["author"]:
+            issue["author"] = {"login": node["author"].get("login", "")}
+
+        # Labels
+        if "labels" in node and node["labels"]:
+            issue["labels"] = [
+                {"name": label.get("name", "")}
+                for label in node["labels"].get("nodes", [])
+            ]
+
+        # Comments
+        if "comments" in node and node["comments"]:
+            issue["comments"] = node["comments"].get("nodes", [])
+
+        # Assignees
+        if "assignees" in node and node["assignees"]:
+            issue["assignees"] = [
+                {"login": a.get("login", "")}
+                for a in node["assignees"].get("nodes", [])
+            ]
+
+        # Milestone
+        if "milestone" in node and node["milestone"]:
+            issue["milestone"] = {"title": node["milestone"].get("title", "")}
+
+        return issue
 
     async def issue_get(
         self, issue_number: int, json_fields: list[str] | None = None
@@ -607,6 +834,60 @@ class GHClient:
         args = self._add_repo_flag(args)
 
         await self.run(args)
+
+    async def pr_create(
+        self,
+        base: str,
+        head: str,
+        title: str,
+        body: str,
+        draft: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Create a new pull request.
+
+        Args:
+            base: Base branch (e.g., "main", "master")
+            head: Head branch (e.g., "feature/my-feature")
+            title: PR title
+            body: PR description
+            draft: Whether to create as draft PR (default: False)
+
+        Returns:
+            Dict containing PR data:
+            {
+                "number": int,
+                "url": str,
+                "title": str,
+                "state": str,
+                "html_url": str
+            }
+
+        Raises:
+            GHCommandError: If PR creation fails
+        """
+        args = [
+            "pr",
+            "create",
+            "--base",
+            base,
+            "--head",
+            head,
+            "--title",
+            title,
+            "--body",
+            body,
+        ]
+
+        if draft:
+            args.append("--draft")
+
+        # Get JSON output for PR data
+        args.extend(["--json", "number,url,title,state"])
+        args = self._add_repo_flag(args)
+
+        result = await self.run(args)
+        return json.loads(result.stdout)
 
     async def pr_comment(self, pr_number: int, body: str) -> None:
         """

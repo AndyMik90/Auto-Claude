@@ -14,3 +14,4 @@ export { PRList } from './PRList';
 export { PRDetail } from './PRDetail';
 export { PRFilterBar } from './PRFilterBar';
 export { ReviewFindings } from './ReviewFindings';
+export { PRFilesViewer } from './PRFilesViewer';

@@ -176,14 +176,14 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
   return (
     <Card
       className={cn(
-        'card-surface task-card-enhanced cursor-pointer',
+        'card-surface task-card-enhanced cursor-pointer w-full min-w-0 max-w-full overflow-hidden box-border',
         isRunning && !isStuck && 'ring-2 ring-primary border-primary task-running-pulse',
         isStuck && 'ring-2 ring-warning border-warning task-stuck-pulse',
         isArchived && 'opacity-60 hover:opacity-80'
       )}
       onClick={onClick}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-4 overflow-hidden">
         {/* Header - improved visual hierarchy */}
         <div className="flex items-start justify-between gap-3">
           <h3
@@ -259,7 +259,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
         {/* Description - sanitized to handle markdown content */}
         {task.description && (
-          <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+          <p className="mt-2 text-xs text-muted-foreground line-clamp-2 break-words overflow-hidden">
             {sanitizeMarkdownForDisplay(task.description, 150)}
           </p>
         )}

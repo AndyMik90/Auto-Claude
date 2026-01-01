@@ -448,6 +448,64 @@ export interface TaskRecoveryOptions {
   autoRestart?: boolean;
 }
 
+/**
+ * Information about a single commit in merged changes
+ */
+export interface MergedCommit {
+  hash: string;
+  shortHash: string;
+  message: string;
+  author: string;
+  date: string;
+}
+
+/**
+ * A single line in a diff
+ */
+export interface DiffLine {
+  type: 'added' | 'removed' | 'context';
+  content: string;
+  oldLineNumber?: number;
+  newLineNumber?: number;
+}
+
+/**
+ * A hunk/section of a diff
+ */
+export interface DiffHunk {
+  oldStart: number;
+  oldCount: number;
+  newStart: number;
+  newCount: number;
+  lines: DiffLine[];
+}
+
+/**
+ * Information about a file changed in merged changes
+ */
+export interface MergedFileChange {
+  path: string;
+  additions: number;
+  deletions: number;
+  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  oldPath?: string; // For renamed files
+  hunks?: DiffHunk[]; // Parsed diff hunks for displaying line changes
+}
+
+/**
+ * Result of getting merged changes for a completed task
+ */
+export interface TaskMergedChanges {
+  found: boolean;
+  taskBranch?: string;
+  baseBranch?: string;
+  commits: MergedCommit[];
+  files: MergedFileChange[];
+  totalAdditions: number;
+  totalDeletions: number;
+  message?: string; // Error or info message
+}
+
 export interface TaskProgressUpdate {
   taskId: string;
   plan: ImplementationPlan;

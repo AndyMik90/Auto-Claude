@@ -3,5 +3,12 @@
     "openTerminal": "Ouvrir le terminal",
     "openInbuilt": "Ouvrir dans le terminal intégré",
     "openExternal": "Ouvrir dans le terminal externe"
+  },
+  "actions": {
+    "createPR": "Créer PR",
+    "creatingPR": "Création de PR...",
+    "mergeToMain": "Fusionner vers Main",
+    "merging": "Fusion en cours...",
+    "discardBuild": "Annuler la construction"
   }
 }

@@ -1,0 +1,68 @@
+{
+  "tabs": {
+    "ipc": "Testeur IPC",
+    "runner": "Backend Runner",
+    "logs": "Journaux",
+    "config": "Configuration"
+  },
+  "ipc": {
+    "title": "Test de Canal IPC",
+    "description": "Tester la communication IPC entre les processus principal et de rendu",
+    "channelLabel": "Canal IPC",
+    "channelPlaceholder": "Sélectionner un canal...",
+    "paramsLabel": "Paramètres (JSON)",
+    "paramsPlaceholder": "{\"projectId\": \"...\", ...}",
+    "sendButton": "Envoyer la Requête IPC",
+    "clearButton": "Effacer les Résultats",
+    "responseTitle": "Réponse",
+    "noResponse": "Aucune réponse pour le moment. Envoyez une requête pour voir les résultats.",
+    "error": "Erreur",
+    "success": "Succès"
+  },
+  "runner": {
+    "title": "Test du Backend Runner",
+    "description": "Exécuter des commandes GitHub et voir la sortie",
+    "commandLabel": "Commande",
+    "commandPlaceholder": "gh pr list",
+    "argsLabel": "Arguments (JSON)",
+    "argsPlaceholder": "{\"limit\": 10}",
+    "executeButton": "Exécuter la Commande",
+    "clearButton": "Effacer la Sortie",
+    "outputTitle": "Sortie",
+    "noOutput": "Aucune sortie pour le moment. Exécutez une commande pour voir les résultats.",
+    "stdoutLabel": "stdout",
+    "stderrLabel": "stderr",
+    "exitCodeLabel": "Code de Sortie"
+  },
+  "logs": {
+    "title": "Visualiseur de Journaux",
+    "description": "Flux de journaux en temps réel depuis le backend, IPC et frontend",
+    "sourceLabel": "Source de Journal",
+    "sources": {
+      "backend": "Journaux Backend",
+      "ipc": "Communication IPC",
+      "frontend": "Journaux Frontend"
+    },
+    "clearButton": "Effacer les Journaux",
+    "noLogs": "Aucun journal disponible pour cette source.",
+    "timestampLabel": "Horodatage",
+    "levelLabel": "Niveau",
+    "messageLabel": "Message"
+  },
+  "config": {
+    "title": "Inspecteur de Configuration",
+    "description": "Voir les variables d'environnement et la configuration de l'application",
+    "envTitle": "Variables d'Environnement",
+    "settingsTitle": "Paramètres de l'Application",
+    "projectTitle": "Configuration du Projet",
+    "refreshButton": "Actualiser",
+    "noData": "Aucune donnée de configuration disponible."
+  },
+  "common": {
+    "loading": "Chargement...",
+    "copied": "Copié dans le presse-papier",
+    "copyButton": "Copier",
+    "expandButton": "Développer",
+    "collapseButton": "Réduire"
+  }
+}

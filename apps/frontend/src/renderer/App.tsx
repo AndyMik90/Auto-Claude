@@ -42,6 +42,7 @@ import { GitLabMergeRequests } from './components/gitlab-merge-requests';
 import { Changelog } from './components/Changelog';
 import { Worktrees } from './components/Worktrees';
 import { AgentTools } from './components/AgentTools';
+import { DebugPage } from './components/debug/DebugPage';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { RateLimitModal } from './components/RateLimitModal';
 import { SDKRateLimitModal } from './components/SDKRateLimitModal';
@@ -280,6 +281,35 @@ export function App() {
     return () => {
       cleanupDownloaded();
     };
+  }, []);
+
+  // Listen for Claude profile login terminal (OAuth authentication in hidden terminal)
+  // When a user clicks "Authenticate" in settings, a terminal is created in the main process
+  // This listener receives that terminal info and adds it to the UI so the user can see the OAuth flow
+  useEffect(() => {
+    const cleanup = window.electronAPI.onClaudeProfileLoginTerminal((info) => {
+      console.log('[App] Claude profile login terminal created:', info);
+
+      // Create a terminal session for the login terminal
+      const session = {
+        id: info.terminalId,
+        title: `Claude Login - ${info.profileName}`,
+        cwd: info.cwd,
+        projectPath: '', // Global terminal, not project-specific
+        isClaudeMode: false, // This is a setup-token shell, not Claude mode
+        outputBuffer: '',
+        createdAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString()
+      };
+
+      // Add the terminal to the store (will attach to existing PTY in main process)
+      useTerminalStore.getState().addRestoredTerminal(session);
+
+      // Navigate to terminals view so user can see the OAuth login
+      setActiveView('terminals');
+    });
+
+    return cleanup;
   }, []);
 
   // Reset init success flag when selected project changes
@@ -779,6 +809,7 @@ export function App() {
                   <Worktrees projectId={activeProjectId || selectedProjectId!} />
                 )}
                 {activeView === 'agent-tools' && <AgentTools />}
+                {activeView === 'debug' && <DebugPage />}
               </>
             ) : (
               <WelcomeScreen

@@ -41,6 +41,7 @@ export const IPC_CHANNELS = {
   TASK_LIST_WORKTREES: 'task:listWorktrees',
   TASK_ARCHIVE: 'task:archive',
   TASK_UNARCHIVE: 'task:unarchive',
+  TASK_GET_MERGED_CHANGES: 'task:getMergedChanges',  // Get commit history for completed tasks
 
   // Task events (main -> renderer)
   TASK_PROGRESS: 'task:progress',
@@ -81,6 +82,7 @@ export const IPC_CHANNELS = {
   TERMINAL_CLAUDE_SESSION: 'terminal:claudeSession',  // Claude session ID captured
   TERMINAL_RATE_LIMIT: 'terminal:rateLimit',  // Claude Code rate limit detected
   TERMINAL_OAUTH_TOKEN: 'terminal:oauthToken',  // OAuth token captured from setup-token output
+  CLAUDE_PROFILE_LOGIN_TERMINAL: 'claude:profileLoginTerminal',  // Terminal created for profile OAuth login
 
   // Claude profile management (multi-account support)
   CLAUDE_PROFILES_GET: 'claude:profilesGet',
@@ -353,6 +355,14 @@ export const IPC_CHANNELS = {
 
   // GitHub PR Logs (for viewing AI review logs)
   GITHUB_PR_GET_LOGS: 'github:pr:getLogs',
+
+  // GitHub PR Create operation
+  GITHUB_PR_CREATE: 'github:pr:create',
+
+  // GitHub PR Create events (main -> renderer)
+  GITHUB_PR_CREATE_PROGRESS: 'github:pr:createProgress',
+  GITHUB_PR_CREATE_COMPLETE: 'github:pr:createComplete',
+  GITHUB_PR_CREATE_ERROR: 'github:pr:createError',
 
   // GitHub Issue Triage operations
   GITHUB_TRIAGE_RUN: 'github:triage:run',

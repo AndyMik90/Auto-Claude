@@ -40,7 +40,8 @@ import type {
   TaskRecoveryOptions,
   TaskMetadata,
   TaskLogs,
-  TaskLogStreamChunk
+  TaskLogStreamChunk,
+  TaskMergedChanges
 } from './task';
 import type {
   TerminalCreateOptions,
@@ -164,10 +165,20 @@ export interface ElectronAPI {
   mergeWorktree: (taskId: string, options?: { noCommit?: boolean }) => Promise<IPCResult<WorktreeMergeResult>>;
   mergeWorktreePreview: (taskId: string) => Promise<IPCResult<WorktreeMergeResult>>;
   discardWorktree: (taskId: string) => Promise<IPCResult<WorktreeDiscardResult>>;
+
+  // GitHub PR Operations (event-based)
+  createPR: (projectId: string, specDir: string, base: string, head: string, title: string, body: string, draft?: boolean) => void;
+  onPRCreateProgress: (callback: (data: { progress: number; message: string }) => void) => () => void;
+  onPRCreateComplete: (callback: (result: { number: number; url: string; title: string; state: string }) => void) => () => void;
+  onPRCreateError: (callback: (error: string) => void) => () => void;
+
   listWorktrees: (projectId: string) => Promise<IPCResult<WorktreeListResult>>;
   worktreeOpenInIDE: (worktreePath: string, ide: SupportedIDE, customPath?: string) => Promise<IPCResult<{ opened: boolean }>>;
   worktreeOpenInTerminal: (worktreePath: string, terminal: SupportedTerminal, customPath?: string) => Promise<IPCResult<{ opened: boolean }>>;
   worktreeDetectTools: () => Promise<IPCResult<{ ides: Array<{ id: string; name: string; path: string; installed: boolean }>; terminals: Array<{ id: string; name: string; path: string; installed: boolean }> }>>;
+
+  // Task merged changes (for viewing completed task history)
+  getTaskMergedChanges: (taskId: string) => Promise<IPCResult<TaskMergedChanges>>;
 
   // Task archive operations
   archiveTasks: (projectId: string, taskIds: string[], version?: string) => Promise<IPCResult<boolean>>;
@@ -213,6 +224,13 @@ export interface ElectronAPI {
     success: boolean;
     message?: string;
     detectedAt: string
+  }) => void) => () => void;
+  /** Listen for when a Claude profile login terminal is created (for showing OAuth flow to user) */
+  onClaudeProfileLoginTerminal: (callback: (info: {
+    terminalId: string;
+    profileId: string;
+    profileName: string;
+    cwd: string
   }) => void) => () => void;
 
   // Claude profile management (multi-account support)
