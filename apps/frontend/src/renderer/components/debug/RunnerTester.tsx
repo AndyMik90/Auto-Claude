@@ -29,11 +29,34 @@ export function RunnerTester() {
       // Parse arguments
       const parsedArgs = JSON.parse(args);
 
-      // Simulate command execution (will be replaced with actual runner when handlers are ready)
+      // NOTE: Runner system not yet implemented on backend
+      // The runner system is designed for executing project-specific commands
+      // (e.g., gh pr list, git status, npm run) in a controlled environment.
+      //
+      // For now, use the Terminal feature for command execution.
+      // This tester will be activated once backend IPC handlers are implemented.
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       setOutput({
-        stdout: `Simulated output for command: ${command}\nArguments: ${JSON.stringify(parsedArgs, null, 2)}\n\nRunner handlers not yet implemented.`,
+        stdout: [
+          `Command: ${command}`,
+          `Arguments: ${JSON.stringify(parsedArgs, null, 2)}`,
+          '',
+          '⚠️ Runner System Status:',
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+          'The runner system is not yet implemented on the backend.',
+          '',
+          'The runner is designed for executing project-specific',
+          'commands (gh, git, npm, etc.) in a sandboxed environment',
+          'with proper security controls and output capture.',
+          '',
+          'For now, please use the Terminal feature in the sidebar',
+          'for command execution.',
+          '',
+          'This tester will be enabled once backend IPC handlers',
+          'for the runner system are implemented.',
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        ].join('\n'),
         stderr: '',
         exitCode: 0,
       });
