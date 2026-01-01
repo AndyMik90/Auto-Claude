@@ -26,6 +26,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 from services.morph_client import (  # type: ignore[reportImplicitRelativeImport]
+    MAX_CONTENT_SIZE_BYTES,
     ApplyResult,
     MorphAPIError,
     MorphClient,
@@ -33,6 +34,7 @@ from services.morph_client import (  # type: ignore[reportImplicitRelativeImport
     MorphConnectionError,
     MorphErrorCode,
     MorphTimeoutError,
+    UsageMetrics,
     ValidationResult,
     create_morph_client,
     get_morph_api_key,
@@ -200,47 +202,76 @@ class TestMorphConfig:
 class TestAPIKeyValidation:
     """Tests for API key validation functionality."""
 
-    def test_validate_api_key_success(self, test_config, mock_apply_response):
-        """Verify successful API key validation.
-
-        Note: Morph doesn't have a dedicated /auth/validate endpoint, so
-        validation is performed by attempting a minimal apply operation.
-        """
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.return_value = mock_apply_response
+    def test_validate_api_key_success_via_head(self, test_config):
+        """Verify successful API key validation via HEAD request optimization."""
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request succeeds - no need to call apply()
+            mock_head.return_value = True
 
             client = MorphClient(test_config)
             result = client.validate_api_key()
 
             assert result.valid is True
-            # Morph doesn't provide account info in apply responses
-            assert result.account_id == ""
-            assert result.plan == ""
-            assert result.rate_limit_rpm == 0
             assert "apply" in result.permissions
-
-            # Validation uses apply() which calls /chat/completions
-            mock_request.assert_called_once_with(
-                "POST",
-                "/chat/completions",
-                json_data=mock_request.call_args[1]["json_data"],
-            )
+            mock_head.assert_called_once()
             client.close()
 
-    def test_validate_api_key_invalid_401(self, test_config):
-        """Verify validation returns invalid for 401 errors."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = MorphAPIError(
-                code=MorphErrorCode.INVALID_API_KEY,
-                message="Invalid API key",
-                status_code=401,
-            )
+    def test_validate_api_key_success_via_apply(self, test_config, mock_apply_response):
+        """Verify successful API key validation via apply fallback.
+
+        Note: Morph doesn't have a dedicated /auth/validate endpoint, so
+        validation is performed by attempting a minimal apply operation
+        when HEAD request is inconclusive.
+        """
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            with patch.object(MorphClient, "_make_request") as mock_request:
+                # HEAD request inconclusive, fall back to apply
+                mock_head.return_value = None
+                mock_request.return_value = mock_apply_response
+
+                client = MorphClient(test_config)
+                result = client.validate_api_key()
+
+                assert result.valid is True
+                # Morph doesn't provide account info in apply responses
+                assert result.account_id == ""
+                assert result.plan == ""
+                assert result.rate_limit_rpm == 0
+                assert "apply" in result.permissions
+
+                # Validation uses apply() which calls /chat/completions
+                mock_request.assert_called_once()
+                client.close()
+
+    def test_validate_api_key_invalid_via_head(self, test_config):
+        """Verify validation returns invalid when HEAD request detects invalid key."""
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request returns False - invalid key
+            mock_head.return_value = False
 
             client = MorphClient(test_config)
             result = client.validate_api_key()
 
             assert result.valid is False
             client.close()
+
+    def test_validate_api_key_invalid_401(self, test_config):
+        """Verify validation returns invalid for 401 errors from apply fallback."""
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            with patch.object(MorphClient, "_make_request") as mock_request:
+                # HEAD inconclusive, apply fails with 401
+                mock_head.return_value = None
+                mock_request.side_effect = MorphAPIError(
+                    code=MorphErrorCode.INVALID_API_KEY,
+                    message="Invalid API key",
+                    status_code=401,
+                )
+
+                client = MorphClient(test_config)
+                result = client.validate_api_key()
+
+                assert result.valid is False
+                client.close()
 
     def test_validate_api_key_no_key_configured(self):
         """Verify validation returns invalid when no API key configured."""
@@ -253,19 +284,22 @@ class TestAPIKeyValidation:
 
     def test_validate_api_key_raises_on_server_error(self, test_config):
         """Verify validation raises on non-401 errors."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = MorphAPIError(
-                code=MorphErrorCode.SERVICE_UNAVAILABLE,
-                message="Service unavailable",
-                status_code=503,
-            )
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            with patch.object(MorphClient, "_make_request") as mock_request:
+                # HEAD inconclusive, apply fails with 503
+                mock_head.return_value = None
+                mock_request.side_effect = MorphAPIError(
+                    code=MorphErrorCode.SERVICE_UNAVAILABLE,
+                    message="Service unavailable",
+                    status_code=503,
+                )
 
-            client = MorphClient(test_config)
-            with pytest.raises(MorphAPIError) as exc_info:
-                client.validate_api_key()
+                client = MorphClient(test_config)
+                with pytest.raises(MorphAPIError) as exc_info:
+                    client.validate_api_key()
 
-            assert exc_info.value.status_code == 503
-            client.close()
+                assert exc_info.value.status_code == 503
+                client.close()
 
 
 # =============================================================================
@@ -281,32 +315,24 @@ class TestHealthChecks:
     These tests verify that check_health correctly interprets validation results.
     """
 
-    def test_check_health_healthy(self, test_config, mock_health_response):
+    def test_check_health_healthy(self, test_config):
         """Verify health check returns True when API key validation succeeds."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            # Health check uses validate_api_key() which calls apply()
-            mock_request.return_value = mock_health_response
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request succeeds
+            mock_head.return_value = True
 
             client = MorphClient(test_config)
             is_healthy = client.check_health(use_cache=False)
 
             assert is_healthy is True
-            # Verify it called /chat/completions (via validate_api_key -> apply)
-            mock_request.assert_called_once()
-            call_args = mock_request.call_args
-            assert call_args[0][0] == "POST"
-            assert call_args[0][1] == "/chat/completions"
+            mock_head.assert_called_once()
             client.close()
 
-    def test_check_health_unhealthy_on_401(self, test_config):
-        """Verify health check returns False when API key is invalid (401)."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            # Simulate invalid API key response
-            mock_request.side_effect = MorphAPIError(
-                code=MorphErrorCode.INVALID_API_KEY,
-                message="Invalid API key",
-                status_code=401,
-            )
+    def test_check_health_unhealthy_on_invalid_key(self, test_config):
+        """Verify health check returns False when API key is invalid."""
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request returns False - invalid key
+            mock_head.return_value = False
 
             client = MorphClient(test_config)
             is_healthy = client.check_health(use_cache=False)
@@ -316,46 +342,53 @@ class TestHealthChecks:
 
     def test_check_health_connection_error(self, test_config):
         """Verify health check returns False on connection error."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = MorphConnectionError("Connection failed")
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            with patch.object(MorphClient, "_make_request") as mock_request:
+                # HEAD inconclusive, apply fails with connection error
+                mock_head.return_value = None
+                mock_request.side_effect = MorphConnectionError("Connection failed")
 
-            client = MorphClient(test_config)
-            is_healthy = client.check_health(use_cache=False)
+                client = MorphClient(test_config)
+                is_healthy = client.check_health(use_cache=False)
 
-            assert is_healthy is False
-            client.close()
+                assert is_healthy is False
+                client.close()
 
     def test_check_health_timeout_error(self, test_config):
         """Verify health check returns False on timeout."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = MorphTimeoutError("Request timed out")
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            with patch.object(MorphClient, "_make_request") as mock_request:
+                # HEAD inconclusive, apply times out
+                mock_head.return_value = None
+                mock_request.side_effect = MorphTimeoutError("Request timed out")
 
-            client = MorphClient(test_config)
-            is_healthy = client.check_health(use_cache=False)
+                client = MorphClient(test_config)
+                is_healthy = client.check_health(use_cache=False)
 
-            assert is_healthy is False
-            client.close()
+                assert is_healthy is False
+                client.close()
 
-    def test_check_health_caching(self, test_config, mock_health_response):
+    def test_check_health_caching(self, test_config):
         """Verify health check caches result for TTL duration."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.return_value = mock_health_response
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request succeeds
+            mock_head.return_value = True
 
             client = MorphClient(test_config)
 
-            # First call should hit the API
+            # First call should check auth
             result1 = client.check_health(use_cache=True)
             assert result1 is True
-            assert mock_request.call_count == 1
+            assert mock_head.call_count == 1
 
             # Second call should use cache
             result2 = client.check_health(use_cache=True)
             assert result2 is True
-            assert mock_request.call_count == 1  # Still 1, cached result used
+            assert mock_head.call_count == 1  # Still 1, cached result used
 
             client.close()
 
-    def test_check_health_cache_expiry(self, test_config, mock_health_response):
+    def test_check_health_cache_expiry(self, test_config):
         """Verify health check cache expires after TTL."""
         # Set short TTL for testing
         config = MorphConfig(
@@ -363,42 +396,44 @@ class TestHealthChecks:
             health_cache_ttl=1,  # 1 second TTL
         )
 
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.return_value = mock_health_response
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request succeeds
+            mock_head.return_value = True
 
             client = MorphClient(config)
 
             # First call
             result1 = client.check_health(use_cache=True)
             assert result1 is True
-            assert mock_request.call_count == 1
+            assert mock_head.call_count == 1
 
             # Wait for cache to expire
             time.sleep(1.1)
 
-            # Second call should hit the API again
+            # Second call should check auth again
             result2 = client.check_health(use_cache=True)
             assert result2 is True
-            assert mock_request.call_count == 2  # Cache expired, new request
+            assert mock_head.call_count == 2  # Cache expired, new check
 
             client.close()
 
-    def test_check_health_bypass_cache(self, test_config, mock_health_response):
+    def test_check_health_bypass_cache(self, test_config):
         """Verify use_cache=False bypasses cache."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.return_value = mock_health_response
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request succeeds
+            mock_head.return_value = True
 
             client = MorphClient(test_config)
 
             # First call with caching
             result1 = client.check_health(use_cache=True)
             assert result1 is True
-            assert mock_request.call_count == 1
+            assert mock_head.call_count == 1
 
             # Second call bypassing cache
             result2 = client.check_health(use_cache=False)
             assert result2 is True
-            assert mock_request.call_count == 2  # Cache bypassed
+            assert mock_head.call_count == 2  # Cache bypassed
 
             client.close()
 
@@ -871,7 +906,45 @@ class TestHelperFunctions:
 
 
 class TestDataClasses:
-    """Tests for ValidationResult data class."""
+    """Tests for ValidationResult and UsageMetrics data classes."""
+
+    def test_usage_metrics_from_response(self):
+        """Verify UsageMetrics.from_response parses API response correctly."""
+        response_data = {
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 50,
+                "total_tokens": 150,
+            }
+        }
+
+        metrics = UsageMetrics.from_response(response_data)
+        assert metrics.prompt_tokens == 100
+        assert metrics.completion_tokens == 50
+        assert metrics.total_tokens == 150
+
+    def test_usage_metrics_from_response_missing_usage(self):
+        """Verify UsageMetrics handles missing usage field with defaults."""
+        response_data = {}
+
+        metrics = UsageMetrics.from_response(response_data)
+        assert metrics.prompt_tokens == 0
+        assert metrics.completion_tokens == 0
+        assert metrics.total_tokens == 0
+
+    def test_usage_metrics_from_response_partial_data(self):
+        """Verify UsageMetrics handles partial usage data."""
+        response_data = {
+            "usage": {
+                "prompt_tokens": 100,
+                # completion_tokens and total_tokens missing
+            }
+        }
+
+        metrics = UsageMetrics.from_response(response_data)
+        assert metrics.prompt_tokens == 100
+        assert metrics.completion_tokens == 0
+        assert metrics.total_tokens == 0
 
     def test_validation_result_from_response(self):
         """Verify ValidationResult.from_response parses API response correctly."""
@@ -913,15 +986,14 @@ class TestIsAvailable:
     """Tests for MorphClient.is_available() method.
 
     Note: is_available() calls check_health() which calls validate_api_key().
-    validate_api_key() uses apply() which expects OpenAI-compatible responses.
+    validate_api_key() first tries HEAD request, then falls back to apply().
     """
 
-    def test_is_available_true(self, test_config, mock_apply_response):
+    def test_is_available_true(self, test_config):
         """Verify is_available returns True when service is healthy and key is valid."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            # is_available calls check_health() -> validate_api_key() -> apply()
-            # Only one call since is_available now delegates to check_health()
-            mock_request.return_value = mock_apply_response
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request succeeds
+            mock_head.return_value = True
 
             client = MorphClient(test_config)
             is_available = client.is_available(use_cache=False)
@@ -938,29 +1010,11 @@ class TestIsAvailable:
         assert is_available is False
         client.close()
 
-    def test_is_available_false_on_401(self, test_config):
-        """Verify is_available returns False when API key is invalid (401)."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = MorphAPIError(
-                code=MorphErrorCode.INVALID_API_KEY,
-                message="Invalid API key",
-                status_code=401,
-            )
-
-            client = MorphClient(test_config)
-            is_available = client.is_available(use_cache=False)
-
-            assert is_available is False
-            client.close()
-
-    def test_is_available_false_invalid_key(self, test_config):
+    def test_is_available_false_on_invalid_key(self, test_config):
         """Verify is_available returns False when API key is invalid."""
-        with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = MorphAPIError(
-                code=MorphErrorCode.INVALID_API_KEY,
-                message="Invalid key",
-                status_code=401,
-            )
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            # HEAD request detects invalid key
+            mock_head.return_value = False
 
             client = MorphClient(test_config)
             is_available = client.is_available(use_cache=False)
@@ -970,11 +1024,151 @@ class TestIsAvailable:
 
     def test_is_available_false_on_connection_error(self, test_config):
         """Verify is_available returns False on connection error during validation."""
+        with patch.object(MorphClient, "_check_auth_with_head") as mock_head:
+            with patch.object(MorphClient, "_make_request") as mock_request:
+                # HEAD inconclusive, apply fails
+                mock_head.return_value = None
+                mock_request.side_effect = MorphConnectionError("Connection failed")
+
+                client = MorphClient(test_config)
+                is_available = client.is_available(use_cache=False)
+
+                assert is_available is False
+                client.close()
+
+
+# =============================================================================
+# Test Case 11: Content Size Validation
+# =============================================================================
+
+
+class TestContentSizeValidation:
+    """Tests for content size pre-validation."""
+
+    def test_apply_raises_on_content_too_large(self, test_config):
+        """Verify apply raises MorphAPIError for content exceeding size limit."""
+        # Create content larger than MAX_CONTENT_SIZE_BYTES (100KB)
+        large_content = "x" * (MAX_CONTENT_SIZE_BYTES + 1)
+
+        client = MorphClient(test_config)
+        with pytest.raises(MorphAPIError) as exc_info:
+            client.apply(
+                file_path="large_file.py",
+                original_content=large_content,
+                instruction="Format code",
+            )
+
+        assert exc_info.value.code == MorphErrorCode.CONTENT_TOO_LARGE
+        assert exc_info.value.status_code == 413
+        assert "exceeds limit" in exc_info.value.message
+        client.close()
+
+    def test_apply_accepts_content_at_limit(self, test_config, mock_apply_response):
+        """Verify apply accepts content exactly at size limit."""
+        # Create content exactly at MAX_CONTENT_SIZE_BYTES
+        content_at_limit = "x" * MAX_CONTENT_SIZE_BYTES
+
         with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = MorphConnectionError("Connection failed")
+            mock_request.return_value = mock_apply_response
 
             client = MorphClient(test_config)
-            is_available = client.is_available(use_cache=False)
+            # Should not raise - content is exactly at limit
+            result = client.apply(
+                file_path="at_limit.py",
+                original_content=content_at_limit,
+                instruction="Format code",
+            )
 
-            assert is_available is False
+            assert result.success is True
             client.close()
+
+    def test_apply_accepts_small_content(self, test_config, mock_apply_response):
+        """Verify apply accepts small content without issues."""
+        small_content = "def hello(): pass"
+
+        with patch.object(MorphClient, "_make_request") as mock_request:
+            mock_request.return_value = mock_apply_response
+
+            client = MorphClient(test_config)
+            result = client.apply(
+                file_path="small.py",
+                original_content=small_content,
+                instruction="Add docstring",
+            )
+
+            assert result.success is True
+            client.close()
+
+
+# =============================================================================
+# Test Case 12: Line Change Calculation
+# =============================================================================
+
+
+class TestLineChangeCalculation:
+    """Tests for _calculate_line_changes static method."""
+
+    def test_calculate_no_changes(self):
+        """Verify no changes returns 0 for both."""
+        original = "line1\nline2\nline3"
+        new = "line1\nline2\nline3"
+
+        added, removed = MorphClient._calculate_line_changes(original, new)
+        assert added == 0
+        assert removed == 0
+
+    def test_calculate_lines_added(self):
+        """Verify adding new lines is detected."""
+        original = "line1\nline2"
+        new = "line1\nline2\nline3\nline4"
+
+        added, removed = MorphClient._calculate_line_changes(original, new)
+        assert added == 2
+        assert removed == 0
+
+    def test_calculate_lines_removed(self):
+        """Verify removing lines is detected."""
+        original = "line1\nline2\nline3\nline4"
+        new = "line1\nline2"
+
+        added, removed = MorphClient._calculate_line_changes(original, new)
+        assert added == 0
+        assert removed == 2
+
+    def test_calculate_lines_modified(self):
+        """Verify modifying lines shows as add + remove."""
+        original = "def foo(): pass"
+        new = "def foo(): return 42"
+
+        added, removed = MorphClient._calculate_line_changes(original, new)
+        # Modified line counts as 1 removed, 1 added
+        assert added == 1
+        assert removed == 1
+
+    def test_calculate_mixed_changes(self):
+        """Verify mixed add/remove/modify is calculated correctly."""
+        original = "line1\nline2\nline3"
+        new = "line1\nline2_modified\nline4\nline5"
+
+        added, removed = MorphClient._calculate_line_changes(original, new)
+        # line2 and line3 removed, line2_modified, line4, line5 added
+        assert added == 3
+        assert removed == 2
+
+    def test_calculate_empty_original(self):
+        """Verify adding to empty file works."""
+        original = ""
+        new = "line1\nline2"
+
+        added, removed = MorphClient._calculate_line_changes(original, new)
+        assert added == 2
+        assert removed == 0
+
+    def test_calculate_empty_new(self):
+        """Verify removing all content works."""
+        original = "line1\nline2"
+        new = ""
+
+        added, removed = MorphClient._calculate_line_changes(original, new)
+        assert added == 0
+        assert removed == 2

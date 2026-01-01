@@ -132,6 +132,36 @@ class MorphConfig:
 
 
 @dataclass
+class UsageMetrics:
+    """
+    Token usage metrics from a Morph API call.
+
+    Attributes:
+        prompt_tokens: Number of tokens in the prompt
+        completion_tokens: Number of tokens in the completion
+        total_tokens: Total tokens used
+    """
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+    @classmethod
+    def from_response(cls, data: dict[str, Any]) -> UsageMetrics:
+        """Create UsageMetrics from API response data."""
+        usage = data.get("usage", {})
+        return cls(
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+            total_tokens=usage.get("total_tokens", 0),
+        )
+
+
+# Maximum file size for Morph API (100KB reasonable limit to fail-fast)
+MAX_CONTENT_SIZE_BYTES = 100 * 1024
+
+
+@dataclass
 class ApplyResult:
     """
     Result from a Morph apply operation.
@@ -142,6 +172,9 @@ class ApplyResult:
         changes_applied: List of changes that were made
         confidence: Confidence score (0-1) for the changes
         processing_time_ms: Time taken to process the request
+        usage: Token usage metrics from the API call
+        lines_added: Number of lines added (estimated from diff)
+        lines_removed: Number of lines removed (estimated from diff)
     """
 
     success: bool
@@ -149,6 +182,9 @@ class ApplyResult:
     changes_applied: list[dict[str, Any]] = field(default_factory=list)
     confidence: float = 0.0
     processing_time_ms: int = 0
+    usage: UsageMetrics = field(default_factory=UsageMetrics)
+    lines_added: int = 0
+    lines_removed: int = 0
 
 
 @dataclass
@@ -384,6 +420,30 @@ class MorphClient:
             self._health_cache = (False, time.time())
             return False
 
+    @staticmethod
+    def _calculate_line_changes(original: str, new: str) -> tuple[int, int]:
+        """
+        Calculate the number of lines added and removed between two strings.
+
+        Uses a simple line-based diff to estimate changes.
+
+        Args:
+            original: Original content
+            new: New content after changes
+
+        Returns:
+            Tuple of (lines_added, lines_removed)
+        """
+        original_lines = set(original.splitlines())
+        new_lines = set(new.splitlines())
+
+        # Lines in new but not in original = added
+        lines_added = len(new_lines - original_lines)
+        # Lines in original but not in new = removed
+        lines_removed = len(original_lines - new_lines)
+
+        return lines_added, lines_removed
+
     def _check_auth_with_head(self) -> bool | None:
         """
         Attempt a lightweight HEAD request to check authentication.
@@ -492,10 +552,20 @@ class MorphClient:
             ApplyResult with the transformed content
 
         Raises:
-            MorphAPIError: If the API request fails
+            MorphAPIError: If the API request fails (including content too large)
             MorphConnectionError: If unable to connect
             MorphTimeoutError: If the request times out
         """
+        # Pre-validate content size to fail-fast before API call
+        content_size = len(original_content.encode("utf-8"))
+        if content_size > MAX_CONTENT_SIZE_BYTES:
+            raise MorphAPIError(
+                code=MorphErrorCode.CONTENT_TOO_LARGE,
+                message=f"Content size ({content_size:,} bytes) exceeds limit ({MAX_CONTENT_SIZE_BYTES:,} bytes). "
+                f"Consider splitting the file or using default apply tools.",
+                status_code=413,
+            )
+
         # If code_edit not provided, use original_content (full file rewrite mode)
         if code_edit is None:
             code_edit = original_content
@@ -578,12 +648,28 @@ class MorphClient:
                     status_code=500,
                 )
 
+            # Extract usage metrics from response
+            usage = UsageMetrics.from_response(data)
+
+            # Calculate line changes for summary
+            lines_added, lines_removed = self._calculate_line_changes(
+                original_content, merged_content
+            )
+
+            logger.debug(
+                f"Morph apply completed: +{lines_added}/-{lines_removed} lines, "
+                f"{usage.total_tokens} tokens used"
+            )
+
             return ApplyResult(
                 success=True,
                 new_content=merged_content,
                 changes_applied=[],  # Morph doesn't provide change details
                 confidence=1.0,
                 processing_time_ms=0,
+                usage=usage,
+                lines_added=lines_added,
+                lines_removed=lines_removed,
             )
         except MorphAPIError:
             raise

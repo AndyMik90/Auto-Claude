@@ -218,9 +218,11 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": f"Error: Permission denied writing to file: {target_file}. "
-                                    f"Edit was computed but could not be saved.\n\n"
-                                    f"Transformed content:\n\n{result.new_content}",
+                                    "text": (
+                                        f"Error: Permission denied writing to file: {target_file}. "
+                                        f"Edit was computed but could not be saved.\n\n"
+                                        f"Transformed content:\n\n{result.new_content}"
+                                    ),
                                 }
                             ]
                         }
@@ -229,18 +231,29 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": f"Error: Failed to write file {target_file}: {str(e)}. "
-                                    f"Edit was computed but could not be saved.\n\n"
-                                    f"Transformed content:\n\n{result.new_content}",
+                                    "text": (
+                                        f"Error: Failed to write file {target_file}: {str(e)}. "
+                                        f"Edit was computed but could not be saved.\n\n"
+                                        f"Transformed content:\n\n{result.new_content}"
+                                    ),
                                 }
                             ]
                         }
+
+                    # Build success message with change summary
+                    change_summary = f"+{result.lines_added}/-{result.lines_removed} lines"
+                    usage_info = ""
+                    if result.usage.total_tokens > 0:
+                        usage_info = f" ({result.usage.total_tokens} tokens)"
 
                     return {
                         "content": [
                             {
                                 "type": "text",
-                                "text": f"Successfully applied edits to {target_file}",
+                                "text": (
+                                    f"Successfully applied edits to {target_file}\n"
+                                    f"Changes: {change_summary}{usage_info}"
+                                ),
                             }
                         ]
                     }

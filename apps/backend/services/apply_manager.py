@@ -367,6 +367,10 @@ class ApplyToolManager:
         """
         Check if Morph service is available for use.
 
+        Note: We use check_health() which internally validates the API key,
+        so we don't need to call _validate_api_key() separately. This avoids
+        redundant API calls and reduces credit usage.
+
         Returns:
             Tuple of (is_available, fallback_reason if not available)
         """
@@ -382,16 +386,22 @@ class ApplyToolManager:
         if not self._morph_client:
             return False, FallbackReason.NO_API_KEY
 
-        # Check if API key is valid
-        if not self._validate_api_key():
+        # Check service health (this also validates the API key internally)
+        # We use the cached validation result if available
+        if self._api_key_validated is False:
+            # API key was previously validated and found invalid
             return False, FallbackReason.INVALID_API_KEY
 
-        # Check service health
         try:
             if not self._morph_client.check_health(
                 use_cache=self.config.cache_availability
             ):
+                # check_health returns False for invalid API key or service issues
+                # Update our cached state based on this
+                self._api_key_validated = False
                 return False, FallbackReason.SERVICE_UNAVAILABLE
+            # If health check passed, API key is valid
+            self._api_key_validated = True
         except MorphConnectionError:
             return False, FallbackReason.CONNECTION_ERROR
         except MorphTimeoutError:
