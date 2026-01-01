@@ -5,6 +5,7 @@ Handles pushing to origin or creating PRs after task completion.
 Includes security hardening, retry logic, and race condition prevention.
 """
 
+import atexit
 import asyncio
 import json
 import logging
@@ -169,6 +170,15 @@ class DeploymentHandler:
         token = await self._get_github_token()
         env = os.environ.copy()
         askpass_path = None
+        cleanup_handler = None
+
+        def cleanup_askpass() -> None:
+            """Remove askpass file if it exists."""
+            if askpass_path and os.path.exists(askpass_path):
+                try:
+                    os.unlink(askpass_path)
+                except OSError:
+                    pass
 
         if token:
             with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False) as f:
@@ -179,6 +189,9 @@ class DeploymentHandler:
 
             os.chmod(askpass_path, 0o700)
             env["GIT_ASKPASS"] = askpass_path
+            # Register atexit handler for cleanup on abnormal termination
+            atexit.register(cleanup_askpass)
+            cleanup_handler = cleanup_askpass
 
         try:
             cmd = ["git", "push", "origin"] + push_args
@@ -197,8 +210,9 @@ class DeploymentHandler:
                 return await asyncio.wait_for(coro, timeout=timeout)
             return await coro
         finally:
-            if askpass_path and os.path.exists(askpass_path):
-                os.unlink(askpass_path)
+            cleanup_askpass()
+            if cleanup_handler:
+                atexit.unregister(cleanup_handler)
 
     async def _create_pull_request(
         self, task_id: str, task_title: str, branch: str
@@ -348,24 +362,26 @@ This PR was automatically created by Auto-Claude after task completion.
             if not wt.is_dir():
                 continue
             status_file = wt / ".auto-claude-status"
-            if status_file.exists():
-                try:
-                    with open(status_file, encoding="utf-8") as f:
-                        status = json.load(f)
-                    if status.get("state") != "complete":
-                        return False
-                except (json.JSONDecodeError, KeyError) as e:
-                    logger.warning(
-                        f"Could not parse status file {status_file}: {e}. "
-                        "Assuming not complete."
-                    )
+            try:
+                with open(status_file, encoding="utf-8") as f:
+                    status = json.load(f)
+                if status.get("state") != "complete":
                     return False
-                except Exception as e:
-                    logger.error(
-                        f"Unexpected error reading status file {status_file}: {e}. "
-                        "Assuming not complete."
-                    )
-                    return False
+            except FileNotFoundError:
+                # No status file means worktree not started or status not written yet
+                continue
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(
+                    f"Could not parse status file {status_file}: {e}. "
+                    "Assuming not complete."
+                )
+                return False
+            except Exception as e:
+                logger.error(
+                    f"Unexpected error reading status file {status_file}: {e}. "
+                    "Assuming not complete."
+                )
+                return False
         return True
 
     async def _send_notification(self, message: str, success: bool) -> None:
@@ -375,6 +391,8 @@ This PR was automatically created by Auto-Claude after task completion.
             return
 
         try:
+            # Sanitize message to prevent AppleScript injection
+            safe_message = message.replace("\\", "\\\\").replace('"', '\\"')
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
@@ -382,7 +400,7 @@ This PR was automatically created by Auto-Claude after task completion.
                     [
                         "osascript",
                         "-e",
-                        f'display notification "{message}" with title "Auto-Claude"',
+                        f'display notification "{safe_message}" with title "Auto-Claude"',
                     ],
                     capture_output=True,
                     check=False,
