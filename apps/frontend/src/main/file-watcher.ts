@@ -200,8 +200,8 @@ export class FileWatcher extends EventEmitter {
       }
     });
 
-    // Handle file changes inside spec folders (implementation_plan.json, task_metadata.json)
-    watcher.on('change', (filePath: string) => {
+    // Helper to handle file change/add events for spec files
+    const handleSpecFileEvent = (filePath: string) => {
       const fileName = path.basename(filePath);
       // Only watch for our target files
       if (fileName !== 'implementation_plan.json' && fileName !== 'task_metadata.json') {
@@ -217,24 +217,11 @@ export class FileWatcher extends EventEmitter {
 
       const specId = parts[0];
       this.debouncedSpecUpdate(projectId, specId);
-    });
+    };
 
-    // Also handle file additions (new JSON files in existing spec folders)
-    watcher.on('add', (filePath: string) => {
-      const fileName = path.basename(filePath);
-      if (fileName !== 'implementation_plan.json' && fileName !== 'task_metadata.json') {
-        return;
-      }
-
-      const relativePath = path.relative(specsPath, filePath);
-      const parts = relativePath.split(path.sep);
-      if (parts.length !== 2) {
-        return;
-      }
-
-      const specId = parts[0];
-      this.debouncedSpecUpdate(projectId, specId);
-    });
+    // Handle file changes and additions inside spec folders
+    watcher.on('change', handleSpecFileEvent);
+    watcher.on('add', handleSpecFileEvent);
 
     // Handle errors
     watcher.on('error', (error: unknown) => {

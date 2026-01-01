@@ -61,9 +61,8 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
     async (_, projectId: string, specId: string): Promise<IPCResult<Task | null>> => {
       console.log(`[IPC] TASK_GET called with projectId: ${projectId}, specId: ${specId}`);
 
-      // Get all tasks and filter to find the one we want
-      const tasks = projectStore.getTasks(projectId);
-      const task = tasks.find(t => t.specId === specId);
+      // Use optimized single-task loader instead of loading all tasks
+      const task = projectStore.getTask(projectId, specId);
 
       if (task) {
         console.log(`[IPC] TASK_GET found task: ${task.title}`);
