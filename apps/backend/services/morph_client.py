@@ -23,6 +23,8 @@ Environment Variables:
 
 from __future__ import annotations
 
+import asyncio
+import difflib
 import logging
 import os
 import time
@@ -173,8 +175,9 @@ class ApplyResult:
         confidence: Confidence score (0-1) for the changes
         processing_time_ms: Time taken to process the request
         usage: Token usage metrics from the API call
-        lines_added: Number of lines added (estimated from diff)
-        lines_removed: Number of lines removed (estimated from diff)
+        lines_added: Number of lines added (accurate count from unified diff)
+        lines_removed: Number of lines removed (accurate count from unified diff)
+        unified_diff: Unified diff output showing the changes made
     """
 
     success: bool
@@ -185,6 +188,7 @@ class ApplyResult:
     usage: UsageMetrics = field(default_factory=UsageMetrics)
     lines_added: int = 0
     lines_removed: int = 0
+    unified_diff: str = ""
 
 
 @dataclass
@@ -228,29 +232,27 @@ class ValidationResult:
 
 class MorphClient:
     """
-    Client for interacting with Morph Fast Apply API.
+    Async client for interacting with Morph Fast Apply API.
 
     This client handles authentication, request retries, and error handling
-    for all Morph API operations.
+    for all Morph API operations. Uses async/await for non-blocking I/O.
 
     Example:
         config = MorphConfig.from_env()
-        client = MorphClient(config)
-
-        if client.validate_api_key().valid:
-            result = client.apply(
-                file_path="src/utils.py",
-                original_content="def add(a, b): return a + b",
-                instruction="Add type hints",
-                language="python"
-            )
-            if result.success:
-                print(result.new_content)
-
-        client.close()
+        async with MorphClient(config) as client:
+            validation = await client.validate_api_key()
+            if validation.valid:
+                result = await client.apply(
+                    file_path="src/utils.py",
+                    original_content="def add(a, b): return a + b",
+                    instruction="Add type hints",
+                    language="python"
+                )
+                if result.success:
+                    print(result.new_content)
 
     Note:
-        Always call close() when done, or use as a context manager.
+        Always use as an async context manager or call close() when done.
     """
 
     def __init__(self, config: MorphConfig | None = None):
@@ -261,11 +263,11 @@ class MorphClient:
             config: Client configuration. If None, loads from environment.
         """
         self.config = config or MorphConfig.from_env()
-        self._client: httpx.Client | None = None
+        self._client: httpx.AsyncClient | None = None
         self._health_cache: tuple[bool, float] | None = None
 
-    def _get_client(self) -> httpx.Client:
-        """Get or create the HTTP client."""
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the async HTTP client."""
         if self._client is None:
             headers = {
                 "Content-Type": "application/json",
@@ -274,14 +276,14 @@ class MorphClient:
             if self.config.has_api_key():
                 headers["Authorization"] = f"Bearer {self.config.api_key}"
 
-            self._client = httpx.Client(
+            self._client = httpx.AsyncClient(
                 base_url=self.config.base_url,
                 headers=headers,
                 timeout=self.config.timeout,
             )
         return self._client
 
-    def _make_request(
+    async def _make_request(
         self,
         method: str,
         endpoint: str,
@@ -289,7 +291,7 @@ class MorphClient:
         requires_auth: bool = True,
     ) -> dict[str, Any]:
         """
-        Make an API request with retry logic.
+        Make an async API request with retry logic.
 
         Args:
             method: HTTP method (GET, POST, etc.)
@@ -312,15 +314,15 @@ class MorphClient:
                 status_code=401,
             )
 
-        client = self._get_client()
+        client = await self._get_client()
         last_error: Exception | None = None
 
         for attempt in range(self.config.max_retries):
             try:
                 if method.upper() == "GET":
-                    response = client.get(endpoint)
+                    response = await client.get(endpoint)
                 elif method.upper() == "POST":
-                    response = client.post(endpoint, json=json_data)
+                    response = await client.post(endpoint, json=json_data)
                 else:
                     raise ValueError(f"Unsupported HTTP method: {method}")
 
@@ -352,7 +354,7 @@ class MorphClient:
                         f"Morph API error (attempt {attempt + 1}): {error}. "
                         f"Retrying in {wait_time:.1f}s"
                     )
-                    time.sleep(wait_time)
+                    await asyncio.sleep(wait_time)
                     last_error = error
                     continue
 
@@ -362,7 +364,7 @@ class MorphClient:
                 logger.warning(f"Failed to connect to Morph API: {e}")
                 if attempt < self.config.max_retries - 1:
                     wait_time = self.config.backoff_factor ** (attempt + 1)
-                    time.sleep(wait_time)
+                    await asyncio.sleep(wait_time)
                     last_error = e
                     continue
                 raise MorphConnectionError(
@@ -373,7 +375,7 @@ class MorphClient:
                 logger.warning(f"Morph API request timed out: {e}")
                 if attempt < self.config.max_retries - 1:
                     wait_time = self.config.backoff_factor ** (attempt + 1)
-                    time.sleep(wait_time)
+                    await asyncio.sleep(wait_time)
                     last_error = e
                     continue
                 raise MorphTimeoutError(f"Morph API request timed out: {e}") from e
@@ -387,7 +389,7 @@ class MorphClient:
             status_code=500,
         )
 
-    def check_health(self, use_cache: bool = True) -> bool:
+    async def check_health(self, use_cache: bool = True) -> bool:
         """
         Check if the Morph service is healthy by attempting a minimal API call.
 
@@ -412,7 +414,8 @@ class MorphClient:
         # Since there's no /health endpoint, we check if the API key is valid
         # as a proxy for service health
         try:
-            is_healthy = self.validate_api_key().valid
+            validation = await self.validate_api_key()
+            is_healthy = validation.valid
             self._health_cache = (is_healthy, time.time())
             return is_healthy
         except (MorphAPIError, MorphConnectionError, MorphTimeoutError) as e:
@@ -421,30 +424,52 @@ class MorphClient:
             return False
 
     @staticmethod
-    def _calculate_line_changes(original: str, new: str) -> tuple[int, int]:
+    def _calculate_line_changes(
+        original: str, new: str, file_path: str = "file"
+    ) -> tuple[int, int, str]:
         """
         Calculate the number of lines added and removed between two strings.
 
-        Uses a simple line-based diff to estimate changes.
+        Uses unified diff for accurate line counting, properly handling:
+        - Duplicate lines
+        - Line reordering
+        - Insertions and deletions
 
         Args:
             original: Original content
             new: New content after changes
+            file_path: File path for diff header (default: "file")
 
         Returns:
-            Tuple of (lines_added, lines_removed)
+            Tuple of (lines_added, lines_removed, unified_diff)
         """
-        original_lines = set(original.splitlines())
-        new_lines = set(new.splitlines())
+        original_lines = original.splitlines(keepends=True)
+        new_lines = new.splitlines(keepends=True)
 
-        # Lines in new but not in original = added
-        lines_added = len(new_lines - original_lines)
-        # Lines in original but not in new = removed
-        lines_removed = len(original_lines - new_lines)
+        # Generate unified diff
+        diff_lines = list(
+            difflib.unified_diff(
+                original_lines,
+                new_lines,
+                fromfile=f"a/{file_path}",
+                tofile=f"b/{file_path}",
+                lineterm="",
+            )
+        )
 
-        return lines_added, lines_removed
+        # Count additions and deletions from diff output
+        lines_added = 0
+        lines_removed = 0
+        for line in diff_lines:
+            if line.startswith("+") and not line.startswith("+++"):
+                lines_added += 1
+            elif line.startswith("-") and not line.startswith("---"):
+                lines_removed += 1
 
-    def _check_auth_with_head(self) -> bool | None:
+        unified_diff = "".join(diff_lines)
+        return lines_added, lines_removed, unified_diff
+
+    async def _check_auth_with_head(self) -> bool | None:
         """
         Attempt a lightweight HEAD request to check authentication.
 
@@ -454,9 +479,9 @@ class MorphClient:
         - None if HEAD is not supported or inconclusive (need to fall back to apply)
         """
         try:
-            client = self._get_client()
+            client = await self._get_client()
             # Try HEAD request to the chat completions endpoint
-            response = client.request("HEAD", "/chat/completions")
+            response = await client.request("HEAD", "/chat/completions")
 
             if response.status_code in (200, 204):
                 return True
@@ -469,7 +494,7 @@ class MorphClient:
             # HEAD not supported or other issue - fall back to apply
             return None
 
-    def validate_api_key(self) -> ValidationResult:
+    async def validate_api_key(self) -> ValidationResult:
         """
         Validate the configured API key.
 
@@ -489,7 +514,7 @@ class MorphClient:
             return ValidationResult(valid=False)
 
         # First, try lightweight HEAD request to avoid consuming credits
-        head_result = self._check_auth_with_head()
+        head_result = await self._check_auth_with_head()
         if head_result is True:
             return ValidationResult(
                 valid=True,
@@ -505,7 +530,7 @@ class MorphClient:
         # HEAD was inconclusive - fall back to minimal apply operation
         # This consumes API credits but is the only reliable way to validate
         try:
-            _ = self.apply(
+            await self.apply(
                 file_path="test.py",
                 original_content="# test",
                 instruction="Keep as is",
@@ -526,7 +551,7 @@ class MorphClient:
             # For other errors, re-raise so caller can handle
             raise
 
-    def apply(
+    async def apply(
         self,
         file_path: str,
         original_content: str,
@@ -561,13 +586,22 @@ class MorphClient:
         if content_size > MAX_CONTENT_SIZE_BYTES:
             raise MorphAPIError(
                 code=MorphErrorCode.CONTENT_TOO_LARGE,
-                message=f"Content size ({content_size:,} bytes) exceeds limit ({MAX_CONTENT_SIZE_BYTES:,} bytes). "
-                f"Consider splitting the file or using default apply tools.",
+                message=(
+                    f"Content size ({content_size:,} bytes) exceeds limit "
+                    f"({MAX_CONTENT_SIZE_BYTES:,} bytes). "
+                    f"Consider splitting the file or using default apply tools."
+                ),
                 status_code=413,
             )
 
         # If code_edit not provided, use original_content (full file rewrite mode)
+        # This is inefficient as it defeats the purpose of lazy markers
         if code_edit is None:
+            logger.warning(
+                f"Morph apply called without code_edit for {file_path}. "
+                + "Using full file rewrite mode which consumes more tokens. "
+                + "Consider providing code_edit with '... existing code ...' markers."
+            )
             code_edit = original_content
 
         # Log that we're using Morph for this operation
@@ -579,9 +613,9 @@ class MorphClient:
         language_tag = f"<language>{language}</language>\n" if language else ""
         message_content = (
             f"{language_tag}"
-            f"<instruction>{instruction}</instruction>\n"
-            f"<code>{original_content}</code>\n"
-            f"<update>{code_edit}</update>"
+            + f"<instruction>{instruction}</instruction>\n"
+            + f"<code>{original_content}</code>\n"
+            + f"<update>{code_edit}</update>"
         )
 
         # Use OpenAI-compatible chat completions format
@@ -590,7 +624,7 @@ class MorphClient:
             "messages": [{"role": "user", "content": message_content}],
         }
 
-        data = self._make_request("POST", "/chat/completions", json_data=payload)
+        data = await self._make_request("POST", "/chat/completions", json_data=payload)
 
         # Extract merged code from OpenAI-compatible response format
         # Expected format: {"choices": [{"message": {"content": "..."}}]}
@@ -651,14 +685,14 @@ class MorphClient:
             # Extract usage metrics from response
             usage = UsageMetrics.from_response(data)
 
-            # Calculate line changes for summary
-            lines_added, lines_removed = self._calculate_line_changes(
-                original_content, merged_content
+            # Calculate line changes and generate unified diff for summary
+            lines_added, lines_removed, unified_diff = self._calculate_line_changes(
+                original_content, merged_content, file_path
             )
 
             logger.debug(
                 f"Morph apply completed: +{lines_added}/-{lines_removed} lines, "
-                f"{usage.total_tokens} tokens used"
+                + f"{usage.total_tokens} tokens used"
             )
 
             return ApplyResult(
@@ -670,6 +704,7 @@ class MorphClient:
                 usage=usage,
                 lines_added=lines_added,
                 lines_removed=lines_removed,
+                unified_diff=unified_diff,
             )
         except MorphAPIError:
             raise
@@ -680,7 +715,7 @@ class MorphClient:
                 status_code=500,
             )
 
-    def is_available(self, use_cache: bool = True) -> bool:
+    async def is_available(self, use_cache: bool = True) -> bool:
         """
         Check if Morph service is available for use.
 
@@ -699,22 +734,27 @@ class MorphClient:
 
         # check_health() already validates the API key internally,
         # so we don't need to call validate_api_key() again
-        return self.check_health(use_cache=use_cache)
+        return await self.check_health(use_cache=use_cache)
 
-    def close(self) -> None:
-        """Close the HTTP client and release resources."""
+    async def close(self) -> None:
+        """Close the async HTTP client and release resources."""
         if self._client is not None:
-            self._client.close()
+            await self._client.aclose()
             self._client = None
         self._health_cache = None
 
-    def __enter__(self) -> MorphClient:
-        """Context manager entry."""
+    async def __aenter__(self) -> MorphClient:
+        """Async context manager entry."""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Context manager exit."""
-        self.close()
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Async context manager exit."""
+        await self.close()
 
 
 def is_morph_enabled() -> bool:

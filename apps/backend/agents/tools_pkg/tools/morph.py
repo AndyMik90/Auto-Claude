@@ -15,6 +15,7 @@ without sending the entire file content in the code_edit parameter.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -151,6 +152,40 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
         if not file_path.is_absolute():
             file_path = project_dir / target_file
 
+        # Security: Prevent path traversal attacks
+        # Resolve to absolute path and verify it's within project directory
+        try:
+            resolved_path = file_path.resolve()
+            project_resolved = project_dir.resolve()
+
+            # Check that the resolved path is within the project directory
+            if not str(resolved_path).startswith(str(project_resolved) + os.sep) and resolved_path != project_resolved:
+                logger.warning(
+                    f"Path traversal attempt blocked: {target_file} resolves to {resolved_path} "
+                    + f"which is outside project directory {project_resolved}"
+                )
+                return {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                f"Error: Path '{target_file}' is outside the project directory. "
+                                f"File operations are restricted to the project folder for security."
+                            ),
+                        }
+                    ]
+                }
+            file_path = resolved_path
+        except (OSError, ValueError) as e:
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Error: Invalid file path '{target_file}': {str(e)}",
+                    }
+                ]
+            }
+
         # Read the original file content
         try:
             original_content = file_path.read_text(encoding="utf-8")
@@ -198,10 +233,10 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
                     ]
                 }
 
-            with MorphClient(config) as client:
+            async with MorphClient(config) as client:
                 # Apply the edit using the proper Morph API format:
                 # <instruction> + <code> (original) + <update> (code_edit with lazy markers)
-                result = client.apply(
+                result = await client.apply(
                     file_path=str(target_file),
                     original_content=original_content,
                     instruction=instruction,
