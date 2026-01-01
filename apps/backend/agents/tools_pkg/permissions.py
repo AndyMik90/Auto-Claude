@@ -16,15 +16,16 @@ for backwards compatibility.
 
 from .models import (
     AGENT_CONFIGS,
-    BASE_WRITE_TOOLS,
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
     LINEAR_TOOLS,
     PUPPETEER_TOOLS,
+    TOOL_MORPH_APPLY,
     get_agent_config,
     get_required_mcp_servers,
     get_write_tools,
+    is_morph_enabled,
 )
 from .registry import is_tools_available
 
@@ -63,11 +64,16 @@ def get_allowed_tools(
     # Start with base tools from config
     tools = list(config.get("tools", []))
 
-    # Replace BASE_WRITE_TOOLS with dynamic get_write_tools() based on Morph status
+    # Check if agent has Write or Edit tools (the ones that Morph replaces)
+    # Note: Bash is always allowed separately and shouldn't trigger replacement
+    agent_has_file_write_tools = "Write" in tools or "Edit" in tools
+
+    # Replace Write/Edit with dynamic get_write_tools() based on Morph status
     # This ensures that when Morph is enabled, Write/Edit are excluded
-    if any(tool in BASE_WRITE_TOOLS for tool in tools):
-        # Remove all default write tools from the list
-        tools = [t for t in tools if t not in BASE_WRITE_TOOLS]
+    # and only Bash remains (MorphApply is added later via MCP)
+    if agent_has_file_write_tools:
+        # Remove Write and Edit from the list (keep Bash if present)
+        tools = [t for t in tools if t not in ("Write", "Edit")]
         # Add the appropriate write tools based on Morph configuration
         tools.extend(get_write_tools())
 
@@ -83,6 +89,11 @@ def get_allowed_tools(
     # This prevents allowing tools that won't work because the server isn't running
     if "auto-claude" in required_servers and is_tools_available():
         tools.extend(config.get("auto_claude_tools", []))
+
+        # When Morph is enabled and agent originally had file write tools,
+        # add MorphApply to allowed tools (it replaces Write/Edit)
+        if agent_has_file_write_tools and is_morph_enabled():
+            tools.append(TOOL_MORPH_APPLY)
 
     # Add MCP tool names based on required servers
     tools.extend(_get_mcp_tools_for_servers(required_servers))
