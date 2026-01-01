@@ -433,7 +433,6 @@ class MorphClient:
         instruction: str,
         code_edit: str | None = None,
         language: str | None = None,
-        context: dict[str, Any] | None = None,
     ) -> ApplyResult:
         """
         Apply code changes using Morph Fast Apply.
@@ -442,13 +441,12 @@ class MorphClient:
         messages containing instruction, original code, and the code edit with lazy markers.
 
         Args:
-            file_path: Path to the file being edited (for context/debugging)
+            file_path: Path to the file being edited (for logging/debugging)
             original_content: Current content of the file
             instruction: Brief description of what you're changing
             code_edit: The code edit with "// ... existing code ..." markers for unchanged sections.
                       If not provided, uses original_content as the update (full file rewrite)
-            language: Optional programming language hint
-            context: Optional additional context
+            language: Optional programming language hint (for logging, not sent to API)
 
         Returns:
             ApplyResult with the transformed content
@@ -502,6 +500,8 @@ class MorphClient:
         Check if Morph service is available for use.
 
         This checks both service health and API key validity.
+        Note: check_health() internally calls validate_api_key(), so we
+        only need to call check_health() to verify both.
 
         Args:
             use_cache: Whether to use cached health check result
@@ -512,14 +512,9 @@ class MorphClient:
         if not self.config.has_api_key():
             return False
 
-        if not self.check_health(use_cache=use_cache):
-            return False
-
-        try:
-            result = self.validate_api_key()
-            return result.valid
-        except (MorphAPIError, MorphConnectionError, MorphTimeoutError):
-            return False
+        # check_health() already validates the API key internally,
+        # so we don't need to call validate_api_key() again
+        return self.check_health(use_cache=use_cache)
 
     def close(self) -> None:
         """Close the HTTP client and release resources."""

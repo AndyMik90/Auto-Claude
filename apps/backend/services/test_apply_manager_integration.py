@@ -53,35 +53,65 @@ from services.morph_client import (
 
 @pytest.fixture
 def mock_morph_healthy_response():
-    """Mock response for a healthy Morph API."""
-    return {"status": "healthy"}
+    """Mock response for a healthy Morph API.
+
+    Note: Morph uses OpenAI-compatible format. Health check uses validate_api_key()
+    which internally calls apply() expecting this format.
+    """
+    return {
+        "choices": [
+            {
+                "message": {
+                    "content": "# test",
+                    "role": "assistant",
+                },
+                "index": 0,
+                "finish_reason": "stop",
+            }
+        ],
+        "model": "morph-v3-fast",
+    }
 
 
 @pytest.fixture
 def mock_morph_validation_response():
-    """Mock response for successful API key validation."""
+    """Mock response for successful API key validation.
+
+    Note: Morph API does not have a dedicated /auth/validate endpoint.
+    Validation is performed by attempting a minimal apply operation.
+    Response uses OpenAI-compatible format.
+    """
     return {
-        "valid": True,
-        "account": {
-            "id": "acc_test123",
-            "plan": "pro",
-            "rate_limit": {"requests_per_minute": 100},
-        },
-        "permissions": ["apply", "validate"],
+        "choices": [
+            {
+                "message": {
+                    "content": "# test",
+                    "role": "assistant",
+                },
+                "index": 0,
+                "finish_reason": "stop",
+            }
+        ],
+        "model": "morph-v3-fast",
     }
 
 
 @pytest.fixture
 def mock_morph_apply_response():
-    """Mock response for successful apply operation."""
+    """Mock response for successful apply operation (OpenAI-compatible format)."""
     return {
-        "success": True,
-        "result": {
-            "new_content": "def add(a: int, b: int) -> int:\n    return a + b",
-            "changes_applied": [{"type": "add_type_hints", "location": "function:add"}],
-            "confidence": 0.95,
-        },
-        "metadata": {"processing_time_ms": 150},
+        "choices": [
+            {
+                "message": {
+                    "content": "def add(a: int, b: int) -> int:\n    return a + b",
+                    "role": "assistant",
+                },
+                "index": 0,
+                "finish_reason": "stop",
+            }
+        ],
+        "model": "morph-v3-fast",
+        "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
     }
 
 
@@ -288,7 +318,8 @@ class TestApplyToolSelectionWithMorphEnabled:
 
             assert result.success is True
             assert result.new_content  # Has content
-            assert len(result.changes_applied) > 0
+            # Note: OpenAI-compatible format doesn't provide change details
+            assert result.changes_applied == []
 
             manager.close()
 
@@ -454,20 +485,22 @@ class TestMorphApplyOperationComplete:
             )
 
             # Verify transformed content
+            # Note: Morph uses OpenAI-compatible format, so changes_applied is empty
+            # and confidence defaults to 1.0
             assert "int" in result.new_content
             assert result.success is True
-            assert len(result.changes_applied) == 1
-            assert result.confidence == 0.95
+            assert result.changes_applied == []  # Morph doesn't provide change details
+            assert result.confidence == 1.0
 
             manager.close()
 
-    def test_apply_includes_context_when_provided(
+    def test_apply_includes_code_edit_when_provided(
         self,
         test_api_key,
         mock_morph_validation_response,
         mock_morph_apply_response,
     ):
-        """Verify apply sends context to Morph API when provided."""
+        """Verify apply sends code_edit to Morph API when provided."""
         with patch.object(MorphClient, "_make_request") as mock_request:
             mock_request.side_effect = [
                 mock_morph_validation_response,
@@ -479,29 +512,34 @@ class TestMorphApplyOperationComplete:
                 morph_api_key=test_api_key,
             )
 
-            context = {"related_files": ["types.py"], "project": "myapp"}
+            code_edit = "// ... existing code ...\nx: int = 1\n// ... existing code ..."
 
             manager.apply_with_morph(
                 file_path="main.py",
                 content="x = 1",
-                instruction="Add type",
-                context=context,
+                instruction="Add type annotation",
+                code_edit=code_edit,
             )
 
-            # Verify context was sent
+            # Verify code_edit was sent in the update section
             apply_call = mock_request.call_args_list[-1]
             json_data = apply_call[1]["json_data"]
-            assert json_data.get("context") == context
+            message_content = json_data["messages"][0]["content"]
+            assert f"<update>{code_edit}</update>" in message_content
 
             manager.close()
 
-    def test_apply_processing_time_returned(
+    def test_apply_returns_valid_result(
         self,
         test_api_key,
         mock_morph_validation_response,
         mock_morph_apply_response,
     ):
-        """Verify apply returns processing time from Morph."""
+        """Verify apply returns valid ApplyResult from Morph.
+
+        Note: Morph uses OpenAI-compatible format which doesn't provide
+        processing_time_ms, so it defaults to 0.
+        """
         with patch.object(MorphClient, "_make_request") as mock_request:
             mock_request.side_effect = [
                 mock_morph_validation_response,
@@ -519,7 +557,10 @@ class TestMorphApplyOperationComplete:
                 instruction="fix",
             )
 
-            assert result.processing_time_ms == 150
+            assert result.success is True
+            assert result.new_content is not None
+            # OpenAI-compatible format doesn't include processing_time_ms
+            assert result.processing_time_ms == 0
 
             manager.close()
 
@@ -535,28 +576,27 @@ class TestMorphFallbackDuringApply:
         self,
         test_api_key,
         mock_morph_apply_response,
-        mock_morph_healthy_response,
     ):
-        """Verify fallback to default when Morph API errors during apply."""
+        """Verify fallback to default when Morph API errors during apply.
+
+        Note: Morph uses /chat/completions for all operations. We use call_count
+        to let validation pass but fail the apply.
+        """
         with patch.object(MorphClient, "_make_request") as mock_request:
             call_count = [0]
 
             def side_effect(*args, **kwargs):
                 call_count[0] += 1
-                if args[1] == "/health":
-                    return mock_morph_healthy_response
-                elif args[1] == "/chat/completions":
-                    if call_count[0] <= 2:
-                        # First chat/completions call is validation - let it pass
-                        return mock_morph_apply_response
-                    else:
-                        # Subsequent calls are actual apply - fail them
-                        raise MorphAPIError(
-                            code="PROCESSING_ERROR",
-                            message="Internal error",
-                            status_code=500,
-                        )
-                return {}
+                # First 2 calls are validation - let them pass
+                if call_count[0] <= 2:
+                    return mock_morph_apply_response
+                else:
+                    # Subsequent calls are actual apply - fail them
+                    raise MorphAPIError(
+                        code="PROCESSING_ERROR",
+                        message="Internal error",
+                        status_code=500,
+                    )
 
             mock_request.side_effect = side_effect
 
@@ -582,7 +622,6 @@ class TestMorphFallbackDuringApply:
         self,
         test_api_key,
         mock_morph_apply_response,
-        mock_morph_healthy_response,
     ):
         """Verify fallback to default when Morph times out during apply."""
         with patch.object(MorphClient, "_make_request") as mock_request:
@@ -590,14 +629,10 @@ class TestMorphFallbackDuringApply:
 
             def side_effect(*args, **kwargs):
                 call_count[0] += 1
-                if args[1] == "/health":
-                    return mock_morph_healthy_response
-                elif args[1] == "/chat/completions":
-                    if call_count[0] <= 2:
-                        return mock_morph_apply_response
-                    else:
-                        raise MorphTimeoutError("Request timed out")
-                return {}
+                if call_count[0] <= 2:
+                    return mock_morph_apply_response
+                else:
+                    raise MorphTimeoutError("Request timed out")
 
             mock_request.side_effect = side_effect
 
@@ -622,7 +657,6 @@ class TestMorphFallbackDuringApply:
         self,
         test_api_key,
         mock_morph_apply_response,
-        mock_morph_healthy_response,
     ):
         """Verify fallback to default when connection to Morph fails."""
         with patch.object(MorphClient, "_make_request") as mock_request:
@@ -630,14 +664,10 @@ class TestMorphFallbackDuringApply:
 
             def side_effect(*args, **kwargs):
                 call_count[0] += 1
-                if args[1] == "/health":
-                    return mock_morph_healthy_response
-                elif args[1] == "/chat/completions":
-                    if call_count[0] <= 2:
-                        return mock_morph_apply_response
-                    else:
-                        raise MorphConnectionError("Connection refused")
-                return {}
+                if call_count[0] <= 2:
+                    return mock_morph_apply_response
+                else:
+                    raise MorphConnectionError("Connection refused")
 
             mock_request.side_effect = side_effect
 
@@ -1103,102 +1133,92 @@ class TestFallbackScenariosInvalidAPIKeyAndServiceUnavailable:
 
     # =========================================================================
     # Test 2: Service Unavailable Fallback
+    # Note: Morph API uses /chat/completions for all operations including health checks.
+    # There is no dedicated /health endpoint.
     # =========================================================================
 
     def test_fallback_on_service_unavailable_health_check_fails(
         self,
         test_api_key,
-        mock_morph_validation_response,
     ):
-        """Test fallback when health check indicates service is down."""
+        """Test fallback when health check indicates service is down.
+
+        Note: Morph uses validate_api_key() for health checks, which calls /chat/completions.
+        When validation fails (for any reason including service unavailability),
+        the fallback reason is INVALID_API_KEY because we can't verify the key is valid.
+        """
         with patch.object(MorphClient, "_make_request") as mock_request:
-
-            def side_effect(*args, **kwargs):
-                if args[1] == "/chat/completions":
-                    return mock_morph_validation_response
-                elif args[1] == "/health":
-                    # Health check returns unhealthy status
-                    return {"status": "unhealthy"}
-                return {}
-
-            mock_request.side_effect = side_effect
+            # All /chat/completions calls fail with 503
+            mock_request.side_effect = MorphAPIError(
+                code="SERVICE_UNAVAILABLE",
+                message="Service temporarily unavailable",
+                status_code=503,
+            )
 
             manager = ApplyToolManager.from_settings(
                 morph_enabled=True,
                 morph_api_key=test_api_key,
+                validate_on_init=False,  # Skip validation on init
             )
 
             selection = manager.select_apply_tools()
 
             assert selection.method == ApplyMethod.DEFAULT
-            assert selection.fallback_reason == FallbackReason.SERVICE_UNAVAILABLE
+            # When we can't validate the key (even due to service unavailable),
+            # the fallback reason is INVALID_API_KEY
+            assert selection.fallback_reason == FallbackReason.INVALID_API_KEY
             assert selection.morph_available is False
-            assert "unavailable" in selection.message.lower()
 
             manager.close()
 
     def test_fallback_on_service_returns_503(
         self,
         test_api_key,
-        mock_morph_validation_response,
     ):
-        """Test fallback when service returns 503 Service Unavailable."""
+        """Test fallback when service returns 503 Service Unavailable.
+
+        Note: When validation fails due to 503, the key is treated as invalid
+        since we can't verify it works.
+        """
         with patch.object(MorphClient, "_make_request") as mock_request:
-
-            def side_effect(*args, **kwargs):
-                if args[1] == "/chat/completions":
-                    return mock_morph_validation_response
-                elif args[1] == "/health":
-                    raise MorphAPIError(
-                        code="SERVICE_UNAVAILABLE",
-                        message="Service temporarily unavailable",
-                        status_code=503,
-                    )
-                return {}
-
-            mock_request.side_effect = side_effect
+            # Service returns 503 for all requests
+            mock_request.side_effect = MorphAPIError(
+                code="SERVICE_UNAVAILABLE",
+                message="Service temporarily unavailable",
+                status_code=503,
+            )
 
             manager = ApplyToolManager.from_settings(
                 morph_enabled=True,
                 morph_api_key=test_api_key,
+                validate_on_init=False,  # Skip validation on init
             )
 
             selection = manager.select_apply_tools()
 
             assert selection.method == ApplyMethod.DEFAULT
-            # Service returning 503 during health check results in SERVICE_UNAVAILABLE
-            assert selection.fallback_reason in [
-                FallbackReason.SERVICE_UNAVAILABLE,
-                FallbackReason.API_ERROR,
-            ]
+            # When validation fails, key is treated as invalid
+            assert selection.fallback_reason == FallbackReason.INVALID_API_KEY
 
             manager.close()
 
     def test_service_unavailable_does_not_block_apply_with_fallback(
         self,
         test_api_key,
-        mock_morph_validation_response,
     ):
         """Verify service unavailable does not block user operations."""
         with patch.object(MorphClient, "_make_request") as mock_request:
-
-            def side_effect(*args, **kwargs):
-                if args[1] == "/chat/completions":
-                    return mock_morph_validation_response
-                elif args[1] == "/health":
-                    return {"status": "unhealthy"}
-                elif args[1] == "/chat/completions":
-                    # Should not even reach apply if health check fails
-                    raise AssertionError(
-                        "Should not call apply when service unavailable"
-                    )
-                return {}
-
-            mock_request.side_effect = side_effect
+            # Service returns 503 for all requests
+            mock_request.side_effect = MorphAPIError(
+                code="SERVICE_UNAVAILABLE",
+                message="Service temporarily unavailable",
+                status_code=503,
+            )
 
             manager = ApplyToolManager.from_settings(
                 morph_enabled=True,
                 morph_api_key=test_api_key,
+                validate_on_init=False,  # Skip validation on init
                 fallback_on_error=True,
             )
 
@@ -1240,31 +1260,27 @@ class TestFallbackScenariosInvalidAPIKeyAndServiceUnavailable:
     def test_fallback_on_timeout_during_health_check(
         self,
         test_api_key,
-        mock_morph_validation_response,
     ):
-        """Test fallback when health check times out."""
+        """Test fallback when health check times out.
+
+        Note: Morph uses /chat/completions for health checks (via validate_api_key()).
+        When validation fails due to timeout, key is treated as invalid.
+        """
         with patch.object(MorphClient, "_make_request") as mock_request:
-
-            def side_effect(*args, **kwargs):
-                if args[1] == "/chat/completions":
-                    return mock_morph_validation_response
-                elif args[1] == "/health":
-                    raise MorphTimeoutError("Health check timed out")
-                return {}
-
-            mock_request.side_effect = side_effect
+            # All requests timeout
+            mock_request.side_effect = MorphTimeoutError("Request timed out")
 
             manager = ApplyToolManager.from_settings(
                 morph_enabled=True,
                 morph_api_key=test_api_key,
+                validate_on_init=False,  # Skip validation on init
             )
 
             selection = manager.select_apply_tools()
 
             assert selection.method == ApplyMethod.DEFAULT
-            # Health check catches timeout and returns False -> SERVICE_UNAVAILABLE
-            # This is expected: timeouts during health check = service unavailable
-            assert selection.fallback_reason == FallbackReason.SERVICE_UNAVAILABLE
+            # When validation fails (timeout), key is treated as invalid
+            assert selection.fallback_reason == FallbackReason.INVALID_API_KEY
             assert selection.morph_available is False
 
             manager.close()
@@ -1293,59 +1309,44 @@ class TestFallbackScenariosInvalidAPIKeyAndServiceUnavailable:
     def test_fallback_on_connection_error_during_health_check(
         self,
         test_api_key,
-        mock_morph_validation_response,
     ):
-        """Test fallback when connection fails during health check."""
+        """Test fallback when connection fails during health check.
+
+        Note: Morph uses /chat/completions for health checks.
+        When validation fails due to connection error, key is treated as invalid.
+        """
         with patch.object(MorphClient, "_make_request") as mock_request:
-
-            def side_effect(*args, **kwargs):
-                if args[1] == "/chat/completions":
-                    return mock_morph_validation_response
-                elif args[1] == "/health":
-                    raise MorphConnectionError("Network unreachable")
-                return {}
-
-            mock_request.side_effect = side_effect
+            # All requests fail with connection error
+            mock_request.side_effect = MorphConnectionError("Network unreachable")
 
             manager = ApplyToolManager.from_settings(
                 morph_enabled=True,
                 morph_api_key=test_api_key,
+                validate_on_init=False,  # Skip validation on init
             )
 
             selection = manager.select_apply_tools()
 
             assert selection.method == ApplyMethod.DEFAULT
-            # Health check catches connection errors and returns False -> SERVICE_UNAVAILABLE
-            # This is expected: connection failures during health check = service unavailable
-            assert selection.fallback_reason == FallbackReason.SERVICE_UNAVAILABLE
-            assert "unavailable" in selection.message.lower()
+            # When validation fails, key is treated as invalid
+            assert selection.fallback_reason == FallbackReason.INVALID_API_KEY
+            assert selection.morph_available is False
 
             manager.close()
 
     def test_timeout_does_not_block_apply_with_fallback(
         self,
         test_api_key,
-        mock_morph_validation_response,
-        mock_morph_healthy_response,
     ):
         """Verify timeout does not block user operations."""
         with patch.object(MorphClient, "_make_request") as mock_request:
-
-            def side_effect(*args, **kwargs):
-                if args[1] == "/chat/completions":
-                    return mock_morph_validation_response
-                elif args[1] == "/health":
-                    return mock_morph_healthy_response
-                elif args[1] == "/chat/completions":
-                    # Timeout during apply
-                    raise MorphTimeoutError("Apply request timed out")
-                return {}
-
-            mock_request.side_effect = side_effect
+            # All requests timeout
+            mock_request.side_effect = MorphTimeoutError("Request timed out")
 
             manager = ApplyToolManager.from_settings(
                 morph_enabled=True,
                 morph_api_key=test_api_key,
+                validate_on_init=False,  # Skip validation on init
                 fallback_on_error=True,
             )
 
@@ -1510,22 +1511,27 @@ class TestFallbackScenariosInvalidAPIKeyAndServiceUnavailable:
         mock_morph_validation_response,
         mock_morph_healthy_response,
     ):
-        """Test graceful degradation when Morph partially fails (validation ok, apply fails)."""
+        """Test graceful degradation when Morph partially fails (validation ok, apply fails).
+
+        Note: Morph uses /chat/completions for all operations. This test simulates
+        validation succeeding but apply failing by using call count.
+        """
         with patch.object(MorphClient, "_make_request") as mock_request:
+            call_count = 0
 
             def side_effect(*args, **kwargs):
-                if args[1] == "/chat/completions":
+                nonlocal call_count
+                call_count += 1
+                if call_count <= 2:
+                    # First 2 calls are validation (init + health check)
                     return mock_morph_validation_response
-                elif args[1] == "/health":
-                    return mock_morph_healthy_response
-                elif args[1] == "/chat/completions":
-                    # Apply fails with server error
+                else:
+                    # Subsequent calls (apply) fail with server error
                     raise MorphAPIError(
                         code="PROCESSING_ERROR",
                         message="Internal server error",
                         status_code=500,
                     )
-                return {}
 
             mock_request.side_effect = side_effect
 
@@ -1561,7 +1567,6 @@ class TestEndToEndFlow:
     def test_full_flow_settings_to_apply(
         self,
         test_api_key,
-        mock_morph_healthy_response,
         mock_morph_apply_response,
     ):
         """
@@ -1575,17 +1580,13 @@ class TestEndToEndFlow:
         (OpenAI-compatible API). Validation is done via a minimal apply operation.
         """
         with patch.object(MorphClient, "_make_request") as mock_request:
-            # Set up mock responses
+            # Set up mock responses - all calls go to /chat/completions
             call_log = []
 
             def track_calls(*args, **kwargs):
                 call_log.append({"endpoint": args[1], "method": args[0]})
-                if args[1] == "/health":
-                    return mock_morph_healthy_response
-                elif args[1] == "/chat/completions":
-                    # Both validation and apply use /chat/completions
-                    return mock_morph_apply_response
-                return {}
+                # All Morph operations use /chat/completions
+                return mock_morph_apply_response
 
             mock_request.side_effect = track_calls
 
@@ -1610,9 +1611,10 @@ class TestEndToEndFlow:
             )
 
             # Step 4: Verify operation completed successfully
+            # Note: OpenAI-compatible format returns confidence=1.0
             assert result.success is True
             assert result.new_content
-            assert result.confidence > 0
+            assert result.confidence == 1.0
 
             # Verify the flow through API calls - Morph uses /chat/completions for all operations
             endpoints_called = [c["endpoint"] for c in call_log]

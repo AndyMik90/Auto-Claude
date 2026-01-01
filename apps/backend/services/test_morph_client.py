@@ -949,7 +949,7 @@ class TestIsAvailable:
         """Verify is_available returns True when service is healthy and key is valid."""
         with patch.object(MorphClient, "_make_request") as mock_request:
             # is_available calls check_health() -> validate_api_key() -> apply()
-            # then calls validate_api_key() again, so 2 calls total
+            # Only one call since is_available now delegates to check_health()
             mock_request.return_value = mock_apply_response
 
             client = MorphClient(test_config)

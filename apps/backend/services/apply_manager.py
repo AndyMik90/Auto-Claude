@@ -427,8 +427,8 @@ class ApplyToolManager:
         file_path: str,
         content: str,
         instruction: str,
+        code_edit: str | None = None,
         language: str | None = None,
-        context: dict[str, Any] | None = None,
     ) -> ApplyResult:
         """
         Apply changes using Morph Fast Apply.
@@ -440,8 +440,9 @@ class ApplyToolManager:
             file_path: Path to the file being edited
             content: Current content of the file
             instruction: The edit instruction to apply
+            code_edit: The code edit with "// ... existing code ..." markers.
+                      If not provided, uses content as the update (full file rewrite)
             language: Optional programming language hint
-            context: Optional additional context
 
         Returns:
             ApplyResult with the transformed content
@@ -462,8 +463,8 @@ class ApplyToolManager:
             file_path=file_path,
             original_content=content,
             instruction=instruction,
+            code_edit=code_edit,
             language=language,
-            context=context,
         )
 
     def apply_with_fallback(
@@ -471,8 +472,8 @@ class ApplyToolManager:
         file_path: str,
         content: str,
         instruction: str,
+        code_edit: str | None = None,
         language: str | None = None,
-        context: dict[str, Any] | None = None,
     ) -> tuple[ApplyResult | None, ApplyMethod]:
         """
         Apply changes using Morph, with automatic fallback on error.
@@ -484,8 +485,9 @@ class ApplyToolManager:
             file_path: Path to the file being edited
             content: Current content of the file
             instruction: The edit instruction to apply
+            code_edit: The code edit with "// ... existing code ..." markers.
+                      If not provided, uses content as the update (full file rewrite)
             language: Optional programming language hint
-            context: Optional additional context
 
         Returns:
             Tuple of (ApplyResult or None, ApplyMethod used)
@@ -500,8 +502,8 @@ class ApplyToolManager:
                 file_path=file_path,
                 content=content,
                 instruction=instruction,
+                code_edit=code_edit,
                 language=language,
-                context=context,
             )
             return result, ApplyMethod.MORPH
         except (MorphAPIError, MorphConnectionError, MorphTimeoutError) as e:
