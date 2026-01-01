@@ -184,18 +184,38 @@ class ImplementationPlan:
                 if spec_dir:
                     from review.state import ReviewState
 
-                    review_state = ReviewState.load(spec_dir)
-                    if review_state.is_approved():
-                        # Plan approved - transition to in_progress so coding can start
-                        logger.info(
-                            "Plan approved, transitioning from human_review to in_progress"
+                    try:
+                        review_state = ReviewState.load(spec_dir)
+                        # CRITICAL: Use is_approval_valid() instead of is_approved()
+                        # to ensure spec hasn't changed since approval
+                        if review_state.is_approval_valid(spec_dir):
+                            # Plan approved AND unchanged - transition to in_progress
+                            logger.info(
+                                f"Plan approved by {review_state.approved_by} at "
+                                f"{review_state.approved_at} and unchanged. "
+                                f"Transitioning from human_review to in_progress"
+                            )
+                            self.status = "in_progress"
+                            self.planStatus = "in_progress"
+                        elif review_state.is_approved():
+                            # Plan was approved but spec changed - needs re-approval
+                            logger.warning(
+                                "Plan was approved but spec has changed since approval. "
+                                "Keeping human_review status until re-approval."
+                            )
+                            # Keep in human_review - spec changed, needs re-review
+                        else:
+                            # Still waiting for user approval - keep human_review status
+                            logger.info(
+                                f"Plan awaiting approval (review_count: {review_state.review_count}). "
+                                f"Keeping human_review status"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to load review state from {spec_dir}: {e}. "
+                            "Preserving human_review status to be safe."
                         )
-                        self.status = "in_progress"
-                        self.planStatus = "in_progress"
-                    else:
-                        # Still waiting for user approval - keep human_review status
-                        logger.debug("Plan still awaiting approval, keeping human_review status")
-                        pass
+                        # Keep current status if we can't determine approval state
                 else:
                     # No spec_dir provided - preserve status (backward compatibility)
                     pass
