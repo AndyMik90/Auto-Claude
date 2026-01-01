@@ -91,6 +91,8 @@ jobs:
 
       - name: Install Rust toolchain (for building native Python packages)
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.83.0'
 
       - name: Cache bundled Python
         uses: actions/cache@v4
@@ -142,6 +144,7 @@ jobs:
             apps/frontend/dist/*.dmg
             apps/frontend/dist/*.zip
             apps/frontend/dist/*.yml
+          if-no-files-found: error
 
   # Apple Silicon build on ARM64 runner for native compilation
   build-macos-arm64:
@@ -221,6 +224,7 @@ jobs:
             apps/frontend/dist/*.dmg
             apps/frontend/dist/*.zip
             apps/frontend/dist/*.yml
+          if-no-files-found: error
 
   build-windows:
     needs: create-tag
@@ -278,6 +282,7 @@ jobs:
           path: |
             apps/frontend/dist/*.exe
             apps/frontend/dist/*.yml
+          if-no-files-found: error
 
   build-linux:
     needs: create-tag
@@ -342,6 +347,7 @@ jobs:
             apps/frontend/dist/*.deb
             apps/frontend/dist/*.flatpak
             apps/frontend/dist/*.yml
+          if-no-files-found: error
 
   create-release:
     needs: [create-tag, build-macos-intel, build-macos-arm64, build-windows, build-linux]

@@ -119,7 +119,8 @@ def _validate_custom_mcp_server(server: dict) -> bool:
     # Shell metacharacters that could enable command injection
     # Issue #489: Prevent shell metacharacters in MCP server args
     SHELL_METACHARACTERS = {"&", "|", ";", ">", "<", "`", "$", "(", ")", "{", "}", "
-", ""}
+", "
+"}
 
     # Shell metacharacters that could enable command injection
     # Issue #489: Prevent shell metacharacters in MCP server args

@@ -169,7 +169,7 @@ AGENT_CONFIGS = {
         + WEB_TOOLS
         + SEQUENTIAL_THINKING_TOOLS
         + CODE_REASONING_TOOLS,  # Analysis + technical understanding
-        "mcp_servers": [],  # No MCP needed - just reads project
+        "mcp_servers": ["sequential-thinking", "code-reasoning"],
         "auto_claude_tools": [],
         "thinking_default": "medium",
     },
@@ -178,7 +178,7 @@ AGENT_CONFIGS = {
         + WEB_TOOLS
         + SEQUENTIAL_THINKING_TOOLS
         + CODE_REASONING_TOOLS,  # Research analysis + technical evaluation
-        "mcp_servers": ["context7"],  # Needs docs lookup
+        "mcp_servers": ["context7", "sequential-thinking", "code-reasoning"],
         "auto_claude_tools": [],
         "thinking_default": "medium",
     },
@@ -187,7 +187,7 @@ AGENT_CONFIGS = {
         + BASE_WRITE_TOOLS
         + SEQUENTIAL_THINKING_TOOLS
         + CODE_REASONING_TOOLS,  # Structured thinking + technical specification
-        "mcp_servers": [],  # Just writes spec.md
+        "mcp_servers": ["sequential-thinking", "code-reasoning"],
         "auto_claude_tools": [],
         "thinking_default": "high",
     },
@@ -230,7 +230,14 @@ AGENT_CONFIGS = {
         + BASE_WRITE_TOOLS
         + WEB_TOOLS
         + ALL_THINKING_TOOLS,  # Strategic + technical + methodical reasoning
-        "mcp_servers": ["context7", "graphiti", "auto-claude"],
+        "mcp_servers": [
+            "context7",
+            "graphiti",
+            "auto-claude",
+            "sequential-thinking",
+            "code-reasoning",
+            "reasoner",
+        ],
         "mcp_servers_optional": ["linear"],  # Only if project setting enabled
         "auto_claude_tools": [
             TOOL_GET_BUILD_PROGRESS,
@@ -245,7 +252,13 @@ AGENT_CONFIGS = {
         + WEB_TOOLS
         + SEQUENTIAL_THINKING_TOOLS
         + CODE_REASONING_TOOLS,  # Methodical analysis + technical decisions
-        "mcp_servers": ["context7", "graphiti", "auto-claude"],
+        "mcp_servers": [
+            "context7",
+            "graphiti",
+            "auto-claude",
+            "sequential-thinking",
+            "code-reasoning",
+        ],
         "mcp_servers_optional": ["linear"],
         "auto_claude_tools": [
             TOOL_UPDATE_SUBTASK_STATUS,
@@ -266,7 +279,14 @@ AGENT_CONFIGS = {
         + WEB_TOOLS
         + SEQUENTIAL_THINKING_TOOLS
         + CODE_REASONING_TOOLS,  # Systematic analysis + technical validation
-        "mcp_servers": ["context7", "graphiti", "auto-claude", "browser"],
+        "mcp_servers": [
+            "context7",
+            "graphiti",
+            "auto-claude",
+            "browser",
+            "sequential-thinking",
+            "code-reasoning",
+        ],
         "mcp_servers_optional": ["linear"],  # For updating issue status
         "auto_claude_tools": [
             TOOL_GET_BUILD_PROGRESS,
@@ -281,7 +301,14 @@ AGENT_CONFIGS = {
         + WEB_TOOLS
         + SEQUENTIAL_THINKING_TOOLS
         + CODE_REASONING_TOOLS,  # Debugging analysis + technical decisions
-        "mcp_servers": ["context7", "graphiti", "auto-claude", "browser"],
+        "mcp_servers": [
+            "context7",
+            "graphiti",
+            "auto-claude",
+            "browser",
+            "sequential-thinking",
+            "code-reasoning",
+        ],
         "mcp_servers_optional": ["linear"],
         "auto_claude_tools": [
             TOOL_UPDATE_SUBTASK_STATUS,

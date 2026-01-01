@@ -12,6 +12,9 @@ on:
         default: true
         type: boolean
 
+permissions:
+  contents: read
+
 jobs:
   # Intel build on Intel runner for native compilation
   # Note: macos-15-intel is the last Intel runner, supported until Fall 2027
@@ -95,6 +98,7 @@ jobs:
           path: |
             apps/frontend/dist/*.dmg
             apps/frontend/dist/*.zip
+          if-no-files-found: error
 
   # Apple Silicon build on ARM64 runner for native compilation
   build-macos-arm64:
@@ -172,6 +176,7 @@ jobs:
           path: |
             apps/frontend/dist/*.dmg
             apps/frontend/dist/*.zip
+          if-no-files-found: error
 
   build-windows:
     runs-on: windows-latest
@@ -226,6 +231,7 @@ jobs:
           name: windows-builds
           path: |
             apps/frontend/dist/*.exe
+          if-no-files-found: error
 
   build-linux:
     runs-on: ubuntu-latest
@@ -257,6 +263,7 @@ jobs:
 
       - name: Setup Flatpak
         run: |
+          set -e
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
@@ -287,6 +294,7 @@ jobs:
             apps/frontend/dist/*.AppImage
             apps/frontend/dist/*.deb
             apps/frontend/dist/*.flatpak
+          if-no-files-found: error
 
   create-release:
     needs: [build-macos-intel, build-macos-arm64, build-windows, build-linux]

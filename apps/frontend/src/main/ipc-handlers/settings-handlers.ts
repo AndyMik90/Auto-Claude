@@ -369,6 +369,22 @@ export function registerSettingsHandlers(
   ipcMain.handle(
     IPC_CHANNELS.SHELL_OPEN_EXTERNAL,
     async (_, url: string): Promise<void> => {
+      // Validate URL to only allow safe protocols (http/https)
+      // This prevents arbitrary protocol handlers like file://, javascript:, etc.
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(url);
+      } catch {
+        console.warn('[SHELL_OPEN_EXTERNAL] Invalid URL rejected:', url);
+        return;
+      }
+
+      const allowedProtocols = ['http:', 'https:'];
+      if (!allowedProtocols.includes(parsedUrl.protocol)) {
+        console.warn('[SHELL_OPEN_EXTERNAL] Blocked URL with disallowed protocol:', parsedUrl.protocol);
+        return;
+      }
+
       await shell.openExternal(url);
     }
   );

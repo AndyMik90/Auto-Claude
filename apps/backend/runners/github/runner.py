@@ -71,6 +71,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 # Now import models and orchestrator directly (they use relative imports internally)
 from models import GitHubRunnerConfig
 from orchestrator import GitHubOrchestrator, ProgressCallback
+from gh_client import GHClient
 
 
 def print_progress(callback: ProgressCallback) -> None:
@@ -346,8 +347,7 @@ async def cmd_pr_create(args) -> int:
 
     gh_client = GHClient(
         project_dir=args.project,
-        repo_name=config.repo.name,
-        repo_owner=config.repo.owner,
+        repo=config.repo,
     )
 
     # Parse draft argument (comes as string from IPC)
