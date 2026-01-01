@@ -14,10 +14,8 @@ export function DebugPage() {
   return (
     <div className="flex h-full flex-col p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Debug & Testing</h1>
-        <p className="text-muted-foreground">
-          Diagnostic tools for IPC, backend runners, logs, and configuration
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('page.title')}</h1>
+        <p className="text-muted-foreground">{t('page.description')}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">

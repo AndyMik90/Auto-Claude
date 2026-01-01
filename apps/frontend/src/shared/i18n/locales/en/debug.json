@@ -1,4 +1,8 @@
 {
+  "page": {
+    "title": "Debug & Testing",
+    "description": "Diagnostic tools for IPC, backend runners, logs, and configuration"
+  },
   "tabs": {
     "ipc": "IPC Tester",
     "runner": "Backend Runner",
