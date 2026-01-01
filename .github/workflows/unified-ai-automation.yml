@@ -1,14 +1,174 @@
-name: 🤖 AI Automation
+name: 🤖 Unified AI Automation (CodeRabbit → Copilot → OpenHands)
+
+# Master orchestrator for automated issue resolution
+# Flow: CodeRabbit plans → Copilot implements → OpenHands escalates
 
 on:
   issues:
     types: [opened]
   issue_comment:
     types: [created]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      trigger_type:
+        description: 'Manual trigger type'
+        required: true
+        type: choice
+        options:
+          - assign-copilot
+          - trigger-openhands
 
 jobs:
-  request-plan:
-    if: github.event_name == 'issues'
+  # STAGE 1: Request CodeRabbit plan for new issues
+  new-issue-request-plan:
+    name: 📋 Request CodeRabbit Plan
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Add labels and request plan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.issue.labels.map(l => l.name);
+            if (labels.includes('skip-automation')) return;
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['needs-plan', 'automation']
+            });
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🤖 Automated Planning Request
+
+@coderabbitai Please create a comprehensive **5-part implementation plan**:
+
+1. **Analysis**: Problem, root cause, affected components
+2. **Solution Design**: Technical approach and architecture
+3. **Implementation Steps**: Atomic, testable tasks
+4. **Testing Strategy**: Unit, integration, E2E requirements
+5. **Acceptance Criteria**: Measurable success conditions
+
+Add \`plan-ready\` label when complete.`
+            });
+
+  # STAGE 2: Assign Copilot when plan is ready
+  detect-plan-assign-copilot:
+    name: 🚀 Assign Copilot
+    if: |
+      github.event_name == 'issue_comment' && 
+      (contains(github.event.comment.body, 'plan-ready') ||
+       contains(github.event.comment.body, 'Implementation Plan'))
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Check and assign
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            if (!issue) return;
+            
+            const labels = issue.labels.map(l => l.name);
+            if (labels.includes('copilot-assigned')) return;
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: ['plan-ready', 'copilot-assigned', 'in-progress']
+            });
+            
+      - name: Assign Copilot
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/assignees \
+            -X POST -f 'assignees[]=copilot-swe-agent' || \
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/assignees \
+            -X POST -f 'assignees[]=Copilot' || true
+            
+      - name: Comment instructions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## 🚀 Implementation Stage
+
+@copilot Please implement following the plan above.
+
+**Stack:** TypeScript, Node.js  
+**Timeout:** 2 hours for PR creation  
+**Branch:** \`fix/issue-${context.payload.issue.number}\`
+
+If no PR after 2 hours, @openhands-agent will be assigned.`
+            });
+
+  # STAGE 3: Request CodeRabbit review for PRs
+  pr-request-reviews:
+    name: 🔍 Request PR Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Label bot PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const author = context.payload.pull_request.user.login;
+            if (author.includes('bot') || author.includes('copilot')) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: ['bot-pr', 'automation']
+              });
+            }
+            
+      - name: Request review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '@coderabbitai Please review for security, quality, and test coverage. Use REQUEST_CHANGES for critical issues.'
+            });
+
+  # Manual: Batch assign Copilot
+  manual-assign-copilot:
+    name: 🔧 Manual Copilot Assignment
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_type == 'assign-copilot'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Batch assign
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          for issue in $(gh issue list --repo ${{ github.repository }} --label "plan-ready" --json number --jq '.[].number'); do
+            gh api repos/${{ github.repository }}/issues/$issue/assignees -X POST -f 'assignees[]=copilot-swe-agent' || true
+          done
+
+  # Manual: Batch trigger OpenHands
+  manual-trigger-openhands:
+    name: 🆘 Manual OpenHands Trigger
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_type == 'trigger-openhands'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -16,9 +176,25 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.issues.createComment({
+            const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: '@coderabbitai Please create a 5-part implementation plan'
+              state: 'open',
+              labels: 'copilot-assigned'
             });
+            
+            for (const issue of issues) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['fix-me', 'escalated-to-openhands']
+              });
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `## 🆘 Escalation\n\n@openhands-agent Please take over implementation.`
+              });
+            }
