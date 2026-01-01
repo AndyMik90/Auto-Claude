@@ -271,11 +271,14 @@ export class AgentProcessManager {
 
           // Remove quotes if present
           if ((value.startsWith('"') && value.endsWith('"')) ||
-              (value.startsWith("'") && value.endsWith("'"))) {
+            (value.startsWith("'") && value.endsWith("'"))) {
             value = value.slice(1, -1);
           }
 
-          envVars[key] = value;
+          // Skip empty values to prevent overriding valid tokens from profiles
+          if (value) {
+            envVars[key] = value;
+          }
         }
       }
 
@@ -318,11 +321,14 @@ export class AgentProcessManager {
 
           // Remove quotes if present
           if ((value.startsWith('"') && value.endsWith('"')) ||
-              (value.startsWith("'") && value.endsWith("'"))) {
+            (value.startsWith("'") && value.endsWith("'"))) {
             value = value.slice(1, -1);
           }
 
-          envVars[key] = value;
+          // Skip empty values to prevent overriding valid tokens from profiles
+          if (value) {
+            envVars[key] = value;
+          }
         }
       }
 
