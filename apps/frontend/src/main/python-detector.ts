@@ -45,13 +45,14 @@ function findHomebrewPython(): string | null {
     '/usr/local/bin'      // Intel Mac
   ];
 
-  // Check for generic python3 first, then specific versions (newest first)
+  // Check for specific Python versions first (newest to oldest), then fall back to generic python3.
+  // This ensures we find the latest available version.
   const pythonNames = [
-    'python3',
     'python3.13',
     'python3.12',
     'python3.11',
     'python3.10',
+    'python3',
   ];
 
   for (const dir of homebrewDirs) {
