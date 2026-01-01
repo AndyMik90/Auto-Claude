@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2 } from 'lucide-react';
+import { Trash2, RefreshCw } from 'lucide-react';
 
 type LogSource = 'backend' | 'ipc' | 'frontend';
 
@@ -15,8 +15,37 @@ interface LogEntry {
 
 export function LogViewer() {
   const { t } = useTranslation(['debug']);
-  const [selectedSource, setSelectedSource] = useState<LogSource>('frontend');
+  const [selectedSource, setSelectedSource] = useState<LogSource>('backend');
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadRecentErrors = async () => {
+    if (selectedSource !== 'backend') {
+      setLogs([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const errors = await window.electronAPI.getRecentErrors(50);
+      const logEntries: LogEntry[] = errors.map((error, index) => ({
+        timestamp: new Date().toISOString(),
+        level: 'error' as const,
+        message: error
+      }));
+      setLogs(logEntries);
+    } catch (error) {
+      console.error('Failed to load recent errors:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecentErrors();
+    const interval = setInterval(loadRecentErrors, 5000);
+    return () => clearInterval(interval);
+  }, [selectedSource]);
 
   const handleClear = () => {
     setLogs([]);
@@ -57,7 +86,11 @@ export function LogViewer() {
           </Select>
         </div>
 
-        <div className="self-end">
+        <div className="self-end flex gap-2">
+          <Button variant="outline" size="sm" onClick={loadRecentErrors} disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {t('logs.refreshButton')}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleClear}>
             <Trash2 className="mr-2 h-4 w-4" />
             {t('logs.clearButton')}
@@ -86,10 +119,6 @@ export function LogViewer() {
             )}
           </div>
         </ScrollArea>
-      </div>
-
-      <div className="text-xs text-muted-foreground">
-        Note: Log streaming will be implemented when IPC handlers are added.
       </div>
     </div>
   );
