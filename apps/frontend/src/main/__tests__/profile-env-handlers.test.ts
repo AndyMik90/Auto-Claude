@@ -265,7 +265,7 @@ describe('Profile Env IPC Handlers', () => {
       const handler = ipcMain.getHandler(channel);
       expect(handler).toBeDefined();
 
-      const result = await handler(null, 'non-existent-profile');
+      const result = await handler!(null, 'non-existent-profile');
       expect(result).toEqual({
         success: false,
         error: 'Profile not found'
@@ -329,7 +329,7 @@ CUSTOM_MCP_SERVERS=[{"id":"test-server","name":"Test Server","type":"command"}]
       const handler = ipcMain.getHandler(channel);
       expect(handler).toBeDefined();
 
-      const result = await handler(null, 'test-profile');
+      const result = await handler!(null, 'test-profile');
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
 
@@ -395,7 +395,7 @@ CUSTOM_MCP_SERVERS=[{"id":"test-server","name":"Test Server","type":"command"}]
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'default');
+      const result = await handler!(null, 'default');
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -421,7 +421,7 @@ CUSTOM_MCP_SERVERS=[{"id":"test-server","name":"Test Server","type":"command"}]
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'oauth-profile');
+      const result = await handler!(null, 'oauth-profile');
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -447,7 +447,7 @@ CUSTOM_MCP_SERVERS=[{"id":"test-server","name":"Test Server","type":"command"}]
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'empty-profile');
+      const result = await handler!(null, 'empty-profile');
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -481,7 +481,7 @@ GITLAB_TOKEN=test-token
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'gitlab-disabled');
+      const result = await handler!(null, 'gitlab-disabled');
 
       expect(result.success).toBe(true);
       expect(result.data.gitlabEnabled).toBe(false);
@@ -498,7 +498,7 @@ GITLAB_TOKEN=test-token
       const handler = ipcMain.getHandler(channel);
       expect(handler).toBeDefined();
 
-      const result = await handler(null, 'non-existent-profile', { claudeOAuthToken: 'test' });
+      const result = await handler!(null, 'non-existent-profile', { claudeOAuthToken: 'test' });
       expect(result).toEqual({
         success: false,
         error: 'Profile not found'
@@ -520,7 +520,7 @@ GITLAB_TOKEN=test-token
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'no-config', { claudeOAuthToken: 'test' });
+      const result = await handler!(null, 'no-config', { claudeOAuthToken: 'test' });
 
       expect(result).toEqual({
         success: false,
@@ -548,7 +548,7 @@ GITLAB_TOKEN=test-token
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'test-profile', {
+      const result = await handler!(null, 'test-profile', {
         claudeOAuthToken: 'new-token',
         autoBuildModel: 'claude-opus-4-5-20251101',
         linearEnabled: true,
@@ -589,7 +589,7 @@ DEFAULT_BRANCH=main
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'test-profile', {
+      const result = await handler!(null, 'test-profile', {
         linearEnabled: true,
         linearApiKey: 'new-linear-key'
       });
@@ -621,7 +621,7 @@ DEFAULT_BRANCH=main
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'new-profile', {
+      const result = await handler!(null, 'new-profile', {
         claudeOAuthToken: 'test-token',
         autoBuildModel: 'claude-opus-4-5-20251101'
       });
@@ -650,7 +650,7 @@ DEFAULT_BRANCH=main
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'bool-profile', {
+      const result = await handler!(null, 'bool-profile', {
         linearRealtimeSync: true,
         githubAutoSync: false,
         gitlabAutoSync: true,
@@ -684,7 +684,7 @@ DEFAULT_BRANCH=main
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'gitlab-profile', {
+      const result = await handler!(null, 'gitlab-profile', {
         gitlabEnabled: true,
         gitlabToken: 'gitlab-token-123',
         gitlabInstanceUrl: 'https://gitlab.example.com',
@@ -720,7 +720,7 @@ DEFAULT_BRANCH=main
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'graphiti-profile', {
+      const result = await handler!(null, 'graphiti-profile', {
         graphitiEnabled: true,
         graphitiProviderConfig: {
           embeddingProvider: 'openai',
@@ -760,7 +760,7 @@ DEFAULT_BRANCH=main
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'mcp-profile', {
+      const result = await handler!(null, 'mcp-profile', {
         mcpServers: {
           context7Enabled: true,
           linearMcpEnabled: false,
@@ -796,7 +796,7 @@ DEFAULT_BRANCH=main
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'agent-mcp-profile', {
+      const result = await handler!(null, 'agent-mcp-profile', {
         agentMcpOverrides: {
           planner: { add: ['server1', 'server2'], remove: ['server3'] },
           coder: { add: ['server4'] },
@@ -836,7 +836,7 @@ DEFAULT_BRANCH=main
         { id: 'server2', name: 'Server 2', type: 'http', url: 'http://localhost:3000' }
       ];
 
-      const result = await handler(null, 'custom-mcp-profile', {
+      const result = await handler!(null, 'custom-mcp-profile', {
         customMcpServers: customServers
       });
 
@@ -868,7 +868,7 @@ DEFAULT_BRANCH=main
       mockProfileManager.getProfile.mockReturnValue(mockProfile);
 
       const handler = ipcMain.getHandler(channel);
-      const result = await handler(null, 'empty-custom-mcp-profile', {
+      const result = await handler!(null, 'empty-custom-mcp-profile', {
         customMcpServers: []
       });
 
