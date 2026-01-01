@@ -14,13 +14,16 @@ for tool permissions. The get_allowed_tools() function remains the primary API
 for backwards compatibility.
 """
 
+from core.cdp_config import get_cdp_mcp_type, get_cdp_tools_for_agent
+from core.mcp_config import is_electron_mcp_enabled
+
 from .models import (
     AGENT_CONFIGS,
     CONTEXT7_TOOLS,
-    ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
     LINEAR_TOOLS,
     PUPPETEER_TOOLS,
+    PUPPETEER_EXTENDED_TOOLS,
     get_agent_config,
     get_required_mcp_servers,
 )
@@ -72,12 +75,16 @@ def get_allowed_tools(
         tools.extend(config.get("maestro_tools", []))
 
     # Add MCP tool names based on required servers
-    tools.extend(_get_mcp_tools_for_servers(required_servers))
+    tools.extend(_get_mcp_tools_for_servers(required_servers, agent_type, project_capabilities))
 
     return tools
 
 
-def _get_mcp_tools_for_servers(servers: list[str]) -> list[str]:
+def _get_mcp_tools_for_servers(
+    servers: list[str],
+    agent_type: str,
+    project_capabilities: dict | None = None,
+) -> list[str]:
     """
     Get the list of MCP tools for a list of required servers.
 
@@ -85,6 +92,8 @@ def _get_mcp_tools_for_servers(servers: list[str]) -> list[str]:
 
     Args:
         servers: List of MCP server names (e.g., ['context7', 'linear', 'electron'])
+        agent_type: Agent type identifier (needed for CDP tools)
+        project_capabilities: Project capabilities dict (needed for Electron detection)
 
     Returns:
         List of MCP tool names for all specified servers
@@ -99,9 +108,16 @@ def _get_mcp_tools_for_servers(servers: list[str]) -> list[str]:
         elif server == "graphiti":
             tools.extend(GRAPHITI_MCP_TOOLS)
         elif server == "electron":
-            tools.extend(ELECTRON_TOOLS)
+            # Electron tools are dynamic based on agent type and configuration
+            if project_capabilities and project_capabilities.get("is_electron") and is_electron_mcp_enabled():
+                mcp_type = get_cdp_mcp_type()
+                tools.extend(get_cdp_tools_for_agent(agent_type, mcp_type=mcp_type))
         elif server == "puppeteer":
-            tools.extend(PUPPETEER_TOOLS)
+            tools.extend(PUPPETEER_EXTENDED_TOOLS)
+        elif server == "chrome-devtools":
+            # Chrome DevTools tools are dynamic based on agent type
+            mcp_type = "chrome-devtools"
+            tools.extend(get_cdp_tools_for_agent(agent_type, mcp_type=mcp_type))
         # maestro tools are already added via config["maestro_tools"]
 
     return tools

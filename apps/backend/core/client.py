@@ -30,19 +30,14 @@ from agents.tools_pkg import (
 )
 from core.cdp_config import (
     get_cdp_config_summary,
+    get_cdp_mcp_server_name,
+    get_cdp_mcp_type,
     get_cdp_tools_for_agent,
     validate_cdp_config,
 )
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
 from core.auth import get_sdk_env_vars, require_auth_token
-from core.cdp_config import (
-    get_cdp_config_summary,
-    get_cdp_mcp_server_name,
-    get_cdp_mcp_type,
-    get_cdp_tools_for_agent,
-    validate_cdp_config,
-)
 from core.mcp_config import (
     get_electron_debug_port,
     get_graphiti_mcp_url,

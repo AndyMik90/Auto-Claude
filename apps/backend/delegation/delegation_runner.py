@@ -12,7 +12,8 @@ from typing import Any, Dict, List
 from debug import debug, debug_error, debug_section, debug_success
 from delegation.coordinator import DelegationCoordinator
 from delegation.models import create_delegation_id
-from ui import print_banner, print_status
+from ui import print_status
+from cli.utils import print_banner
 
 
 def create_delegation_directory(project_dir: Path, task: str) -> Path:

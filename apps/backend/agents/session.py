@@ -351,7 +351,11 @@ async def run_agent_session(
     tool_count = 0
 
     try:
-        # Send the query
+        # Send the query - connect first, then query
+        debug("session", "Connecting to Claude SDK...")
+        await client.connect()
+        debug_success("session", "Connected successfully")
+
         debug("session", "Sending query to Claude SDK...")
         await client.query(message)
         debug_success("session", "Query sent successfully")
@@ -548,3 +552,10 @@ async def run_agent_session(
         if task_logger:
             task_logger.log_error(f"Session error: {e}", phase)
         return "error", str(e)
+    finally:
+        # Always disconnect the client
+        try:
+            await client.disconnect()
+            debug("session", "Disconnected from Claude SDK")
+        except Exception:
+            pass  # Ignore disconnect errors

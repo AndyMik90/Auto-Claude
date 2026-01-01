@@ -110,3 +110,41 @@ jobs:
       - name: Build
         working-directory: apps/frontend
         run: npm run build
+
+  # Build electron-mcp-server TypeScript package
+  build-electron-mcp-server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Get npm cache directory
+        id: npm-cache
+        working-directory: apps/backend/providers/electron-mcp-server
+        run: echo "dir=$(npm config get cache)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: ${{ runner.os }}-npm-electron-mcp-${{ hashFiles('**/providers/electron-mcp-server/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-electron-mcp-
+
+      - name: Install dependencies
+        working-directory: apps/backend/providers/electron-mcp-server
+        run: npm ci
+
+      - name: Build TypeScript
+        working-directory: apps/backend/providers/electron-mcp-server
+        run: npm run build
+
+      - name: Verify dist output
+        working-directory: apps/backend/providers/electron-mcp-server
+        run: |
+          test -f dist/index.js || { echo "dist/index.js not found"; exit 1; }
+          test -f dist/index.d.ts || { echo "dist/index.d.ts not found"; exit 1; }
+          echo "Build successful"

@@ -25,74 +25,126 @@ let profilerStarted = false;
 let consoleLogs: any[] = [];
 let exceptions: any[] = [];
 
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  retryDelay: 1000, // ms
+  maxRetryDelay: 5000, // ms
+};
+
 /**
- * Connect to Electron app via CDP
+ * Sleep for specified milliseconds
  */
-async function connectToCDP(debugPort: number = 9222): Promise<boolean> {
-  try {
-    const targets = await CDP.List({ port: debugPort });
-    const pageTarget = targets.find((t: any) => t.type === 'page');
-
-    if (!pageTarget) {
-      console.error('No page target found');
-      return false;
-    }
-
-    target = pageTarget;
-    cdpClient = await CDP({ target, port: debugPort });
-
-    // Enable domains
-    await Promise.all([
-      cdpClient.Page.enable(),
-      cdpClient.Runtime.enable(),
-      cdpClient.Network.enable(),
-      cdpClient.DOM.enable(),
-      cdpClient.Log.enable(),
-      cdpClient.Performance.enable(),
-      cdpClient.Input.enable(),
-    ]);
-
-    // Set up network monitoring
-    cdpClient.Network.requestWillBeSent((params: any) => {
-      networkLogs.push({ type: 'request', ...params });
-    });
-    cdpClient.Network.responseReceived((params: any) => {
-      networkLogs.push({ type: 'response', ...params });
-    });
-
-    // Set up console monitoring
-    cdpClient.Runtime.consoleAPICalled((params: any) => {
-      consoleLogs.push(params);
-    });
-
-    // Set up exception monitoring
-    cdpClient.Runtime.exceptionThrown((params: any) => {
-      exceptions.push(params);
-    });
-
-    console.error(`Connected to Electron on port ${debugPort}`);
-    return true;
-  } catch (error) {
-    console.error('Failed to connect to CDP:', error);
-    return false;
-  }
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
- * Ensure CDP connection is active
+ * Calculate exponential backoff delay
+ */
+function getRetryDelay(attempt: number): number {
+  const delay = RETRY_CONFIG.retryDelay * Math.pow(2, attempt - 1);
+  return Math.min(delay, RETRY_CONFIG.maxRetryDelay);
+}
+
+/**
+ * Connect to Electron app via CDP with retry logic
+ */
+async function connectToCDP(debugPort: number = 9222): Promise<boolean> {
+  for (let attempt = 1; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      const targets = await CDP.List({ port: debugPort });
+      const pageTarget = targets.find((t: any) => t.type === 'page');
+
+      if (!pageTarget) {
+        console.error(`Connection attempt ${attempt}/${RETRY_CONFIG.maxRetries}: No page target found`);
+        if (attempt < RETRY_CONFIG.maxRetries) {
+          const delay = getRetryDelay(attempt);
+          console.error(`Retrying in ${delay}ms...`);
+          await sleep(delay);
+          continue;
+        }
+        return false;
+      }
+
+      target = pageTarget;
+      cdpClient = await CDP({ target, port: debugPort });
+
+      // Enable domains
+      await Promise.all([
+        cdpClient.Page.enable(),
+        cdpClient.Runtime.enable(),
+        cdpClient.Network.enable(),
+        cdpClient.DOM.enable(),
+        cdpClient.Log.enable(),
+        cdpClient.Performance.enable(),
+        cdpClient.Input.enable(),
+      ]);
+
+      // Set up network monitoring
+      cdpClient.Network.requestWillBeSent((params: any) => {
+        networkLogs.push({ type: 'request', ...params });
+      });
+      cdpClient.Network.responseReceived((params: any) => {
+        networkLogs.push({ type: 'response', ...params });
+      });
+
+      // Set up console monitoring
+      cdpClient.Runtime.consoleAPICalled((params: any) => {
+        consoleLogs.push(params);
+      });
+
+      // Set up exception monitoring
+      cdpClient.Runtime.exceptionThrown((params: any) => {
+        exceptions.push(params);
+      });
+
+      console.error(`Connected to Electron on port ${debugPort} (attempt ${attempt})`);
+      return true;
+    } catch (error: any) {
+      console.error(`Connection attempt ${attempt}/${RETRY_CONFIG.maxRetries} failed: ${error.message}`);
+      if (attempt === RETRY_CONFIG.maxRetries) {
+        console.error('Max retries reached. Giving up.');
+        throw error;
+      }
+      const delay = getRetryDelay(attempt);
+      console.error(`Retrying in ${delay}ms...`);
+      await sleep(delay);
+    }
+  }
+  return false;
+}
+
+/**
+ * Ensure CDP connection is active with helpful error messages
  */
 async function ensureCDPConnection(): Promise<boolean> {
   if (cdpClient) {
     try {
       await cdpClient.Runtime.evaluate({ expression: '1+1' });
       return true;
-    } catch {
+    } catch (error: any) {
+      console.error('CDP connection lost:', error.message);
       cdpClient = null;
     }
   }
 
   const debugPort = parseInt(process.env.ELECTRON_DEBUG_PORT || '9222', 10);
-  return await connectToCDP(debugPort);
+  console.error(`Attempting to connect to Electron on port ${debugPort}...`);
+  console.error('Tip: Ensure your Electron app is running with --remote-debugging-port=' + debugPort);
+  console.error('Example: electron . --remote-debugging-port=' + debugPort);
+  console.error('Or set ELECTRON_DEBUG_PORT environment variable if using a different port');
+
+  try {
+    return await connectToCDP(debugPort);
+  } catch (error: any) {
+    console.error('Failed to connect to Electron app after all retries.');
+    console.error('Please verify:');
+    console.error('1. Electron app is running');
+    console.error(`2. Started with --remote-debugging-port=${debugPort}`);
+    console.error(`3. ELECTRON_DEBUG_PORT environment variable is set to ${debugPort}`);
+    return false;
+  }
 }
 
 /**
@@ -639,6 +691,29 @@ async function handleGetWindowInfo() {
 
 async function handleScreenshot(args: any) {
   const { format = 'jpeg', quality = 60 } = args;
+
+  // Validate format parameter
+  if (format !== 'jpeg' && format !== 'png') {
+    return {
+      content: [{
+        type: 'text',
+        text: `Error: Invalid format '${format}'. Must be 'jpeg' or 'png'`,
+      }],
+      isError: true,
+    };
+  }
+
+  // Validate quality parameter (only applies to JPEG)
+  if (format === 'jpeg' && (quality < 0 || quality > 100)) {
+    return {
+      content: [{
+        type: 'text',
+        text: `Error: quality must be between 0 and 100, got ${quality}`,
+      }],
+      isError: true,
+    };
+  }
+
   const screenshot = await cdpClient.Page.captureScreenshot({
     format,
     quality: format === 'jpeg' ? quality : undefined,

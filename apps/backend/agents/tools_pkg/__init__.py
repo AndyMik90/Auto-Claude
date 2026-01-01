@@ -37,7 +37,6 @@ from .models import (
     BASE_WRITE_TOOLS,
     # MCP tool lists
     CONTEXT7_TOOLS,
-    ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
     LINEAR_TOOLS,
     PUPPETEER_TOOLS,
@@ -77,9 +76,9 @@ __all__ = [
     "CONTEXT7_TOOLS",
     "LINEAR_TOOLS",
     "GRAPHITI_MCP_TOOLS",
-    "ELECTRON_TOOLS",
     "PUPPETEER_TOOLS",
     "PUPPETEER_EXTENDED_TOOLS",
+    # Note: Electron tools are now in core.cdp_config (single source of truth)
     # Maestro tool name constants
     "TOOL_UPDATE_SUBTASK_STATUS",
     "TOOL_GET_BUILD_PROGRESS",

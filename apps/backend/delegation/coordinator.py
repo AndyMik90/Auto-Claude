@@ -6,6 +6,7 @@ The meta-coordinator that analyzes tasks and routes them to specialist agents.
 """
 
 import asyncio
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -265,8 +266,9 @@ class DelegationCoordinator:
             print_status(f"Step completed: {step.prompt_key}", "success")
 
         except Exception as e:
+            import traceback
             result.status = "failed"
-            result.error = str(e)
+            result.error = str(e) + "\n" + traceback.format_exc()
             result.completed_at = time.time()
 
             if step.optional:
@@ -337,7 +339,6 @@ Focus on completing your specific step. Trust that other steps are handled by th
             Step-specific instructions
         """
         instructions = {
-<<<<<<< HEAD
             # Bug resolution steps
             "investigate_issue": "Investigate the reported issue. Read relevant code files, identify the root cause, and document your findings.",
             "implement_fix": "Implement the fix based on the investigation. Modify code files, test the fix locally if possible, and ensure the issue is resolved.",
@@ -356,10 +357,6 @@ Focus on completing your specific step. Trust that other steps are handled by th
             # Code review steps
             "review_code": "Review the code thoroughly. Check for bugs, security issues, performance problems, and adherence to best practices. Provide constructive feedback.",
             "document_review": "Summarize the review findings in a clear document. Highlight issues found, severity levels, and recommendations for improvement.",
-            # Bug resolution steps (from develop)
-            "investigate_issue": "Investigate the reported issue. Read relevant code files, identify the root cause, and document your findings.",
-            "implement_fix": "Implement the fix based on the investigation. Modify code files, test the fix locally if possible, and ensure the issue is resolved.",
-            "verify_fix": "Verify that the fix resolves the issue. Run tests, check for regressions, and confirm the original issue no longer occurs.",
         }
         return instructions.get(
             prompt_key,
