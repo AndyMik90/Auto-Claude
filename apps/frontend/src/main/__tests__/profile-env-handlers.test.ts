@@ -283,6 +283,7 @@ describe('Profile Env IPC Handlers', () => {
         isDefault: false,
         description: 'Test profile for unit tests',
         createdAt: new Date(),
+        oauthToken: 'enc:test-token-123',
         email: 'test@example.com'
       };
 
