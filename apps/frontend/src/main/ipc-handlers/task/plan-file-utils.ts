@@ -4,6 +4,17 @@
  * Provides thread-safe operations for reading and writing implementation_plan.json files.
  * Uses an in-memory lock to serialize updates and prevent race conditions when multiple
  * IPC handlers try to update the same plan file concurrently.
+ *
+ * IMPORTANT LIMITATION:
+ * The synchronous function `persistPlanStatusSync` does NOT participate in the locking
+ * mechanism. It bypasses the async lock entirely, which means:
+ * - It can race with concurrent async operations (persistPlanStatus, updatePlanFile, etc.)
+ * - It should ONLY be used when you are certain no async operations are pending on the same file
+ * - Prefer using the async `persistPlanStatus` whenever possible
+ *
+ * If you need synchronous behavior, ensure that:
+ * 1. No async plan operations are in flight for the same file path
+ * 2. The calling context truly cannot use async/await (e.g., synchronous event handlers)
  */
 
 import path from 'path';
@@ -102,7 +113,23 @@ export async function persistPlanStatus(planPath: string, status: TaskStatus): P
 
 /**
  * Persist task status synchronously (for use in event handlers where async isn't practical).
- * Note: This version doesn't use locking - use persistPlanStatus when possible.
+ *
+ * WARNING: This function bypasses the async locking mechanism entirely!
+ *
+ * This means it can race with concurrent async operations (persistPlanStatus, updatePlanFile,
+ * createPlanIfNotExists) that may be in flight for the same file. Using this function while
+ * async operations are pending can result in:
+ * - Lost updates (this write may overwrite changes from an async operation, or vice versa)
+ * - Corrupted JSON (if writes interleave at the filesystem level)
+ * - Inconsistent state between what was written and what the async operation expected to read
+ *
+ * ONLY use this function when ALL of the following conditions are met:
+ * 1. You are in a synchronous context that cannot use async/await (e.g., certain event handlers)
+ * 2. You are certain no async plan operations are pending or in-flight for this file path
+ * 3. No other code will initiate async plan operations until this function returns
+ *
+ * When possible, prefer using the async `persistPlanStatus` function instead, which properly
+ * participates in the locking mechanism and prevents race conditions.
  *
  * @param planPath - Path to the implementation_plan.json file
  * @param status - The TaskStatus to persist
