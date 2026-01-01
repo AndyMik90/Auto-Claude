@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Check,
@@ -116,6 +116,9 @@ export function OllamaModelSelector({
   const [isInstalling, setIsInstalling] = useState(false);
   const [installSuccess, setInstallSuccess] = useState(false);
 
+  // Track timeout for cleanup on unmount
+  const installCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Use global download store for tracking downloads
   const downloads = useDownloadStore((state) => state.downloads);
   const startDownload = useDownloadStore((state) => state.startDownload);
@@ -215,8 +218,12 @@ export function OllamaModelSelector({
       const result = await window.electronAPI.installOllama();
       if (result?.success) {
         setInstallSuccess(true);
+        // Clear any existing timeout before setting a new one
+        if (installCheckTimeoutRef.current) {
+          clearTimeout(installCheckTimeoutRef.current);
+        }
         // Re-check after a delay to give user time to complete installation
-        setTimeout(() => {
+        installCheckTimeoutRef.current = setTimeout(() => {
           checkInstalledModels();
         }, 5000);
       } else {
@@ -233,7 +240,13 @@ export function OllamaModelSelector({
   useEffect(() => {
     const controller = new AbortController();
     checkInstalledModels(controller.signal);
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      // Clean up the install check timeout to prevent setState on unmounted component
+      if (installCheckTimeoutRef.current) {
+        clearTimeout(installCheckTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Progress is now handled globally by the download store listener initialized in App.tsx

@@ -237,7 +237,8 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
 
   } else if (platform === 'win32') {
     // Windows: Use appropriate terminal
-    // Values match SupportedTerminal type: 'windowsterminal', 'powershell', 'cmd', 'conemu', 'cmder', 'gitbash'
+    // Values match SupportedTerminal type: 'windowsterminal', 'powershell', 'cmd', 'conemu', 'cmder',
+    // 'gitbash', 'alacritty', 'wezterm', 'hyper', 'tabby', 'cygwin', 'msys2'
     const terminalId = preferredTerminal?.toLowerCase() || 'powershell';
 
     console.log('[Claude Code] Using terminal:', terminalId);
@@ -289,8 +290,112 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       } else if (terminalId === 'wezterm') {
         // WezTerm
         await runWindowsCommand(`start wezterm start -- powershell -NoExit -Command "${escapedCommand}"`);
+      } else if (terminalId === 'cmd') {
+        // Command Prompt - use cmd /k to run command and keep window open
+        // Note: cmd.exe uses its own escaping rules, so we pass the raw command
+        // and let cmd handle it. The command is typically PowerShell-formatted
+        // for install scripts, so we run PowerShell from cmd.
+        await runWindowsCommand(`start cmd /k "powershell -NoExit -Command ${escapedCommand}"`);
+      } else if (terminalId === 'conemu') {
+        // ConEmu - open with PowerShell tab running the command
+        const conemuPaths = [
+          'C:\\Program Files\\ConEmu\\ConEmu64.exe',
+          'C:\\Program Files (x86)\\ConEmu\\ConEmu.exe',
+        ];
+        const conemuPath = conemuPaths.find(p => existsSync(p));
+        if (conemuPath) {
+          // ConEmu uses -run to specify the command to execute
+          await runWindowsCommand(`start "" "${conemuPath}" -run "powershell -NoExit -Command ${escapedCommand}"`);
+        } else {
+          // Fall back to PowerShell if ConEmu not found
+          console.warn('[Claude Code] ConEmu not found, falling back to PowerShell');
+          await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
+        }
+      } else if (terminalId === 'cmder') {
+        // Cmder - portable console emulator for Windows
+        const cmderPaths = [
+          'C:\\cmder\\Cmder.exe',
+          'C:\\tools\\cmder\\Cmder.exe',
+          path.join(process.env.CMDER_ROOT || '', 'Cmder.exe'),
+        ].filter(p => p); // Remove empty paths
+        const cmderPath = cmderPaths.find(p => existsSync(p));
+        if (cmderPath) {
+          // Cmder uses /TASK for predefined tasks or /START for directory, but we can use /C for command
+          await runWindowsCommand(`start "" "${cmderPath}" /SINGLE /START "" /TASK "powershell -NoExit -Command ${escapedCommand}"`);
+        } else {
+          // Fall back to PowerShell if Cmder not found
+          console.warn('[Claude Code] Cmder not found, falling back to PowerShell');
+          await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
+        }
+      } else if (terminalId === 'hyper') {
+        // Hyper - Electron-based terminal
+        const hyperPaths = [
+          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Hyper', 'Hyper.exe'),
+          path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'Programs', 'Hyper', 'Hyper.exe'),
+        ];
+        const hyperPath = hyperPaths.find(p => existsSync(p));
+        if (hyperPath) {
+          // Launch Hyper and it will pick up the shell; send command via PowerShell since Hyper
+          // doesn't have a built-in way to run commands on startup
+          await runWindowsCommand(`start "" "${hyperPath}"`);
+          console.log('[Claude Code] Hyper opened - command must be pasted manually');
+        } else {
+          console.warn('[Claude Code] Hyper not found, falling back to PowerShell');
+          await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
+        }
+      } else if (terminalId === 'tabby') {
+        // Tabby (formerly Terminus) - modern terminal for Windows
+        const tabbyPaths = [
+          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Tabby', 'Tabby.exe'),
+          path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'Programs', 'Tabby', 'Tabby.exe'),
+        ];
+        const tabbyPath = tabbyPaths.find(p => existsSync(p));
+        if (tabbyPath) {
+          // Tabby opens with default shell; similar to Hyper, no command line arg for running commands
+          await runWindowsCommand(`start "" "${tabbyPath}"`);
+          console.log('[Claude Code] Tabby opened - command must be pasted manually');
+        } else {
+          console.warn('[Claude Code] Tabby not found, falling back to PowerShell');
+          await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
+        }
+      } else if (terminalId === 'cygwin') {
+        // Cygwin terminal
+        const cygwinPaths = [
+          'C:\\cygwin64\\bin\\mintty.exe',
+          'C:\\cygwin\\bin\\mintty.exe',
+        ];
+        const cygwinPath = cygwinPaths.find(p => existsSync(p));
+        if (cygwinPath) {
+          // mintty with bash, escaping for bash context
+          const escapedBashCommand = escapeGitBashCommand(command);
+          await runWindowsCommand(`"${cygwinPath}" -e /bin/bash -lc "${escapedBashCommand}"`);
+        } else {
+          console.warn('[Claude Code] Cygwin not found, falling back to PowerShell');
+          await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
+        }
+      } else if (terminalId === 'msys2') {
+        // MSYS2 terminal
+        const msys2Paths = [
+          'C:\\msys64\\msys2_shell.cmd',
+          'C:\\msys64\\mingw64.exe',
+          'C:\\msys64\\usr\\bin\\mintty.exe',
+        ];
+        const msys2Path = msys2Paths.find(p => existsSync(p));
+        if (msys2Path) {
+          const escapedBashCommand = escapeGitBashCommand(command);
+          if (msys2Path.endsWith('.cmd')) {
+            // Use the shell launcher script
+            await runWindowsCommand(`"${msys2Path}" -mingw64 -c "${escapedBashCommand}"`);
+          } else {
+            // Use mintty directly
+            await runWindowsCommand(`"${msys2Path}" -e /bin/bash -lc "${escapedBashCommand}"`);
+          }
+        } else {
+          console.warn('[Claude Code] MSYS2 not found, falling back to PowerShell');
+          await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
+        }
       } else {
-        // Default: PowerShell (handles 'powershell', 'system', 'cmd', 'conemu', 'cmder', 'hyper', 'tabby', or any unknown value)
+        // Default: PowerShell (handles 'powershell', 'system', or any unknown value)
         // Use 'start' command to open a new PowerShell window
         // The command is wrapped in double quotes and passed via -Command
         await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);

@@ -123,6 +123,7 @@
     "title": "Remove Project?",
     "description": "This will remove \"{{projectName}}\" from the app. Your files will be preserved on disk and you can re-add the project later.",
     "cancel": "Cancel",
-    "remove": "Remove"
+    "remove": "Remove",
+    "error": "Failed to remove project"
   }
 }

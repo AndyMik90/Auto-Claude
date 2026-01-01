@@ -123,6 +123,7 @@
     "title": "Retirer le projet ?",
     "description": "Ceci va retirer \"{{projectName}}\" de l'application. Vos fichiers seront préservés sur le disque et vous pourrez ré-ajouter le projet plus tard.",
     "cancel": "Annuler",
-    "remove": "Retirer"
+    "remove": "Retirer",
+    "error": "Échec de la suppression du projet"
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LinearTaskImportModal } from '../LinearTaskImportModal';
 import { SettingsSection } from './SettingsSection';
 import { useProjectSettings, UseProjectSettingsReturn } from '../project-settings/hooks/useProjectSettings';
@@ -28,12 +29,14 @@ export function ProjectSettingsContent({
   isOpen,
   onHookReady
 }: ProjectSettingsContentProps) {
+  const { t } = useTranslation('settings');
+
   // Show empty state if no project selected
   if (!project) {
     return (
       <SettingsSection
-        title="No Project Selected"
-        description="Select a project from the dropdown above to configure its settings"
+        title={t('projectSettings.noProjectSelected.title')}
+        description={t('projectSettings.noProjectSelected.description')}
       >
         <EmptyProjectState />
       </SettingsSection>

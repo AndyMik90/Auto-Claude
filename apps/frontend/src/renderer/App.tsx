@@ -496,11 +496,23 @@ export function App() {
 
   const handleConfirmRemoveProject = () => {
     if (projectToRemove) {
-      // Remove the project from the app (files are preserved on disk for re-adding later)
-      removeProject(projectToRemove.id);
+      try {
+        // Remove the project from the app (files are preserved on disk for re-adding later)
+        removeProject(projectToRemove.id);
+        // Only clear dialog state on success
+        setShowRemoveProjectDialog(false);
+        setProjectToRemove(null);
+      } catch (err) {
+        // Log error and keep dialog open so user can retry or cancel
+        console.error('[App] Failed to remove project:', err);
+        // Show error toast to user
+        toast({
+          title: t('removeProject.error', { ns: 'dialogs' }),
+          description: err instanceof Error ? err.message : t('common:errors.unknownError'),
+          variant: 'destructive',
+        });
+      }
     }
-    setShowRemoveProjectDialog(false);
-    setProjectToRemove(null);
   };
 
   const handleCancelRemoveProject = () => {

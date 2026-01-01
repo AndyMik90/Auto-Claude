@@ -12,6 +12,7 @@ import { getClaudeProfileManager } from '../../claude-profile-manager';
 import {
   getPlanPath,
   persistPlanStatus,
+  persistPlanStatusSync,
   createPlanIfNotExists
 } from './plan-file-utils';
 
@@ -178,23 +179,13 @@ export function registerTaskExecutionHandlers(
       // When getTasks() is called (on refresh), it reads status from the plan file.
       // Without persisting here, the old status (e.g., 'human_review') would override
       // the in-memory 'in_progress' status, causing the task to flip back and forth.
+      // Uses shared utility for consistency with agent-events-handlers.ts
       const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-      try {
-        // Read file directly without existence check to avoid TOCTOU race condition
-        const planContent = readFileSync(planPath, 'utf-8');
-        const plan = JSON.parse(planContent);
-        plan.status = needsSpecCreation ? 'planning' : 'in_progress';
-        plan.planStatus = needsSpecCreation ? 'planning' : 'in_progress';
-        plan.updated_at = new Date().toISOString();
-        writeFileSync(planPath, JSON.stringify(plan, null, 2));
-        console.warn('[TASK_START] Updated plan status to:', plan.status);
-      } catch (err) {
-        // Plan file may not exist yet for new tasks - that's fine (ENOENT is expected)
-        const isNotFound = (err as NodeJS.ErrnoException).code === 'ENOENT';
-        if (!isNotFound) {
-          console.warn('[TASK_START] Could not update plan status:', err);
-        }
+      const persisted = persistPlanStatusSync(planPath, 'in_progress');
+      if (persisted) {
+        console.warn('[TASK_START] Updated plan status to: in_progress');
       }
+      // Note: Plan file may not exist yet for new tasks - that's fine (persistPlanStatusSync handles ENOENT)
 
       // Notify status change
       mainWindow.webContents.send(
@@ -217,26 +208,13 @@ export function registerTaskExecutionHandlers(
     
     if (task && project) {
       // Persist status to implementation_plan.json to prevent status flip-flop on refresh
-      const specsBaseDir = getSpecsDir(project.autoBuildPath);
-      const specDir = path.join(project.path, specsBaseDir, task.specId);
-      const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-
-      try {
-        // Read file directly without existence check to avoid TOCTOU race condition
-        const planContent = readFileSync(planPath, 'utf-8');
-        const plan = JSON.parse(planContent);
-        plan.status = 'backlog';
-        plan.planStatus = 'pending';
-        plan.updated_at = new Date().toISOString();
-        writeFileSync(planPath, JSON.stringify(plan, null, 2));
+      // Uses shared utility for consistency with agent-events-handlers.ts
+      const planPath = getPlanPath(project, task);
+      const persisted = persistPlanStatusSync(planPath, 'backlog');
+      if (persisted) {
         console.warn('[TASK_STOP] Updated plan status to backlog');
-      } catch (err) {
-        // File not found is expected for tasks without a plan file
-        const isNotFound = (err as NodeJS.ErrnoException).code === 'ENOENT';
-        if (!isNotFound) {
-          console.warn('[TASK_STOP] Could not update plan status:', err);
-        }
       }
+      // Note: File not found is expected for tasks without a plan file (persistPlanStatusSync handles ENOENT)
     }
 
     const mainWindow = getMainWindow();
