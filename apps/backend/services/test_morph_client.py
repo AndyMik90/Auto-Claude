@@ -64,9 +64,14 @@ def test_config(test_api_key):
 
 
 @pytest.fixture
-def mock_health_response():
-    """Mock response for healthy service."""
-    return {"status": "healthy"}
+def mock_health_response(mock_apply_response):
+    """Mock response for healthy service.
+
+    Note: Morph API does not have a dedicated /health endpoint. Health checks
+    are performed by attempting a minimal apply operation via validate_api_key().
+    This fixture returns the same response as a successful apply operation.
+    """
+    return mock_apply_response
 
 
 @pytest.fixture
@@ -261,24 +266,39 @@ class TestAPIKeyValidation:
 
 
 class TestHealthChecks:
-    """Tests for health check functionality with caching."""
+    """Tests for health check functionality with caching.
+
+    Note: Morph API does not have a dedicated /health endpoint. Health checks
+    are performed by attempting a minimal apply operation via validate_api_key().
+    These tests verify that check_health correctly interprets validation results.
+    """
 
     def test_check_health_healthy(self, test_config, mock_health_response):
-        """Verify health check returns True when service is healthy."""
+        """Verify health check returns True when API key validation succeeds."""
         with patch.object(MorphClient, "_make_request") as mock_request:
+            # Health check uses validate_api_key() which calls apply()
             mock_request.return_value = mock_health_response
 
             client = MorphClient(test_config)
             is_healthy = client.check_health(use_cache=False)
 
             assert is_healthy is True
-            mock_request.assert_called_once_with("GET", "/health", requires_auth=False)
+            # Verify it called /chat/completions (via validate_api_key -> apply)
+            mock_request.assert_called_once()
+            call_args = mock_request.call_args
+            assert call_args[0][0] == "POST"
+            assert call_args[0][1] == "/chat/completions"
             client.close()
 
-    def test_check_health_unhealthy_status(self, test_config):
-        """Verify health check returns False when status is not 'healthy'."""
+    def test_check_health_unhealthy_on_401(self, test_config):
+        """Verify health check returns False when API key is invalid (401)."""
         with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.return_value = {"status": "degraded"}
+            # Simulate invalid API key response
+            mock_request.side_effect = MorphAPIError(
+                code=MorphErrorCode.INVALID_API_KEY,
+                message="Invalid API key",
+                status_code=401,
+            )
 
             client = MorphClient(test_config)
             is_healthy = client.check_health(use_cache=False)
@@ -895,14 +915,20 @@ class TestDataClasses:
 
 
 class TestIsAvailable:
-    """Tests for MorphClient.is_available() method."""
+    """Tests for MorphClient.is_available() method.
+
+    Note: is_available() calls check_health() which calls validate_api_key().
+    validate_api_key() uses apply() which expects OpenAI-compatible responses.
+    """
 
     def test_is_available_true(
-        self, test_config, mock_health_response, mock_validation_response
+        self, test_config, mock_apply_response
     ):
         """Verify is_available returns True when service is healthy and key is valid."""
         with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = [mock_health_response, mock_validation_response]
+            # is_available calls check_health() -> validate_api_key() -> apply()
+            # then calls validate_api_key() again, so 2 calls total
+            mock_request.return_value = mock_apply_response
 
             client = MorphClient(test_config)
             is_available = client.is_available(use_cache=False)
@@ -919,10 +945,14 @@ class TestIsAvailable:
         assert is_available is False
         client.close()
 
-    def test_is_available_false_unhealthy_service(self, test_config):
-        """Verify is_available returns False when service is unhealthy."""
+    def test_is_available_false_on_401(self, test_config):
+        """Verify is_available returns False when API key is invalid (401)."""
         with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.return_value = {"status": "degraded"}
+            mock_request.side_effect = MorphAPIError(
+                code=MorphErrorCode.INVALID_API_KEY,
+                message="Invalid API key",
+                status_code=401,
+            )
 
             client = MorphClient(test_config)
             is_available = client.is_available(use_cache=False)
@@ -930,17 +960,14 @@ class TestIsAvailable:
             assert is_available is False
             client.close()
 
-    def test_is_available_false_invalid_key(self, test_config, mock_health_response):
+    def test_is_available_false_invalid_key(self, test_config):
         """Verify is_available returns False when API key is invalid."""
         with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = [
-                mock_health_response,
-                MorphAPIError(
-                    code=MorphErrorCode.INVALID_API_KEY,
-                    message="Invalid key",
-                    status_code=401,
-                ),
-            ]
+            mock_request.side_effect = MorphAPIError(
+                code=MorphErrorCode.INVALID_API_KEY,
+                message="Invalid key",
+                status_code=401,
+            )
 
             client = MorphClient(test_config)
             is_available = client.is_available(use_cache=False)
@@ -949,14 +976,11 @@ class TestIsAvailable:
             client.close()
 
     def test_is_available_false_on_connection_error(
-        self, test_config, mock_health_response
+        self, test_config
     ):
         """Verify is_available returns False on connection error during validation."""
         with patch.object(MorphClient, "_make_request") as mock_request:
-            mock_request.side_effect = [
-                mock_health_response,
-                MorphConnectionError("Connection failed"),
-            ]
+            mock_request.side_effect = MorphConnectionError("Connection failed")
 
             client = MorphClient(test_config)
             is_available = client.is_available(use_cache=False)
