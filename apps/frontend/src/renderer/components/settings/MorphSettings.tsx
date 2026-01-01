@@ -85,16 +85,21 @@ export function MorphSettings({ settings, onSettingsChange }: MorphSettingsProps
 
     try {
       // Attempt to validate the API key with the Morph service
-      // The Morph API base URL - using environment variable or default
-      const morphBaseUrl = 'https://api.morph.so';
+      // The Morph API base URL - matches backend default
+      const morphBaseUrl = 'https://api.morphllm.com/v1';
 
-      const response = await fetch(`${morphBaseUrl}/v1/validate`, {
+      // Use chat completions endpoint for validation (Morph has no dedicated /validate endpoint)
+      // Send a minimal test message to verify the API key works
+      const response = await fetch(`${morphBaseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          model: 'auto',
+          messages: [{ role: 'user', content: 'test' }]
+        }),
         signal: AbortSignal.timeout(10000) // 10 second timeout
       });
 
