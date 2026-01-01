@@ -34,19 +34,36 @@ export function getBundledPythonPath(): string | null {
 
 /**
  * Find the first existing Homebrew Python installation.
- * Checks common Homebrew paths for Python 3.
+ * Checks common Homebrew paths for Python 3, including versioned installations.
+ * Prioritizes newer Python versions (3.13, 3.12, 3.11, 3.10).
  *
  * @returns The path to Homebrew Python, or null if not found
  */
 function findHomebrewPython(): string | null {
-  const homebrewPaths = [
-    '/opt/homebrew/bin/python3',  // Apple Silicon (M1/M2/M3)
-    '/usr/local/bin/python3'      // Intel Mac
+  const homebrewDirs = [
+    '/opt/homebrew/bin',  // Apple Silicon (M1/M2/M3)
+    '/usr/local/bin'      // Intel Mac
   ];
 
-  for (const pythonPath of homebrewPaths) {
-    if (existsSync(pythonPath)) {
-      return pythonPath;
+  // Check for generic python3 first, then specific versions (newest first)
+  const pythonNames = [
+    'python3',
+    'python3.13',
+    'python3.12',
+    'python3.11',
+    'python3.10',
+  ];
+
+  for (const dir of homebrewDirs) {
+    for (const name of pythonNames) {
+      const pythonPath = path.join(dir, name);
+      if (existsSync(pythonPath)) {
+        // Validate that this Python meets our version requirements
+        const validation = validatePythonVersion(pythonPath);
+        if (validation.valid) {
+          return pythonPath;
+        }
+      }
     }
   }
 
