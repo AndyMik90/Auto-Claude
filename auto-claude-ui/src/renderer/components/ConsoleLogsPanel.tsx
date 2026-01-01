@@ -10,7 +10,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '../lib/utils'
 import { type ConsoleLogEntry, useConsoleStore } from '../stores/console-store'
 import { Button } from './ui/button'
@@ -90,12 +90,23 @@ function LogEntry({ log }: { log: ConsoleLogEntry }) {
   )
 }
 
+const ALL_SOURCES = ['ideation', 'roadmap', 'changelog', 'task', 'system', 'ipc'] as const
+
 export function ConsoleLogsPanel() {
-  const { logs, isOpen, filter, setOpen, clearLogs, setFilter, getFilteredLogs } = useConsoleStore()
+  const { logs, isOpen, filter, setOpen, clearLogs, setFilter } = useConsoleStore()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
 
-  const filteredLogs = getFilteredLogs()
+  // Filter logs in component with useMemo for performance
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      // Level filter
+      if (!filter.level.includes(log.level)) return false
+      // Source filter (empty = all sources)
+      if (filter.source.length > 0 && !filter.source.includes(log.source)) return false
+      return true
+    })
+  }, [logs, filter.level, filter.source])
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -119,14 +130,20 @@ export function ConsoleLogsPanel() {
 
   const handleSourceToggle = (source: string) => {
     const currentSources = filter.source
-    if (currentSources.includes(source)) {
-      setFilter({ source: currentSources.filter((s) => s !== source) })
+    // When no sources are explicitly selected (= all sources implicitly selected),
+    // clicking a source should explicitly select all EXCEPT that source
+    if (currentSources.length === 0) {
+      setFilter({ source: ALL_SOURCES.filter((s) => s !== source) })
+    } else if (currentSources.includes(source)) {
+      const newSources = currentSources.filter((s) => s !== source)
+      // If removing this would leave no sources, reset to "all" (empty array)
+      setFilter({ source: newSources.length === 0 ? [] : newSources })
     } else {
-      setFilter({ source: [...currentSources, source] })
+      // Adding a source - if this completes all sources, reset to empty (= all)
+      const newSources = [...currentSources, source]
+      setFilter({ source: newSources.length === ALL_SOURCES.length ? [] : newSources })
     }
   }
-
-  const allSources = ['ideation', 'roadmap', 'changelog', 'task', 'system', 'ipc']
 
   return (
     <div className="border-t border-border bg-card flex flex-col" style={{ height: '250px' }}>
@@ -161,7 +178,7 @@ export function ConsoleLogsPanel() {
               ))}
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sources</DropdownMenuLabel>
-              {allSources.map((source) => (
+              {ALL_SOURCES.map((source) => (
                 <DropdownMenuCheckboxItem
                   key={source}
                   checked={filter.source.length === 0 || filter.source.includes(source)}
@@ -216,8 +233,17 @@ export function ConsoleLogsPanel() {
 // Toggle button for the sidebar
 export function ConsoleLogsToggle() {
   const { isOpen, toggleOpen, logs } = useConsoleStore()
-  const errorCount = logs.filter((l) => l.level === 'error').length
-  const warnCount = logs.filter((l) => l.level === 'warn').length
+
+  // Optimize: count errors and warnings in single iteration
+  const { errorCount, warnCount } = useMemo(() => {
+    let errors = 0
+    let warnings = 0
+    for (const log of logs) {
+      if (log.level === 'error') errors++
+      else if (log.level === 'warn') warnings++
+    }
+    return { errorCount: errors, warnCount: warnings }
+  }, [logs])
 
   return (
     <Button

@@ -8,16 +8,16 @@
     "rules": {
       "recommended": true,
       "correctness": {
-        "noUnusedVariables": "off",
+        "noUnusedVariables": "warn",
         "noUnusedImports": "warn",
         "useHookAtTopLevel": "error",
-        "useExhaustiveDependencies": "off"
+        "useExhaustiveDependencies": "warn"
       },
       "suspicious": {
-        "noExplicitAny": "off",
+        "noExplicitAny": "warn",
         "noConsoleLog": "warn",
         "noAssignInExpressions": "off",
-        "noArrayIndexKey": "off",
+        "noArrayIndexKey": "warn",
         "noShadowRestrictedNames": "off"
       },
       "style": {
@@ -38,7 +38,7 @@
         "noLabelWithoutControl": "off"
       },
       "security": {
-        "noDangerouslySetInnerHtml": "off"
+        "noDangerouslySetInnerHtml": "warn"
       }
     }
   },
