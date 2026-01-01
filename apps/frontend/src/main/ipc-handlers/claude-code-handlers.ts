@@ -93,6 +93,30 @@ export function escapeAppleScriptString(str: string): string {
 }
 
 /**
+ * Escape a string for safe use in PowerShell -Command context.
+ * PowerShell requires escaping backticks, double quotes, and dollar signs.
+ */
+export function escapePowerShellCommand(str: string): string {
+  return str
+    .replace(/`/g, '``')      // Escape backticks (PowerShell escape char)
+    .replace(/"/g, '`"')      // Escape double quotes
+    .replace(/\$/g, '`$');    // Escape dollar signs (variable expansion)
+}
+
+/**
+ * Escape a string for safe use in Git Bash -c context.
+ * Bash requires escaping single quotes, double quotes, and backslashes.
+ */
+export function escapeGitBashCommand(str: string): string {
+  // For bash -c with double quotes, escape: backslash, double quote, dollar, backtick
+  return str
+    .replace(/\\/g, '\\\\')   // Escape backslashes first
+    .replace(/"/g, '\\"')     // Escape double quotes
+    .replace(/\$/g, '\\$')    // Escape dollar signs
+    .replace(/`/g, '\\`');    // Escape backticks
+}
+
+/**
  * Open a terminal with the given command
  * Uses the user's preferred terminal from settings
  * Supports macOS, Windows, and Linux terminals
@@ -231,33 +255,36 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     };
 
     try {
+      // Escape command for PowerShell context to prevent command injection
+      const escapedCommand = escapePowerShellCommand(command);
+
       if (terminalId === 'windowsterminal') {
         // Windows Terminal - open new tab with PowerShell
-        await runWindowsCommand(`wt new-tab powershell -NoExit -Command "${command}"`);
+        await runWindowsCommand(`wt new-tab powershell -NoExit -Command "${escapedCommand}"`);
       } else if (terminalId === 'gitbash') {
-        // Git Bash - use curl-based install for Unix-like environment
-        const bashCommand = 'curl -fsSL https://ollama.com/install.sh | sh';
+        // Git Bash - use the passed command (escaped for bash context)
+        const escapedBashCommand = escapeGitBashCommand(command);
         const gitBashPaths = [
           'C:\\Program Files\\Git\\git-bash.exe',
           'C:\\Program Files (x86)\\Git\\git-bash.exe',
         ];
         let gitBashPath = gitBashPaths.find(p => existsSync(p));
         if (gitBashPath) {
-          await runWindowsCommand(`"${gitBashPath}" -c "${bashCommand}"`);
+          await runWindowsCommand(`"${gitBashPath}" -c "${escapedBashCommand}"`);
         } else {
           throw new Error('Git Bash not found');
         }
       } else if (terminalId === 'alacritty') {
         // Alacritty
-        await runWindowsCommand(`start alacritty -e powershell -NoExit -Command "${command}"`);
+        await runWindowsCommand(`start alacritty -e powershell -NoExit -Command "${escapedCommand}"`);
       } else if (terminalId === 'wezterm') {
         // WezTerm
-        await runWindowsCommand(`start wezterm start -- powershell -NoExit -Command "${command}"`);
+        await runWindowsCommand(`start wezterm start -- powershell -NoExit -Command "${escapedCommand}"`);
       } else {
         // Default: PowerShell (handles 'powershell', 'system', 'cmd', 'conemu', 'cmder', 'hyper', 'tabby', or any unknown value)
         // Use 'start' command to open a new PowerShell window
         // The command is wrapped in double quotes and passed via -Command
-        await runWindowsCommand(`start powershell -NoExit -Command "${command}"`);
+        await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
       }
     } catch (err) {
       console.error('[Claude Code] Terminal execution failed:', err);

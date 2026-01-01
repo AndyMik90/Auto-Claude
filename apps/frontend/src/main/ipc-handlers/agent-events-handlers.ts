@@ -1,6 +1,5 @@
 import type { BrowserWindow } from 'electron';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { IPC_CHANNELS, getSpecsDir, AUTO_BUILD_PATHS } from '../../shared/constants';
 import type {
   SDKRateLimitInfo,
@@ -15,6 +14,7 @@ import { titleGenerator } from '../title-generator';
 import { fileWatcher } from '../file-watcher';
 import { projectStore } from '../project-store';
 import { notificationService } from '../notification-service';
+import { persistPlanStatusSync, getPlanPath } from './task/plan-file-utils';
 
 
 /**
@@ -92,24 +92,13 @@ export function registerAgenteventsHandlers(
 
         if (task && project) {
           const taskTitle = task.title || task.specId;
-          const specsBaseDir = getSpecsDir(project.autoBuildPath);
-          const specDir = path.join(project.path, specsBaseDir, task.specId);
-          const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+          const planPath = getPlanPath(project, task);
 
-          // Helper to persist status to plan file
+          // Use shared utility for persisting status (prevents race conditions)
           const persistStatus = (status: TaskStatus) => {
-            try {
-              if (existsSync(planPath)) {
-                const planContent = readFileSync(planPath, 'utf-8');
-                const plan = JSON.parse(planContent);
-                plan.status = status;
-                plan.planStatus = status === 'human_review' ? 'review' : 'pending';
-                plan.updated_at = new Date().toISOString();
-                writeFileSync(planPath, JSON.stringify(plan, null, 2));
-                console.log(`[Task ${taskId}] Persisted status to plan: ${status}`);
-              }
-            } catch (err) {
-              console.warn(`[Task ${taskId}] Could not persist status:`, err);
+            const persisted = persistPlanStatusSync(planPath, status);
+            if (persisted) {
+              console.log(`[Task ${taskId}] Persisted status to plan: ${status}`);
             }
           };
 
@@ -174,27 +163,15 @@ export function registerAgenteventsHandlers(
         // CRITICAL: Persist status to plan file to prevent flip-flop on task list refresh
         // When getTasks() is called, it reads status from the plan file. Without persisting,
         // the status in the file might differ from the UI, causing inconsistent state.
+        // Uses shared utility with locking to prevent race conditions.
         try {
           const projects = projectStore.getProjects();
           for (const p of projects) {
             const tasks = projectStore.getTasks(p.id);
             const task = tasks.find((t) => t.id === taskId || t.specId === taskId);
             if (task) {
-              const specsBaseDir = getSpecsDir(p.autoBuildPath);
-              const specDir = path.join(p.path, specsBaseDir, task.specId);
-              const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-              
-              if (existsSync(planPath)) {
-                const planContent = readFileSync(planPath, 'utf-8');
-                const plan = JSON.parse(planContent);
-                plan.status = newStatus;
-                plan.planStatus = newStatus === 'in_progress' ? 'in_progress'
-                  : newStatus === 'ai_review' ? 'review'
-                  : newStatus === 'human_review' ? 'review'
-                  : 'pending';
-                plan.updated_at = new Date().toISOString();
-                writeFileSync(planPath, JSON.stringify(plan, null, 2));
-              }
+              const planPath = getPlanPath(p, task);
+              persistPlanStatusSync(planPath, newStatus);
               break;
             }
           }

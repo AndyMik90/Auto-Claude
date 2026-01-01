@@ -1,0 +1,199 @@
+/**
+ * Plan File Utilities
+ *
+ * Provides thread-safe operations for reading and writing implementation_plan.json files.
+ * Uses an in-memory lock to serialize updates and prevent race conditions when multiple
+ * IPC handlers try to update the same plan file concurrently.
+ */
+
+import path from 'path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
+import type { TaskStatus, Project, Task } from '../../../shared/types';
+
+// In-memory locks for plan file operations
+// Key: plan file path, Value: Promise chain for serializing operations
+const planLocks = new Map<string, Promise<void>>();
+
+/**
+ * Serialize operations on a specific plan file to prevent race conditions.
+ * Each operation waits for the previous one to complete before starting.
+ */
+async function withPlanLock<T>(planPath: string, operation: () => Promise<T>): Promise<T> {
+  // Get or create the lock chain for this file
+  const currentLock = planLocks.get(planPath) || Promise.resolve();
+
+  // Create a new promise that will resolve after our operation completes
+  let resolve: () => void;
+  const newLock = new Promise<void>((r) => { resolve = r; });
+  planLocks.set(planPath, newLock);
+
+  try {
+    // Wait for any previous operation to complete
+    await currentLock;
+    // Execute our operation
+    return await operation();
+  } finally {
+    // Release the lock
+    resolve!();
+    // Clean up if this was the last operation
+    if (planLocks.get(planPath) === newLock) {
+      planLocks.delete(planPath);
+    }
+  }
+}
+
+/**
+ * Get the plan file path for a task
+ */
+export function getPlanPath(project: Project, task: Task): string {
+  const specsBaseDir = getSpecsDir(project.autoBuildPath);
+  const specDir = path.join(project.path, specsBaseDir, task.specId);
+  return path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+}
+
+/**
+ * Map UI TaskStatus to Python-compatible planStatus
+ */
+export function mapStatusToPlanStatus(status: TaskStatus): string {
+  switch (status) {
+    case 'in_progress':
+      return 'in_progress';
+    case 'ai_review':
+    case 'human_review':
+      return 'review';
+    case 'done':
+      return 'completed';
+    default:
+      return 'pending';
+  }
+}
+
+/**
+ * Persist task status to implementation_plan.json file.
+ * This is thread-safe and prevents race conditions when multiple handlers update the same file.
+ *
+ * @param planPath - Path to the implementation_plan.json file
+ * @param status - The TaskStatus to persist
+ * @returns true if status was persisted, false if plan file doesn't exist
+ */
+export async function persistPlanStatus(planPath: string, status: TaskStatus): Promise<boolean> {
+  return withPlanLock(planPath, async () => {
+    try {
+      if (!existsSync(planPath)) {
+        return false;
+      }
+
+      const planContent = readFileSync(planPath, 'utf-8');
+      const plan = JSON.parse(planContent);
+
+      plan.status = status;
+      plan.planStatus = mapStatusToPlanStatus(status);
+      plan.updated_at = new Date().toISOString();
+
+      writeFileSync(planPath, JSON.stringify(plan, null, 2));
+      return true;
+    } catch (err) {
+      console.warn(`[plan-file-utils] Could not persist status to ${planPath}:`, err);
+      return false;
+    }
+  });
+}
+
+/**
+ * Persist task status synchronously (for use in event handlers where async isn't practical).
+ * Note: This version doesn't use locking - use persistPlanStatus when possible.
+ *
+ * @param planPath - Path to the implementation_plan.json file
+ * @param status - The TaskStatus to persist
+ * @returns true if status was persisted, false otherwise
+ */
+export function persistPlanStatusSync(planPath: string, status: TaskStatus): boolean {
+  try {
+    if (!existsSync(planPath)) {
+      return false;
+    }
+
+    const planContent = readFileSync(planPath, 'utf-8');
+    const plan = JSON.parse(planContent);
+
+    plan.status = status;
+    plan.planStatus = mapStatusToPlanStatus(status);
+    plan.updated_at = new Date().toISOString();
+
+    writeFileSync(planPath, JSON.stringify(plan, null, 2));
+    return true;
+  } catch (err) {
+    console.warn(`[plan-file-utils] Could not persist status to ${planPath}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Read and update the plan file atomically.
+ *
+ * @param planPath - Path to the implementation_plan.json file
+ * @param updater - Function that receives the current plan and returns the updated plan
+ * @returns The updated plan, or null if the file doesn't exist
+ */
+export async function updatePlanFile<T extends Record<string, unknown>>(
+  planPath: string,
+  updater: (plan: T) => T
+): Promise<T | null> {
+  return withPlanLock(planPath, async () => {
+    try {
+      if (!existsSync(planPath)) {
+        return null;
+      }
+
+      const planContent = readFileSync(planPath, 'utf-8');
+      const plan = JSON.parse(planContent) as T;
+
+      const updatedPlan = updater(plan);
+      updatedPlan.updated_at = new Date().toISOString();
+
+      writeFileSync(planPath, JSON.stringify(updatedPlan, null, 2));
+      return updatedPlan;
+    } catch (err) {
+      console.warn(`[plan-file-utils] Could not update plan at ${planPath}:`, err);
+      return null;
+    }
+  });
+}
+
+/**
+ * Create a new plan file if it doesn't exist.
+ *
+ * @param planPath - Path to the implementation_plan.json file
+ * @param task - The task to create the plan for
+ * @param status - Initial status for the plan
+ */
+export async function createPlanIfNotExists(
+  planPath: string,
+  task: Task,
+  status: TaskStatus
+): Promise<void> {
+  return withPlanLock(planPath, async () => {
+    if (existsSync(planPath)) {
+      return;
+    }
+
+    const plan = {
+      feature: task.title,
+      description: task.description || '',
+      created_at: task.createdAt.toISOString(),
+      updated_at: new Date().toISOString(),
+      status: status,
+      planStatus: mapStatusToPlanStatus(status),
+      phases: []
+    };
+
+    // Ensure directory exists
+    const planDir = path.dirname(planPath);
+    if (!existsSync(planDir)) {
+      mkdirSync(planDir, { recursive: true });
+    }
+
+    writeFileSync(planPath, JSON.stringify(plan, null, 2));
+  });
+}
