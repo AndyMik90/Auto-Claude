@@ -13,7 +13,7 @@ import type { BrowserWindow } from 'electron';
 import { getEffectiveVersion } from '../auto-claude-updater';
 import { setUpdateChannel } from '../app-updater';
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
-import { configureTools, getToolPath, getToolInfo } from '../cli-tool-manager';
+import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform } from '../cli-tool-manager';
 
 const settingsPath = getSettingsPath();
 
@@ -122,6 +122,22 @@ export function registerSettingsHandlers(
         }
         settings._migratedDefaultModelSync = true;
         needsSave = true;
+      }
+
+      // Migration: Clear CLI tool paths that are from a different platform
+      // Fixes issue where Windows paths persisted on macOS (and vice versa)
+      // when settings were synced/transferred between platforms
+      // See: https://github.com/AndyMik90/Auto-Claude/issues/XXX
+      const pathFields = ['pythonPath', 'gitPath', 'githubCLIPath', 'claudePath', 'autoBuildPath'] as const;
+      for (const field of pathFields) {
+        const pathValue = settings[field];
+        if (pathValue && isPathFromWrongPlatform(pathValue)) {
+          console.warn(
+            `[SETTINGS_GET] Clearing ${field} - path from different platform: ${pathValue}`
+          );
+          delete settings[field];
+          needsSave = true;
+        }
       }
 
       // If no manual autoBuildPath is set, try to auto-detect
