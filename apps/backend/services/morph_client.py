@@ -150,35 +150,6 @@ class ApplyResult:
     confidence: float = 0.0
     processing_time_ms: int = 0
 
-    @classmethod
-    def from_response(cls, data: dict[str, Any]) -> ApplyResult:
-        """
-        Create ApplyResult from SDK-style API response data.
-
-        NOTE: This method is for SDK-style responses with explicit result/metadata
-        fields. The current apply() method uses the OpenAI-compatible /chat/completions
-        endpoint which returns a different format and constructs ApplyResult directly.
-
-        This method is kept for potential future SDK integration or alternative
-        endpoint support.
-
-        Expected format:
-            {
-                "success": true,
-                "result": {"new_content": "...", "changes_applied": [], "confidence": 0.9},
-                "metadata": {"processing_time_ms": 100}
-            }
-        """
-        result = data.get("result", {})
-        metadata = data.get("metadata", {})
-        return cls(
-            success=data.get("success", False),
-            new_content=result.get("new_content", ""),
-            changes_applied=result.get("changes_applied", []),
-            confidence=result.get("confidence", 0.0),
-            processing_time_ms=metadata.get("processing_time_ms", 0),
-        )
-
 
 @dataclass
 class ValidationResult:
@@ -407,13 +378,39 @@ class MorphClient:
             self._health_cache = (False, time.time())
             return False
 
+    def _check_auth_with_head(self) -> bool | None:
+        """
+        Attempt a lightweight HEAD request to check authentication.
+
+        This avoids consuming API credits when possible. Returns:
+        - True if auth appears valid (2xx response)
+        - False if auth is definitely invalid (401/403)
+        - None if HEAD is not supported or inconclusive (need to fall back to apply)
+        """
+        try:
+            client = self._get_client()
+            # Try HEAD request to the chat completions endpoint
+            response = client.request("HEAD", "/chat/completions")
+
+            if response.status_code in (200, 204):
+                return True
+            elif response.status_code in (401, 403):
+                return False
+            else:
+                # Inconclusive - endpoint might not support HEAD
+                return None
+        except Exception:
+            # HEAD not supported or other issue - fall back to apply
+            return None
+
     def validate_api_key(self) -> ValidationResult:
         """
         Validate the configured API key.
 
-        WARNING: This method consumes API credits!
-        Morph API does not have a dedicated /auth/validate endpoint, so validation
-        is performed by making a minimal apply operation. Each call uses API credits.
+        This method first attempts a lightweight HEAD request to check auth
+        without consuming API credits. If HEAD is not supported or inconclusive,
+        it falls back to a minimal apply operation (which does consume credits).
+
         Use check_health() with caching enabled to minimize credit usage.
 
         Returns:
@@ -425,9 +422,23 @@ class MorphClient:
         if not self.config.has_api_key():
             return ValidationResult(valid=False)
 
+        # First, try lightweight HEAD request to avoid consuming credits
+        head_result = self._check_auth_with_head()
+        if head_result is True:
+            return ValidationResult(
+                valid=True,
+                account_id="",
+                plan="",
+                rate_limit_rpm=0,
+                permissions=["apply"],
+            )
+        elif head_result is False:
+            logger.warning("Morph API key validation failed: invalid key (HEAD check)")
+            return ValidationResult(valid=False)
+
+        # HEAD was inconclusive - fall back to minimal apply operation
+        # This consumes API credits but is the only reliable way to validate
         try:
-            # Attempt a minimal apply operation to verify the API key works
-            # Use a small code snippet to minimize API usage
             _ = self.apply(
                 file_path="test.py",
                 original_content="# test",

@@ -871,37 +871,7 @@ class TestHelperFunctions:
 
 
 class TestDataClasses:
-    """Tests for ApplyResult and ValidationResult data classes."""
-
-    def test_apply_result_from_response(self):
-        """Verify ApplyResult.from_response parses API response correctly."""
-        response_data = {
-            "success": True,
-            "result": {
-                "new_content": "transformed code",
-                "changes_applied": [{"type": "format"}],
-                "confidence": 0.9,
-            },
-            "metadata": {"processing_time_ms": 100},
-        }
-
-        result = ApplyResult.from_response(response_data)
-        assert result.success is True
-        assert result.new_content == "transformed code"
-        assert len(result.changes_applied) == 1
-        assert result.confidence == 0.9
-        assert result.processing_time_ms == 100
-
-    def test_apply_result_from_response_with_defaults(self):
-        """Verify ApplyResult handles missing fields with defaults."""
-        response_data = {}
-
-        result = ApplyResult.from_response(response_data)
-        assert result.success is False
-        assert result.new_content == ""
-        assert result.changes_applied == []
-        assert result.confidence == 0.0
-        assert result.processing_time_ms == 0
+    """Tests for ValidationResult data class."""
 
     def test_validation_result_from_response(self):
         """Verify ValidationResult.from_response parses API response correctly."""

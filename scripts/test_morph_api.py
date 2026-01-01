@@ -39,9 +39,9 @@ except ImportError:
     sys.exit(1)
 
 
-# Expected Morph API configuration (from MORPH_DISCOVERY.md)
-# These may need adjustment once actual API is verified
-DEFAULT_BASE_URL = "https://api.morphlabs.io/v1"
+# Morph API configuration
+# Uses OpenAI-compatible /chat/completions endpoint
+DEFAULT_BASE_URL = "https://api.morphllm.com/v1"
 TIMEOUT_SECONDS = 30.0
 
 
@@ -188,22 +188,40 @@ class MorphAPITester:
         return False
 
     def test_apply(self) -> bool:
-        """Test apply endpoint with sample code."""
+        """Test apply endpoint with sample code using OpenAI-compatible format."""
         print("\n=== Testing Apply Endpoint ===")
 
-        # Sample test request
+        # Sample code for testing
+        original_code = "def add(a, b):\n    return a + b"
+        instruction = "Add type hints to the function"
+        language = "python"
+
+        # Build XML-formatted message content (matches morph_client.py implementation)
+        message_content = (
+            f"<language>{language}</language>\n"
+            f"<instruction>{instruction}</instruction>\n"
+            f"<code>{original_code}</code>\n"
+            f"<update>{original_code}</update>"
+        )
+
+        # OpenAI-compatible chat completions payload
         test_payload = {
-            "file_path": "test_sample.py",
-            "original_content": "def add(a, b):\n    return a + b",
-            "instruction": "Add type hints to the function",
-            "language": "python",
+            "model": "auto",
+            "messages": [{"role": "user", "content": message_content}],
         }
 
         try:
-            response = self._client.post("/apply", json=test_payload)
+            response = self._client.post("/chat/completions", json=test_payload)
             data = response.json() if response.status_code in [200, 400, 401, 422] else {}
 
-            success = response.status_code == 200 and data.get("success", False)
+            # Check for OpenAI-compatible response format
+            success = (
+                response.status_code == 200
+                and "choices" in data
+                and len(data.get("choices", [])) > 0
+                and "message" in data["choices"][0]
+                and "content" in data["choices"][0]["message"]
+            )
 
             self._record_result(
                 "apply_code_change",
@@ -212,18 +230,19 @@ class MorphAPITester:
                     "status_code": response.status_code,
                     "request": test_payload,
                     "response": data,
-                    "endpoint": f"{self.base_url}/apply",
+                    "endpoint": f"{self.base_url}/chat/completions",
                 }
             )
 
-            print(f"  Endpoint: {self.base_url}/apply")
+            print(f"  Endpoint: {self.base_url}/chat/completions")
             print(f"  Request: {json.dumps(test_payload, indent=2)}")
             print(f"  Status Code: {response.status_code}")
             print(f"  Response: {json.dumps(data, indent=2)}")
             print(f"  Result: {'✓ PASSED' if success else '✗ FAILED'}")
 
-            if success and "result" in data:
-                print(f"\n  New Content:\n  {data['result'].get('new_content', 'N/A')}")
+            if success:
+                new_content = data["choices"][0]["message"]["content"]
+                print(f"\n  New Content:\n  {new_content}")
 
             return success
 
@@ -231,7 +250,7 @@ class MorphAPITester:
             self._record_result(
                 "apply_code_change",
                 False,
-                {"endpoint": f"{self.base_url}/apply", "request": test_payload},
+                {"endpoint": f"{self.base_url}/chat/completions", "request": test_payload},
                 error=f"Connection error: {str(e)}"
             )
             print(f"  ERROR: Could not connect to {self.base_url}")
@@ -240,7 +259,7 @@ class MorphAPITester:
             self._record_result(
                 "apply_code_change",
                 False,
-                {"endpoint": f"{self.base_url}/apply", "request": test_payload},
+                {"endpoint": f"{self.base_url}/chat/completions", "request": test_payload},
                 error=str(e)
             )
             print(f"  ERROR: {e}")
