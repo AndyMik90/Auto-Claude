@@ -25,7 +25,15 @@
     "settingUp": "Setting up Git",
     "initializingRepo": "Initializing git repository and creating initial commit...",
     "success": "Git Initialized",
-    "readyToUse": "Your project is now ready to use with Maestro!"
+    "readyToUse": "Your project is now ready to use with Maestro!",
+    "skipForNow": "Skip for now",
+    "initFailed": "Failed to initialize git",
+    "manualInstructions": "Open a terminal in your project folder and run:",
+    "commands": {
+      "init": "git init",
+      "add": "git add .",
+      "commit": "git commit -m \"Initial commit\""
+    }
   },
   "githubSetup": {
     "connectTitle": "Connect to GitHub",
@@ -38,7 +46,37 @@
     "branchDescription": "Choose which branch Maestro should use as the base for creating task branches.",
     "whyBranch": "Why select a branch?",
     "branchExplanation": "Maestro creates isolated workspaces for each task. Selecting the right base branch ensures your tasks start with the latest code from your main development line.",
-    "ready": "Maestro is ready to use! You can now create tasks that will be automatically based on the {{branchName}} branch."
+    "ready": "Maestro is ready to use! You can now create tasks that will be automatically based on the {{branchName}} branch.",
+    "skipForNow": "Skip for now",
+    "confirmRepository": "Confirm Repository",
+    "repositoryDetected": "Repository Detected",
+    "useDifferentRepository": "Use Different Repository",
+    "confirmContinue": "Confirm & Continue",
+    "connectToGitHub": "Connect to GitHub",
+    "createNewRepo": "Create New Repo",
+    "linkExisting": "Link Existing",
+    "createNewRepository": "Create a new repository",
+    "linkExistingRepo": "Link to existing repository",
+    "selectOwner": "Select your personal account or an organization",
+    "repositoryName": "Repository Name",
+    "visibility": "Visibility",
+    "private": "Private",
+    "public": "Public",
+    "selectBaseBranch": "Select Base Branch",
+    "baseBranch": "Base Branch",
+    "selectBranch": "Select a branch",
+    "loadingBranches": "Loading branches...",
+    "recommended": "Recommended",
+    "setupComplete": "Setup Complete",
+    "readyToUse": "Auto Claude is ready to use! You can now create tasks that will be automatically based on the",
+    "branch": "branch",
+    "creating": "Creating...",
+    "linking": "Linking...",
+    "completeSetup": "Complete Setup",
+    "repository": "Repository",
+    "enterRepositoryName": "Enter the full repository path (e.g., octocat/hello-world)",
+    "createRepository": "Create Repository",
+    "linkRepositoryButton": "Link Repository"
   },
   "worktrees": {
     "title": "Worktrees",
@@ -118,5 +156,8 @@
     "thinkingLevel": "Thinking Level",
     "cancel": "Cancel",
     "apply": "Apply"
+  },
+  "oauth": {
+    "skipForNow": "Skip for now"
   }
 }

@@ -57,11 +57,11 @@ export function GitSetupModal({
           setStep('info');
         }, 1500);
       } else {
-        setError(result.error || 'Failed to initialize git');
+        setError(result.error || t('gitSetup.initFailed'));
         setStep('info');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize git');
+      setError(err instanceof Error ? err.message : t('gitSetup.initFailed'));
       setStep('info');
     } finally {
       setIsInitializing(false);
@@ -128,10 +128,10 @@ export function GitSetupModal({
             {t('gitSetup.manual')}
           </summary>
           <div className="mt-3 rounded-lg bg-muted/50 p-3 font-mono text-xs space-y-1">
-            <p className="text-muted-foreground">Open a terminal in your project folder and run:</p>
-            {needsGitInit && <p>git init</p>}
-            <p>git add .</p>
-            <p>git commit -m "Initial commit"</p>
+            <p className="text-muted-foreground">{t('gitSetup.manualInstructions')}</p>
+            {needsGitInit && <p>{t('gitSetup.commands.init')}</p>}
+            <p>{t('gitSetup.commands.add')}</p>
+            <p>{t('gitSetup.commands.commit')}</p>
           </div>
         </details>
 
@@ -144,7 +144,7 @@ export function GitSetupModal({
 
       <DialogFooter>
         <Button variant="outline" onClick={handleSkip}>
-          Skip for now
+          {t('gitSetup.skipForNow')}
         </Button>
         <Button onClick={handleInitializeGit} disabled={isInitializing}>
           <GitBranch className="mr-2 h-4 w-4" />

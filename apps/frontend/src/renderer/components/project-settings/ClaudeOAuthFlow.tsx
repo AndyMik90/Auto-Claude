@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Key,
   Loader2,
@@ -20,6 +21,7 @@ interface ClaudeOAuthFlowProps {
  * Guides users through authenticating with Claude using claude setup-token
  */
 export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
+  const { t } = useTranslation('dialogs');
   const [status, setStatus] = useState<'ready' | 'authenticating' | 'success' | 'error'>('ready');
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | undefined>();
@@ -243,7 +245,7 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
       {(status === 'ready' || status === 'authenticating') && onCancel && (
         <div className="flex justify-center pt-2">
           <Button onClick={onCancel} variant="ghost" size="sm">
-            Skip for now
+            {t('oauth.skipForNow')}
           </Button>
         </div>
       )}

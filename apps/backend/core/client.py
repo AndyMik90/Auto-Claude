@@ -18,7 +18,6 @@ from pathlib import Path
 
 from agents.tools_pkg import (
     CONTEXT7_TOOLS,
-    ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
     LINEAR_TOOLS,
     PUPPETEER_TOOLS,

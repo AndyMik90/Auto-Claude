@@ -25,7 +25,15 @@
     "settingUp": "Configuration de Git",
     "initializingRepo": "Initialisation du dépôt git et création du commit initial...",
     "success": "Git initialisé",
-    "readyToUse": "Votre projet est maintenant prêt à être utilisé avec Maestro !"
+    "readyToUse": "Votre projet est maintenant prêt à être utilisé avec Maestro !",
+    "skipForNow": "Passer pour maintenant",
+    "initFailed": "Échec de l'initialisation git",
+    "manualInstructions": "Ouvrez un terminal dans le dossier de votre projet et exécutez :",
+    "commands": {
+      "init": "git init",
+      "add": "git add .",
+      "commit": "git commit -m \"Commit initial\""
+    }
   },
   "githubSetup": {
     "connectTitle": "Connecter à GitHub",
@@ -38,7 +46,37 @@
     "branchDescription": "Choisissez quelle branche Maestro doit utiliser comme base pour créer les branches de tâches.",
     "whyBranch": "Pourquoi sélectionner une branche ?",
     "branchExplanation": "Maestro crée des espaces de travail isolés pour chaque tâche. Sélectionner la bonne branche de base garantit que vos tâches démarrent avec le code le plus récent de votre ligne de développement principale.",
-    "ready": "Maestro est prêt à l'emploi ! Vous pouvez maintenant créer des tâches qui seront automatiquement basées sur la branche {{branchName}}."
+    "ready": "Maestro est prêt à l'emploi ! Vous pouvez maintenant créer des tâches qui seront automatiquement basées sur la branche {{branchName}}.",
+    "skipForNow": "Passer pour maintenant",
+    "confirmRepository": "Confirmer le dépôt",
+    "repositoryDetected": "Dépôt détecté",
+    "useDifferentRepository": "Utiliser un autre dépôt",
+    "confirmContinue": "Confirmer et continuer",
+    "connectToGitHub": "Se connecter à GitHub",
+    "createNewRepo": "Créer un nouveau dépôt",
+    "linkExisting": "Lier existant",
+    "createNewRepository": "Créer un nouveau dépôt",
+    "linkExistingRepo": "Lier à un dépôt existant",
+    "selectOwner": "Sélectionnez votre compte personnel ou une organisation",
+    "repositoryName": "Nom du dépôt",
+    "visibility": "Visibilité",
+    "private": "Privé",
+    "public": "Public",
+    "selectBaseBranch": "Sélectionner la branche de base",
+    "baseBranch": "Branche de base",
+    "selectBranch": "Sélectionner une branche",
+    "loadingBranches": "Chargement des branches...",
+    "recommended": "Recommandé",
+    "setupComplete": "Configuration terminée",
+    "readyToUse": "Auto Claude est prêt à l'emploi ! Vous pouvez maintenant créer des tâches qui seront automatiquement basées sur la",
+    "branch": "branche",
+    "creating": "Création en cours...",
+    "linking": "Liaison en cours...",
+    "completeSetup": "Terminer la configuration",
+    "repository": "Dépôt",
+    "enterRepositoryName": "Entrez le chemin complet du dépôt (ex. octocat/hello-world)",
+    "createRepository": "Créer le dépôt",
+    "linkRepositoryButton": "Lier le dépôt"
   },
   "worktrees": {
     "title": "Worktrees",
@@ -118,5 +156,8 @@
     "thinkingLevel": "Niveau de réflexion",
     "cancel": "Annuler",
     "apply": "Appliquer"
+  },
+  "oauth": {
+    "skipForNow": "Passer pour maintenant"
   }
 }

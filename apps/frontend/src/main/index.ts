@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, nativeImage } from 'electron';
+import { app, BrowserWindow, shell, nativeImage, Menu } from 'electron';
 import { join } from 'path';
 import { accessSync, readFileSync, writeFileSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
@@ -66,7 +66,7 @@ function createWindow(): void {
     minHeight: 700,
     show: false,
     fullscreen: true,
-    autoHideMenuBar: true,
+    autoHideMenuBar: fullscreen, // Hide menu bar in fullscreen mode
     titleBarStyle: 'hidden', // Fully hides title bar including traffic lights
     icon: getIconPath(),
     webPreferences: {
@@ -77,6 +77,9 @@ function createWindow(): void {
       backgroundThrottling: false // Prevent terminal lag when window loses focus
     }
   });
+
+  // Set the app name for the window (affects menu bar in dev mode)
+  mainWindow.setTitle('Maestro');
 
   // Show window when ready to avoid visual flash
   mainWindow.on('ready-to-show', () => {
@@ -118,6 +121,10 @@ if (process.platform === 'darwin') {
 app.whenReady().then(() => {
   // Set app user model id for Windows
   electronApp.setAppUserModelId('com.maestro.app');
+
+  // Remove default Electron menu (in fullscreen immersive mode)
+  // This hides "Electron" from the top menu bar
+  Menu.setApplicationMenu(null);
 
   // Set dock icon on macOS
   if (process.platform === 'darwin') {
