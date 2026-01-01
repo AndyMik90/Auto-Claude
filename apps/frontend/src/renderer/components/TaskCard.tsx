@@ -311,7 +311,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                 variant="outline"
                 className={cn('text-[10px] px-1.5 py-0', TASK_IMPACT_COLORS[task.metadata.securitySeverity])}
               >
-                {task.metadata.securitySeverity} severity
+                {task.metadata.securitySeverity} {t('metadata.severity')}
               </Badge>
             )}
           </div>
