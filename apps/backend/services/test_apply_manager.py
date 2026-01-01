@@ -21,7 +21,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from services.apply_manager import (
+from services.apply_manager import (  # type: ignore[reportImplicitRelativeImport]
     DEFAULT_APPLY_TOOLS,
     MORPH_TOOL,
     ApplyManagerConfig,
@@ -33,7 +33,7 @@ from services.apply_manager import (
     get_apply_tools,
     select_apply_method,
 )
-from services.morph_client import (
+from services.morph_client import (  # type: ignore[reportImplicitRelativeImport]
     MorphAPIError,
     MorphClient,
     MorphConnectionError,

@@ -25,7 +25,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-from services.morph_client import (
+from services.morph_client import (  # type: ignore[reportImplicitRelativeImport]
     ApplyResult,
     MorphAPIError,
     MorphClient,

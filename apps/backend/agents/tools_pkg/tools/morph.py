@@ -21,12 +21,12 @@ from typing import Any
 try:
     from claude_agent_sdk import tool
 
-    SDK_TOOLS_AVAILABLE = True
+    _sdk_tools_available = True
 except ImportError:
-    SDK_TOOLS_AVAILABLE = False
+    _sdk_tools_available = False
     tool = None
 
-from services.morph_client import (
+from services.morph_client import (  # noqa: E402  # type: ignore[reportImplicitRelativeImport]
     MorphAPIError,
     MorphClient,
     MorphConfig,
@@ -79,7 +79,7 @@ Guidelines:
 The tool reads the file, applies your edit via Morph API, and writes the result back."""
 
 
-def create_morph_tools(spec_dir: Path, project_dir: Path) -> list:
+def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
     """
     Create Morph Fast Apply tools.
 
@@ -90,10 +90,10 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list:
     Returns:
         List of Morph tool functions
     """
-    if not SDK_TOOLS_AVAILABLE:
+    if not _sdk_tools_available or tool is None:
         return []
 
-    tools = []
+    tools: list[Any] = []
 
     # -------------------------------------------------------------------------
     # Tool: MorphApply (edit_file)

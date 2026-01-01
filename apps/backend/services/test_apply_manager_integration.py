@@ -24,7 +24,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from services.apply_manager import (
+from services.apply_manager import (  # type: ignore[reportImplicitRelativeImport]
     DEFAULT_APPLY_TOOLS,
     MORPH_TOOL,
     ApplyManagerConfig,
@@ -36,7 +36,7 @@ from services.apply_manager import (
     get_apply_tools,
     select_apply_method,
 )
-from services.morph_client import (
+from services.morph_client import (  # type: ignore[reportImplicitRelativeImport]
     ApplyResult,
     MorphAPIError,
     MorphClient,
@@ -1380,7 +1380,10 @@ class TestFallbackScenariosInvalidAPIKeyAndServiceUnavailable:
         ]
 
         for scenario_name, settings in failure_scenarios:
-            manager = ApplyToolManager.from_settings(**settings)
+            manager = ApplyToolManager.from_settings(
+                morph_enabled=bool(settings["morph_enabled"]),
+                morph_api_key=str(settings["morph_api_key"]),
+            )
 
             selection = manager.select_apply_tools()
 
