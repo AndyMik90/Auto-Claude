@@ -33,6 +33,10 @@
       "title": "Integrations",
       "description": "API keys & Claude accounts"
     },
+    "environmentVariables": {
+      "title": "Environment Variables",
+      "description": "Manage environment variables for your projects"
+    },
     "updates": {
       "title": "Updates",
       "description": "Auto Claude updates"
