@@ -99,6 +99,7 @@ class MorphConfig:
     Attributes:
         api_key: API key for authentication (required for most operations)
         base_url: Base URL for the Morph API
+        model: Model to use for apply operations (auto, morph-v3-fast, morph-v3-large)
         timeout: Request timeout in seconds
         max_retries: Maximum number of retries for failed requests
         backoff_factor: Multiplier for exponential backoff between retries
@@ -107,6 +108,7 @@ class MorphConfig:
 
     api_key: str = ""
     base_url: str = "https://api.morphllm.com/v1"
+    model: str = "auto"
     timeout: float = 60.0
     max_retries: int = 3
     backoff_factor: float = 1.5
@@ -118,6 +120,7 @@ class MorphConfig:
         return cls(
             api_key=os.environ.get("MORPH_API_KEY", ""),
             base_url=os.environ.get("MORPH_BASE_URL", "https://api.morphllm.com/v1"),
+            model=os.environ.get("MORPH_MODEL", "auto"),
             timeout=float(os.environ.get("MORPH_TIMEOUT", "60")),
         )
 
@@ -471,7 +474,7 @@ class MorphClient:
 
         # Use OpenAI-compatible chat completions format
         payload: dict[str, Any] = {
-            "model": "auto",  # auto model selects optimal (morph-v3-fast or morph-v3-large)
+            "model": self.config.model,  # auto, morph-v3-fast, or morph-v3-large
             "messages": [{"role": "user", "content": message_content}],
         }
 
@@ -539,9 +542,11 @@ def is_morph_enabled() -> bool:
     Check if Morph integration is enabled via environment.
 
     Returns:
-        True if MORPH_ENABLED is set to 'true' (case-insensitive)
+        True if MORPH_ENABLED is set to 'true' AND MORPH_API_KEY is configured
     """
-    return os.environ.get("MORPH_ENABLED", "").lower() == "true"
+    enabled = os.environ.get("MORPH_ENABLED", "").lower() == "true"
+    has_key = bool(os.environ.get("MORPH_API_KEY", "").strip())
+    return enabled and has_key
 
 
 def get_morph_api_key() -> str:

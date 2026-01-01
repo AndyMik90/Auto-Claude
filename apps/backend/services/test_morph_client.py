@@ -56,6 +56,7 @@ def test_config(test_api_key):
     return MorphConfig(
         api_key=test_api_key,
         base_url="https://api.morphllm.com/v1",
+        model="auto",
         timeout=30.0,
         max_retries=2,
         backoff_factor=1.5,
@@ -115,6 +116,7 @@ def clean_env():
     os.environ.pop("MORPH_ENABLED", None)
     os.environ.pop("MORPH_API_KEY", None)
     os.environ.pop("MORPH_BASE_URL", None)
+    os.environ.pop("MORPH_MODEL", None)
     os.environ.pop("MORPH_TIMEOUT", None)
     yield
     os.environ.clear()
@@ -134,6 +136,7 @@ class TestMorphConfig:
         config = MorphConfig()
         assert config.api_key == ""
         assert config.base_url == "https://api.morphllm.com/v1"
+        assert config.model == "auto"
         assert config.timeout == 60.0
         assert config.max_retries == 3
         assert config.backoff_factor == 1.5
@@ -156,11 +159,13 @@ class TestMorphConfig:
         """Load configuration from environment variables."""
         os.environ["MORPH_API_KEY"] = test_api_key
         os.environ["MORPH_BASE_URL"] = "https://custom.api.com"
+        os.environ["MORPH_MODEL"] = "morph-v3-fast"
         os.environ["MORPH_TIMEOUT"] = "45.0"
 
         config = MorphConfig.from_env()
         assert config.api_key == test_api_key
         assert config.base_url == "https://custom.api.com"
+        assert config.model == "morph-v3-fast"
         assert config.timeout == 45.0
 
     def test_from_env_with_defaults(self, clean_env):
@@ -168,6 +173,7 @@ class TestMorphConfig:
         config = MorphConfig.from_env()
         assert config.api_key == ""
         assert config.base_url == "https://api.morphllm.com/v1"
+        assert config.model == "auto"
         assert config.timeout == 60.0
 
     def test_has_api_key_true(self, test_api_key):
@@ -215,7 +221,9 @@ class TestAPIKeyValidation:
 
             # Validation uses apply() which calls /chat/completions
             mock_request.assert_called_once_with(
-                "POST", "/chat/completions", json_data=mock_request.call_args[1]["json_data"]
+                "POST",
+                "/chat/completions",
+                json_data=mock_request.call_args[1]["json_data"],
             )
             client.close()
 
@@ -779,26 +787,42 @@ class TestContextManager:
 class TestHelperFunctions:
     """Tests for module-level helper functions."""
 
-    def test_is_morph_enabled_true(self, clean_env):
-        """Verify is_morph_enabled returns True when MORPH_ENABLED=true."""
+    def test_is_morph_enabled_true(self, clean_env, test_api_key):
+        """Verify is_morph_enabled returns True when MORPH_ENABLED=true and API key set."""
         os.environ["MORPH_ENABLED"] = "true"
+        os.environ["MORPH_API_KEY"] = test_api_key
         assert is_morph_enabled() is True
 
-    def test_is_morph_enabled_true_case_insensitive(self, clean_env):
+    def test_is_morph_enabled_true_case_insensitive(self, clean_env, test_api_key):
         """Verify is_morph_enabled is case-insensitive."""
+        os.environ["MORPH_API_KEY"] = test_api_key
+
         os.environ["MORPH_ENABLED"] = "TRUE"
         assert is_morph_enabled() is True
 
         os.environ["MORPH_ENABLED"] = "True"
         assert is_morph_enabled() is True
 
-    def test_is_morph_enabled_false(self, clean_env):
+    def test_is_morph_enabled_false(self, clean_env, test_api_key):
         """Verify is_morph_enabled returns False when MORPH_ENABLED=false."""
         os.environ["MORPH_ENABLED"] = "false"
+        os.environ["MORPH_API_KEY"] = test_api_key
         assert is_morph_enabled() is False
 
     def test_is_morph_enabled_false_missing(self, clean_env):
         """Verify is_morph_enabled returns False when env var missing."""
+        assert is_morph_enabled() is False
+
+    def test_is_morph_enabled_false_no_api_key(self, clean_env):
+        """Verify is_morph_enabled returns False when MORPH_ENABLED=true but no API key."""
+        os.environ["MORPH_ENABLED"] = "true"
+        # No MORPH_API_KEY set
+        assert is_morph_enabled() is False
+
+    def test_is_morph_enabled_false_empty_api_key(self, clean_env):
+        """Verify is_morph_enabled returns False when API key is empty/whitespace."""
+        os.environ["MORPH_ENABLED"] = "true"
+        os.environ["MORPH_API_KEY"] = "   "
         assert is_morph_enabled() is False
 
     def test_get_morph_api_key_returns_key(self, clean_env, test_api_key):
@@ -921,9 +945,7 @@ class TestIsAvailable:
     validate_api_key() uses apply() which expects OpenAI-compatible responses.
     """
 
-    def test_is_available_true(
-        self, test_config, mock_apply_response
-    ):
+    def test_is_available_true(self, test_config, mock_apply_response):
         """Verify is_available returns True when service is healthy and key is valid."""
         with patch.object(MorphClient, "_make_request") as mock_request:
             # is_available calls check_health() -> validate_api_key() -> apply()
@@ -975,9 +997,7 @@ class TestIsAvailable:
             assert is_available is False
             client.close()
 
-    def test_is_available_false_on_connection_error(
-        self, test_config
-    ):
+    def test_is_available_false_on_connection_error(self, test_config):
         """Verify is_available returns False on connection error during validation."""
         with patch.object(MorphClient, "_make_request") as mock_request:
             mock_request.side_effect = MorphConnectionError("Connection failed")
