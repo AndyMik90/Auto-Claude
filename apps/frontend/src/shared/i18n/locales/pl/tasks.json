@@ -24,21 +24,21 @@
     "stuck": "Zablokowane",
     "incomplete": "Niekompletne",
     "recovering": "Odzyskiwanie...",
-    "needsRecovery": "Wymaga Odzyskania",
-    "needsResume": "Wymaga Wznowienia"
+    "needsRecovery": "Wymaga odzyskania",
+    "needsResume": "Wymaga wznowienia"
   },
   "reviewReason": {
     "completed": "Ukończone",
-    "hasErrors": "Ma Błędy",
+    "hasErrors": "Ma błędy",
     "qaIssues": "Problemy QA",
-    "approvePlan": "Zatwierdź Plan"
+    "approvePlan": "Zatwierdź plan"
   },
   "tooltips": {
     "archiveTask": "Archiwizuj zadanie",
     "archiveAllDone": "Archiwizuj wszystkie ukończone zadania"
   },
   "creation": {
-    "title": "Utwórz Nowe Zadanie",
+    "title": "Utwórz nowe zadanie",
     "description": "Opisz co chcesz zbudować",
     "placeholder": "Opisz swoje zadanie..."
   },

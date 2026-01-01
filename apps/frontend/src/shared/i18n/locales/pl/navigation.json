@@ -5,10 +5,10 @@
   },
   "items": {
     "kanban": "Tablica Kanban",
-    "terminals": "Terminale Agentów",
-    "insights": "Insights",
+    "terminals": "Terminale agentów",
+    "insights": "Spostrzeżenia",
     "roadmap": "Roadmap",
-    "ideation": "Ideation",
+    "ideation": "Pomysły",
     "changelog": "Changelog",
     "context": "Kontekst",
     "githubIssues": "GitHub Issues",

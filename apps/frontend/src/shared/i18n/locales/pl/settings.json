@@ -22,7 +22,7 @@
       "description": "Preferencje IDE i terminala"
     },
     "agent": {
-      "title": "Ustawienia Agent",
+      "title": "Ustawienia agenta",
       "description": "Domyślny model i framework"
     },
     "paths": {
@@ -60,14 +60,14 @@
     "large": "Duże"
   },
   "general": {
-    "otherAgentSettings": "Inne ustawienia Agent",
-    "otherAgentSettingsDescription": "Dodatkowe opcje konfiguracji Agent",
-    "agentFramework": "Framework Agent",
+    "otherAgentSettings": "Inne ustawienia agenta",
+    "otherAgentSettingsDescription": "Dodatkowe opcje konfiguracji agenta",
+    "agentFramework": "Framework agenta",
     "agentFrameworkDescription": "Framework kodowania używany do autonomicznych zadań",
     "agentFrameworkAutoClaude": "Auto Claude",
     "aiTerminalNaming": "Nazewnictwo AI terminala",
     "aiTerminalNamingDescription": "Automatycznie nadawaj nazwy terminalom na podstawie poleceń (korzysta z Haiku)",
-    "featureModelSettings": "Ustawienia modelu Feature",
+    "featureModelSettings": "Ustawienia modelu feature",
     "featureModelSettingsDescription": "Model i poziom myślenia dla Insights, Ideation i Roadmap",
     "model": "Model",
     "thinkingLevel": "Poziom myślenia",
@@ -154,18 +154,18 @@
     "viewRelease": "Wyświetl pełne wydanie na GitHub",
     "unableToCheck": "Nie można sprawdzić aktualizacje",
     "checkForUpdates": "Sprawdź aktualizacje",
-    "autoUpdateProjects": "Auto-Update projektów",
+    "autoUpdateProjects": "Auto-update projektów",
     "autoUpdateProjectsDescription": "Automatycznie aktualizuj Auto Claude w projektach, gdy dostępna jest nowa wersja",
-    "betaUpdates": "Aktualizacje Beta",
+    "betaUpdates": "Aktualizacje beta",
     "betaUpdatesDescription": "Otrzymuj wersje beta przed wydaniem z nowymi funkcjami (mogą być mniej stabilne)"
   },
   "notifications": {
     "title": "Powiadomienia",
     "description": "Skonfiguruj domyślne preferencje powiadomień",
-    "onTaskComplete": "Po ukończeniu Zadania",
-    "onTaskCompleteDescription": "Powiadom, gdy Zadanie zakończy się pomyślnie",
-    "onTaskFailed": "Na Zadanie nie powiodło się",
-    "onTaskFailedDescription": "Powiadom, gdy Zadanie napotyka błąd",
+    "onTaskComplete": "Po ukończeniu zadania",
+    "onTaskCompleteDescription": "Powiadom, gdy zadanie zakończy się pomyślnie",
+    "onTaskFailed": "Na zadanie nie powiodło się",
+    "onTaskFailedDescription": "Powiadom, gdy zadanie napotyka błąd",
     "onReviewNeeded": "Wymagany przegląd",
     "onReviewNeededDescription": "Powiadom, gdy QA wymaga Twojego przeglądu",
     "sound": "Dźwięk",
@@ -179,9 +179,9 @@
   "projectSections": {
     "general": {
       "title": "Ogólne",
-      "description": "Auto-Build i konfiguracja Agent",
+      "description": "Auto-Build i konfiguracja agenta",
       "useClaudeMd": "Użyj CLAUDE.md",
-      "useClaudeMdDescription": "Dołącz instrukcje CLAUDE.md w kontekście Agent"
+      "useClaudeMdDescription": "Dołącz instrukcje CLAUDE.md w kontekście agenta"
     },
     "claude": {
       "title": "Uwierzytelnianie Claude",
@@ -212,15 +212,15 @@
       "title": "Pamięć",
       "description": "Graphiti backend pamięci",
       "integrationTitle": "Pamięć",
-      "integrationDescription": "Skonfiguruj trwałą pamięć między sesjami dla Agent",
+      "integrationDescription": "Skonfiguruj trwałą pamięć między sesjami dla agenta",
       "syncDescription": "Skonfiguruj trwałą pamięć"
     }
   },
   "agentProfile": {
-    "label": "Profil Agent",
-    "title": "Domyślny profil Agent",
+    "label": "Profil agenta",
+    "title": "Domyślny profil agenta",
     "sectionDescription": "Wybierz wstępnie skonfigurowaną konfigurację dla modelu i poziomu myślenia",
-    "profilesInfo": "Profile Agent zapewniają wstępnie skonfigurowane konfiguracje dla modelu Claude i poziomu myślenia. Podczas tworzenia nowego Zadania te ustawienia będą używane jako domyślne. Zawsze możesz je zmienić w kreatorze tworzenia Zadania.",
+    "profilesInfo": "Profile agenta zapewniają wstępnie skonfigurowane konfiguracje dla modelu Claude i poziomu myślenia. Podczas tworzenia nowego zadania te ustawienia będą używane jako domyślne. Zawsze możesz je zmienić w kreatorze tworzenia zadania.",
     "custom": "Niestandardowe",
     "customConfiguration": "Konfiguracja niestandardowa",
     "customDescription": "Wybierz model i poziom myślenia",
@@ -234,10 +234,10 @@
     "selectThinkingLevel": "Wybierz poziom myślenia",
     "perPhaseOptimization": "(optymalizacja dla każdej fazy)",
     "resetToDefaults": "Przywróć domyślne",
-    "phaseConfigNote": "Te ustawienia będą używane jako domyślne podczas tworzenia nowych Zadań z profilem Auto. Możesz je zmienić dla każdego Zadania w kreatorze tworzenia Zadania.",
+    "phaseConfigNote": "Te ustawienia będą używane jako domyślne podczas tworzenia nowych zadań z profilem Auto. Możesz je zmienić dla każdego zadania w kreatorze tworzenia zadania.",
     "phases": {
       "spec": {
-        "label": "Tworzenie Spec",
+        "label": "Tworzenie spec",
         "description": "Odkrywanie, wymagania, gromadzenie kontekstu"
       },
       "planning": {
@@ -328,7 +328,7 @@
   "mcp": {
     "title": "Przegląd serwera MCP",
     "titleWithProject": "Przegląd serwera MCP dla {{projectName}}",
-    "description": "Skonfiguruj, które serwery MCP są dostępne dla Agent w tym projekcie",
+    "description": "Skonfiguruj, które serwery MCP są dostępne dla agenta w tym projekcie",
     "descriptionNoProject": "Wybierz projekt, aby skonfigurować serwery MCP",
     "serversEnabled": "{{count}} serwerów włączonych",
     "configuration": "Konfiguracja serwera MCP",
@@ -337,11 +337,11 @@
     "noProjectSelectedDescription": "Wybierz projekt z listy rozwijanej, aby wyświetlić i skonfigurować serwery MCP.",
     "projectNotInitialized": "Projekt nie zainicjalizowany",
     "projectNotInitializedDescription": "Zainicjalizuj Auto Claude dla tego projektu, aby skonfigurować serwery MCP.",
-    "browserAutomation": "Automatyzacja przeglądarki (tylko Agent QA)",
+    "browserAutomation": "Automatyzacja przeglądarki (tylko agenta QA)",
     "alwaysEnabled": "zawsze włączone",
     "addServer": "Dodaj serwer",
     "addMcpTo": "Dodaj serwer MCP do {{agent}}",
-    "addMcpDescription": "Wybierz serwer MCP, aby dodać do tego Agent",
+    "addMcpDescription": "Wybierz serwer MCP, aby dodać do tego agenta",
     "allMcpsAdded": "Wszystkie dostępne serwery MCP są już dodane",
     "added": "dodano",
     "removed": "usunięto",
@@ -374,7 +374,7 @@
       },
       "autoClaude": {
         "name": "Auto-Claude Tools",
-        "description": "Śledzenie postępu Build"
+        "description": "Śledzenie postępu build"
       }
     },
     "customServers": "Serwery niestandardowe",
@@ -395,7 +395,7 @@
     "headers": "Nagłówki",
     "headerName": "Nazwa nagłówka",
     "headerValue": "Wartość nagłówka",
-    "noCustomServers": "Brak skonfigurowanych serwerów niestandardowych. Dodaj jeden, aby używać go z Agent.",
+    "noCustomServers": "Brak skonfigurowanych serwerów niestandardowych. Dodaj jeden, aby używać go z agentem.",
     "errorNameRequired": "Nazwa serwera jest wymagana",
     "errorIdExists": "Serwer o tym identyfikatorze już istnieje",
     "errorCommandRequired": "Polecenie jest wymagane dla serwerów opartych na poleceniu",
