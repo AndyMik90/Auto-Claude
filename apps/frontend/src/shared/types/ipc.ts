@@ -124,6 +124,27 @@ import type {
   GitLabNewCommitsCheck
 } from './integrations';
 
+// Environment validation status types
+export interface EnvironmentValidationStatus {
+  isValidating: boolean;
+  isComplete: boolean;
+  buildToolsResult: {
+    success: boolean;
+    platform: string;
+    missingTools: string[];
+    errors: string[];
+    installationInstructions: string;
+  } | null;
+  environmentResult: {
+    success: boolean;
+    bundled: { success: boolean; errors: string[] } | null;
+    venv: { success: boolean; errors: string[] } | null;
+    summary: string;
+  } | null;
+  overallSuccess: boolean;
+  lastValidatedAt: string | null;
+}
+
 // Electron API exposed via contextBridge
 // Tab state interface (persisted in main process)
 export interface TabState {
@@ -746,6 +767,15 @@ export interface ElectronAPI {
   // MCP Server health check operations
   checkMcpHealth: (server: CustomMcpServer) => Promise<IPCResult<McpHealthCheckResult>>;
   testMcpConnection: (server: CustomMcpServer) => Promise<IPCResult<McpTestConnectionResult>>;
+
+  // Environment validation operations
+  getValidationStatus: () => Promise<IPCResult<EnvironmentValidationStatus>>;
+  startValidation: () => Promise<IPCResult<EnvironmentValidationStatus>>;
+
+  // Environment validation event listeners
+  onValidationProgress: (callback: (message: string) => void) => () => void;
+  onValidationComplete: (callback: (status: EnvironmentValidationStatus) => void) => () => void;
+  onValidationError: (callback: (error: string) => void) => () => void;
 }
 
 declare global {

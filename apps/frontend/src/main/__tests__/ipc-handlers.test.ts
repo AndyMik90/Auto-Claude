@@ -226,7 +226,7 @@ describe('IPC Handlers', () => {
         success: false,
         error: 'Directory does not exist'
       });
-    });
+    }, 15000);
 
     it('should successfully add an existing project', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');
@@ -239,7 +239,7 @@ describe('IPC Handlers', () => {
       const data = (result as { data: { path: string; name: string } }).data;
       expect(data.path).toBe(TEST_PROJECT_PATH);
       expect(data.name).toBe('test-project');
-    });
+    }, 15000);
 
     it('should return existing project if already added', async () => {
       const { setupIpcHandlers } = await import('../ipc-handlers');

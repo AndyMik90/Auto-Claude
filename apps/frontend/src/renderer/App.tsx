@@ -49,6 +49,7 @@ import { OnboardingWizard } from './components/onboarding';
 import { AppUpdateNotification } from './components/AppUpdateNotification';
 import { ProactiveSwapListener } from './components/ProactiveSwapListener';
 import { GitHubSetupModal } from './components/GitHubSetupModal';
+import { StartupValidator } from './components/StartupValidator';
 import { useProjectStore, loadProjects, addProject, initializeProject } from './stores/project-store';
 import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings } from './stores/settings-store';
@@ -142,6 +143,14 @@ export function App() {
   const [showGitHubSetup, setShowGitHubSetup] = useState(false);
   const [gitHubSetupProject, setGitHubSetupProject] = useState<Project | null>(null);
 
+  // Environment validation state (startup check for build tools and Python)
+  const [isEnvValidated, setIsEnvValidated] = useState(() => {
+    // Check if validation was already completed in this session
+    const validated = sessionStorage.getItem('env-validated');
+    return validated === 'true';
+  });
+  const [showStartupValidator, setShowStartupValidator] = useState(false);
+
   // Setup drag sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -171,6 +180,24 @@ export function App() {
       cleanupDownloadListener();
     };
   }, []);
+
+  // Trigger environment validation on first project load (if not already validated)
+  useEffect(() => {
+    // Only trigger validation when:
+    // 1. Projects are loaded
+    // 2. There's a selected project (first project load)
+    // 3. Environment hasn't been validated yet
+    // 4. Validator isn't already showing
+    const currentProjectId = activeProjectId || selectedProjectId;
+    if (
+      projects.length > 0 &&
+      currentProjectId &&
+      !isEnvValidated &&
+      !showStartupValidator
+    ) {
+      setShowStartupValidator(true);
+    }
+  }, [projects, activeProjectId, selectedProjectId, isEnvValidated, showStartupValidator]);
 
   // Restore tab state and open tabs for loaded projects
   useEffect(() => {
@@ -621,6 +648,21 @@ export function App() {
     }
   };
 
+  // Handle environment validation completion
+  const handleEnvValidationComplete = () => {
+    // Mark as validated in session storage so it persists until app restart
+    sessionStorage.setItem('env-validated', 'true');
+    setIsEnvValidated(true);
+    setShowStartupValidator(false);
+  };
+
+  // Handle environment validation skip
+  const handleEnvValidationSkip = () => {
+    // Allow skipping but don't persist - will show again on next app launch
+    setIsEnvValidated(true);
+    setShowStartupValidator(false);
+  };
+
   return (
     <ViewStateProvider>
       <TooltipProvider>
@@ -919,6 +961,18 @@ export function App() {
 
         {/* Global Download Indicator - shows Ollama model download progress */}
         <GlobalDownloadIndicator />
+
+        {/* Environment Validation Overlay - shows on first project load */}
+        {showStartupValidator && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <StartupValidator
+              autoStart
+              onComplete={handleEnvValidationComplete}
+              onSkip={handleEnvValidationSkip}
+              className="max-w-lg w-full mx-4"
+            />
+          </div>
+        )}
       </div>
       </TooltipProvider>
     </ViewStateProvider>
