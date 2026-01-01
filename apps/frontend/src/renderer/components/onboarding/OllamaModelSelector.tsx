@@ -340,8 +340,9 @@ export function OllamaModelSelector({
                 variant="outline"
                 size="sm"
                 onClick={() => checkInstalledModels()}
+                disabled={isLoading}
               >
-                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', isLoading && 'animate-spin')} />
                 {t('ollama.notInstalled.retry')}
               </Button>
               <Button
