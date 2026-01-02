@@ -2114,7 +2114,8 @@ export function registerWorktreeHandlers(
 
               const planPaths = [
                 path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
-                path.join(worktreePath, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN)
+                path.join(worktreePath, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
+                path.join(worktreePath, AUTO_BUILD_PATHS.SPECS_DIR, task.specId, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN)
               ];
 
               const persistPlans = async () => {
