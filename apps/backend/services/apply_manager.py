@@ -714,6 +714,10 @@ def get_apply_tools(
     Convenience function for quick tool list lookup without
     creating a full manager instance.
 
+    WARNING: This creates a temporary ApplyToolManager for each call,
+    which may validate the API key (consuming credits and adding latency).
+    For repeated calls, create and reuse an ApplyToolManager instance instead.
+
     Args:
         morph_enabled: Whether Morph is enabled
         morph_api_key: Morph API key
