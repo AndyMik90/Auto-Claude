@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from core.timeout import query_with_timeout, receive_with_timeout
+
 if TYPE_CHECKING:
     pass
 
@@ -224,10 +226,10 @@ async def _call_claude(prompt: str) -> str:
 
     try:
         async with client:
-            await client.query(prompt)
+            await query_with_timeout(client, prompt)
 
             response_text = ""
-            async for msg in client.receive_response():
+            async for msg in receive_with_timeout(client):
                 msg_type = type(msg).__name__
                 if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                     for block in msg.content:

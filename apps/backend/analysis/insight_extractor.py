@@ -28,6 +28,8 @@ try:
 except ImportError:
     SDK_AVAILABLE = False
     ClaudeAgentOptions = None
+
+from core.timeout import query_with_timeout, receive_with_timeout
     ClaudeSDKClient = None
 
 from core.auth import ensure_claude_code_oauth_token, get_auth_token
@@ -383,11 +385,11 @@ async def run_insight_extraction(
 
         # Use async context manager
         async with client:
-            await client.query(prompt)
+            await query_with_timeout(client, prompt)
 
             # Collect the response
             response_text = ""
-            async for msg in client.receive_response():
+            async for msg in receive_with_timeout(client):
                 msg_type = type(msg).__name__
                 if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                     for block in msg.content:

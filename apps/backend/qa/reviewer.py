@@ -9,6 +9,7 @@ acceptance criteria.
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
+from core.timeout import query_with_timeout, receive_with_timeout
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from prompts_pkg import get_qa_reviewer_prompt
 from task_logger import (
@@ -164,12 +165,12 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
 
     try:
         debug("qa_reviewer", "Sending query to Claude SDK...")
-        await client.query(prompt)
+        await query_with_timeout(client, prompt)
         debug_success("qa_reviewer", "Query sent successfully")
 
         response_text = ""
         debug("qa_reviewer", "Starting to receive response stream...")
-        async for msg in client.receive_response():
+        async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
             message_count += 1
             debug_detailed(

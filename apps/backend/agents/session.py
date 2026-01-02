@@ -18,6 +18,7 @@ from tenacity import (
 )
 
 from claude_agent_sdk import ClaudeSDKClient
+from core.timeout import query_with_timeout, receive_with_timeout
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from insight_extractor import extract_session_insights
 from linear_updater import (
@@ -370,13 +371,13 @@ async def run_agent_session(
     try:
         # Send the query
         debug("session", "Sending query to Claude SDK...")
-        await client.query(message)
+        await query_with_timeout(client, message)
         debug_success("session", "Query sent successfully")
 
         # Collect response text and show tool use
         response_text = ""
         debug("session", "Starting to receive response stream...")
-        async for msg in client.receive_response():
+        async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
             message_count += 1
             debug_detailed(

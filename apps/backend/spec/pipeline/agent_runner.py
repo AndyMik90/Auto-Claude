@@ -13,6 +13,7 @@ from ui.capabilities import configure_safe_encoding
 configure_safe_encoding()
 
 from core.client import create_client
+from core.timeout import query_with_timeout, receive_with_timeout
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from task_logger import (
     LogEntryType,
@@ -129,12 +130,12 @@ class AgentRunner:
         try:
             async with client:
                 debug("agent_runner", "Sending query to Claude SDK...")
-                await client.query(prompt)
+                await query_with_timeout(client, prompt)
                 debug_success("agent_runner", "Query sent successfully")
 
                 response_text = ""
                 debug("agent_runner", "Starting to receive response stream...")
-                async for msg in client.receive_response():
+                async for msg in receive_with_timeout(client):
                     msg_type = type(msg).__name__
                     message_count += 1
                     debug_detailed(

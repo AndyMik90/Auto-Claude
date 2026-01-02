@@ -32,6 +32,7 @@ except ImportError:
     ClaudeSDKClient = None
 
 from core.auth import ensure_claude_code_oauth_token, get_auth_token
+from core.timeout import query_with_timeout, receive_with_timeout
 from debug import (
     debug,
     debug_detailed,
@@ -195,13 +196,13 @@ Current question: {message}"""
         # Use async context manager pattern
         async with client:
             # Send the query
-            await client.query(full_prompt)
+            await query_with_timeout(client, full_prompt)
 
             # Stream the response
             response_text = ""
             current_tool = None
 
-            async for msg in client.receive_response():
+            async for msg in receive_with_timeout(client):
                 msg_type = type(msg).__name__
                 debug_detailed("insights_runner", "Received message", msg_type=msg_type)
 

@@ -29,6 +29,11 @@ class AgentError(AutoClaudeError):
     pass
 
 
+class AgentTimeoutError(AgentError):
+    """LLM API call timeout errors."""
+    pass
+
+
 class MemoryError(AutoClaudeError):
     """Graphiti memory system errors."""
     pass

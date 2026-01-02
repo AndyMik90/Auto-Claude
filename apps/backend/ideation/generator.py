@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from client import create_client
+from core.timeout import query_with_timeout, receive_with_timeout
 from phase_config import get_thinking_budget
 from ui import print_status
 
@@ -100,10 +101,10 @@ class IdeationGenerator:
 
         try:
             async with client:
-                await client.query(prompt)
+                await query_with_timeout(client, prompt)
 
                 response_text = ""
-                async for msg in client.receive_response():
+                async for msg in receive_with_timeout(client):
                     msg_type = type(msg).__name__
 
                     if msg_type == "AssistantMessage" and hasattr(msg, "content"):
@@ -193,9 +194,9 @@ Write the fixed JSON to the file now.
 
         try:
             async with client:
-                await client.query(recovery_prompt)
+                await query_with_timeout(client, recovery_prompt)
 
-                async for msg in client.receive_response():
+                async for msg in receive_with_timeout(client):
                     msg_type = type(msg).__name__
 
                     if msg_type == "AssistantMessage" and hasattr(msg, "content"):

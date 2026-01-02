@@ -25,6 +25,8 @@ from typing import Any
 
 from claude_agent_sdk import AgentDefinition
 
+from core.timeout import query_with_timeout
+
 try:
     from ...core.client import create_client
     from ...phase_config import get_thinking_budget
@@ -441,7 +443,7 @@ The SDK will run invoked agents in parallel automatically.
 
             # Run orchestrator session using shared SDK stream processor
             async with client:
-                await client.query(prompt)
+                await query_with_timeout(client, prompt)
 
                 print(
                     f"[ParallelOrchestrator] Running orchestrator ({model})...",

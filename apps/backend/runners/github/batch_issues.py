@@ -28,6 +28,8 @@ try:
     from .file_lock import locked_json_write
 except (ImportError, ValueError, SystemError):
     from batch_validator import BatchValidator
+
+from core.timeout import query_with_timeout, receive_with_timeout
     from duplicates import SIMILAR_THRESHOLD
     from file_lock import locked_json_write
 
@@ -160,7 +162,7 @@ Respond with JSON only:
             )
 
             async with client:
-                await client.query(prompt)
+                await query_with_timeout(client, prompt)
                 response_text = await self._collect_response(client)
 
             logger.info(
@@ -229,7 +231,7 @@ Respond with JSON only:
         """Collect text response from Claude client."""
         response_text = ""
 
-        async for msg in client.receive_response():
+        async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
             if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                 for block in msg.content:

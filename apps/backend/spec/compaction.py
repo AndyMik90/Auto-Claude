@@ -11,6 +11,7 @@ from pathlib import Path
 
 from core.auth import require_auth_token
 from core.simple_client import create_simple_client
+from core.timeout import query_with_timeout, receive_with_timeout
 
 
 async def summarize_phase_output(
@@ -70,9 +71,9 @@ Be concise and use bullet points. Skip boilerplate and meta-commentary.
 
     try:
         async with client:
-            await client.query(prompt)
+            await query_with_timeout(client, prompt)
             response_text = ""
-            async for msg in client.receive_response():
+            async for msg in receive_with_timeout(client):
                 if hasattr(msg, "content"):
                     for block in msg.content:
                         if hasattr(block, "text"):

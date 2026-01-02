@@ -15,6 +15,8 @@ import os
 from collections.abc import Callable
 from typing import Any
 
+from core.timeout import receive_with_timeout
+
 logger = logging.getLogger(__name__)
 
 # Check if debug mode is enabled
@@ -71,7 +73,7 @@ async def process_sdk_stream(
         print(f"[DEBUG {context_name}] Awaiting response stream...", flush=True)
 
     try:
-        async for msg in client.receive_response():
+        async for msg in receive_with_timeout(client):
             try:
                 msg_type = type(msg).__name__
                 msg_count += 1
