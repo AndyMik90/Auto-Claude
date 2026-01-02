@@ -32,7 +32,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 try:
@@ -77,7 +77,7 @@ class MorphAPITester:
         result = {
             "test": test_name,
             "success": success,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "details": details,
         }
         if error:
@@ -306,7 +306,7 @@ class MorphAPITester:
         """Get test results as JSON for documentation."""
         return json.dumps({
             "test_run": {
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "base_url": self.base_url,
                 "api_key_prefix": self.api_key[:10] + "...",
             },
