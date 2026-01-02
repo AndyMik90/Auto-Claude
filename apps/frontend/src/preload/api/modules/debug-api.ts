@@ -39,7 +39,7 @@ export interface DebugAPI {
   copyDebugInfo: () => Promise<DebugResult>;
   getRecentErrors: (maxCount?: number) => Promise<string[]>;
   listLogFiles: () => Promise<LogFileInfo[]>;
-  testInvokeChannel: (channel: string, params?: any) => Promise<any>;
+  testInvokeChannel: (channel: string, params?: unknown) => Promise<unknown>;
 }
 
 /**
@@ -61,6 +61,6 @@ export const createDebugAPI = (): DebugAPI => ({
   listLogFiles: (): Promise<LogFileInfo[]> =>
     invokeIpc(IPC_CHANNELS.DEBUG_LIST_LOG_FILES),
 
-  testInvokeChannel: (channel: string, params?: any): Promise<any> =>
+  testInvokeChannel: (channel: string, params?: unknown): Promise<unknown> =>
     invokeIpc(channel, params)
 });

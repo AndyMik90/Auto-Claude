@@ -45,13 +45,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
-          # Optional: Set custom model or configuration
-          # model: 'gpt-4'
-          # max-iterations: 50
+          model: 'anthropic/claude-3.5-sonnet'
+          max-iterations: 50
         env:
-          # Add API keys if using external LLM providers
-          # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # OpenRouter configuration
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: 'https://openrouter.ai/api/v1'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update issue on success

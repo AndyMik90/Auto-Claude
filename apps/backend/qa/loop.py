@@ -47,6 +47,7 @@ from .reviewer import run_qa_agent_session
 # Configuration
 MAX_QA_ITERATIONS = 50
 MAX_CONSECUTIVE_ERRORS = 3  # Stop after 3 consecutive errors without progress
+MAX_QA_TIMEOUT_SECONDS = 7200  # 2 hours total timeout for entire QA loop
 
 
 # =============================================================================
@@ -193,8 +194,40 @@ async def run_qa_validation_loop(
     qa_iteration = get_qa_iteration_count(spec_dir)
     consecutive_errors = 0
     last_error_context = None  # Track error for self-correction feedback
+    loop_start_time = time_module.time()  # Track total loop duration for timeout
 
     while qa_iteration < MAX_QA_ITERATIONS:
+        # Check timeout before starting new iteration
+        elapsed_time = time_module.time() - loop_start_time
+        if elapsed_time >= MAX_QA_TIMEOUT_SECONDS:
+            debug_error(
+                "qa_loop",
+                f"QA loop timeout reached ({MAX_QA_TIMEOUT_SECONDS}s / {MAX_QA_TIMEOUT_SECONDS/3600:.1f}h)",
+                elapsed_seconds=f"{elapsed_time:.1f}",
+                iterations_completed=qa_iteration,
+            )
+            print("\n" + "=" * 70)
+            print("  ⚠️  QA VALIDATION TIMEOUT")
+            print("=" * 70)
+            print(f"\nMaximum time limit reached ({MAX_QA_TIMEOUT_SECONDS/3600:.1f} hours).")
+            print(f"Completed {qa_iteration} iterations in {elapsed_time/3600:.1f} hours.")
+            print("\nEscalating to human review due to timeout.")
+
+            # End validation phase as failed
+            if task_logger:
+                task_logger.end_phase(
+                    LogPhase.VALIDATION,
+                    success=False,
+                    message=f"QA validation timeout after {elapsed_time/3600:.1f} hours ({qa_iteration} iterations)",
+                )
+
+            # Update Linear
+            if linear_task and linear_task.task_id:
+                await linear_qa_max_iterations(spec_dir, qa_iteration)
+                print("\nLinear: Task marked as needing human intervention (timeout)")
+
+            emit_phase(ExecutionPhase.FAILED, "QA validation timeout")
+            return False
         qa_iteration += 1
         iteration_start = time_module.time()
 

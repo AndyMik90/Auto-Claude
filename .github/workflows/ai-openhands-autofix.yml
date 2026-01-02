@@ -1,0 +1,289 @@
+name: AI OpenHands Auto-Fix
+
+on:
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [labeled]
+
+# Cancel in-progress runs for the same PR/issue
+concurrency:
+  group: ai-openhands-autofix-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  openhands-autofix:
+    name: OpenHands Auto-Fix
+    # Trigger on:
+    # 1. Pull request review requesting changes
+    # 2. Issue labeled with 'fix-me' or 'autofix'
+    if: |
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested') ||
+      (github.event_name == 'issues' && (github.event.label.name == 'fix-me' || github.event.label.name == 'autofix'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Using Claude Sonnet 4.5 via litellm proxy
+      LLM_MODEL: litellm_proxy/claude-sonnet-4-5-20250929
+      LLM_BASE_URL: https://llm-proxy.app.all-hands.dev
+    steps:
+      - name: Checkout PR code
+        if: github.event_name == 'pull_request_review'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout main branch for issue fix
+        if: github.event_name == 'issues'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install OpenHands SDK
+        run: |
+          uv pip install --system "openhands-sdk @ git+https://github.com/OpenHands/agent-sdk.git@main#subdirectory=openhands-sdk"
+          uv pip install --system "openhands-tools @ git+https://github.com/OpenHands/agent-sdk.git@main#subdirectory=openhands-tools"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "OpenHands Auto-Fix Bot"
+          git config --global user.email "openhands-bot@github-actions"
+
+      - name: Auto-fix PR review issues
+        if: github.event_name == 'pull_request_review'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+        run: |
+          python -c "
+          import os
+          import json
+          import subprocess
+          from openhands_sdk import OpenHandsAgent
+
+          # Initialize agent
+          agent = OpenHandsAgent(
+              model=os.environ['LLM_MODEL'],
+              api_key=os.environ['LLM_API_KEY'],
+              base_url=os.environ.get('LLM_BASE_URL')
+          )
+
+          pr_number = os.environ['PR_NUMBER']
+          repo = os.environ['REPO_FULL_NAME']
+          review_body = os.environ.get('REVIEW_BODY', '')
+
+          print(f'Auto-fixing issues from PR #{pr_number} review...')
+
+          # Create fix request prompt
+          fix_prompt = f'''
+          A code review has requested changes on PR #{pr_number}.
+
+          Review feedback:
+          {review_body}
+
+          Please:
+          1. Analyze the review feedback
+          2. Fix all issues mentioned in the review
+          3. Commit the changes with clear commit messages
+          4. Ensure all changes maintain code quality
+
+          Focus on addressing the specific concerns raised in the review.
+          '''
+
+          # Run agent to fix issues
+          result = agent.run_task(
+              task=fix_prompt,
+              workspace_path='.'
+          )
+
+          print(f'Auto-fix complete: {json.dumps(result, indent=2)}')
+
+          # Push changes if any were made
+          subprocess.run(['git', 'add', '.'], check=True)
+          has_changes = subprocess.run(
+              ['git', 'diff', '--cached', '--quiet'],
+              capture_output=True
+          ).returncode != 0
+
+          if has_changes:
+              subprocess.run(
+                  ['git', 'commit', '-m', 'fix: auto-fix issues from code review'],
+                  check=True
+              )
+              subprocess.run(['git', 'push'], check=True)
+              print('✅ Changes committed and pushed')
+          else:
+              print('ℹ️ No changes needed')
+          "
+
+      - name: Auto-fix GitHub issue
+        if: github.event_name == 'issues'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          REPO_FULL_NAME: ${{ github.repository }}
+        run: |
+          python -c "
+          import os
+          import json
+          import subprocess
+          from openhands_sdk import OpenHandsAgent
+
+          # Initialize agent
+          agent = OpenHandsAgent(
+              model=os.environ['LLM_MODEL'],
+              api_key=os.environ['LLM_API_KEY'],
+              base_url=os.environ.get('LLM_BASE_URL')
+          )
+
+          issue_number = os.environ['ISSUE_NUMBER']
+          issue_title = os.environ.get('ISSUE_TITLE', '')
+          issue_body = os.environ.get('ISSUE_BODY', '')
+          repo = os.environ['REPO_FULL_NAME']
+
+          print(f'Auto-fixing issue #{issue_number}...')
+
+          # Create branch for fix
+          branch_name = f'autofix/issue-{issue_number}'
+          subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
+
+          # Create fix request prompt
+          fix_prompt = f'''
+          Issue #{issue_number}: {issue_title}
+
+          Description:
+          {issue_body}
+
+          Please:
+          1. Analyze the issue description
+          2. Implement a fix for the reported problem
+          3. Commit the changes with clear commit messages
+          4. Ensure the fix doesn't break existing functionality
+
+          Focus on resolving the specific issue reported.
+          '''
+
+          # Run agent to fix issue
+          result = agent.run_task(
+              task=fix_prompt,
+              workspace_path='.'
+          )
+
+          print(f'Auto-fix complete: {json.dumps(result, indent=2)}')
+
+          # Commit and push if changes were made
+          subprocess.run(['git', 'add', '.'], check=True)
+          has_changes = subprocess.run(
+              ['git', 'diff', '--cached', '--quiet'],
+              capture_output=True
+          ).returncode != 0
+
+          if has_changes:
+              subprocess.run(
+                  ['git', 'commit', '-m', f'fix: auto-fix issue #{issue_number}'],
+                  check=True
+              )
+              subprocess.run(['git', 'push', '-u', 'origin', branch_name], check=True)
+              print(f'✅ Changes committed and pushed to {branch_name}')
+
+              # Create PR (will be done in next step)
+              print(f'Branch {branch_name} ready for PR creation')
+          else:
+              print('ℹ️ No changes needed')
+          "
+
+      - name: Create Pull Request for issue fix
+        if: github.event_name == 'issues' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.payload.issue.number;
+            const branchName = `autofix/issue-${issueNumber}`;
+
+            // Check if branch has commits
+            const { data: branch } = await github.rest.repos.getBranch({
+              ...context.repo,
+              branch: branchName
+            }).catch(() => ({ data: null }));
+
+            if (!branch) {
+              console.log('No branch created - no changes needed');
+              return;
+            }
+
+            // Create PR
+            const { data: pr } = await github.rest.pulls.create({
+              ...context.repo,
+              title: `🤖 Auto-fix: ${context.payload.issue.title}`,
+              head: branchName,
+              base: 'main',
+              body: `🤖 **Automated fix for issue #${issueNumber}**\n\nThis PR was automatically generated by OpenHands AI to fix the reported issue.\n\n**Original Issue:**\n${context.payload.issue.html_url}\n\n**Changes:**\nThe AI agent analyzed the issue and implemented a fix. Please review the changes before merging.\n\n**Testing:**\nPlease verify that:\n- The reported issue is resolved\n- No existing functionality is broken\n- Code quality is maintained\n\nCloses #${issueNumber}`
+            });
+
+            console.log(`✅ Created PR #${pr.number}: ${pr.html_url}`);
+
+      - name: Post status comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isPR = context.eventName === 'pull_request_review';
+            const number = isPR
+              ? context.payload.pull_request.number
+              : context.payload.issue.number;
+
+            const status = context.job.status === 'success' ? '✅ Success' : '❌ Failed';
+            const emoji = context.job.status === 'success' ? '🤖' : '⚠️';
+
+            let body = `${emoji} **OpenHands Auto-Fix ${status}**\n\n`;
+
+            if (isPR) {
+              body += 'The AI agent has attempted to fix the issues mentioned in the code review.\n\n';
+              if (context.job.status === 'success') {
+                body += '**Next Steps:**\n';
+                body += '- Review the auto-fix commits\n';
+                body += '- Verify all review feedback is addressed\n';
+                body += '- Request re-review if satisfied\n';
+              }
+            } else {
+              body += `The AI agent has analyzed issue #${number} and attempted to create a fix.\n\n`;
+              if (context.job.status === 'success') {
+                body += '**Next Steps:**\n';
+                body += '- Review the auto-generated PR\n';
+                body += '- Test the fix locally\n';
+                body += '- Merge if satisfied with the solution\n';
+              }
+            }
+
+            body += '\n\nCheck the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.';
+
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: number,
+              body: body
+            });

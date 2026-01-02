@@ -766,7 +766,7 @@ export interface ElectronAPI {
     size: number;
     modified: string;
   }>>;
-  testInvokeChannel: (channel: string, params?: any) => Promise<any>;
+  testInvokeChannel: (channel: string, params?: unknown) => Promise<unknown>;
 
   // MCP Server health check operations
   checkMcpHealth: (server: CustomMcpServer) => Promise<IPCResult<McpHealthCheckResult>>;

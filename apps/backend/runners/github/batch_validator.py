@@ -25,6 +25,9 @@ DEFAULT_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_THINKING_BUDGET = 10000  # Medium thinking
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 @dataclass
 class BatchValidationResult:
     """Result of batch validation."""
@@ -214,7 +217,7 @@ class BatchValidator:
                 )
 
                 async with client:
-                    await client.query(prompt)
+                    await query_with_timeout(client, prompt)
                     result_text = await self._collect_response(client)
 
                 # Parse JSON response
@@ -250,7 +253,7 @@ class BatchValidator:
         """Collect text response from Claude client."""
         response_text = ""
 
-        async for msg in client.receive_response():
+        async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
 
             if msg_type == "AssistantMessage":

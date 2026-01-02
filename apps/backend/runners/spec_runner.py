@@ -46,7 +46,9 @@ if sys.version_info < (3, 10):  # noqa: UP036
 
 import asyncio
 import io
+import json
 import os
+import subprocess
 from pathlib import Path
 
 # Configure safe encoding on Windows BEFORE any imports that might print
@@ -91,11 +93,41 @@ if env_file.exists():
 elif dev_env_file.exists():
     load_dotenv(dev_env_file)
 
+from core.auth import get_auth_token, get_auth_token_source
 from debug import debug, debug_error, debug_section, debug_success
 from phase_config import resolve_model_id
 from review import ReviewState
 from spec import SpecOrchestrator
 from ui import Icons, highlight, muted, print_section, print_status
+
+
+def validate_auth_token() -> None:
+    """
+    Validate that authentication token is available before starting spec creation.
+
+    This prevents wasted computation time when token is missing or misconfigured.
+    Fails fast with clear guidance on how to configure authentication.
+    """
+    token = get_auth_token()
+    if not token:
+        print()
+        print_status("Authentication token not found", "error")
+        print()
+        print("Auto Claude requires a Claude Code OAuth token to run.")
+        print()
+        print("To configure authentication, run:")
+        print(f"  {highlight('claude setup-token')}")
+        print()
+        print("Then add the token to your .env file:")
+        print(f"  {highlight('CLAUDE_CODE_OAUTH_TOKEN=your-token-here')}")
+        print()
+        print("Or set as environment variable:")
+        print(f"  {highlight('export CLAUDE_CODE_OAUTH_TOKEN=your-token')}")
+        print()
+        sys.exit(1)
+
+    token_source = get_auth_token_source()
+    debug("spec_runner", "Auth token validated", source=token_source)
 
 
 def main():
@@ -200,6 +232,9 @@ Examples:
     )
 
     args = parser.parse_args()
+
+    # Validate authentication token early to fail fast if missing
+    validate_auth_token()
 
     # Handle task from file if provided
     task_description = args.task
@@ -338,6 +373,28 @@ Examples:
         use_ai_assessment=not args.no_ai_assessment,
     )
 
+    # Check for branch namespace conflicts early (before spec creation)
+    # This prevents wasting time creating a spec when build will fail
+    try:
+        from worktree import WorktreeManager, WorktreeError
+        worktree_manager = WorktreeManager(project_dir)
+        # Use spec_dir name if it exists, otherwise wait for orchestrator to create it
+        if orchestrator.spec_dir and orchestrator.spec_dir.exists():
+            spec_name = orchestrator.spec_dir.name
+            worktree_manager.check_branch_namespace_early(spec_name)
+            debug("spec_runner", "Branch namespace check passed", spec_name=spec_name)
+    except WorktreeError as e:
+        debug_error("spec_runner", f"Branch namespace conflict: {e}")
+        print()
+        print_status("Branch namespace conflict", "error")
+        print()
+        print(str(e))
+        sys.exit(1)
+    except Exception as e:
+        # Don't fail if branch check fails for other reasons (e.g., not a git repo)
+        # The actual worktree creation will handle these cases later
+        debug("spec_runner", f"Branch namespace check skipped: {e}")
+
     try:
         debug("spec_runner", "Starting spec orchestrator run...")
         success = asyncio.run(
@@ -414,8 +471,36 @@ Examples:
             print(f"  {muted('Running:')} {' '.join(run_cmd)}")
             print()
 
-            # Execute run.py - replace current process
-            os.execv(sys.executable, run_cmd)
+            # Execute run.py using subprocess (allows error recovery)
+            try:
+                result = subprocess.run(run_cmd, check=True)
+                debug_success("spec_runner", "Build completed successfully")
+                sys.exit(result.returncode)
+            except subprocess.CalledProcessError as e:
+                debug_error(
+                    "spec_runner",
+                    f"Build failed with exit code {e.returncode}",
+                    command=" ".join(run_cmd),
+                )
+                print()
+                print_status(
+                    f"Build failed with exit code {e.returncode}",
+                    "error",
+                )
+                print()
+                print(f"  {muted('Spec directory:')} {orchestrator.spec_dir}")
+                print(
+                    f"  {muted('To retry:')} python auto-claude/run.py --spec {orchestrator.spec_dir.name}"
+                )
+                sys.exit(e.returncode)
+            except Exception as e:
+                debug_error(
+                    "spec_runner",
+                    f"Unexpected error running build: {e}",
+                )
+                print()
+                print_status(f"Build execution failed: {e}", "error")
+                sys.exit(1)
 
         sys.exit(0)
 

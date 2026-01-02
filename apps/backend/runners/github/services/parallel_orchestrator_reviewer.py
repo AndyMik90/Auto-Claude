@@ -61,6 +61,9 @@ logger = logging.getLogger(__name__)
 DEBUG_MODE = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 class ParallelOrchestratorReviewer:
     """
     PR reviewer using SDK subagents for parallel specialist analysis.
@@ -441,7 +444,7 @@ The SDK will run invoked agents in parallel automatically.
 
             # Run orchestrator session using shared SDK stream processor
             async with client:
-                await client.query(prompt)
+                await query_with_timeout(client, prompt)
 
                 print(
                     f"[ParallelOrchestrator] Running orchestrator ({model})...",

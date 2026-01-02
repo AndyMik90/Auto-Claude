@@ -399,6 +399,82 @@ def get_current_phase(spec_dir: Path) -> dict | None:
         return None
 
 
+def get_parallel_subtasks(spec_dir: Path) -> tuple[list[dict], dict] | None:
+    """
+    Get all pending subtasks for the next parallel-safe phase.
+
+    FIX #487: Enables true parallel agent execution for parallel-safe phases
+
+    Args:
+        spec_dir: Directory containing implementation_plan.json
+
+    Returns:
+        (list of subtask dicts, phase dict) if parallel-safe phase available,
+        None otherwise (fall back to sequential execution)
+    """
+    plan_file = spec_dir / "implementation_plan.json"
+
+    if not plan_file.exists():
+        return None
+
+    try:
+        with open(plan_file) as f:
+            plan = json.load(f)
+
+        phases = plan.get("phases", [])
+
+        # Build a map of phase completion
+        phase_complete = {}
+        for phase in phases:
+            phase_id = phase.get("id") or phase.get("phase")
+            subtasks = phase.get("subtasks", [])
+            phase_complete[phase_id] = all(
+                s.get("status") == "completed" for s in subtasks
+            )
+
+        # Find next available parallel-safe phase
+        for phase in phases:
+            phase_id = phase.get("id") or phase.get("phase")
+            depends_on = phase.get("depends_on", [])
+
+            # Check if dependencies are satisfied
+            deps_satisfied = all(phase_complete.get(dep, False) for dep in depends_on)
+            if not deps_satisfied:
+                continue
+
+            # Check if this phase is parallel-safe
+            if not phase.get("parallel_safe", False):
+                # Not parallel-safe, fall back to sequential
+                return None
+
+            # Collect all pending subtasks in this phase
+            pending_subtasks = []
+            for subtask in phase.get("subtasks", []):
+                if subtask.get("status") == "pending":
+                    pending_subtasks.append({
+                        "phase_id": phase_id,
+                        "phase_name": phase.get("name"),
+                        "phase_num": phase.get("phase"),
+                        **subtask,
+                    })
+
+            # Skip phases with no pending subtasks (already complete)
+            if len(pending_subtasks) == 0:
+                continue
+
+            # Only return if we have multiple subtasks to parallelize
+            if len(pending_subtasks) > 1:
+                return pending_subtasks, phase
+
+            # Only one subtask left, fall back to sequential
+            return None
+
+        return None
+
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
 def get_next_subtask(spec_dir: Path) -> dict | None:
     """
     Find the next subtask to work on, respecting phase dependencies.
@@ -448,6 +524,72 @@ def get_next_subtask(spec_dir: Path) -> dict | None:
                         "phase_num": phase.get("phase"),
                         **subtask,
                     }
+
+        return None
+
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def get_current_phase_with_subtasks(spec_dir: Path) -> tuple[dict, list[dict]] | None:
+    """
+    Get the current phase and all its pending subtasks for parallel execution.
+
+    This function is used for parallel execution - it returns ALL pending subtasks
+    from the first available phase that has pending work.
+
+    Args:
+        spec_dir: Directory containing implementation_plan.json
+
+    Returns:
+        Tuple of (phase_dict, pending_subtasks_list) or None if no work available.
+        Each subtask dict includes phase metadata (phase_id, phase_name, etc.).
+    """
+    plan_file = spec_dir / "implementation_plan.json"
+
+    if not plan_file.exists():
+        return None
+
+    try:
+        with open(plan_file) as f:
+            plan = json.load(f)
+
+        phases = plan.get("phases", [])
+
+        # Build a map of phase completion
+        phase_complete = {}
+        for phase in phases:
+            phase_id = phase.get("id") or phase.get("phase")
+            subtasks = phase.get("subtasks", [])
+            phase_complete[phase_id] = all(
+                s.get("status") == "completed" for s in subtasks
+            )
+
+        # Find first available phase with pending work
+        for phase in phases:
+            phase_id = phase.get("id") or phase.get("phase")
+            depends_on = phase.get("depends_on", [])
+
+            # Check if dependencies are satisfied
+            deps_satisfied = all(phase_complete.get(dep, False) for dep in depends_on)
+            if not deps_satisfied:
+                continue
+
+            # Get ALL pending subtasks in this phase
+            pending_subtasks = []
+            for subtask in phase.get("subtasks", []):
+                if subtask.get("status") == "pending":
+                    # Add phase metadata to each subtask
+                    subtask_with_phase = {
+                        "phase_id": phase_id,
+                        "phase_name": phase.get("name"),
+                        "phase_num": phase.get("phase"),
+                        **subtask,
+                    }
+                    pending_subtasks.append(subtask_with_phase)
+
+            if pending_subtasks:
+                return phase, pending_subtasks
 
         return None
 

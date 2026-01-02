@@ -8,6 +8,10 @@ Runs QA fixer sessions to resolve issues identified by the reviewer.
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
+
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from task_logger import (
     LogEntryType,
@@ -96,13 +100,15 @@ async def run_qa_fixer_session(
     prompt += f"The fix request file is at: `{spec_dir}/QA_FIX_REQUEST.md`\n"
 
     try:
+        # FIX #79: Use timeout-protected query
         debug("qa_fixer", "Sending query to Claude SDK...")
-        await client.query(prompt)
+        await query_with_timeout(client, prompt)
         debug_success("qa_fixer", "Query sent successfully")
 
         response_text = ""
         debug("qa_fixer", "Starting to receive response stream...")
-        async for msg in client.receive_response():
+        # FIX #79: Use timeout-protected response stream
+        async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
             message_count += 1
             debug_detailed(

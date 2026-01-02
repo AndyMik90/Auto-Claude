@@ -3,6 +3,7 @@ Subtask Management Tools
 ========================
 
 Tools for managing subtask status in implementation_plan.json.
+Uses safe atomic file operations to prevent race conditions (Issue #488).
 """
 
 import json
@@ -17,6 +18,9 @@ try:
 except ImportError:
     SDK_TOOLS_AVAILABLE = False
     tool = None
+
+# Import safe file I/O utilities to prevent race conditions
+from ...utils import safe_update_json
 
 
 def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
@@ -44,7 +48,7 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
         {"subtask_id": str, "status": str, "notes": str},
     )
     async def update_subtask_status(args: dict[str, Any]) -> dict[str, Any]:
-        """Update subtask status in the implementation plan."""
+        """Update subtask status in the implementation plan using safe atomic file operations."""
         subtask_id = args["subtask_id"]
         status = args["status"]
         notes = args.get("notes", "")
@@ -71,12 +75,14 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
                 ]
             }
 
-        try:
-            with open(plan_file) as f:
-                plan = json.load(f)
+        # Use safe atomic update to prevent race conditions
+        subtask_found = False
+
+        def update_plan(plan: dict) -> dict:
+            """Update function for atomic file operation."""
+            nonlocal subtask_found
 
             # Find and update the subtask
-            subtask_found = False
             for phase in plan.get("phases", []):
                 for subtask in phase.get("subtasks", []):
                     if subtask.get("id") == subtask_id:
@@ -89,6 +95,23 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
                 if subtask_found:
                     break
 
+            # Update plan metadata
+            plan["last_updated"] = datetime.now(timezone.utc).isoformat()
+            return plan
+
+        try:
+            success, updated_plan = safe_update_json(plan_file, update_plan)
+
+            if not success:
+                return {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Error: Failed to update implementation plan (file lock timeout or I/O error)",
+                        }
+                    ]
+                }
+
             if not subtask_found:
                 return {
                     "content": [
@@ -99,12 +122,6 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
                     ]
                 }
 
-            # Update plan metadata
-            plan["last_updated"] = datetime.now(timezone.utc).isoformat()
-
-            with open(plan_file, "w") as f:
-                json.dump(plan, f, indent=2)
-
             return {
                 "content": [
                     {
@@ -114,15 +131,6 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
                 ]
             }
 
-        except json.JSONDecodeError as e:
-            return {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"Error: Invalid JSON in implementation_plan.json: {e}",
-                    }
-                ]
-            }
         except Exception as e:
             return {
                 "content": [

@@ -128,7 +128,7 @@ export function useGitHubPRs(projectId?: string): UseGitHubPRsResult {
             const prsWithReviews = preloadResults.filter(
               (r): r is { prNumber: number; reviewResult: PRReviewResult } =>
                 r !== null &&
-                (!!r.reviewResult?.reviewedCommitSha || !!(r.reviewResult as any)?.reviewed_commit_sha)
+                (!!r.reviewResult?.reviewedCommitSha || !!r.reviewResult?.reviewed_commit_sha)
             );
 
             if (prsWithReviews.length > 0) {

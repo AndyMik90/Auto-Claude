@@ -49,6 +49,9 @@ LINEAR_TOOLS = [
 ]
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 @dataclass
 class LinearTaskState:
     """State of a Linear task for an auto-claude spec."""
@@ -160,10 +163,10 @@ async def _run_linear_agent(prompt: str) -> str | None:
         client = _create_linear_client()
 
         async with client:
-            await client.query(prompt)
+            await query_with_timeout(client, prompt)
 
             response_text = ""
-            async for msg in client.receive_response():
+            async for msg in receive_with_timeout(client):
                 msg_type = type(msg).__name__
                 if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                     for block in msg.content:

@@ -1,76 +1,93 @@
-name: 🐛 Bug Report
-description: Something isn't working
-labels: ["bug", "needs-triage"]
+name: Bug Report
+description: Report a bug in Auto-Claude
+title: "[BUG] "
+labels: ["bug", "auto-implement", "needs-plan"]
 body:
-  - type: checkboxes
-    id: checklist
+  - type: markdown
     attributes:
-      label: Checklist
-      options:
-        - label: I searched existing issues and this hasn't been reported
-          required: true
-
-  - type: dropdown
-    id: area
-    attributes:
-      label: Area
-      options:
-        - Frontend
-        - Backend
-        - Fullstack
-        - Not sure
-    validations:
-      required: true
-
-  - type: dropdown
-    id: os
-    attributes:
-      label: Operating System
-      options:
-        - macOS
-        - Windows
-        - Linux
-    validations:
-      required: true
-
-  - type: input
-    id: version
-    attributes:
-      label: Version
-      placeholder: "e.g., 2.5.5"
-    validations:
-      required: true
+      value: |
+        Thanks for reporting a bug! This will automatically trigger the AI automation pipeline:
+        1. CodeRabbit will create an implementation plan
+        2. Copilot will attempt to implement the fix
+        3. If Copilot doesn't respond within 2 hours, OpenHands will take over
 
   - type: textarea
     id: description
     attributes:
-      label: What happened?
-      placeholder: Describe the bug clearly and concisely. Include any error messages you encountered.
+      label: Bug Description
+      description: What happened? What did you expect to happen?
+      placeholder: Describe the bug...
     validations:
       required: true
 
   - type: textarea
-    id: steps
+    id: reproduction
     attributes:
-      label: Steps to reproduce
+      label: Steps to Reproduce
+      description: How can we reproduce this bug?
       placeholder: |
-        1. Run command '...' or click on '...'
-        2. Observe behavior '...'
-        3. See error or unexpected result
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
     validations:
       required: true
 
   - type: textarea
     id: expected
     attributes:
-      label: Expected behavior
-      placeholder: What did you expect to happen instead? Describe the correct behavior.
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the application is affected?
+      options:
+        - Spec Creation Pipeline
+        - Spec Agents (gatherer, researcher, writer, critic)
+        - Implementation Pipeline
+        - Agent Capabilities (new agent type)
+        - Memory System (Graphiti)
+        - Integrations (GitHub, Linear, etc.)
+        - Frontend UI (Electron)
+        - Worktree Management
+        - Security/Sandbox
+        - Testing (E2E, Unit)
+        - Documentation
+        - DevOps/CI
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical (app crashes, data loss)
+        - High (major feature broken)
+        - Medium (feature partially broken)
+        - Low (cosmetic, minor inconvenience)
     validations:
       required: true
 
   - type: textarea
     id: logs
     attributes:
-      label: Logs / Screenshots
-      description: Required for UI bugs. Attach relevant logs, screenshots, or error output.
+      label: Error Logs
+      description: Paste any relevant error messages or stack traces
       render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Environment details (optional)
+      placeholder: |
+        - OS: Windows 11 / macOS 14 / Ubuntu 22.04
+        - Python version: 3.12.0
+        - Node version: 20.10.0
+        - Auto-Claude version: 2.8.0

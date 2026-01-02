@@ -71,6 +71,9 @@ _SEVERITY_MAPPING = {
 }
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 def _map_severity(severity_str: str) -> ReviewSeverity:
     """Map severity string to ReviewSeverity enum."""
     return _SEVERITY_MAPPING.get(severity_str.lower(), ReviewSeverity.MEDIUM)
@@ -377,7 +380,7 @@ The SDK will run invoked agents in parallel automatically.
 
             # Run orchestrator session using shared SDK stream processor
             async with client:
-                await client.query(prompt)
+                await query_with_timeout(client, prompt)
 
                 print(
                     f"[ParallelFollowup] Running orchestrator ({model})...",

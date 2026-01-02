@@ -14,6 +14,9 @@ except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 class ClaudeAnalysisClient:
     """Wrapper for Claude SDK client with analysis-specific configuration."""
 
@@ -58,7 +61,7 @@ class ClaudeAnalysisClient:
             client = self._create_client(settings_file)
 
             async with client:
-                await client.query(prompt)
+                await query_with_timeout(client, prompt)
                 return await self._collect_response(client)
 
         finally:
@@ -131,7 +134,7 @@ class ClaudeAnalysisClient:
         """
         response_text = ""
 
-        async for msg in client.receive_response():
+        async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
 
             if msg_type == "AssistantMessage":

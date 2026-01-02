@@ -34,6 +34,9 @@ logger = logging.getLogger(__name__)
 _map_category = map_category
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 @dataclass
 class TestResult:
     """Result from test execution."""
@@ -134,9 +137,9 @@ async def spawn_security_review(
         # Run review session
         result_text = ""
         async with client:
-            await client.query(full_prompt)
+            await query_with_timeout(client, full_prompt)
 
-            async for msg in client.receive_response():
+            async for msg in receive_with_timeout(client):
                 msg_type = type(msg).__name__
                 if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                     for block in msg.content:
@@ -217,9 +220,9 @@ async def spawn_quality_review(
 
         result_text = ""
         async with client:
-            await client.query(full_prompt)
+            await query_with_timeout(client, full_prompt)
 
-            async for msg in client.receive_response():
+            async for msg in receive_with_timeout(client):
                 msg_type = type(msg).__name__
                 if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                     for block in msg.content:
@@ -310,9 +313,9 @@ Output findings in JSON format:
 
         result_text = ""
         async with client:
-            await client.query(full_prompt)
+            await query_with_timeout(client, full_prompt)
 
-            async for msg in client.receive_response():
+            async for msg in receive_with_timeout(client):
                 msg_type = type(msg).__name__
                 if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                     for block in msg.content:

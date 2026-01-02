@@ -89,8 +89,9 @@ class WorktreeManager:
                     f"Warning: DEFAULT_BRANCH '{env_branch}' not found, auto-detecting..."
                 )
 
-        # 2. Auto-detect main/master
-        for branch in ["main", "master"]:
+        # 2. Auto-detect common base branches (develop, main, master)
+        # Check develop first as it's commonly used in fork-based workflows
+        for branch in ["develop", "main", "master"]:
             result = subprocess.run(
                 ["git", "rev-parse", "--verify", branch],
                 cwd=self.project_dir,
@@ -104,7 +105,7 @@ class WorktreeManager:
 
         # 3. Fall back to current branch with warning
         current = self._get_current_branch()
-        print("Warning: Could not find 'main' or 'master' branch.")
+        print("Warning: Could not find 'develop', 'main', or 'master' branch.")
         print(f"Warning: Using current branch '{current}' as base for worktree.")
         print("Tip: Set DEFAULT_BRANCH=your-branch in .env to avoid this.")
         return current
@@ -251,6 +252,32 @@ class WorktreeManager:
         if result.returncode == 0:
             return "auto-claude"
         return None
+
+    def check_branch_namespace_early(self, spec_name: str) -> None:
+        """
+        Check for branch namespace conflicts early, before expensive operations.
+
+        Call this BEFORE spec creation to fail fast if there's a conflict.
+        Provides clear error message with resolution steps.
+
+        Args:
+            spec_name: The spec name that will be used for the branch
+
+        Raises:
+            WorktreeError: If a branch namespace conflict exists
+        """
+        conflicting_branch = self._check_branch_namespace_conflict()
+        if conflicting_branch:
+            branch_name = self.get_branch_name(spec_name)
+            raise WorktreeError(
+                f"Branch '{conflicting_branch}' exists and blocks creating '{branch_name}'.\n"
+                f"\n"
+                f"Git branch names work like file paths - a branch named 'auto-claude' prevents\n"
+                f"creating branches under 'auto-claude/' (like 'auto-claude/{spec_name}').\n"
+                f"\n"
+                f"Fix: Rename the conflicting branch:\n"
+                f"  git branch -m {conflicting_branch} {conflicting_branch}-backup"
+            )
 
     def _get_worktree_stats(self, spec_name: str) -> dict:
         """Get diff statistics for a worktree."""

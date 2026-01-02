@@ -1,0 +1,216 @@
+name: Re-ping Copilot on Stale Issues
+
+# Re-triggers Copilot on issues that were assigned but have no PRs yet
+# Copilot requires an explicit @copilot mention to start working
+
+on:
+  schedule:
+    - cron: '30 */2 * * *'  # Every 2 hours at :30
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run - only show what would be done'
+        required: false
+        default: 'false'
+        type: boolean
+      max_age_hours:
+        description: 'Only re-ping issues older than this many hours'
+        required: false
+        default: '4'
+        type: string
+
+permissions:
+  issues: write
+  contents: read
+  pull-requests: read
+
+jobs:
+  reprompt-copilot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find stale Copilot issues and re-ping
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const dryRun = '${{ github.event.inputs.dry_run }}' === 'true';
+            const defaultMaxAgeHours = parseInt('${{ github.event.inputs.max_age_hours }}' || '4');
+            const now = new Date();
+            const MAX_REPINGS = 10; // Limit per run to avoid spam
+
+            // Adaptive timeouts based on complexity (AI-counsel recommendation)
+            const TIMEOUT_BY_COMPLEXITY = {
+              'complexity:simple': 1.5,   // 90 minutes
+              'complexity:medium': 3,     // 180 minutes
+              'complexity:complex': 6,    // 360 minutes
+              'default': defaultMaxAgeHours
+            };
+
+            console.log(`🔍 Looking for stale Copilot issues with adaptive timeouts`);
+            console.log(`   Dry run: ${dryRun}`);
+
+            // Get all open issues with copilot-assigned label
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'copilot-assigned',
+              per_page: 100
+            });
+
+            // Get all open PRs to check which issues have associated PRs
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            // Also check recently closed/merged PRs (last 50)
+            const closedPrs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              per_page: 50
+            });
+
+            const allPrs = [...prs.data, ...closedPrs.data];
+
+            let repinged = 0;
+            const results = [];
+
+            for (const issue of issues.data) {
+              if (issue.pull_request) continue; // Skip PRs
+              if (repinged >= MAX_REPINGS) break;
+
+              const labels = issue.labels.map(l => l.name);
+
+              // Skip if already being handled by OpenHands
+              if (labels.includes('openhands-working')) continue;
+
+              // Check if there's an associated PR for this issue
+              const hasPR = allPrs.some(pr => {
+                const body = pr.body || '';
+                const title = pr.title || '';
+                const branchName = pr.head?.ref || '';
+                return body.includes(`#${issue.number}`) ||
+                       body.includes(`fixes #${issue.number}`) ||
+                       body.includes(`closes #${issue.number}`) ||
+                       title.includes(`#${issue.number}`) ||
+                       branchName.includes(`issue-${issue.number}`) ||
+                       branchName.includes(`${issue.number}-`);
+              });
+
+              if (hasPR) {
+                console.log(`✅ #${issue.number} already has a PR`);
+                continue;
+              }
+
+              // Get comments to find when Copilot was assigned/mentioned
+              const comments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                per_page: 50
+              });
+
+              // Find the last @copilot mention
+              const copilotMentions = comments.data.filter(c =>
+                c.body.includes('@copilot') &&
+                !c.body.includes('Re-pinging') // Don't count our own re-pings
+              );
+
+              const lastMention = copilotMentions.length > 0
+                ? new Date(copilotMentions[copilotMentions.length - 1].created_at)
+                : new Date(issue.created_at);
+
+              const ageMs = now - lastMention;
+              const ageHours = Math.round(ageMs / (60 * 60 * 1000) * 10) / 10;
+
+              // Determine adaptive timeout based on complexity
+              let timeoutHours = TIMEOUT_BY_COMPLEXITY['default'];
+              for (const label of labels) {
+                if (TIMEOUT_BY_COMPLEXITY[label]) {
+                  timeoutHours = TIMEOUT_BY_COMPLEXITY[label];
+                  break;
+                }
+              }
+              const minAgeMs = timeoutHours * 60 * 60 * 1000;
+
+              // Only re-ping if old enough
+              if (ageMs < minAgeMs) {
+                console.log(`⏳ #${issue.number} - last mention ${ageHours}h ago (waiting for ${timeoutHours}h)`);
+                continue;
+              }
+
+              // Count previous re-pings to avoid spam
+              const repingCount = comments.data.filter(c =>
+                c.body.includes('Re-pinging @copilot')
+              ).length;
+
+              if (repingCount >= 3) {
+                console.log(`⚠️ #${issue.number} - already re-pinged ${repingCount} times, escalating to OpenHands`);
+
+                if (!dryRun) {
+                  // Escalate to OpenHands
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    labels: ['fix-me']
+                  });
+
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    body: `## Escalation to OpenHands\n\nCopilot was re-pinged ${repingCount} times without creating a PR.\n\n@openhands-agent Please implement this issue.`
+                  });
+                }
+
+                results.push({ issue: issue.number, action: 'escalated', repings: repingCount });
+                continue;
+              }
+
+              console.log(`🔄 #${issue.number} - re-pinging Copilot (last mention ${ageHours}h ago)`);
+
+              if (!dryRun) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `## Re-pinging @copilot\n\nNo PR has been created yet after ${ageHours} hours.\n\n@copilot Please implement this issue following the existing code patterns and any plan provided above.`
+                });
+              }
+
+              repinged++;
+              results.push({ issue: issue.number, action: 're-pinged', ageHours });
+
+              // Small delay between comments
+              await new Promise(r => setTimeout(r, 500));
+            }
+
+            // Summary
+            console.log('\n📊 Summary:');
+            console.log(`   Issues checked: ${issues.data.filter(i => !i.pull_request).length}`);
+            console.log(`   Re-pinged: ${results.filter(r => r.action === 're-pinged').length}`);
+            console.log(`   Escalated: ${results.filter(r => r.action === 'escalated').length}`);
+
+            if (dryRun) {
+              console.log('\n⚠️ DRY RUN - no actual changes made');
+            }
+
+            // Add to job summary
+            let summary = '## Copilot Re-ping Results\n\n';
+            summary += `| Issue | Action | Details |\n|-------|--------|--------|\n`;
+            for (const r of results) {
+              if (r.action === 're-pinged') {
+                summary += `| #${r.issue} | Re-pinged | ${r.ageHours}h since last mention |\n`;
+              } else {
+                summary += `| #${r.issue} | Escalated | ${r.repings} previous re-pings |\n`;
+              }
+            }
+            if (results.length === 0) {
+              summary += '| - | No action needed | All issues have PRs or are recent |\n';
+            }
+
+            require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);

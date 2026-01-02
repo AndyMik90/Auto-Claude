@@ -706,7 +706,7 @@ export function registerMRReviewHandlers(
           return { hasNewCommits: false };
         }
 
-        const reviewedCommitSha = review.reviewedCommitSha || (review as any).reviewed_commit_sha;
+        const reviewedCommitSha = review.reviewedCommitSha || review.reviewed_commit_sha;
         if (!reviewedCommitSha) {
           debugLog('No reviewedCommitSha in review', { mrIid });
           return { hasNewCommits: false };
