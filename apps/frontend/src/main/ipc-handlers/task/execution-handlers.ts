@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, TaskStartOptions, TaskStatus } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, unlinkSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { AgentManager } from '../../agent';
 import { fileWatcher } from '../../file-watcher';
@@ -15,6 +15,43 @@ import {
   persistPlanStatusSync,
   createPlanIfNotExists
 } from './plan-file-utils';
+
+/**
+ * Atomic file write to prevent TOCTOU race conditions.
+ * Writes to a temporary file first, then atomically renames to target.
+ * This ensures the target file is never in an inconsistent state.
+ */
+function atomicWriteFileSync(filePath: string, content: string): void {
+  const tempPath = `${filePath}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tempPath, content, 'utf-8');
+    renameSync(tempPath, filePath);
+  } catch (error) {
+    // Clean up temp file if rename failed
+    try {
+      unlinkSync(tempPath);
+    } catch {
+      // Ignore cleanup errors
+    }
+    throw error;
+  }
+}
+
+/**
+ * Safe file read that handles missing files without TOCTOU issues.
+ * Returns null if file doesn't exist or can't be read.
+ */
+function safeReadFileSync(filePath: string): string | null {
+  try {
+    return readFileSync(filePath, 'utf-8');
+  } catch (error) {
+    // ENOENT (file not found) is expected, other errors should be logged
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.error(`[safeReadFileSync] Error reading ${filePath}:`, error);
+    }
+    return null;
+  }
+}
 
 /**
  * Helper function to check subtask completion status
@@ -302,10 +339,15 @@ export function registerTaskExecutionHandlers(
       if (approved) {
         // Write approval to QA report
         const qaReportPath = path.join(specDir, AUTO_BUILD_PATHS.QA_REPORT);
-        writeFileSync(
-          qaReportPath,
-          `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`
-        );
+        try {
+          writeFileSync(
+            qaReportPath,
+            `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`
+          );
+        } catch (error) {
+          console.error('[TASK_REVIEW] Failed to write QA report:', error);
+          return { success: false, error: 'Failed to write QA report file' };
+        }
 
         const mainWindow = getMainWindow();
         if (mainWindow) {
@@ -361,10 +403,15 @@ export function registerTaskExecutionHandlers(
         console.warn('[TASK_REVIEW] Writing QA fix request to:', fixRequestPath);
         console.warn('[TASK_REVIEW] hasWorktree:', hasWorktree, 'worktreePath:', worktreePath);
 
-        writeFileSync(
-          fixRequestPath,
-          `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}\n\nCreated at: ${new Date().toISOString()}\n`
-        );
+        try {
+          writeFileSync(
+            fixRequestPath,
+            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}\n\nCreated at: ${new Date().toISOString()}\n`
+          );
+        } catch (error) {
+          console.error('[TASK_REVIEW] Failed to write QA fix request:', error);
+          return { success: false, error: 'Failed to write QA fix request file' };
+        }
 
         // Restart QA process - use worktree path if it exists, otherwise main project
         // The QA process needs to run where the implementation_plan.json with completed subtasks is
@@ -638,10 +685,19 @@ export function registerTaskExecutionHandlers(
 
       try {
         // Read the plan to analyze subtask progress
+        // Using safe read to avoid TOCTOU race conditions
         let plan: Record<string, unknown> | null = null;
-        if (existsSync(planPath)) {
-          const planContent = readFileSync(planPath, 'utf-8');
-          plan = JSON.parse(planContent);
+        const planContent = safeReadFileSync(planPath);
+        if (planContent) {
+          try {
+            plan = JSON.parse(planContent);
+          } catch (parseError) {
+            console.error('[Recovery] Failed to parse plan file as JSON:', parseError);
+            return {
+              success: false,
+              error: 'Plan file contains invalid JSON. The file may be corrupted.'
+            };
+          }
         }
 
         // Determine the target status intelligently based on subtask progress
@@ -687,7 +743,16 @@ export function registerTaskExecutionHandlers(
             // Just update status in plan file (project store reads from file, no separate update needed)
             plan.status = 'human_review';
             plan.planStatus = 'review';
-            writeFileSync(planPath, JSON.stringify(plan, null, 2));
+            try {
+              // Use atomic write to prevent TOCTOU race conditions
+              atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2));
+            } catch (writeError) {
+              console.error('[Recovery] Failed to write plan file:', writeError);
+              return {
+                success: false,
+                error: 'Failed to write plan file'
+              };
+            }
 
             return {
               success: true,
@@ -732,7 +797,16 @@ export function registerTaskExecutionHandlers(
             }
           }
 
-          writeFileSync(planPath, JSON.stringify(plan, null, 2));
+          try {
+            // Use atomic write to prevent TOCTOU race conditions
+            atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2));
+          } catch (writeError) {
+            console.error('[Recovery] Failed to write plan file:', writeError);
+            return {
+              success: false,
+              error: 'Failed to write plan file during recovery'
+            };
+          }
         }
 
         // Stop file watcher if it was watching this task
@@ -783,7 +857,14 @@ export function registerTaskExecutionHandlers(
             if (plan) {
               plan.status = 'in_progress';
               plan.planStatus = 'in_progress';
-              writeFileSync(planPath, JSON.stringify(plan, null, 2));
+              try {
+                // Use atomic write to prevent TOCTOU race conditions
+                atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2));
+              } catch (writeError) {
+                console.error('[Recovery] Failed to write plan file for restart:', writeError);
+                // Continue with restart attempt even if file write fails
+                // The plan status will be updated by the agent when it starts
+              }
             }
 
             // Start the task execution
