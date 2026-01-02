@@ -4,8 +4,8 @@ Apply Tool Manager
 
 Manages intelligent selection between Morph Fast Apply and default apply tools.
 
-NOTE: Uses `from __future__ import annotations` for Python 3.9 compatibility
-with type hints like `list[str]` and `dict[str, Any]`.
+NOTE: Uses `from __future__ import annotations` for forward-reference style annotations.
+This project requires Python 3.12+ (see CLAUDE.md).
 
 This module implements the selection logic for choosing between:
 - Morph Fast Apply: External AI-based code transformation service
