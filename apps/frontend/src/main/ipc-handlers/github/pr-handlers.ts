@@ -1625,11 +1625,15 @@ export function registerPRHandlers(
 
           sendProgress({ progress: 30, message: 'Creating pull request...' });
 
+          // Timeout configuration (30 seconds)
+          const PR_CREATION_TIMEOUT_MS = 30000;
+
           const { promise } = runPythonSubprocess<{ number: number; url: string; title: string; state: string }>({
             pythonPath: getPythonPath(backendPath),
             args,
             cwd: backendPath,
             env: {},
+            timeout: PR_CREATION_TIMEOUT_MS,
             onProgress: (percent, message) => {
               debugLog('Progress update', { percent, message });
               sendProgress({
@@ -1641,6 +1645,19 @@ export function registerPRHandlers(
             onStderr: (line) => debugLog('STDERR:', line),
             onComplete: () => {
               debugLog('PR create subprocess completed');
+            },
+            onTimeout: () => {
+              debugLog('PR create subprocess timed out');
+              const timeoutMessage = `PR creation timed out after ${PR_CREATION_TIMEOUT_MS / 1000} seconds.
+
+Possible causes:
+• Network connectivity issues
+• GitHub API rate limiting
+• Large repository sync required
+
+Please check your network connection and try again. If the issue persists, you can create the PR manually using:
+  gh pr create --base ${base} --head ${head} --title "${title}"`;
+              sendError({ error: timeoutMessage });
             },
           });
 

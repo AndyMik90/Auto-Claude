@@ -27,7 +27,10 @@ export interface SubprocessOptions {
   onStderr?: (line: string) => void;
   onComplete?: (stdout: string, stderr: string) => unknown;
   onError?: (error: string) => void;
+  onTimeout?: () => void;
   progressPattern?: RegExp;
+  /** Timeout in milliseconds. If not provided, no timeout is enforced. */
+  timeout?: number;
   /** Additional environment variables to pass to the subprocess */
   env?: Record<string, string>;
 }
@@ -95,9 +98,41 @@ export function runPythonSubprocess<T = unknown>(
 
     let stdout = '';
     let stderr = '';
+    let resolved = false;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     // Default progress pattern: [ 30%] message OR [30%] message
     const progressPattern = options.progressPattern ?? /\[\s*(\d+)%\]\s*(.+)/;
+
+    // Set up timeout if specified
+    if (options.timeout) {
+      timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          
+          // Kill the subprocess
+          try {
+            child.kill();
+          } catch (err) {
+            console.error('[DEBUG] Failed to kill subprocess on timeout:', err);
+          }
+          
+          // Call timeout callback if provided
+          options.onTimeout?.();
+          
+          // Resolve with timeout error
+          const timeoutError = `Operation timed out after ${options.timeout}ms`;
+          options.onError?.(timeoutError);
+          resolve({
+            success: false,
+            exitCode: -1,
+            stdout,
+            stderr,
+            error: timeoutError,
+          });
+        }
+      }, options.timeout);
+    }
 
     child.stdout.on('data', (data: Buffer) => {
       const text = data.toString();
@@ -133,6 +168,14 @@ export function runPythonSubprocess<T = unknown>(
     });
 
     child.on('close', (code: number) => {
+      if (resolved) return;
+      resolved = true;
+      
+      // Clear timeout if set
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
       const exitCode = code ?? 0;
 
       // Debug logging only in development mode
@@ -178,6 +221,14 @@ export function runPythonSubprocess<T = unknown>(
     });
 
     child.on('error', (err: Error) => {
+      if (resolved) return;
+      resolved = true;
+      
+      // Clear timeout if set
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
       options.onError?.(err.message);
       resolve({
         success: false,

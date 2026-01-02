@@ -94,4 +94,129 @@ describe('runPythonSubprocess', () => {
       expect.any(Object)
     );
   });
+
+  it('should timeout and kill subprocess when timeout is exceeded', async () => {
+    // Arrange
+    const pythonPath = 'python';
+    const timeout = 100; // 100ms timeout
+    const onTimeout = vi.fn();
+    const onError = vi.fn();
+    
+    vi.mocked(parsePythonCommand).mockReturnValue(['python', []]);
+    
+    // Act
+    const { promise } = runPythonSubprocess({
+      pythonPath,
+      args: ['script.py'],
+      cwd: '/tmp',
+      timeout,
+      onTimeout,
+      onError,
+    });
+    
+    // Wait for timeout to trigger
+    await vi.waitFor(
+      () => {
+        expect(onTimeout).toHaveBeenCalled();
+      },
+      { timeout: 200 }
+    );
+    
+    // Assert
+    const result = await promise;
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('timed out');
+    expect(mockChildProcess.kill).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('timed out'));
+  });
+
+  it('should clear timeout when subprocess completes successfully', async () => {
+    // Arrange
+    const pythonPath = 'python';
+    const timeout = 1000; // 1 second timeout
+    const onComplete = vi.fn((stdout) => ({ result: 'success' }));
+    const onTimeout = vi.fn();
+    
+    vi.mocked(parsePythonCommand).mockReturnValue(['python', []]);
+    
+    // Act
+    const { promise } = runPythonSubprocess({
+      pythonPath,
+      args: ['script.py'],
+      cwd: '/tmp',
+      timeout,
+      onComplete,
+      onTimeout,
+    });
+    
+    // Simulate successful completion before timeout
+    setTimeout(() => {
+      mockChildProcess.stdout.emit('data', Buffer.from('output\n'));
+      mockChildProcess.emit('close', 0);
+    }, 50);
+    
+    // Assert
+    const result = await promise;
+    expect(result.success).toBe(true);
+    expect(onComplete).toHaveBeenCalled();
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it('should clear timeout when subprocess fails', async () => {
+    // Arrange
+    const pythonPath = 'python';
+    const timeout = 1000; // 1 second timeout
+    const onError = vi.fn();
+    const onTimeout = vi.fn();
+    
+    vi.mocked(parsePythonCommand).mockReturnValue(['python', []]);
+    
+    // Act
+    const { promise } = runPythonSubprocess({
+      pythonPath,
+      args: ['script.py'],
+      cwd: '/tmp',
+      timeout,
+      onError,
+      onTimeout,
+    });
+    
+    // Simulate process error before timeout
+    setTimeout(() => {
+      mockChildProcess.emit('error', new Error('Process failed'));
+    }, 50);
+    
+    // Assert
+    const result = await promise;
+    expect(result.success).toBe(false);
+    expect(onError).toHaveBeenCalledWith('Process failed');
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it('should not set timeout when timeout parameter is not provided', async () => {
+    // Arrange
+    const pythonPath = 'python';
+    const onTimeout = vi.fn();
+    
+    vi.mocked(parsePythonCommand).mockReturnValue(['python', []]);
+    
+    // Act
+    const { promise } = runPythonSubprocess({
+      pythonPath,
+      args: ['script.py'],
+      cwd: '/tmp',
+      // No timeout parameter
+      onTimeout,
+    });
+    
+    // Simulate delayed completion
+    setTimeout(() => {
+      mockChildProcess.emit('close', 0);
+    }, 200);
+    
+    // Assert
+    const result = await promise;
+    expect(result.success).toBe(true);
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
 });
