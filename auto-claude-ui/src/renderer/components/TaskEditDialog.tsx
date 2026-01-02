@@ -461,7 +461,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-foreground">Edit Task</DialogTitle>
           <DialogDescription>
@@ -485,7 +485,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
               onDragOver={handleTextareaDragOver}
               onDragLeave={handleTextareaDragLeave}
               onDrop={handleTextareaDrop}
-              rows={5}
+              rows={8}
               disabled={isSaving}
               className={cn(
                 isDragOverTextarea && !isSaving && "border-primary bg-primary/5 ring-2 ring-primary/20"
