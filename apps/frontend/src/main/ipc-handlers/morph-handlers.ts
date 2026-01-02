@@ -3,6 +3,10 @@
  *
  * Handles Morph API key validation from the main process to bypass CORS restrictions.
  * The renderer process cannot make direct API calls to external services due to CORS.
+ *
+ * NOTE: API key validation uses a HEAD request first to avoid consuming API credits.
+ * If the HEAD request is inconclusive (e.g., 404/405), validation falls back to a
+ * minimal POST request which may consume a small amount of API credits.
  */
 
 import { ipcMain } from 'electron';
@@ -87,7 +91,9 @@ export function registerMorphHandlers(): void {
           console.warn('[Morph] HEAD request failed, falling back to POST');
         }
 
-        // Fall back to a minimal POST request (consumes credits but is reliable)
+        // Fall back to a minimal POST request.
+        // NOTE: This may consume a small amount of API credits, but is reliable
+        // when the HEAD request fails or is not supported by the server.
         const postController = new AbortController();
         const postTimeout = setTimeout(() => postController.abort(), POST_TIMEOUT);
 
