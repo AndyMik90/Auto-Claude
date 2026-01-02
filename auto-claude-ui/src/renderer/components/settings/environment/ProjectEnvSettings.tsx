@@ -135,6 +135,83 @@ export function ProjectEnvSettings({
             onOverride={() => onOverrideGlobal('openaiApiKey')}
             onUseGlobal={() => onUseGlobal('openaiApiKey')}
           />
+
+          <ApiKeyInput
+            id="project-voyage-key"
+            label="Voyage AI API Key"
+            description="Override global Voyage key for embeddings"
+            value={config.graphitiProviderConfig?.voyageApiKey || ''}
+            onChange={(value) => handleProviderConfigChange({ voyageApiKey: value })}
+            placeholder="pa-..."
+            disabled={disabled}
+          />
+
+          <ApiKeyInput
+            id="project-google-key"
+            label="Google AI API Key"
+            description="Override global Google key for embeddings"
+            value={config.graphitiProviderConfig?.googleApiKey || ''}
+            onChange={(value) => handleProviderConfigChange({ googleApiKey: value })}
+            placeholder="AIza..."
+            disabled={disabled}
+          />
+
+          {/* Azure OpenAI */}
+          <div className="space-y-3 pt-2 border-t border-border/50">
+            <p className="text-sm font-medium text-muted-foreground">Azure OpenAI</p>
+            <ApiKeyInput
+              id="project-azure-key"
+              label="Azure OpenAI API Key"
+              value={config.graphitiProviderConfig?.azureOpenaiApiKey || ''}
+              onChange={(value) => handleProviderConfigChange({ azureOpenaiApiKey: value })}
+              disabled={disabled}
+            />
+            <div className="space-y-2">
+              <Label htmlFor="project-azure-url">Endpoint URL</Label>
+              <Input
+                id="project-azure-url"
+                value={config.graphitiProviderConfig?.azureOpenaiBaseUrl || ''}
+                onChange={(e) => handleProviderConfigChange({ azureOpenaiBaseUrl: e.target.value })}
+                placeholder="https://your-resource.openai.azure.com"
+                disabled={disabled}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project-azure-deployment">Embedding Deployment</Label>
+              <Input
+                id="project-azure-deployment"
+                value={config.graphitiProviderConfig?.azureOpenaiEmbeddingDeployment || ''}
+                onChange={(e) => handleProviderConfigChange({ azureOpenaiEmbeddingDeployment: e.target.value })}
+                placeholder="text-embedding-ada-002"
+                disabled={disabled}
+              />
+            </div>
+          </div>
+
+          {/* Ollama */}
+          <div className="space-y-3 pt-2 border-t border-border/50">
+            <p className="text-sm font-medium text-muted-foreground">Ollama (Local)</p>
+            <div className="space-y-2">
+              <Label htmlFor="project-ollama-url">Ollama Server URL</Label>
+              <Input
+                id="project-ollama-url"
+                value={config.graphitiProviderConfig?.ollamaBaseUrl || ''}
+                onChange={(e) => handleProviderConfigChange({ ollamaBaseUrl: e.target.value })}
+                placeholder="http://localhost:11434"
+                disabled={disabled}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project-ollama-model">Embedding Model</Label>
+              <Input
+                id="project-ollama-model"
+                value={config.graphitiProviderConfig?.ollamaEmbeddingModel || ''}
+                onChange={(e) => handleProviderConfigChange({ ollamaEmbeddingModel: e.target.value })}
+                placeholder="nomic-embed-text"
+                disabled={disabled}
+              />
+            </div>
+          </div>
         </div>
       </SimpleEnvSection>
 
@@ -314,14 +391,44 @@ export function ProjectEnvSettings({
 
           {config.githubEnabled && (
             <>
-              <ApiKeyInput
-                id="project-github-token"
-                label="GitHub Token"
-                value={config.githubToken || ''}
-                onChange={(value) => onChange({ githubToken: value })}
-                placeholder="ghp_..."
-                disabled={disabled}
-              />
+              {/* Authentication Method */}
+              <div className="space-y-3 p-3 rounded-md bg-muted/30 border border-border/50">
+                <p className="text-sm font-medium">Authentication Method</p>
+
+                {/* GitHub CLI / OAuth (Recommended) */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="text-sm font-medium">GitHub CLI (Recommended)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-4">
+                    Uses <code className="px-1 py-0.5 rounded bg-muted">gh auth login</code> for secure OAuth authentication.
+                    Run this command in your terminal to authenticate.
+                  </p>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border/50" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+
+                {/* Personal Access Token */}
+                <div className="space-y-2">
+                  <ApiKeyInput
+                    id="project-github-token"
+                    label="Personal Access Token"
+                    description="Alternative: Use a GitHub PAT with repo scope"
+                    value={config.githubToken || ''}
+                    onChange={(value) => onChange({ githubToken: value })}
+                    placeholder="ghp_... or github_pat_..."
+                    disabled={disabled}
+                  />
+                </div>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="project-github-repo">Repository</Label>

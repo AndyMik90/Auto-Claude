@@ -7,6 +7,7 @@ import { AgentAPI, createAgentAPI } from './agent-api';
 import { IdeationAPI, createIdeationAPI } from './modules/ideation-api';
 import { InsightsAPI, createInsightsAPI } from './modules/insights-api';
 import { AppUpdateAPI, createAppUpdateAPI } from './app-update-api';
+import { EnvAPI, createEnvAPI } from './env-api';
 
 export interface ElectronAPI extends
   ProjectAPI,
@@ -17,7 +18,9 @@ export interface ElectronAPI extends
   AgentAPI,
   IdeationAPI,
   InsightsAPI,
-  AppUpdateAPI {}
+  AppUpdateAPI {
+  env: EnvAPI;
+}
 
 export const createElectronAPI = (): ElectronAPI => ({
   ...createProjectAPI(),
@@ -28,7 +31,8 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createAgentAPI(),
   ...createIdeationAPI(),
   ...createInsightsAPI(),
-  ...createAppUpdateAPI()
+  ...createAppUpdateAPI(),
+  env: createEnvAPI()
 });
 
 // Export individual API creators for potential use in tests or specialized contexts
@@ -41,7 +45,8 @@ export {
   createAgentAPI,
   createIdeationAPI,
   createInsightsAPI,
-  createAppUpdateAPI
+  createAppUpdateAPI,
+  createEnvAPI
 };
 
 export type {
@@ -53,5 +58,6 @@ export type {
   AgentAPI,
   IdeationAPI,
   InsightsAPI,
-  AppUpdateAPI
+  AppUpdateAPI,
+  EnvAPI
 };
