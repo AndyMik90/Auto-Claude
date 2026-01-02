@@ -13,6 +13,8 @@
     "editHint": "Edit as needed, then copy and use with",
     "committing": "Committing...",
     "commitButton": "Commit Changes",
+    "commitFailed": "Failed to commit changes",
+    "commitError": "Unknown error occurred",
     "manualCommit": "Or commit manually:",
     "nextSteps": "Next steps:",
     "step1": "Open your project in your IDE or terminal",

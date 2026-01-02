@@ -13,12 +13,13 @@ interface LoadingMessageProps {
 /**
  * Displays a loading indicator while workspace info is being fetched
  */
-export function LoadingMessage({ message = 'Loading workspace info...' }: LoadingMessageProps) {
+export function LoadingMessage({ message }: LoadingMessageProps) {
+  const { t } = useTranslation('taskReview');
   return (
     <div className="rounded-xl border border-border bg-secondary/30 p-4">
       <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">{message}</span>
+        <span className="text-sm">{message || t('loading.message')}</span>
       </div>
     </div>
   );
@@ -34,6 +35,7 @@ interface NoWorkspaceMessageProps {
  */
 export function NoWorkspaceMessage({ task, onClose }: NoWorkspaceMessageProps) {
   const [isMarkingDone, setIsMarkingDone] = useState(false);
+  const { t } = useTranslation('taskReview');
 
   const handleMarkDone = async () => {
     if (!task) return;
@@ -54,10 +56,10 @@ export function NoWorkspaceMessage({ task, onClose }: NoWorkspaceMessageProps) {
     <div className="rounded-xl border border-border bg-secondary/30 p-4">
       <h3 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2">
         <AlertCircle className="h-4 w-4 text-muted-foreground" />
-        No Workspace Found
+        {t('noWorkspace.title')}
       </h3>
       <p className="text-sm text-muted-foreground mb-3">
-        No isolated workspace was found for this task. The changes may have been made directly in your project.
+        {t('noWorkspace.description')}
       </p>
 
       {/* Allow marking as done */}
@@ -72,12 +74,12 @@ export function NoWorkspaceMessage({ task, onClose }: NoWorkspaceMessageProps) {
           {isMarkingDone ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Updating...
+              {t('noWorkspace.updating')}
             </>
           ) : (
             <>
               <Check className="h-4 w-4 mr-2" />
-              Mark as Done
+              {t('noWorkspace.markDone')}
             </>
           )}
         </Button>
@@ -121,7 +123,7 @@ export function StagedInProjectMessage({ task, projectPath, hasWorktree = false,
     setError(null);
 
     try {
-      const result = await window.electronAPI.commitStagedChanges(task.id);
+      const result = await window.electronAPI.commitStagedChanges(task.id, commitMessage);
 
       if (result.success && result.data?.committed) {
         // Close the modal after successful commit

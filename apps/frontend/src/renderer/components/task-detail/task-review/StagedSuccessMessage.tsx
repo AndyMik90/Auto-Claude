@@ -44,7 +44,7 @@ export function StagedSuccessMessage({
     setCommitError(null);
 
     try {
-      const result = await window.electronAPI.commitStagedChanges(taskId);
+      const result = await window.electronAPI.commitStagedChanges(taskId, commitMessage);
 
       if (result.success && result.data?.committed) {
         // Close the modal after successful commit
@@ -52,10 +52,10 @@ export function StagedSuccessMessage({
           onClose();
         }
       } else {
-        setCommitError(result.data?.message || result.error || 'Failed to commit changes');
+        setCommitError(result.data?.message || result.error || t('staged.commitFailed'));
       }
     } catch (err) {
-      setCommitError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setCommitError(err instanceof Error ? err.message : t('staged.commitError'));
     } finally {
       setIsCommitting(false);
     }

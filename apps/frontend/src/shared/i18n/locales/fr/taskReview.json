@@ -13,6 +13,8 @@
     "editHint": "Modifiez si nécessaire, puis copiez et utilisez avec",
     "committing": "Commit en cours...",
     "commitButton": "Committer les modifications",
+    "commitFailed": "Échec du commit",
+    "commitError": "Erreur inconnue",
     "manualCommit": "Ou committer manuellement :",
     "nextSteps": "Prochaines étapes :",
     "step1": "Ouvrez votre projet dans votre IDE ou terminal",
