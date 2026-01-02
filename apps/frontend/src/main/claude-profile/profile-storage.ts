@@ -6,7 +6,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import type { ClaudeProfile, ClaudeAutoSwitchSettings } from '../../shared/types';
 
-export const STORE_VERSION = 3;  // Bumped for encrypted token storage
+export const STORE_VERSION = 4;  // Bumped for environment variables support
 
 /**
  * Default auto-switch settings
@@ -44,6 +44,11 @@ export function loadProfileStore(storePath: string): ProfileStoreData | null {
         // Migrate v1 to v2: add usage and rateLimitEvents fields
         data.version = STORE_VERSION;
         data.autoSwitch = DEFAULT_AUTO_SWITCH_SETTINGS;
+      }
+
+      if (data.version === 2 || data.version === 3) {
+        // Migrate v2/v3 to v4: envVariables field is optional, no changes needed
+        data.version = STORE_VERSION;
       }
 
       if (data.version === STORE_VERSION) {

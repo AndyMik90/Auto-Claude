@@ -60,6 +60,15 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   const [showManualToken, setShowManualToken] = useState(false);
   const [savingTokenProfileId, setSavingTokenProfileId] = useState<string | null>(null);
 
+  // Environment Variables state
+  const [expandedEnvProfileId, setExpandedEnvProfileId] = useState<string | null>(null);
+  const [envVariables, setEnvVariables] = useState<Record<string, Array<{ key: string; value: string }>>>({});
+  const [newEnvKey, setNewEnvKey] = useState('');
+  const [newEnvValue, setNewEnvValue] = useState('');
+  const [isSavingEnv, setIsSavingEnv] = useState<string | null>(null);
+  const [showEnvValue, setShowEnvValue] = useState<Record<string, boolean>>({});
+  const [envLimitWarning, setEnvLimitWarning] = useState<string | null>(null);
+
   // Auto-swap settings state
   const [autoSwitchSettings, setAutoSwitchSettings] = useState<ClaudeAutoSwitchSettings | null>(null);
   const [isLoadingAutoSwitch, setIsLoadingAutoSwitch] = useState(false);
@@ -256,6 +265,100 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       alert('Failed to save token. Please try again.');
     } finally {
       setSavingTokenProfileId(null);
+    }
+  };
+
+  // Environment Variables handlers
+  const toggleEnvVariables = async (profileId: string) => {
+    if (expandedEnvProfileId === profileId) {
+      // Closing the section - clear local state
+      setExpandedEnvProfileId(null);
+      setNewEnvKey('');
+      setNewEnvValue('');
+      setEnvLimitWarning(null);
+    } else {
+      // Opening the section - load existing env vars from the profile
+      setExpandedEnvProfileId(profileId);
+      setNewEnvKey('');
+      setNewEnvValue('');
+      setEnvLimitWarning(null);
+
+      // Find the profile and load its env vars
+      const profile = claudeProfiles.find(p => p.id === profileId);
+      if (profile) {
+        setEnvVariables(prev => ({
+          ...prev,
+          [profileId]: profile.envVariables || []
+        }));
+      }
+    }
+  };
+
+  const handleAddEnvVariable = (profileId: string) => {
+    if (!newEnvKey.trim()) return;
+
+    const profileEnvVars = envVariables[profileId] || [];
+
+    // Check if we've reached the limit of 20 environment variables
+    if (profileEnvVars.length >= 20) {
+      setEnvLimitWarning('Maximum of 20 environment variables per profile reached.');
+      return;
+    }
+
+    setEnvVariables({
+      ...envVariables,
+      [profileId]: [...profileEnvVars, { key: newEnvKey.trim(), value: newEnvValue }]
+    });
+    setNewEnvKey('');
+    setNewEnvValue('');
+    setEnvLimitWarning(null);
+  };
+
+  const handleRemoveEnvVariable = (profileId: string, index: number) => {
+    const profileEnvVars = envVariables[profileId] || [];
+    const updatedVars = profileEnvVars.filter((_, i) => i !== index);
+    setEnvVariables({
+      ...envVariables,
+      [profileId]: updatedVars
+    });
+  };
+
+  const toggleEnvValueVisibility = (profileId: string) => {
+    setShowEnvValue(prev => ({
+      ...prev,
+      [profileId]: !prev[profileId]
+    }));
+  };
+
+  const handleSaveEnvVariables = async (profileId: string) => {
+    const profileEnvVars = envVariables[profileId] || [];
+    const profile = claudeProfiles.find(p => p.id === profileId);
+    if (!profile) return;
+
+    setIsSavingEnv(profileId);
+    try {
+      // Create updated profile with envVariables
+      const updatedProfile: ClaudeProfile = {
+        ...profile,
+        envVariables: profileEnvVars
+      };
+
+      const result = await window.electronAPI.saveClaudeProfile(updatedProfile);
+      if (result.success) {
+        // Reload profiles to get the updated data
+        await loadClaudeProfiles();
+        // Close the section after successful save
+        setExpandedEnvProfileId(null);
+        setNewEnvKey('');
+        setNewEnvValue('');
+      } else {
+        alert(`Failed to save environment variables: ${result.error || 'Please try again.'}`);
+      }
+    } catch (err) {
+      console.error('Failed to save environment variables:', err);
+      alert('Failed to save environment variables. Please try again.');
+    } finally {
+      setIsSavingEnv(null);
     }
   };
 
@@ -466,6 +569,20 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               <ChevronRight className="h-3 w-3" />
                             )}
                           </Button>
+                          {/* Toggle environment variables button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleEnvVariables(profile.id)}
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            title={expandedEnvProfileId === profile.id ? "Hide environment variables" : "Manage environment variables"}
+                          >
+                            {expandedEnvProfileId === profile.id ? (
+                              <ChevronDown className="h-3 w-3" />
+                            ) : (
+                              <ChevronRight className="h-3 w-3" />
+                            )}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -556,6 +673,140 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                 <Check className="h-3 w-3" />
                               )}
                               {t('integrations.saveToken')}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Expanded environment variables section */}
+                    {expandedEnvProfileId === profile.id && (
+                      <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
+                        <div className="bg-muted/30 rounded-lg p-3 mt-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Environment Variables
+                            </Label>
+                            <span className="text-xs text-muted-foreground">
+                              {(envVariables[profile.id] || []).length}/20 • Key-value pairs for this profile
+                            </span>
+                          </div>
+
+                          {/* Existing environment variables */}
+                          {(envVariables[profile.id] || []).length > 0 && (
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {(envVariables[profile.id] || []).map((envVar, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                  <Input
+                                    value={envVar.key}
+                                    readOnly
+                                    className="flex-1 h-8 text-xs font-mono"
+                                  />
+                                  <div className="relative flex-1">
+                                    <Input
+                                      type={showEnvValue[profile.id] ? 'text' : 'password'}
+                                      value={envVar.value}
+                                      readOnly
+                                      className="flex-1 h-8 text-xs font-mono pr-8"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleEnvValueVisibility(profile.id)}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                      {showEnvValue[profile.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                    </button>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveEnvVariable(profile.id, index)}
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    title="Remove environment variable"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Add new environment variable */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                placeholder="KEY"
+                                value={newEnvKey}
+                                onChange={(e) => setNewEnvKey(e.target.value)}
+                                className="flex-1 h-8 text-xs font-mono"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleAddEnvVariable(profile.id);
+                                  }
+                                }}
+                              />
+                              <div className="relative flex-1">
+                                <Input
+                                  type={showEnvValue[profile.id] ? 'text' : 'password'}
+                                  placeholder="value"
+                                  value={newEnvValue}
+                                  onChange={(e) => setNewEnvValue(e.target.value)}
+                                  className="flex-1 h-8 text-xs font-mono pr-8"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleAddEnvVariable(profile.id);
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => toggleEnvValueVisibility(profile.id)}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                  {showEnvValue[profile.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                </button>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAddEnvVariable(profile.id)}
+                                disabled={!newEnvKey.trim() || (envVariables[profile.id]?.length ?? 0) >= 20}
+                                className="h-8 text-xs gap-1"
+                                title={(envVariables[profile.id]?.length ?? 0) >= 20 ? 'Maximum 20 environment variables per profile' : ''}
+                              >
+                                <Plus className="h-3 w-3" />
+                                Add
+                              </Button>
+                            </div>
+                            {envLimitWarning && (
+                              <div className="text-xs text-warning flex items-center gap-1 mt-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {envLimitWarning}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleEnvVariables(profile.id)}
+                              className="h-7 text-xs"
+                              disabled={isSavingEnv === profile.id}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveEnvVariables(profile.id)}
+                              disabled={isSavingEnv === profile.id}
+                              className="h-7 text-xs gap-1"
+                            >
+                              {isSavingEnv === profile.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3" />
+                              )}
+                              Save
                             </Button>
                           </div>
                         </div>
