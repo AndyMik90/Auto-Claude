@@ -289,7 +289,9 @@ def is_token_expired(credentials: dict) -> bool:
     if not expires_at or expires_at == 0:
         return False  # Can't determine, assume valid
 
-    # expiresAt is in milliseconds
+    # expiresAt may be in milliseconds or seconds depending on source
+    # Heuristic: timestamps > 1e12 are in milliseconds (1e12 ms = Sep 2001)
+    # Values <= 1e12 are assumed to be in seconds (1e12 sec = year 33658)
     expires_at_sec = expires_at / 1000 if expires_at > 1e12 else expires_at
     return time.time() > (expires_at_sec - TOKEN_REFRESH_BUFFER_SECONDS)
 
@@ -444,21 +446,9 @@ def _save_credentials_macos(credentials: dict) -> bool:
             "expiresAt": credentials["expiresAt"],
         }
 
-        # Delete old entry
-        subprocess.run(
-            [
-                "/usr/bin/security",
-                "delete-generic-password",
-                "-s",
-                "Claude Code-credentials",
-            ],
-            capture_output=True,
-            timeout=5,
-        )
-
-        # Add new entry
+        # Add/update entry (-U flag updates if exists, no need to delete first)
         new_json = json.dumps(existing)
-        subprocess.run(
+        result = subprocess.run(
             [
                 "/usr/bin/security",
                 "add-generic-password",
@@ -471,6 +461,10 @@ def _save_credentials_macos(credentials: dict) -> bool:
             capture_output=True,
             timeout=5,
         )
+
+        if result.returncode != 0:
+            logger.warning(f"Keychain add-generic-password failed: {result.stderr}")
+            return False
 
         return True
     except Exception as e:

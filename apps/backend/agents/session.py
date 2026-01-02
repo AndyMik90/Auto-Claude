@@ -550,7 +550,12 @@ async def run_agent_session(
         error_str = str(e).lower()
 
         # Check for OAuth token expiration (401 authentication error)
-        if "401" in error_str or "authentication_error" in error_str:
+        # Check multiple variations: HTTP status, error type, common messages
+        is_auth_error = any(
+            indicator in error_str
+            for indicator in ["401", "authentication_error", "unauthorized", "token expired", "invalid token"]
+        )
+        if is_auth_error:
             debug_error(
                 "session",
                 "Authentication error detected - token may have expired",
