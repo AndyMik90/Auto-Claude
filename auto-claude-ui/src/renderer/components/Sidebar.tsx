@@ -48,7 +48,7 @@ import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import type { Project, AutoBuildVersionInfo, GitStatus } from '../../shared/types';
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools' | 'knowledge-base';
+export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
 
 interface SidebarProps {
   onSettingsClick: () => void;
@@ -77,10 +77,6 @@ const projectNavItems: NavItem[] = [
 const toolsNavItems: NavItem[] = [
   { id: 'github-issues', label: 'GitHub Issues', icon: Github, shortcut: 'G' },
   { id: 'worktrees', label: 'Worktrees', icon: GitBranch, shortcut: 'W' }
-];
-
-const resourcesNavItems: NavItem[] = [
-  { id: 'knowledge-base', label: 'Knowledge Base', icon: BookOpen, shortcut: 'B' }
 ];
 
 export function Sidebar({
@@ -127,7 +123,7 @@ export function Sidebar({
       const key = e.key.toUpperCase();
 
       // Find matching nav item
-      const allNavItems = [...projectNavItems, ...toolsNavItems, ...resourcesNavItems];
+      const allNavItems = [...projectNavItems, ...toolsNavItems];
       const matchedItem = allNavItems.find((item) => item.shortcut === key);
 
       if (matchedItem) {
@@ -316,16 +312,6 @@ export function Sidebar({
               </h3>
               <nav className="space-y-1">
                 {toolsNavItems.map(renderNavItem)}
-              </nav>
-            </div>
-
-            {/* Resources Section */}
-            <div>
-              <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Resources
-              </h3>
-              <nav className="space-y-1">
-                {resourcesNavItems.map(renderNavItem)}
               </nav>
             </div>
           </div>
