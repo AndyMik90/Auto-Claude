@@ -505,23 +505,78 @@ jobs:
           cat release-assets/checksums.sha256 >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-      - name: Generate changelog
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
+      - name: Extract changelog from CHANGELOG.md
+        if: ${{ github.event_name == 'push' }}
         id: changelog
-        uses: release-drafter/release-drafter@v6
-        with:
-          config-name: release-drafter.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract version from tag (v2.7.2 -> 2.7.2)
+          VERSION=${GITHUB_REF_NAME#v}
+          CHANGELOG_FILE="CHANGELOG.md"
+
+          echo "📋 Extracting release notes for version $VERSION from CHANGELOG.md..."
+
+          if [ ! -f "$CHANGELOG_FILE" ]; then
+            echo "::warning::CHANGELOG.md not found, using minimal release notes"
+            echo "body=Release v$VERSION" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Extract changelog section for this version
+          # Looks for "## X.Y.Z" header and captures until next "## " or "---"
+          CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
+            BEGIN { found=0; content="" }
+            /^## / {
+              if (found) exit
+              # Match version at start of header (e.g., "## 2.7.3 -" or "## 2.7.3")
+              if ($2 == ver || $2 ~ "^"ver"[[:space:]]*-") {
+                found=1
+                next
+              }
+            }
+            /^---$/ { if (found) exit }
+            found { content = content $0 "\n" }
+            END {
+              if (!found) {
+                print "NOT_FOUND"
+                exit 0
+              }
+              # Trim leading/trailing whitespace
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", content)
+              print content
+            }
+          ' "$CHANGELOG_FILE")
+
+          if [ "$CHANGELOG_CONTENT" = "NOT_FOUND" ] || [ -z "$CHANGELOG_CONTENT" ]; then
+            echo "::warning::Version $VERSION not found in CHANGELOG.md, using minimal release notes"
+            CHANGELOG_CONTENT="Release v$VERSION
+
+See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details."
+          fi
+
+          echo "✅ Extracted changelog content"
+
+          # Save to file first (more reliable for multiline)
+          echo "$CHANGELOG_CONTENT" > changelog-body.md
+
+          # Use file-based output for multiline content
+          {
+            echo "body<<CHANGELOG_EOF"
+            cat changelog-body.md
+            echo "CHANGELOG_EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Create Release
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
+        if: ${{ github.event_name == 'push' }}
         uses: softprops/action-gh-release@v2
         with:
           body: |
             ${{ steps.changelog.outputs.body }}
 
+            ---
+
             ${{ steps.virustotal.outputs.vt_results }}
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md
           files: release-assets/*
           draft: false
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
@@ -532,7 +587,8 @@ jobs:
   update-readme:
     needs: [create-release]
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
+    # Only update README on actual releases (tag push), not dry runs
+    if: ${{ github.event_name == 'push' }}
     permissions:
       contents: write
     steps:
