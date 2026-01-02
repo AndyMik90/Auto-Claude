@@ -1,0 +1,53 @@
+name: 🧪 OpenHands Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to test'
+        required: true
+        type: number
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  test-secrets:
+    name: Test Secrets Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secrets are set
+        run: |
+          echo "Checking if secrets are configured..."
+          if [ -z "$OPENROUTER_API_KEY" ]; then
+            echo "ERROR: OPENROUTER_API_KEY is not set"
+            exit 1
+          fi
+          if [ -z "$PAT_TOKEN" ]; then
+            echo "ERROR: PAT_TOKEN is not set"
+            exit 1
+          fi
+          echo "✅ All required secrets are configured"
+          echo "Model: openrouter/deepseek/deepseek-r1"
+          echo "Target branch: develop"
+          echo "Issue to process: #${{ inputs.issue_number }}"
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+  call-openhands:
+    name: Call OpenHands Resolver
+    needs: test-secrets
+    uses: All-Hands-AI/OpenHands/.github/workflows/openhands-resolver.yml@main
+    with:
+      macro: '@openhands-agent'
+      max_iterations: 100
+      target_branch: 'develop'
+      LLM_MODEL: 'openrouter/deepseek/deepseek-r1'
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      PAT_USERNAME: ${{ secrets.PAT_USERNAME }}
+      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
