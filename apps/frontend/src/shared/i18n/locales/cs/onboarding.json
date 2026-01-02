@@ -16,7 +16,7 @@
       },
       "specDriven": {
         "title": "Workflow řízený specifikacemi",
-        "description": "Definujte úkoly s jasnými specifikacemi a nechte Auto Claude implementaci"
+        "description": "Definujte úkoly s jasnými specifikacemi a nechte Auto Claude zvládnout implementaci"
       },
       "memory": {
         "title": "Paměť a kontext",
