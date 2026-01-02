@@ -19,11 +19,15 @@ This project requires Python 3.12+ (see CLAUDE.md).
 from __future__ import annotations
 
 import json
+import logging
+import re
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class FailureType(Enum):
@@ -428,6 +432,11 @@ class RecoveryManager:
         Returns:
             True if successful, False otherwise
         """
+        # Validate commit hash format (7-40 hex characters for short or full SHA-1)
+        if not re.match(r"^[0-9a-fA-F]{7,40}$", commit_hash):
+            logger.error(f"Invalid commit hash format: {commit_hash}")
+            return False
+
         try:
             # Use git reset --hard to rollback
             result = subprocess.run(
@@ -439,7 +448,7 @@ class RecoveryManager:
             )
             return True
         except subprocess.CalledProcessError as e:
-            print(f"Error rolling back to {commit_hash}: {e.stderr}")
+            logger.error(f"Error rolling back to {commit_hash}: {e.stderr}")
             return False
 
     def mark_subtask_stuck(self, subtask_id: str, reason: str) -> None:
