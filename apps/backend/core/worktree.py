@@ -89,8 +89,9 @@ class WorktreeManager:
                     f"Warning: DEFAULT_BRANCH '{env_branch}' not found, auto-detecting..."
                 )
 
-        # 2. Auto-detect main/master
-        for branch in ["main", "master"]:
+        # 2. Auto-detect common base branches (develop, main, master)
+        # Check develop first as it's commonly used in fork-based workflows
+        for branch in ["develop", "main", "master"]:
             result = subprocess.run(
                 ["git", "rev-parse", "--verify", branch],
                 cwd=self.project_dir,
@@ -104,7 +105,7 @@ class WorktreeManager:
 
         # 3. Fall back to current branch with warning
         current = self._get_current_branch()
-        print("Warning: Could not find 'main' or 'master' branch.")
+        print("Warning: Could not find 'develop', 'main', or 'master' branch.")
         print(f"Warning: Using current branch '{current}' as base for worktree.")
         print("Tip: Set DEFAULT_BRANCH=your-branch in .env to avoid this.")
         return current
