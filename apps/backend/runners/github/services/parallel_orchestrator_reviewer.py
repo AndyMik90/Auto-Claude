@@ -31,7 +31,7 @@ from claude_agent_sdk import AgentDefinition
 try:
     from ...core.client import create_client
     from ...phase_config import get_thinking_budget
-    from ..context_gatherer import PRContext
+    from ..context_gatherer import PRContext, _validate_git_ref
     from ..models import (
         GitHubRunnerConfig,
         MergeVerdict,
@@ -43,7 +43,7 @@ try:
     from .pydantic_models import ParallelOrchestratorResponse
     from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
-    from context_gatherer import PRContext
+    from context_gatherer import PRContext, _validate_git_ref
     from core.client import create_client
     from models import (
         GitHubRunnerConfig,
@@ -154,6 +154,7 @@ class ParallelOrchestratorReviewer:
             cwd=self.project_dir,
             capture_output=True,
             text=True,
+            timeout=60,
         )
 
         if result.returncode != 0:
@@ -177,6 +178,7 @@ class ParallelOrchestratorReviewer:
             ["git", "worktree", "remove", "--force", str(worktree_path)],
             cwd=self.project_dir,
             capture_output=True,
+            timeout=30,
         )
 
         if result.returncode == 0:
@@ -191,6 +193,7 @@ class ParallelOrchestratorReviewer:
                 ["git", "worktree", "prune"],
                 cwd=self.project_dir,
                 capture_output=True,
+                timeout=30,
             )
             logger.warning(f"[PRReview] Used shutil fallback for: {worktree_path.name}")
         except Exception as e:
@@ -208,12 +211,15 @@ class ParallelOrchestratorReviewer:
             cwd=self.project_dir,
             capture_output=True,
             text=True,
+            timeout=30,
         )
-        registered = {
-            Path(line.split(" ", 1)[1])
-            for line in result.stdout.split("\n")
-            if line.startswith("worktree ")
-        }
+        # Parse worktree paths defensively to avoid IndexError on malformed output
+        registered = set()
+        for line in result.stdout.split("\n"):
+            if line.startswith("worktree "):
+                parts = line.split(" ", 1)
+                if len(parts) > 1 and parts[1]:
+                    registered.add(Path(parts[1]))
 
         # Remove unregistered directories
         stale_count = 0
@@ -228,6 +234,7 @@ class ParallelOrchestratorReviewer:
                 ["git", "worktree", "prune"],
                 cwd=self.project_dir,
                 capture_output=True,
+                timeout=30,
             )
             print(f"[PRReview] Cleaned up {stale_count} stale worktree(s)", flush=True)
 
@@ -534,8 +541,9 @@ The SDK will run invoked agents in parallel automatically.
 
             # Create temporary worktree at PR head commit for isolated review
             # This ensures agents read from the correct PR state, not the current checkout
-            head_sha = context.head_sha or context.head_branch
-            if not head_sha:
+            # Only use head_sha (not head_branch) to ensure consistent worktree semantics
+            head_sha = context.head_sha
+            if not head_sha or not _validate_git_ref(head_sha):
                 logger.warning(
                     "[ParallelOrchestrator] No head_sha available, using current checkout"
                 )
