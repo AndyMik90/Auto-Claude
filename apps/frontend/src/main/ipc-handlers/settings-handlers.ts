@@ -1,19 +1,22 @@
 import { ipcMain, dialog, app, shell } from 'electron';
-import { existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
+import { existsSync, writeFileSync, mkdirSync, statSync, readFileSync } from 'fs';
 import { execFileSync } from 'node:child_process';
 import path from 'path';
 import { is } from '@electron-toolkit/utils';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS, DEFAULT_AGENT_PROFILES } from '../../shared/constants';
 import type {
   AppSettings,
-  IPCResult
+  IPCResult,
+  BackendEnvEmbeddingConfig,
+  BackendEmbeddingProvider
 } from '../../shared/types';
 import { AgentManager } from '../agent';
 import type { BrowserWindow } from 'electron';
 import { getEffectiveVersion } from '../auto-claude-updater';
 import { setUpdateChannel } from '../app-updater';
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
-import { configureTools, getToolPath, getToolInfo } from '../cli-tool-manager';
+import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform } from '../cli-tool-manager';
+import { getEffectiveSourcePath } from '../auto-claude-updater';
 
 const settingsPath = getSettingsPath();
 
@@ -460,6 +463,110 @@ export function registerSettingsHandlers(
         return {
           success: false,
           error: `Failed to open terminal: ${errorMsg}`
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Backend .env Embedding Config (for onboarding)
+  // ============================================
+
+  /**
+   * Parse an .env file content into a key-value object
+   */
+  const parseEnvFile = (content: string): Record<string, string> => {
+    const vars: Record<string, string> = {};
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex > 0) {
+        const key = trimmed.substring(0, eqIndex).trim();
+        let value = trimmed.substring(eqIndex + 1).trim();
+        // Remove quotes if present
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        vars[key] = value;
+      }
+    }
+    return vars;
+  };
+
+  /**
+   * Map GRAPHITI_EMBEDDER_PROVIDER value to BackendEmbeddingProvider type
+   * Default is 'openai' per .env.example documentation
+   */
+  const mapEmbeddingProvider = (envValue: string | undefined): BackendEmbeddingProvider => {
+    if (!envValue) return 'openai';
+
+    const normalized = envValue.toLowerCase().trim();
+    switch (normalized) {
+      case 'openai':
+        return 'openai';
+      case 'voyage':
+        return 'voyage';
+      case 'google':
+        return 'google';
+      case 'azure_openai':
+        return 'azure_openai';
+      case 'ollama':
+        return 'ollama';
+      default:
+        // Fall back to openai for unknown providers
+        return 'openai';
+    }
+  };
+
+  ipcMain.handle(
+    IPC_CHANNELS.BACKEND_ENV_GET_EMBEDDING_CONFIG,
+    async (): Promise<IPCResult<BackendEnvEmbeddingConfig>> => {
+      try {
+        const sourcePath = getEffectiveSourcePath();
+        if (!sourcePath) {
+          return {
+            success: true,
+            data: {
+              embeddingProvider: 'openai', // Default when no source path
+              envExists: false,
+              sourcePath: undefined
+            }
+          };
+        }
+
+        const envPath = path.join(sourcePath, '.env');
+        const envExists = existsSync(envPath);
+
+        if (!envExists) {
+          return {
+            success: true,
+            data: {
+              embeddingProvider: 'openai', // Default when .env doesn't exist
+              envExists: false,
+              sourcePath
+            }
+          };
+        }
+
+        const content = readFileSync(envPath, 'utf-8');
+        const vars = parseEnvFile(content);
+        const embeddingProvider = mapEmbeddingProvider(vars['GRAPHITI_EMBEDDER_PROVIDER']);
+
+        return {
+          success: true,
+          data: {
+            embeddingProvider,
+            envExists: true,
+            sourcePath
+          }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get backend env config'
         };
       }
     }

@@ -75,7 +75,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
   const { settings, updateSettings } = useSettingsStore();
   const [config, setConfig] = useState<MemoryConfig>({
     database: 'auto_claude_memory',
-    embeddingProvider: 'ollama',
+    embeddingProvider: 'openai', // Default to 'openai' per .env.example, will be updated from .env on mount
     openaiApiKey: settings.globalOpenAIApiKey || '',
     azureOpenaiApiKey: '',
     azureOpenaiBaseUrl: '',
@@ -92,13 +92,30 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
   const [isCheckingInfra, setIsCheckingInfra] = useState(true);
   const [kuzuAvailable, setKuzuAvailable] = useState<boolean | null>(null);
 
-  // Check LadybugDB/Kuzu availability on mount
+  // Check LadybugDB/Kuzu availability and read .env embedding config on mount
   useEffect(() => {
-    const checkInfrastructure = async () => {
+    const initializeConfig = async () => {
       setIsCheckingInfra(true);
       try {
-        const result = await window.electronAPI.getMemoryInfrastructureStatus();
-        setKuzuAvailable(result?.success && result?.data?.memory?.kuzuInstalled ? true : false);
+        // Run both checks in parallel
+        const [infraResult, envConfigResult] = await Promise.all([
+          window.electronAPI.getMemoryInfrastructureStatus(),
+          window.electronAPI.getBackendEnvEmbeddingConfig()
+        ]);
+
+        // Set Kuzu availability
+        setKuzuAvailable(infraResult?.success && infraResult?.data?.memory?.kuzuInstalled ? true : false);
+
+        // Update config with detected embedding provider from .env
+        if (envConfigResult?.success && envConfigResult?.data) {
+          const detectedProvider = envConfigResult.data.embeddingProvider;
+          if (detectedProvider) {
+            setConfig(prev => ({
+              ...prev,
+              embeddingProvider: detectedProvider
+            }));
+          }
+        }
       } catch {
         setKuzuAvailable(false);
       } finally {
@@ -106,7 +123,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
       }
     };
 
-    checkInfrastructure();
+    initializeConfig();
   }, []);
 
   const toggleShowApiKey = (key: string) => {
