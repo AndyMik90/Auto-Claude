@@ -142,10 +142,12 @@ class StatusManager:
             self._write_timer = None
             # Update timestamp inside lock to prevent race conditions
             self._status.last_update = datetime.now().isoformat()
+            # Capture consistent snapshot while holding lock
+            status_dict = self._status.to_dict()
 
         try:
             with open(self.status_file, "w") as f:
-                json.dump(self._status.to_dict(), f, indent=2)
+                json.dump(status_dict, f, indent=2)
 
             if debug:
                 write_duration = (time.time() - write_start) * 1000
