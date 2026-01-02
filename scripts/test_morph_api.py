@@ -282,7 +282,7 @@ class MorphAPITester:
         print("Morph API Test Suite")
         print(f"Base URL: {self.base_url}")
         print(f"API Key: {self.api_key[:10]}..." + "*" * 20)
-        print(f"Timestamp: {datetime.utcnow().isoformat()}Z")
+        print(f"Timestamp: {datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')}")
         print("=" * 60)
 
         connectivity_ok = self.test_connectivity()
