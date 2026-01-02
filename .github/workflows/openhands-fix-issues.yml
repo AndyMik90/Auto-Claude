@@ -1,4 +1,4 @@
-name: 🛠️ OpenHands Fix Issues (Working)
+name: OpenHands Fix Issues (Working)
 
 on:
   issue_comment:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   call-openhands-resolver:
-    name: 🤖 OpenHands Resolver
+    name: OpenHands Resolver
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@openhands-agent')) ||
       (github.event_name == 'issues' && github.event.label.name == 'fix-me')
