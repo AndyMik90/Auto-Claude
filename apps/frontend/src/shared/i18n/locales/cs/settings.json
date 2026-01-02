@@ -223,7 +223,7 @@
   "agentProfile": {
     "label": "Profil agenta",
     "title": "Výchozí profil agenta",
-    "sectionDescription": "Vyberte přednastavenu konfiguraci pro model a úroveň myšlení",
+    "sectionDescription": "Vyberte přednastavenou konfiguraci pro model a úroveň myšlení",
     "profilesInfo": "Profily agentů poskytují přednastavené konfigurace pro Claude model a úroveň myšlení. Když vytvoříte nový úkol, tato nastavení budou použita jako výchozí. Můžete je vždy přepsat v průvodci vytvořením úkolu.",
     "custom": "Vlastní",
     "customConfiguration": "Vlastní konfigurace",
