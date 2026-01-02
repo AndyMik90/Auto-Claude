@@ -58,6 +58,7 @@ import { useIpcListeners } from './hooks/useIpc';
 import { COLOR_THEMES } from '../shared/constants';
 import type { Task, Project, ColorTheme } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
+import { ConsoleLogsPanel, ConsoleLogsToggle } from './components/ConsoleLogsPanel';
 
 export function App() {
   // Load IPC listeners for real-time updates
@@ -613,6 +614,7 @@ export function App() {
             {selectedProject && (
               <div className="electron-no-drag flex items-center gap-3">
                 <UsageIndicator />
+                <ConsoleLogsToggle />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -699,6 +701,9 @@ export function App() {
               />
             )}
           </main>
+
+          {/* Console logs panel - shows at bottom when toggled */}
+          <ConsoleLogsPanel />
         </div>
 
         {/* Task detail modal */}
