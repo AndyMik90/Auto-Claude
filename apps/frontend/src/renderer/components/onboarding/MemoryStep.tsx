@@ -83,8 +83,8 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
     voyageApiKey: '',
     googleApiKey: settings.globalGoogleApiKey || '',
     ollamaBaseUrl: settings.ollamaBaseUrl || 'http://localhost:11434',
-    ollamaEmbeddingModel: 'embeddinggemma',
-    ollamaEmbeddingDim: 768,
+    ollamaEmbeddingModel: 'qwen3-embedding:4b',
+    ollamaEmbeddingDim: 2560,
   });
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
