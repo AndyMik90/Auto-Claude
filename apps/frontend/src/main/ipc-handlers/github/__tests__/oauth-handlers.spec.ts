@@ -87,6 +87,13 @@ vi.mock('../../../env-utils', () => ({
   isCommandAvailable: vi.fn((cmd: string) => mockFindExecutable(cmd) !== null)
 }));
 
+// Mock cli-tool-manager to avoid child_process import issues
+vi.mock('../../../cli-tool-manager', () => ({
+  getToolPath: vi.fn(() => '/usr/local/bin/gh'),
+  detectCLITools: vi.fn(),
+  getAllToolStatus: vi.fn()
+}));
+
 // Create mock process for spawn
 function createMockProcess(): EventEmitter & {
   stdout: EventEmitter | null;

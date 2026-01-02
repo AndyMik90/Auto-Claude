@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment jsdom
+ */
+/**
  * OnboardingWizard integration tests
  *
  * Integration tests for the complete onboarding wizard flow.

@@ -1,8 +1,12 @@
 /**
+ * @vitest-environment jsdom
+ */
+/**
  * Component and utility tests for ProfileList
  * Tests utility functions and verifies component structure
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ProfileList } from './ProfileList';
 import { maskApiKey } from '../../lib/profile-utils';

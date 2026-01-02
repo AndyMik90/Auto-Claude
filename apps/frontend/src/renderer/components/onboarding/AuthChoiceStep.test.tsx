@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment jsdom
+ */
+/**
  * AuthChoiceStep component tests
  *
  * Tests for the authentication choice step in the onboarding wizard.

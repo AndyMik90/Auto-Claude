@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment jsdom
+ */
+/**
  * ProfileEditDialog Tests
  *
  * Tests both create and edit modes for the API profile dialog.
