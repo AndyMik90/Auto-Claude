@@ -77,7 +77,7 @@ class MorphAPIError(Exception):
 
     def is_retryable(self) -> bool:
         """Check if this error is retryable."""
-        return self.status_code in (429, 500, 502, 503)
+        return self.status_code in (429, 500, 502, 503, 504)
 
 
 class MorphConnectionError(Exception):
