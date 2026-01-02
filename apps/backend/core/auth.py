@@ -234,8 +234,8 @@ def _get_full_credentials_from_file(cred_path: str) -> dict | None:
                     "refreshToken": oauth.get("refreshToken"),
                     "expiresAt": oauth.get("expiresAt"),
                 }
-    except (json.JSONDecodeError, KeyError):
-        pass
+    except (json.JSONDecodeError, KeyError) as e:
+        logger.debug(f"Failed to parse credentials from {cred_path}: {e}")
     return None
 
 
