@@ -22,6 +22,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from core.config import get_worktree_base_path
+
 
 class WorktreeError(Exception):
     """Error during worktree operations."""
@@ -55,7 +57,11 @@ class WorktreeManager:
     def __init__(self, project_dir: Path, base_branch: str | None = None):
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
-        self.worktrees_dir = project_dir / ".worktrees"
+
+        # Use custom worktree path from environment variable with validation
+        worktree_base_path = get_worktree_base_path(project_dir)
+        self.worktrees_dir = project_dir / worktree_base_path
+
         self._merge_lock = asyncio.Lock()
 
     def _detect_base_branch(self) -> str:

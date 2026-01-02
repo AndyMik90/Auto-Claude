@@ -15,6 +15,8 @@ _PARENT_DIR = Path(__file__).parent.parent
 if str(_PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(_PARENT_DIR))
 
+from dotenv import load_dotenv
+
 
 from .batch_commands import (
     handle_batch_cleanup_command,
@@ -275,6 +277,12 @@ def main() -> None:
     # Determine project directory
     project_dir = get_project_dir(args.project_dir)
     debug("run.py", f"Using project directory: {project_dir}")
+
+    # Load project-specific .env file (overrides backend .env)
+    project_env = project_dir / ".auto-claude" / ".env"
+    if project_env.exists():
+        load_dotenv(project_env, override=True)
+        debug("run.py", f"Loaded project .env from: {project_env}")
 
     # Get model from CLI arg or env var (None if not explicitly set)
     # This allows get_phase_model() to fall back to task_metadata.json

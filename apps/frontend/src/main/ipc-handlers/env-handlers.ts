@@ -98,6 +98,9 @@ export function registerEnvHandlers(
     if (config.defaultBranch !== undefined) {
       existingVars['DEFAULT_BRANCH'] = config.defaultBranch;
     }
+    if (config.worktreePath !== undefined) {
+      existingVars['WORKTREE_BASE_PATH'] = config.worktreePath;
+    }
     if (config.graphitiEnabled !== undefined) {
       existingVars['GRAPHITI_ENABLED'] = config.graphitiEnabled ? 'true' : 'false';
     }
@@ -227,6 +230,11 @@ ${envLine(existingVars, GITLAB_ENV_KEYS.AUTO_SYNC, 'false')}
 # Default base branch for worktree creation
 # If not set, Auto Claude will auto-detect main/master, or fall back to current branch
 ${existingVars['DEFAULT_BRANCH'] ? `DEFAULT_BRANCH=${existingVars['DEFAULT_BRANCH']}` : '# DEFAULT_BRANCH=main'}
+
+# Worktree base path (OPTIONAL)
+# Supports relative paths (e.g., worktrees) or absolute paths (e.g., /tmp/worktrees)
+# If not set, defaults to .worktrees in your project root
+${existingVars['WORKTREE_BASE_PATH'] ? `WORKTREE_BASE_PATH=${existingVars['WORKTREE_BASE_PATH']}` : '# WORKTREE_BASE_PATH=.worktrees'}
 
 # =============================================================================
 # UI SETTINGS (OPTIONAL)
@@ -410,6 +418,9 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       // Git/Worktree config
       if (vars['DEFAULT_BRANCH']) {
         config.defaultBranch = vars['DEFAULT_BRANCH'];
+      }
+      if (vars['WORKTREE_BASE_PATH']) {
+        config.worktreePath = vars['WORKTREE_BASE_PATH'];
       }
 
       if (vars['GRAPHITI_ENABLED']?.toLowerCase() === 'true') {

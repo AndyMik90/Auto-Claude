@@ -6,8 +6,10 @@ Commands for creating and managing multiple tasks from batch files.
 """
 
 import json
+import os
 from pathlib import Path
 
+from core.config import get_worktree_base_path
 from ui import highlight, print_status
 
 
@@ -184,7 +186,8 @@ def handle_batch_cleanup_command(project_dir: str, dry_run: bool = True) -> bool
         True if successful
     """
     specs_dir = Path(project_dir) / ".auto-claude" / "specs"
-    worktrees_dir = Path(project_dir) / ".worktrees"
+    worktree_base_path = get_worktree_base_path(Path(project_dir))
+    worktrees_dir = Path(project_dir) / worktree_base_path
 
     if not specs_dir.exists():
         print_status("No specs directory found", "info")
@@ -209,7 +212,7 @@ def handle_batch_cleanup_command(project_dir: str, dry_run: bool = True) -> bool
             print(f"  - {spec_name}")
             wt_path = worktrees_dir / spec_name
             if wt_path.exists():
-                print(f"    └─ .worktrees/{spec_name}/")
+                print(f"    └─ {worktree_base_path}/{spec_name}/")
         print()
         print("Run with --no-dry-run to actually delete")
 
