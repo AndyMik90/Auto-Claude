@@ -99,7 +99,9 @@
     "autoClaudePathDescription": "Chemin relatif vers le répertoire auto-claude dans les projets",
     "autoClaudePathPlaceholder": "auto-claude (par défaut)",
     "autoNameTerminals": "Nommer automatiquement les terminaux",
-    "autoNameTerminalsDescription": "Utiliser l'IA pour générer des noms descriptifs pour les onglets de terminal en fonction de leur activité"
+    "autoNameTerminalsDescription": "Utiliser l'IA pour générer des noms descriptifs pour les onglets de terminal en fonction de leur activité",
+    "watchFilesystem": "Synchronisation automatique des modifications externes",
+    "watchFilesystemDescription": "Mettre à jour automatiquement les vues des tâches lorsque des tâches sont créées ou modifiées en dehors de l'application (par exemple, via CLI ou agents IA)"
   },
   "theme": {
     "title": "Apparence",

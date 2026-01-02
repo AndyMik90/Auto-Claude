@@ -337,7 +337,8 @@ export class ProjectStore {
     specId: string,
     basePath: string,
     projectId: string,
-    specsBaseDir: string
+    specsBaseDir: string,
+    location: 'main' | 'worktree' = 'main'
   ): Task | null {
     try {
       const planPath = path.join(specPath, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
@@ -371,6 +372,42 @@ export class ProjectStore {
       // Fallback: read description from implementation_plan.json
       if (!description && plan?.description) {
         description = plan.description;
+      }
+
+      // Fallback: read description from requirements.json if still not found
+      if (!description) {
+        const requirementsPath = path.join(specPath, AUTO_BUILD_PATHS.REQUIREMENTS);
+        if (existsSync(requirementsPath)) {
+          try {
+            const reqContent = readFileSync(requirementsPath, 'utf-8');
+            const requirements = JSON.parse(reqContent);
+            if (requirements.task_description) {
+              // Extract a clean summary from task_description (first line or first ~200 chars)
+              const taskDesc = requirements.task_description;
+              const firstLine = taskDesc.split('\n')[0].trim();
+              // If the first line is a title like "Investigate GitHub Issue #36", use the next meaningful line
+              if (firstLine.toLowerCase().startsWith('investigate') && taskDesc.includes('\n\n')) {
+                const sections = taskDesc.split('\n\n');
+                // Find the first paragraph that's not a title
+                for (const section of sections) {
+                  const trimmed = section.trim();
+                  // Skip headers and short lines
+                  if (trimmed.startsWith('#') || trimmed.length < 20) continue;
+                  // Skip the "Please analyze" instruction at the end
+                  if (trimmed.startsWith('Please analyze')) continue;
+                  description = trimmed.substring(0, 200).split('\n')[0];
+                  break;
+                }
+              }
+              // If still no description, use a shortened version of task_description
+              if (!description) {
+                description = firstLine.substring(0, 150);
+              }
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
       }
 
       // Try to read task metadata
@@ -431,7 +468,7 @@ export class ProjectStore {
         metadata,
         stagedInMainProject: planWithStaged?.stagedInMainProject,
         stagedAt: planWithStaged?.stagedAt,
-        location: 'main',
+        location,
         specsPath: specPath,
         createdAt: new Date(plan?.created_at || Date.now()),
         updatedAt: new Date(plan?.updated_at || Date.now())

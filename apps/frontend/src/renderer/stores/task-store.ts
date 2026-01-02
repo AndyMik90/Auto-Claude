@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Task, TaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft } from '../../shared/types';
+import { useProjectStore } from './project-store';
 
 interface TaskState {
   tasks: Task[];
@@ -560,6 +561,13 @@ export function getTaskByGitHubIssue(issueNumber: number): Task | undefined {
 export async function handleSpecAdded(projectId: string, specId: string): Promise<void> {
   console.log(`[TaskStore] Handling spec-added event: ${specId} in project ${projectId}`);
 
+  // Validate this event is for the currently selected project
+  const currentProjectId = useProjectStore.getState().selectedProjectId;
+  if (currentProjectId && currentProjectId !== projectId) {
+    console.log(`[TaskStore] Ignoring spec-added for different project: ${projectId} (current: ${currentProjectId})`);
+    return;
+  }
+
   const store = useTaskStore.getState();
 
   try {
@@ -591,6 +599,13 @@ export async function handleSpecAdded(projectId: string, specId: string): Promis
 export function handleSpecRemoved(projectId: string, specId: string): void {
   console.log(`[TaskStore] Handling spec-removed event: ${specId} in project ${projectId}`);
 
+  // Validate this event is for the currently selected project
+  const currentProjectId = useProjectStore.getState().selectedProjectId;
+  if (currentProjectId && currentProjectId !== projectId) {
+    console.log(`[TaskStore] Ignoring spec-removed for different project: ${projectId} (current: ${currentProjectId})`);
+    return;
+  }
+
   const store = useTaskStore.getState();
   store.removeTaskBySpecId(specId);
 }
@@ -601,6 +616,13 @@ export function handleSpecRemoved(projectId: string, specId: string): void {
  */
 export async function handleSpecUpdated(projectId: string, specId: string): Promise<void> {
   console.log(`[TaskStore] Handling spec-updated event: ${specId} in project ${projectId}`);
+
+  // Validate this event is for the currently selected project
+  const currentProjectId = useProjectStore.getState().selectedProjectId;
+  if (currentProjectId && currentProjectId !== projectId) {
+    console.log(`[TaskStore] Ignoring spec-updated for different project: ${projectId} (current: ${currentProjectId})`);
+    return;
+  }
 
   const store = useTaskStore.getState();
 

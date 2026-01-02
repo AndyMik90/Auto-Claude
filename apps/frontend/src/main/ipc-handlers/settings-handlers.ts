@@ -16,6 +16,7 @@ import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo } from '../cli-tool-manager';
 import { fileWatcher } from '../file-watcher';
 import { projectStore } from '../project-store';
+import { invalidateWatchingSettingsCache } from './task/crud-handlers';
 
 const settingsPath = getSettingsPath();
 
@@ -203,6 +204,9 @@ export function registerSettingsHandlers(
 
         // Handle filesystem watcher setting change
         if (settings.watchFilesystemForExternalChanges !== undefined) {
+          // Invalidate cache so next TASK_LIST picks up the new setting
+          invalidateWatchingSettingsCache();
+
           const wasEnabled = currentSettings.watchFilesystemForExternalChanges ?? false;
           const isNowEnabled = settings.watchFilesystemForExternalChanges;
 

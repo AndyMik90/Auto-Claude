@@ -10,13 +10,31 @@ import { findTaskAndProject } from './shared';
 import { fileWatcher } from '../../file-watcher';
 import { readSettingsFile } from '../../settings-utils';
 
+// Cache for filesystem watching setting to avoid reading from disk on every TASK_LIST call
+let cachedWatchingEnabled: boolean | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 5000; // 5 seconds cache TTL
+
 /**
- * Check if filesystem watching is enabled in settings
+ * Check if filesystem watching is enabled in settings (cached)
  */
 function isFilesystemWatchingEnabled(): boolean {
-  const savedSettings = readSettingsFile() as Partial<AppSettings> | undefined;
-  const settings = { ...DEFAULT_APP_SETTINGS, ...savedSettings };
-  return settings.watchFilesystemForExternalChanges ?? false;
+  const now = Date.now();
+  if (cachedWatchingEnabled === null || now - cacheTimestamp > CACHE_TTL_MS) {
+    const savedSettings = readSettingsFile() as Partial<AppSettings> | undefined;
+    const settings = { ...DEFAULT_APP_SETTINGS, ...savedSettings };
+    cachedWatchingEnabled = settings.watchFilesystemForExternalChanges ?? false;
+    cacheTimestamp = now;
+  }
+  return cachedWatchingEnabled;
+}
+
+/**
+ * Invalidate the cached watching setting (called when settings change)
+ */
+export function invalidateWatchingSettingsCache(): void {
+  cachedWatchingEnabled = null;
+  cacheTimestamp = 0;
 }
 
 /**
