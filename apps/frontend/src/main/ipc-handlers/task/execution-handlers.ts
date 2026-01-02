@@ -867,30 +867,29 @@ export function registerTaskExecutionHandlers(
           review_count: 1
         };
 
-        // Try to preserve existing review_count
-        if (existsSync(reviewStatePath)) {
-          try {
-            const existing = JSON.parse(readFileSync(reviewStatePath, 'utf-8'));
-            reviewState.review_count = (existing.review_count || 0) + 1;
-          } catch {
-            // Ignore parse errors
-          }
+        // Try to preserve existing review_count (read atomically without separate existence check)
+        try {
+          const existing = JSON.parse(readFileSync(reviewStatePath, 'utf-8'));
+          reviewState.review_count = (existing.review_count || 0) + 1;
+        } catch {
+          // File doesn't exist or parse error - use default review_count of 1
         }
 
         writeFileSync(reviewStatePath, JSON.stringify(reviewState, null, 2));
         console.log('[TASK_APPROVE_PLAN] Updated review_state.json');
 
-        // Update implementation_plan.json status if it exists
-        if (existsSync(planPath)) {
-          try {
-            const plan = JSON.parse(readFileSync(planPath, 'utf-8'));
-            // Move from human_review/review to backlog/pending (ready for start)
-            plan.status = 'backlog';
-            plan.planStatus = 'pending';
-            plan.updated_at = new Date().toISOString();
-            writeFileSync(planPath, JSON.stringify(plan, null, 2));
-            console.log('[TASK_APPROVE_PLAN] Updated implementation_plan.json status to backlog/pending');
-          } catch (e) {
+        // Update implementation_plan.json status (read atomically without separate existence check)
+        try {
+          const plan = JSON.parse(readFileSync(planPath, 'utf-8'));
+          // Move from human_review/review to backlog/pending (ready for start)
+          plan.status = 'backlog';
+          plan.planStatus = 'pending';
+          plan.updated_at = new Date().toISOString();
+          writeFileSync(planPath, JSON.stringify(plan, null, 2));
+          console.log('[TASK_APPROVE_PLAN] Updated implementation_plan.json status to backlog/pending');
+        } catch (e) {
+          // File doesn't exist or other error - skip plan update
+          if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
             console.warn('[TASK_APPROVE_PLAN] Could not update plan status:', e);
           }
         }
