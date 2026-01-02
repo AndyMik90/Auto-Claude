@@ -183,9 +183,23 @@ class MorphAPITester:
                     print(f"  Result: ✗ FAILED - Invalid or expired API key")
                     return False
 
-            except httpx.ConnectError:
+            except httpx.ConnectError as e:
+                print(f"  Note: Could not connect to {self.base_url}{endpoint}: {e}")
+                self._record_result(
+                    "validate_api_key",
+                    False,
+                    {"endpoint": f"{self.base_url}{endpoint}"},
+                    error=f"Connection error for {endpoint}: {e}"
+                )
                 continue
-            except Exception:
+            except Exception as e:
+                print(f"  Note: Error testing {self.base_url}{endpoint}: {e}")
+                self._record_result(
+                    "validate_api_key",
+                    False,
+                    {"endpoint": f"{self.base_url}{endpoint}"},
+                    error=f"Error for {endpoint}: {e}"
+                )
                 continue
 
         self._record_result(
