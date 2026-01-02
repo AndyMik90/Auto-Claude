@@ -13,12 +13,34 @@ This document covers terminal-only usage of Auto Claude. **For most users, we re
 - Python 3.9+
 - Claude Code CLI (`npm install -g @anthropic-ai/claude-code`)
 
+### Installing Python
+
+**Windows:**
+```bash
+winget install Python.Python.3.12
+```
+
+**macOS:**
+```bash
+brew install python@3.12
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt install python3.12 python3.12-venv
+```
+
+**Linux (Fedora):**
+```bash
+sudo dnf install python3.12
+```
+
 ## Setup
 
-**Step 1:** Navigate to the auto-claude directory
+**Step 1:** Navigate to the backend directory
 
 ```bash
-cd auto-claude
+cd apps/backend
 ```
 
 **Step 2:** Set up Python environment
@@ -39,14 +61,16 @@ cp .env.example .env
 # Get your OAuth token
 claude setup-token
 
-# Add the token to .env
+# Add the token to apps/backend/.env
 # CLAUDE_CODE_OAUTH_TOKEN=your-token-here
 ```
 
 ## Creating Specs
 
+All commands below should be run from the `apps/backend/` directory:
+
 ```bash
-# Activate the virtual environment
+# Activate the virtual environment (if not already active)
 source .venv/bin/activate
 
 # Create a spec interactively
@@ -115,6 +139,9 @@ Auto Claude uses Git worktrees for isolated builds:
 # Test the feature in the isolated workspace
 cd .worktrees/auto-claude/
 npm run dev  # or your project's run command
+
+# Return to backend directory to run management commands
+cd apps/backend
 
 # See what was changed
 python run.py --spec 001 --review

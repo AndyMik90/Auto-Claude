@@ -20,34 +20,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Get npm cache directory
+        id: npm-cache
+        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
 
       - uses: actions/cache@v4
         with:
-          path: ${{ steps.pnpm-cache.outputs.dir }}
-          key: ${{ runner.os }}-x64-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-x64-pnpm-
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
 
       - name: Install dependencies
-        run: cd auto-claude-ui && pnpm install --frozen-lockfile
+        run: cd apps/frontend && npm ci
+
+      - name: Install Rust toolchain (for building native Python packages)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache bundled Python
+        uses: actions/cache@v4
+        with:
+          path: apps/frontend/python-runtime
+          key: python-bundle-${{ runner.os }}-x64-3.12.8-rust
+          restore-keys: |
+            python-bundle-${{ runner.os }}-x64-
 
       - name: Build application
-        run: cd auto-claude-ui && pnpm run build
+        run: cd apps/frontend && npm run build
 
       - name: Package macOS (Intel)
-        run: cd auto-claude-ui && pnpm run package:mac -- --arch=x64
+        run: cd apps/frontend && npm run package:mac -- --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
@@ -63,7 +74,7 @@ jobs:
             echo "Skipping notarization: APPLE_ID not configured"
             exit 0
           fi
-          cd auto-claude-ui
+          cd apps/frontend
           for dmg in dist/*.dmg; do
             echo "Notarizing $dmg..."
             xcrun notarytool submit "$dmg" \
@@ -80,8 +91,8 @@ jobs:
         with:
           name: macos-intel-builds
           path: |
-            auto-claude-ui/dist/*.dmg
-            auto-claude-ui/dist/*.zip
+            apps/frontend/dist/*.dmg
+            apps/frontend/dist/*.zip
 
   # Apple Silicon build on ARM64 runner for native compilation
   build-macos-arm64:
@@ -89,34 +100,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Get npm cache directory
+        id: npm-cache
+        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
 
       - uses: actions/cache@v4
         with:
-          path: ${{ steps.pnpm-cache.outputs.dir }}
-          key: ${{ runner.os }}-arm64-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-arm64-pnpm-
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
 
       - name: Install dependencies
-        run: cd auto-claude-ui && pnpm install --frozen-lockfile
+        run: cd apps/frontend && npm ci
+
+      - name: Cache bundled Python
+        uses: actions/cache@v4
+        with:
+          path: apps/frontend/python-runtime
+          key: python-bundle-${{ runner.os }}-arm64-3.12.8
+          restore-keys: |
+            python-bundle-${{ runner.os }}-arm64-
 
       - name: Build application
-        run: cd auto-claude-ui && pnpm run build
+        run: cd apps/frontend && npm run build
 
       - name: Package macOS (Apple Silicon)
-        run: cd auto-claude-ui && pnpm run package:mac -- --arch=arm64
+        run: cd apps/frontend && npm run package:mac -- --arm64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
@@ -132,7 +151,7 @@ jobs:
             echo "Skipping notarization: APPLE_ID not configured"
             exit 0
           fi
-          cd auto-claude-ui
+          cd apps/frontend
           for dmg in dist/*.dmg; do
             echo "Notarizing $dmg..."
             xcrun notarytool submit "$dmg" \
@@ -149,43 +168,51 @@ jobs:
         with:
           name: macos-arm64-builds
           path: |
-            auto-claude-ui/dist/*.dmg
-            auto-claude-ui/dist/*.zip
+            apps/frontend/dist/*.dmg
+            apps/frontend/dist/*.zip
 
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
+      - name: Get npm cache directory
+        id: npm-cache
         shell: bash
-        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
 
       - uses: actions/cache@v4
         with:
-          path: ${{ steps.pnpm-cache.outputs.dir }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-pnpm-
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
 
       - name: Install dependencies
-        run: cd auto-claude-ui && pnpm install --frozen-lockfile
+        run: cd apps/frontend && npm ci
+
+      - name: Cache bundled Python
+        uses: actions/cache@v4
+        with:
+          path: apps/frontend/python-runtime
+          key: python-bundle-${{ runner.os }}-x64-3.12.8
+          restore-keys: |
+            python-bundle-${{ runner.os }}-x64-
 
       - name: Build application
-        run: cd auto-claude-ui && pnpm run build
+        run: cd apps/frontend && npm run build
 
       - name: Package Windows
-        run: cd auto-claude-ui && pnpm run package:win
+        run: cd apps/frontend && npm run package:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.WIN_CERTIFICATE }}
@@ -196,41 +223,57 @@ jobs:
         with:
           name: windows-builds
           path: |
-            auto-claude-ui/dist/*.exe
+            apps/frontend/dist/*.exe
 
   build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Get npm cache directory
+        id: npm-cache
+        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
 
       - uses: actions/cache@v4
         with:
-          path: ${{ steps.pnpm-cache.outputs.dir }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-pnpm-
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
 
       - name: Install dependencies
-        run: cd auto-claude-ui && pnpm install --frozen-lockfile
+        run: cd apps/frontend && npm ci
+
+      - name: Setup Flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y --user flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
+          flatpak install -y --user flathub org.electronjs.Electron2.BaseApp//25.08
+
+      - name: Cache bundled Python
+        uses: actions/cache@v4
+        with:
+          path: apps/frontend/python-runtime
+          key: python-bundle-${{ runner.os }}-x64-3.12.8
+          restore-keys: |
+            python-bundle-${{ runner.os }}-x64-
 
       - name: Build application
-        run: cd auto-claude-ui && pnpm run build
+        run: cd apps/frontend && npm run build
 
       - name: Package Linux
-        run: cd auto-claude-ui && pnpm run package:linux
+        run: cd apps/frontend && npm run package:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -239,8 +282,9 @@ jobs:
         with:
           name: linux-builds
           path: |
-            auto-claude-ui/dist/*.AppImage
-            auto-claude-ui/dist/*.deb
+            apps/frontend/dist/*.AppImage
+            apps/frontend/dist/*.deb
+            apps/frontend/dist/*.flatpak
 
   create-release:
     needs: [build-macos-intel, build-macos-arm64, build-windows, build-linux]
@@ -260,12 +304,12 @@ jobs:
       - name: Flatten and validate artifacts
         run: |
           mkdir -p release-assets
-          find dist -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" \) -exec cp {} release-assets/ \;
+          find dist -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.flatpak" \) -exec cp {} release-assets/ \;
 
           # Validate that at least one artifact was copied
-          artifact_count=$(find release-assets -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" \) | wc -l)
+          artifact_count=$(find release-assets -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.flatpak" \) | wc -l)
           if [ "$artifact_count" -eq 0 ]; then
-            echo "::error::No build artifacts found! Expected .dmg, .zip, .exe, .AppImage, or .deb files."
+            echo "::error::No build artifacts found! Expected .dmg, .zip, .exe, .AppImage, .deb, or .flatpak files."
             exit 1
           fi
 
@@ -294,7 +338,7 @@ jobs:
           echo "## VirusTotal Scan Results" > vt_results.md
           echo "" >> vt_results.md
 
-          for file in release-assets/*.{exe,dmg,AppImage,deb}; do
+          for file in release-assets/*.{exe,dmg,AppImage,deb,flatpak}; do
             [ -f "$file" ] || continue
             filename=$(basename "$file")
             filesize=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
@@ -451,3 +495,142 @@ jobs:
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Update README with new version after successful release
+  update-readme:
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true) }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version and detect release type
+        id: version
+        run: |
+          # Extract version from tag (v2.7.2 -> 2.7.2)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Detect if this is a prerelease (contains - after version, e.g., 2.7.2-beta.10)
+          if [[ "$VERSION" == *-* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "Detected PRERELEASE: $VERSION"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "Detected STABLE release: $VERSION"
+          fi
+
+      - name: Update README.md
+        run: |
+          python3 << 'EOF'
+          import re
+          import sys
+
+          version = "${{ steps.version.outputs.version }}"
+          is_prerelease = "${{ steps.version.outputs.is_prerelease }}" == "true"
+
+          # Shields.io escapes hyphens as --
+          version_badge = version.replace("-", "--")
+
+          # Read README
+          with open("README.md", "r") as f:
+              content = f.read()
+
+          # Semver pattern: matches X.Y.Z or X.Y.Z-prerelease (e.g., 2.7.2, 2.7.2-beta.10)
+          # Prerelease MUST contain a dot (beta.10, alpha.1, rc.1) to avoid matching platform suffixes (win32, darwin)
+          semver = r'\d+\.\d+\.\d+(?:-[a-zA-Z]+\.[a-zA-Z0-9.]+)?'
+          # Shields.io escaped pattern (hyphens as --)
+          semver_badge = r'\d+\.\d+\.\d+(?:--[a-zA-Z]+\.[a-zA-Z0-9.]+)?'
+
+          def update_section(text, start_marker, end_marker, replacements):
+              """Update content between markers with given replacements."""
+              pattern = f'({re.escape(start_marker)})(.*?)({re.escape(end_marker)})'
+              def replace_section(match):
+                  section = match.group(2)
+                  for old_pattern, new_value in replacements:
+                      section = re.sub(old_pattern, new_value, section)
+                  return match.group(1) + section + match.group(3)
+              return re.sub(pattern, replace_section, text, flags=re.DOTALL)
+
+          if is_prerelease:
+              print(f"Updating BETA section to {version} (badge: {version_badge})")
+
+              # Update beta badge
+              content = re.sub(
+                  rf'beta-{semver_badge}-orange',
+                  f'beta-{version_badge}-orange',
+                  content
+              )
+
+              # Update beta version badge link
+              content = update_section(content,
+                  '<!-- BETA_VERSION_BADGE -->', '<!-- BETA_VERSION_BADGE_END -->',
+                  [(rf'tag/v{semver}\)', f'tag/v{version})')])
+
+              # Update beta downloads
+              content = update_section(content,
+                  '<!-- BETA_DOWNLOADS -->', '<!-- BETA_DOWNLOADS_END -->',
+                  [
+                      (rf'Auto-Claude-{semver}', f'Auto-Claude-{version}'),
+                      (rf'download/v{semver}/', f'download/v{version}/'),
+                  ])
+          else:
+              print(f"Updating STABLE section to {version} (badge: {version_badge})")
+
+              # Update top version badge
+              content = update_section(content,
+                  '<!-- TOP_VERSION_BADGE -->', '<!-- TOP_VERSION_BADGE_END -->',
+                  [
+                      (rf'version-{semver_badge}-blue', f'version-{version_badge}-blue'),
+                      (rf'tag/v{semver}\)', f'tag/v{version})'),
+                  ])
+
+              # Update stable badge
+              content = re.sub(
+                  rf'stable-{semver_badge}-blue',
+                  f'stable-{version_badge}-blue',
+                  content
+              )
+
+              # Update stable version badge link
+              content = update_section(content,
+                  '<!-- STABLE_VERSION_BADGE -->', '<!-- STABLE_VERSION_BADGE_END -->',
+                  [(rf'tag/v{semver}\)', f'tag/v{version})')])
+
+              # Update stable downloads
+              content = update_section(content,
+                  '<!-- STABLE_DOWNLOADS -->', '<!-- STABLE_DOWNLOADS_END -->',
+                  [
+                      (rf'Auto-Claude-{semver}', f'Auto-Claude-{version}'),
+                      (rf'download/v{semver}/', f'download/v{version}/'),
+                  ])
+
+          # Write updated README
+          with open("README.md", "w") as f:
+              f.write(content)
+
+          print(f"README.md updated for {version} (prerelease={is_prerelease})")
+          EOF
+
+          echo "--- Verifying update ---"
+          grep -E "(stable-|beta-|version-)[0-9]" README.md | head -5
+
+      - name: Commit and push README update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if there are changes to commit
+          if git diff --quiet README.md; then
+            echo "No changes to README.md, skipping commit"
+            exit 0
+          fi
+
+          git add README.md
+          git commit -m "docs: update README to v${{ steps.version.outputs.version }} [skip ci]"
+          git push origin main
