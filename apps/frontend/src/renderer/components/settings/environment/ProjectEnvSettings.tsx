@@ -89,7 +89,8 @@ export function ProjectEnvSettings({
       newConfig.ollamaEmbeddingModel = updates.ollamaEmbeddingModel;
     }
     if (updates.ollamaEmbeddingDim !== undefined) {
-      newConfig.ollamaEmbeddingDim = updates.ollamaEmbeddingDim ? parseInt(updates.ollamaEmbeddingDim, 10) : undefined;
+      const parsed = parseInt(updates.ollamaEmbeddingDim, 10);
+      newConfig.ollamaEmbeddingDim = !isNaN(parsed) ? parsed : undefined;
     }
     if (updates.googleApiKey !== undefined) {
       newConfig.googleApiKey = updates.googleApiKey;

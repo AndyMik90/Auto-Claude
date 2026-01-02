@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, TaskStartOptions, TaskStatus } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { AgentManager } from '../../agent';
 import { fileWatcher } from '../../file-watcher';
@@ -15,6 +15,50 @@ import {
   persistPlanStatusSync,
   createPlanIfNotExists
 } from './plan-file-utils';
+
+/**
+ * Validates that a path is within a parent directory (prevents path traversal attacks)
+ * @param targetPath - The path to validate
+ * @param parentPath - The parent directory that targetPath must be within
+ * @returns true if targetPath is safely within parentPath
+ */
+function isPathWithinParent(targetPath: string, parentPath: string): boolean {
+  try {
+    // Resolve to absolute paths and normalize
+    const resolvedTarget = path.resolve(targetPath);
+    const resolvedParent = path.resolve(parentPath);
+
+    // For existing paths, use realpath to resolve symlinks
+    let realTarget = resolvedTarget;
+    let realParent = resolvedParent;
+
+    try {
+      if (existsSync(resolvedTarget)) {
+        realTarget = realpathSync(resolvedTarget);
+      }
+      if (existsSync(resolvedParent)) {
+        realParent = realpathSync(resolvedParent);
+      }
+    } catch {
+      // If realpath fails, use resolved paths
+    }
+
+    // Ensure parent path ends with separator for accurate prefix check
+    const parentWithSep = realParent.endsWith(path.sep) ? realParent : realParent + path.sep;
+
+    // Target must start with parent path (or be the parent itself)
+    return realTarget === realParent || realTarget.startsWith(parentWithSep);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validates specId contains only safe characters (alphanumeric, hyphens, underscores)
+ */
+function isValidSpecId(specId: string): boolean {
+  return /^[a-zA-Z0-9_-]+$/.test(specId);
+}
 
 /**
  * Helper function to check subtask completion status
@@ -838,6 +882,14 @@ export function registerTaskExecutionHandlers(
           };
         }
 
+        // Check if task is currently running
+        if (agentManager.isRunning(taskId)) {
+          return {
+            success: false,
+            error: 'Cannot approve plan while task is running.'
+          };
+        }
+
         const specsBaseDir = getSpecsDir(project.autoBuildPath);
         const specDir = path.join(project.path, specsBaseDir, task.specId);
         const specPath = path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE);
@@ -948,8 +1000,26 @@ export function registerTaskExecutionHandlers(
           };
         }
 
+        // Validate specId to prevent path traversal attacks
+        if (!isValidSpecId(task.specId)) {
+          console.error('[TASK_RECREATE] Invalid specId detected:', task.specId);
+          return {
+            success: false,
+            error: 'Invalid spec ID format'
+          };
+        }
+
         const specsBaseDir = getSpecsDir(project.autoBuildPath);
         const specDir = path.join(project.path, specsBaseDir, task.specId);
+
+        // Validate specDir is within project path (defense in depth)
+        if (!isPathWithinParent(specDir, project.path)) {
+          console.error('[TASK_RECREATE] Path traversal attempt detected:', specDir);
+          return {
+            success: false,
+            error: 'Invalid spec directory path'
+          };
+        }
 
         // Preserve task description before deleting
         const taskDescription = task.description || task.title;
@@ -957,7 +1027,8 @@ export function registerTaskExecutionHandlers(
 
         // Check for worktree and clean it up if it exists
         const worktreesDir = path.join(project.path, '.worktrees', task.specId);
-        if (existsSync(worktreesDir)) {
+        // Validate worktree path is within project
+        if (existsSync(worktreesDir) && isPathWithinParent(worktreesDir, project.path)) {
           console.log('[TASK_RECREATE] Cleaning up worktree:', worktreesDir);
           try {
             // Use git worktree remove
@@ -977,6 +1048,11 @@ export function registerTaskExecutionHandlers(
           const entries = fs.readdirSync(specDir);
           for (const entry of entries) {
             const entryPath = path.join(specDir, entry);
+            // Validate each entry path before deletion (defense in depth)
+            if (!isPathWithinParent(entryPath, specDir)) {
+              console.warn('[TASK_RECREATE] Skipping suspicious path:', entryPath);
+              continue;
+            }
             try {
               const stat = fs.statSync(entryPath);
               if (stat.isDirectory()) {
