@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import os from 'os';
 
@@ -35,6 +35,32 @@ const COMMON_NODE_PATHS = {
 };
 
 /**
+ * Compare semantic version strings for sorting.
+ * Handles versions like 'v18.17.0', 'v20.10.0', etc.
+ *
+ * @returns negative if a < b, positive if a > b, 0 if equal
+ */
+function compareVersions(a: string, b: string): number {
+  // Extract version numbers (remove 'v' prefix)
+  const parseVersion = (v: string): number[] => {
+    const match = v.match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+    if (!match) return [0, 0, 0];
+    return [
+      parseInt(match[1], 10) || 0,
+      parseInt(match[2], 10) || 0,
+      parseInt(match[3], 10) || 0,
+    ];
+  };
+
+  const [aMajor, aMinor, aPatch] = parseVersion(a);
+  const [bMajor, bMinor, bPatch] = parseVersion(b);
+
+  if (aMajor !== bMajor) return bMajor - aMajor; // Descending order
+  if (aMinor !== bMinor) return bMinor - aMinor;
+  return bPatch - aPatch;
+}
+
+/**
  * Find the directory containing npm/npx executables.
  * This is necessary because Electron apps launched from Finder/Spotlight
  * don't inherit the user's shell PATH modifications.
@@ -63,8 +89,9 @@ export function findNodeBinPath(): string | null {
         return path.dirname(firstResult);
       }
     }
-  } catch {
+  } catch (err) {
     // npx not in PATH, continue to check common paths
+    console.debug('[node-detector] npx not found in PATH, checking common paths');
   }
 
   // Check common installation paths
@@ -75,24 +102,30 @@ export function findNodeBinPath(): string | null {
     // Handle version managers (nvm, fnm) that have version subdirectories
     if (basePath.includes('nvm/versions/node') || basePath.includes('fnm/node-versions')) {
       try {
-        // Find the most recent Node version directory
-        const { readdirSync } = require('fs');
         if (existsSync(basePath)) {
+          // Sort versions properly using semantic versioning (v20 > v18 > v9)
           const versions = readdirSync(basePath)
             .filter((v: string) => v.startsWith('v'))
-            .sort()
-            .reverse();
+            .sort(compareVersions);
 
           for (const version of versions) {
-            const binPath = path.join(basePath, version, 'bin');
-            const npxPath = path.join(binPath, npxName);
-            if (existsSync(npxPath)) {
-              return binPath;
+            // Check both bin path structures (fnm may use 'installation/bin')
+            const binPaths = [
+              path.join(basePath, version, 'bin'),
+              path.join(basePath, version, 'installation', 'bin'),
+            ];
+
+            for (const binPath of binPaths) {
+              const npxPath = path.join(binPath, npxName);
+              if (existsSync(npxPath)) {
+                return binPath;
+              }
             }
           }
         }
-      } catch {
+      } catch (err) {
         // Directory doesn't exist or can't be read
+        console.debug('[node-detector] Failed to read version manager directory:', basePath, err);
         continue;
       }
     } else {
@@ -130,7 +163,8 @@ export function getEnhancedPath(): string {
   }
 
   // Prepend the Node bin path so it takes precedence
-  return `${nodeBinPath}${pathSep}${currentPath}`;
+  // Filter empty parts to avoid trailing separator
+  return [nodeBinPath, currentPath].filter(Boolean).join(pathSep);
 }
 
 /**
@@ -140,9 +174,10 @@ export function getEnhancedPath(): string {
  */
 export function isNodeAvailable(): boolean {
   const isWindows = process.platform === 'win32';
+  const npxCommand = isWindows ? 'npx.cmd --version' : 'npx --version';
 
   try {
-    execSync(isWindows ? 'npx --version' : 'npx --version', {
+    execSync(npxCommand, {
       stdio: 'pipe',
       timeout: 5000,
       windowsHide: true,
@@ -152,7 +187,8 @@ export function isNodeAvailable(): boolean {
       },
     });
     return true;
-  } catch {
+  } catch (err) {
+    console.debug('[node-detector] npx not available:', err);
     return false;
   }
 }

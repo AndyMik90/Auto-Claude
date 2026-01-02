@@ -22,6 +22,8 @@ import { findNodeBinPath, getEnhancedPath, isNodeAvailable } from '../../main/no
 describe('node-detector', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Suppress console.debug in tests
+    vi.spyOn(console, 'debug').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -53,12 +55,42 @@ describe('node-detector', () => {
         throw new Error('not found');
       });
       // existsSync returns true for /usr/local/bin/npx
-      vi.mocked(existsSync).mockImplementation((p: string) => {
-        return p.includes('/usr/local/bin/npx');
+      vi.mocked(existsSync).mockImplementation((p: unknown) => {
+        return String(p).includes('/usr/local/bin/npx');
       });
 
       const result = findNodeBinPath();
       expect(result).toBe('/usr/local/bin');
+    });
+
+    it('should sort nvm versions correctly (v20 > v18 > v9)', () => {
+      // which fails
+      vi.mocked(execSync).mockImplementation(() => {
+        throw new Error('not found');
+      });
+
+      // Mock nvm directory structure
+      const nvmPath = `${process.env.HOME}/.nvm/versions/node`;
+      vi.mocked(existsSync).mockImplementation((p: unknown) => {
+        const pathStr = String(p);
+        // nvm base path exists
+        if (pathStr === nvmPath) return true;
+        // Only v20 has npx
+        if (pathStr.includes('v20.10.0/bin/npx')) return true;
+        return false;
+      });
+
+      vi.mocked(readdirSync).mockImplementation(((p: unknown) => {
+        if (String(p) === nvmPath) {
+          // Return versions in wrong lexicographic order
+          return ['v9.0.0', 'v18.17.0', 'v20.10.0'];
+        }
+        return [];
+      }) as typeof readdirSync);
+
+      const result = findNodeBinPath();
+      // Should pick v20 first (highest version), not v9
+      expect(result).toContain('v20.10.0');
     });
   });
 
@@ -98,6 +130,16 @@ describe('node-detector', () => {
 
       const result = getEnhancedPath();
       expect(result).toBe('/usr/bin:/bin');
+    });
+
+    it('should handle empty PATH without trailing separator', () => {
+      process.env.PATH = '';
+      vi.mocked(execSync).mockReturnValueOnce('/usr/local/bin/npx\n');
+      vi.mocked(existsSync).mockReturnValueOnce(true);
+
+      const result = getEnhancedPath();
+      expect(result).toBe('/usr/local/bin');
+      expect(result.endsWith(':')).toBe(false);
     });
   });
 
