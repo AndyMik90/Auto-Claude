@@ -578,14 +578,14 @@ async def run_agent_session(
 
                 # Guard: No credentials found
                 if not creds:
-                    print("\n⚠️  Authentication failed - no credentials found.")
+                    print_status("Authentication failed - no credentials found", "error")
                     print("   Please run: claude setup-token")
                     print("   This creates a long-lived token (1 year) that avoids expiration issues.\n")
                     return "error", "No credentials found."
 
                 # Guard: No refresh token available
                 if not creds.get("refreshToken"):
-                    print("\n⚠️  Authentication failed - no refresh token available.")
+                    print_status("Authentication failed - no refresh token available", "error")
                     print("   Please run: claude setup-token")
                     print("   This creates a long-lived token (1 year) that avoids expiration issues.\n")
                     return "error", "No refresh token available."
@@ -595,7 +595,7 @@ async def run_agent_session(
 
                 # Guard: Refresh failed
                 if not new_creds or not new_creds.get("accessToken"):
-                    print("\n⚠️  Authentication failed - token refresh failed.")
+                    print_status("Authentication failed - token refresh failed", "error")
                     print("   Please run: claude setup-token")
                     print("   This creates a long-lived token (1 year) that avoids expiration issues.\n")
                     return "error", "Token refresh failed."
@@ -606,14 +606,14 @@ async def run_agent_session(
                 else:
                     logger.warning("Token refreshed but failed to save")
 
-                print("\n✓ OAuth token was expired and has been refreshed.")
+                print_status("OAuth token was expired and has been refreshed", "success")
                 print("   The current operation was interrupted mid-request.")
                 print("   Please retry your command to continue.\n")
                 return "retry", "Token refreshed. Please retry your command."
 
             except Exception as refresh_error:
                 logger.warning(f"Token refresh attempt failed: {refresh_error}")
-                print("\n⚠️  Authentication failed. Please run: claude setup-token\n")
+                print_status("Authentication failed. Please run: claude setup-token", "error")
                 return "error", f"Token refresh failed: {refresh_error}"
 
         debug_error(

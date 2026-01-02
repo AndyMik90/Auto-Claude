@@ -169,16 +169,33 @@ def get_full_credentials() -> dict | None:
     """
     Get full OAuth credentials including refresh token and expiry.
 
+    Priority:
+    1. ANTHROPIC_AUTH_TOKEN (enterprise/CCR) - no refresh, return as-is
+    2. System credential store - has refresh token for OAuth tokens
+    3. CLAUDE_CODE_OAUTH_TOKEN env var - fallback access token override
+
     Returns dict with accessToken, refreshToken, expiresAt or None.
     """
-    # Try environment variable first (no expiry info available)
-    for var in AUTH_TOKEN_ENV_VARS:
-        token = os.environ.get(var)
-        if token:
-            return {"accessToken": token, "refreshToken": None, "expiresAt": None}
+    # ANTHROPIC_AUTH_TOKEN is for enterprise/CCR and has top priority, no refresh
+    enterprise_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
+    if enterprise_token:
+        return {"accessToken": enterprise_token, "refreshToken": None, "expiresAt": None}
 
-    # Try system credential store
-    return _get_full_credentials_from_store()
+    # For OAuth, prefer store to get refresh token
+    creds = _get_full_credentials_from_store()
+
+    # CLAUDE_CODE_OAUTH_TOKEN can override access token (but keep refresh from store)
+    env_oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+    if env_oauth_token:
+        if creds:
+            # Use env token but keep refresh capability from store
+            creds["accessToken"] = env_oauth_token
+            return creds
+        else:
+            # No store creds, use env token without refresh
+            return {"accessToken": env_oauth_token, "refreshToken": None, "expiresAt": None}
+
+    return creds
 
 
 def _get_full_credentials_from_store() -> dict | None:
@@ -529,13 +546,7 @@ def get_auth_token(verbose: bool = False) -> str | None:
     Returns:
         Valid token string if found, None otherwise
     """
-    # First check environment variables (no refresh needed for these)
-    for var in AUTH_TOKEN_ENV_VARS:
-        token = os.environ.get(var)
-        if token:
-            return token
-
-    # Get full credentials from system store
+    # Get full credentials (handles env vars and store with proper priority)
     creds = get_full_credentials()
     if not creds or not creds.get("accessToken"):
         return None
@@ -562,10 +573,13 @@ def get_auth_token(verbose: bool = False) -> str | None:
                 return new_creds["accessToken"]
             else:
                 if verbose:
-                    print("⚠ Failed to refresh token")
+                    print("⚠ Failed to refresh token, trying original...")
 
-        logger.warning("Token expired and refresh failed or no refresh token available")
-        return None
+        # Graceful degradation: return original token as fallback
+        # It might still work briefly (clock skew, network latency)
+        # If it truly fails, session.py 401 handler will catch it
+        logger.warning("Token refresh failed, returning original token as fallback")
+        return creds["accessToken"]
 
     return creds["accessToken"]
 

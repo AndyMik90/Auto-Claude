@@ -215,9 +215,12 @@ class TestRefreshOAuthToken:
 class TestGetFullCredentials:
     """Tests for the get_full_credentials function."""
 
-    def test_env_var_oauth_token(self, monkeypatch):
-        """Environment variable token should be returned (no expiry info)."""
+    @patch("core.auth._get_full_credentials_from_store")
+    def test_env_var_oauth_token_no_store(self, mock_store, monkeypatch):
+        """CLAUDE_CODE_OAUTH_TOKEN without store creds returns no refresh info."""
+        monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "env-oauth-token")
+        mock_store.return_value = None  # No store credentials
 
         result = get_full_credentials()
 
@@ -226,8 +229,26 @@ class TestGetFullCredentials:
         assert result["refreshToken"] is None
         assert result["expiresAt"] is None
 
+    @patch("core.auth._get_full_credentials_from_store")
+    def test_env_var_oauth_token_with_store(self, mock_store, monkeypatch):
+        """CLAUDE_CODE_OAUTH_TOKEN with store creds merges refresh info."""
+        monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "env-oauth-token")
+        mock_store.return_value = {
+            "accessToken": "store-token",
+            "refreshToken": "store-refresh",
+            "expiresAt": 1234567890000,
+        }
+
+        result = get_full_credentials()
+
+        assert result is not None
+        assert result["accessToken"] == "env-oauth-token"  # Uses env token
+        assert result["refreshToken"] == "store-refresh"  # Keeps store refresh
+        assert result["expiresAt"] == 1234567890000  # Keeps store expiry
+
     def test_env_var_anthropic_auth(self, monkeypatch):
-        """ANTHROPIC_AUTH_TOKEN should be returned."""
+        """ANTHROPIC_AUTH_TOKEN has priority and no refresh."""
         # Clear other env vars
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
         monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "anthropic-auth-token")
@@ -236,10 +257,11 @@ class TestGetFullCredentials:
 
         assert result is not None
         assert result["accessToken"] == "anthropic-auth-token"
+        assert result["refreshToken"] is None  # Enterprise tokens don't refresh
 
     @patch("core.auth._get_full_credentials_from_store")
     def test_fallback_to_store(self, mock_store, monkeypatch):
-        """Should fall back to credential store if no env vars."""
+        """Should use credential store if no env vars set."""
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
         monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
 
@@ -255,6 +277,114 @@ class TestGetFullCredentials:
         assert result["accessToken"] == "store-token"
         assert result["refreshToken"] == "store-refresh"
         mock_store.assert_called_once()
+
+
+# =============================================================================
+# get_auth_token() Integration Tests
+# =============================================================================
+
+
+class TestGetAuthTokenWithRefresh:
+    """Tests for get_auth_token() with automatic refresh."""
+
+    @patch("core.auth.get_full_credentials")
+    @patch("core.auth.is_token_expired")
+    def test_token_not_expired_returns_as_is(self, mock_expired, mock_creds, monkeypatch):
+        """Non-expired token should be returned without refresh attempt."""
+        mock_creds.return_value = {
+            "accessToken": "sk-ant-oat01-valid-token",
+            "refreshToken": "sk-ant-ort01-refresh",
+            "expiresAt": int((time.time() + 3600) * 1000),
+        }
+        mock_expired.return_value = False
+
+        from core.auth import get_auth_token
+
+        result = get_auth_token()
+
+        assert result == "sk-ant-oat01-valid-token"
+
+    @patch("core.auth.save_credentials")
+    @patch("core.auth.refresh_oauth_token")
+    @patch("core.auth.get_full_credentials")
+    @patch("core.auth.is_token_expired")
+    def test_expired_token_refresh_success(
+        self, mock_expired, mock_creds, mock_refresh, mock_save, monkeypatch
+    ):
+        """Expired token with successful refresh returns new token."""
+        mock_creds.return_value = {
+            "accessToken": "sk-ant-oat01-old-token",
+            "refreshToken": "sk-ant-ort01-refresh",
+            "expiresAt": int((time.time() - 3600) * 1000),
+        }
+        mock_expired.return_value = True
+        mock_refresh.return_value = {
+            "accessToken": "sk-ant-oat01-new-token",
+            "refreshToken": "sk-ant-ort01-new-refresh",
+            "expiresAt": int((time.time() + 28800) * 1000),
+        }
+        mock_save.return_value = True
+
+        from core.auth import get_auth_token
+
+        result = get_auth_token()
+
+        assert result == "sk-ant-oat01-new-token"
+        mock_refresh.assert_called_once_with("sk-ant-ort01-refresh")
+        mock_save.assert_called_once()
+
+    @patch("core.auth.refresh_oauth_token")
+    @patch("core.auth.get_full_credentials")
+    @patch("core.auth.is_token_expired")
+    def test_expired_token_refresh_fails_returns_original(
+        self, mock_expired, mock_creds, mock_refresh, monkeypatch
+    ):
+        """Expired token with failed refresh returns original (graceful degradation)."""
+        mock_creds.return_value = {
+            "accessToken": "sk-ant-oat01-original-token",
+            "refreshToken": "sk-ant-ort01-refresh",
+            "expiresAt": int((time.time() - 3600) * 1000),
+        }
+        mock_expired.return_value = True
+        mock_refresh.return_value = None  # Refresh failed
+
+        from core.auth import get_auth_token
+
+        result = get_auth_token()
+
+        # Should return original token as fallback
+        assert result == "sk-ant-oat01-original-token"
+
+    @patch("core.auth.get_full_credentials")
+    @patch("core.auth.is_token_expired")
+    def test_expired_token_no_refresh_token_returns_original(
+        self, mock_expired, mock_creds, monkeypatch
+    ):
+        """Expired token without refresh token returns original (graceful degradation)."""
+        mock_creds.return_value = {
+            "accessToken": "sk-ant-oat01-original-token",
+            "refreshToken": None,  # No refresh token
+            "expiresAt": int((time.time() - 3600) * 1000),
+        }
+        mock_expired.return_value = True
+
+        from core.auth import get_auth_token
+
+        result = get_auth_token()
+
+        # Should return original token as fallback
+        assert result == "sk-ant-oat01-original-token"
+
+    @patch("core.auth.get_full_credentials")
+    def test_no_credentials_returns_none(self, mock_creds, monkeypatch):
+        """No credentials should return None."""
+        mock_creds.return_value = None
+
+        from core.auth import get_auth_token
+
+        result = get_auth_token()
+
+        assert result is None
 
 
 # =============================================================================
@@ -388,10 +518,10 @@ class TestLinuxCredentialIntegration:
 
         from core.auth import _save_credentials_linux, _get_full_credentials_linux
 
-        # Save credentials
+        # Save credentials (use valid token format for read validation)
         creds = {
-            "accessToken": "test-access",
-            "refreshToken": "test-refresh",
+            "accessToken": "sk-ant-oat01-test-access-token",
+            "refreshToken": "sk-ant-ort01-test-refresh-token",
             "expiresAt": int((time.time() + 3600) * 1000),
         }
         result = _save_credentials_linux(creds)
@@ -409,8 +539,8 @@ class TestLinuxCredentialIntegration:
         # Read back
         read_creds = _get_full_credentials_linux()
         assert read_creds is not None
-        assert read_creds["accessToken"] == "test-access"
-        assert read_creds["refreshToken"] == "test-refresh"
+        assert read_creds["accessToken"] == "sk-ant-oat01-test-access-token"
+        assert read_creds["refreshToken"] == "sk-ant-ort01-test-refresh-token"
 
     def test_save_preserves_other_data(self, temp_dir, monkeypatch):
         """Saving credentials should preserve other data in the file."""
@@ -436,10 +566,10 @@ class TestLinuxCredentialIntegration:
 
         from core.auth import _save_credentials_linux
 
-        # Save new credentials
+        # Save new credentials (use valid token format for consistency)
         new_creds = {
-            "accessToken": "new-token",
-            "refreshToken": "new-refresh",
+            "accessToken": "sk-ant-oat01-new-token",
+            "refreshToken": "sk-ant-ort01-new-refresh",
             "expiresAt": 2000,
         }
         _save_credentials_linux(new_creds)
@@ -449,7 +579,7 @@ class TestLinuxCredentialIntegration:
             saved_data = json.load(f)
 
         assert saved_data["otherKey"] == "otherValue"  # Preserved
-        assert saved_data["claudeAiOauth"]["accessToken"] == "new-token"  # Updated
+        assert saved_data["claudeAiOauth"]["accessToken"] == "sk-ant-oat01-new-token"  # Updated
 
 
 # =============================================================================
