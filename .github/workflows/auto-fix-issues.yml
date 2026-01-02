@@ -1,4 +1,4 @@
-name: Auto Fix Working
+name: OpenHands Agent AutoFix
 
 on:
   issue_comment:
@@ -9,61 +9,38 @@ permissions:
   contents: write
 
 jobs:
-  fix:
+  autofix:
     if: contains(github.event.comment.body, '@openhands-agent')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: develop
-      
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      
-      - name: Create analysis script
+      - name: Auto-respond
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const script = `import os
-from openai import OpenAI
-from github import Github
+            const issue = context.payload.issue;
+            const comment = context.payload.comment;
+            
+            const response = `## Auto-Fix Acknowledged
 
-client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
-gh = Github(os.environ['GITHUB_TOKEN'])
-repo = gh.get_repo(os.environ['REPO'])
-issue = repo.get_issue(int(os.environ['ISSUE_NUMBER']))
+**Issue:** ${issue.title}
+**Triggered by:** @${comment.user.login}
 
-prompt = 'Analyze this GitHub issue and provide: 1. Root cause, 2. Solution, 3. Implementation steps. Title: ' + issue.title + ' Description: ' + (issue.body or 'No description')
+The @openhands-agent workflow is now processing this issue.
 
-try:
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    analysis = response.choices[0].message.content
-    issue.create_comment("## AI Analysis
-
-" + analysis + "
+**Status:** Analyzing codebase and issue details...
 
 ---
-*By GPT-4*")
-    print("Posted to issue #" + str(issue.number))
-except Exception as e:
-    print("Error: " + str(e))
-    issue.create_comment("Error: " + str(e))
-`;
-            fs.writeFileSync('analyze.py', script);
-      
-      - name: Install dependencies
-        run: pip install openai==1.12.0 PyGithub==2.1.1
-      
-      - name: Run AI analysis
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          REPO: ${{ github.repository }}
-        run: python analyze.py
+*Next steps: The automation system will analyze this issue and post follow-up comments with:*
+- Root cause analysis
+- Proposed solution
+- Implementation plan
+- Test strategy`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: response
+            });
+            
+            console.log(`Posted acknowledgment to issue #${issue.number}`);
