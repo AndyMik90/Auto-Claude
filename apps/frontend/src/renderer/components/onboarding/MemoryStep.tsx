@@ -41,6 +41,7 @@ const EMBEDDING_PROVIDERS: Array<{
   { id: 'voyage', name: 'Voyage AI', description: 'voyage-3 (high quality)', requiresApiKey: true },
   { id: 'google', name: 'Google AI', description: 'text-embedding-004', requiresApiKey: true },
   { id: 'azure_openai', name: 'Azure OpenAI', description: 'Enterprise deployment', requiresApiKey: true },
+  { id: 'openrouter', name: 'OpenRouter', description: 'Multi-provider API', requiresApiKey: true },
 ];
 
 interface MemoryConfig {
@@ -104,12 +105,14 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
         ]);
 
         // Set Kuzu availability
-        setKuzuAvailable(infraResult?.success && infraResult?.data?.memory?.kuzuInstalled ? true : false);
+        setKuzuAvailable(!!(infraResult?.success && infraResult?.data?.memory?.kuzuInstalled));
 
         // Update config with detected embedding provider from .env
         if (envConfigResult?.success && envConfigResult?.data) {
           const detectedProvider = envConfigResult.data.embeddingProvider;
-          if (detectedProvider) {
+          // Validate that the detected provider is supported
+          const isValidProvider = EMBEDDING_PROVIDERS.some(p => p.id === detectedProvider);
+          if (detectedProvider && isValidProvider) {
             setConfig(prev => ({
               ...prev,
               embeddingProvider: detectedProvider

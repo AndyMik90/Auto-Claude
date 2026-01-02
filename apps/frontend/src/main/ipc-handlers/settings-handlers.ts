@@ -503,22 +503,13 @@ export function registerSettingsHandlers(
   const mapEmbeddingProvider = (envValue: string | undefined): BackendEmbeddingProvider => {
     if (!envValue) return 'openai';
 
-    const normalized = envValue.toLowerCase().trim();
-    switch (normalized) {
-      case 'openai':
-        return 'openai';
-      case 'voyage':
-        return 'voyage';
-      case 'google':
-        return 'google';
-      case 'azure_openai':
-        return 'azure_openai';
-      case 'ollama':
-        return 'ollama';
-      default:
-        // Fall back to openai for unknown providers
-        return 'openai';
-    }
+    const normalized = envValue.toLowerCase().trim() as BackendEmbeddingProvider;
+
+    // Valid providers that match GraphitiEmbeddingProvider
+    const validProviders: BackendEmbeddingProvider[] = ['openai', 'voyage', 'google', 'azure_openai', 'ollama', 'openrouter'];
+
+    // Return the provider if valid, otherwise default to openai
+    return validProviders.includes(normalized) ? normalized : 'openai';
   };
 
   ipcMain.handle(
@@ -564,6 +555,7 @@ export function registerSettingsHandlers(
           }
         };
       } catch (error) {
+        console.error('[Settings] Failed to get backend env embedding config:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get backend env config'
