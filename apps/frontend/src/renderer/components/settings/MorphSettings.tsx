@@ -20,11 +20,11 @@ import { Button } from '../ui/button';
 import { SettingsSection } from './SettingsSection';
 import type { AppSettings } from '../../../shared/types';
 
-// Morph model options
+// Morph model options - labels/descriptions use i18n keys
 const MORPH_MODELS = [
-  { value: 'auto', label: 'Auto (Recommended)', description: 'Automatically selects the best model' },
-  { value: 'morph-v3-fast', label: 'Morph v3 Fast', description: 'Fastest model, optimized for speed' },
-  { value: 'morph-v3-large', label: 'Morph v3 Large', description: 'Most accurate model, better for complex edits' },
+  { value: 'auto', labelKey: 'morph.models.auto.label', descriptionKey: 'morph.models.auto.description' },
+  { value: 'morph-v3-fast', labelKey: 'morph.models.fast.label', descriptionKey: 'morph.models.fast.description' },
+  { value: 'morph-v3-large', labelKey: 'morph.models.large.label', descriptionKey: 'morph.models.large.description' },
 ] as const;
 
 interface MorphSettingsProps {
@@ -294,16 +294,14 @@ export function MorphSettings({ settings, onSettingsChange }: MorphSettingsProps
                 >
                   {MORPH_MODELS.map((model) => (
                     <option key={model.value} value={model.value}>
-                      {t(`morph.models.${model.value}.label`, { defaultValue: model.label })}
+                      {t(model.labelKey)}
                     </option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               </div>
               <p className="text-xs text-muted-foreground italic">
-                {t(`morph.models.${settings.morphModel || 'auto'}.description`, {
-                  defaultValue: MORPH_MODELS.find(m => m.value === (settings.morphModel || 'auto'))?.description
-                })}
+                {t(MORPH_MODELS.find(m => m.value === (settings.morphModel || 'auto'))?.descriptionKey || 'morph.models.auto.description')}
               </p>
             </div>
 
