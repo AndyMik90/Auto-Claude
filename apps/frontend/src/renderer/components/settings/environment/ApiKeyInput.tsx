@@ -52,11 +52,6 @@ export function ApiKeyInput({
   const hasValue = value && value.length > 0;
   const inputType = isSecret && !showValue ? 'password' : 'text';
 
-  // Mask value for display
-  const displayValue = isSecret && hasValue && !showValue
-    ? '•'.repeat(Math.min(value.length, 32))
-    : value;
-
   return (
     <div className={cn('space-y-2', className)}>
       <div className="flex items-center justify-between">

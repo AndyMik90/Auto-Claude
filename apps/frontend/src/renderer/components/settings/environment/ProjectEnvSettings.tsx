@@ -31,15 +31,6 @@ export function ProjectEnvSettings({
   onUseGlobal,
   disabled = false
 }: ProjectEnvSettingsProps) {
-  // Get effective API key value (project or global fallback)
-  const getEffectiveValue = (projectValue: string | undefined, globalKey: keyof GlobalEnvConfig): string => {
-    if (projectValue) return projectValue;
-    if (globalConfig && globalConfig[globalKey]) {
-      return globalConfig[globalKey] as string;
-    }
-    return '';
-  };
-
   // Check if a field is overriding global
   const isOverriding = (key: string): boolean => {
     return sources[key] === 'project';

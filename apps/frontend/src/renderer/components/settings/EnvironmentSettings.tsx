@@ -34,10 +34,8 @@ export function EnvironmentSettings({
 }: EnvironmentSettingsProps) {
   const [activeTab, setActiveTab] = useState<'global' | 'project'>('global');
 
-  // Get selected project
+  // Get selected project ID
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
-  const projects = useProjectStore((state) => state.projects);
-  const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   // Get global config from settings
   const globalConfig: GlobalEnvConfig = settings.globalEnv || {
