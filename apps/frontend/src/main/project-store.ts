@@ -307,6 +307,142 @@ export class ProjectStore {
   }
 
   /**
+   * Get a single task by specId (optimized for surgical updates)
+   * Only loads the specific spec folder instead of scanning all tasks
+   */
+  getTask(projectId: string, specId: string): Task | null {
+    const project = this.getProject(projectId);
+    if (!project) {
+      return null;
+    }
+
+    const specsBaseDir = getSpecsDir(project.autoBuildPath);
+    const specsDir = path.join(project.path, specsBaseDir);
+    const specPath = path.join(specsDir, specId);
+
+    // Check if spec folder exists
+    if (!existsSync(specPath)) {
+      return null;
+    }
+
+    // Load just this specific spec folder
+    return this.loadTaskFromSpecFolder(specPath, specId, project.path, projectId, specsBaseDir);
+  }
+
+  /**
+   * Load a single task from a specific spec folder
+   */
+  private loadTaskFromSpecFolder(
+    specPath: string,
+    specId: string,
+    basePath: string,
+    projectId: string,
+    specsBaseDir: string
+  ): Task | null {
+    try {
+      const planPath = path.join(specPath, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+      const specFilePath = path.join(specPath, AUTO_BUILD_PATHS.SPEC_FILE);
+
+      // Try to read implementation plan
+      let plan: ImplementationPlan | null = null;
+      if (existsSync(planPath)) {
+        try {
+          const content = readFileSync(planPath, 'utf-8');
+          plan = JSON.parse(content);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      // Try to read spec file for description
+      let description = '';
+      if (existsSync(specFilePath)) {
+        try {
+          const content = readFileSync(specFilePath, 'utf-8');
+          const overviewMatch = content.match(/## Overview\s*\n+([\s\S]*?)(?=\n#{1,6}\s|$)/);
+          if (overviewMatch) {
+            description = overviewMatch[1].trim();
+          }
+        } catch {
+          // Ignore read errors
+        }
+      }
+
+      // Fallback: read description from implementation_plan.json
+      if (!description && plan?.description) {
+        description = plan.description;
+      }
+
+      // Try to read task metadata
+      const metadataPath = path.join(specPath, 'task_metadata.json');
+      let metadata: TaskMetadata | undefined;
+      if (existsSync(metadataPath)) {
+        try {
+          const content = readFileSync(metadataPath, 'utf-8');
+          metadata = JSON.parse(content);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      // Determine task status and review reason
+      const { status, reviewReason } = this.determineTaskStatusAndReason(plan, specPath, metadata);
+
+      // Extract subtasks from plan
+      const subtasks = plan?.phases?.flatMap((phase) => {
+        const items = phase.subtasks || (phase as { chunks?: PlanSubtask[] }).chunks || [];
+        return items.map((subtask) => ({
+          id: subtask.id,
+          title: subtask.description,
+          description: subtask.description,
+          status: subtask.status,
+          files: []
+        }));
+      }) || [];
+
+      // Extract staged status
+      const planWithStaged = plan as unknown as { stagedInMainProject?: boolean; stagedAt?: string } | null;
+
+      // Determine title
+      let title = plan?.feature || plan?.title || specId;
+      const looksLikeSpecId = /^\d{3}-/.test(title);
+      if (looksLikeSpecId && existsSync(specFilePath)) {
+        try {
+          const specContent = readFileSync(specFilePath, 'utf-8');
+          const titleMatch = specContent.match(/^#\s+(?:Quick Spec:|Specification:)?\s*(.+)$/m);
+          if (titleMatch && titleMatch[1]) {
+            title = titleMatch[1].trim();
+          }
+        } catch {
+          // Keep the original title on error
+        }
+      }
+
+      return {
+        id: specId,
+        specId,
+        projectId,
+        title,
+        description,
+        status,
+        reviewReason,
+        subtasks,
+        logs: [],
+        metadata,
+        stagedInMainProject: planWithStaged?.stagedInMainProject,
+        stagedAt: planWithStaged?.stagedAt,
+        location: 'main',
+        specsPath: specPath,
+        createdAt: new Date(plan?.created_at || Date.now()),
+        updatedAt: new Date(plan?.updated_at || Date.now())
+      };
+    } catch (error) {
+      console.error(`[ProjectStore] Error loading spec ${specId}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Load tasks from a specs directory (helper method for main project and worktrees)
    */
   private loadTasksFromSpecsDir(
