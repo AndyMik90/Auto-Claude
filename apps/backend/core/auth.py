@@ -238,7 +238,8 @@ def _get_full_credentials_macos() -> dict | None:
                 "expiresAt": oauth.get("expiresAt"),
             }
         return None
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to get credentials from macOS Keychain: {e}")
         return None
 
 
@@ -285,7 +286,7 @@ def is_token_expired(credentials: dict) -> bool:
         True if token is expired or expiring soon
     """
     expires_at = credentials.get("expiresAt")
-    if not expires_at:
+    if not expires_at or expires_at == 0:
         return False  # Can't determine, assume valid
 
     # expiresAt is in milliseconds
@@ -482,7 +483,7 @@ def _save_credentials_macos(credentials: dict) -> bool:
 # =============================================================================
 
 
-def get_auth_token() -> str | None:
+def get_auth_token(verbose: bool = False) -> str | None:
     """
     Get valid authentication token, refreshing if necessary.
 
@@ -496,6 +497,9 @@ def get_auth_token() -> str | None:
 
     NOTE: ANTHROPIC_API_KEY is intentionally NOT supported to prevent
     silent billing to user's API credits when OAuth is misconfigured.
+
+    Args:
+        verbose: If True, print user-facing messages during refresh
 
     Returns:
         Valid token string if found, None otherwise
@@ -516,13 +520,24 @@ def get_auth_token() -> str | None:
         refresh_token = creds.get("refreshToken")
         if refresh_token:
             logger.info("Access token expired, attempting refresh...")
+            if verbose:
+                print("🔄 OAuth token expiring soon, refreshing...")
             new_creds = refresh_oauth_token(refresh_token)
             if new_creds and new_creds.get("accessToken"):
                 if save_credentials(new_creds):
                     logger.info("Token refreshed successfully")
+                    if verbose:
+                        print("✓ Token refreshed successfully")
                 else:
                     logger.warning("Token refreshed but failed to save to credential store")
+                    if verbose:
+                        print("⚠ Token refreshed but couldn't save to credential store")
+                # Update env var so subsequent calls use the new token
+                os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = new_creds["accessToken"]
                 return new_creds["accessToken"]
+            else:
+                if verbose:
+                    print("⚠ Failed to refresh token")
 
         logger.warning("Token expired and refresh failed or no refresh token available")
         return None
@@ -550,14 +565,17 @@ def get_auth_token_source() -> str | None:
     return None
 
 
-def require_auth_token() -> str:
+def require_auth_token(verbose: bool = False) -> str:
     """
     Get authentication token or raise ValueError.
+
+    Args:
+        verbose: If True, print user-facing messages during refresh
 
     Raises:
         ValueError: If no auth token is found in any supported source
     """
-    token = get_auth_token()
+    token = get_auth_token(verbose=verbose)
     if not token:
         error_msg = (
             "No OAuth token found.\n\n"

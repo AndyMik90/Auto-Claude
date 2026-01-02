@@ -481,36 +481,9 @@ def create_client(
        (see security.py for ALLOWED_COMMANDS)
     4. Tool filtering - Each agent type only sees relevant tools (prevents misuse)
     """
-    # Proactively check and refresh token if needed (before it expires)
-    # This prevents 401 errors during long-running agent sessions
-    from core.auth import (
-        get_full_credentials,
-        is_token_expired,
-        refresh_oauth_token,
-        save_credentials,
-    )
-
-    creds = get_full_credentials()
-    if creds and is_token_expired(creds):
-        refresh_token = creds.get("refreshToken")
-        if refresh_token:
-            logger.info("Token expiring soon, proactively refreshing...")
-            print("🔄 OAuth token expiring soon, refreshing...")
-            new_creds = refresh_oauth_token(refresh_token)
-            if new_creds and new_creds.get("accessToken"):
-                if save_credentials(new_creds):
-                    # Update environment so require_auth_token picks it up
-                    os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = new_creds["accessToken"]
-                    logger.info("Token refreshed successfully")
-                    print("✓ Token refreshed successfully")
-                else:
-                    # Still use the new token even if save failed
-                    os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = new_creds["accessToken"]
-                    logger.warning("Token refreshed but failed to save to credential store")
-            else:
-                logger.warning("Failed to refresh expiring token")
-
-    oauth_token = require_auth_token()
+    # Get auth token with verbose output for user feedback during refresh
+    # Token refresh logic is centralized in get_auth_token() to avoid duplication
+    oauth_token = require_auth_token(verbose=True)
     # Ensure SDK can access it via its expected env var
     os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
 

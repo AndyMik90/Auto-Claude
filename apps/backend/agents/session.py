@@ -43,6 +43,13 @@ from .utils import (
     sync_plan_to_source,
 )
 
+# Auth imports for 401 error handling and token refresh
+from core.auth import (
+    get_full_credentials,
+    refresh_oauth_token,
+    save_credentials,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -551,14 +558,8 @@ async def run_agent_session(
             )
             logger.info("Authentication error detected, attempting token refresh...")
 
-            # Try to refresh the token
+            # Try to refresh the token (imports are at top of file)
             try:
-                from core.auth import (
-                    get_full_credentials,
-                    refresh_oauth_token,
-                    save_credentials,
-                )
-
                 creds = get_full_credentials()
                 if creds and creds.get("refreshToken"):
                     new_creds = refresh_oauth_token(creds["refreshToken"])
@@ -569,16 +570,19 @@ async def run_agent_session(
                                 "\n⚠️  OAuth token was expired and has been refreshed."
                             )
                             print("   Please retry your command.\n")
+                            return "error", "Token refreshed. Please retry your command."
                         else:
                             logger.warning("Token refreshed but failed to save")
                             print("\n⚠️  Token refreshed but couldn't save to store.")
                             print("   Please retry your command.\n")
+                            return "error", "Token refreshed. Please retry your command."
                     else:
                         print("\n⚠️  Authentication failed - token refresh failed.")
                         print("   Please run: claude setup-token")
                         print(
                             "   This creates a long-lived token (1 year) that avoids expiration issues.\n"
                         )
+                        return "error", "Token refresh failed."
                 else:
                     if not creds:
                         print("\n⚠️  Authentication failed - no credentials found.")
@@ -588,9 +592,11 @@ async def run_agent_session(
                     print(
                         "   This creates a long-lived token (1 year) that avoids expiration issues.\n"
                     )
+                    return "error", "No refresh token available."
             except Exception as refresh_error:
                 logger.warning(f"Token refresh attempt failed: {refresh_error}")
                 print("\n⚠️  Authentication failed. Please run: claude setup-token\n")
+                return "error", f"Token refresh failed: {refresh_error}"
 
         debug_error(
             "session",
