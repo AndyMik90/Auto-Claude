@@ -16,6 +16,9 @@ except ImportError:
 from core.timeout import query_with_timeout, receive_with_timeout
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 class ClaudeAnalysisClient:
     """Wrapper for Claude SDK client with analysis-specific configuration."""
 

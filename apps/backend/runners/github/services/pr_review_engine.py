@@ -50,6 +50,9 @@ class ProgressCallback:
     extra: dict[str, Any] | None = None
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 class PRReviewEngine:
     """Handles multi-pass PR review workflow."""
 

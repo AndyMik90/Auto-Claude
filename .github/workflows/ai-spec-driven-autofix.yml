@@ -1,0 +1,183 @@
+name: Spec-Driven Auto Fix
+
+# Triggers when 'auto-fix' label is added OR via manual dispatch
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to fix'
+        required: true
+        type: string
+
+permissions:
+  issues: write
+  contents: read
+  pull-requests: write
+
+# Cancel in-progress runs for the same issue
+concurrency:
+  group: spec-autofix-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  cancel-in-progress: true
+
+jobs:
+  generate-spec-and-fix:
+    # Only run when 'auto-fix' label is added OR manual dispatch
+    if: github.event.label.name == 'auto-fix' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate spec and trigger OpenHands
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN || github.token }}
+          script: |
+            const fs = require('fs');
+            const issueNumber = context.payload.issue?.number || parseInt('${{ github.event.inputs.issue_number }}');
+
+            // Get issue details
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            // Get all comments to check for CodeRabbit plan
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            // Find CodeRabbit plan comment
+            const codeRabbitComment = comments.find(c => 
+              c.user?.login?.toLowerCase().includes('coderabbit') &&
+              (c.body?.includes('Implementation Plan') || c.body?.includes('## Plan'))
+            );
+
+            let codeRabbitPlan = '';
+            if (codeRabbitComment) {
+              codeRabbitPlan = `\n\n## CodeRabbit Implementation Plan\n${codeRabbitComment.body}`;
+            }
+
+            // Read constitution/CLAUDE.md if exists
+            let constitution = '';
+            try {
+              constitution = fs.readFileSync('CLAUDE.md', 'utf8');
+            } catch (e) {
+              try {
+                constitution = fs.readFileSync('.spec-kit/constitution.md', 'utf8');
+              } catch (e2) {
+                console.log('No constitution file found');
+              }
+            }
+
+            // Generate specification
+            const spec = [
+              '# Specification for Issue #' + issueNumber,
+              '',
+              '## Project Constitution',
+              constitution ? constitution.substring(0, 2000) + '...' : 'See CLAUDE.md in repository root',
+              '',
+              '## Issue Details',
+              '**Title**: ' + issue.title,
+              '**Labels**: ' + issue.labels.map(l => l.name).join(', '),
+              '',
+              '**Description**:',
+              issue.body || 'No description provided',
+              codeRabbitPlan,
+              '',
+              '## Implementation Instructions',
+              '',
+              'Based on the issue above, please:',
+              '',
+              '1. **Analyze** the codebase to understand the current implementation',
+              '2. **Identify** the root cause of the issue',
+              '3. **Plan** a minimal fix that addresses the problem',
+              '4. **Implement** the fix following project conventions',
+              '5. **Test** the fix with appropriate test cases',
+              '6. **Document** any non-obvious changes',
+              '',
+              '### Requirements',
+              '- Make minimal changes to fix the issue',
+              '- Follow existing code style and patterns',
+              '- Include tests that verify the fix works',
+              '- Do not introduce breaking changes unless explicitly required',
+              '- Handle edge cases appropriately',
+              '',
+              '### Acceptance Criteria',
+              '- The issue described above is resolved',
+              '- All existing tests continue to pass',
+              '- New tests cover the fix',
+              '- Code follows project conventions'
+            ].join('\n');
+
+            // Post specification comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: [
+                '## 🤖 Spec-Driven Development Plan',
+                '',
+                'Generated specification for the AI agent:',
+                '',
+                '<details>',
+                '<summary>View Generated Specification</summary>',
+                '',
+                '```markdown',
+                spec,
+                '```',
+                '',
+                '</details>',
+                '',
+                '---',
+                '',
+                '🚀 Triggering @openhands-agent to implement this fix...'
+              ].join('\n')
+            });
+
+            // Trigger OpenHands with detailed instructions
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: [
+                '@openhands-agent Please implement the fix for this issue following the specification above.',
+                '',
+                '**Key Requirements:**',
+                '1. Read the issue description and specification carefully',
+                '2. Analyze the codebase to understand current implementation',
+                '3. Implement a minimal fix that resolves the issue',
+                '4. Add tests to verify the fix',
+                '5. Create a PR with your changes',
+                '',
+                codeRabbitPlan ? '**Note:** CodeRabbit has already provided an implementation plan above. Follow it as guidance.' : ''
+              ].join('\n')
+            });
+
+            // Update labels: remove 'auto-fix', add 'ai-in-progress'
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'auto-fix'
+              });
+            } catch (e) {
+              console.log('Could not remove auto-fix label:', e.message);
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['ai-in-progress']
+            });
+
+            console.log(`✅ Spec-driven fix triggered for issue #${issueNumber}`);

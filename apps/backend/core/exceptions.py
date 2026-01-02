@@ -30,7 +30,7 @@ class AgentError(AutoClaudeError):
 
 
 class AgentTimeoutError(AgentError):
-    """LLM API call timeout errors."""
+    """Agent LLM API call timeout errors."""
     pass
 
 

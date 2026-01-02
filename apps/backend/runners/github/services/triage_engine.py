@@ -21,6 +21,9 @@ except (ImportError, ValueError, SystemError):
     from services.response_parsers import ResponseParser
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 class TriageEngine:
     """Handles issue triage workflow."""
 

@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { ipcRenderer, type IpcRendererEvent } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type {
   Project,
@@ -256,7 +256,13 @@ export const createProjectAPI = (): ProjectAPI => ({
     total: number;
     percentage: number;
   }) => void) => {
-    const listener = (_: any, data: any) => callback(data);
+    const listener = (_event: IpcRendererEvent, data: {
+      modelName: string;
+      status: string;
+      completed: number;
+      total: number;
+      percentage: number;
+    }) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.OLLAMA_PULL_PROGRESS, listener);
     return () => ipcRenderer.off(IPC_CHANNELS.OLLAMA_PULL_PROGRESS, listener);
   },

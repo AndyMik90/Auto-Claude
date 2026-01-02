@@ -4,6 +4,7 @@ import { accessSync, readFileSync, writeFileSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { setupIpcHandlers } from './ipc-setup';
 import { AgentManager } from './agent';
+import { AgentProcessManager } from './agent/agent-process';
 import { TerminalManager } from './terminal-manager';
 import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
@@ -16,6 +17,23 @@ import type { AppSettings } from '../shared/types';
 
 // Setup error logging early (captures uncaught exceptions)
 setupErrorLogging();
+
+// Suppress known DevTools protocol errors that don't affect functionality
+// See: https://github.com/joelfuller2016/Auto-Claude/issues/92
+const originalConsoleError = console.error;
+console.error = (...args: any[]) => {
+  const message = args.join(' ');
+
+  // Ignore Autofill.enable DevTools protocol errors (Electron limitation)
+  // These errors are harmless - DevTools tries to enable unavailable protocol domains
+  if (message.includes('Autofill.enable') ||
+      message.includes("wasn't found") && message.includes('devtools://devtools')) {
+    return; // Suppress this specific error
+  }
+
+  // Pass through all other errors unchanged
+  originalConsoleError.apply(console, args);
+};
 
 /**
  * Load app settings synchronously (for use during startup).
@@ -66,11 +84,14 @@ function createWindow(): void {
     trafficLightPosition: { x: 15, y: 10 },
     icon: getIconPath(),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
+      preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false // Prevent terminal lag when window loses focus
+      backgroundThrottling: false, // Prevent terminal lag when window loses focus
+      // Note: DevTools may show Autofill protocol errors on startup (see issue #92)
+      // These are harmless - Chromium DevTools tries to enable features not available in Electron
+      // They do not affect functionality and are considered expected behavior by the Electron team
     }
   });
 
@@ -136,6 +157,9 @@ app.whenReady().then(() => {
 
   // Initialize agent manager
   agentManager = new AgentManager();
+  
+  // Set main window getter for log streaming
+  AgentProcessManager.setMainWindowGetter(() => mainWindow);
 
   // Load settings and configure agent manager with Python and auto-claude paths
   // Uses EAFP pattern (try/catch) instead of LBYL (existsSync) to avoid TOCTOU race conditions

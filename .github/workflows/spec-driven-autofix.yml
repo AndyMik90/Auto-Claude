@@ -1,0 +1,145 @@
+name: Spec-Driven Auto Fix
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to fix'
+        required: true
+        type: string
+
+permissions:
+  issues: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  generate-spec-and-fix:
+    if: github.event.label.name == 'auto-fix' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate spec and trigger OpenHands
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issueNumber = context.payload.issue?.number || parseInt('${{ github.event.inputs.issue_number }}');
+
+            // Get issue details
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            // Read constitution if exists
+            let constitution = 'No constitution defined';
+            try {
+              constitution = fs.readFileSync('.spec-kit/constitution.md', 'utf8');
+            } catch (e) {
+              console.log('No constitution file found');
+            }
+
+            // Generate specification
+            const spec = [
+              '# Specification for Issue #' + issueNumber,
+              '',
+              '## Project Constitution',
+              constitution,
+              '',
+              '## Issue Details',
+              '**Title**: ' + issue.title,
+              '**Labels**: ' + issue.labels.map(l => l.name).join(', '),
+              '',
+              '**Description**:',
+              issue.body || 'No description provided',
+              '',
+              '## Implementation Instructions',
+              '',
+              'Based on the issue above, please:',
+              '',
+              '1. **Analyze** the codebase to understand the current implementation',
+              '2. **Identify** the root cause of the issue',
+              '3. **Plan** a minimal fix that addresses the problem',
+              '4. **Implement** the fix following project conventions',
+              '5. **Test** the fix with appropriate test cases',
+              '6. **Document** any non-obvious changes',
+              '',
+              '### Requirements',
+              '- Make minimal changes to fix the issue',
+              '- Follow existing code style and patterns',
+              '- Include tests that verify the fix works',
+              '- Do not introduce breaking changes unless explicitly required',
+              '- Handle edge cases appropriately',
+              '',
+              '### Acceptance Criteria',
+              '- The issue described above is resolved',
+              '- All existing tests continue to pass',
+              '- New tests cover the fix',
+              '- Code follows project conventions'
+            ].join('\n');
+
+            // Post specification
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: [
+                '## Spec-Driven Development Plan',
+                '',
+                'Generated specification for the AI agent:',
+                '',
+                '<details>',
+                '<summary>View Generated Specification</summary>',
+                '',
+                spec,
+                '',
+                '</details>',
+                '',
+                '---',
+                '',
+                'Triggering @openhands-agent to implement this fix...'
+              ].join('\n')
+            });
+
+            // Trigger OpenHands
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: [
+                '@openhands-agent Please implement the fix for this issue following the specification above.',
+                '',
+                '**Key Requirements:**',
+                '1. Read the issue description and specification carefully',
+                '2. Analyze the codebase to understand current implementation',
+                '3. Implement a minimal fix that resolves the issue',
+                '4. Add tests to verify the fix',
+                '5. Create a PR with your changes'
+              ].join('\n')
+            });
+
+            // Update labels
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'auto-fix'
+              });
+            } catch (e) { }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['ai-in-progress']
+            });
+
+            console.log('Spec-driven fix triggered for issue #' + issueNumber);

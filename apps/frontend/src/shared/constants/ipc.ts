@@ -480,7 +480,14 @@ export const IPC_CHANNELS = {
   DEBUG_OPEN_LOGS_FOLDER: 'debug:openLogsFolder',
   DEBUG_COPY_DEBUG_INFO: 'debug:copyDebugInfo',
   DEBUG_GET_RECENT_ERRORS: 'debug:getRecentErrors',
+  DEBUG_GET_RECENT_LOGS: 'debug:getRecentLogs',
   DEBUG_LIST_LOG_FILES: 'debug:listLogFiles',
+
+  // Log streaming operations
+  LOGS_GET_RECENT: 'logs:getRecent',
+  LOGS_BACKEND_STREAM: 'logs:backend:stream',
+  LOGS_IPC_STREAM: 'logs:ipc:stream',
+  LOGS_FRONTEND_STREAM: 'logs:frontend:stream',
 
   // Claude Code CLI operations
   CLAUDE_CODE_CHECK_VERSION: 'claudeCode:checkVersion',

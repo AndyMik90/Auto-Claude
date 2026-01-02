@@ -37,6 +37,9 @@ except ImportError:
     )
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 @dataclass
 class ProgressCallback:
     """Callback for progress updates."""

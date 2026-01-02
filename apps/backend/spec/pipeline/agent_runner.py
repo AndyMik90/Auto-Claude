@@ -13,8 +13,12 @@ from ui.capabilities import configure_safe_encoding
 configure_safe_encoding()
 
 from core.client import create_client
+
+# FIX #79: Timeout protection for LLM API calls
 from core.timeout import query_with_timeout, receive_with_timeout
+
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
+from security.tool_input_validator import get_safe_tool_input
 from task_logger import (
     LogEntryType,
     LogPhase,
@@ -129,12 +133,14 @@ class AgentRunner:
 
         try:
             async with client:
+                # FIX #79: Use timeout-protected query
                 debug("agent_runner", "Sending query to Claude SDK...")
                 await query_with_timeout(client, prompt)
                 debug_success("agent_runner", "Query sent successfully")
 
                 response_text = ""
                 debug("agent_runner", "Starting to receive response stream...")
+                # FIX #79: Use timeout-protected response stream
                 async for msg in receive_with_timeout(client):
                     msg_type = type(msg).__name__
                     message_count += 1
@@ -161,25 +167,24 @@ class AgentRunner:
                                 block, "name"
                             ):
                                 tool_name = block.name
-                                tool_input = None
                                 tool_count += 1
 
-                                # Extract meaningful tool input for display
-                                if hasattr(block, "input") and block.input:
-                                    tool_input = self._extract_tool_input_display(
-                                        block.input
-                                    )
+                                # Safely extract tool input (handles None, non-dict, etc.)
+                                inp = get_safe_tool_input(block)
+                                tool_input_display = self._extract_tool_input_display(
+                                    inp
+                                )
 
                                 debug(
                                     "agent_runner",
                                     f"Tool call #{tool_count}: {tool_name}",
-                                    tool_input=tool_input,
+                                    tool_input=tool_input_display,
                                 )
 
                                 if self.task_logger:
                                     self.task_logger.tool_start(
                                         tool_name,
-                                        tool_input,
+                                        tool_input_display,
                                         LogPhase.PLANNING,
                                         print_to_console=True,
                                     )

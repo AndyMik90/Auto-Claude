@@ -18,6 +18,9 @@ except ImportError:
     SDK_TOOLS_AVAILABLE = False
     tool = None
 
+# Import safe file I/O utilities to prevent race conditions
+from ...utils import safe_update_json
+
 
 def create_qa_tools(spec_dir: Path, project_dir: Path) -> list:
     """
@@ -77,20 +80,23 @@ def create_qa_tools(spec_dir: Path, project_dir: Path) -> list:
                 ]
             }
 
+        # Parse issues and tests
         try:
-            # Parse issues and tests
-            try:
-                issues = json.loads(issues_str) if issues_str else []
-            except json.JSONDecodeError:
-                issues = [{"description": issues_str}] if issues_str else []
+            issues = json.loads(issues_str) if issues_str else []
+        except json.JSONDecodeError:
+            issues = [{"description": issues_str}] if issues_str else []
 
-            try:
-                tests_passed = json.loads(tests_str) if tests_str else {}
-            except json.JSONDecodeError:
-                tests_passed = {}
+        try:
+            tests_passed = json.loads(tests_str) if tests_str else {}
+        except json.JSONDecodeError:
+            tests_passed = {}
 
-            with open(plan_file) as f:
-                plan = json.load(f)
+        # Use safe atomic update to prevent race conditions
+        qa_session_result = None
+
+        def update_plan(plan: dict) -> dict:
+            """Update function for atomic file operation."""
+            nonlocal qa_session_result
 
             # Get current QA session number
             current_qa = plan.get("qa_signoff", {})
@@ -118,14 +124,29 @@ def create_qa_tools(spec_dir: Path, project_dir: Path) -> list:
 
             plan["last_updated"] = datetime.now(timezone.utc).isoformat()
 
-            with open(plan_file, "w") as f:
-                json.dump(plan, f, indent=2)
+            # Store session number for response
+            qa_session_result = qa_session
+
+            return plan
+
+        try:
+            success, updated_plan = safe_update_json(plan_file, update_plan)
+
+            if not success:
+                return {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Error: Failed to update implementation plan (file lock timeout or I/O error)",
+                        }
+                    ]
+                }
 
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Updated QA status to '{status}' (session {qa_session})",
+                        "text": f"Updated QA status to '{status}' (session {qa_session_result})",
                     }
                 ]
             }

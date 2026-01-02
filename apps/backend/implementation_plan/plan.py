@@ -8,13 +8,18 @@ tracking, status management, and follow-up capabilities.
 """
 
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from utils.file_utils import safe_read_json, safe_write_json
+
 from .enums import PhaseType, SubtaskStatus, WorkflowType
 from .phase import Phase
 from .subtask import Subtask
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -99,27 +104,40 @@ class ImplementationPlan:
         )
 
     def save(self, path: Path):
-        """Save plan to JSON file."""
+        """
+        Save plan to JSON file with retry logic and file locking.
+
+        FIX #491: Uses safe_write_json with retry logic for transient errors
+        FIX #488: Uses file locking to prevent concurrent write race conditions
+        FIX #509: Pass spec_dir to update_status_from_subtasks for approval check
+
+        Args:
+            path: Path to save the implementation plan JSON file
+        """
         self.updated_at = datetime.now().isoformat()
         if not self.created_at:
             self.created_at = self.updated_at
 
         # Auto-update status based on subtask completion
-        self.update_status_from_subtasks()
+        # Extract spec_dir from path (path is typically spec_dir/implementation_plan.json)
+        spec_dir = path.parent
+        self.update_status_from_subtasks(spec_dir)
 
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
+        logger.debug(f"Saving implementation plan to {path}")
+        safe_write_json(path, self.to_dict(), indent=2, ensure_ascii=False)
 
-    def update_status_from_subtasks(self):
+    def update_status_from_subtasks(self, spec_dir: Path | None = None):
         """Update overall status and planStatus based on subtask completion state.
 
         This syncs the task status with the UI's expected values:
         - status: backlog, in_progress, ai_review, human_review, done
         - planStatus: pending, in_progress, review, completed
 
-        Note: Preserves human_review/review status when it represents plan approval stage
-        (all subtasks pending but user needs to approve the plan before coding starts).
+        FIX #509: Checks approval state to transition from human_review to in_progress
+        when plan has been approved and coding should begin.
+
+        Args:
+            spec_dir: Optional spec directory path for checking approval state
         """
         all_subtasks = [s for p in self.phases for s in p.subtasks]
 
@@ -160,20 +178,75 @@ class ImplementationPlan:
             self.planStatus = "in_progress"
         else:
             # All subtasks pending
-            # Preserve human_review/review status if it's for plan approval stage
-            # (spec is complete, waiting for user to approve before coding starts)
+            # Check if this is pre-approval (waiting for user) or post-approval (ready to code)
             if self.status == "human_review" and self.planStatus == "review":
-                # Keep the plan approval status - don't reset to backlog
-                pass
+                # FIX #509: Check if plan has been approved
+                if spec_dir:
+                    from review.state import ReviewState
+
+                    try:
+                        review_state = ReviewState.load(spec_dir)
+                        # CRITICAL: Use is_approval_valid() instead of is_approved()
+                        # to ensure spec hasn't changed since approval
+                        if review_state.is_approval_valid(spec_dir):
+                            # Plan approved AND unchanged - transition to in_progress
+                            logger.info(
+                                f"Plan approved by {review_state.approved_by} at "
+                                f"{review_state.approved_at} and unchanged. "
+                                f"Transitioning from human_review to in_progress"
+                            )
+                            self.status = "in_progress"
+                            self.planStatus = "in_progress"
+                        elif review_state.is_approved():
+                            # Plan was approved but spec changed - needs re-approval
+                            logger.warning(
+                                "Plan was approved but spec has changed since approval. "
+                                "Keeping human_review status until re-approval."
+                            )
+                            # Keep in human_review - spec changed, needs re-review
+                        else:
+                            # Still waiting for user approval - keep human_review status
+                            logger.info(
+                                f"Plan awaiting approval (review_count: {review_state.review_count}). "
+                                f"Keeping human_review status"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to load review state from {spec_dir}: {e}. "
+                            "Preserving human_review status to be safe."
+                        )
+                        # Keep current status if we can't determine approval state
+                else:
+                    # No spec_dir provided - preserve status (backward compatibility)
+                    pass
             else:
+                # No subtasks started yet - default to backlog
                 self.status = "backlog"
                 self.planStatus = "pending"
 
     @classmethod
     def load(cls, path: Path) -> "ImplementationPlan":
-        """Load plan from JSON file."""
-        with open(path, encoding="utf-8") as f:
-            return cls.from_dict(json.load(f))
+        """
+        Load plan from JSON file with retry logic and file locking.
+
+        FIX #491: Uses safe_read_json with retry logic for transient errors
+        FIX #488: Uses file locking to prevent concurrent read race conditions
+
+        Args:
+            path: Path to the implementation plan JSON file
+
+        Returns:
+            Loaded ImplementationPlan instance
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist
+            json.JSONDecodeError: If the file contains invalid JSON
+        """
+        logger.debug(f"Loading implementation plan from {path}")
+        data = safe_read_json(path)
+        if data is None:
+            raise FileNotFoundError(f"Implementation plan not found: {path}")
+        return cls.from_dict(data)
 
     def get_available_phases(self) -> list[Phase]:
         """Get phases whose dependencies are satisfied."""

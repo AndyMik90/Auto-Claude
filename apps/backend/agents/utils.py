@@ -9,7 +9,16 @@ import json
 import logging
 import shutil
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Callable
+
+try:
+    from filelock import FileLock
+    FILELOCK_AVAILABLE = True
+except ImportError:
+    FILELOCK_AVAILABLE = False
+    FileLock = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -114,3 +123,163 @@ def sync_plan_to_source(spec_dir: Path, source_spec_dir: Path | None) -> bool:
     except Exception as e:
         logger.warning(f"Failed to sync implementation plan to source: {e}")
         return False
+
+
+# ============================================================================
+# Safe Concurrent File Access (Issue #488 - Race Condition Fix)
+# ============================================================================
+
+
+def safe_read_json(file_path: Path, default: dict | None = None) -> dict | None:
+    """
+    Safely read a JSON file with file locking to prevent race conditions.
+
+    Args:
+        file_path: Path to the JSON file
+        default: Default value to return if file doesn't exist or is invalid
+
+    Returns:
+        Parsed JSON data, or default if file doesn't exist or is invalid
+    """
+    if not file_path.exists():
+        return default
+
+    # Use file locking if available
+    if FILELOCK_AVAILABLE:
+        lock_file = file_path.with_suffix(file_path.suffix + ".lock")
+        with FileLock(str(lock_file), timeout=30):
+            try:
+                with open(file_path, "r") as f:
+                    return json.load(f)
+            except (OSError, json.JSONDecodeError) as e:
+                logger.warning(f"Failed to read {file_path}: {e}")
+                return default
+    else:
+        # Fallback: no locking (not ideal, but works for single-threaded use)
+        try:
+            with open(file_path, "r") as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning(f"Failed to read {file_path}: {e}")
+            return default
+
+
+def safe_write_json(file_path: Path, data: dict) -> bool:
+    """
+    Safely write a JSON file with file locking to prevent race conditions.
+
+    Args:
+        file_path: Path to the JSON file
+        data: Data to write
+
+    Returns:
+        True if successful, False otherwise
+    """
+    # Ensure parent directory exists
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Use file locking if available
+    if FILELOCK_AVAILABLE:
+        lock_file = file_path.with_suffix(file_path.suffix + ".lock")
+        with FileLock(str(lock_file), timeout=30):
+            try:
+                with open(file_path, "w") as f:
+                    json.dump(data, f, indent=2)
+                return True
+            except OSError as e:
+                logger.error(f"Failed to write {file_path}: {e}")
+                return False
+    else:
+        # Fallback: no locking (not ideal, but works for single-threaded use)
+        try:
+            with open(file_path, "w") as f:
+                json.dump(data, f, indent=2)
+            return True
+        except OSError as e:
+            logger.error(f"Failed to write {file_path}: {e}")
+            return False
+
+
+def safe_update_json(
+    file_path: Path,
+    update_fn: Callable[[dict], dict],
+    default: dict | None = None,
+) -> tuple[bool, dict | None]:
+    """
+    Safely update a JSON file using atomic read-modify-write with file locking.
+
+    This prevents race conditions when multiple processes/threads modify the same file.
+
+    Args:
+        file_path: Path to the JSON file
+        update_fn: Function that takes current data and returns updated data
+        default: Default data structure if file doesn't exist
+
+    Returns:
+        Tuple of (success, updated_data)
+
+    Example:
+        ```python
+        def update_subtask(plan: dict) -> dict:
+            for phase in plan.get("phases", []):
+                for subtask in phase.get("subtasks", []):
+                    if subtask["id"] == "task-001":
+                        subtask["status"] = "completed"
+            plan["last_updated"] = datetime.now(timezone.utc).isoformat()
+            return plan
+
+        success, updated_plan = safe_update_json(
+            spec_dir / "implementation_plan.json",
+            update_subtask
+        )
+        ```
+    """
+    # Ensure parent directory exists
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Use file locking if available
+    if FILELOCK_AVAILABLE:
+        lock_file = file_path.with_suffix(file_path.suffix + ".lock")
+        with FileLock(str(lock_file), timeout=30):
+            try:
+                # Read current data
+                if file_path.exists():
+                    with open(file_path, "r") as f:
+                        data = json.load(f)
+                else:
+                    data = default if default is not None else {}
+
+                # Apply update
+                updated_data = update_fn(data)
+
+                # Write back
+                with open(file_path, "w") as f:
+                    json.dump(updated_data, f, indent=2)
+
+                return True, updated_data
+
+            except Exception as e:
+                logger.error(f"Failed to update {file_path}: {e}")
+                return False, None
+    else:
+        # Fallback: no locking (not ideal, but works for single-threaded use)
+        try:
+            # Read current data
+            if file_path.exists():
+                with open(file_path, "r") as f:
+                    data = json.load(f)
+            else:
+                data = default if default is not None else {}
+
+            # Apply update
+            updated_data = update_fn(data)
+
+            # Write back
+            with open(file_path, "w") as f:
+                json.dump(updated_data, f, indent=2)
+
+            return True, updated_data
+
+        except Exception as e:
+            logger.error(f"Failed to update {file_path}: {e}")
+            return False, None

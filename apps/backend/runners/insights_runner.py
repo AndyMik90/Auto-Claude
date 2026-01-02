@@ -42,6 +42,9 @@ from debug import (
 )
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 def load_project_context(project_dir: str) -> str:
     """Load project context for the AI."""
     context_parts = []

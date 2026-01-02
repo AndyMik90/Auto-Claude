@@ -10,6 +10,9 @@ from core.timeout import query_with_timeout, receive_with_timeout
 from debug import debug, debug_detailed, debug_error, debug_success
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 class ScriptExecutor:
     """Executes Python scripts with proper error handling and output capture."""
 

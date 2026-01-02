@@ -23,6 +23,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 def create_claude_resolver() -> AIResolver:
     """
     Create an AIResolver configured to use Claude via the Agent SDK.

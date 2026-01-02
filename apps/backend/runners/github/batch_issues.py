@@ -34,6 +34,9 @@ from core.timeout import query_with_timeout, receive_with_timeout
     from file_lock import locked_json_write
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 class ClaudeBatchAnalyzer:
     """
     Claude-based batch analyzer for GitHub issues.

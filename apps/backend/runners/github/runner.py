@@ -323,6 +323,11 @@ async def cmd_pr_create(args) -> int:
     """Create a pull request."""
     import sys
     import json
+    import subprocess
+
+    # Import GH client exceptions
+    from gh_client import GHTimeoutError, GHCommandError
+    from rate_limiter import RateLimitExceeded
 
     # Force unbuffered output so Electron sees it in real-time
     if hasattr(sys.stdout, "reconfigure"):
@@ -332,34 +337,34 @@ async def cmd_pr_create(args) -> int:
 
     debug = os.environ.get("DEBUG")
     if debug:
-        print(f"[DEBUG] Creating PR: {args.title}", flush=True)
-        print(f"[DEBUG] Base: {args.base}, Head: {args.head}", flush=True)
-        print(f"[DEBUG] Project directory: {args.project}", flush=True)
-
-    config = get_config(args)
-
-    if debug:
-        print(
-            f"[DEBUG] Config built: repo={config.repo}, model={config.model}",
-            flush=True,
-        )
-        print("[DEBUG] Creating GitHub client...", flush=True)
-
-    gh_client = GHClient(
-        project_dir=args.project,
-        repo=config.repo,
-    )
-
-    # Parse draft argument (comes as string from IPC)
-    draft = args.draft.lower() == 'true' if isinstance(args.draft, str) else bool(args.draft)
-
-    if debug:
-        print(f"[DEBUG] Draft mode: {draft}", flush=True)
-
-    print(f"Creating pull request: {args.title}", file=sys.stderr)
-    print(f"Base: {args.base}, Head: {args.head}", file=sys.stderr)
+        print(f"[DEBUG] Creating PR: {args.title}", flush=True, file=sys.stderr)
+        print(f"[DEBUG] Base: {args.base}, Head: {args.head}", flush=True, file=sys.stderr)
+        print(f"[DEBUG] Project directory: {args.project}", flush=True, file=sys.stderr)
 
     try:
+        config = get_config(args)
+
+        if debug:
+            print(
+                f"[DEBUG] Config built: repo={config.repo}, model={config.model}",
+                flush=True,
+                file=sys.stderr,
+            )
+            print("[DEBUG] Creating GitHub client...", flush=True, file=sys.stderr)
+
+        gh_client = GHClient(
+            project_dir=args.project,
+            repo=config.repo,
+        )
+
+        # Parse draft argument (comes as string from IPC)
+        draft = args.draft.lower() == 'true' if isinstance(args.draft, str) else bool(args.draft)
+
+        if debug:
+            print(f"[DEBUG] Draft mode: {draft}", flush=True, file=sys.stderr)
+
+        print(f"Creating pull request: {args.title}", file=sys.stderr)
+        print(f"Base: {args.base}, Head: {args.head}", file=sys.stderr)
         print("Checking for merge conflicts...", file=sys.stderr)
 
         result = await gh_client.pr_create(
@@ -371,21 +376,92 @@ async def cmd_pr_create(args) -> int:
         )
 
         if debug:
-            print(f"[DEBUG] PR created successfully: {result}", flush=True)
+            print(f"[DEBUG] PR created successfully: {result}", flush=True, file=sys.stderr)
 
-        # Print JSON result to stdout for IPC handler to parse
-        print(json.dumps(result))
+        # Success - return structured JSON with success flag
+        output = {
+            'success': True,
+            'data': result
+        }
+        print(json.dumps(output))
 
         print(f"\nPull request created: #{result['number']}", file=sys.stderr)
         print(f"URL: {result.get('html_url', result['url'])}", file=sys.stderr)
 
         return 0
 
+    except FileNotFoundError as e:
+        # GitHub CLI not installed
+        error_output = {
+            'success': False,
+            'error': 'GitHub CLI (gh) not found. Please install: https://cli.github.com',
+            'errorType': 'MISSING_GH_CLI'
+        }
+        print(json.dumps(error_output))
+        if debug:
+            print(f"[DEBUG] FileNotFoundError: {e}", file=sys.stderr)
+        return 1
+
+    except GHTimeoutError as e:
+        # Command timed out
+        error_output = {
+            'success': False,
+            'error': f'GitHub CLI operation timed out: {str(e)}',
+            'errorType': 'GH_TIMEOUT_ERROR'
+        }
+        print(json.dumps(error_output))
+        if debug:
+            print(f"[DEBUG] GHTimeoutError: {e}", file=sys.stderr)
+        return 1
+
+    except RateLimitExceeded as e:
+        # Rate limit exceeded
+        error_output = {
+            'success': False,
+            'error': f'GitHub API rate limit exceeded: {str(e)}',
+            'errorType': 'RATE_LIMIT_EXCEEDED'
+        }
+        print(json.dumps(error_output))
+        if debug:
+            print(f"[DEBUG] RateLimitExceeded: {e}", file=sys.stderr)
+        return 1
+
+    except GHCommandError as e:
+        # GitHub CLI command failed
+        error_msg = str(e)
+        error_output = {
+            'success': False,
+            'error': f'GitHub CLI error: {error_msg}',
+            'errorType': 'GH_CLI_ERROR'
+        }
+        print(json.dumps(error_output))
+        if debug:
+            print(f"[DEBUG] GHCommandError: {e}", file=sys.stderr)
+        return 1
+
+    except json.JSONDecodeError as e:
+        # Invalid JSON response from gh CLI
+        error_output = {
+            'success': False,
+            'error': 'Failed to parse GitHub CLI response',
+            'errorType': 'JSON_PARSE_ERROR'
+        }
+        print(json.dumps(error_output))
+        if debug:
+            print(f"[DEBUG] JSONDecodeError: {e}", file=sys.stderr)
+        return 1
+
     except Exception as e:
-        print(f"Error creating pull request: {e}", file=sys.stderr)
+        # Unexpected error
+        error_output = {
+            'success': False,
+            'error': str(e),
+            'errorType': 'UNEXPECTED_ERROR'
+        }
+        print(json.dumps(error_output))
         if debug:
             import traceback
-            print(f"[DEBUG] Traceback:", file=sys.stderr)
+            print(f"[DEBUG] Unexpected error:", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
         return 1
 

@@ -15,6 +15,7 @@ import os
 from collections.abc import Callable
 from typing import Any
 
+# FIX #79: Timeout protection for LLM API calls
 from core.timeout import receive_with_timeout
 
 logger = logging.getLogger(__name__)

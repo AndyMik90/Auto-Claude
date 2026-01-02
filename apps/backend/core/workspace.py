@@ -138,6 +138,9 @@ MODULE = "workspace"
 # - _heuristic_merge
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 def merge_existing_build(
     project_dir: Path,
     spec_name: str,

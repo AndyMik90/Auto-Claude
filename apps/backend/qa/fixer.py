@@ -8,8 +8,12 @@ Runs QA fixer sessions to resolve issues identified by the reviewer.
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
+
+# FIX #79: Timeout protection for LLM API calls
 from core.timeout import query_with_timeout, receive_with_timeout
+
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
+from security.tool_input_validator import get_safe_tool_input
 from task_logger import (
     LogEntryType,
     LogPhase,
@@ -97,12 +101,14 @@ async def run_qa_fixer_session(
     prompt += f"The fix request file is at: `{spec_dir}/QA_FIX_REQUEST.md`\n"
 
     try:
+        # FIX #79: Use timeout-protected query
         debug("qa_fixer", "Sending query to Claude SDK...")
         await query_with_timeout(client, prompt)
         debug_success("qa_fixer", "Query sent successfully")
 
         response_text = ""
         debug("qa_fixer", "Starting to receive response stream...")
+        # FIX #79: Use timeout-protected response stream
         async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
             message_count += 1
@@ -129,34 +135,35 @@ async def run_qa_fixer_session(
                             )
                     elif block_type == "ToolUseBlock" and hasattr(block, "name"):
                         tool_name = block.name
-                        tool_input = None
+                        tool_input_display = None
                         tool_count += 1
 
-                        if hasattr(block, "input") and block.input:
-                            inp = block.input
-                            if isinstance(inp, dict):
-                                if "file_path" in inp:
-                                    fp = inp["file_path"]
-                                    if len(fp) > 50:
-                                        fp = "..." + fp[-47:]
-                                    tool_input = fp
-                                elif "command" in inp:
-                                    cmd = inp["command"]
-                                    if len(cmd) > 50:
-                                        cmd = cmd[:47] + "..."
-                                    tool_input = cmd
+                        # Safely extract tool input (handles None, non-dict, etc.)
+                        inp = get_safe_tool_input(block)
+
+                        if inp:
+                            if "file_path" in inp:
+                                fp = inp["file_path"]
+                                if len(fp) > 50:
+                                    fp = "..." + fp[-47:]
+                                tool_input_display = fp
+                            elif "command" in inp:
+                                cmd = inp["command"]
+                                if len(cmd) > 50:
+                                    cmd = cmd[:47] + "..."
+                                tool_input_display = cmd
 
                         debug(
                             "qa_fixer",
                             f"Tool call #{tool_count}: {tool_name}",
-                            tool_input=tool_input,
+                            tool_input=tool_input_display,
                         )
 
                         # Log tool start (handles printing)
                         if task_logger:
                             task_logger.tool_start(
                                 tool_name,
-                                tool_input,
+                                tool_input_display,
                                 LogPhase.VALIDATION,
                                 print_to_console=True,
                             )

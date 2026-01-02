@@ -68,6 +68,9 @@ Add token refresh logic and secure storage.
 Fixes #42"""
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 def _get_spec_context(spec_dir: Path) -> dict:
     """
     Extract context from spec files for commit message generation.

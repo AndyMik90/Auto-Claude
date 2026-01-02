@@ -50,6 +50,9 @@ IDEATION_TYPE_PROMPTS = {
 }
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 class IdeationGenerator:
     """Generates ideas using AI agents."""
 

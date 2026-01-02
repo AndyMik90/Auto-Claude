@@ -1,152 +1,294 @@
-name: 🔍 Issue Status Checker (15-minute monitoring)
+name: Issue Status Checker & Auto-Fix
 
-# Monitors all open issues and ensures automation pipeline progression
-# Runs every 15 minutes to check for stuck issues and trigger escalations
+# Comprehensive workflow to monitor issue lifecycle and ensure automation completion
+# Runs every 15 minutes and on manual trigger
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Every 15 minutes
+    - cron: '*/15 * * * *'
   workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: false
+        default: 'check-all'
+        type: choice
+        options:
+          - check-all
+          - process-unplanned
+          - escalate-stale
+          - force-copilot-all
+          - force-openhands-all
+          - report-only
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
 
 env:
-  STALE_HOURS: 4
+  GH_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
+  STALE_HOURS: 4  # Hours before escalating from Copilot to OpenHands
   MAX_ISSUES_PER_RUN: 50
 
 jobs:
+  # JOB 1: Check all open issues and categorize them
   analyze-issues:
-    name: 📊 Analyze Issue States
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
     outputs:
-      unplanned: ${{ steps.categorize.outputs.unplanned }}
-      planned_no_copilot: ${{ steps.categorize.outputs.planned_no_copilot }}
-      copilot_stale: ${{ steps.categorize.outputs.copilot_stale }}
+      unplanned: ${{ steps.analyze.outputs.unplanned }}
+      planned_no_copilot: ${{ steps.analyze.outputs.planned_no_copilot }}
+      copilot_stale: ${{ steps.analyze.outputs.copilot_stale }}
+      has_pr: ${{ steps.analyze.outputs.has_pr }}
+      report: ${{ steps.analyze.outputs.report }}
     steps:
-      - name: Categorize issues
-        id: categorize
+      - name: Analyze all open issues
+        id: analyze
         uses: actions/github-script@v7
         with:
           script: |
+            const now = new Date();
+            const STALE_MS = parseInt('${{ env.STALE_HOURS }}') * 60 * 60 * 1000;
+
+            // Get all open issues
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              per_page: process.env.MAX_ISSUES_PER_RUN
+              per_page: 100
             });
-            
-            const now = Date.now();
-            const STALE_MS = parseInt(process.env.STALE_HOURS) * 60 * 60 * 1000;
-            
-            const categorized = {
-              unplanned: [],
-              planned_no_copilot: [],
-              copilot_stale: []
+
+            // Filter to actual issues (not PRs)
+            const realIssues = issues.filter(i => !i.pull_request);
+
+            // Get all open PRs to check for linked issues
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            // Extract issue numbers linked in PRs
+            const linkedIssues = new Set();
+            for (const pr of prs) {
+              const body = (pr.body || '') + (pr.title || '');
+              const matches = body.matchAll(/(fix(es)?|close(s)?|resolve(s)?)\s*#(\d+)/gi);
+              for (const m of matches) linkedIssues.add(parseInt(m[4] || m[5]));
+              // Also check simple #123 references
+              const refs = body.matchAll(/#(\d+)/g);
+              for (const r of refs) linkedIssues.add(parseInt(r[1]));
+            }
+
+            const categories = {
+              unplanned: [],           // No CodeRabbit plan
+              planned_no_copilot: [],  // Has plan but no Copilot
+              copilot_stale: [],       // Copilot assigned but stale
+              has_pr: [],              // Has linked PR
+              completed: []            // Ready to close
             };
-            
-            for (const issue of issues) {
+
+            for (const issue of realIssues) {
               const labels = issue.labels.map(l => l.name);
-              const elapsed = now - new Date(issue.updated_at).getTime();
-              
-              // Skip automation-disabled issues
-              if (labels.includes('skip-automation')) continue;
-              
-              // Unplanned: no needs-plan or plan-ready label
-              if (!labels.includes('needs-plan') && !labels.includes('plan-ready') && !labels.includes('copilot-assigned')) {
-                categorized.unplanned.push(issue.number);
+              const issueNum = issue.number;
+
+              // Check if has linked PR
+              if (linkedIssues.has(issueNum)) {
+                categories.has_pr.push(issueNum);
+                continue;
               }
-              // Planned but no Copilot
-              else if (labels.includes('plan-ready') && !labels.includes('copilot-assigned')) {
-                categorized.planned_no_copilot.push(issue.number);
-              }
-              // Copilot assigned but stale (no activity in STALE_HOURS)
-              else if (labels.includes('copilot-assigned') && elapsed > STALE_MS && !labels.includes('escalated-to-openhands')) {
-                categorized.copilot_stale.push(issue.number);
+
+              // Get comments to check for CodeRabbit plan
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNum,
+                per_page: 50
+              });
+
+              const hasCodeRabbitPlan = comments.some(c =>
+                c.user.login.includes('coderabbit') &&
+                c.body.length > 500 &&
+                (c.body.includes('## Implementation') ||
+                 c.body.includes('## Coding Plan') ||
+                 c.body.includes('### Phase') ||
+                 c.body.includes('Prompt for AI'))
+              );
+
+              // Categorize
+              if (!hasCodeRabbitPlan && !labels.includes('needs-plan')) {
+                categories.unplanned.push(issueNum);
+              } else if (hasCodeRabbitPlan && !labels.includes('copilot-assigned')) {
+                categories.planned_no_copilot.push(issueNum);
+              } else if (labels.includes('copilot-assigned')) {
+                // Check if stale
+                const copilotComment = comments.find(c =>
+                  c.body.includes('Copilot Assigned') || c.body.includes('@copilot')
+                );
+                if (copilotComment) {
+                  const elapsed = now - new Date(copilotComment.created_at);
+                  if (elapsed > STALE_MS && !labels.includes('escalated-to-openhands')) {
+                    categories.copilot_stale.push(issueNum);
+                  }
+                }
               }
             }
-            
-            core.setOutput('unplanned', JSON.stringify(categorized.unplanned));
-            core.setOutput('planned_no_copilot', JSON.stringify(categorized.planned_no_copilot));
-            core.setOutput('copilot_stale', JSON.stringify(categorized.copilot_stale));
-            
-            console.log(`Categorized: ${JSON.stringify(categorized)}`);
 
+            // Generate report
+            const report = [
+              '## Issue Status Report',
+              '',
+              `**Total Open Issues:** ${realIssues.length}`,
+              `**With Linked PRs:** ${categories.has_pr.length}`,
+              '',
+              '### Action Required',
+              `- **Unplanned (need CodeRabbit):** ${categories.unplanned.length} [${categories.unplanned.join(', ')}]`,
+              `- **Planned, awaiting Copilot:** ${categories.planned_no_copilot.length} [${categories.planned_no_copilot.join(', ')}]`,
+              `- **Copilot Stale (>${'${{ env.STALE_HOURS }}'}h):** ${categories.copilot_stale.length} [${categories.copilot_stale.join(', ')}]`,
+              '',
+              `*Checked at ${now.toISOString()}*`
+            ].join('\n');
+
+            console.log(report);
+
+            core.setOutput('unplanned', categories.unplanned.slice(0, 50).join(','));
+            core.setOutput('planned_no_copilot', categories.planned_no_copilot.slice(0, 50).join(','));
+            core.setOutput('copilot_stale', categories.copilot_stale.slice(0, 50).join(','));
+            core.setOutput('has_pr', categories.has_pr.join(','));
+            core.setOutput('report', report);
+
+  # JOB 2: Request CodeRabbit plans for unplanned issues
   process-unplanned:
-    name: 📋 Request Plans (Unplanned Issues)
     needs: analyze-issues
-    if: needs.analyze-issues.outputs.unplanned != '[]'
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
+    if: needs.analyze-issues.outputs.unplanned != ''
     steps:
-      - uses: actions/github-script@v7
+      - name: Request CodeRabbit plans
+        uses: actions/github-script@v7
         with:
           script: |
-            const issues = JSON.parse('${{ needs.analyze-issues.outputs.unplanned }}');
-            
+            const issues = '${{ needs.analyze-issues.outputs.unplanned }}'.split(',').filter(Boolean);
+            console.log(`Processing ${issues.length} unplanned issues`);
+
             for (const issueNum of issues) {
+              console.log(`Requesting plan for issue #${issueNum}`);
+
+              // Add labels
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: issueNum,
-                labels: ['needs-plan']
+                issue_number: parseInt(issueNum),
+                labels: ['auto-implement', 'needs-plan', 'stage-1-planning']
               });
-              
+
+              // Request CodeRabbit plan
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: issueNum,
-                body: '@coderabbitai Please create a 5-part implementation plan'
+                issue_number: parseInt(issueNum),
+                body: [
+                  '## Automation Pipeline - Plan Request',
+                  '',
+                  '@coderabbitai Please create a detailed implementation plan:',
+                  '',
+                  '1. **Requirements Analysis** - What needs to be done',
+                  '2. **Implementation Steps** - Step by step approach',
+                  '3. **Files to Modify** - Which files need changes',
+                  '4. **Test Cases** - What tests to add',
+                  '5. **Acceptance Criteria** - How to verify completion',
+                  '',
+                  '*Once plan is ready, Copilot will be auto-assigned.*'
+                ].join('\n')
               });
+
+              await new Promise(r => setTimeout(r, 1000));
             }
 
+  # JOB 3: Assign Copilot to planned issues (using gh CLI for proper assignment)
   assign-copilot:
-    name: 🚀 Assign Copilot (Plan Ready)
     needs: analyze-issues
-    if: needs.analyze-issues.outputs.planned_no_copilot != '[]'
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
+    if: needs.analyze-issues.outputs.planned_no_copilot != ''
     steps:
-      - name: Batch assign
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assign Copilot to planned issues
         env:
           GH_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
         run: |
-          ISSUES='${{ needs.analyze-issues.outputs.planned_no_copilot }}'
-          for ISSUE_NUM in $(echo $ISSUES | jq -r '.[]'); do
-            echo "Assigning Copilot to issue #$ISSUE_NUM..."
+          ISSUES="${{ needs.analyze-issues.outputs.planned_no_copilot }}"
+          IFS=',' read -ra ISSUE_ARRAY <<< "$ISSUES"
+
+          for ISSUE_NUM in "${ISSUE_ARRAY[@]}"; do
+            if [ -z "$ISSUE_NUM" ]; then continue; fi
+
+            echo "=== Processing issue #$ISSUE_NUM ==="
+
+            # Try to assign Copilot using gh API
+            echo "Attempting to assign copilot-swe-agent..."
             gh api repos/${{ github.repository }}/issues/$ISSUE_NUM/assignees \
-              -X POST -f 'assignees[]=copilot-swe-agent' || true
-            
-            gh api repos/${{ github.repository }}/issues/$ISSUE_NUM/labels \
-              -X POST -f 'labels[]=copilot-assigned' -f 'labels[]=in-progress' || true
+              -X POST \
+              -f 'assignees[]=copilot-swe-agent' 2>&1 || echo "Assignment via API failed, trying alternate method"
+
+            # Update labels
+            gh issue edit $ISSUE_NUM --add-label "copilot-assigned,stage-2-implementation,in-progress" --remove-label "needs-plan" 2>&1 || true
+
+            # Add implementation request comment
+            COMMENT_BODY="## Plan Ready - Copilot Assigned
+
+            @copilot Please implement this issue following the CodeRabbit plan above.
+
+            **Requirements:**
+            - Follow the implementation plan exactly
+            - Include unit tests (Jest/Pytest)
+            - Create PR with Fixes #$ISSUE_NUM in description
+
+            *If no PR in 4 hours, @openhands-agent will take over.*"
+            gh issue comment $ISSUE_NUM --body "$COMMENT_BODY"
+
+            echo "Processed issue #$ISSUE_NUM"
+            sleep 1
           done
 
+  # JOB 4: Escalate stale issues to OpenHands
   escalate-stale:
-    name: 🆘 Escalate Stale (Copilot Timeout)
     needs: analyze-issues
-    if: needs.analyze-issues.outputs.copilot_stale != '[]'
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
+    if: needs.analyze-issues.outputs.copilot_stale != ''
     steps:
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            const issues = JSON.parse('${{ needs.analyze-issues.outputs.copilot_stale }}');
-            
-            for (const issueNum of issues) {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNum,
-                labels: ['fix-me', 'escalated-to-openhands']
-              });
-              
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNum,
-                body: `## 🆘 Escalation: Copilot Timeout\n\nNo activity for ${{ env.STALE_HOURS }} hours.\n\n@openhands-agent Please take over implementation.`
-              });
-            }
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Escalate to OpenHands
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUES="${{ needs.analyze-issues.outputs.copilot_stale }}"
+          IFS=',' read -ra ISSUE_ARRAY <<< "$ISSUES"
+
+          for ISSUE_NUM in "${ISSUE_ARRAY[@]}"; do
+            if [ -z "$ISSUE_NUM" ]; then continue; fi
+
+            echo "Escalating issue #$ISSUE_NUM to OpenHands"
+
+            # Add labels
+            gh issue edit $ISSUE_NUM --add-label "fix-me,escalated-to-openhands,stage-3-escalation" --remove-label "copilot-assigned"
+
+            # Add escalation comment
+            COMMENT_BODY="## Escalation to OpenHands
+
+            Copilot has not created a PR within the timeout period.
+
+            @openhands-agent Please implement this issue now:
+
+            1. Review the CodeRabbit plan above
+            2. Implement the solution
+            3. Include comprehensive tests
+            4. Create PR with Fixes #$ISSUE_NUM in description
+
+            *This is an automated escalation.*"
+            gh issue comment $ISSUE_NUM --body "$COMMENT_BODY"
+
+            sleep 1
+          done

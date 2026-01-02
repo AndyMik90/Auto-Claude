@@ -11,6 +11,8 @@ from pathlib import Path
 
 from core.auth import require_auth_token
 from core.simple_client import create_simple_client
+
+# FIX #79: Timeout protection for LLM API calls
 from core.timeout import query_with_timeout, receive_with_timeout
 
 
@@ -71,8 +73,10 @@ Be concise and use bullet points. Skip boilerplate and meta-commentary.
 
     try:
         async with client:
+            # FIX #79: Use timeout-protected query
             await query_with_timeout(client, prompt)
             response_text = ""
+            # FIX #79: Use timeout-protected response stream
             async for msg in receive_with_timeout(client):
                 if hasattr(msg, "content"):
                     for block in msg.content:

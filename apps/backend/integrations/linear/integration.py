@@ -16,8 +16,13 @@ Key Features:
 """
 
 import json
+import logging
 import os
 from datetime import datetime
+
+from utils.file_utils import safe_read_json
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 
 from .config import (
@@ -152,16 +157,15 @@ class LinearManager:
             self.state.save(self.spec_dir)
 
     def load_implementation_plan(self) -> dict | None:
-        """Load the implementation plan from spec directory."""
-        plan_file = self.spec_dir / "implementation_plan.json"
-        if not plan_file.exists():
-            return None
+        """
+        Load the implementation plan from spec directory.
 
-        try:
-            with open(plan_file) as f:
-                return json.load(f)
-        except (OSError, json.JSONDecodeError):
-            return None
+        FIX #491: Uses safe_read_json with retry logic for transient errors
+        FIX #488: Uses file locking to prevent concurrent read race conditions
+        """
+        plan_file = self.spec_dir / "implementation_plan.json"
+        logger.debug(f"Loading implementation plan from {plan_file}")
+        return safe_read_json(plan_file, default=None)
 
     def get_subtasks_for_sync(self) -> list[dict]:
         """

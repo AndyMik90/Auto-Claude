@@ -8,7 +8,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent
+  type DragEndEvent,
+  type DragStartEvent
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -553,7 +554,7 @@ export function App() {
   };
 
   // Handle drag start - set the active dragged project
-  const handleDragStart = (event: any) => {
+  const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const draggedProject = projectTabs.find(p => p.id === active.id);
     if (draggedProject) {
@@ -785,13 +786,17 @@ export function App() {
                     onNavigateToTask={handleGoToTask}
                   />
                 )}
-                {activeView === 'github-prs' && (activeProjectId || selectedProjectId) && (
-                  <GitHubPRs
-                    onOpenSettings={() => {
-                      setSettingsInitialProjectSection('github');
-                      setIsSettingsDialogOpen(true);
-                    }}
-                  />
+                {/* GitHubPRs is always mounted but hidden when not active to preserve review state */}
+                {(activeProjectId || selectedProjectId) && (
+                  <div className={activeView === 'github-prs' ? 'h-full' : 'hidden'}>
+                    <GitHubPRs
+                      onOpenSettings={() => {
+                        setSettingsInitialProjectSection('github');
+                        setIsSettingsDialogOpen(true);
+                      }}
+                      isActive={activeView === 'github-prs'}
+                    />
+                  </div>
                 )}
                 {activeView === 'gitlab-merge-requests' && (activeProjectId || selectedProjectId) && (
                   <GitLabMergeRequests

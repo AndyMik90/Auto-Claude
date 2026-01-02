@@ -1,32 +1,349 @@
 name: Master Automation Controller
 
-# Backup controller running every 30 minutes
-# Catches issues that slipped through event-driven workflows
+# COMPREHENSIVE WORKFLOW: Manages ALL issues and PRs
+# Runs every 30 minutes as backup catch-all automation
+# Handles: Issue assignment, PR approval, merging, escalation
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Every 30 minutes
+    - cron: '*/30 * * * *'
   workflow_dispatch:
     inputs:
-      force_check_all:
-        description: 'Force check all issues'
-        type: boolean
-        default: false
+      action:
+        description: 'Action to perform'
+        required: false
+        default: 'process-all'
+        type: choice
+        options:
+          - process-all
+          - process-issues
+          - process-prs
+          - assign-copilot-all
+          - approve-prs-all
+          - merge-ready-prs
+          - escalate-to-openhands
 
 permissions:
   issues: write
-  contents: read
+  contents: write
   pull-requests: write
+  actions: write
 
 env:
-  GH_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  scan-and-fix:
+  # JOB 1: Process all open issues
+  process-issues:
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
     steps:
-      - name: Scan all open issues
-        id: scan
+      - name: Process all issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const now = new Date();
+            const TWO_HOURS = 2 * 60 * 60 * 1000;
+
+            // Get all open issues
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            // Filter to actual issues (not PRs)
+            const realIssues = issues.data.filter(i => !i.pull_request);
+            console.log(`Found ${realIssues.length} open issues`);
+
+            for (const issue of realIssues) {
+              const labels = issue.labels.map(l => l.name);
+              const issueNumber = issue.number;
+
+              console.log(`Processing issue #${issueNumber}: ${issue.title}`);
+
+              // Get comments to check status
+              const comments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                per_page: 50
+              });
+
+              const hasCodeRabbitPlan = comments.data.some(c =>
+                c.user.login.includes('coderabbit') &&
+                (c.body.includes('## Implementation') ||
+                 c.body.includes('## Coding Plan') ||
+                 c.body.includes('### Phase') ||
+                 c.body.includes('Prompt for AI')) &&
+                c.body.length > 500
+              );
+
+              const hasCopilotAssignment = comments.data.some(c =>
+                c.body.includes('Copilot Assigned') || c.body.includes('@copilot')
+              );
+
+              const hasOpenHandsEscalation = comments.data.some(c =>
+                c.body.includes('@openhands-agent') &&
+                (now - new Date(c.created_at)) < TWO_HOURS
+              );
+
+              // Check if there's a PR for this issue
+              const prs = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                per_page: 100
+              });
+              const hasPR = prs.data.some(pr =>
+                pr.body?.includes('#' + issueNumber) ||
+                pr.title?.includes('#' + issueNumber)
+              );
+
+              // STEP 1: If no CodeRabbit plan, request one
+              if (!hasCodeRabbitPlan && !labels.includes('needs-plan')) {
+                console.log(`Issue #${issueNumber}: Requesting CodeRabbit plan`);
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: ['auto-implement', 'needs-plan']
+                });
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: '@coderabbitai Please create a detailed implementation plan for this issue with requirements, steps, files to modify, and test cases.'
+                });
+                continue;
+              }
+
+              // STEP 2: If plan ready but no Copilot assignment
+              if (hasCodeRabbitPlan && !hasCopilotAssignment && !labels.includes('copilot-assigned')) {
+                console.log(`Issue #${issueNumber}: Assigning Copilot`);
+
+                // Remove needs-plan label
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    name: 'needs-plan'
+                  });
+                } catch (e) {}
+
+                // Add copilot-assigned label
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: ['copilot-assigned', 'in-progress']
+                });
+
+                // Request Copilot implementation
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: '## Plan Ready - Copilot Assigned\n\n@copilot Please implement this issue following the CodeRabbit plan above. Include comprehensive unit tests.\n\nIf no PR in 2 hours, @openhands-agent will take over.'
+                });
+                continue;
+              }
+
+              // STEP 3: If Copilot assigned but no PR after 2 hours, escalate to OpenHands
+              if (labels.includes('copilot-assigned') && !hasPR && !hasOpenHandsEscalation) {
+                const copilotComment = comments.data.find(c =>
+                  c.body.includes('Copilot Assigned') || c.body.includes('@copilot')
+                );
+                if (copilotComment) {
+                  const elapsed = now - new Date(copilotComment.created_at);
+                  if (elapsed > TWO_HOURS) {
+                    console.log(`Issue #${issueNumber}: Escalating to OpenHands`);
+                    await github.rest.issues.addLabels({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: issueNumber,
+                      labels: ['fix-me', 'escalated-to-openhands']
+                    });
+                    // Remove copilot-assigned to prevent label conflict
+                    try {
+                      await github.rest.issues.removeLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: issueNumber,
+                        name: 'copilot-assigned'
+                      });
+                    } catch (e) {}
+                    await github.rest.issues.createComment({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: issueNumber,
+                      body: '## Escalation to OpenHands\n\nCopilot timeout (2+ hours without PR). @openhands-agent Please implement this issue now following the plan above.'
+                    });
+                  }
+                }
+              }
+            }
+
+  # JOB 2: Process all open PRs
+  process-prs:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Process all PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get all open PRs
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            console.log(`Found ${prs.data.length} open PRs`);
+
+            for (const pr of prs.data) {
+              const prNumber = pr.number;
+              const author = pr.user.login;
+              const isDraft = pr.draft;
+              const isCopilot = author.toLowerCase().includes('copilot');
+              const isOpenHands = author === 'openhands-agent';
+              const isBot = isCopilot || isOpenHands;
+
+              console.log(`Processing PR #${prNumber} by ${author} (draft: ${isDraft})`);
+
+              // Get PR labels
+              const labels = pr.labels?.map(l => l.name) || [];
+
+              // STEP 1: Mark draft PRs as ready
+              if (isDraft && isBot) {
+                console.log(`PR #${prNumber}: Marking ready for review`);
+                try {
+                  await github.graphql(`
+                    mutation($pullRequestId: ID!) {
+                      markPullRequestReadyForReview(input: {
+                        pullRequestId: $pullRequestId
+                      }) {
+                        pullRequest { number }
+                      }
+                    }
+                  `, { pullRequestId: pr.node_id });
+                } catch (e) {
+                  console.log(`Could not mark ready: ${e.message}`);
+                }
+              }
+
+              // STEP 2: Request CodeRabbit review if not already done
+              if (!isDraft && !labels.includes('coderabbit-reviewed')) {
+                const comments = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  per_page: 20
+                });
+
+                const hasReviewRequest = comments.data.some(c =>
+                  c.body.includes('@coderabbitai') && c.body.includes('review')
+                );
+
+                if (!hasReviewRequest) {
+                  console.log(`PR #${prNumber}: Requesting CodeRabbit review`);
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    body: '@coderabbitai Please review this PR thoroughly. Check code quality, test coverage, security, and performance.'
+                  });
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    labels: ['needs-review']
+                  });
+                }
+              }
+
+              // STEP 3: Auto-approve bot PRs
+              if (isBot && !labels.includes('auto-approved')) {
+                console.log(`PR #${prNumber}: Auto-approving`);
+                try {
+                  await github.rest.pulls.createReview({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNumber,
+                    event: 'APPROVE',
+                    body: 'Auto-approved by Master Automation Controller'
+                  });
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    labels: ['auto-approved']
+                  });
+                } catch (e) {
+                  console.log(`Could not approve: ${e.message}`);
+                }
+              }
+
+              // STEP 4: Try to merge approved PRs
+              if (labels.includes('auto-approved') || isBot) {
+                console.log(`PR #${prNumber}: Attempting merge`);
+                try {
+                  // Check if mergeable
+                  const prDetails = await github.rest.pulls.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNumber
+                  });
+
+                  if (prDetails.data.mergeable && prDetails.data.mergeable_state === 'clean') {
+                    await github.rest.pulls.merge({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      pull_number: prNumber,
+                      merge_method: 'squash'
+                    });
+                    console.log(`PR #${prNumber}: Merged!`);
+                  } else {
+                    console.log(`PR #${prNumber}: Not mergeable (${prDetails.data.mergeable_state})`);
+                    // Enable auto-merge
+                    try {
+                      await github.graphql(`
+                        mutation($pullRequestId: ID!) {
+                          enablePullRequestAutoMerge(input: {
+                            pullRequestId: $pullRequestId,
+                            mergeMethod: SQUASH
+                          }) {
+                            pullRequest { number }
+                          }
+                        }
+                      `, { pullRequestId: pr.node_id });
+                      console.log(`PR #${prNumber}: Auto-merge enabled`);
+                    } catch (e) {
+                      console.log(`Could not enable auto-merge: ${e.message}`);
+                    }
+                  }
+                } catch (e) {
+                  console.log(`Could not merge: ${e.message}`);
+                }
+              }
+            }
+
+  # JOB 3: Force assign Copilot to all issues (manual trigger)
+  force-assign-copilot:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.action == 'assign-copilot-all'
+    steps:
+      - name: Force assign Copilot to all issues
         uses: actions/github-script@v7
         with:
           script: |
@@ -37,177 +354,121 @@ jobs:
               per_page: 100
             });
 
-            const categorized = {
-              unplanned: [],
-              planned_no_copilot: [],
-              copilot_stale: [],
-              needs_escalation: []
-            };
+            const realIssues = issues.data.filter(i => !i.pull_request);
 
-            for (const issue of issues.data.filter(i => !i.pull_request)) {
+            for (const issue of realIssues) {
               const labels = issue.labels.map(l => l.name);
+              if (labels.includes('copilot-assigned')) continue;
 
-              // Get comments
-              const comments = await github.rest.issues.listComments({
+              console.log(`Force assigning Copilot to issue #${issue.number}`);
+
+              await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                per_page: 100
+                labels: ['copilot-assigned', 'in-progress']
               });
 
-              // Check for CodeRabbit plan
-              const hasCodeRabbitPlan = comments.data.some(c =>
-                c.user.login.includes('coderabbit') &&
-                (c.body.includes('## Implementation') ||
-                 c.body.includes('## Coding Plan') ||
-                 c.body.includes('### Phase') ||
-                 c.body.includes('Prompt for AI')) &&
-                c.body.length > 500
-              );
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '@copilot Please implement this issue. Include unit tests.'
+              });
+            }
 
-              const hasCopilotAssigned = labels.includes('copilot-assigned');
-              const hasNeedsPlan = labels.includes('needs-plan');
-              const createdHoursAgo = (Date.now() - new Date(issue.created_at)) / (1000 * 60 * 60);
-              const updatedHoursAgo = (Date.now() - new Date(issue.updated_at)) / (1000 * 60 * 60);
+  # JOB 4: Force escalate to OpenHands (manual trigger)
+  force-escalate-openhands:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.action == 'escalate-to-openhands'
+    steps:
+      - name: Escalate all issues to OpenHands
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
 
-              // Categorize
-              if (!hasNeedsPlan && !hasCodeRabbitPlan && !hasCopilotAssigned) {
-                categorized.unplanned.push(issue.number);
-              } else if (hasCodeRabbitPlan && !hasCopilotAssigned && createdHoursAgo > 0.5) {
-                categorized.planned_no_copilot.push(issue.number);
-              } else if (hasCopilotAssigned && updatedHoursAgo > 12) {
-                categorized.copilot_stale.push(issue.number);
-              } else if (hasCopilotAssigned && updatedHoursAgo > 24) {
-                categorized.needs_escalation.push(issue.number);
+            const realIssues = issues.data.filter(i => !i.pull_request);
+
+            for (const issue of realIssues) {
+              const labels = issue.labels.map(l => l.name);
+              if (labels.includes('escalated-to-openhands')) continue;
+
+              console.log(`Escalating issue #${issue.number} to OpenHands`);
+
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['fix-me', 'escalated-to-openhands']
+              });
+              // Remove copilot-assigned to prevent label conflict
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: 'copilot-assigned'
+                });
+              } catch (e) {}
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '@openhands-agent Please implement this issue now.'
+              });
+            }
+
+  # JOB 5: Merge all ready PRs (manual trigger)
+  force-merge-prs:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.action == 'merge-ready-prs'
+    steps:
+      - name: Merge all ready PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            for (const pr of prs.data) {
+              if (pr.draft) continue;
+
+              console.log(`Attempting to merge PR #${pr.number}`);
+
+              try {
+                // Approve first
+                await github.rest.pulls.createReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  event: 'APPROVE',
+                  body: 'Force approved for merge'
+                });
+
+                // Then merge
+                await github.rest.pulls.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  merge_method: 'squash'
+                });
+                console.log(`PR #${pr.number}: Merged!`);
+              } catch (e) {
+                console.log(`PR #${pr.number}: ${e.message}`);
               }
             }
-
-            core.setOutput('unplanned', categorized.unplanned.join(','));
-            core.setOutput('planned_no_copilot', categorized.planned_no_copilot.join(','));
-            core.setOutput('copilot_stale', categorized.copilot_stale.join(','));
-            core.setOutput('needs_escalation', categorized.needs_escalation.join(','));
-
-            console.log('Scan results:', categorized);
-
-      - name: Fix unplanned issues
-        if: steps.scan.outputs.unplanned != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issues = '${{ steps.scan.outputs.unplanned }}'.split(',').filter(Boolean);
-            for (const num of issues) {
-              const issue = parseInt(num);
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue,
-                labels: ['auto-implement', 'needs-plan', 'stage-1-planning']
-              });
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue,
-                body: [
-                  '## 🤖 Automation Pipeline Started (Master Controller)',
-                  '',
-                  '@coderabbitai Please create a comprehensive implementation plan:',
-                  '',
-                  '1. **Requirements Analysis**',
-                  '2. **Implementation Steps**',
-                  '3. **Files to Modify/Create**',
-                  '4. **Test Cases**',
-                  '5. **Acceptance Criteria**',
-                  '',
-                  '_Auto-detected by master controller (no event trigger)._'
-                ].join('\n')
-              });
-            }
-
-      - name: Assign Copilot to planned issues
-        if: steps.scan.outputs.planned_no_copilot != ''
-        env:
-          GH_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
-        run: |
-          IFS=',' read -ra ISSUES <<< "${{ steps.scan.outputs.planned_no_copilot }}"
-          for ISSUE_NUM in "${ISSUES[@]}"; do
-            if [ -n "$ISSUE_NUM" ]; then
-              echo "Assigning Copilot to issue #$ISSUE_NUM (missed by event trigger)"
-
-              gh api repos/${{ github.repository }}/issues/$ISSUE_NUM/assignees \
-                -X POST -f 'assignees[]=copilot-swe-agent' 2>&1 || \
-              gh api repos/${{ github.repository }}/issues/$ISSUE_NUM/assignees \
-                -X POST -f 'assignees[]=Copilot' 2>&1 || true
-
-              gh issue edit $ISSUE_NUM \
-                --add-label "copilot-assigned,stage-2-implementation" \
-                --remove-label "needs-plan,stage-1-planning" 2>&1 || true
-
-              sleep 0.5
-            fi
-          done
-
-      - name: Reactivate stale Copilot issues
-        if: steps.scan.outputs.copilot_stale != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issues = '${{ steps.scan.outputs.copilot_stale }}'.split(',').filter(Boolean);
-            for (const num of issues) {
-              const issue = parseInt(num);
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue,
-                body: [
-                  '## ⏰ Copilot Reminder (12+ hours)',
-                  '',
-                  '@copilot This issue has been assigned for 12+ hours.',
-                  'Please provide status update or create PR.',
-                  '',
-                  '_Auto-detected by master controller._'
-                ].join('\n')
-              });
-            }
-
-      - name: Escalate to OpenHands
-        if: steps.scan.outputs.needs_escalation != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issues = '${{ steps.scan.outputs.needs_escalation }}'.split(',').filter(Boolean);
-            for (const num of issues) {
-              const issue = parseInt(num);
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue,
-                labels: ['fix-me', 'escalated-to-openhands', 'stage-3-escalation']
-              });
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue,
-                body: [
-                  '## ⚠️ Escalated to OpenHands (24+ hours)',
-                  '',
-                  '@openhands-agent Copilot has not completed this after 24 hours.',
-                  'Please implement this issue with comprehensive tests.',
-                  '',
-                  '_Auto-escalated by master controller._'
-                ].join('\n')
-              });
-            }
-
-      - name: Summary
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const summary = {
-              unplanned: '${{ steps.scan.outputs.unplanned }}'.split(',').filter(Boolean).length,
-              planned_no_copilot: '${{ steps.scan.outputs.planned_no_copilot }}'.split(',').filter(Boolean).length,
-              copilot_stale: '${{ steps.scan.outputs.copilot_stale }}'.split(',').filter(Boolean).length,
-              needs_escalation: '${{ steps.scan.outputs.needs_escalation }}'.split(',').filter(Boolean).length
-            };
-
-            console.log('Master Controller Summary:', summary);
-            console.log('Total issues processed:', Object.values(summary).reduce((a,b) => a+b, 0));

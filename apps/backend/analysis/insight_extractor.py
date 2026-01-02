@@ -44,6 +44,9 @@ MAX_DIFF_CHARS = 15000
 MAX_ATTEMPTS_TO_INCLUDE = 3
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 def is_extraction_enabled() -> bool:
     """Check if insight extraction is enabled."""
     # Extraction requires Claude SDK and authentication token

@@ -1,0 +1,89 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for Auto-Claude
+title: "[FEATURE] "
+labels: ["enhancement", "auto-implement", "needs-plan"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest a new feature! This will automatically trigger the AI automation pipeline:
+        1. CodeRabbit will create an implementation plan
+        2. Copilot will attempt to implement the feature
+        3. If Copilot doesn't respond within 2 hours, OpenHands will take over
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: I'm frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this work?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the application should this affect?
+      options:
+        - Spec Creation Pipeline
+        - Spec Agents (gatherer, researcher, writer, critic)
+        - Implementation Pipeline
+        - Agent Capabilities (new agent type)
+        - Memory System (Graphiti)
+        - Integrations (GitHub, Linear, etc.)
+        - Frontend UI (Electron)
+        - Worktree Management
+        - Security/Sandbox
+        - Testing (E2E, Unit)
+        - Documentation
+        - DevOps/CI
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - High (blocking or critical path)
+        - Medium (important but not urgent)
+        - Low (nice to have)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you consider?
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know this feature is complete?
+      placeholder: |
+        - [ ] Criteria 1
+        - [ ] Criteria 2
+        - [ ] All tests pass
+        - [ ] Documentation updated
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Breaking Change?
+      description: Will this require changes to existing user workflows?
+      options:
+        - "No - backward compatible"
+        - "Yes - requires migration"
+        - "Unsure"

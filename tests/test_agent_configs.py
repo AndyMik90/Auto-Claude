@@ -108,27 +108,37 @@ class TestGetAgentConfig:
 class TestGetRequiredMcpServers:
     """Tests for get_required_mcp_servers() function."""
 
-    def test_spec_gatherer_has_no_mcp_servers(self):
-        """spec_gatherer should not require any MCP servers."""
+    def test_spec_gatherer_has_thinking_tool_servers(self):
+        """spec_gatherer should require sequential-thinking and code-reasoning MCP servers."""
         from agents.tools_pkg.models import get_required_mcp_servers
 
         servers = get_required_mcp_servers("spec_gatherer")
-        assert servers == []
+        assert "sequential-thinking" in servers
+        assert "code-reasoning" in servers
+        # Should not have context7 or other servers
+        assert "context7" not in servers
+        assert "auto-claude" not in servers
 
     def test_spec_researcher_has_context7(self):
-        """spec_researcher should require context7 for docs lookup."""
+        """spec_researcher should require context7 for docs lookup plus thinking tools."""
         from agents.tools_pkg.models import get_required_mcp_servers
 
         servers = get_required_mcp_servers("spec_researcher")
         assert "context7" in servers
+        assert "sequential-thinking" in servers
+        assert "code-reasoning" in servers
 
     def test_coder_has_context7_and_auto_claude(self):
-        """coder should require context7 and auto-claude."""
+        """coder should require context7, auto-claude, and thinking tools."""
         from agents.tools_pkg.models import get_required_mcp_servers
 
         servers = get_required_mcp_servers("coder")
         assert "context7" in servers
         assert "auto-claude" in servers
+        assert "sequential-thinking" in servers
+        assert "code-reasoning" in servers
+        # Coder should NOT have reasoner (only planner has all 3)
+        assert "reasoner" not in servers
 
     def test_linear_optional_not_included_by_default(self):
         """Linear should not be included unless linear_enabled=True."""
@@ -186,6 +196,53 @@ class TestGetRequiredMcpServers:
         assert "puppeteer" not in servers
         assert "browser" not in servers
 
+    def test_spec_writer_has_thinking_tool_servers(self):
+        """spec_writer should require sequential-thinking and code-reasoning MCP servers."""
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        servers = get_required_mcp_servers("spec_writer")
+        assert "sequential-thinking" in servers
+        assert "code-reasoning" in servers
+        # Should not have reasoner (only planner has all 3)
+        assert "reasoner" not in servers
+
+    def test_planner_has_all_thinking_tools(self):
+        """planner should require ALL thinking tool servers (sequential-thinking, code-reasoning, reasoner)."""
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        servers = get_required_mcp_servers("planner")
+        # Planner is the only agent that gets ALL THREE thinking tools
+        assert "sequential-thinking" in servers
+        assert "code-reasoning" in servers
+        assert "reasoner" in servers
+        # Also verify base servers
+        assert "context7" in servers
+        assert "auto-claude" in servers
+
+    def test_qa_reviewer_has_thinking_tool_servers(self):
+        """qa_reviewer should require sequential-thinking and code-reasoning MCP servers."""
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        servers = get_required_mcp_servers("qa_reviewer")
+        assert "sequential-thinking" in servers
+        assert "code-reasoning" in servers
+        assert "context7" in servers
+        assert "auto-claude" in servers
+        # QA reviewer should NOT have reasoner
+        assert "reasoner" not in servers
+
+    def test_qa_fixer_has_thinking_tool_servers(self):
+        """qa_fixer should require sequential-thinking and code-reasoning MCP servers."""
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        servers = get_required_mcp_servers("qa_fixer")
+        assert "sequential-thinking" in servers
+        assert "code-reasoning" in servers
+        assert "context7" in servers
+        assert "auto-claude" in servers
+        # QA fixer should NOT have reasoner
+        assert "reasoner" not in servers
+
 
 class TestGetDefaultThinkingLevel:
     """Tests for get_default_thinking_level() function."""
@@ -233,15 +290,15 @@ class TestGetAllowedTools:
         assert "Edit" in tools
         assert "Bash" in tools
 
-    def test_qa_reviewer_is_read_only_plus_bash(self):
-        """QA reviewer should be read-only plus Bash for running tests - no Write/Edit."""
+    def test_qa_reviewer_has_write_for_reports(self):
+        """QA reviewer needs Write/Edit to create qa_report.md and update implementation_plan.json."""
         from agents.tools_pkg.permissions import get_allowed_tools
 
         tools = get_allowed_tools("qa_reviewer")
         assert "Read" in tools
         assert "Bash" in tools  # Can run tests
-        assert "Write" not in tools  # Should NOT be able to edit code
-        assert "Edit" not in tools  # Should NOT be able to edit code
+        assert "Write" in tools  # Needs to write qa_report.md
+        assert "Edit" in tools  # Needs to edit implementation_plan.json
 
     def test_pr_reviewer_is_read_only(self):
         """PR reviewer should only have Read tools."""

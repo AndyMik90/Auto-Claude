@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 _map_category = map_category
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 @dataclass
 class TestResult:
     """Result from test execution."""

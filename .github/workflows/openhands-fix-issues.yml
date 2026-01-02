@@ -9,13 +9,18 @@ on:
   issues:
     types: [labeled]
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   call-openhands-resolver:
     name: 🤖 OpenHands Resolver
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@openhands-agent')) ||
       (github.event_name == 'issues' && github.event.label.name == 'fix-me')
-    uses: OpenHands/OpenHands/.github/workflows/openhands-resolver.yml@main
+    uses: All-Hands-AI/OpenHands/.github/workflows/openhands-resolver.yml@main
     with:
       macro: '@openhands-agent'
       max_iterations: 100

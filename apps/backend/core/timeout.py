@@ -1,199 +1,205 @@
 """
-Timeout Protection for LLM API Calls
-====================================
-
-Provides async timeout wrappers for Claude SDK client operations to prevent
-infinite hangs when network issues occur or the API is slow/unresponsive.
-
-Issue #79: Add timeout protection to all LLM API calls
-
-Usage:
-    from core.timeout import query_with_timeout, receive_with_timeout
-    
-    # Query with timeout
-    await query_with_timeout(client, message, timeout=300.0)
-    
-    # Receive response stream with timeout
-    async for msg in receive_with_timeout(client, timeout=300.0):
-        # Process message
-        pass
+Timeout protection for LLM API calls
+Issue #79: Prevent infinite hangs when API is slow or network drops
 """
 
 import asyncio
 import logging
 import os
-import time
-from typing import AsyncGenerator, TypeVar
+from typing import Any, Awaitable, TypeVar
 
-from claude_agent_sdk import ClaudeSDKClient
-
-from .exceptions import AgentTimeoutError
+from core.exceptions import AgentTimeoutError
 
 logger = logging.getLogger(__name__)
 
-# Type variable for generic async generator
-T = TypeVar("T")
-
-# =============================================================================
-# TIMEOUT CONFIGURATION
-# =============================================================================
-
-# Default timeout in seconds (5 minutes)
-DEFAULT_TIMEOUT = 300.0
-
-# Minimum allowed timeout (30 seconds)
-MIN_TIMEOUT = 30.0
-
-# Maximum allowed timeout (30 minutes)
-MAX_TIMEOUT = 1800.0
+T = TypeVar('T')
 
 
 def get_agent_timeout() -> float:
-    """
-    Get the configured agent session timeout from environment.
-    
+    """Get the configured agent session timeout from environment.
+
     Returns:
-        Timeout in seconds, bounded by MIN_TIMEOUT and MAX_TIMEOUT
+        Timeout in seconds (default: 300 = 5 minutes)
     """
+    timeout_str = os.getenv('AGENT_SESSION_TIMEOUT', '300')
     try:
-        timeout = float(os.getenv("AGENT_SESSION_TIMEOUT", str(DEFAULT_TIMEOUT)))
-        
-        # Enforce bounds
-        if timeout < MIN_TIMEOUT:
-            logger.warning(
-                f"AGENT_SESSION_TIMEOUT ({timeout}s) is below minimum ({MIN_TIMEOUT}s). "
-                f"Using {MIN_TIMEOUT}s instead."
-            )
-            timeout = MIN_TIMEOUT
-        elif timeout > MAX_TIMEOUT:
-            logger.warning(
-                f"AGENT_SESSION_TIMEOUT ({timeout}s) exceeds maximum ({MAX_TIMEOUT}s). "
-                f"Using {MAX_TIMEOUT}s instead."
-            )
-            timeout = MAX_TIMEOUT
-            
+        timeout = float(timeout_str)
+        # Enforce reasonable bounds: 30s minimum, 30min maximum
+        timeout = max(30.0, min(timeout, 1800.0))
         return timeout
-    except (ValueError, TypeError):
+    except ValueError:
         logger.warning(
-            f"Invalid AGENT_SESSION_TIMEOUT value. Using default {DEFAULT_TIMEOUT}s."
+            f"Invalid AGENT_SESSION_TIMEOUT value: {timeout_str}. "
+            "Using default 300 seconds."
         )
-        return DEFAULT_TIMEOUT
+        return 300.0
 
 
-# =============================================================================
-# TIMEOUT WRAPPER FUNCTIONS
-# =============================================================================
-
-
-async def query_with_timeout(
-    client: ClaudeSDKClient,
-    message: str,
+async def with_timeout(
+    coro: Awaitable[T],
     timeout: float | None = None,
-) -> None:
-    """
-    Send a query to the Claude SDK client with timeout protection.
-    
+    operation: str = "LLM API call"
+) -> T:
+    """Execute an async operation with timeout protection.
+
     Args:
-        client: Claude SDK client instance
-        message: Message to send to the agent
-        timeout: Timeout in seconds (default: from AGENT_SESSION_TIMEOUT env var)
-        
+        coro: The async coroutine to execute
+        timeout: Timeout in seconds (if None, uses AGENT_SESSION_TIMEOUT env var)
+        operation: Human-readable description for error messages
+
+    Returns:
+        The result of the coroutine
+
     Raises:
-        AgentTimeoutError: If the query exceeds the timeout
+        AgentTimeoutError: If the operation exceeds the timeout
+
+    Example:
+        result = await with_timeout(
+            client.create_agent_session(...),
+            timeout=300.0,
+            operation="agent session creation"
+        )
     """
     if timeout is None:
         timeout = get_agent_timeout()
-    
+
     try:
-        await asyncio.wait_for(
-            client.query(message),
-            timeout=timeout
-        )
+        result = await asyncio.wait_for(coro, timeout=timeout)
+        return result
+
     except asyncio.TimeoutError:
         error_msg = (
-            f"LLM API query exceeded {timeout}s timeout. "
+            f"{operation} exceeded {timeout}s timeout. "
             "This usually indicates network issues or API slowness. "
             "Please check your connection and try again."
         )
-        logger.error(f"Query timeout: {error_msg}")
+        logger.error(f"Timeout error: {error_msg}")
         raise AgentTimeoutError(error_msg)
 
 
-async def receive_with_timeout(
-    client: ClaudeSDKClient,
+async def query_with_timeout(
+    client: Any,
+    message: str,
     timeout: float | None = None,
-) -> AsyncGenerator:
-    """
-    Receive response stream from Claude SDK client with timeout protection.
-    
-    This wraps the client.receive_response() async generator to ensure it
-    doesn't hang indefinitely. The timeout applies to the ENTIRE stream,
-    not individual messages.
-    
+) -> None:
+    """Send a query to the Claude SDK client with timeout protection.
+
     Args:
-        client: Claude SDK client instance
-        timeout: Timeout in seconds (default: from AGENT_SESSION_TIMEOUT env var)
-        
-    Yields:
-        Messages from the response stream
-        
+        client: The Claude SDK client instance
+        message: The message/prompt to send
+        timeout: Timeout in seconds (if None, uses AGENT_SESSION_TIMEOUT)
+
     Raises:
-        AgentTimeoutError: If receiving the response stream exceeds the timeout
+        AgentTimeoutError: If the query exceeds the timeout
+
+    Example:
+        from core.timeout import query_with_timeout
+
+        await query_with_timeout(client, "Implement the feature", timeout=300.0)
     """
     if timeout is None:
         timeout = get_agent_timeout()
-    
-    async for msg in with_timeout_generator(
-        client.receive_response(),
-        timeout=timeout,
-        operation="LLM API response stream"
-    ):
-        yield msg
+
+    try:
+        await with_timeout(
+            client.query(message),
+            timeout=timeout,
+            operation="Claude API query"
+        )
+    except AgentTimeoutError:
+        logger.error(
+            f"Claude API query timed out after {timeout}s. "
+            f"Query length: {len(message)} characters"
+        )
+        raise
+
+
+async def receive_with_timeout(
+    client: Any,
+    timeout: float | None = None,
+):
+    """Receive response from Claude SDK client with timeout protection.
+
+    This wraps the entire response stream with a timeout. The timeout applies
+    to the ENTIRE response stream, not individual messages.
+
+    Args:
+        client: The Claude SDK client instance
+        timeout: Timeout in seconds (if None, uses AGENT_SESSION_TIMEOUT)
+
+    Yields:
+        Messages from the response stream
+
+    Raises:
+        AgentTimeoutError: If receiving the response exceeds the timeout
+
+    Example:
+        from core.timeout import query_with_timeout, receive_with_timeout
+
+        await query_with_timeout(client, "Implement the feature")
+        async for msg in receive_with_timeout(client):
+            # Process message
+            pass
+    """
+    if timeout is None:
+        timeout = get_agent_timeout()
+
+    async def _receive_all():
+        """Helper to collect all responses."""
+        async for msg in client.receive_response():
+            yield msg
+
+    try:
+        # Create an async generator with timeout
+        async for msg in with_timeout_generator(
+            _receive_all(),
+            timeout=timeout,
+            operation="Claude API response stream"
+        ):
+            yield msg
+    except AgentTimeoutError:
+        logger.error(
+            f"Claude API response stream timed out after {timeout}s"
+        )
+        raise
 
 
 async def with_timeout_generator(
-    async_gen: AsyncGenerator[T, None],
+    async_gen,
     timeout: float,
-    operation: str = "Operation"
-) -> AsyncGenerator[T, None]:
-    """
-    Generic async generator wrapper with timeout protection.
-    
-    This ensures that if the generator hangs waiting for the next item,
-    we timeout correctly. The timeout is cumulative across the entire
-    generator lifetime.
-    
-    **CRITICAL FIX**: Wraps each __anext__() call with asyncio.wait_for()
-    to ensure timeouts fire even if the generator hangs waiting for a message.
-    The original implementation only checked elapsed time AFTER receiving
-    each message, which meant if the generator hung waiting, the timeout
-    would never trigger.
-    
+    operation: str = "async operation"
+):
+    """Wrap an async generator with timeout protection.
+
     Args:
-        async_gen: Async generator to wrap
-        timeout: Timeout in seconds for the entire generator
-        operation: Description of the operation (for error messages)
-        
+        async_gen: The async generator to wrap
+        timeout: Timeout in seconds
+        operation: Human-readable description for error messages
+
     Yields:
         Items from the async generator
-        
+
     Raises:
         AgentTimeoutError: If the generator exceeds the timeout
+
+    Note:
+        The timeout applies to the ENTIRE generator execution, not per item.
+        Each iteration is protected with asyncio.wait_for() to prevent hangs.
     """
     import time
     start_time = time.time()
-    
+
     try:
         while True:
-            # Calculate remaining timeout for THIS iteration
+            # Calculate remaining timeout for this iteration
             elapsed = time.time() - start_time
             remaining = timeout - elapsed
-            
+
             if remaining <= 0:
                 raise asyncio.TimeoutError()
-            
-            # ✅ Wrap EACH iteration with timeout protection
-            # This ensures if the generator hangs waiting for next item,
+
+            # Wrap EACH iteration with timeout protection
+            # This ensures if the generator hangs waiting for the next item,
             # we timeout correctly (fixes issue #79)
             try:
                 item = await asyncio.wait_for(
@@ -204,7 +210,7 @@ async def with_timeout_generator(
             except StopAsyncIteration:
                 # Generator finished normally
                 return
-                
+
     except asyncio.TimeoutError:
         error_msg = (
             f"{operation} exceeded {timeout}s timeout. "

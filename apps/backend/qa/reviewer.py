@@ -9,9 +9,13 @@ acceptance criteria.
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
+
+# FIX #79: Timeout protection for LLM API calls
 from core.timeout import query_with_timeout, receive_with_timeout
+
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from prompts_pkg import get_qa_reviewer_prompt
+from security.tool_input_validator import get_safe_tool_input
 from task_logger import (
     LogEntryType,
     LogPhase,
@@ -164,12 +168,14 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
         )
 
     try:
+        # FIX #79: Use timeout-protected query
         debug("qa_reviewer", "Sending query to Claude SDK...")
         await query_with_timeout(client, prompt)
         debug_success("qa_reviewer", "Query sent successfully")
 
         response_text = ""
         debug("qa_reviewer", "Starting to receive response stream...")
+        # FIX #79: Use timeout-protected response stream
         async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
             message_count += 1
@@ -196,32 +202,33 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
                             )
                     elif block_type == "ToolUseBlock" and hasattr(block, "name"):
                         tool_name = block.name
-                        tool_input = None
+                        tool_input_display = None
                         tool_count += 1
 
+                        # Safely extract tool input (handles None, non-dict, etc.)
+                        inp = get_safe_tool_input(block)
+
                         # Extract tool input for display
-                        if hasattr(block, "input") and block.input:
-                            inp = block.input
-                            if isinstance(inp, dict):
-                                if "file_path" in inp:
-                                    fp = inp["file_path"]
-                                    if len(fp) > 50:
-                                        fp = "..." + fp[-47:]
-                                    tool_input = fp
-                                elif "pattern" in inp:
-                                    tool_input = f"pattern: {inp['pattern']}"
+                        if inp:
+                            if "file_path" in inp:
+                                fp = inp["file_path"]
+                                if len(fp) > 50:
+                                    fp = "..." + fp[-47:]
+                                tool_input_display = fp
+                            elif "pattern" in inp:
+                                tool_input_display = f"pattern: {inp['pattern']}"
 
                         debug(
                             "qa_reviewer",
                             f"Tool call #{tool_count}: {tool_name}",
-                            tool_input=tool_input,
+                            tool_input=tool_input_display,
                         )
 
                         # Log tool start (handles printing)
                         if task_logger:
                             task_logger.tool_start(
                                 tool_name,
-                                tool_input,
+                                tool_input_display,
                                 LogPhase.VALIDATION,
                                 print_to_console=True,
                             )
@@ -322,8 +329,10 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
                 response_preview=response_text[:500] if response_text else "empty",
             )
 
-            # Build informative error message for feedback loop
+            # Build comprehensive error message with diagnostic context
             error_details = []
+
+            # Session activity diagnostics
             if message_count == 0:
                 error_details.append("No messages received from agent")
             if tool_count == 0:
@@ -331,9 +340,46 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
             if not response_text:
                 error_details.append("Agent produced no output")
 
-            error_msg = "QA agent did not update implementation_plan.json"
+            # File system diagnostics
+            plan_file = spec_dir / "implementation_plan.json"
+            if not plan_file.exists():
+                error_details.append(f"implementation_plan.json not found at {plan_file}")
+            elif plan_file.stat().st_size == 0:
+                error_details.append("implementation_plan.json is empty")
+            else:
+                # Check if file is valid JSON
+                try:
+                    import json
+                    content = plan_file.read_text(encoding="utf-8")
+                    data = json.loads(content)
+                    if not isinstance(data, dict):
+                        error_details.append(f"implementation_plan.json is not a JSON object (got {type(data).__name__})")
+                    elif "qa_signoff" not in data:
+                        error_details.append("implementation_plan.json missing 'qa_signoff' key")
+                    elif not isinstance(data.get("qa_signoff"), dict):
+                        error_details.append(f"qa_signoff is not an object (got {type(data.get('qa_signoff')).__name__})")
+                    elif "status" not in data.get("qa_signoff", {}):
+                        error_details.append("qa_signoff missing 'status' field")
+                    else:
+                        error_details.append(f"qa_signoff.status has unexpected value: {data['qa_signoff'].get('status')}")
+                except json.JSONDecodeError as e:
+                    error_details.append(f"JSON parsing error at line {e.lineno}, col {e.colno}: {e.msg}")
+                except UnicodeDecodeError as e:
+                    error_details.append(f"File encoding error: {e}")
+                except Exception as e:
+                    error_details.append(f"Unexpected error reading file: {type(e).__name__}: {e}")
+
+            # SDK diagnostics (if available from previous context)
+            if previous_error and isinstance(previous_error, dict):
+                if "error_type" in previous_error:
+                    error_details.append(f"Previous error: {previous_error['error_type']}")
+                if "consecutive_errors" in previous_error:
+                    error_details.append(f"Consecutive failures: {previous_error['consecutive_errors']}")
+
+            error_msg = "QA agent did not update implementation_plan.json with valid status"
             if error_details:
-                error_msg += f" ({'; '.join(error_details)})"
+                error_msg += "\n\nDiagnostics:\n  - " + "\n  - ".join(error_details)
+                error_msg += "\n\nExpected: qa_signoff.status = 'approved' or 'rejected'"
 
             return "error", error_msg
 
