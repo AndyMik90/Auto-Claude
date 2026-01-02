@@ -161,14 +161,34 @@ export function useProjectEnv(
       return true;
     }
 
+    // Capture the keys being saved to only clear those specific changes
+    // This prevents losing changes made during the save operation
+    const savedKeys = new Set(Object.keys(state.stagedChanges));
+    const changesToSave = { ...state.stagedChanges };
+
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const result = await window.electronAPI.updateProjectEnv(projectId, state.stagedChanges);
+      const result = await window.electronAPI.updateProjectEnv(projectId, changesToSave);
 
       if (result.success) {
-        // Reload to get fresh state
-        await loadProjectEnv();
+        // Only clear the changes that were actually saved
+        // Any new changes made during save are preserved
+        setState(prev => {
+          const remainingChanges: Partial<ProjectEnvConfig> = {};
+          for (const [key, value] of Object.entries(prev.stagedChanges)) {
+            if (!savedKeys.has(key)) {
+              remainingChanges[key as keyof ProjectEnvConfig] = value as never;
+            }
+          }
+          return {
+            ...prev,
+            config: { ...prev.config, ...changesToSave },
+            stagedChanges: remainingChanges,
+            isLoading: false,
+            error: null
+          };
+        });
         return true;
       } else {
         setState(prev => ({
@@ -186,7 +206,7 @@ export function useProjectEnv(
       }));
       return false;
     }
-  }, [projectId, state.stagedChanges, loadProjectEnv]);
+  }, [projectId, state.stagedChanges]);
 
   // Discard staged changes
   const discard = useCallback(() => {
