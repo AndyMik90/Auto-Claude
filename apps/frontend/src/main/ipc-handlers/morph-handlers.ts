@@ -180,7 +180,15 @@ export function registerMorphHandlers(): void {
             };
           }
 
-          if (error.message.includes('fetch') || error.message.includes('network')) {
+          // Check for common network error codes and messages
+          const networkErrorCodes = ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN'];
+          const isNetworkError = 
+            error.message.includes('fetch') || 
+            error.message.includes('network') ||
+            networkErrorCodes.some(code => error.message.includes(code)) ||
+            ('code' in error && typeof error.code === 'string' && networkErrorCodes.includes(error.code));
+          
+          if (isNetworkError) {
             return {
               success: true,
               data: {
