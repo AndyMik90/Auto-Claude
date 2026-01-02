@@ -1,0 +1,186 @@
+name: OpenHands PR Review
+
+# Dual review system: CodeRabbit + OpenHands
+# - CodeRabbit: Fast, comprehensive review (style, security, best practices)
+# - OpenHands: Deep code analysis, architectural review, logic verification
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # Exclude draft PRs to save costs (can enable if needed)
+    # branches-ignore:
+    #   - 'draft/**'
+
+  # Manual trigger for selective deep reviews
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: string
+      focus_area:
+        description: 'Review focus area'
+        required: false
+        type: choice
+        options:
+          - 'full-review'
+          - 'security-focus'
+          - 'architecture-focus'
+          - 'performance-focus'
+          - 'test-coverage'
+        default: 'full-review'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  openhands-review:
+    runs-on: ubuntu-latest
+    # Skip if PR is from a bot (to avoid review loops)
+    if: |
+      github.event.pull_request.user.login != 'openhands-agent' &&
+      github.event.pull_request.user.login != 'copilot-swe-agent' &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-ai-review')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better context
+
+      - name: Get PR details
+        id: pr-details
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || parseInt('${{ github.event.inputs.pr_number }}');
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            // Get files changed
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            // Classify PR complexity
+            const fileCount = files.length;
+            const linesChanged = files.reduce((sum, f) => sum + f.changes, 0);
+
+            let complexity = 'medium';
+            if (fileCount <= 2 && linesChanged <= 50) complexity = 'simple';
+            else if (fileCount >= 10 || linesChanged >= 500) complexity = 'complex';
+
+            core.setOutput('pr_number', prNumber);
+            core.setOutput('complexity', complexity);
+            core.setOutput('file_count', fileCount);
+            core.setOutput('lines_changed', linesChanged);
+
+            console.log(`PR #${prNumber}: ${complexity} (${fileCount} files, ${linesChanged} lines)`);
+
+      - name: Determine review depth
+        id: review-config
+        run: |
+          COMPLEXITY="${{ steps.pr-details.outputs.complexity }}"
+          FOCUS_AREA="${{ github.event.inputs.focus_area || 'full-review' }}"
+
+          # Set review prompt based on complexity and focus
+          if [ "$FOCUS_AREA" = "security-focus" ]; then
+            REVIEW_PROMPT="Focus on security vulnerabilities, authentication, authorization, input validation, and data protection. Flag any potential security issues."
+          elif [ "$FOCUS_AREA" = "architecture-focus" ]; then
+            REVIEW_PROMPT="Focus on architectural decisions, design patterns, code organization, and maintainability. Evaluate if the implementation follows Auto-Claude's architecture."
+          elif [ "$FOCUS_AREA" = "performance-focus" ]; then
+            REVIEW_PROMPT="Focus on performance issues, algorithmic complexity, database queries, memory usage, and optimization opportunities."
+          elif [ "$FOCUS_AREA" = "test-coverage" ]; then
+            REVIEW_PROMPT="Focus on test coverage, test quality, edge cases, and whether tests adequately verify the implementation."
+          else
+            # Full review with depth based on complexity
+            if [ "$COMPLEXITY" = "simple" ]; then
+              REVIEW_PROMPT="Perform a quick review focusing on correctness, code quality, and obvious issues."
+            elif [ "$COMPLEXITY" = "complex" ]; then
+              REVIEW_PROMPT="Perform a comprehensive deep review including: 1) Correctness and logic, 2) Architecture and design patterns, 3) Security vulnerabilities, 4) Performance implications, 5) Test coverage, 6) Edge cases and error handling."
+            else
+              REVIEW_PROMPT="Perform a standard review covering: 1) Code correctness and logic, 2) Potential bugs, 3) Code quality and maintainability, 4) Security concerns, 5) Test coverage."
+            fi
+          fi
+
+          echo "REVIEW_PROMPT=$REVIEW_PROMPT" >> $GITHUB_OUTPUT
+          echo "Review prompt: $REVIEW_PROMPT"
+
+      - name: OpenHands PR Review
+        uses: xinbenlv/openhands-pr-review-action@v1.0.0-rc1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          model: 'openrouter/deepseek/deepseek-r1'  # Cost-optimized reasoning model
+          review-prompt: ${{ steps.review-config.outputs.REVIEW_PROMPT }}
+          # Additional configuration
+          max-iterations: 50  # Lower than issue fixing (reviews are faster)
+          target-branch: ${{ github.event.pull_request.base.ref || 'main' }}
+
+      - name: Label PR based on review
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.pr-details.outputs.pr_number }};
+            const complexity = '${{ steps.pr-details.outputs.complexity }}';
+
+            // Add review completion label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              labels: ['openhands-reviewed', `complexity:${complexity}`]
+            });
+
+            // Add comment indicating dual review
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: [
+                '## 🤖 Dual AI Review Complete',
+                '',
+                'This PR has been reviewed by:',
+                '- ✅ **CodeRabbit** - Style, security, best practices',
+                '- ✅ **OpenHands** - Deep code analysis, logic verification',
+                '',
+                `**Complexity:** ${complexity}`,
+                `**Files Changed:** ${{ steps.pr-details.outputs.file_count }}`,
+                `**Lines Changed:** ${{ steps.pr-details.outputs.lines_changed }}`,
+                '',
+                'Please review both AI suggestions and address any concerns before merging.'
+              ].join('\n')
+            });
+
+  # Optional: Auto-fix issues found by OpenHands
+  auto-fix-review-issues:
+    needs: openhands-review
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'auto-fix-review-issues')
+    steps:
+      - name: Trigger OpenHands Fix
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Add fix-me label to trigger openhands-fix-issues.yml
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['fix-me']
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '@openhands-agent Please fix the issues identified in the review above.'
+            });

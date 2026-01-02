@@ -22,7 +22,7 @@ const IPC_CHANNELS = [
 
 interface IPCResponse {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
@@ -145,7 +145,7 @@ export function IPCTester() {
                     )}
                   </div>
 
-                  {response.data && (
+                  {response.data !== undefined && response.data !== null && (
                     <div>
                       <pre className="text-sm font-mono bg-background rounded-lg p-4 overflow-x-auto">
                         {JSON.stringify(response.data, null, 2)}

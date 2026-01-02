@@ -88,6 +88,7 @@ export interface PRReviewFinding {
 
 /**
  * Complete PR review result
+ * Includes both camelCase (preferred) and snake_case (backward compatibility) field names
  */
 export interface PRReviewResult {
   prNumber: number;
@@ -99,7 +100,7 @@ export interface PRReviewResult {
   reviewId?: number;
   reviewedAt: string;
   error?: string;
-  // Follow-up review fields
+  // Follow-up review fields (camelCase preferred)
   reviewedCommitSha?: string;
   isFollowupReview?: boolean;
   previousReviewId?: number;
@@ -110,6 +111,9 @@ export interface PRReviewResult {
   hasPostedFindings?: boolean;
   postedFindingIds?: string[];
   postedAt?: string;
+  // Backward compatibility with snake_case field names from Python backend
+  reviewed_commit_sha?: string;
+  posted_at?: string;
 }
 
 /**
@@ -1324,8 +1328,8 @@ export function registerPRHandlers(
           return { hasNewCommits: false, newCommitCount: 0 };
         }
 
-        // Convert snake_case to camelCase for the field
-        const reviewedCommitSha = review.reviewedCommitSha || (review as any).reviewed_commit_sha;
+        // Convert snake_case to camelCase for the field (backward compatibility)
+        const reviewedCommitSha = review.reviewedCommitSha || review.reviewed_commit_sha;
         if (!reviewedCommitSha) {
           debugLog('No reviewedCommitSha in review', { prNumber });
           return { hasNewCommits: false, newCommitCount: 0 };
@@ -1363,7 +1367,7 @@ export function registerPRHandlers(
           )) as { ahead_by?: number; total_commits?: number; commits?: Array<{ commit: { committer: { date: string } } }> };
 
           // Check if findings have been posted and if new commits are after the posting date
-          const postedAt = review.postedAt || (review as any).posted_at;
+          const postedAt = review.postedAt || review.posted_at;
           let hasCommitsAfterPosting = true; // Default to true if we can't determine
 
           if (postedAt && comparison.commits && comparison.commits.length > 0) {

@@ -185,7 +185,7 @@ if sys.version_info >= (3, 12):
     import real_ladybug
     import graphiti_core
 `;
-      execSync(`"${venvPython}" -c "${checkScript.replace(/\n/g, '; ').replace(/; ; /g, '; ')}"`, {
+      execSync(`"${venvPython}" -c "${checkScript.trim().replace(/\n/g, '; ').replace(/; ; /g, '; ')}"`, {
         stdio: 'pipe',
         timeout: 15000
       });

@@ -35,6 +35,9 @@ except ImportError:
     )
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 @dataclass
 class ProgressCallback:
     """Callback for progress updates."""
@@ -228,9 +231,9 @@ Provide your review in the following JSON format:
         result_text = ""
         try:
             async with client:
-                await client.query(prompt)
+                await query_with_timeout(client, prompt)
 
-                async for msg in client.receive_response():
+                async for msg in receive_with_timeout(client):
                     msg_type = type(msg).__name__
                     if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                         for block in msg.content:

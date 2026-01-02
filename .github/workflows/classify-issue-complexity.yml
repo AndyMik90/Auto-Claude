@@ -1,0 +1,119 @@
+name: Classify Issue Complexity
+
+# AI-driven complexity classification for intelligent model routing
+# Simple tasks → DeepSeek Chat ($0.14/$0.28)
+# Complex tasks → DeepSeek R1 ($0.30/$1.20)
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Classify issue complexity
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const existingLabels = issue.labels.map(l => l.name);
+
+            // Skip if already classified
+            if (existingLabels.some(l => l.startsWith('complexity:'))) {
+              console.log('Already classified, skipping');
+              return;
+            }
+
+            // Complexity signals
+            const simpleSignals = [
+              'typo', 'spelling', 'rename', 'format', 'formatting',
+              'update readme', 'update docs', 'fix comment', 'add comment',
+              'remove unused', 'delete unused', 'cleanup', 'clean up',
+              'single file', 'one file', 'minor', 'trivial', 'quick fix'
+            ];
+
+            const complexSignals = [
+              'refactor', 'architecture', 'redesign', 'rewrite',
+              'security', 'vulnerability', 'authentication', 'authorization',
+              'database', 'migration', 'schema', 'api design',
+              'multi-file', 'multiple files', 'across files',
+              'performance', 'optimization', 'scalability',
+              'breaking change', 'major', 'feature', 'new feature',
+              'integration', 'third-party', 'external service'
+            ];
+
+            // Count signals
+            let simpleScore = 0;
+            let complexScore = 0;
+
+            for (const signal of simpleSignals) {
+              if (title.includes(signal) || body.includes(signal)) {
+                simpleScore++;
+              }
+            }
+
+            for (const signal of complexSignals) {
+              if (title.includes(signal) || body.includes(signal)) {
+                complexScore++;
+              }
+            }
+
+            // Additional heuristics
+            const bodyLength = body.length;
+            if (bodyLength > 1000) complexScore += 2;
+            if (bodyLength > 2000) complexScore += 2;
+            if (bodyLength < 200) simpleScore += 1;
+
+            // Check for code blocks (indicates more context/complexity)
+            const codeBlocks = (body.match(/```/g) || []).length / 2;
+            if (codeBlocks > 2) complexScore += 1;
+
+            // Check for file mentions (TypeScript/Python/YAML/JSON)
+            const fileMatches = body.match(/\.(ts|js|py|yml|yaml|json|md|tsx|jsx)/g) || [];
+            if (fileMatches.length > 3) complexScore += 2;
+
+            // Determine complexity
+            let complexity = 'medium';
+            let timeout = 180; // 3 hours default
+
+            if (simpleScore > complexScore + 1) {
+              complexity = 'simple';
+              timeout = 90; // 1.5 hours
+            } else if (complexScore > simpleScore + 1) {
+              complexity = 'complex';
+              timeout = 360; // 6 hours
+            }
+
+            console.log(`Classification: ${complexity} (simple: ${simpleScore}, complex: ${complexScore})`);
+
+            // Add complexity label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: [`complexity:${complexity}`, `timeout:${timeout}min`]
+            });
+
+            // Add summary comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `### 🤖 Complexity Analysis
+
+| Metric | Value |
+|--------|-------|
+| Complexity | **${complexity}** |
+| Simple signals | ${simpleScore} |
+| Complex signals | ${complexScore} |
+| Timeout | ${timeout} minutes |
+| Model | ${complexity === 'simple' ? 'DeepSeek Chat' : 'DeepSeek R1'} |
+
+*This classification helps route the issue to the optimal AI model for cost efficiency.*`
+            });

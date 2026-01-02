@@ -25,6 +25,7 @@ from progress import (
     count_subtasks_detailed,
     get_current_phase,
     get_next_subtask,
+    get_parallel_subtasks,
     is_build_complete,
     print_build_complete_banner,
     print_progress_summary,
@@ -68,6 +69,236 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+# FIX #487: Maximum concurrent parallel agent sessions
+MAX_PARALLEL_AGENTS = 5
+
+
+async def run_parallel_subtasks(
+    subtasks_list: list[dict],
+    phase: dict,
+    spec_dir: Path,
+    project_dir: Path,
+    model: str,
+    verbose: bool,
+    iteration: int,
+    status_manager: StatusManager,
+    recovery_manager: RecoveryManager,
+    task_logger,
+    linear_task,
+    source_spec_dir: Path | None,
+) -> None:
+    """
+    Run multiple subtasks in parallel using asyncio.gather.
+
+    FIX #487: Enables true parallel agent execution for phases marked
+    with parallel_safe=true in the implementation plan.
+
+    Args:
+        subtasks_list: List of subtask dicts to execute in parallel
+        phase: Phase dict containing phase metadata
+        spec_dir: Spec directory path
+        project_dir: Project root directory
+        model: Claude model to use
+        verbose: Whether to show detailed output
+        iteration: Current iteration number
+        status_manager: Status manager for ccstatusline
+        recovery_manager: Recovery manager instance
+        task_logger: Task logger for persistent logging
+        linear_task: Linear task state (if enabled)
+        source_spec_dir: Original spec directory (for worktree syncing)
+    """
+    from phase_config import get_phase_model, get_phase_thinking_budget
+
+    phase_name = phase.get("name", "Unknown Phase")
+    phase_id = phase.get("id") or phase.get("phase")
+    num_subtasks = len(subtasks_list)
+
+    # Print parallel execution header
+    content = [
+        bold(f"{icon(Icons.LIGHTNING)} PARALLEL EXECUTION"),
+        "",
+        f"Phase: {highlight(phase_name)}",
+        f"Subtasks: {num_subtasks} running in parallel",
+        "",
+        muted("FIX #487: True parallel agent execution enabled"),
+    ]
+    print()
+    print(box(content, width=70, style="heavy"))
+    print()
+
+    # Update status for parallel execution
+    status_manager.update_phase(phase_name, phase.get("phase", 0), 1)
+    status_manager.update_subtasks(in_progress=num_subtasks)
+
+    # Capture git state before parallel execution
+    commit_before = get_latest_commit(project_dir)
+    commit_count_before = get_commit_count(project_dir)
+
+    # Get phase-specific model and thinking level
+    phase_model = get_phase_model(spec_dir, "coding", model)
+    phase_thinking_budget = get_phase_thinking_budget(spec_dir, "coding")
+
+    async def run_single_subtask(subtask: dict, subtask_index: int) -> tuple[str, bool]:
+        """
+        Run a single subtask session.
+
+        Returns:
+            (subtask_id, success) tuple
+        """
+        subtask_id = subtask.get("id", f"subtask-{subtask_index}")
+        subtask_desc = subtask.get("description", "")
+
+        print(f"\n{icon(Icons.PLAY)} Starting: {highlight(subtask_id)}")
+        if subtask_desc:
+            desc_preview = subtask_desc[:60] + "..." if len(subtask_desc) > 60 else subtask_desc
+            print(f"   {muted(desc_preview)}")
+
+        # Get attempt count for recovery context
+        attempt_count = recovery_manager.get_attempt_count(subtask_id)
+        recovery_hints = (
+            recovery_manager.get_recovery_hints(subtask_id)
+            if attempt_count > 0
+            else None
+        )
+
+        # Load implementation plan and find phase for this subtask
+        plan = load_implementation_plan(spec_dir)
+        phase_info = find_phase_for_subtask(plan, subtask_id) if plan else {}
+
+        # Generate focused, minimal prompt for this subtask
+        prompt = generate_subtask_prompt(
+            spec_dir=spec_dir,
+            project_dir=project_dir,
+            subtask=subtask,
+            phase=phase_info or {},
+            attempt_count=attempt_count,
+            recovery_hints=recovery_hints,
+        )
+
+        # Load and append relevant file context
+        context = load_subtask_context(spec_dir, project_dir, subtask)
+        if context.get("patterns") or context.get("files_to_modify"):
+            prompt += "\n\n" + format_context_for_prompt(context)
+
+        # Create fresh client for this subtask
+        client = create_client(
+            project_dir,
+            spec_dir,
+            phase_model,
+            max_thinking_tokens=phase_thinking_budget,
+        )
+
+        # Set subtask info in logger
+        if task_logger:
+            task_logger.set_subtask(subtask_id)
+            task_logger.set_session(iteration)
+
+        # Run session
+        try:
+            async with client:
+                status, response = await run_agent_session(
+                    client, prompt, spec_dir, verbose, phase=LogPhase.CODING
+                )
+        except Exception as e:
+            logger.error(f"Parallel session error for {subtask_id}: {e}")
+            print(f"\n{icon(Icons.ERROR)} Error in {subtask_id}: {e}")
+            return subtask_id, False
+
+        # Post-session processing
+        linear_is_enabled = linear_task is not None and linear_task.task_id is not None
+        success = await post_session_processing(
+            spec_dir=spec_dir,
+            project_dir=project_dir,
+            subtask_id=subtask_id,
+            session_num=iteration,
+            commit_before=commit_before,
+            commit_count_before=commit_count_before,
+            recovery_manager=recovery_manager,
+            linear_enabled=linear_is_enabled,
+            status_manager=status_manager,
+            source_spec_dir=source_spec_dir,
+        )
+
+        return subtask_id, success
+
+    # Run all subtasks in parallel using asyncio.gather
+    # FIX #487: Use semaphore to limit concurrent sessions to MAX_PARALLEL_AGENTS
+    print(f"\n{icon(Icons.GEAR)} Launching {num_subtasks} parallel sessions (max {MAX_PARALLEL_AGENTS} concurrent)...\n")
+
+    semaphore = asyncio.Semaphore(MAX_PARALLEL_AGENTS)
+
+    async def run_with_limit(subtask: dict, index: int) -> tuple[str, bool]:
+        """Run a subtask with semaphore limit."""
+        async with semaphore:
+            return await run_single_subtask(subtask, index)
+
+    tasks = [
+        run_with_limit(subtask, i)
+        for i, subtask in enumerate(subtasks_list)
+    ]
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Process results
+    successful = []
+    failed = []
+
+    for result in results:
+        if isinstance(result, Exception):
+            logger.error(f"Parallel execution exception: {result}")
+            failed.append(("unknown", str(result)))
+        else:
+            subtask_id, success = result
+            if success:
+                successful.append(subtask_id)
+            else:
+                failed.append((subtask_id, "Session did not complete successfully"))
+
+    # Print summary
+    print()
+    content = [
+        bold(f"{icon(Icons.SESSION)} PARALLEL EXECUTION COMPLETE"),
+        "",
+        f"Phase: {phase_name}",
+        f"Successful: {len(successful)}/{num_subtasks}",
+    ]
+
+    if successful:
+        content.append("")
+        content.append(f"{icon(Icons.SUCCESS)} Completed:")
+        for sid in successful:
+            content.append(f"   - {sid}")
+
+    if failed:
+        content.append("")
+        content.append(f"{icon(Icons.ERROR)} Failed:")
+        for sid, error in failed:
+            content.append(f"   - {sid}: {error[:50]}")
+
+    print(box(content, width=70, style="heavy"))
+    print()
+
+    # Update status
+    subtasks = count_subtasks_detailed(spec_dir)
+    status_manager.update_subtasks(
+        completed=subtasks["completed"],
+        total=subtasks["total"],
+        in_progress=0,
+    )
+
+    # Handle stuck subtasks
+    for subtask_id, _ in failed:
+        if subtask_id != "unknown":
+            attempt_count = recovery_manager.get_attempt_count(subtask_id)
+            if attempt_count >= 3:
+                recovery_manager.mark_subtask_stuck(
+                    subtask_id, f"Failed after {attempt_count} attempts (parallel)"
+                )
+                print_status(
+                    f"Subtask {subtask_id} marked as STUCK after {attempt_count} attempts",
+                    "error",
+                )
 
 
 async def run_autonomous_agent(
@@ -237,7 +468,30 @@ async def run_autonomous_agent(
             print("To continue, run the script again without --max-iterations")
             break
 
-        # Get the next subtask to work on
+        # FIX #487: Check if parallel execution is available
+        parallel_work = get_parallel_subtasks(spec_dir)
+
+        if parallel_work:
+            # Parallel execution path for parallel-safe phases
+            subtasks_list, phase = parallel_work
+            await run_parallel_subtasks(
+                subtasks_list=subtasks_list,
+                phase=phase,
+                spec_dir=spec_dir,
+                project_dir=project_dir,
+                model=model,
+                verbose=verbose,
+                iteration=iteration,
+                status_manager=status_manager,
+                recovery_manager=recovery_manager,
+                task_logger=task_logger,
+                linear_task=linear_task,
+                source_spec_dir=source_spec_dir,
+            )
+            # After parallel execution, continue loop to process next phase
+            continue
+
+        # Sequential execution path (fallback)
         next_subtask = get_next_subtask(spec_dir)
         subtask_id = next_subtask.get("id") if next_subtask else None
         phase_name = next_subtask.get("phase_name") if next_subtask else None

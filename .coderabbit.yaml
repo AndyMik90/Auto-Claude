@@ -8,16 +8,22 @@ language: "en-US"
 reviews:
   # Review profile: "chill" for fewer comments, "assertive" for more thorough feedback
   profile: "assertive"
+  request_changes_workflow: true
 
   # Generate high-level summary in PR description
   high_level_summary: true
+  review_status: false
+  collapse_walkthrough: false
 
   # Automatic review settings
   auto_review:
     enabled: true
     auto_incremental_review: true
+    drafts: true  # Changed to true to review draft PRs for early feedback
     # Target branches for review (in addition to default branch)
     base_branches:
+      - main
+      - master
       - develop
       - "release/*"
       - "hotfix/*"
@@ -26,8 +32,6 @@ reviews:
       - "[WIP]"
       - "WIP:"
       - "DO NOT MERGE"
-    # Don't review draft PRs
-    drafts: false
 
   # Path filters - exclude generated/vendor files
   path_filters:
@@ -42,19 +46,88 @@ reviews:
 
   # Path-specific review instructions
   path_instructions:
+    - path: "**/*.ts"
+      instructions: |
+        AGGRESSIVE REVIEW MODE (TypeScript):
+        1. MUST check for type safety (no `any` without justification)
+        2. MUST verify proper error handling (try-catch with specific error types)
+        3. MUST ensure async/await correctness (no unhandled promises)
+        4. MUST validate null/undefined checks (use optional chaining, nullish coalescing)
+        5. MUST flag any hardcoded secrets or API keys
+        6. MUST suggest unit tests for uncovered code paths
+        7. MUST check for proper TypeScript generics usage
+        8. REQUEST_CHANGES for any security vulnerability
+
+    - path: "**/*.tsx"
+      instructions: |
+        REACT/TSX REVIEW CRITERIA:
+        1. MUST follow React best practices (hooks rules, component patterns)
+        2. MUST check for proper key props in lists
+        3. MUST verify proper state management (useState, useEffect dependencies)
+        4. MUST ensure accessibility (ARIA attributes where needed)
+        5. MUST check for performance issues (useMemo, useCallback where appropriate)
+        6. MUST validate prop types with TypeScript interfaces
+
     - path: "apps/backend/**/*.py"
       instructions: |
-        Focus on Python best practices, type hints, and async patterns.
-        Check for proper error handling and security considerations.
-        Verify compatibility with Python 3.12+.
-    - path: "apps/frontend/**/*.{ts,tsx}"
+        AGGRESSIVE REVIEW MODE (Python):
+        1. MUST follow PEP 8 style guidelines
+        2. MUST check for type hints (Python 3.10+ syntax)
+        3. MUST verify proper exception handling (specific exception types)
+        4. MUST ensure proper resource management (context managers for files, connections)
+        5. MUST flag any hardcoded secrets or credentials
+        6. MUST suggest unit tests (pytest) for uncovered code paths
+        7. MUST check for SQL injection vulnerabilities in database queries
+        8. REQUEST_CHANGES for any security vulnerability
+        9. Verify compatibility with Python 3.12+
+
+    - path: "**/tests/**/*.ts"
       instructions: |
-        Review React patterns and TypeScript type safety.
-        Check for proper state management and component composition.
-    - path: "tests/**"
+        TEST REVIEW CRITERIA (TypeScript):
+        1. MUST follow AAA (Arrange-Act-Assert) pattern
+        2. MUST have meaningful test names describing the scenario
+        3. MUST cover edge cases and error conditions
+        4. MUST use proper mocking (jest.mock, sinon)
+        5. MUST have assertions that verify behavior
+        6. MUST avoid testing implementation details
+
+    - path: "**/tests/**/*.py"
       instructions: |
-        Ensure tests are comprehensive and follow pytest conventions.
-        Check for proper mocking and test isolation.
+        TEST REVIEW CRITERIA (Python):
+        1. MUST use pytest fixtures appropriately
+        2. MUST follow AAA (Arrange-Act-Assert) pattern
+        3. MUST have descriptive test function names (test_should_...)
+        4. MUST cover edge cases and error conditions
+        5. MUST use proper mocking (unittest.mock, pytest-mock)
+        6. MUST have clear assertions
+        7. Ensure tests are comprehensive and follow pytest conventions
+        8. Check for proper mocking and test isolation
+
+    - path: "**/*.json"
+      instructions: |
+        JSON REVIEW:
+        1. NO hardcoded secrets or API keys
+        2. Validate against expected schema
+        3. Check for missing required fields
+        4. Verify proper formatting and indentation
+
+    - path: "**/*.yml"
+      instructions: |
+        YAML/WORKFLOW REVIEW:
+        1. Check for security best practices in GitHub Actions
+        2. Validate cron syntax for scheduled workflows
+        3. Ensure proper secret management (no exposure)
+        4. Check for proper permissions (principle of least privilege)
+        5. Verify workflow dependencies and job ordering
+
+    - path: "**/*.md"
+      instructions: |
+        DOCUMENTATION REVIEW:
+        1. Check for broken links
+        2. Verify code examples are syntactically correct
+        3. Ensure consistent formatting
+        4. Check for outdated information
+        5. Validate markdown syntax
 
 chat:
   auto_reply: true
@@ -63,3 +136,8 @@ knowledge_base:
   opt_out: false
   learnings:
     scope: "auto"
+
+issues:
+  auto_plan: true
+  enrichment: true
+  add_checklist: true

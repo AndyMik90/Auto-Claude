@@ -219,7 +219,7 @@ export function getRunnerPath(backendPath: string): string {
  */
 export function getBackendPath(project: Project): string | null {
   // Import app module for production path detection
-  let app: any;
+  let app: Electron.App | undefined;
   try {
     app = require('electron').app;
   } catch {
@@ -347,10 +347,11 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
   try {
     await execAsync('gh auth status 2>&1');
     result.ghAuthenticated = true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // gh auth status returns non-zero when not authenticated
     // Check the output to determine if it's an auth issue
-    const output = error.stdout || error.stderr || '';
+    const execError = error as { stdout?: string; stderr?: string };
+    const output = execError.stdout || execError.stderr || '';
     if (output.includes('not logged in') || output.includes('not authenticated')) {
       result.ghAuthenticated = false;
       result.error = 'GitHub CLI is not authenticated. Run:\n  gh auth login';
@@ -470,4 +471,108 @@ export function buildRunnerArgs(
   args.push(...additionalArgs);
 
   return args;
+}
+
+/**
+ * Run a Python subprocess with automatic retry logic and exponential backoff
+ *
+ * This wrapper adds resilience to subprocess operations by retrying on transient failures.
+ * Properly cleans up failed processes before retrying.
+ *
+ * @param options - Subprocess configuration (same as runPythonSubprocess)
+ * @param retryOptions - Retry configuration (defaults to medium preset: 3 attempts, 2s initial delay)
+ * @returns Promise resolving to subprocess result
+ *
+ * @example
+ * ```ts
+ * import { withRetry, RetryPresets, isRetryableError } from '../../../utils/retry';
+ *
+ * const result = await runPythonSubprocessWithRetry({
+ *   pythonPath: getPythonPath(backendPath),
+ *   args: buildRunnerArgs(runnerPath, projectPath, 'analyze-pr', ['--pr', '123']),
+ *   cwd: backendPath,
+ *   onProgress: (percent, message) => console.log(`[${percent}%] ${message}`)
+ * }, {
+ *   ...RetryPresets.medium,
+ *   isRetryable: isRetryableError,
+ *   onRetry: (error, attempt, delay) => {
+ *     console.log(`Retry attempt ${attempt} after ${delay}ms due to:`, error);
+ *   }
+ * });
+ * ```
+ */
+export async function runPythonSubprocessWithRetry<T = unknown>(
+  options: SubprocessOptions,
+  retryOptions?: import('../../../utils/retry').RetryOptions
+): Promise<SubprocessResult<T>> {
+  // Import retry utility (dynamic import to avoid circular dependencies)
+  const { withRetry, RetryPresets, isRetryableError } = await import('../../../utils/retry');
+
+  // Default retry configuration for subprocess operations
+  const finalRetryOptions: import('../../../utils/retry').RetryOptions = {
+    ...RetryPresets.medium, // 3 attempts, 2s initial delay, 30s max
+    isRetryable: (error: unknown) => {
+      // Check if it's a retryable error (network, timeout, etc.)
+      if (!isRetryableError(error)) {
+        return false;
+      }
+
+      // Don't retry if it's a known non-retryable subprocess result
+      const result = error as SubprocessResult<T>;
+      if (result && typeof result === 'object' && 'exitCode' in result) {
+        // Exit code 0 = success (shouldn't have been thrown)
+        // Exit code 1 = general error (could be retryable)
+        // Exit code 2+ = specific errors (usually not retryable)
+        // Retry only on exit code 1 or network-related errors
+        return result.exitCode === 1 || result.exitCode === -1;
+      }
+
+      return true;
+    },
+    ...retryOptions,
+  };
+
+  let lastProcess: ChildProcess | undefined;
+
+  const retryResult = await withRetry<SubprocessResult<T>>(async () => {
+    // Kill previous process if it exists and is still running
+    if (lastProcess && !lastProcess.killed) {
+      lastProcess.kill('SIGTERM');
+      // Give it a moment to clean up
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    // Run subprocess
+    const { process, promise } = runPythonSubprocess<T>(options);
+    lastProcess = process;
+
+    const result = await promise;
+
+    // If subprocess failed, throw to trigger retry
+    if (!result.success) {
+      throw result;
+    }
+
+    return result;
+  }, finalRetryOptions);
+
+  // Ensure final process is cleaned up
+  if (lastProcess && !lastProcess.killed) {
+    lastProcess.kill('SIGTERM');
+  }
+
+  // If retry succeeded, return the successful result
+  if (retryResult.success && retryResult.data) {
+    return retryResult.data;
+  }
+
+  // If retry failed, return the failed result
+  const failedResult = retryResult.error as SubprocessResult<T>;
+  return failedResult || {
+    success: false,
+    exitCode: -1,
+    stdout: '',
+    stderr: '',
+    error: retryResult.error instanceof Error ? retryResult.error.message : 'Unknown error',
+  };
 }

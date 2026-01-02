@@ -18,6 +18,10 @@ from tenacity import (
 )
 
 from claude_agent_sdk import ClaudeSDKClient
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
+
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from insight_extractor import extract_session_insights
 from linear_updater import (
@@ -368,15 +372,15 @@ async def run_agent_session(
     tool_count = 0
 
     try:
-        # Send the query
+        # Send the query (FIX #79: with timeout protection)
         debug("session", "Sending query to Claude SDK...")
-        await client.query(message)
+        await query_with_timeout(client, message)
         debug_success("session", "Query sent successfully")
 
-        # Collect response text and show tool use
+        # Collect response text and show tool use (FIX #79: with timeout protection)
         response_text = ""
         debug("session", "Starting to receive response stream...")
-        async for msg in client.receive_response():
+        async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
             message_count += 1
             debug_detailed(

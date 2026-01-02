@@ -142,6 +142,8 @@ export interface MRReviewResult {
   newFindingsSinceLastReview?: string[];
   hasPostedFindings?: boolean;
   postedFindingIds?: string[];
+  // Backward compatibility with snake_case field names from Python backend
+  reviewed_commit_sha?: string;
 }
 
 export interface MRReviewProgress {

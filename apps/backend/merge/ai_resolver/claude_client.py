@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 def create_claude_resolver() -> AIResolver:
     """
     Create an AIResolver configured to use Claude via the Agent SDK.
@@ -75,10 +78,10 @@ def create_claude_resolver() -> AIResolver:
                 # Use async context manager to handle connect/disconnect
                 # This is the standard pattern used throughout the codebase
                 async with client:
-                    await client.query(user)
+                    await query_with_timeout(client, user)
 
                     response_text = ""
-                    async for msg in client.receive_response():
+                    async for msg in receive_with_timeout(client):
                         msg_type = type(msg).__name__
                         if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                             for block in msg.content:

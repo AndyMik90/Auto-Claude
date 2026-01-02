@@ -23,6 +23,9 @@ from typing import Any, Protocol, runtime_checkable
 # ============================================================================
 
 
+
+# FIX #79: Timeout protection for LLM API calls
+from core.timeout import query_with_timeout, receive_with_timeout
 @runtime_checkable
 class GitHubClientProtocol(Protocol):
     """Protocol for GitHub API clients."""
@@ -332,8 +335,8 @@ class MockClaudeClient:
         ''')
 
         async with client:
-            await client.query("Review this code")
-            async for msg in client.receive_response():
+            await query_with_timeout(client, "Review this code")
+            async for msg in receive_with_timeout(client):
                 print(msg)
     """
 

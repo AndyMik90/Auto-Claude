@@ -8,7 +8,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent
+  type DragEndEvent,
+  type DragStartEvent
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -553,7 +554,7 @@ export function App() {
   };
 
   // Handle drag start - set the active dragged project
-  const handleDragStart = (event: any) => {
+  const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const draggedProject = projectTabs.find(p => p.id === active.id);
     if (draggedProject) {

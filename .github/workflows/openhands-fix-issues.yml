@@ -1,0 +1,32 @@
+name: OpenHands Resolver
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  call-openhands-resolver:
+    uses: OpenHands/OpenHands/.github/workflows/openhands-resolver.yml@main
+    with:
+      macro: '@openhands-agent'
+      max_iterations: 100
+      target_branch: 'main'
+      LLM_MODEL: 'openrouter/deepseek/deepseek-r1'
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      PAT_USERNAME: ${{ secrets.PAT_USERNAME }}
+      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
