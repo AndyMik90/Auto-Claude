@@ -66,6 +66,8 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   const [newEnvKey, setNewEnvKey] = useState('');
   const [newEnvValue, setNewEnvValue] = useState('');
   const [isSavingEnv, setIsSavingEnv] = useState<string | null>(null);
+  const [showEnvValue, setShowEnvValue] = useState<Record<string, boolean>>({});
+  const [envLimitWarning, setEnvLimitWarning] = useState<string | null>(null);
 
   // Auto-swap settings state
   const [autoSwitchSettings, setAutoSwitchSettings] = useState<ClaudeAutoSwitchSettings | null>(null);
@@ -273,11 +275,13 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       setExpandedEnvProfileId(null);
       setNewEnvKey('');
       setNewEnvValue('');
+      setEnvLimitWarning(null);
     } else {
       // Opening the section - load existing env vars from the profile
       setExpandedEnvProfileId(profileId);
       setNewEnvKey('');
       setNewEnvValue('');
+      setEnvLimitWarning(null);
 
       // Find the profile and load its env vars
       const profile = claudeProfiles.find(p => p.id === profileId);
@@ -294,12 +298,20 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
     if (!newEnvKey.trim()) return;
 
     const profileEnvVars = envVariables[profileId] || [];
+
+    // Check if we've reached the limit of 20 environment variables
+    if (profileEnvVars.length >= 20) {
+      setEnvLimitWarning('Maximum of 20 environment variables per profile reached.');
+      return;
+    }
+
     setEnvVariables({
       ...envVariables,
       [profileId]: [...profileEnvVars, { key: newEnvKey.trim(), value: newEnvValue }]
     });
     setNewEnvKey('');
     setNewEnvValue('');
+    setEnvLimitWarning(null);
   };
 
   const handleRemoveEnvVariable = (profileId: string, index: number) => {
@@ -309,6 +321,13 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       ...envVariables,
       [profileId]: updatedVars
     });
+  };
+
+  const toggleEnvValueVisibility = (profileId: string) => {
+    setShowEnvValue(prev => ({
+      ...prev,
+      [profileId]: !prev[profileId]
+    }));
   };
 
   const handleSaveEnvVariables = async (profileId: string) => {
@@ -669,13 +688,13 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               Environment Variables
                             </Label>
                             <span className="text-xs text-muted-foreground">
-                              Key-value pairs for this profile
+                              {(envVariables[profile.id] || []).length}/20 • Key-value pairs for this profile
                             </span>
                           </div>
 
                           {/* Existing environment variables */}
                           {(envVariables[profile.id] || []).length > 0 && (
-                            <div className="space-y-2">
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
                               {(envVariables[profile.id] || []).map((envVar, index) => (
                                 <div key={index} className="flex items-center gap-2">
                                   <Input
@@ -683,11 +702,21 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                     readOnly
                                     className="flex-1 h-8 text-xs font-mono"
                                   />
-                                  <Input
-                                    value={envVar.value}
-                                    readOnly
-                                    className="flex-1 h-8 text-xs font-mono"
-                                  />
+                                  <div className="relative flex-1">
+                                    <Input
+                                      type={showEnvValue[profile.id] ? 'text' : 'password'}
+                                      value={envVar.value}
+                                      readOnly
+                                      className="flex-1 h-8 text-xs font-mono pr-8"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleEnvValueVisibility(profile.id)}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                      {showEnvValue[profile.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                    </button>
+                                  </div>
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -716,27 +745,44 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                   }
                                 }}
                               />
-                              <Input
-                                placeholder="value"
-                                value={newEnvValue}
-                                onChange={(e) => setNewEnvValue(e.target.value)}
-                                className="flex-1 h-8 text-xs font-mono"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleAddEnvVariable(profile.id);
-                                  }
-                                }}
-                              />
+                              <div className="relative flex-1">
+                                <Input
+                                  type={showEnvValue[profile.id] ? 'text' : 'password'}
+                                  placeholder="value"
+                                  value={newEnvValue}
+                                  onChange={(e) => setNewEnvValue(e.target.value)}
+                                  className="flex-1 h-8 text-xs font-mono pr-8"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleAddEnvVariable(profile.id);
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => toggleEnvValueVisibility(profile.id)}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                  {showEnvValue[profile.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                </button>
+                              </div>
                               <Button
                                 size="sm"
                                 onClick={() => handleAddEnvVariable(profile.id)}
-                                disabled={!newEnvKey.trim()}
+                                disabled={!newEnvKey.trim() || (envVariables[profile.id]?.length ?? 0) >= 20}
                                 className="h-8 text-xs gap-1"
+                                title={(envVariables[profile.id]?.length ?? 0) >= 20 ? 'Maximum 20 environment variables per profile' : ''}
                               >
                                 <Plus className="h-3 w-3" />
                                 Add
                               </Button>
                             </div>
+                            {envLimitWarning && (
+                              <div className="text-xs text-warning flex items-center gap-1 mt-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {envLimitWarning}
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex items-center justify-end gap-2">
