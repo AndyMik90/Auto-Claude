@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, TaskStartOptions, TaskStatus } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, unlinkSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { AgentManager } from '../../agent';
 import { fileWatcher } from '../../file-watcher';
@@ -15,6 +15,43 @@ import {
   persistPlanStatusSync,
   createPlanIfNotExists
 } from './plan-file-utils';
+
+/**
+ * Atomic file write to prevent TOCTOU race conditions.
+ * Writes to a temporary file first, then atomically renames to target.
+ * This ensures the target file is never in an inconsistent state.
+ */
+function atomicWriteFileSync(filePath: string, content: string): void {
+  const tempPath = `${filePath}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tempPath, content, 'utf-8');
+    renameSync(tempPath, filePath);
+  } catch (error) {
+    // Clean up temp file if rename failed
+    try {
+      unlinkSync(tempPath);
+    } catch {
+      // Ignore cleanup errors
+    }
+    throw error;
+  }
+}
+
+/**
+ * Safe file read that handles missing files without TOCTOU issues.
+ * Returns null if file doesn't exist or can't be read.
+ */
+function safeReadFileSync(filePath: string): string | null {
+  try {
+    return readFileSync(filePath, 'utf-8');
+  } catch (error) {
+    // ENOENT (file not found) is expected, other errors should be logged
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.error(`[safeReadFileSync] Error reading ${filePath}:`, error);
+    }
+    return null;
+  }
+}
 
 /**
  * Helper function to check subtask completion status
@@ -648,9 +685,10 @@ export function registerTaskExecutionHandlers(
 
       try {
         // Read the plan to analyze subtask progress
+        // Using safe read to avoid TOCTOU race conditions
         let plan: Record<string, unknown> | null = null;
-        if (existsSync(planPath)) {
-          const planContent = readFileSync(planPath, 'utf-8');
+        const planContent = safeReadFileSync(planPath);
+        if (planContent) {
           plan = JSON.parse(planContent);
         }
 
@@ -698,7 +736,8 @@ export function registerTaskExecutionHandlers(
             plan.status = 'human_review';
             plan.planStatus = 'review';
             try {
-              writeFileSync(planPath, JSON.stringify(plan, null, 2));
+              // Use atomic write to prevent TOCTOU race conditions
+              atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2));
             } catch (writeError) {
               console.error('[Recovery] Failed to write plan file:', writeError);
               return {
@@ -751,7 +790,8 @@ export function registerTaskExecutionHandlers(
           }
 
           try {
-            writeFileSync(planPath, JSON.stringify(plan, null, 2));
+            // Use atomic write to prevent TOCTOU race conditions
+            atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2));
           } catch (writeError) {
             console.error('[Recovery] Failed to write plan file:', writeError);
             return {
@@ -810,7 +850,8 @@ export function registerTaskExecutionHandlers(
               plan.status = 'in_progress';
               plan.planStatus = 'in_progress';
               try {
-                writeFileSync(planPath, JSON.stringify(plan, null, 2));
+                // Use atomic write to prevent TOCTOU race conditions
+                atomicWriteFileSync(planPath, JSON.stringify(plan, null, 2));
               } catch (writeError) {
                 console.error('[Recovery] Failed to write plan file for restart:', writeError);
                 // Continue with restart attempt even if file write fails

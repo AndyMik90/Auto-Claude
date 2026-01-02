@@ -140,7 +140,8 @@ class StatusManager:
         with self._write_lock:
             self._write_pending = False
             self._write_timer = None
-        self._status.last_update = datetime.now().isoformat()
+            # Update timestamp inside lock to prevent race conditions
+            self._status.last_update = datetime.now().isoformat()
 
         try:
             with open(self.status_file, "w") as f:
@@ -186,8 +187,10 @@ class StatusManager:
             status: Optional status to set before writing
             immediate: If True, write immediately without debouncing
         """
-        if status:
-            self._status = status
+        # Protect status assignment with lock to prevent race conditions
+        with self._write_lock:
+            if status:
+                self._status = status
 
         if immediate:
             # Cancel any pending debounced write

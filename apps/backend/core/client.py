@@ -79,9 +79,21 @@ def _get_cached_project_data(
             f"[ClientCache] Cache MISS - loaded project index in {load_duration:.1f}ms"
         )
 
-    # Store in cache with lock
+    # Store in cache with lock - use double-checked locking pattern
+    # Re-check if another thread populated the cache while we were loading
     with _CACHE_LOCK:
-        _PROJECT_INDEX_CACHE[key] = (project_index, project_capabilities, now)
+        if key in _PROJECT_INDEX_CACHE:
+            cached_index, cached_capabilities, cached_time = _PROJECT_INDEX_CACHE[key]
+            cache_age = time.time() - cached_time
+            if cache_age < _CACHE_TTL_SECONDS:
+                # Another thread already cached valid data while we were loading
+                if debug:
+                    print(
+                        "[ClientCache] Cache was populated by another thread, using cached data"
+                    )
+                return cached_index, cached_capabilities
+        # Either no cache entry or it's expired - store our fresh data
+        _PROJECT_INDEX_CACHE[key] = (project_index, project_capabilities, time.time())
 
     return project_index, project_capabilities
 
