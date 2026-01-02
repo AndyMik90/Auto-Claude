@@ -15,7 +15,6 @@ without sending the entire file content in the code_edit parameter.
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +53,11 @@ def _truncate_content(content: str, max_chars: int = MAX_CONTENT_IN_ERROR) -> st
     """
     if len(content) <= max_chars:
         return content
-    return content[:max_chars] + f"\n\n... [truncated, {len(content) - max_chars} more characters]"
+    return (
+        content[:max_chars]
+        + f"\n\n... [truncated, {len(content) - max_chars} more characters]"
+    )
+
 
 # Tool description following Morph's edit_file pattern
 # See: https://docs.morphllm.com/guides/agent-tools
@@ -182,7 +185,8 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
             project_resolved = project_dir.resolve()
 
             # Check that the resolved path is within the project directory
-            if not str(resolved_path).startswith(str(project_resolved) + os.sep) and resolved_path != project_resolved:
+            # Using Path.is_relative_to() for robust cross-platform path checking
+            if not resolved_path.is_relative_to(project_resolved):
                 logger.warning(
                     f"Path traversal attempt blocked: {target_file} resolves to {resolved_path} "
                     + f"which is outside project directory {project_resolved}"
@@ -303,7 +307,9 @@ def create_morph_tools(spec_dir: Path, project_dir: Path) -> list[Any]:
                         }
 
                     # Build success message with change summary
-                    change_summary = f"+{result.lines_added}/-{result.lines_removed} lines"
+                    change_summary = (
+                        f"+{result.lines_added}/-{result.lines_removed} lines"
+                    )
                     usage_info = ""
                     if result.usage.total_tokens > 0:
                         usage_info = f" ({result.usage.total_tokens} tokens)"
