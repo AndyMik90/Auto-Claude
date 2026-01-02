@@ -162,7 +162,7 @@ class GraphitiSearch:
                             ):
                                 continue
                             sessions.append(data)
-                    except (json.JSONDecodeError, TypeError):
+                    except (json.JSONDecodeError, TypeError, AttributeError):
                         continue
 
             # Sort by session number and return latest
@@ -214,7 +214,7 @@ class GraphitiSearch:
                                     "score": getattr(result, "score", 0.0),
                                 }
                             )
-                    except (json.JSONDecodeError, TypeError):
+                    except (json.JSONDecodeError, TypeError, AttributeError):
                         continue
 
             return outcomes[:limit]
@@ -278,7 +278,7 @@ class GraphitiSearch:
                                     "score": score,
                                 }
                             )
-                    except (json.JSONDecodeError, TypeError):
+                    except (json.JSONDecodeError, TypeError, AttributeError):
                         continue
 
             # Search with query focused on gotchas
@@ -311,7 +311,7 @@ class GraphitiSearch:
                                     "score": score,
                                 }
                             )
-                    except (json.JSONDecodeError, TypeError):
+                    except (json.JSONDecodeError, TypeError, AttributeError):
                         continue
 
             # Sort by score and limit

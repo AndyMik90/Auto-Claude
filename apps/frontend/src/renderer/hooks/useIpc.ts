@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { unstable_batchedUpdates } from 'react-dom';
 import { useTaskStore } from '../stores/task-store';
 import { useRoadmapStore } from '../stores/roadmap-store';
@@ -18,43 +18,62 @@ interface BatchedUpdate {
   queuedAt?: number; // For debug timing
 }
 
-// Module-level batch state (shared across all hook instances)
-const batchQueue = new Map<string, BatchedUpdate>();
-let batchTimeout: NodeJS.Timeout | null = null;
-let storeActions: {
+/**
+ * Store action references type for batch flushing.
+ */
+interface StoreActions {
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
   updateExecutionProgress: (taskId: string, progress: ExecutionProgress) => void;
   updateTaskFromPlan: (taskId: string, plan: ImplementationPlan) => void;
   batchAppendLogs: (taskId: string, logs: string[]) => void;
-} | null = null;
+}
+
+/**
+ * Module-level batch state.
+ *
+ * DESIGN NOTE: These module-level variables are intentionally shared across all hook instances.
+ * This is acceptable because:
+ * 1. There's only one Zustand store instance (singleton pattern)
+ * 2. The app has a single main window that uses this hook
+ * 3. Batching IPC updates at module level ensures all events within a frame are coalesced
+ *
+ * The storeActionsRef pattern ensures we always have the latest action references when
+ * flushing, avoiding stale closure issues from component re-renders.
+ */
+const batchQueue = new Map<string, BatchedUpdate>();
+let batchTimeout: NodeJS.Timeout | null = null;
+let storeActionsRef: StoreActions | null = null;
 
 function flushBatch(): void {
-  if (batchQueue.size === 0 || !storeActions) return;
+  if (batchQueue.size === 0 || !storeActionsRef) return;
 
   const flushStart = performance.now();
   const updateCount = batchQueue.size;
   let totalUpdates = 0;
   let totalLogs = 0;
 
+  // Capture current actions reference to avoid stale closures during batch processing
+  const actions = storeActionsRef;
+
   // Batch all React updates together
   unstable_batchedUpdates(() => {
     batchQueue.forEach((updates, taskId) => {
       // Apply updates in order: plan first (has most data), then status, then progress, then logs
       if (updates.plan) {
-        storeActions!.updateTaskFromPlan(taskId, updates.plan);
+        actions.updateTaskFromPlan(taskId, updates.plan);
         totalUpdates++;
       }
       if (updates.status) {
-        storeActions!.updateTaskStatus(taskId, updates.status);
+        actions.updateTaskStatus(taskId, updates.status);
         totalUpdates++;
       }
       if (updates.progress) {
-        storeActions!.updateExecutionProgress(taskId, updates.progress);
+        actions.updateExecutionProgress(taskId, updates.progress);
         totalUpdates++;
       }
       // Batch append all logs at once (instead of one state update per log line)
       if (updates.logs && updates.logs.length > 0) {
-        storeActions!.batchAppendLogs(taskId, updates.logs);
+        actions.batchAppendLogs(taskId, updates.logs);
         totalLogs += updates.logs.length;
         totalUpdates++;
       }
@@ -63,7 +82,7 @@ function flushBatch(): void {
 
   if (window.DEBUG) {
     const flushDuration = performance.now() - flushStart;
-    console.log(`[IPC Batch] Flushed ${totalUpdates} updates (${totalLogs} logs) for ${updateCount} tasks in ${flushDuration.toFixed(2)}ms`);
+    console.warn(`[IPC Batch] Flushed ${totalUpdates} updates (${totalLogs} logs) for ${updateCount} tasks in ${flushDuration.toFixed(2)}ms`);
   }
 
   batchQueue.clear();
@@ -103,8 +122,9 @@ export function useIpcListeners(): void {
   const batchAppendLogs = useTaskStore((state) => state.batchAppendLogs);
   const setError = useTaskStore((state) => state.setError);
 
-  // Store actions reference for batch flushing
-  storeActions = { updateTaskStatus, updateExecutionProgress, updateTaskFromPlan, batchAppendLogs };
+  // Update module-level store actions reference for batch flushing
+  // This ensures flushBatch() always has access to current action implementations
+  storeActionsRef = { updateTaskStatus, updateExecutionProgress, updateTaskFromPlan, batchAppendLogs };
 
   useEffect(() => {
     // Set up listeners with batched updates
@@ -152,7 +172,7 @@ export function useIpcListeners(): void {
       (projectId: string, status: RoadmapGenerationStatus) => {
         // Debug logging
         if (window.DEBUG) {
-          console.log('[Roadmap] Progress update:', {
+          console.warn('[Roadmap] Progress update:', {
             projectId,
             currentProjectId: useRoadmapStore.getState().currentProjectId,
             phase: status.phase,
@@ -171,7 +191,7 @@ export function useIpcListeners(): void {
       (projectId: string, roadmap: Roadmap) => {
         // Debug logging
         if (window.DEBUG) {
-          console.log('[Roadmap] Generation complete:', {
+          console.warn('[Roadmap] Generation complete:', {
             projectId,
             currentProjectId: useRoadmapStore.getState().currentProjectId,
             featuresCount: roadmap.features?.length || 0,
@@ -216,7 +236,7 @@ export function useIpcListeners(): void {
       (projectId: string) => {
         // Debug logging
         if (window.DEBUG) {
-          console.log('[Roadmap] Generation stopped:', {
+          console.warn('[Roadmap] Generation stopped:', {
             projectId,
             currentProjectId: useRoadmapStore.getState().currentProjectId
           });
@@ -262,6 +282,12 @@ export function useIpcListeners(): void {
 
     // Cleanup on unmount
     return () => {
+      // Flush any pending batched updates before cleanup
+      if (batchTimeout) {
+        clearTimeout(batchTimeout);
+        flushBatch();
+        batchTimeout = null;
+      }
       cleanupProgress();
       cleanupError();
       cleanupLog();
