@@ -59,7 +59,9 @@ export function ProjectEnvSettings({
   };
 
   const handleProviderConfigChange = (updates: Partial<ProviderConfig>) => {
-    const currentConfig = config.graphitiProviderConfig || {};
+    // Get current config with a default embeddingProvider
+    const defaultProvider = globalConfig?.defaultEmbeddingProvider || 'openai';
+    const currentConfig = config.graphitiProviderConfig || { embeddingProvider: defaultProvider };
     const newConfig = { ...currentConfig };
 
     if (updates.provider !== undefined) {
@@ -243,13 +245,17 @@ export function ProjectEnvSettings({
                 <Input
                   id="project-db-name"
                   value={config.graphitiDatabase || config.graphitiProviderConfig?.database || ''}
-                  onChange={(e) => onChange({
-                    graphitiDatabase: e.target.value,
-                    graphitiProviderConfig: {
-                      ...config.graphitiProviderConfig,
-                      database: e.target.value
-                    }
-                  })}
+                  onChange={(e) => {
+                    const defaultProvider = globalConfig?.defaultEmbeddingProvider || 'openai';
+                    onChange({
+                      graphitiDatabase: e.target.value,
+                      graphitiProviderConfig: {
+                        embeddingProvider: defaultProvider,
+                        ...config.graphitiProviderConfig,
+                        database: e.target.value
+                      }
+                    });
+                  }}
                   placeholder="auto_claude_memory"
                   disabled={disabled}
                 />
@@ -263,13 +269,17 @@ export function ProjectEnvSettings({
                 <Input
                   id="project-db-path"
                   value={config.graphitiDbPath || config.graphitiProviderConfig?.dbPath || ''}
-                  onChange={(e) => onChange({
-                    graphitiDbPath: e.target.value,
-                    graphitiProviderConfig: {
-                      ...config.graphitiProviderConfig,
-                      dbPath: e.target.value
-                    }
-                  })}
+                  onChange={(e) => {
+                    const defaultProvider = globalConfig?.defaultEmbeddingProvider || 'openai';
+                    onChange({
+                      graphitiDbPath: e.target.value,
+                      graphitiProviderConfig: {
+                        embeddingProvider: defaultProvider,
+                        ...config.graphitiProviderConfig,
+                        dbPath: e.target.value
+                      }
+                    });
+                  }}
                   placeholder="~/.auto-claude/memories"
                   disabled={disabled}
                 />

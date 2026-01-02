@@ -223,6 +223,7 @@ function getDefaultConfig(): ProjectEnvConfig {
     claudeAuthStatus: 'not_configured',
     linearEnabled: false,
     githubEnabled: false,
+    gitlabEnabled: false,
     graphitiEnabled: false,
     enableFancyUi: true
   };

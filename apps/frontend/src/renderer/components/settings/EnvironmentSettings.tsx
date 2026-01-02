@@ -16,7 +16,7 @@ interface EnvironmentSaveHook {
 
 interface EnvironmentSettingsProps {
   settings: AppSettings;
-  onSettingsChange: (settings: Partial<AppSettings>) => void;
+  onSettingsChange: (settings: AppSettings) => void;
   isOpen: boolean;
   onEnvHookReady?: (hook: EnvironmentSaveHook | null) => void;
 }
@@ -63,12 +63,13 @@ export function EnvironmentSettings({
   // Handle global config changes
   const handleGlobalChange = useCallback((updates: Partial<GlobalEnvConfig>) => {
     onSettingsChange({
+      ...settings,
       globalEnv: {
         ...globalConfig,
         ...updates
       }
     });
-  }, [globalConfig, onSettingsChange]);
+  }, [settings, globalConfig, onSettingsChange]);
 
   // Switch to global tab if no project is selected
   useEffect(() => {
