@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
-  Key,
   Eye,
   EyeOff,
-  Info,
   Users,
   Plus,
   Trash2,
@@ -35,12 +33,9 @@ interface IntegrationSettingsProps {
 }
 
 /**
- * Integration settings for Claude accounts and API keys
+ * Integration settings for Claude accounts management
  */
 export function IntegrationSettings({ settings, onSettingsChange, isOpen }: IntegrationSettingsProps) {
-  // Password visibility toggle for global API keys
-  const [showGlobalOpenAIKey, setShowGlobalOpenAIKey] = useState(false);
-
   // Claude Accounts state
   const [claudeProfiles, setClaudeProfiles] = useState<ClaudeProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
@@ -292,7 +287,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   return (
     <SettingsSection
       title="Integrations"
-      description="Manage Claude accounts and API keys"
+      description="Manage Claude accounts and auto-switching"
     >
       <div className="space-y-6">
         {/* Claude Accounts Section */}
@@ -731,52 +726,6 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
           </div>
         )}
 
-        {/* API Keys Section */}
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2">
-            <Key className="h-4 w-4 text-muted-foreground" />
-            <h4 className="text-sm font-semibold text-foreground">API Keys</h4>
-          </div>
-
-          <div className="rounded-lg bg-info/10 border border-info/30 p-3">
-            <div className="flex items-start gap-2">
-              <Info className="h-4 w-4 text-info shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground">
-                Keys set here are used as defaults. Individual projects can override these in their settings.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="globalOpenAIKey" className="text-sm font-medium text-foreground">
-                OpenAI API Key
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Required for Graphiti memory backend (embeddings)
-              </p>
-              <div className="relative max-w-lg">
-                <Input
-                  id="globalOpenAIKey"
-                  type={showGlobalOpenAIKey ? 'text' : 'password'}
-                  placeholder="sk-..."
-                  value={settings.globalOpenAIApiKey || ''}
-                  onChange={(e) =>
-                    onSettingsChange({ ...settings, globalOpenAIApiKey: e.target.value || undefined })
-                  }
-                  className="pr-10 font-mono text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowGlobalOpenAIKey(!showGlobalOpenAIKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showGlobalOpenAIKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </SettingsSection>
   );

@@ -73,6 +73,45 @@ export interface AgentProfile {
   phaseThinking?: PhaseThinkingConfig;
 }
 
+// Embedding provider types
+export type EmbeddingProvider = 'openai' | 'voyage' | 'azure_openai' | 'ollama' | 'google';
+
+// Global environment configuration (stored in settings.json)
+// These are default values used when project-specific values are not set
+export interface GlobalEnvConfig {
+  // AI Providers - API keys
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  googleApiKey?: string;
+  groqApiKey?: string;
+  voyageApiKey?: string;
+
+  // Azure OpenAI
+  azureOpenaiApiKey?: string;
+  azureOpenaiBaseUrl?: string;
+  azureOpenaiEmbeddingDeployment?: string;
+
+  // Memory Defaults
+  defaultEmbeddingProvider?: EmbeddingProvider;
+  graphitiDbPath?: string;
+
+  // Ollama
+  ollamaBaseUrl?: string;
+
+  // Advanced
+  debugMode?: boolean;
+}
+
+// Tracks whether an env value comes from global settings or project .env
+export type EnvValueSource = 'global' | 'project' | 'none';
+
+export interface EnvKeyStatus {
+  key: string;
+  source: EnvValueSource;
+  hasValue: boolean;
+  isSecret: boolean;
+}
+
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   colorTheme?: ColorTheme;
@@ -108,6 +147,10 @@ export interface AppSettings {
   changelogEmojiLevel?: ChangelogEmojiLevel;
   // Migration flags (internal use)
   _migratedAgentProfileToAuto?: boolean;
+
+  // Consolidated global environment configuration
+  // Contains all global API keys and defaults in a structured format
+  globalEnv?: GlobalEnvConfig;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)
