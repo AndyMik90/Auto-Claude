@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from 'react';
 import {
   Plus,
   Settings,
@@ -13,14 +12,10 @@ import {
   Download,
   RefreshCw,
   Github,
-  GitlabIcon,
-  GitPullRequest,
-  GitMerge,
   FileText,
   Sparkles,
   GitBranch,
-  HelpCircle,
-  Wrench
+  HelpCircle
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -43,16 +38,17 @@ import { cn } from '../lib/utils';
 import {
   useProjectStore,
   removeProject,
-  initializeProject
+  initializeProject,
+  checkProjectVersion,
+  updateProjectAutoBuild
 } from '../stores/project-store';
 import { useSettingsStore } from '../stores/settings-store';
 import { AddProjectModal } from './AddProjectModal';
 import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
-import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
-import type { Project, AutoBuildVersionInfo, GitStatus, ProjectEnvConfig } from '../../shared/types';
+import type { Project, AutoBuildVersionInfo, GitStatus } from '../../shared/types';
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'github-prs' | 'gitlab-merge-requests' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools' | 'knowledge-base';
+export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools' | 'knowledge-base';
 
 interface SidebarProps {
   onSettingsClick: () => void;
@@ -63,35 +59,28 @@ interface SidebarProps {
 
 interface NavItem {
   id: SidebarView;
-  labelKey: string;
+  label: string;
   icon: React.ElementType;
   shortcut?: string;
 }
 
-// Base nav items always shown
-const baseNavItems: NavItem[] = [
-  { id: 'kanban', labelKey: 'navigation:items.kanban', icon: LayoutGrid, shortcut: 'K' },
-  { id: 'terminals', labelKey: 'navigation:items.terminals', icon: Terminal, shortcut: 'A' },
-  { id: 'insights', labelKey: 'navigation:items.insights', icon: Sparkles, shortcut: 'N' },
-  { id: 'roadmap', labelKey: 'navigation:items.roadmap', icon: Map, shortcut: 'D' },
-  { id: 'ideation', labelKey: 'navigation:items.ideation', icon: Lightbulb, shortcut: 'I' },
-  { id: 'changelog', labelKey: 'navigation:items.changelog', icon: FileText, shortcut: 'L' },
-  { id: 'context', labelKey: 'navigation:items.context', icon: BookOpen, shortcut: 'C' },
-  { id: 'agent-tools', labelKey: 'navigation:items.agentTools', icon: Wrench, shortcut: 'M' },
-  { id: 'worktrees', labelKey: 'navigation:items.worktrees', icon: GitBranch, shortcut: 'W' },
-  { id: 'knowledge-base', labelKey: 'navigation:items.knowledgeBase', icon: HelpCircle, shortcut: 'H' }
+const projectNavItems: NavItem[] = [
+  { id: 'kanban', label: 'Kanban Board', icon: LayoutGrid, shortcut: 'K' },
+  { id: 'terminals', label: 'Agent Terminals', icon: Terminal, shortcut: 'A' },
+  { id: 'insights', label: 'Insights', icon: Sparkles, shortcut: 'N' },
+  { id: 'roadmap', label: 'Roadmap', icon: Map, shortcut: 'D' },
+  { id: 'ideation', label: 'Ideation', icon: Lightbulb, shortcut: 'I' },
+  { id: 'changelog', label: 'Changelog', icon: FileText, shortcut: 'L' },
+  { id: 'context', label: 'Context', icon: BookOpen, shortcut: 'C' }
 ];
 
-// GitHub nav items shown when GitHub is enabled
-const githubNavItems: NavItem[] = [
-  { id: 'github-issues', labelKey: 'navigation:items.githubIssues', icon: Github, shortcut: 'G' },
-  { id: 'github-prs', labelKey: 'navigation:items.githubPRs', icon: GitPullRequest, shortcut: 'P' }
+const toolsNavItems: NavItem[] = [
+  { id: 'github-issues', label: 'GitHub Issues', icon: Github, shortcut: 'G' },
+  { id: 'worktrees', label: 'Worktrees', icon: GitBranch, shortcut: 'W' }
 ];
 
-// GitLab nav items shown when GitLab is enabled
-const gitlabNavItems: NavItem[] = [
-  { id: 'gitlab-issues', labelKey: 'navigation:items.gitlabIssues', icon: GitlabIcon, shortcut: 'B' },
-  { id: 'gitlab-merge-requests', labelKey: 'navigation:items.gitlabMRs', icon: GitMerge, shortcut: 'R' }
+const resourcesNavItems: NavItem[] = [
+  { id: 'knowledge-base', label: 'Knowledge Base', icon: BookOpen, shortcut: 'B' }
 ];
 
 export function Sidebar({
@@ -100,7 +89,6 @@ export function Sidebar({
   activeView = 'kanban',
   onViewChange
 }: SidebarProps) {
-  const { t } = useTranslation(['navigation', 'dialogs', 'common']);
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectProject = useProjectStore((state) => state.selectProject);
@@ -108,49 +96,14 @@ export function Sidebar({
 
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [showInitDialog, setShowInitDialog] = useState(false);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [showGitSetupModal, setShowGitSetupModal] = useState(false);
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
+  const [_versionInfo, setVersionInfo] = useState<AutoBuildVersionInfo | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [envConfig, setEnvConfig] = useState<ProjectEnvConfig | null>(null);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
-
-  // Load env config when project changes to check GitHub/GitLab enabled state
-  useEffect(() => {
-    const loadEnvConfig = async () => {
-      if (selectedProject?.autoBuildPath) {
-        try {
-          const result = await window.electronAPI.getProjectEnv(selectedProject.id);
-          if (result.success && result.data) {
-            setEnvConfig(result.data);
-          } else {
-            setEnvConfig(null);
-          }
-        } catch {
-          setEnvConfig(null);
-        }
-      } else {
-        setEnvConfig(null);
-      }
-    };
-    loadEnvConfig();
-  }, [selectedProject?.id, selectedProject?.autoBuildPath]);
-
-  // Compute visible nav items based on GitHub/GitLab enabled state
-  const visibleNavItems = useMemo(() => {
-    const items = [...baseNavItems];
-
-    if (envConfig?.githubEnabled) {
-      items.push(...githubNavItems);
-    }
-
-    if (envConfig?.gitlabEnabled) {
-      items.push(...gitlabNavItems);
-    }
-
-    return items;
-  }, [envConfig?.githubEnabled, envConfig?.gitlabEnabled]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -173,8 +126,9 @@ export function Sidebar({
 
       const key = e.key.toUpperCase();
 
-      // Find matching nav item from visible items only
-      const matchedItem = visibleNavItems.find((item) => item.shortcut === key);
+      // Find matching nav item
+      const allNavItems = [...projectNavItems, ...toolsNavItems, ...resourcesNavItems];
+      const matchedItem = allNavItems.find((item) => item.shortcut === key);
 
       if (matchedItem) {
         e.preventDefault();
@@ -184,7 +138,21 @@ export function Sidebar({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedProjectId, onViewChange, visibleNavItems]);
+  }, [selectedProjectId, onViewChange]);
+
+  // Check for updates when project changes
+  useEffect(() => {
+    const checkUpdates = async () => {
+      if (selectedProjectId && settings.autoUpdateAutoBuild) {
+        const info = await checkProjectVersion(selectedProjectId);
+        if (info?.updateAvailable) {
+          setVersionInfo(info);
+          setShowUpdateDialog(true);
+        }
+      }
+    };
+    checkUpdates();
+  }, [selectedProjectId, settings.autoUpdateAutoBuild]);
 
   // Check git status when project changes
   useEffect(() => {
@@ -243,6 +211,26 @@ export function Sidebar({
     setPendingProject(null);
   };
 
+  const _handleUpdate = async () => {
+    if (!selectedProjectId) return;
+
+    setIsInitializing(true);
+    try {
+      const result = await updateProjectAutoBuild(selectedProjectId);
+      if (result?.success) {
+        setShowUpdateDialog(false);
+        setVersionInfo(null);
+      }
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+  const _handleSkipUpdate = () => {
+    setShowUpdateDialog(false);
+    setVersionInfo(null);
+  };
+
   const handleGitInitialized = async () => {
     // Refresh git status after initialization
     if (selectedProject) {
@@ -285,7 +273,7 @@ export function Sidebar({
         )}
       >
         <Icon className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-left">{t(item.labelKey)}</span>
+        <span className="flex-1 text-left">{item.label}</span>
         {item.shortcut && (
           <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded-md border border-border bg-secondary px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex">
             {item.shortcut}
@@ -312,12 +300,32 @@ export function Sidebar({
         <ScrollArea className="flex-1">
           <div className="px-3 py-4">
             {/* Project Section */}
-            <div>
+            <div className="mb-6">
               <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t('sections.project')}
+                Project
               </h3>
               <nav className="space-y-1">
-                {visibleNavItems.map(renderNavItem)}
+                {projectNavItems.map(renderNavItem)}
+              </nav>
+            </div>
+
+            {/* Tools Section */}
+            <div>
+              <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Tools
+              </h3>
+              <nav className="space-y-1">
+                {toolsNavItems.map(renderNavItem)}
+              </nav>
+            </div>
+
+            {/* Resources Section */}
+            <div>
+              <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Resources
+              </h3>
+              <nav className="space-y-1">
+                {resourcesNavItems.map(renderNavItem)}
               </nav>
             </div>
           </div>
@@ -330,9 +338,6 @@ export function Sidebar({
 
         {/* Bottom section with Settings, Help, and New Task */}
         <div className="p-4 space-y-3">
-          {/* Claude Code Status Badge */}
-          <ClaudeCodeStatusBadge />
-
           {/* Settings and Help row */}
           <div className="flex items-center gap-2">
             <Tooltip>
@@ -344,10 +349,10 @@ export function Sidebar({
                   onClick={onSettingsClick}
                 >
                   <Settings className="h-4 w-4" />
-                  {t('actions.settings')}
+                  Settings
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">{t('tooltips.settings')}</TooltipContent>
+              <TooltipContent side="top">Application Settings</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -359,7 +364,7 @@ export function Sidebar({
                   <HelpCircle className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">{t('tooltips.help')}</TooltipContent>
+              <TooltipContent side="top">Help & Feedback</TooltipContent>
             </Tooltip>
           </div>
 
@@ -370,11 +375,11 @@ export function Sidebar({
             disabled={!selectedProjectId || !selectedProject?.autoBuildPath}
           >
             <Plus className="mr-2 h-4 w-4" />
-            {t('actions.newTask')}
+            New Task
           </Button>
           {selectedProject && !selectedProject.autoBuildPath && (
             <p className="mt-2 text-xs text-muted-foreground text-center">
-              {t('messages.initializeToCreateTasks')}
+              Initialize Auto Claude to create tasks
             </p>
           )}
         </div>
@@ -391,19 +396,19 @@ export function Sidebar({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Download className="h-5 w-5" />
-              {t('dialogs:initialize.title')}
+              Initialize Auto Claude
             </DialogTitle>
             <DialogDescription>
-              {t('dialogs:initialize.description')}
+              This project doesn't have Auto Claude initialized. Would you like to set it up now?
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="font-medium mb-2">{t('dialogs:initialize.willDo')}</p>
+              <p className="font-medium mb-2">This will:</p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>{t('dialogs:initialize.createFolder')}</li>
-                <li>{t('dialogs:initialize.copyFramework')}</li>
-                <li>{t('dialogs:initialize.setupSpecs')}</li>
+                <li>Create a <code className="text-xs bg-background px-1 py-0.5 rounded">.auto-claude</code> folder in your project</li>
+                <li>Copy the Auto Claude framework files</li>
+                <li>Set up the specs directory for your tasks</li>
               </ul>
             </div>
             {!settings.autoBuildPath && (
@@ -411,9 +416,9 @@ export function Sidebar({
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-medium text-warning">{t('dialogs:initialize.sourcePathNotConfigured')}</p>
+                    <p className="font-medium text-warning">Source path not configured</p>
                     <p className="text-muted-foreground mt-1">
-                      {t('dialogs:initialize.sourcePathNotConfiguredDescription')}
+                      Please set the Auto Claude source path in App Settings before initializing.
                     </p>
                   </div>
                 </div>
@@ -422,7 +427,7 @@ export function Sidebar({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleSkipInit} disabled={isInitializing}>
-              {t('common:buttons.skip')}
+              Skip
             </Button>
             <Button
               onClick={handleInitialize}
@@ -431,14 +436,34 @@ export function Sidebar({
               {isInitializing ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  {t('common:labels.initializing')}
+                  Initializing...
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  {t('common:buttons.initialize')}
+                  Initialize
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Auto Claude Dialog - Deprecated, updateAvailable is always false now */}
+      <Dialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              Auto Claude
+            </DialogTitle>
+            <DialogDescription>
+              Project is initialized.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUpdateDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
