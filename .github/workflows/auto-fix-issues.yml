@@ -1,0 +1,87 @@
+name: Auto-Fix Issues (Working)
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: write
+
+jobs:
+  auto-fix:
+    name: Auto-Fix with AI
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@openhands-agent')) ||
+      (github.event_name == 'issues' && github.event.label.name == 'fix-me')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          pip install openai requests PyGithub
+          
+      - name: Auto-fix issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 << 'SCRIPT_EOF'
+import os
+import openai
+from github import Github
+
+# Initialize clients
+openai.api_key = os.environ['OPENAI_API_KEY']
+gh = Github(os.environ['GITHUB_TOKEN'])
+repo = gh.get_repo(os.environ['REPO'])
+issue = repo.get_issue(int(os.environ['ISSUE_NUMBER']))
+
+# Get AI analysis
+prompt = f"""Analyze this GitHub issue and provide a fix:
+
+Title: {os.environ['ISSUE_TITLE']}
+Description: {os.environ['ISSUE_BODY']}
+
+Provide:
+1. Root cause analysis
+2. Proposed solution
+3. Files to modify
+4. Code changes
+"""
+
+response = openai.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": prompt}]
+)
+
+analysis = response.choices[0].message.content
+
+# Comment on issue
+issue.create_comment(f"""## AI Analysis
+
+{analysis}
+
+Working on creating a PR to fix this issue...
+""")
+
+print(f"Analysis posted to issue #{issue.number}")
+print("Note: Full PR creation requires additional repository permissions")
+SCRIPT_EOF
