@@ -30,9 +30,17 @@ OAUTH_CLIENT_ID = os.environ.get(
     "CLAUDE_OAUTH_CLIENT_ID",
     "9d1c250a-e61b-44d9-88ed-5944d1962f5e",  # Claude Code CLI default
 )
-TOKEN_REFRESH_BUFFER_SECONDS = int(
-    os.environ.get("CLAUDE_TOKEN_REFRESH_BUFFER_SECONDS", "300")
-)  # Refresh 5 min before expiry
+
+
+def _parse_buffer_seconds() -> int:
+    """Parse TOKEN_REFRESH_BUFFER_SECONDS with graceful fallback."""
+    try:
+        return int(os.environ.get("CLAUDE_TOKEN_REFRESH_BUFFER_SECONDS", "300"))
+    except ValueError:
+        return 300  # Default 5 minutes if invalid value
+
+
+TOKEN_REFRESH_BUFFER_SECONDS = _parse_buffer_seconds()
 
 # Priority order for auth token resolution
 # NOTE: We intentionally do NOT fall back to ANTHROPIC_API_KEY.
@@ -394,7 +402,8 @@ def _save_credentials_linux(credentials: dict) -> bool:
 
 def _save_credentials_windows(credentials: dict) -> bool:
     """Save credentials to Windows file store."""
-    cred_path = os.path.expandvars(r"%USERPROFILE%\.claude\credentials.json")
+    # Use .credentials.json (with leading dot) to match Claude Code's primary path
+    cred_path = os.path.expandvars(r"%USERPROFILE%\.claude\.credentials.json")
 
     try:
         existing = {}
