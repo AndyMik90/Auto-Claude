@@ -356,6 +356,15 @@ jobs:
           echo "Found $artifact_count artifact(s):"
           ls -la release-assets/
 
+          # Validate that electron-updater manifest files are present
+          yml_count=$(find release-assets -type f -name "*.yml" | wc -l)
+          if [ "$yml_count" -eq 0 ]; then
+            echo "::warning::No update manifest (.yml) files found! Auto-update architecture detection may not work."
+          else
+            echo "Found $yml_count manifest file(s):"
+            find release-assets -type f -name "*.yml" -exec basename {} \;
+          fi
+
       - name: Generate checksums
         run: |
           cd release-assets
