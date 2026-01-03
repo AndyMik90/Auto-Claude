@@ -6,6 +6,7 @@ Commands for creating and managing multiple tasks from batch files.
 """
 
 import json
+import os
 from pathlib import Path
 
 from ui import highlight, print_status
@@ -174,17 +175,23 @@ def handle_batch_status_command(project_dir: str) -> bool:
 
 def handle_batch_cleanup_command(project_dir: str, dry_run: bool = True) -> bool:
     """
-    Clean up completed specs and worktrees.
-
-    Args:
-        project_dir: Project directory
-        dry_run: If True, show what would be deleted
-
+    Clean up completed spec directories and their associated worktree paths.
+    
+    Finds spec directories under <project_dir>/.auto-claude/specs that contain a `qa_report.md` (treated as completed),
+    and, when run in dry-run mode, prints the specs and corresponding worktree paths that would be removed.
+    
+    Parameters:
+        project_dir (str): Path to the project root.
+        dry_run (bool): If True, print what would be removed instead of performing deletions.
+    
     Returns:
-        True if successful
+        True if the command completed.
     """
+    from core.config import get_worktree_base_path
+
     specs_dir = Path(project_dir) / ".auto-claude" / "specs"
-    worktrees_dir = Path(project_dir) / ".worktrees"
+    worktree_base_path = get_worktree_base_path(Path(project_dir))
+    worktrees_dir = Path(project_dir) / worktree_base_path
 
     if not specs_dir.exists():
         print_status("No specs directory found", "info")
@@ -209,7 +216,7 @@ def handle_batch_cleanup_command(project_dir: str, dry_run: bool = True) -> bool
             print(f"  - {spec_name}")
             wt_path = worktrees_dir / spec_name
             if wt_path.exists():
-                print(f"    └─ .worktrees/{spec_name}/")
+                print(f"    └─ {worktree_base_path}/{spec_name}/")
         print()
         print("Run with --no-dry-run to actually delete")
 

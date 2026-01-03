@@ -53,9 +53,22 @@ class WorktreeManager:
     """
 
     def __init__(self, project_dir: Path, base_branch: str | None = None):
+        """
+        Initialize the WorktreeManager for a repository, determining base branch and worktrees directory.
+        
+        Parameters:
+        	project_dir (Path): Root path of the repository managed by this instance.
+        	base_branch (str | None): Optional explicit base branch to use; if omitted, the base branch is auto-detected.
+        """
+        from core.config import get_worktree_base_path
+
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
-        self.worktrees_dir = project_dir / ".worktrees"
+
+        # Use custom worktree path from environment variable with validation
+        worktree_base_path = get_worktree_base_path(project_dir)
+        self.worktrees_dir = project_dir / worktree_base_path
+
         self._merge_lock = asyncio.Lock()
 
     def _detect_base_branch(self) -> str:

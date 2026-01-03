@@ -6,6 +6,7 @@ Workspace Models
 Data classes and enums for workspace management.
 """
 
+import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -227,12 +228,15 @@ class SpecNumberLock:
 
     def get_next_spec_number(self) -> int:
         """
-        Scan all spec locations and return the next available spec number.
-
-        Must be called while lock is held.
-
+        Compute the next global spec number by scanning the project's specs and all worktree specs.
+        
+        Requires the spec-numbering lock to be held; caches the computed maximum for subsequent calls.
+        
         Returns:
-            Next available spec number (global max + 1)
+            int: The next available spec number (highest existing spec number + 1).
+        
+        Raises:
+            SpecNumberLockError: If the lock has not been acquired when called.
         """
         if not self.acquired:
             raise SpecNumberLockError(
@@ -249,7 +253,10 @@ class SpecNumberLock:
         max_number = max(max_number, self._scan_specs_dir(main_specs_dir))
 
         # 2. Scan all worktree specs
-        worktrees_dir = self.project_dir / ".worktrees"
+        from core.config import get_worktree_base_path
+
+        worktree_base_path = get_worktree_base_path(self.project_dir)
+        worktrees_dir = self.project_dir / worktree_base_path
         if worktrees_dir.exists():
             for worktree in worktrees_dir.iterdir():
                 if worktree.is_dir():

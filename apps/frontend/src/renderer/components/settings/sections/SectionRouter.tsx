@@ -40,8 +40,9 @@ interface SectionRouterProps {
 }
 
 /**
- * Routes to the appropriate settings section based on activeSection.
- * Handles initialization guards and section-specific configurations.
+ * Selects and renders the settings subsection corresponding to `activeSection`.
+ *
+ * @returns The React element for the selected settings subsection, or `null` if `activeSection` does not match a known section.
  */
 export function SectionRouter({
   activeSection,
@@ -89,6 +90,8 @@ export function SectionRouter({
             isCheckingVersion={isCheckingVersion}
             isUpdating={isUpdating}
             handleInitialize={handleInitialize}
+            envConfig={envConfig}
+            updateEnvConfig={updateEnvConfig}
           />
         </SettingsSection>
       );

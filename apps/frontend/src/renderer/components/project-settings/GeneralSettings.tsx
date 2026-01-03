@@ -21,8 +21,10 @@ import { AVAILABLE_MODELS } from '../../../shared/constants';
 import type {
   Project,
   ProjectSettings as ProjectSettingsType,
-  AutoBuildVersionInfo
+  AutoBuildVersionInfo,
+  ProjectEnvConfig
 } from '../../../shared/types';
+import { WorktreeSettings } from './WorktreeSettings';
 
 interface GeneralSettingsProps {
   project: Project;
@@ -32,8 +34,24 @@ interface GeneralSettingsProps {
   isCheckingVersion: boolean;
   isUpdating: boolean;
   handleInitialize: () => Promise<void>;
+  envConfig: ProjectEnvConfig | null;
+  updateEnvConfig: (updates: Partial<ProjectEnvConfig>) => void;
 }
 
+/**
+ * Render general project settings, including auto-build integration, agent configuration, worktree location, and notification toggles.
+ *
+ * @param project - Project data used to determine auto-build state and provide paths.
+ * @param settings - Current project settings that drive form controls and toggles.
+ * @param setSettings - State updater used to replace the project settings object.
+ * @param versionInfo - Optional auto-build version and initialization status displayed when available.
+ * @param isCheckingVersion - When true, displays a loading indicator while checking auto-build status.
+ * @param isUpdating - When true, disables initialization controls and shows an initializing state.
+ * @param handleInitialize - Called to initialize the auto-build integration.
+ * @param envConfig - Optional environment configuration passed into worktree settings.
+ * @param updateEnvConfig - Function to apply partial updates to the environment configuration.
+ * @returns The rendered settings UI as JSX. 
+ */
 export function GeneralSettings({
   project,
   settings,
@@ -41,7 +59,9 @@ export function GeneralSettings({
   versionInfo,
   isCheckingVersion,
   isUpdating,
-  handleInitialize
+  handleInitialize,
+  envConfig,
+  updateEnvConfig
 }: GeneralSettingsProps) {
   const { t } = useTranslation(['settings']);
 
@@ -146,6 +166,18 @@ export function GeneralSettings({
                 }
               />
             </div>
+          </section>
+
+          <Separator />
+
+          {/* Worktree Location */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">{t('projectSections.worktree.title')}</h3>
+            <WorktreeSettings
+              envConfig={envConfig}
+              updateEnvConfig={updateEnvConfig}
+              projectPath={project.path}
+            />
           </section>
 
           <Separator />

@@ -15,6 +15,8 @@ _PARENT_DIR = Path(__file__).parent.parent
 if str(_PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(_PARENT_DIR))
 
+from dotenv import load_dotenv
+
 
 from .batch_commands import (
     handle_batch_cleanup_command,
@@ -259,7 +261,11 @@ Environment Variables:
 
 
 def main() -> None:
-    """Main CLI entry point."""
+    """
+    Entry point for the CLI: sets up the environment, parses arguments, and dispatches the requested command.
+    
+    This function initializes runtime environment and debugging, resolves the project directory (and loads a project-specific .auto-claude/.env file if present), determines the model choice from the CLI or the AUTO_BUILD_MODEL environment variable, and routes control to the appropriate handler based on parsed CLI flags (examples include listing specs, worktree management, batch operations, merge/preview/review/discard flows, QA and follow-up commands, or the normal build flow). Exits the process with a non-zero status when required by invalid input or failing command outcomes.
+    """
     # Set up environment first
     setup_environment()
 
@@ -275,6 +281,12 @@ def main() -> None:
     # Determine project directory
     project_dir = get_project_dir(args.project_dir)
     debug("run.py", f"Using project directory: {project_dir}")
+
+    # Load project-specific .env file (overrides backend .env)
+    project_env = project_dir / ".auto-claude" / ".env"
+    if project_env.exists():
+        load_dotenv(project_env, override=True)
+        debug("run.py", f"Loaded project .env from: {project_env}")
 
     # Get model from CLI arg or env var (None if not explicitly set)
     # This allows get_phase_model() to fall back to task_metadata.json
