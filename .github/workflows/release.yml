@@ -344,12 +344,12 @@ jobs:
       - name: Flatten and validate artifacts
         run: |
           mkdir -p release-assets
-          find dist -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.flatpak" \) -exec cp {} release-assets/ \;
+          find dist -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.flatpak" -o -name "*.yml" -o -name "*.blockmap" \) -exec cp {} release-assets/ \;
 
           # Validate that at least one artifact was copied
-          artifact_count=$(find release-assets -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.flatpak" \) | wc -l)
+          artifact_count=$(find release-assets -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.flatpak" -o -name "*.yml" -o -name "*.blockmap" \) | wc -l)
           if [ "$artifact_count" -eq 0 ]; then
-            echo "::error::No build artifacts found! Expected .dmg, .zip, .exe, .AppImage, .deb, or .flatpak files."
+            echo "::error::No build artifacts found! Expected .dmg, .zip, .exe, .AppImage, .deb, .flatpak, .yml, or .blockmap files."
             exit 1
           fi
 
