@@ -987,18 +987,26 @@ async function detectInstalledTools(): Promise<DetectedTools> {
         }
         
         if (exePath && existsSync(exePath)) {
-          // Get version using PowerShell command
-          const versionCmd = `"${exePath}" -NoProfile -Command "$PSVersionTable.PSVersion.ToString()"`;
-          
-          try {
-            const { stdout } = await execAsync(versionCmd, { timeout: 3000 });
-            const version = stdout.trim();
-            if (version && version.length < 20) { // Sanity check - version strings shouldn't be too long
-              versionInfo = ` (${version})`;
+          // Validate path is safe (no path traversal or command injection)
+          if (!isPathSafe(exePath)) {
+            console.warn(`[worktree-handlers] Unsafe PowerShell path detected: ${exePath}`);
+          } else {
+            // Get version using PowerShell command
+            // Use execFileAsync with separate arguments to prevent command injection
+            try {
+              const { stdout } = await execFileAsync(exePath, [
+                '-NoProfile',
+                '-Command',
+                '$PSVersionTable.PSVersion.ToString()'
+              ], { timeout: 3000 });
+              const version = stdout.trim();
+              if (version && version.length < 20) { // Sanity check - version strings shouldn't be too long
+                versionInfo = ` (${version})`;
+              }
+            } catch (err) {
+              // Version detection failed, continue without version info
+              console.warn(`[worktree-handlers] Failed to get PowerShell version for ${exePath}:`, err);
             }
-          } catch (err) {
-            // Version detection failed, continue without version info
-            console.warn(`[worktree-handlers] Failed to get PowerShell version for ${exePath}:`, err);
           }
         }
       } catch (err) {
