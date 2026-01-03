@@ -529,17 +529,17 @@ class TestSaveCredentials:
 class TestLinuxCredentialIntegration:
     """Integration tests for Linux credential file operations."""
 
-    def test_save_and_read_linux(self, temp_dir, monkeypatch):
+    def test_save_and_read_linux(self, tmp_path, monkeypatch):
         """Test full save/read cycle on Linux."""
         # Setup temp credentials file
-        claude_dir = temp_dir / ".claude"
+        claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
         cred_file = claude_dir / "credentials.json"
 
         # Patch the home directory expansion
         monkeypatch.setattr(
             "core.auth.os.path.expanduser",
-            lambda p: str(temp_dir / p.replace("~", "").lstrip("/")),
+            lambda p: str(tmp_path / p.replace("~", "").lstrip("/")),
         )
 
         from core.auth import _save_credentials_linux, _get_full_credentials_linux
@@ -568,9 +568,9 @@ class TestLinuxCredentialIntegration:
         assert read_creds["accessToken"] == "sk-ant-oat01-test-access-token"
         assert read_creds["refreshToken"] == "sk-ant-ort01-test-refresh-token"
 
-    def test_save_preserves_other_data(self, temp_dir, monkeypatch):
+    def test_save_preserves_other_data(self, tmp_path, monkeypatch):
         """Saving credentials should preserve other data in the file."""
-        claude_dir = temp_dir / ".claude"
+        claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
         cred_file = claude_dir / "credentials.json"
 
@@ -587,7 +587,7 @@ class TestLinuxCredentialIntegration:
 
         monkeypatch.setattr(
             "core.auth.os.path.expanduser",
-            lambda p: str(temp_dir / p.replace("~", "").lstrip("/")),
+            lambda p: str(tmp_path / p.replace("~", "").lstrip("/")),
         )
 
         from core.auth import _save_credentials_linux
@@ -618,30 +618,44 @@ class TestOAuthConfiguration:
 
     def test_default_token_url(self, monkeypatch):
         """Default token URL should be Anthropic's console API."""
-        # Clear env var to test default
+        import importlib
+        import core.auth
+
+        # Clear env var and reload module to get true default
         monkeypatch.delenv("CLAUDE_OAUTH_TOKEN_URL", raising=False)
-        # If env var was set when module loaded, check it matches; otherwise check default
-        if not os.environ.get("CLAUDE_OAUTH_TOKEN_URL"):
-            assert OAUTH_TOKEN_URL == "https://console.anthropic.com/v1/oauth/token"
-        else:
-            # Module was loaded with env var set, verify it picked it up
-            assert OAUTH_TOKEN_URL == os.environ.get("CLAUDE_OAUTH_TOKEN_URL")
+        importlib.reload(core.auth)
+
+        try:
+            assert core.auth.OAUTH_TOKEN_URL == "https://console.anthropic.com/v1/oauth/token"
+        finally:
+            # Restore module state
+            importlib.reload(core.auth)
 
     def test_default_client_id(self, monkeypatch):
         """Default client ID should be Claude Code CLI's client ID."""
+        import importlib
+        import core.auth
+
         monkeypatch.delenv("CLAUDE_OAUTH_CLIENT_ID", raising=False)
-        if not os.environ.get("CLAUDE_OAUTH_CLIENT_ID"):
-            assert OAUTH_CLIENT_ID == "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
-        else:
-            assert OAUTH_CLIENT_ID == os.environ.get("CLAUDE_OAUTH_CLIENT_ID")
+        importlib.reload(core.auth)
+
+        try:
+            assert core.auth.OAUTH_CLIENT_ID == "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+        finally:
+            importlib.reload(core.auth)
 
     def test_default_buffer_seconds(self, monkeypatch):
         """Default buffer should be 300 seconds (5 minutes)."""
+        import importlib
+        import core.auth
+
         monkeypatch.delenv("CLAUDE_TOKEN_REFRESH_BUFFER_SECONDS", raising=False)
-        if not os.environ.get("CLAUDE_TOKEN_REFRESH_BUFFER_SECONDS"):
-            assert TOKEN_REFRESH_BUFFER_SECONDS == 300
-        else:
-            assert TOKEN_REFRESH_BUFFER_SECONDS == int(os.environ.get("CLAUDE_TOKEN_REFRESH_BUFFER_SECONDS"))
+        importlib.reload(core.auth)
+
+        try:
+            assert core.auth.TOKEN_REFRESH_BUFFER_SECONDS == 300
+        finally:
+            importlib.reload(core.auth)
 
     def test_custom_token_url(self, reloaded_auth_with_custom_url):
         """Custom token URL should be picked up from environment."""
