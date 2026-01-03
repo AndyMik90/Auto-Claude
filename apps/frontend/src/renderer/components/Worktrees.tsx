@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GitBranch,
   RefreshCw,
@@ -7,6 +8,7 @@ import {
   AlertCircle,
   FolderOpen,
   GitMerge,
+  GitPullRequest,
   FileCode,
   Plus,
   Minus,
@@ -38,7 +40,8 @@ import {
 } from './ui/alert-dialog';
 import { useProjectStore } from '../stores/project-store';
 import { useTaskStore } from '../stores/task-store';
-import type { WorktreeListItem, WorktreeMergeResult } from '../../shared/types';
+import { CreatePRDialog } from './task-detail/task-review/CreatePRDialog';
+import type { WorktreeListItem, WorktreeMergeResult, WorktreeCreatePRResult, WorktreeStatus } from '../../shared/types';
 
 interface WorktreesProps {
   projectId: string;
@@ -64,6 +67,14 @@ export function Worktrees({ projectId }: WorktreesProps) {
   const [worktreeToDelete, setWorktreeToDelete] = useState<WorktreeListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Create PR dialog state
+  const [showCreatePRDialog, setShowCreatePRDialog] = useState(false);
+  const [prWorktree, setPRWorktree] = useState<WorktreeListItem | null>(null);
+  const [isCreatingPR, setIsCreatingPR] = useState(false);
+  const [prResult, setPRResult] = useState<WorktreeCreatePRResult | null>(null);
+
+  const { t } = useTranslation('taskReview');
+
   // Load worktrees
   const loadWorktrees = useCallback(async () => {
     if (!projectId) return;
@@ -76,14 +87,14 @@ export function Worktrees({ projectId }: WorktreesProps) {
       if (result.success && result.data) {
         setWorktrees(result.data.worktrees);
       } else {
-        setError(result.error || 'Failed to load worktrees');
+        setError(result.error || t('worktrees.errors.loadFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load worktrees');
+      setError(err instanceof Error ? err.message : t('worktrees.errors.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, t]);
 
   // Load on mount and when project changes
   useEffect(() => {
@@ -101,7 +112,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
 
     const task = findTaskForWorktree(selectedWorktree.specName);
     if (!task) {
-      setError('Task not found for this worktree');
+      setError(t('worktrees.errors.taskNotFound'));
       return;
     }
 
@@ -136,7 +147,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
 
     const task = findTaskForWorktree(worktreeToDelete.specName);
     if (!task) {
-      setError('Task not found for this worktree');
+      setError(t('worktrees.errors.taskNotFound'));
       return;
     }
 
@@ -149,12 +160,45 @@ export function Worktrees({ projectId }: WorktreesProps) {
         setShowDeleteConfirm(false);
         setWorktreeToDelete(null);
       } else {
-        setError(result.error || 'Failed to delete worktree');
+        setError(result.error || t('worktrees.errors.deleteFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete worktree');
+      setError(err instanceof Error ? err.message : t('worktrees.errors.deleteFailed'));
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Handle create PR
+  const handleCreatePR = async () => {
+    if (!prWorktree) return;
+
+    const task = findTaskForWorktree(prWorktree.specName);
+    if (!task) {
+      setError(t('worktrees.errors.taskNotFound'));
+      return;
+    }
+
+    setIsCreatingPR(true);
+    try {
+      const result = await window.electronAPI.createWorktreePR(task.id, {
+        targetBranch: prWorktree.baseBranch
+      });
+      if (result.success && result.data) {
+        setPRResult(result.data);
+      } else {
+        setPRResult({
+          success: false,
+          error: result.error || t('worktrees.errors.createPRFailed')
+        });
+      }
+    } catch (err) {
+      setPRResult({
+        success: false,
+        error: err instanceof Error ? err.message : t('worktrees.errors.createPRFailed')
+      });
+    } finally {
+      setIsCreatingPR(false);
     }
   };
 
@@ -163,6 +207,13 @@ export function Worktrees({ projectId }: WorktreesProps) {
     setSelectedWorktree(worktree);
     setMergeResult(null);
     setShowMergeDialog(true);
+  };
+
+  // Open create PR dialog
+  const openCreatePRDialog = (worktree: WorktreeListItem) => {
+    setPRWorktree(worktree);
+    setPRResult(null);
+    setShowCreatePRDialog(true);
   };
 
   // Confirm delete
@@ -305,8 +356,16 @@ export function Worktrees({ projectId }: WorktreesProps) {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => openCreatePRDialog(worktree)}
+                        disabled={!task}
+                      >
+                        <GitPullRequest className="h-3.5 w-3.5 mr-1.5" />
+                        {t('pr.actions.create')}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => {
-                          // Copy worktree path to clipboard
                           navigator.clipboard.writeText(worktree.path);
                         }}
                       >
@@ -474,6 +533,27 @@ export function Worktrees({ projectId }: WorktreesProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create PR Dialog */}
+      <CreatePRDialog
+        open={showCreatePRDialog}
+        worktreeStatus={{
+          exists: true,
+          branch: prWorktree?.branch,
+          baseBranch: prWorktree?.baseBranch,
+          commitCount: prWorktree?.commitCount,
+          filesChanged: prWorktree?.filesChanged,
+          additions: prWorktree?.additions,
+          deletions: prWorktree?.deletions
+        } as WorktreeStatus}
+        isCreatingPR={isCreatingPR}
+        result={prResult}
+        onOpenChange={(open) => {
+          setShowCreatePRDialog(open);
+          if (!open) setPRResult(null);
+        }}
+        onCreatePR={handleCreatePR}
+      />
     </div>
   );
 }
