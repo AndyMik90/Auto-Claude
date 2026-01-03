@@ -16,6 +16,14 @@ import {
   createPlanIfNotExists
 } from './plan-file-utils';
 
+const TASK_WORKTREE_DIR = '.auto-claude/worktrees/tasks';
+
+function findTaskWorktreePath(projectPath: string, specId: string): string | null {
+  const worktreePath = path.join(projectPath, TASK_WORKTREE_DIR, specId);
+  if (existsSync(worktreePath)) return worktreePath;
+  return null;
+}
+
 /**
  * Atomic file write to prevent TOCTOU race conditions.
  * Writes to a temporary file first, then atomically renames to target.
@@ -332,9 +340,9 @@ export function registerTaskExecutionHandlers(
       );
 
       // Check if worktree exists - QA needs to run in the worktree where the build happened
-      const worktreePath = path.join(project.path, '.worktrees', task.specId);
-      const worktreeSpecDir = path.join(worktreePath, specsBaseDir, task.specId);
-      const hasWorktree = existsSync(worktreePath);
+      const worktreePath = findTaskWorktreePath(project.path, task.specId);
+      const worktreeSpecDir = worktreePath ? path.join(worktreePath, specsBaseDir, task.specId) : null;
+      const hasWorktree = worktreePath !== null;
 
       if (approved) {
         // Write approval to QA report
@@ -382,14 +390,14 @@ export function registerTaskExecutionHandlers(
           }
 
           // Step 3: Clean untracked files that came from the merge
-          // IMPORTANT: Exclude .auto-claude and .worktrees directories to preserve specs and worktree data
-          const cleanResult = spawnSync('git', ['clean', '-fd', '-e', '.auto-claude', '-e', '.worktrees'], {
+          // IMPORTANT: Exclude .auto-claude directory to preserve specs and worktree data
+          const cleanResult = spawnSync('git', ['clean', '-fd', '-e', '.auto-claude'], {
             cwd: project.path,
             encoding: 'utf-8',
             stdio: 'pipe'
           });
           if (cleanResult.status === 0) {
-            console.log('[TASK_REVIEW] Cleaned untracked files in main (excluding .auto-claude and .worktrees)');
+            console.log('[TASK_REVIEW] Cleaned untracked files in main (excluding .auto-claude)');
           }
 
           console.log('[TASK_REVIEW] Main branch restored to pre-merge state');
@@ -397,7 +405,7 @@ export function registerTaskExecutionHandlers(
 
         // Write feedback for QA fixer - write to WORKTREE spec dir if it exists
         // The QA process runs in the worktree where the build and implementation_plan.json are
-        const targetSpecDir = hasWorktree ? worktreeSpecDir : specDir;
+        const targetSpecDir = hasWorktree && worktreeSpecDir ? worktreeSpecDir : specDir;
         const fixRequestPath = path.join(targetSpecDir, 'QA_FIX_REQUEST.md');
 
         console.warn('[TASK_REVIEW] Writing QA fix request to:', fixRequestPath);
@@ -453,9 +461,9 @@ export function registerTaskExecutionHandlers(
       // Validate status transition - 'done' can only be set through merge handler
       // UNLESS there's no worktree (limbo state - already merged/discarded or failed)
       if (status === 'done') {
-        // Check if worktree exists
-        const worktreePath = path.join(project.path, '.worktrees', taskId);
-        const hasWorktree = existsSync(worktreePath);
+        // Check if worktree exists (task.specId matches worktree folder name)
+        const worktreePath = findTaskWorktreePath(project.path, task.specId);
+        const hasWorktree = worktreePath !== null;
 
         if (hasWorktree) {
           // Worktree exists - must use merge workflow

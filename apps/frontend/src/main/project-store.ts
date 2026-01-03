@@ -6,6 +6,12 @@ import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, Implemen
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 
+const TASK_WORKTREE_DIR = '.auto-claude/worktrees/tasks';
+
+function getWorktreeDir(projectPath: string): string {
+  return path.join(projectPath, TASK_WORKTREE_DIR);
+}
+
 interface TabState {
   openProjectIds: string[];
   activeProjectId: string | null;
@@ -263,8 +269,7 @@ export class ProjectStore {
     // 2. Scan worktree specs directories
     // NOTE FOR MAINTAINERS: Worktree tasks are only included if the spec also exists in main.
     // This prevents deleted tasks from "coming back" when the worktree isn't cleaned up.
-    // Alternative behavior: include all worktree tasks (remove the mainSpecIds check below).
-    const worktreesDir = path.join(project.path, '.worktrees');
+    const worktreesDir = getWorktreeDir(project.path);
     if (existsSync(worktreesDir)) {
       try {
         const worktrees = readdirSync(worktreesDir, { withFileTypes: true });
@@ -643,7 +648,7 @@ export class ProjectStore {
     }
 
     // 2. Check worktrees
-    const worktreesDir = path.join(projectPath, '.worktrees');
+    const worktreesDir = getWorktreeDir(projectPath);
     if (existsSync(worktreesDir)) {
       try {
         const worktrees = readdirSync(worktreesDir, { withFileTypes: true });

@@ -13,6 +13,22 @@ import { parsePythonCommand } from '../../python-detector';
 import { getToolPath } from '../../cli-tool-manager';
 import { promisify } from 'util';
 
+const TASK_WORKTREE_DIR = '.auto-claude/worktrees/tasks';
+
+function getTaskWorktreeDir(projectPath: string): string {
+  return path.join(projectPath, TASK_WORKTREE_DIR);
+}
+
+function getTaskWorktreePath(projectPath: string, specId: string): string {
+  return path.join(projectPath, TASK_WORKTREE_DIR, specId);
+}
+
+function findTaskWorktree(projectPath: string, specId: string): string | null {
+  const worktreePath = path.join(projectPath, TASK_WORKTREE_DIR, specId);
+  if (existsSync(worktreePath)) return worktreePath;
+  return null;
+}
+
 /**
  * Read utility feature settings (for commit message, merge resolver) from settings file
  */
@@ -1158,7 +1174,7 @@ export function registerWorktreeHandlers(
 ): void {
   /**
    * Get the worktree status for a task
-   * Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
+   * Per-spec architecture: Each spec has its own worktree at .auto-claude/worktrees/tasks/{spec-name}/
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_STATUS,
@@ -1169,10 +1185,10 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Task not found' };
         }
 
-        // Per-spec worktree path: .worktrees/{spec-name}/
-        const worktreePath = path.join(project.path, '.worktrees', task.specId);
+        // Find worktree at .auto-claude/worktrees/tasks/{spec-name}/
+        const worktreePath = findTaskWorktree(project.path, task.specId);
 
-        if (!existsSync(worktreePath)) {
+        if (!worktreePath) {
           return {
             success: true,
             data: { exists: false }
@@ -1268,7 +1284,7 @@ export function registerWorktreeHandlers(
 
   /**
    * Get the diff for a task's worktree
-   * Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
+   * Per-spec architecture: Each spec has its own worktree at .auto-claude/worktrees/tasks/{spec-name}/
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_DIFF,
@@ -1279,10 +1295,10 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Task not found' };
         }
 
-        // Per-spec worktree path: .worktrees/{spec-name}/
-        const worktreePath = path.join(project.path, '.worktrees', task.specId);
+        // Find worktree at .auto-claude/worktrees/tasks/{spec-name}/
+        const worktreePath = findTaskWorktree(project.path, task.specId);
 
-        if (!existsSync(worktreePath)) {
+        if (!worktreePath) {
           return { success: false, error: 'No worktree found for this task' };
         }
 
@@ -1415,8 +1431,8 @@ export function registerWorktreeHandlers(
         }
 
         // Check worktree exists before merge
-        const worktreePath = path.join(project.path, '.worktrees', task.specId);
-        debug('Worktree path:', worktreePath, 'exists:', existsSync(worktreePath));
+        const worktreePath = findTaskWorktree(project.path, task.specId);
+        debug('Worktree path:', worktreePath, 'exists:', !!worktreePath);
 
         // Check if changes are already staged (for stage-only mode)
         if (options?.noCommit) {
@@ -1701,10 +1717,13 @@ export function registerWorktreeHandlers(
               // Issue #243: We must update BOTH the main project's plan AND the worktree's plan (if it exists)
               // because ProjectStore prefers the worktree version when deduplicating tasks.
               // OPTIMIZATION: Use async I/O and parallel updates to prevent UI blocking
-              const planPaths = [
+              const planPaths: { path: string; isMain: boolean }[] = [
                 { path: path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), isMain: true },
-                { path: path.join(worktreePath, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), isMain: false }
               ];
+              // Only add worktree plan path if worktree exists
+              if (worktreePath) {
+                planPaths.push({ path: path.join(worktreePath, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), isMain: false });
+              }
 
               const { promises: fsPromises } = require('fs');
 
@@ -2012,7 +2031,7 @@ export function registerWorktreeHandlers(
 
   /**
    * Discard the worktree changes
-   * Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
+   * Per-spec architecture: Each spec has its own worktree at .auto-claude/worktrees/tasks/{spec-name}/
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_DISCARD,
@@ -2023,10 +2042,10 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Task not found' };
         }
 
-        // Per-spec worktree path: .worktrees/{spec-name}/
-        const worktreePath = path.join(project.path, '.worktrees', task.specId);
+        // Find worktree at .auto-claude/worktrees/tasks/{spec-name}/
+        const worktreePath = findTaskWorktree(project.path, task.specId);
 
-        if (!existsSync(worktreePath)) {
+        if (!worktreePath) {
           return {
             success: true,
             data: {
@@ -2090,7 +2109,7 @@ export function registerWorktreeHandlers(
 
   /**
    * List all spec worktrees for a project
-   * Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
+   * Per-spec architecture: Each spec has its own worktree at .auto-claude/worktrees/tasks/{spec-name}/
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_LIST_WORKTREES,
@@ -2101,23 +2120,11 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Project not found' };
         }
 
-        const worktreesDir = path.join(project.path, '.worktrees');
         const worktrees: WorktreeListItem[] = [];
+        const worktreesDir = getTaskWorktreeDir(project.path);
 
-        if (!existsSync(worktreesDir)) {
-          return { success: true, data: { worktrees } };
-        }
-
-        // Get all directories in .worktrees
-        const entries = readdirSync(worktreesDir);
-        for (const entry of entries) {
-          const entryPath = path.join(worktreesDir, entry);
-          const stat = statSync(entryPath);
-
-          // Skip worker directories and non-directories
-          if (!stat.isDirectory() || entry.startsWith('worker-')) {
-            continue;
-          }
+        // Helper to process a single worktree entry
+        const processWorktreeEntry = (entry: string, entryPath: string) => {
 
           try {
             // Get branch info
@@ -2187,6 +2194,22 @@ export function registerWorktreeHandlers(
           } catch (gitError) {
             console.error(`Error getting info for worktree ${entry}:`, gitError);
             // Skip this worktree if we can't get git info
+          }
+        };
+
+        // Scan worktrees directory
+        if (existsSync(worktreesDir)) {
+          const entries = readdirSync(worktreesDir);
+          for (const entry of entries) {
+            const entryPath = path.join(worktreesDir, entry);
+            try {
+              const stat = statSync(entryPath);
+              if (stat.isDirectory()) {
+                processWorktreeEntry(entry, entryPath);
+              }
+            } catch {
+              // Skip entries that can't be stat'd
+            }
           }
         }
 

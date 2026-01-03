@@ -1,5 +1,6 @@
-import { X, Sparkles, TerminalSquare } from 'lucide-react';
-import type { Task } from '../../../shared/types';
+import { X, Sparkles, TerminalSquare, FolderGit, ExternalLink } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { Task, TerminalWorktreeConfig } from '../../../shared/types';
 import type { TerminalStatus } from '../../stores/terminal-store';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
@@ -21,6 +22,14 @@ interface TerminalHeaderProps {
   onClearTask: () => void;
   onNewTaskClick?: () => void;
   terminalCount?: number;
+  /** Worktree configuration if terminal is associated with a worktree */
+  worktreeConfig?: TerminalWorktreeConfig;
+  /** Project path for worktree operations */
+  projectPath?: string;
+  /** Callback to open worktree creation dialog */
+  onCreateWorktree?: () => void;
+  /** Callback to open worktree in IDE */
+  onOpenInIDE?: () => void;
 }
 
 export function TerminalHeader({
@@ -37,7 +46,12 @@ export function TerminalHeader({
   onClearTask,
   onNewTaskClick,
   terminalCount = 1,
+  worktreeConfig,
+  projectPath,
+  onCreateWorktree,
+  onOpenInIDE,
 }: TerminalHeaderProps) {
+  const { t } = useTranslation(['terminal', 'common']);
   const backlogTasks = tasks.filter((t) => t.status === 'backlog');
 
   return (
@@ -69,8 +83,45 @@ export function TerminalHeader({
             onNewTaskClick={onNewTaskClick}
           />
         )}
+        {/* Worktree badge when associated */}
+        {worktreeConfig && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
+            <FolderGit className="h-2.5 w-2.5" />
+            {worktreeConfig.name}
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-1">
+        {/* Worktree button when no worktree and project path available */}
+        {!worktreeConfig && projectPath && onCreateWorktree && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs gap-1 hover:bg-amber-500/10 hover:text-amber-500"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateWorktree();
+            }}
+          >
+            <FolderGit className="h-3 w-3" />
+            {t('terminal:worktree.create')}
+          </Button>
+        )}
+        {/* Open in IDE button when worktree exists */}
+        {worktreeConfig && onOpenInIDE && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs gap-1 hover:bg-muted"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenInIDE();
+            }}
+          >
+            <ExternalLink className="h-3 w-3" />
+            {t('terminal:worktree.openInIDE')}
+          </Button>
+        )}
         {!isClaudeMode && status !== 'exited' && (
           <Button
             variant="ghost"

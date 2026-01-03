@@ -1,11 +1,14 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
 import { FileDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTerminalStore } from '../stores/terminal-store';
+import { useSettingsStore } from '../stores/settings-store';
 import type { TerminalProps } from './terminal/types';
+import type { TerminalWorktreeConfig } from '../../shared/types';
 import { TerminalHeader } from './terminal/TerminalHeader';
+import { CreateWorktreeDialog } from './terminal/CreateWorktreeDialog';
 import { useXterm } from './terminal/useXterm';
 import { usePtyProcess } from './terminal/usePtyProcess';
 import { useTerminalEvents } from './terminal/useTerminalEvents';
@@ -25,10 +28,18 @@ export function Terminal({
   const isMountedRef = useRef(true);
   const isCreatedRef = useRef(false);
 
+  // Worktree dialog state
+  const [showWorktreeDialog, setShowWorktreeDialog] = useState(false);
+
+  // Terminal store
   const terminal = useTerminalStore((state) => state.terminals.find((t) => t.id === id));
   const setClaudeMode = useTerminalStore((state) => state.setClaudeMode);
   const updateTerminal = useTerminalStore((state) => state.updateTerminal);
   const setAssociatedTask = useTerminalStore((state) => state.setAssociatedTask);
+  const setWorktreeConfig = useTerminalStore((state) => state.setWorktreeConfig);
+
+  // Settings store for IDE preferences
+  const { settings } = useSettingsStore();
 
   const associatedTask = terminal?.associatedTaskId
     ? tasks.find((t) => t.id === terminal.associatedTaskId)
@@ -153,6 +164,45 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     updateTerminal(id, { title: 'Claude' });
   }, [id, setAssociatedTask, updateTerminal]);
 
+  // Worktree handlers
+  const handleCreateWorktree = useCallback(() => {
+    setShowWorktreeDialog(true);
+  }, []);
+
+  const handleWorktreeCreated = useCallback(async (config: TerminalWorktreeConfig) => {
+    // Update terminal store with worktree config
+    setWorktreeConfig(id, config);
+
+    // Update terminal title to worktree name
+    updateTerminal(id, { title: config.name, cwd: config.worktreePath });
+
+    // Destroy current PTY and create new one in worktree directory
+    // The PTY will be recreated by the usePtyProcess hook when cwd changes
+    if (isCreatedRef.current) {
+      await window.electronAPI.destroyTerminal(id);
+      isCreatedRef.current = false;
+    }
+  }, [id, setWorktreeConfig, updateTerminal]);
+
+  const handleOpenInIDE = useCallback(async () => {
+    const worktreePath = terminal?.worktreeConfig?.worktreePath;
+    if (!worktreePath) return;
+
+    const preferredIDE = settings.preferredIDE || 'vscode';
+    try {
+      await window.electronAPI.worktreeOpenInIDE(
+        worktreePath,
+        preferredIDE,
+        settings.customIDEPath
+      );
+    } catch (err) {
+      console.error('Failed to open in IDE:', err);
+    }
+  }, [terminal?.worktreeConfig?.worktreePath, settings.preferredIDE, settings.customIDEPath]);
+
+  // Get backlog tasks for worktree dialog
+  const backlogTasks = tasks.filter((t) => t.status === 'backlog');
+
   return (
     <div
       ref={setDropRef}
@@ -186,6 +236,10 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
         onClearTask={handleClearTask}
         onNewTaskClick={onNewTaskClick}
         terminalCount={terminalCount}
+        worktreeConfig={terminal?.worktreeConfig}
+        projectPath={projectPath}
+        onCreateWorktree={handleCreateWorktree}
+        onOpenInIDE={handleOpenInIDE}
       />
 
       <div
@@ -193,6 +247,18 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
         className="flex-1 p-1"
         style={{ minHeight: 0 }}
       />
+
+      {/* Worktree creation dialog */}
+      {projectPath && (
+        <CreateWorktreeDialog
+          open={showWorktreeDialog}
+          onOpenChange={setShowWorktreeDialog}
+          terminalId={id}
+          projectPath={projectPath}
+          backlogTasks={backlogTasks}
+          onWorktreeCreated={handleWorktreeCreated}
+        />
+      )}
     </div>
   );
 }
