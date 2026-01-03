@@ -169,7 +169,7 @@
       },
       {
         "from": "python-runtime/${os}-${arch}/site-packages",
-        "to": "python-site-packages"
+        "to": "python/Lib/site-packages"
       },
       {
         "from": "../backend",
