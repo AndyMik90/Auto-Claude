@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { detectShellType, buildCdCommandForShell } from './shell-escape';
+import { detectShellType, buildCdCommandForShell, escapeShellArgPowerShell } from './shell-escape';
 
 describe('detectShellType', () => {
   describe('PowerShell detection', () => {
@@ -377,6 +377,153 @@ describe('buildCdCommandForShell', () => {
     it('should handle path with multiple single quotes for powershell', () => {
       const result = buildCdCommandForShell("it's John's folder", 'powershell');
       expect(result).toBe("Set-Location 'it''s John''s folder'; ");
+    });
+  });
+});
+
+describe('escapeShellArgPowerShell', () => {
+  describe('basic escaping', () => {
+    it('should wrap simple string in single quotes', () => {
+      const result = escapeShellArgPowerShell('hello');
+      expect(result).toBe("'hello'");
+    });
+
+    it('should handle empty string', () => {
+      const result = escapeShellArgPowerShell('');
+      expect(result).toBe("''");
+    });
+
+    it('should handle strings with spaces', () => {
+      const result = escapeShellArgPowerShell('hello world');
+      expect(result).toBe("'hello world'");
+    });
+
+    it('should handle Windows paths', () => {
+      const result = escapeShellArgPowerShell('C:\\Users\\test');
+      expect(result).toBe("'C:\\Users\\test'");
+    });
+
+    it('should handle Unix paths', () => {
+      const result = escapeShellArgPowerShell('/home/user');
+      expect(result).toBe("'/home/user'");
+    });
+  });
+
+  describe('single quote escaping', () => {
+    it('should escape single quote by doubling it', () => {
+      const result = escapeShellArgPowerShell("it's");
+      expect(result).toBe("'it''s'");
+    });
+
+    it('should escape multiple single quotes', () => {
+      const result = escapeShellArgPowerShell("it's John's folder");
+      expect(result).toBe("'it''s John''s folder'");
+    });
+
+    it('should handle single quote at start', () => {
+      const result = escapeShellArgPowerShell("'quoted");
+      expect(result).toBe("'''quoted'");
+    });
+
+    it('should handle single quote at end', () => {
+      const result = escapeShellArgPowerShell("quoted'");
+      expect(result).toBe("'quoted'''");
+    });
+
+    it('should handle consecutive single quotes', () => {
+      const result = escapeShellArgPowerShell("it''s");
+      expect(result).toBe("'it''''s'");
+    });
+
+    it('should handle only single quotes', () => {
+      const result = escapeShellArgPowerShell("'''");
+      expect(result).toBe("''''''''");
+    });
+  });
+
+  describe('special character handling', () => {
+    it('should not expand variables in single quotes', () => {
+      const result = escapeShellArgPowerShell('$env:PATH');
+      expect(result).toBe("'$env:PATH'");
+    });
+
+    it('should not expand command substitution in single quotes', () => {
+      const result = escapeShellArgPowerShell('$(Get-Date)');
+      expect(result).toBe("'$(Get-Date)'");
+    });
+
+    it('should handle double quotes without escaping', () => {
+      const result = escapeShellArgPowerShell('say "hello"');
+      expect(result).toBe("'say \"hello\"'");
+    });
+
+    it('should handle backticks without escaping', () => {
+      const result = escapeShellArgPowerShell('`n`r');
+      expect(result).toBe("'`n`r'");
+    });
+
+    it('should handle semicolons without escaping', () => {
+      const result = escapeShellArgPowerShell('cmd1; cmd2');
+      expect(result).toBe("'cmd1; cmd2'");
+    });
+
+    it('should handle pipes without escaping', () => {
+      const result = escapeShellArgPowerShell('cmd1 | cmd2');
+      expect(result).toBe("'cmd1 | cmd2'");
+    });
+
+    it('should handle ampersands without escaping', () => {
+      const result = escapeShellArgPowerShell('Tom & Jerry');
+      expect(result).toBe("'Tom & Jerry'");
+    });
+  });
+
+  describe('security edge cases', () => {
+    it('should neutralize attempted command injection with semicolon', () => {
+      const result = escapeShellArgPowerShell('test"; Remove-Item -Recurse -Force / #');
+      expect(result).toBe("'test\"; Remove-Item -Recurse -Force / #'");
+    });
+
+    it('should neutralize attempted command injection with pipe', () => {
+      const result = escapeShellArgPowerShell('test | Remove-Item -Recurse -Force /');
+      expect(result).toBe("'test | Remove-Item -Recurse -Force /'");
+    });
+
+    it('should neutralize attempted variable expansion', () => {
+      const result = escapeShellArgPowerShell('$($env:USERPROFILE)');
+      expect(result).toBe("'$($env:USERPROFILE)'");
+    });
+
+    it('should handle mixed single quotes and special characters', () => {
+      const result = escapeShellArgPowerShell("it's $env:PATH");
+      expect(result).toBe("'it''s $env:PATH'");
+    });
+  });
+
+  describe('path edge cases', () => {
+    it('should handle UNC paths', () => {
+      const result = escapeShellArgPowerShell('\\\\server\\share');
+      expect(result).toBe("'\\\\server\\share'");
+    });
+
+    it('should handle paths with parentheses', () => {
+      const result = escapeShellArgPowerShell('C:\\Program Files (x86)\\App');
+      expect(result).toBe("'C:\\Program Files (x86)\\App'");
+    });
+
+    it('should handle paths with brackets', () => {
+      const result = escapeShellArgPowerShell('C:\\folder[1]\\file');
+      expect(result).toBe("'C:\\folder[1]\\file'");
+    });
+
+    it('should handle paths with curly braces', () => {
+      const result = escapeShellArgPowerShell('C:\\{guid}\\file');
+      expect(result).toBe("'C:\\{guid}\\file'");
+    });
+
+    it('should handle drive root', () => {
+      const result = escapeShellArgPowerShell('C:\\');
+      expect(result).toBe("'C:\\'");
     });
   });
 });
