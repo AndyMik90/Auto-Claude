@@ -303,7 +303,7 @@ def _get_full_credentials_macos() -> dict | None:
     except subprocess.TimeoutExpired:
         logger.warning("macOS Keychain read timed out")
         return None
-    except subprocess.SubprocessError as e:
+    except (subprocess.SubprocessError, OSError) as e:
         logger.warning(f"macOS Keychain subprocess error: {e}")
         return None
     except (json.JSONDecodeError, KeyError) as e:
@@ -545,7 +545,7 @@ def _save_credentials_macos(credentials: dict) -> bool:
     except subprocess.TimeoutExpired:
         logger.warning("macOS Keychain save timed out")
         return False
-    except subprocess.SubprocessError as e:
+    except (subprocess.SubprocessError, OSError) as e:
         logger.warning(f"macOS Keychain subprocess error: {e}")
         return False
     except (json.JSONDecodeError, KeyError) as e:
