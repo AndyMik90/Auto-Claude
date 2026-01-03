@@ -254,7 +254,6 @@ export function AddFeatureDialog({
                 value={phaseId}
                 onValueChange={setPhaseId}
                 disabled={isSaving}
-                aria-required="true"
               >
                 <SelectTrigger id="add-feature-phase" aria-required="true">
                   <SelectValue placeholder={t('addFeature.selectPhase')} />

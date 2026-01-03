@@ -167,7 +167,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
             'bg-card hover:bg-accent hover:border-accent transition-all duration-200',
             'text-left group'
           )}
-          aria-label="Open existing project folder"
+          aria-label={t('addProject.openExistingAriaLabel')}
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <FolderOpen className="h-6 w-6 text-primary" />
@@ -189,7 +189,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
             'bg-card hover:bg-accent hover:border-accent transition-all duration-200',
             'text-left group'
           )}
-          aria-label="Create new project"
+          aria-label={t('addProject.createNewAriaLabel')}
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-success/10">
             <FolderPlus className="h-6 w-6 text-success" />

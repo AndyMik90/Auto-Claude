@@ -489,7 +489,7 @@ export function GitHubSetupModal({
                   <button
                     onClick={() => setRepoAction('create')}
                     className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed hover:border-primary hover:bg-primary/5 transition-colors"
-                    aria-label="Create new repository on GitHub"
+                    aria-label={t('githubSetup.createRepoAriaLabel')}
                   >
                     <Plus className="h-8 w-8 text-muted-foreground" />
                     <span className="text-sm font-medium">Create New Repo</span>
@@ -500,7 +500,7 @@ export function GitHubSetupModal({
                   <button
                     onClick={() => setRepoAction('link')}
                     className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed hover:border-primary hover:bg-primary/5 transition-colors"
-                    aria-label="Link to existing repository"
+                    aria-label={t('githubSetup.linkRepoAriaLabel')}
                   >
                     <Link className="h-8 w-8 text-muted-foreground" />
                     <span className="text-sm font-medium">Link Existing</span>
@@ -518,7 +518,7 @@ export function GitHubSetupModal({
                     <button
                       onClick={() => setRepoAction(null)}
                       className="text-primary hover:underline"
-                      aria-label="Go back to repository selection"
+                      aria-label={t('githubSetup.goBackAriaLabel')}
                     >
                       ← Back
                     </button>
@@ -547,7 +547,7 @@ export function GitHubSetupModal({
                             disabled={isCreatingRepo}
                             role="radio"
                             aria-checked={selectedOwner === githubUsername}
-                            aria-label={`Select ${githubUsername} as repository owner`}
+                            aria-label={t('githubSetup.selectOwnerAriaLabel', { owner: githubUsername })}
                           >
                             <User className="h-4 w-4" />
                             <span className="text-sm">{githubUsername}</span>
@@ -566,7 +566,7 @@ export function GitHubSetupModal({
                             disabled={isCreatingRepo}
                             role="radio"
                             aria-checked={selectedOwner === org.login}
-                            aria-label={`Select ${org.login} organization as repository owner`}
+                            aria-label={t('githubSetup.selectOrgAriaLabel', { org: org.login })}
                           >
                             <Building className="h-4 w-4" />
                             <span className="text-sm">{org.login}</span>
@@ -611,7 +611,7 @@ export function GitHubSetupModal({
                         disabled={isCreatingRepo}
                         role="radio"
                         aria-checked={isPrivateRepo}
-                        aria-label="Set repository to private"
+                        aria-label={t('githubSetup.selectVisibilityAriaLabel', { visibility: 'private' })}
                       >
                         <Lock className="h-4 w-4" />
                         <span className="text-sm">Private</span>
@@ -626,7 +626,7 @@ export function GitHubSetupModal({
                         disabled={isCreatingRepo}
                         role="radio"
                         aria-checked={!isPrivateRepo}
-                        aria-label="Set repository to public"
+                        aria-label={t('githubSetup.selectVisibilityAriaLabel', { visibility: 'public' })}
                       >
                         <Globe className="h-4 w-4" />
                         <span className="text-sm">Public</span>
@@ -643,7 +643,7 @@ export function GitHubSetupModal({
                     <button
                       onClick={() => setRepoAction(null)}
                       className="text-primary hover:underline"
-                      aria-label="Go back to repository selection"
+                      aria-label={t('githubSetup.goBackAriaLabel')}
                     >
                       ← Back
                     </button>
