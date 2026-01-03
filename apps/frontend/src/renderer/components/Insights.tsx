@@ -13,8 +13,10 @@ import {
   FileText,
   FolderSearch,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Square
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from './ui/button';
@@ -33,8 +35,10 @@ import {
   renameSession,
   updateModelConfig,
   createTaskFromSuggestion,
-  setupInsightsListeners
+  setupInsightsListeners,
+  cancelSession
 } from '../stores/insights-store';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
@@ -101,6 +105,8 @@ export function Insights({ projectId }: InsightsProps) {
   const [taskCreated, setTaskCreated] = useState<Set<string>>(new Set());
   const [showSidebar, setShowSidebar] = useState(true);
 
+  const { t } = useTranslation('common');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -126,6 +132,8 @@ export function Insights({ projectId }: InsightsProps) {
     setTaskCreated(new Set());
   }, [session?.id]);
 
+  const isLoading = status.phase === 'thinking' || status.phase === 'streaming';
+
   const handleSend = () => {
     const message = inputValue.trim();
     if (!message || status.phase === 'thinking' || status.phase === 'streaming') return;
@@ -139,6 +147,10 @@ export function Insights({ projectId }: InsightsProps) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleCancel = () => {
+    cancelSession(projectId);
   };
 
   const handleNewSession = async () => {
@@ -190,7 +202,6 @@ export function Insights({ projectId }: InsightsProps) {
     }
   };
 
-  const isLoading = status.phase === 'thinking' || status.phase === 'streaming';
   const messages = session?.messages || [];
 
   return (
@@ -364,20 +375,33 @@ export function Insights({ projectId }: InsightsProps) {
             className="min-h-[80px] resize-none"
             disabled={isLoading}
           />
-          <Button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
-            className="self-end"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+          <div className="flex flex-col gap-2 self-end">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="destructive"
+                  onClick={handleCancel}
+                  disabled={!isLoading}
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('insights.stopTooltip')}</TooltipContent>
+            </Tooltip>
+            <Button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line
+          {t('insights.helperTextIdle')}
         </p>
       </div>
       </div>
