@@ -9,7 +9,7 @@
 
 import { ipcMain, shell } from 'electron';
 import { execFileSync, spawn } from 'child_process';
-import { existsSync, statSync, readdirSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import type { IPCResult } from '../../shared/types';
@@ -264,12 +264,23 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
             try {
               // Scan subdirectories (e.g., 7, 8, etc.)
               const entries = readdirSync(basePath, { withFileTypes: true });
-              for (const entry of entries) {
-                if (entry.isDirectory()) {
-                  const pwshPath = path.join(basePath, entry.name, 'pwsh.exe');
-                  if (existsSync(pwshPath)) {
-                    return pwshPath;
-                  }
+              // Sort entries numerically (highest version first) for deterministic selection
+              const sortedEntries = entries
+                .filter(entry => entry.isDirectory())
+                .sort((a, b) => {
+                  const aVersion = parseInt(a.name, 10);
+                  const bVersion = parseInt(b.name, 10);
+                  // Sort descending (highest version first), handling NaN cases
+                  if (isNaN(aVersion) && isNaN(bVersion)) return 0;
+                  if (isNaN(aVersion)) return 1;
+                  if (isNaN(bVersion)) return -1;
+                  return bVersion - aVersion;
+                });
+              
+              for (const entry of sortedEntries) {
+                const pwshPath = path.join(basePath, entry.name, 'pwsh.exe');
+                if (existsSync(pwshPath)) {
+                  return pwshPath;
                 }
               }
             } catch (err) {
