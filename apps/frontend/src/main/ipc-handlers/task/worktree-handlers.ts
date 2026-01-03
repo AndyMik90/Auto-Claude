@@ -5,6 +5,7 @@ import path from 'path';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { escapePowerShellCommand } from '../claude-code-handlers';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
+import { scanPowerShellInstallations, isPwshInPath } from '../../../shared/utils/powershell-detection';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../auto-claude-updater';
@@ -851,44 +852,6 @@ async function detectLinuxApps(): Promise<Set<string>> {
   return apps;
 }
 
-/**
- * Scan PowerShell installation directories to find all pwsh.exe installations
- * Returns array of paths sorted by version (highest first)
- */
-function scanPowerShellInstallations(): string[] {
-  const basePaths = [
-    'C:\\Program Files\\PowerShell',
-    'C:\\Program Files (x86)\\PowerShell'
-  ];
-  const foundPaths: Array<{ path: string; version: number }> = [];
-
-  for (const basePath of basePaths) {
-    if (!existsSync(basePath)) {
-      continue;
-    }
-
-    try {
-      const entries = readdirSync(basePath, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const pwshPath = path.join(basePath, entry.name, 'pwsh.exe');
-          if (existsSync(pwshPath)) {
-            const version = parseInt(entry.name, 10);
-            foundPaths.push({ path: pwshPath, version: isNaN(version) ? 0 : version });
-          }
-        }
-      }
-    } catch (err) {
-      // Directory read failed, continue to next path
-      console.warn(`[worktree-handlers] Failed to scan ${basePath}:`, err);
-    }
-  }
-
-  // Sort by version descending (highest first) and return paths
-  return foundPaths
-    .sort((a, b) => b.version - a.version)
-    .map(item => item.path);
-}
 
 /**
  * Check if an app is installed using the cached app list + specific path checks
@@ -1001,14 +964,8 @@ async function detectInstalledTools(): Promise<DetectedTools> {
     if (id === 'pwsh' && platform === 'win32') {
       paths = scanPowerShellInstallations();
       // If no PowerShell 7+ found in standard locations, check PATH
-      if (paths.length === 0) {
-        try {
-          execSync('where.exe pwsh.exe', { stdio: 'ignore', timeout: 2000 });
-          // pwsh.exe is in PATH, use it
-          paths = ['pwsh.exe'];
-        } catch {
-          // Not in PATH either, leave empty to mark as not installed
-        }
+      if (paths.length === 0 && isPwshInPath()) {
+        paths = ['pwsh.exe'];
       }
     }
     

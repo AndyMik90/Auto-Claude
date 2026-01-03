@@ -9,8 +9,8 @@
 
 import { ipcMain, shell } from 'electron';
 import { execFileSync, spawn } from 'child_process';
-import { existsSync, readdirSync } from 'fs';
-import path from 'path';
+import { existsSync } from 'fs';
+import { scanPowerShellInstallations, isPwshInPath } from '../../../shared/utils/powershell-detection';
 import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo } from '../../shared/types/cli';
@@ -250,65 +250,20 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     const getPowerShellExe = (): string => {
       if (terminalId === 'pwsh') {
         // Robust lookup for PowerShell 7+ (pwsh.exe)
-        const scanPowerShellDirectories = (): string | null => {
-          const basePaths = [
-            'C:\\Program Files\\PowerShell',
-            'C:\\Program Files (x86)\\PowerShell'
-          ];
-
-          for (const basePath of basePaths) {
-            if (!existsSync(basePath)) {
-              continue;
-            }
-
-            try {
-              // Scan subdirectories (e.g., 7, 8, etc.)
-              const entries = readdirSync(basePath, { withFileTypes: true });
-              // Sort entries numerically (highest version first) for deterministic selection
-              const sortedEntries = entries
-                .filter(entry => entry.isDirectory())
-                .sort((a, b) => {
-                  const aVersion = parseInt(a.name, 10);
-                  const bVersion = parseInt(b.name, 10);
-                  // Sort descending (highest version first), handling NaN cases
-                  if (isNaN(aVersion) && isNaN(bVersion)) return 0;
-                  if (isNaN(aVersion)) return 1;
-                  if (isNaN(bVersion)) return -1;
-                  return bVersion - aVersion;
-                });
-              
-              for (const entry of sortedEntries) {
-                const pwshPath = path.join(basePath, entry.name, 'pwsh.exe');
-                if (existsSync(pwshPath)) {
-                  return pwshPath;
-                }
-              }
-            } catch (err) {
-              // Directory read failed, continue to next path
-              console.warn(`[Claude Code] Failed to scan ${basePath}:`, err);
-            }
-          }
-
-          return null;
-        };
-
         // First, try scanning PowerShell installation directories
-        const scannedPath = scanPowerShellDirectories();
-        if (scannedPath) {
-          return scannedPath;
+        const scannedPaths = scanPowerShellInstallations();
+        if (scannedPaths.length > 0) {
+          return scannedPaths[0]; // Already sorted by version (highest first)
         }
 
-        // If not found in standard locations, check PATH using where.exe
-        try {
-          const { execSync } = require('child_process');
-          execSync('where.exe pwsh.exe', { stdio: 'ignore', timeout: 2000 });
-          // If where.exe succeeds, pwsh.exe is in PATH
+        // If not found in standard locations, check PATH
+        if (isPwshInPath()) {
           return 'pwsh.exe';
-        } catch {
-          // pwsh.exe not found in PATH, fall back to Windows PowerShell
-          console.warn('[Claude Code] pwsh.exe not found, falling back to powershell.exe');
-          return 'powershell.exe';
         }
+
+        // pwsh.exe not found, fall back to Windows PowerShell
+        console.warn('[Claude Code] pwsh.exe not found, falling back to powershell.exe');
+        return 'powershell.exe';
       }
       // Default to Windows PowerShell 5.1
       return 'powershell.exe';
