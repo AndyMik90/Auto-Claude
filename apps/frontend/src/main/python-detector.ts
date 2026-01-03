@@ -1,4 +1,4 @@
-import { execSync, execFileSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { existsSync, accessSync, constants } from 'fs';
 import path from 'path';
 import { app } from 'electron';
@@ -121,16 +121,19 @@ export function findPythonCommand(): string | null {
 
 /**
  * Extract Python version from a command.
+ * Uses execFileSync to safely handle paths with spaces and prevent shell injection.
  *
- * @param pythonCmd - The Python command to check (e.g., "python3", "py -3")
+ * @param pythonCmd - The Python command to check (e.g., "python3", "py -3", "/path/with spaces/python")
  * @returns The version string (e.g., "3.10.5") or null if unable to detect
  */
 function getPythonVersion(pythonCmd: string): string | null {
   try {
-    const version = execSync(`${pythonCmd} --version`, {
+    const [cmd, args] = parsePythonCommand(pythonCmd);
+    const version = execFileSync(cmd, [...args, '--version'], {
       stdio: 'pipe',
       timeout: 5000,
-      windowsHide: true
+      windowsHide: true,
+      shell: false
     }).toString().trim();
 
     // Extract version number from "Python 3.10.5" format
@@ -261,6 +264,9 @@ export function parsePythonCommand(pythonPath: string): [string, string[]] {
 
   // Only split on spaces for simple commands like "py -3"
   // At this point we know it's NOT a path (no path separators) and NOT an existing file
+  // EDGE CASE: If someone has a file literally named "py -3" (with a space), the existsSync
+  // check above will catch it and return it as a single command. Only if no such file exists
+  // do we treat it as "py" command with "-3" argument.
   const parts = cleanPath.split(' ').filter(p => p.length > 0);
   if (parts.length === 0) {
     // This shouldn't happen after earlier validation, but guard anyway
@@ -297,12 +303,15 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   // Homebrew Python (macOS)
   /^\/opt\/homebrew\/bin\/python\d*(\.\d+)?$/,
   /^\/opt\/homebrew\/opt\/python@[\d.]+\/bin\/python\d*(\.\d+)?$/,
-  // pyenv
-  /^.*\/\.pyenv\/versions\/[\d.]+\/bin\/python\d*(\.\d+)?$/,
+  // pyenv - only allow paths under user home directories (stricter than .*)
+  /^\/(?:Users|home)\/[^/]+\/\.pyenv\/versions\/[\d.]+\/bin\/python\d*(\.\d+)?$/,
+  // pyenv for root user on Linux (no username directory)
+  /^\/root\/\.pyenv\/versions\/[\d.]+\/bin\/python\d*(\.\d+)?$/,
   // Virtual environments (various naming conventions)
-  /^.*\/\.?venv\/bin\/python\d*(\.\d+)?$/,
-  /^.*\/\.?virtualenv\/bin\/python\d*(\.\d+)?$/,
-  /^.*\/env\/bin\/python\d*(\.\d+)?$/,
+  // Only allow alphanumeric, dash, underscore, dot, and space in directory names
+  /^(?:\/[a-zA-Z0-9._\- ]+)+\/\.?venv\/bin\/python\d*(\.\d+)?$/,
+  /^(?:\/[a-zA-Z0-9._\- ]+)+\/\.?virtualenv\/bin\/python\d*(\.\d+)?$/,
+  /^(?:\/[a-zA-Z0-9._\- ]+)+\/env\/bin\/python\d*(\.\d+)?$/,
   // macOS Application Support paths (Electron userData with spaces)
   // Matches: /Users/<user>/Library/Application Support/<app>/(python-venv|.venv|venv)/bin/python
   /^\/Users\/[^/]+\/Library\/Application Support\/[^/]+\/(python-venv|\.?venv)\/bin\/python\d*(\.\d+)?$/,
@@ -318,11 +327,14 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   // Windows Application Data paths (Electron userData)
   // Matches: C:\Users\<user>\AppData\Roaming\<app>\(python-venv|.venv|venv)\Scripts\python.exe
   /^[A-Za-z]:\\Users\\[^\\]+\\AppData\\Roaming\\[^\\]+\\(python-venv|\.?venv)\\Scripts\\python\.exe$/i,
-  // Conda environments
-  /^.*\/anaconda\d*\/bin\/python\d*(\.\d+)?$/,
-  /^.*\/miniconda\d*\/bin\/python\d*(\.\d+)?$/,
-  /^.*\/anaconda\d*\/envs\/[^/]+\/bin\/python\d*(\.\d+)?$/,
-  /^.*\/miniconda\d*\/envs\/[^/]+\/bin\/python\d*(\.\d+)?$/,
+  // Conda environments - only allow paths under user home directories
+  /^\/(?:Users|home)\/[^/]+\/anaconda\d*\/bin\/python\d*(\.\d+)?$/,
+  /^\/(?:Users|home)\/[^/]+\/miniconda\d*\/bin\/python\d*(\.\d+)?$/,
+  /^\/(?:Users|home)\/[^/]+\/anaconda\d*\/envs\/[^/]+\/bin\/python\d*(\.\d+)?$/,
+  /^\/(?:Users|home)\/[^/]+\/miniconda\d*\/envs\/[^/]+\/bin\/python\d*(\.\d+)?$/,
+  // System-wide conda installations
+  /^\/opt\/(?:anaconda|miniconda)\d*\/bin\/python\d*(\.\d+)?$/,
+  /^\/opt\/(?:anaconda|miniconda)\d*\/envs\/[^/]+\/bin\/python\d*(\.\d+)?$/,
 ];
 
 /**
