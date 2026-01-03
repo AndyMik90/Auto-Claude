@@ -9,7 +9,7 @@
 
 import { ipcMain, shell } from 'electron';
 import { execFileSync, spawn } from 'child_process';
-import { existsSync, statSync } from 'fs';
+import { existsSync, statSync, readdirSync } from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import type { IPCResult } from '../../shared/types';
@@ -249,15 +249,55 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     // Determine which PowerShell executable to use
     const getPowerShellExe = (): string => {
       if (terminalId === 'pwsh') {
-        // Try to find PowerShell 7+ (pwsh.exe)
-        const pwshPaths = [
-          'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
-          'C:\\Program Files (x86)\\PowerShell\\7\\pwsh.exe',
-          'C:\\Program Files\\PowerShell\\8\\pwsh.exe',
-          'C:\\Program Files (x86)\\PowerShell\\8\\pwsh.exe',
-        ];
-        const pwshPath = pwshPaths.find(p => existsSync(p));
-        return pwshPath || 'pwsh.exe'; // Fallback to PATH lookup
+        // Robust lookup for PowerShell 7+ (pwsh.exe)
+        const scanPowerShellDirectories = (): string | null => {
+          const basePaths = [
+            'C:\\Program Files\\PowerShell',
+            'C:\\Program Files (x86)\\PowerShell'
+          ];
+
+          for (const basePath of basePaths) {
+            if (!existsSync(basePath)) {
+              continue;
+            }
+
+            try {
+              // Scan subdirectories (e.g., 7, 8, etc.)
+              const entries = readdirSync(basePath, { withFileTypes: true });
+              for (const entry of entries) {
+                if (entry.isDirectory()) {
+                  const pwshPath = path.join(basePath, entry.name, 'pwsh.exe');
+                  if (existsSync(pwshPath)) {
+                    return pwshPath;
+                  }
+                }
+              }
+            } catch (err) {
+              // Directory read failed, continue to next path
+              console.warn(`[Claude Code] Failed to scan ${basePath}:`, err);
+            }
+          }
+
+          return null;
+        };
+
+        // First, try scanning PowerShell installation directories
+        const scannedPath = scanPowerShellDirectories();
+        if (scannedPath) {
+          return scannedPath;
+        }
+
+        // If not found in standard locations, check PATH using where.exe
+        try {
+          const { execSync } = require('child_process');
+          execSync('where.exe pwsh.exe', { stdio: 'ignore', timeout: 2000 });
+          // If where.exe succeeds, pwsh.exe is in PATH
+          return 'pwsh.exe';
+        } catch {
+          // pwsh.exe not found in PATH, fall back to Windows PowerShell
+          console.warn('[Claude Code] pwsh.exe not found, falling back to powershell.exe');
+          return 'powershell.exe';
+        }
       }
       // Default to Windows PowerShell 5.1
       return 'powershell.exe';
