@@ -101,7 +101,7 @@ export const TaskCard = memo(function TaskCard({ task, onClick }: TaskCardProps)
 
   // Memoize expensive computations to avoid running on every render
   const sanitizedDescription = useMemo(
-    () => task.description ? sanitizeMarkdownForDisplay(task.description, 150) : null,
+    () => task.description ? sanitizeMarkdownForDisplay(task.description) : null,
     [task.description]
   );
 
@@ -278,7 +278,7 @@ export const TaskCard = memo(function TaskCard({ task, onClick }: TaskCardProps)
 
         {/* Description - sanitized to handle markdown content (memoized) */}
         {sanitizedDescription && (
-          <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+          <p className="mt-2 text-xs text-muted-foreground">
             {sanitizedDescription}
           </p>
         )}
