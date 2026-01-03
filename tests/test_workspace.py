@@ -168,7 +168,7 @@ class TestSetupWorkspace:
             WorkspaceMode.ISOLATED,
         )
 
-        assert (temp_git_repo / ".worktrees").exists()
+        assert (temp_git_repo / ".auto-claude" / "worktrees" / "tasks").exists()
 
 
 class TestWorkspaceUtilities:
