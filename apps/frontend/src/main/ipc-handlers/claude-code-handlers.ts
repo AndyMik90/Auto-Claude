@@ -10,7 +10,7 @@
 import { ipcMain, shell } from 'electron';
 import { execFileSync, spawn } from 'child_process';
 import { existsSync } from 'fs';
-import { scanPowerShellInstallations, isPwshInPath } from '../../../shared/utils/powershell-detection';
+import { scanPowerShellInstallations, isPwshInPath } from '../../shared/utils/powershell-detection';
 import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo } from '../../shared/types/cli';
