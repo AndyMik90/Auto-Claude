@@ -35,10 +35,10 @@ from ui import (
 from workspace import (
     cleanup_all_worktrees,
     discard_existing_build,
+    get_existing_build_worktree,
     list_all_worktrees,
     merge_existing_build,
     review_existing_build,
-    get_existing_build_worktree,
     show_build_summary,
 )
 

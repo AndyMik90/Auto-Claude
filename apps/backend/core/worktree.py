@@ -777,7 +777,7 @@ class WorktreeManager:
             if len(summary_lines) >= 5:
                 break
 
-        return "\n".join(summary_lines) if summary_lines else f"Auto-generated PR"
+        return "\n".join(summary_lines) if summary_lines else "Auto-generated PR"
 
     def _get_existing_pr_url(self, branch_name: str) -> str | None:
         """Get the URL of an existing PR for a branch."""
