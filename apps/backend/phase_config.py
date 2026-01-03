@@ -50,7 +50,7 @@ SPEC_PHASE_THINKING_LEVELS: dict[str, str] = {
 # Default phase configuration (matches UI defaults)
 DEFAULT_PHASE_MODELS: dict[str, str] = {
     "spec": "sonnet",
-    "planning": "opus",
+    "planning": "sonnet",  # Changed from "opus" (fix #433)
     "coding": "sonnet",
     "qa": "sonnet",
 }
