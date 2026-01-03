@@ -340,8 +340,7 @@ async def run_agent_session(
         (status, response_text) where status is:
         - "continue" if agent should continue working
         - "complete" if all subtasks complete
-        - "error" if an error occurred
-        - "retry" if token was refreshed and caller should retry
+        - "error" if an error occurred (includes token refresh case where user must retry)
     """
     debug_section("session", f"Agent Session - {phase.value}")
     debug(
@@ -611,7 +610,9 @@ async def run_agent_session(
                 print_status("OAuth token was expired and has been refreshed", "success")
                 print("   The current operation was interrupted mid-request.")
                 print("   Please retry your command to continue.\n")
-                return "retry", "Token refreshed. Please retry your command."
+                # Return "error" so callers stop gracefully - user must retry manually
+                # Token is already refreshed and saved, next run will use new token
+                return "error", "Token refreshed. Please retry your command."
 
             except (OSError, IOError, json.JSONDecodeError, KeyError) as refresh_error:
                 # Specific exceptions from credential file/keychain operations
