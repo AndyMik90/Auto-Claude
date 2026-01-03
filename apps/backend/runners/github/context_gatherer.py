@@ -1036,28 +1036,53 @@ class FollowupContextGatherer:
             f"[Followup] Comparing {previous_sha[:8]}...{current_sha[:8]}", flush=True
         )
 
-        # Get commit comparison
+        # Get PR-scoped files and commits (excludes merge-introduced changes)
+        # This solves the problem where merging develop into a feature branch
+        # would include commits from other PRs in the follow-up review.
         try:
-            comparison = await self.gh_client.compare_commits(previous_sha, current_sha)
-        except Exception as e:
-            print(f"[Followup] Error comparing commits: {e}", flush=True)
-            return FollowupReviewContext(
-                pr_number=self.pr_number,
-                previous_review=self.previous_review,
-                previous_commit_sha=previous_sha,
-                current_commit_sha=current_sha,
-                error=f"Failed to compare commits: {e}",
+            pr_files, new_commits = await self.gh_client.get_pr_files_changed_since(
+                self.pr_number, previous_sha
             )
+            print(
+                f"[Followup] PR has {len(pr_files)} files total, "
+                f"{len(new_commits)} commits since last review",
+                flush=True,
+            )
+        except Exception as e:
+            print(f"[Followup] Error getting PR files/commits: {e}", flush=True)
+            # Fallback to compare_commits if PR endpoints fail
+            print("[Followup] Falling back to commit comparison...", flush=True)
+            try:
+                comparison = await self.gh_client.compare_commits(
+                    previous_sha, current_sha
+                )
+                new_commits = comparison.get("commits", [])
+                pr_files = comparison.get("files", [])
+                print(
+                    f"[Followup] Fallback: Found {len(new_commits)} commits, "
+                    f"{len(pr_files)} files (may include merge-introduced changes)",
+                    flush=True,
+                )
+            except Exception as e2:
+                print(f"[Followup] Fallback also failed: {e2}", flush=True)
+                return FollowupReviewContext(
+                    pr_number=self.pr_number,
+                    previous_review=self.previous_review,
+                    previous_commit_sha=previous_sha,
+                    current_commit_sha=current_sha,
+                    error=f"Failed to get PR context: {e}, fallback: {e2}",
+                )
 
-        # Extract data from comparison
-        commits = comparison.get("commits", [])
-        files = comparison.get("files", [])
+        # Use PR files as the canonical list (excludes files from merged branches)
+        commits = new_commits
+        files = pr_files
         print(
             f"[Followup] Found {len(commits)} new commits, {len(files)} changed files",
             flush=True,
         )
 
         # Build diff from file patches
+        # Note: PR files endpoint returns 'filename' key, compare returns 'filename' too
         diff_parts = []
         files_changed = []
         for file_info in files:

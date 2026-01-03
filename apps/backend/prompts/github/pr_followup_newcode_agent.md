@@ -11,6 +11,23 @@ Review the incremental diff for:
 4. Potential regressions
 5. Incomplete implementations
 
+## CRITICAL: PR Scope and Context
+
+### What IS in scope (report these issues):
+1. **Issues in changed code** - Problems in files/lines actually modified by this PR
+2. **Impact on unchanged code** - "This change breaks callers in `other_file.ts`"
+3. **Missing related changes** - "Similar pattern in `utils.ts` wasn't updated"
+4. **Incomplete implementations** - "New field added but not handled in serializer"
+
+### What is NOT in scope (do NOT report):
+1. **Pre-existing bugs** - Old bugs in code this PR didn't touch
+2. **Code from merged branches** - Commits with PR references like `(#584)` are from other PRs
+3. **Unrelated improvements** - Don't suggest refactoring untouched code
+
+**Key distinction:**
+- ✅ "Your change breaks the caller in `auth.ts`" - GOOD (impact analysis)
+- ❌ "The old code in `legacy.ts` has a bug" - BAD (pre-existing, not this PR)
+
 ## Focus Areas
 
 Since this is a follow-up review, focus on:

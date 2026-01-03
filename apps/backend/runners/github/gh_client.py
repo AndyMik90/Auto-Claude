@@ -872,3 +872,163 @@ class GHClient:
                 "failed_checks": [],
                 "error": str(e),
             }
+
+    async def get_pr_files(self, pr_number: int) -> list[dict[str, Any]]:
+        """
+        Get files changed by a PR using the PR files endpoint.
+
+        IMPORTANT: This returns only files that are part of the PR's actual changes,
+        NOT files that came in from merging another branch (e.g., develop).
+        This is crucial for follow-up reviews to avoid reviewing code from other PRs.
+
+        Uses: GET /repos/{owner}/{repo}/pulls/{pr_number}/files
+
+        Args:
+            pr_number: PR number
+
+        Returns:
+            List of file objects with:
+            - filename: Path to the file
+            - status: added, removed, modified, renamed, copied, changed
+            - additions: Number of lines added
+            - deletions: Number of lines deleted
+            - changes: Total number of line changes
+            - patch: The unified diff patch for this file (may be absent for large files)
+        """
+        files = []
+        page = 1
+        per_page = 100
+
+        while True:
+            endpoint = f"repos/{{owner}}/{{repo}}/pulls/{pr_number}/files?page={page}&per_page={per_page}"
+            args = ["api", "--method", "GET", endpoint]
+
+            result = await self.run(args, timeout=60.0)
+            page_files = json.loads(result.stdout) if result.stdout.strip() else []
+
+            if not page_files:
+                break
+
+            files.extend(page_files)
+
+            # Check if we got a full page (more pages might exist)
+            if len(page_files) < per_page:
+                break
+
+            page += 1
+
+            # Safety limit to prevent infinite loops
+            if page > 50:
+                logger.warning(
+                    f"PR #{pr_number} has more than 5000 files, stopping pagination"
+                )
+                break
+
+        return files
+
+    async def get_pr_commits(self, pr_number: int) -> list[dict[str, Any]]:
+        """
+        Get commits that are part of a PR using the PR commits endpoint.
+
+        IMPORTANT: This returns only commits that are part of the PR's branch,
+        NOT commits that came in from merging another branch (e.g., develop).
+        This is crucial for follow-up reviews to avoid reviewing commits from other PRs.
+
+        Uses: GET /repos/{owner}/{repo}/pulls/{pr_number}/commits
+
+        Args:
+            pr_number: PR number
+
+        Returns:
+            List of commit objects with:
+            - sha: Commit SHA
+            - commit: Object with message, author, committer info
+            - author: GitHub user who authored the commit
+            - committer: GitHub user who committed
+            - parents: List of parent commit SHAs
+        """
+        commits = []
+        page = 1
+        per_page = 100
+
+        while True:
+            endpoint = f"repos/{{owner}}/{{repo}}/pulls/{pr_number}/commits?page={page}&per_page={per_page}"
+            args = ["api", "--method", "GET", endpoint]
+
+            result = await self.run(args, timeout=60.0)
+            page_commits = json.loads(result.stdout) if result.stdout.strip() else []
+
+            if not page_commits:
+                break
+
+            commits.extend(page_commits)
+
+            # Check if we got a full page (more pages might exist)
+            if len(page_commits) < per_page:
+                break
+
+            page += 1
+
+            # Safety limit
+            if page > 10:
+                logger.warning(
+                    f"PR #{pr_number} has more than 1000 commits, stopping pagination"
+                )
+                break
+
+        return commits
+
+    async def get_pr_files_changed_since(
+        self, pr_number: int, base_sha: str
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """
+        Get files and commits that are part of the PR and changed since a specific commit.
+
+        This method solves the "merge introduced commits" problem by:
+        1. Getting the canonical list of PR files (excludes files from merged branches)
+        2. Getting the canonical list of PR commits (excludes commits from merged branches)
+        3. Filtering to only include commits after base_sha
+
+        Args:
+            pr_number: PR number
+            base_sha: The commit SHA to compare from (e.g., last reviewed commit)
+
+        Returns:
+            Tuple of:
+            - List of file objects that are part of the PR
+            - List of commit objects that are part of the PR and after base_sha
+        """
+        # Get PR's canonical files (these are the actual PR changes)
+        pr_files = await self.get_pr_files(pr_number)
+
+        # Get PR's canonical commits
+        pr_commits = await self.get_pr_commits(pr_number)
+
+        # Find commits after base_sha
+        # Build a set of PR commit SHAs for fast lookup
+        pr_commit_shas = {c["sha"] for c in pr_commits}
+
+        # Find the position of base_sha in PR commits
+        base_index = -1
+        for i, commit in enumerate(pr_commits):
+            if commit["sha"].startswith(base_sha) or base_sha.startswith(
+                commit["sha"][:8]
+            ):
+                base_index = i
+                break
+
+        # Commits after base_sha (these are the new commits to review)
+        if base_index >= 0:
+            new_commits = pr_commits[base_index + 1 :]
+        else:
+            # base_sha not found in PR commits - this can happen if:
+            # 1. The base_sha was from a merge commit (not a direct PR commit)
+            # 2. The PR was rebased/force-pushed
+            # In this case, return all PR commits as we can't determine what's new
+            logger.warning(
+                f"base_sha {base_sha[:8]} not found in PR #{pr_number} commits. "
+                "Returning all PR commits."
+            )
+            new_commits = pr_commits
+
+        return pr_files, new_commits

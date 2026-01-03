@@ -10,6 +10,23 @@ For each previous finding, determine whether it has been:
 - **unresolved**: The issue remains or wasn't addressed
 - **cant_verify**: Not enough information to determine status
 
+## CRITICAL: Verify Finding is In-Scope
+
+**Before verifying any finding, check if it's within THIS PR's scope:**
+
+1. **Is the file in the PR's changed files list?** - If not AND the finding isn't about impact, mark as `cant_verify`
+2. **Does the line number exist?** - If finding cites line 710 but file has 600 lines, it was hallucinated
+3. **Was this from a merged branch?** - Commits with PR references like `(#584)` are from other PRs
+
+**Mark as `cant_verify` if:**
+- Finding references a file not in PR AND is not about impact of PR changes on that file
+- Line number doesn't exist (hallucinated finding)
+- Finding is about code from another PR's commits
+
+**Findings can reference files outside the PR if they're about:**
+- Impact of PR changes (e.g., "change to X breaks caller in Y")
+- Missing related updates (e.g., "you updated A but forgot B")
+
 ## Verification Process
 
 For each previous finding:
