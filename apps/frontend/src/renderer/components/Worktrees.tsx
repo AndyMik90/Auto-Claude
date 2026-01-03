@@ -14,8 +14,7 @@ import {
   Minus,
   ChevronRight,
   Check,
-  X,
-  ExternalLink
+  X
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -41,7 +40,8 @@ import {
 } from './ui/alert-dialog';
 import { useProjectStore } from '../stores/project-store';
 import { useTaskStore } from '../stores/task-store';
-import type { WorktreeListItem, WorktreeMergeResult, WorktreeCreatePRResult } from '../../shared/types';
+import { CreatePRDialog } from './task-detail/task-review/CreatePRDialog';
+import type { WorktreeListItem, WorktreeMergeResult, WorktreeCreatePRResult, WorktreeStatus } from '../../shared/types';
 
 interface WorktreesProps {
   projectId: string;
@@ -535,118 +535,25 @@ export function Worktrees({ projectId }: WorktreesProps) {
       </AlertDialog>
 
       {/* Create PR Dialog */}
-      <Dialog open={showCreatePRDialog} onOpenChange={setShowCreatePRDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <GitPullRequest className="h-5 w-5" />
-              {t('pr.title')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('pr.description')}
-            </DialogDescription>
-          </DialogHeader>
-
-          {prWorktree && !prResult && (
-            <div className="py-4">
-              <div className="rounded-lg bg-muted p-4 text-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t('pr.source')}</span>
-                  <span className="font-mono text-info">{prWorktree.branch}</span>
-                </div>
-                <div className="flex items-center justify-center">
-                  <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t('pr.target')}</span>
-                  <span className="font-mono">{prWorktree.baseBranch}</span>
-                </div>
-                <div className="border-t border-border pt-3 mt-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{t('pr.changes')}</span>
-                    <span>
-                      {t('pr.changesDetail', {
-                        count: prWorktree.commitCount,
-                        commits: prWorktree.commitCount,
-                        files: prWorktree.filesChanged
-                      })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {prResult && (
-            <div className="py-4">
-              <div className={`rounded-lg p-4 text-sm ${
-                prResult.success
-                  ? 'bg-success/10 border border-success/30'
-                  : 'bg-destructive/10 border border-destructive/30'
-              }`}>
-                <div className="flex items-start gap-2">
-                  {prResult.success ? (
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                  ) : (
-                    <X className="h-4 w-4 text-destructive mt-0.5" />
-                  )}
-                  <div className="flex-1">
-                    <p className={`font-medium ${prResult.success ? 'text-success' : 'text-destructive'}`}>
-                      {prResult.success 
-                        ? (prResult.alreadyExists ? t('pr.result.alreadyExistsTitle') : t('pr.result.successTitle'))
-                        : t('pr.result.failureTitle')}
-                    </p>
-                    {prResult.error && (
-                      <p className="text-muted-foreground mt-1">{prResult.error}</p>
-                    )}
-                    {prResult.prUrl && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="p-0 h-auto mt-2 text-info"
-                        onClick={() => window.electronAPI.openExternal(prResult.prUrl!)}
-                      >
-                        <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                        {t('pr.result.view')}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCreatePRDialog(false);
-                setPRResult(null);
-              }}
-            >
-              {prResult ? t('pr.actions.close') : t('pr.actions.cancel')}
-            </Button>
-            {!prResult && (
-              <Button
-                onClick={handleCreatePR}
-                disabled={isCreatingPR}
-              >
-                {isCreatingPR ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {t('pr.actions.creating')}
-                  </>
-                ) : (
-                  <>
-                    <GitPullRequest className="h-4 w-4 mr-2" />
-                    {t('pr.actions.create')}
-                  </>
-                )}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreatePRDialog
+        open={showCreatePRDialog}
+        worktreeStatus={{
+          exists: true,
+          branch: prWorktree?.branch,
+          baseBranch: prWorktree?.baseBranch,
+          commitCount: prWorktree?.commitCount,
+          filesChanged: prWorktree?.filesChanged,
+          additions: prWorktree?.additions,
+          deletions: prWorktree?.deletions
+        } as WorktreeStatus}
+        isCreatingPR={isCreatingPR}
+        result={prResult}
+        onOpenChange={(open) => {
+          setShowCreatePRDialog(open);
+          if (!open) setPRResult(null);
+        }}
+        onCreatePR={handleCreatePR}
+      />
     </div>
   );
 }
