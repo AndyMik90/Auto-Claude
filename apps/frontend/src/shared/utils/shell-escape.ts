@@ -141,6 +141,30 @@ export function escapeShellArgWindows(arg: string): string {
 }
 
 /**
+ * Escape a string for safe use as a PowerShell argument.
+ *
+ * PowerShell uses single quotes for literal strings where no variable expansion occurs.
+ * Inside single-quoted strings, the only escape is doubling single quotes: ' → ''
+ *
+ * Examples:
+ * - "hello" → 'hello'
+ * - "hello world" → 'hello world'
+ * - "it's" → 'it''s'
+ * - "$env:PATH" → '$env:PATH' (no expansion in single quotes)
+ * - "$(Get-Date)" → '$(Get-Date)' (no expansion in single quotes)
+ * - 'test"; rm -rf / #' → 'test"; rm -rf / #'
+ *
+ * @param arg - The argument to escape
+ * @returns The escaped argument wrapped in single quotes for PowerShell
+ */
+export function escapeShellArgPowerShell(arg: string): string {
+  // In PowerShell single-quoted strings, only single quotes need escaping
+  // They are escaped by doubling them: ' → ''
+  const escaped = arg.replace(/'/g, "''");
+  return `'${escaped}'`;
+}
+
+/**
  * Validate that a path doesn't contain obviously malicious patterns.
  * This is a defense-in-depth measure - escaping should handle all cases,
  * but this can catch obvious attack attempts early.
