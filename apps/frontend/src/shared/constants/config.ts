@@ -13,6 +13,123 @@ export const UI_SCALE_DEFAULT = 100;
 export const UI_SCALE_STEP = 5;
 
 // ============================================
+// Terminal Font Constants
+// ============================================
+
+import type { TerminalFont } from '../types/settings';
+
+export const TERMINAL_FONT_DEFAULT: TerminalFont = 'jetbrains-mono';
+
+export interface TerminalFontDefinition {
+  id: TerminalFont;
+  name: string;
+  description: string;
+  cssFamily: string; // CSS font-family value
+  hasLigatures: boolean;
+}
+
+export const TERMINAL_FONTS: TerminalFontDefinition[] = [
+  {
+    id: 'jetbrains-mono',
+    name: 'JetBrains Mono',
+    description: 'Modern font with ligatures',
+    cssFamily: "'JetBrains Mono', monospace",
+    hasLigatures: true
+  },
+  {
+    id: 'fira-code',
+    name: 'Fira Code',
+    description: 'Popular font with ligatures',
+    cssFamily: "'Fira Code', monospace",
+    hasLigatures: true
+  },
+  {
+    id: 'cascadia-code',
+    name: 'Cascadia Code',
+    description: 'Microsoft font with ligatures',
+    cssFamily: "'Cascadia Code', monospace",
+    hasLigatures: true
+  },
+  {
+    id: 'source-code-pro',
+    name: 'Source Code Pro',
+    description: 'Adobe monospace font',
+    cssFamily: "'Source Code Pro', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'menlo',
+    name: 'Menlo',
+    description: 'macOS default',
+    cssFamily: "'Menlo', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'consolas',
+    name: 'Consolas',
+    description: 'Windows default',
+    cssFamily: "'Consolas', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'sf-mono',
+    name: 'SF Mono',
+    description: 'San Francisco Mono (macOS)',
+    cssFamily: "'SF Mono', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'monaco',
+    name: 'Monaco',
+    description: 'Classic macOS font',
+    cssFamily: "'Monaco', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'courier-new',
+    name: 'Courier New',
+    description: 'Universal fallback',
+    cssFamily: "'Courier New', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'ubuntu-mono',
+    name: 'Ubuntu Mono',
+    description: 'Ubuntu system font',
+    cssFamily: "'Ubuntu Mono', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'dejavu-sans-mono',
+    name: 'DejaVu Sans Mono',
+    description: 'Open source font',
+    cssFamily: "'DejaVu Sans Mono', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'hack',
+    name: 'Hack',
+    description: 'Font for source code',
+    cssFamily: "'Hack', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'inconsolata',
+    name: 'Inconsolata',
+    description: 'Clean monospace font',
+    cssFamily: "'Inconsolata', monospace",
+    hasLigatures: false
+  },
+  {
+    id: 'roboto-mono',
+    name: 'Roboto Mono',
+    description: 'Google font',
+    cssFamily: "'Roboto Mono', monospace",
+    hasLigatures: false
+  }
+];
+
+// ============================================
 // Default App Settings
 // ============================================
 
@@ -48,7 +165,9 @@ export const DEFAULT_APP_SETTINGS = {
   // Beta updates opt-in (receive pre-release versions)
   betaUpdates: false,
   // Language preference (default to English)
-  language: 'en' as const
+  language: 'en' as const,
+  // Terminal font (default JetBrains Mono)
+  terminalFont: TERMINAL_FONT_DEFAULT
 };
 
 // ============================================

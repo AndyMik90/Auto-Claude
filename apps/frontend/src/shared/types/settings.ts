@@ -9,6 +9,23 @@ import type { SupportedLanguage } from '../constants/i18n';
 // Color theme types for multi-theme support
 export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest';
 
+// Terminal font types - popular monospace fonts for code
+export type TerminalFont = 
+  | 'jetbrains-mono'    // JetBrains Mono (default, with ligatures)
+  | 'fira-code'         // Fira Code (with ligatures)
+  | 'cascadia-code'     // Cascadia Code (Microsoft, with ligatures)
+  | 'source-code-pro'   // Source Code Pro (Adobe)
+  | 'menlo'             // Menlo (macOS default)
+  | 'consolas'          // Consolas (Windows default)
+  | 'sf-mono'           // SF Mono (macOS San Francisco Mono)
+  | 'monaco'            // Monaco (classic macOS)
+  | 'courier-new'       // Courier New (universal fallback)
+  | 'ubuntu-mono'       // Ubuntu Mono
+  | 'dejavu-sans-mono'  // DejaVu Sans Mono
+  | 'hack'              // Hack
+  | 'inconsolata'       // Inconsolata
+  | 'roboto-mono';      // Roboto Mono
+
 // Developer tools preferences - IDE and terminal selection
 // Comprehensive list based on Stack Overflow Developer Survey 2024, JetBrains Survey, and market research
 export type SupportedIDE =
@@ -274,6 +291,8 @@ export interface AppSettings {
   customIDEPath?: string;      // For 'custom' IDE
   preferredTerminal?: SupportedTerminal;
   customTerminalPath?: string; // For 'custom' terminal
+  // Terminal display preferences
+  terminalFont?: TerminalFont; // Font family for terminal/code display
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

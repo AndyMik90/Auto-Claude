@@ -4,6 +4,8 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
+import { useSettingsStore } from '../../stores/settings-store';
+import { TERMINAL_FONTS, TERMINAL_FONT_DEFAULT } from '../../../shared/constants';
 
 interface UseXtermOptions {
   terminalId: string;
@@ -19,6 +21,12 @@ export function useXterm({ terminalId, onCommandEnter, onResize }: UseXtermOptio
   const commandBufferRef = useRef<string>('');
   const isDisposedRef = useRef<boolean>(false);
 
+  // Get terminal font from settings
+  const settings = useSettingsStore((state) => state.settings);
+  const terminalFont = settings.terminalFont ?? TERMINAL_FONT_DEFAULT;
+  const fontDefinition = TERMINAL_FONTS.find(f => f.id === terminalFont);
+  const fontFamily = fontDefinition?.cssFamily ?? "'JetBrains Mono', monospace";
+
   // Initialize xterm.js UI
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
@@ -27,7 +35,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize }: UseXtermOptio
       cursorBlink: true,
       cursorStyle: 'block',
       fontSize: 13,
-      fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
+      fontFamily,
       lineHeight: 1.2,
       letterSpacing: 0,
       theme: {
@@ -156,7 +164,23 @@ export function useXterm({ terminalId, onCommandEnter, onResize }: UseXtermOptio
     return () => {
       // Cleanup handled by parent component
     };
-  }, [terminalId, onCommandEnter, onResize]);
+  }, [terminalId, onCommandEnter, onResize, fontFamily]);
+
+  // Update font family when settings change
+  useEffect(() => {
+    if (xtermRef.current && fitAddonRef.current) {
+      // Update font family option
+      xtermRef.current.options.fontFamily = fontFamily;
+      
+      // Force re-fit to apply font changes immediately
+      // This triggers xterm to recalculate character sizes with new font
+      setTimeout(() => {
+        if (fitAddonRef.current && xtermRef.current) {
+          fitAddonRef.current.fit();
+        }
+      }, 0);
+    }
+  }, [fontFamily]);
 
   // Handle resize on container resize
   useEffect(() => {

@@ -437,6 +437,13 @@ export function App() {
     root.setAttribute('data-ui-scale', clampedScale.toString());
   }, [settings.uiScale]);
 
+  // Apply terminal font
+  useEffect(() => {
+    const root = document.documentElement;
+    const font = settings.terminalFont ?? 'jetbrains-mono';
+    root.setAttribute('data-terminal-font', font);
+  }, [settings.terminalFont]);
+
   // Update selected task when tasks change (for real-time updates)
   useEffect(() => {
     if (selectedTask) {

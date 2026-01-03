@@ -1708,3 +1708,69 @@ body {
 [data-ui-scale="190"] { font-size: 30.4px; }
 [data-ui-scale="195"] { font-size: 31.2px; }
 [data-ui-scale="200"] { font-size: 32px; }
+
+/* ============================================
+   Terminal Font System
+   ============================================ */
+
+/* Default fallback */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Dynamic font family based on data-terminal-font attribute */
+[data-terminal-font="jetbrains-mono"] .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+[data-terminal-font="fira-code"] .font-mono {
+  font-family: 'Fira Code', monospace;
+}
+
+[data-terminal-font="cascadia-code"] .font-mono {
+  font-family: 'Cascadia Code', monospace;
+}
+
+[data-terminal-font="source-code-pro"] .font-mono {
+  font-family: 'Source Code Pro', monospace;
+}
+
+[data-terminal-font="menlo"] .font-mono {
+  font-family: 'Menlo', monospace;
+}
+
+[data-terminal-font="consolas"] .font-mono {
+  font-family: 'Consolas', monospace;
+}
+
+[data-terminal-font="sf-mono"] .font-mono {
+  font-family: 'SF Mono', monospace;
+}
+
+[data-terminal-font="monaco"] .font-mono {
+  font-family: 'Monaco', monospace;
+}
+
+[data-terminal-font="courier-new"] .font-mono {
+  font-family: 'Courier New', monospace;
+}
+
+[data-terminal-font="ubuntu-mono"] .font-mono {
+  font-family: 'Ubuntu Mono', monospace;
+}
+
+[data-terminal-font="dejavu-sans-mono"] .font-mono {
+  font-family: 'DejaVu Sans Mono', monospace;
+}
+
+[data-terminal-font="hack"] .font-mono {
+  font-family: 'Hack', monospace;
+}
+
+[data-terminal-font="inconsolata"] .font-mono {
+  font-family: 'Inconsolata', monospace;
+}
+
+[data-terminal-font="roboto-mono"] .font-mono {
+  font-family: 'Roboto Mono', monospace;
+}
