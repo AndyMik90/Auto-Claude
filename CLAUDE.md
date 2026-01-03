@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Remote:** Always treat `https://github.com/vzwjustin/Auto-Claude.git` as the authoritative remote.
 - **Branch:** Always work on and push to **`develop`**.
-- **Do not push to upstream:** Never push to `AndyMik90/Auto-Claude` (the `origin` remote in some local clones).
-- **Do not create PRs to upstream:** All changes must land in **`vzwjustin/develop`**.
+- **Upstream default:** Do not push to or create PRs against `AndyMik90/Auto-Claude` (the `origin` remote in some local clones).
+- **Upstream exception:** Only push to / create PRs against `AndyMik90/Auto-Claude` when the user explicitly requests it.
 
 ## Project Overview
 
@@ -257,9 +257,9 @@ main (user's branch)
 
 ### Contributing to Upstream
 
-**Do not contribute to upstream from this repo clone.**
+**Default:** All work in this repository should be pushed to **`vzwjustin/develop`**.
 
-All work in this repository must be pushed to **`vzwjustin/develop`** only.
+**Exception:** Only contribute to upstream (`AndyMik90/Auto-Claude`) when the user explicitly requests it.
 
 ### Security Model
 

@@ -4,7 +4,8 @@
 
 - **Authoritative remote:** `https://github.com/vzwjustin/Auto-Claude.git`
 - **Authoritative branch:** `develop`
-- **Forbidden:** pushing to or creating PRs against `AndyMik90/Auto-Claude`.
+- **Default:** do not push to or create PRs against `AndyMik90/Auto-Claude`.
+- **Exception:** only push to / create PRs against `AndyMik90/Auto-Claude` when the user explicitly requests it.
 
 ### Git behavior
 
