@@ -169,10 +169,13 @@ def get_full_credentials() -> dict | None:
     """
     Get full OAuth credentials including refresh token and expiry.
 
-    Priority:
-    1. ANTHROPIC_AUTH_TOKEN (enterprise/CCR) - no refresh, return as-is
-    2. System credential store - has refresh token for OAuth tokens
-    3. CLAUDE_CODE_OAUTH_TOKEN env var - fallback access token override
+    Priority for accessToken:
+    1. ANTHROPIC_AUTH_TOKEN (enterprise/CCR) - no refresh capability
+    2. CLAUDE_CODE_OAUTH_TOKEN env var - overrides store's access token
+    3. System credential store - default source
+
+    The refreshToken is always sourced from system credential store (when available).
+    CLAUDE_CODE_OAUTH_TOKEN overrides the access token but preserves refresh capability.
 
     Returns dict with accessToken, refreshToken, expiresAt or None.
     """
@@ -238,9 +241,9 @@ def _get_full_credentials_from_file(cred_path: str) -> dict | None:
             logger.debug(f"No valid OAuth token in {cred_path}")
             return None
     except (OSError, IOError) as e:
-        logger.debug(f"Failed to read credentials file {cred_path}: {e}")
+        logger.warning(f"Failed to read credentials file {cred_path}: {e}")
     except (json.JSONDecodeError, KeyError) as e:
-        logger.debug(f"Failed to parse credentials from {cred_path}: {e}")
+        logger.warning(f"Failed to parse credentials from {cred_path}: {e}")
     return None
 
 
@@ -298,13 +301,13 @@ def _get_full_credentials_macos() -> dict | None:
             }
         return None
     except subprocess.TimeoutExpired:
-        logger.debug("macOS Keychain read timed out")
+        logger.warning("macOS Keychain read timed out")
         return None
     except subprocess.SubprocessError as e:
-        logger.debug(f"macOS Keychain subprocess error: {e}")
+        logger.warning(f"macOS Keychain subprocess error: {e}")
         return None
     except (json.JSONDecodeError, KeyError) as e:
-        logger.debug(f"Failed to parse macOS Keychain data: {e}")
+        logger.warning(f"Failed to parse macOS Keychain data: {e}")
         return None
 
 

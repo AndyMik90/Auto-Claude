@@ -27,6 +27,29 @@ from core.auth import (
 
 
 # =============================================================================
+# Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def reloaded_auth_with_custom_url(monkeypatch):
+    """Fixture to set a custom URL and reload the auth module."""
+    import importlib
+    import core.auth
+
+    monkeypatch.setenv("CLAUDE_OAUTH_TOKEN_URL", "https://custom.example.com/token")
+
+    # Reload module to pick up the new env var
+    importlib.reload(core.auth)
+
+    yield core.auth
+
+    # Teardown: monkeypatch automatically reverts the env var.
+    # Reload the module to reset its state for other tests.
+    importlib.reload(core.auth)
+
+
+# =============================================================================
 # is_token_expired() Tests
 # =============================================================================
 
@@ -609,29 +632,7 @@ class TestOAuthConfiguration:
         expected = int(os.environ.get("CLAUDE_TOKEN_REFRESH_BUFFER_SECONDS", "300"))
         assert TOKEN_REFRESH_BUFFER_SECONDS == expected
 
-    def test_custom_token_url(self, monkeypatch):
+    def test_custom_token_url(self, reloaded_auth_with_custom_url):
         """Custom token URL should be picked up from environment."""
-        import importlib
-        import core.auth
-
-        # Store original values for cleanup
-        original_url = core.auth.OAUTH_TOKEN_URL
-        original_client_id = core.auth.OAUTH_CLIENT_ID
-        original_buffer = core.auth.TOKEN_REFRESH_BUFFER_SECONDS
-
-        try:
-            monkeypatch.setenv("CLAUDE_OAUTH_TOKEN_URL", "https://custom.example.com/token")
-
-            # Reload module to pick up new env var
-            importlib.reload(core.auth)
-
-            assert core.auth.OAUTH_TOKEN_URL == "https://custom.example.com/token"
-        finally:
-            # Always restore original state regardless of test outcome
-            monkeypatch.delenv("CLAUDE_OAUTH_TOKEN_URL", raising=False)
-            importlib.reload(core.auth)
-            # Verify restoration (or manually restore if reload failed)
-            if core.auth.OAUTH_TOKEN_URL != original_url:
-                core.auth.OAUTH_TOKEN_URL = original_url
-                core.auth.OAUTH_CLIENT_ID = original_client_id
-                core.auth.TOKEN_REFRESH_BUFFER_SECONDS = original_buffer
+        auth_module = reloaded_auth_with_custom_url
+        assert auth_module.OAUTH_TOKEN_URL == "https://custom.example.com/token"

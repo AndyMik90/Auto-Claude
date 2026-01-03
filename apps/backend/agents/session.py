@@ -54,6 +54,13 @@ from core.auth import (
 logger = logging.getLogger(__name__)
 
 
+def _print_auth_failure_guidance(reason: str) -> None:
+    """Print consistent auth failure message with setup-token guidance."""
+    print_status(f"Authentication failed - {reason}", "error")
+    print("   Please run: claude setup-token")
+    print("   This creates a long-lived token (1 year) that avoids expiration issues.\n")
+
+
 async def post_session_processing(
     spec_dir: Path,
     project_dir: Path,
@@ -579,16 +586,12 @@ async def run_agent_session(
 
                 # Guard: No credentials found
                 if not creds:
-                    print_status("Authentication failed - no credentials found", "error")
-                    print("   Please run: claude setup-token")
-                    print("   This creates a long-lived token (1 year) that avoids expiration issues.\n")
+                    _print_auth_failure_guidance("no credentials found")
                     return "error", "No credentials found."
 
                 # Guard: No refresh token available
                 if not creds.get("refreshToken"):
-                    print_status("Authentication failed - no refresh token available", "error")
-                    print("   Please run: claude setup-token")
-                    print("   This creates a long-lived token (1 year) that avoids expiration issues.\n")
+                    _print_auth_failure_guidance("no refresh token available")
                     return "error", "No refresh token available."
 
                 # Attempt token refresh
@@ -596,9 +599,7 @@ async def run_agent_session(
 
                 # Guard: Refresh failed
                 if not new_creds or not new_creds.get("accessToken"):
-                    print_status("Authentication failed - token refresh failed", "error")
-                    print("   Please run: claude setup-token")
-                    print("   This creates a long-lived token (1 year) that avoids expiration issues.\n")
+                    _print_auth_failure_guidance("token refresh failed")
                     return "error", "Token refresh failed."
 
                 # Success: Save and notify user
