@@ -144,7 +144,7 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
 };
 
 const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, isOver, onAddClick, onArchiveAll, archivedCount, showArchived, onToggleArchived }: DroppableColumnProps) {
-  const { t } = useTranslation('tasks');
+  const { t } = useTranslation(['tasks', 'common']);
   const { setNodeRef } = useDroppable({
     id: status
   });
@@ -234,7 +234,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
               <Archive className="h-4 w-4" />
             </Button>
           )}
-          {status === 'done' && archivedCount && archivedCount > 0 && onToggleArchived && (
+          {status === 'done' && archivedCount !== undefined && archivedCount > 0 && onToggleArchived && (
             <Tooltip delayDuration={200}>
               <TooltipTrigger asChild>
                 <Button

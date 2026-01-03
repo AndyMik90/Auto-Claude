@@ -83,8 +83,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize }: UseXtermOptio
 
       // Handle CMD+Backspace (Mac) or Ctrl+Backspace (Windows/Linux) to delete line
       // Sends Ctrl+U which is the terminal standard for "kill line backward"
-      const isDeleteLine = event.key === 'Backspace' && event.type === 'keydown' &&
-        (event.metaKey || (event.ctrlKey && !event.metaKey));
+      const isDeleteLine = event.key === 'Backspace' && event.type === 'keydown' && isMod;
       if (isDeleteLine) {
         xterm.input('\x15'); // Ctrl+U
         return false;
