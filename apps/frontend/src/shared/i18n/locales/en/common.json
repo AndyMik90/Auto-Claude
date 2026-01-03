@@ -17,7 +17,10 @@
     "opensInNewWindow": "opens in new window",
     "visitExternalLink": "Visit {{name}} (opens in new window)",
     "upgradeSubscriptionAriaLabel": "Upgrade subscription (opens in new window)",
-    "learnMoreAriaLabel": "Learn more (opens in new window)"
+    "learnMoreAriaLabel": "Learn more (opens in new window)",
+    "toggleFolder": "Toggle {{name}} folder",
+    "expandFolder": "Expand {{name}} folder",
+    "collapseFolder": "Collapse {{name}} folder"
   },
   "buttons": {
     "save": "Save",

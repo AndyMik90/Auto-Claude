@@ -17,7 +17,10 @@
     "opensInNewWindow": "s'ouvre dans une nouvelle fenêtre",
     "visitExternalLink": "Visiter {{name}} (s'ouvre dans une nouvelle fenêtre)",
     "upgradeSubscriptionAriaLabel": "Mettre à niveau l'abonnement (s'ouvre dans une nouvelle fenêtre)",
-    "learnMoreAriaLabel": "En savoir plus (s'ouvre dans une nouvelle fenêtre)"
+    "learnMoreAriaLabel": "En savoir plus (s'ouvre dans une nouvelle fenêtre)",
+    "toggleFolder": "Basculer le dossier {{name}}",
+    "expandFolder": "Déplier le dossier {{name}}",
+    "collapseFolder": "Replier le dossier {{name}}"
   },
   "buttons": {
     "save": "Enregistrer",
