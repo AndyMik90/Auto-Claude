@@ -11,7 +11,12 @@ import { getClaudeProfileManager } from '../claude-profile-manager';
 import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
-import { escapeShellArg, buildCdCommand } from '../../shared/utils/shell-escape';
+import {
+  escapeShellArg,
+  buildCdCommand,
+  buildCdCommandForShell,
+  type ShellType
+} from '../../shared/utils/shell-escape';
 import type {
   TerminalProcess,
   WindowGetter,
@@ -197,18 +202,29 @@ export function handleClaudeSessionId(
 
 /**
  * Invoke Claude with optional profile override
+ *
+ * @param terminal - The terminal process to invoke Claude in
+ * @param cwd - Working directory to change to before invoking Claude
+ * @param profileId - Optional profile ID to use for Claude invocation
+ * @param getWindow - Function to get the current window
+ * @param onSessionCapture - Callback for session capture events
+ * @param shellType - Optional shell type for generating shell-appropriate commands.
+ *                    If provided, uses shell-specific command syntax (e.g., PowerShell, cmd).
+ *                    Defaults to POSIX-style commands if not specified.
  */
 export function invokeClaude(
   terminal: TerminalProcess,
   cwd: string | undefined,
   profileId: string | undefined,
   getWindow: WindowGetter,
-  onSessionCapture: (terminalId: string, projectPath: string, startTime: number) => void
+  onSessionCapture: (terminalId: string, projectPath: string, startTime: number) => void,
+  shellType?: ShellType
 ): void {
   debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE START ==========');
   debugLog('[ClaudeIntegration:invokeClaude] Terminal ID:', terminal.id);
   debugLog('[ClaudeIntegration:invokeClaude] Requested profile ID:', profileId);
   debugLog('[ClaudeIntegration:invokeClaude] CWD:', cwd);
+  debugLog('[ClaudeIntegration:invokeClaude] Shell type:', shellType || 'default (POSIX)');
 
   terminal.isClaudeMode = true;
   terminal.claudeSessionId = undefined;
@@ -233,7 +249,10 @@ export function invokeClaude(
   });
 
   // Use safe shell escaping to prevent command injection
-  const cwdCommand = buildCdCommand(cwd);
+  // If shellType is provided, use shell-appropriate command syntax
+  const cwdCommand = shellType
+    ? buildCdCommandForShell(cwd, shellType)
+    : buildCdCommand(cwd);
   const needsEnvOverride = profileId && profileId !== previousProfileId;
 
   debugLog('[ClaudeIntegration:invokeClaude] Environment override check:', {
