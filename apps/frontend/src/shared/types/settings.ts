@@ -11,20 +11,9 @@ export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo'
 
 // Terminal font types - popular monospace fonts for code
 export type TerminalFont = 
-  | 'jetbrains-mono'    // JetBrains Mono (default, with ligatures)
-  | 'fira-code'         // Fira Code (with ligatures)
-  | 'cascadia-code'     // Cascadia Code (Microsoft, with ligatures)
-  | 'source-code-pro'   // Source Code Pro (Adobe)
-  | 'menlo'             // Menlo (macOS default)
-  | 'consolas'          // Consolas (Windows default)
-  | 'sf-mono'           // SF Mono (macOS San Francisco Mono)
-  | 'monaco'            // Monaco (classic macOS)
-  | 'courier-new'       // Courier New (universal fallback)
-  | 'ubuntu-mono'       // Ubuntu Mono
-  | 'dejavu-sans-mono'  // DejaVu Sans Mono
-  | 'hack'              // Hack
-  | 'inconsolata'       // Inconsolata
-  | 'roboto-mono';      // Roboto Mono
+  | 'jetbrains-mono'    // JetBrains Mono Nerd Font (default, with ligatures and powerline symbols)
+  | 'fira-code'         // Fira Code Nerd Font (with ligatures and powerline symbols)
+  | 'cascadia-code';    // Cascadia Code Nerd Font (Microsoft, with ligatures and powerline symbols)
 
 // Developer tools preferences - IDE and terminal selection
 // Comprehensive list based on Stack Overflow Developer Survey 2024, JetBrains Survey, and market research

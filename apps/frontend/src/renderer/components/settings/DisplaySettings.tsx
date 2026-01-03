@@ -93,9 +93,11 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
   // Font selection handlers
   const currentFont = settings.terminalFont ?? TERMINAL_FONT_DEFAULT;
 
-  const handleFontChange = (newFont: TerminalFont) => {
+  const handleFontChange = async (newFont: TerminalFont) => {
     onSettingsChange({ ...settings, terminalFont: newFont });
     updateStoreSettings({ terminalFont: newFont });
+    // Save to backend immediately
+    await window.electronAPI.saveSettings({ terminalFont: newFont });
   };
 
   return (

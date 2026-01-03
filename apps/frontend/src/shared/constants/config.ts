@@ -32,100 +32,23 @@ export const TERMINAL_FONTS: TerminalFontDefinition[] = [
   {
     id: 'jetbrains-mono',
     name: 'JetBrains Mono',
-    description: 'Modern font with ligatures',
+    description: 'Modern font with ligatures and powerline symbols',
     cssFamily: "'JetBrains Mono', monospace",
     hasLigatures: true
   },
   {
     id: 'fira-code',
     name: 'Fira Code',
-    description: 'Popular font with ligatures',
+    description: 'Popular font with ligatures and powerline symbols',
     cssFamily: "'Fira Code', monospace",
     hasLigatures: true
   },
   {
     id: 'cascadia-code',
     name: 'Cascadia Code',
-    description: 'Microsoft font with ligatures',
+    description: 'Microsoft font with ligatures and powerline symbols',
     cssFamily: "'Cascadia Code', monospace",
     hasLigatures: true
-  },
-  {
-    id: 'source-code-pro',
-    name: 'Source Code Pro',
-    description: 'Adobe monospace font',
-    cssFamily: "'Source Code Pro', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'menlo',
-    name: 'Menlo',
-    description: 'macOS default',
-    cssFamily: "'Menlo', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'consolas',
-    name: 'Consolas',
-    description: 'Windows default',
-    cssFamily: "'Consolas', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'sf-mono',
-    name: 'SF Mono',
-    description: 'San Francisco Mono (macOS)',
-    cssFamily: "'SF Mono', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'monaco',
-    name: 'Monaco',
-    description: 'Classic macOS font',
-    cssFamily: "'Monaco', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'courier-new',
-    name: 'Courier New',
-    description: 'Universal fallback',
-    cssFamily: "'Courier New', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'ubuntu-mono',
-    name: 'Ubuntu Mono',
-    description: 'Ubuntu system font',
-    cssFamily: "'Ubuntu Mono', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'dejavu-sans-mono',
-    name: 'DejaVu Sans Mono',
-    description: 'Open source font',
-    cssFamily: "'DejaVu Sans Mono', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'hack',
-    name: 'Hack',
-    description: 'Font for source code',
-    cssFamily: "'Hack', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'inconsolata',
-    name: 'Inconsolata',
-    description: 'Clean monospace font',
-    cssFamily: "'Inconsolata', monospace",
-    hasLigatures: false
-  },
-  {
-    id: 'roboto-mono',
-    name: 'Roboto Mono',
-    description: 'Google font',
-    cssFamily: "'Roboto Mono', monospace",
-    hasLigatures: false
   }
 ];
 

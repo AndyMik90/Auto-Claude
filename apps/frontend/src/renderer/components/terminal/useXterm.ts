@@ -22,8 +22,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize }: UseXtermOptio
   const isDisposedRef = useRef<boolean>(false);
 
   // Get terminal font from settings
-  const settings = useSettingsStore((state) => state.settings);
-  const terminalFont = settings.terminalFont ?? TERMINAL_FONT_DEFAULT;
+  // Subscribe to terminalFont specifically to ensure re-render on font change
+  const terminalFont = useSettingsStore((state) => state.settings.terminalFont ?? TERMINAL_FONT_DEFAULT);
   const fontDefinition = TERMINAL_FONTS.find(f => f.id === terminalFont);
   const fontFamily = fontDefinition?.cssFamily ?? "'JetBrains Mono', monospace";
 
