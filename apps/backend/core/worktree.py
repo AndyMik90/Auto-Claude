@@ -52,6 +52,10 @@ class WorktreeManager:
     a corresponding branch auto-claude/{spec-name}.
     """
 
+    GIT_PUSH_TIMEOUT = 120
+    GH_CLI_TIMEOUT = 60
+    GH_QUERY_TIMEOUT = 30
+
     def __init__(self, project_dir: Path, base_branch: str | None = None):
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
@@ -630,11 +634,13 @@ class WorktreeManager:
             push_args.insert(1, "--force")
 
         try:
-            result = self._run_git(push_args, cwd=info.path, timeout=120)
+            result = self._run_git(
+                push_args, cwd=info.path, timeout=self.GIT_PUSH_TIMEOUT
+            )
         except subprocess.TimeoutExpired:
             return {
                 "success": False,
-                "error": "Git push timed out after 120 seconds. Check network connection.",
+                "error": f"Git push timed out after {self.GIT_PUSH_TIMEOUT} seconds. Check network connection.",
                 "branch": branch_name,
             }
 
@@ -722,7 +728,7 @@ class WorktreeManager:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=60,  # 60 second timeout for gh CLI
+                timeout=self.GH_CLI_TIMEOUT,
             )
 
             if result.returncode != 0:
@@ -763,7 +769,7 @@ class WorktreeManager:
         except subprocess.TimeoutExpired:
             return {
                 "success": False,
-                "error": "PR creation timed out after 60 seconds. Check network connection.",
+                "error": f"PR creation timed out after {self.GH_CLI_TIMEOUT} seconds. Check network connection.",
                 "branch": branch_name,
             }
         except Exception as e:
@@ -816,7 +822,7 @@ class WorktreeManager:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=30,  # 30 second timeout for simple query
+                timeout=self.GH_QUERY_TIMEOUT,
             )
             if result.returncode == 0:
                 return result.stdout.strip()
