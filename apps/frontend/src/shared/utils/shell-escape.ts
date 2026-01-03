@@ -114,6 +114,50 @@ export function buildCdCommand(path: string | undefined): string {
 }
 
 /**
+ * Build a safe cd command from a path, using shell-appropriate syntax.
+ *
+ * Generates the correct command format for different shell types:
+ * - PowerShell: Set-Location 'path'; (uses single quotes with '' escaping, semicolon separator)
+ * - cmd.exe: cd /d "path" & (uses double quotes with ^ escaping, /d for drive changes, & separator)
+ * - bash/zsh/fish/sh: cd 'path' && (uses single quotes with '\'' escaping, && separator)
+ *
+ * Examples:
+ * - buildCdCommandForShell('/home/user', 'bash') → "cd '/home/user' && "
+ * - buildCdCommandForShell('C:\\Users\\test', 'powershell') → "Set-Location 'C:\\Users\\test'; "
+ * - buildCdCommandForShell('C:\\My Docs', 'cmd') → 'cd /d "C:\\My Docs" & '
+ * - buildCdCommandForShell("C:\\It's here", 'powershell') → "Set-Location 'C:\\It''s here'; "
+ * - buildCdCommandForShell(undefined, 'bash') → ""
+ *
+ * @param path - The directory path to change to
+ * @param shell - The shell type to generate the command for
+ * @returns A safe shell-appropriate cd command string, or empty string if path is undefined
+ */
+export function buildCdCommandForShell(path: string | undefined, shell: ShellType): string {
+  if (!path) {
+    return '';
+  }
+
+  switch (shell) {
+    case 'powershell':
+      // PowerShell uses Set-Location with single quotes and ; as command separator
+      return `Set-Location ${escapeShellArgPowerShell(path)}; `;
+
+    case 'cmd':
+      // cmd.exe uses cd /d (for drive changes) with double quotes and & as command separator
+      // Note: We wrap in double quotes but escape special chars with ^
+      return `cd /d "${escapeShellArgWindows(path)}" & `;
+
+    case 'bash':
+    case 'zsh':
+    case 'fish':
+    case 'sh':
+    default:
+      // POSIX shells use cd with single quotes and && as command separator
+      return `cd ${escapeShellArg(path)} && `;
+  }
+}
+
+/**
  * Escape a string for safe use as a Windows cmd.exe argument.
  *
  * Windows cmd.exe uses different escaping rules than POSIX shells.
