@@ -195,6 +195,21 @@ export class InsightsExecutor extends EventEmitter {
             suggestedTask,
             toolsUsed
           });
+        } else if (code === null) {
+          // Process was killed (cancelled by user) - not an error
+          this.emit('stream-chunk', projectId, {
+            type: 'done'
+          } as InsightsStreamChunk);
+
+          this.emit('status', projectId, {
+            phase: 'idle'
+          } as InsightsChatStatus);
+
+          resolve({
+            fullResponse: fullResponse.trim(),
+            suggestedTask,
+            toolsUsed
+          });
         } else {
           const error = `Process exited with code ${code}`;
           this.emit('stream-chunk', projectId, {

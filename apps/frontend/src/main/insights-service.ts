@@ -194,6 +194,13 @@ export class InsightsService extends EventEmitter {
   updateSessionModelConfig(projectPath: string, sessionId: string, modelConfig: InsightsModelConfig): boolean {
     return this.sessionManager.updateSessionModelConfig(projectPath, sessionId, modelConfig);
   }
+
+  /**
+   * Cancel an active insights session
+   */
+  cancelSession(projectId: string): void {
+    this.executor.cancelSession(projectId);
+  }
 }
 
 // Singleton instance
