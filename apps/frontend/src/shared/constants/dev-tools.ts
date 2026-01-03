@@ -39,7 +39,7 @@ export const TERMINAL_NAMES: Partial<Record<SupportedTerminal, string>> = {
   iterm2: 'iTerm2',
   kitty: 'Kitty',
   konsole: 'Konsole',
-  powershell: 'Windows PowerShell',
+  powershell: 'Windows PowerShell 5.1',
   pwsh: 'PowerShell',
   system: 'System Terminal',
   tabby: 'Tabby',

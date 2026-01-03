@@ -1009,7 +1009,15 @@ async function detectInstalledTools(): Promise<DetectedTools> {
               ], { timeout: 3000 });
               const version = stdout.trim();
               if (version && version.length < 20) { // Sanity check - version strings shouldn't be too long
-                versionInfo = ` (${version})`;
+                // Parse version to extract major version number for pwsh
+                if (id === 'pwsh') {
+                  const versionMatch = version.match(/^(\d+)\./);
+                  const majorVersion = versionMatch ? versionMatch[1] : '';
+                  versionInfo = majorVersion ? ` ${majorVersion} (${version})` : ` (${version})`;
+                } else {
+                  // For Windows PowerShell, just append version
+                  versionInfo = ` (${version})`;
+                }
               }
             } catch (err) {
               // Version detection failed, continue without version info
