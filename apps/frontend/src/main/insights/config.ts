@@ -4,6 +4,7 @@ import { app } from 'electron';
 import { getProfileEnv } from '../rate-limit-detector';
 import { getValidatedPythonPath } from '../python-detector';
 import { getConfiguredPythonPath } from '../python-env-manager';
+import { getAugmentedEnv } from '../env-utils';
 
 /**
  * Configuration manager for insights service
@@ -107,9 +108,12 @@ export class InsightsConfig {
   getProcessEnv(): Record<string, string> {
     const autoBuildEnv = this.loadAutoBuildEnv();
     const profileEnv = getProfileEnv();
+    // Use getAugmentedEnv() to ensure common tool paths (claude, dotnet, etc.)
+    // are available even when app is launched from Finder/Dock
+    const augmentedEnv = getAugmentedEnv();
 
     return {
-      ...process.env as Record<string, string>,
+      ...augmentedEnv,
       ...autoBuildEnv,
       ...profileEnv,
       PYTHONUNBUFFERED: '1',

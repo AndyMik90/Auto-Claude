@@ -196,7 +196,11 @@ export class InsightsExecutor extends EventEmitter {
             toolsUsed
           });
         } else {
-          const error = `Process exited with code ${code}`;
+          // Include stderr output in error message for debugging
+          const stderrSummary = allInsightsOutput.trim()
+            ? `\n\nError output:\n${allInsightsOutput.slice(-500)}`
+            : '';
+          const error = `Process exited with code ${code}${stderrSummary}`;
           this.emit('stream-chunk', projectId, {
             type: 'error',
             error
