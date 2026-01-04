@@ -42,7 +42,7 @@ def _get_profile_mtime(project_dir: Path) -> float | None:
     profile_path = _get_profile_path(project_dir)
     try:
         return profile_path.stat().st_mtime
-    except (OSError, FileNotFoundError):
+    except OSError:
         return None
 
 
@@ -51,7 +51,7 @@ def _get_allowlist_mtime(project_dir: Path) -> float | None:
     allowlist_path = _get_allowlist_path(project_dir)
     try:
         return allowlist_path.stat().st_mtime
-    except (OSError, FileNotFoundError):
+    except OSError:
         return None
 
 
