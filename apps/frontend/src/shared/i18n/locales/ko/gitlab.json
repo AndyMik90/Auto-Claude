@@ -170,10 +170,10 @@
       "comment": "코멘트"
     },
     "resolution": {
-      "resolved": "해결됨",
-      "stillOpen": "여전히 열림",
-      "newIssue": "새 이슈",
-      "newIssues": "새 이슈"
+      "resolved": "{{count}}개 해결됨",
+      "stillOpen": "{{count}}개 여전히 열림",
+      "newIssue": "{{count}}개 새 이슈",
+      "newIssues": "{{count}}개 새 이슈"
     }
   },
   "findings": {
