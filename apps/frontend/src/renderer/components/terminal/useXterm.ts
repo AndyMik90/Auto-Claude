@@ -164,7 +164,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize }: UseXtermOptio
     return () => {
       // Cleanup handled by parent component
     };
-  }, [terminalId, onCommandEnter, onResize, fontFamily]);
+  }, [terminalId, onCommandEnter, onResize]);
 
   // Update font family when settings change
   useEffect(() => {
