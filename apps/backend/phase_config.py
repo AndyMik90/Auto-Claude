@@ -4,6 +4,7 @@ Phase Configuration Module
 
 Handles model and thinking level configuration for different execution phases.
 Reads configuration from task_metadata.json and provides resolved model IDs.
+Supports both Claude (cloud) and Ollama (local) models.
 """
 
 import json
@@ -11,11 +12,19 @@ import os
 from pathlib import Path
 from typing import Literal, TypedDict
 
-# Model shorthand to full model ID mapping
+# Model shorthand to full model ID mapping (Claude models)
 MODEL_ID_MAP: dict[str, str] = {
     "opus": "claude-opus-4-5-20251101",
     "sonnet": "claude-sonnet-4-5-20250929",
     "haiku": "claude-haiku-4-5-20251001",
+}
+
+# Ollama model defaults (can be overridden via environment)
+OLLAMA_MODEL_DEFAULTS: dict[str, str] = {
+    "fast": "llama3.2:3b",
+    "balanced": "llama3.1:8b",
+    "quality": "llama3.1:70b",
+    "coder": "qwen2.5-coder:7b",
 }
 
 # Thinking level to budget tokens mapping (None = no extended thinking)
@@ -90,22 +99,70 @@ class TaskMetadataConfig(TypedDict, total=False):
 Phase = Literal["spec", "planning", "coding", "qa"]
 
 
+def is_ollama_model(model: str) -> bool:
+    """
+    Check if a model string refers to an Ollama model.
+    
+    Ollama models are prefixed with 'ollama:' (e.g., 'ollama:llama3.1:8b')
+    
+    Args:
+        model: Model identifier string
+        
+    Returns:
+        True if this is an Ollama model
+    """
+    return model.startswith("ollama:")
+
+
+def get_ollama_model_name(model: str) -> str:
+    """
+    Extract the Ollama model name from a prefixed model string.
+    
+    Args:
+        model: Model identifier (e.g., 'ollama:llama3.1:8b')
+        
+    Returns:
+        Ollama model name (e.g., 'llama3.1:8b')
+    """
+    if is_ollama_model(model):
+        return model[7:]  # Remove 'ollama:' prefix
+    return model
+
+
+def get_model_provider(model: str) -> str:
+    """
+    Get the provider for a model.
+    
+    Args:
+        model: Model identifier
+        
+    Returns:
+        'ollama' or 'claude'
+    """
+    return "ollama" if is_ollama_model(model) else "claude"
+
+
 def resolve_model_id(model: str) -> str:
     """
     Resolve a model shorthand (haiku, sonnet, opus) to a full model ID.
-    If the model is already a full ID, return it unchanged.
+    If the model is already a full ID or an Ollama model, return it unchanged.
 
     Priority:
-    1. Environment variable override (from API Profile)
-    2. Hardcoded MODEL_ID_MAP
-    3. Pass through unchanged (assume full model ID)
+    1. Ollama models (prefixed with 'ollama:') - return as-is
+    2. Environment variable override (from API Profile)
+    3. Hardcoded MODEL_ID_MAP
+    4. Pass through unchanged (assume full model ID)
 
     Args:
         model: Model shorthand or full ID
 
     Returns:
-        Full Claude model ID
+        Full Claude model ID or Ollama model identifier
     """
+    # Ollama models pass through unchanged
+    if is_ollama_model(model):
+        return model
+    
     # Check for environment variable override (from API Profile custom model mappings)
     if model in MODEL_ID_MAP:
         env_var_map = {
@@ -317,3 +374,64 @@ def get_spec_phase_thinking_budget(phase_name: str) -> int | None:
     """
     thinking_level = SPEC_PHASE_THINKING_LEVELS.get(phase_name, "medium")
     return get_thinking_budget(thinking_level)
+
+
+# =============================================================================
+# Ollama-specific configuration helpers
+# =============================================================================
+
+def get_ollama_base_url() -> str:
+    """
+    Get the Ollama API base URL from environment or default.
+    
+    Returns:
+        Ollama API base URL
+    """
+    return os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+
+
+def get_ollama_model_for_task(task_type: str = "balanced") -> str:
+    """
+    Get the recommended Ollama model for a task type.
+    
+    Args:
+        task_type: Type of task ('fast', 'balanced', 'quality', 'coder')
+        
+    Returns:
+        Ollama model name (without prefix)
+    """
+    # Check environment override first
+    env_key = f"OLLAMA_MODEL_{task_type.upper()}"
+    env_value = os.environ.get(env_key)
+    if env_value:
+        return env_value
+    
+    return OLLAMA_MODEL_DEFAULTS.get(task_type, OLLAMA_MODEL_DEFAULTS["balanced"])
+
+
+def should_use_ollama() -> bool:
+    """
+    Check if Ollama should be used based on configuration.
+    
+    Returns:
+        True if Ollama is the configured primary provider
+    """
+    provider = os.environ.get("AI_PROVIDER", "claude").lower()
+    return provider == "ollama"
+
+
+def is_ollama_available() -> bool:
+    """
+    Check if Ollama is running and available.
+    
+    Returns:
+        True if Ollama is reachable
+    """
+    import requests
+    
+    try:
+        base_url = get_ollama_base_url()
+        response = requests.get(f"{base_url}/api/tags", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
