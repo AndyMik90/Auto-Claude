@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Brain, Scale, Zap, Check, Sparkles, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import { Brain, Scale, Zap, Check, Sparkles, ChevronDown, ChevronUp, RotateCcw, Cloud, Server } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
   DEFAULT_AGENT_PROFILES,
+  OLLAMA_AGENT_PROFILES,
+  CLAUDE_MODELS,
+  OLLAMA_MODELS,
   AVAILABLE_MODELS,
   THINKING_LEVELS,
   DEFAULT_PHASE_MODELS,
-  DEFAULT_PHASE_THINKING
+  DEFAULT_PHASE_THINKING,
+  isOllamaModel,
+  getModelProvider,
 } from '../../../shared/constants';
 import { useSettingsStore, saveSettings } from '../../stores/settings-store';
 import { SettingsSection } from './SettingsSection';
@@ -16,7 +21,10 @@ import { Button } from '../ui/button';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue
 } from '../ui/select';
@@ -29,7 +37,9 @@ const iconMap: Record<string, React.ElementType> = {
   Brain,
   Scale,
   Zap,
-  Sparkles
+  Sparkles,
+  Server,
+  Code: Brain, // Fallback for Code icon
 };
 
 const PHASE_KEYS: Array<keyof PhaseModelConfig> = ['spec', 'planning', 'coding', 'qa'];
@@ -37,13 +47,14 @@ const PHASE_KEYS: Array<keyof PhaseModelConfig> = ['spec', 'planning', 'coding',
 /**
  * Agent Profile Settings component
  * Displays preset agent profiles for quick model/thinking level configuration
- * Used in the Settings page under Agent Settings
+ * Supports both Claude (cloud) and Ollama (local) models
  */
 export function AgentProfileSettings() {
   const { t } = useTranslation('settings');
   const settings = useSettingsStore((state) => state.settings);
   const selectedProfileId = settings.selectedAgentProfile || 'auto';
   const [showPhaseConfig, setShowPhaseConfig] = useState(selectedProfileId === 'auto');
+  const [showOllamaProfiles, setShowOllamaProfiles] = useState(false);
 
   // Get current phase config from settings or defaults
   const currentPhaseModels: PhaseModelConfig = settings.customPhaseModels || DEFAULT_PHASE_MODELS;
@@ -52,7 +63,6 @@ export function AgentProfileSettings() {
   const handleSelectProfile = async (profileId: string) => {
     const success = await saveSettings({ selectedAgentProfile: profileId });
     if (!success) {
-      // Log error for debugging - in future could show user toast notification
       console.error('Failed to save agent profile selection');
       return;
     }
@@ -107,9 +117,32 @@ export function AgentProfileSettings() {
   };
 
   /**
+   * Check if any phase uses Ollama models
+   */
+  const hasOllamaModels = (): boolean => {
+    return PHASE_KEYS.some(phase => isOllamaModel(currentPhaseModels[phase]));
+  };
+
+  /**
+   * Render provider badge for a model
+   */
+  const renderProviderBadge = (modelValue: string) => {
+    const isOllama = isOllamaModel(modelValue);
+    return (
+      <span className={cn(
+        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium",
+        isOllama ? "bg-blue-500/10 text-blue-600" : "bg-orange-500/10 text-orange-600"
+      )}>
+        {isOllama ? <Server className="h-2.5 w-2.5" /> : <Cloud className="h-2.5 w-2.5" />}
+        {isOllama ? 'Local' : 'Cloud'}
+      </span>
+    );
+  };
+
+  /**
    * Render a single profile card
    */
-  const renderProfileCard = (profile: AgentProfile) => {
+  const renderProfileCard = (profile: AgentProfile, isOllamaProfile: boolean = false) => {
     const isSelected = selectedProfileId === profile.id;
     const Icon = iconMap[profile.icon || 'Brain'] || Brain;
 
@@ -122,7 +155,8 @@ export function AgentProfileSettings() {
           'hover:border-primary/50 hover:shadow-sm',
           isSelected
             ? 'border-primary bg-primary/5'
-            : 'border-border bg-card'
+            : 'border-border bg-card',
+          isOllamaProfile && 'border-blue-500/20'
         )}
       >
         {/* Selected indicator */}
@@ -132,23 +166,28 @@ export function AgentProfileSettings() {
           </div>
         )}
 
+        {/* Provider badge */}
+        <div className="absolute right-3 top-3">
+          {!isSelected && renderProviderBadge(profile.model)}
+        </div>
+
         {/* Profile content */}
         <div className="flex items-start gap-3">
           <div
             className={cn(
               'flex h-10 w-10 items-center justify-center rounded-lg shrink-0',
-              isSelected ? 'bg-primary/10' : 'bg-muted'
+              isSelected ? 'bg-primary/10' : isOllamaProfile ? 'bg-blue-500/10' : 'bg-muted'
             )}
           >
             <Icon
               className={cn(
                 'h-5 w-5',
-                isSelected ? 'text-primary' : 'text-muted-foreground'
+                isSelected ? 'text-primary' : isOllamaProfile ? 'text-blue-500' : 'text-muted-foreground'
               )}
             />
           </div>
 
-          <div className="flex-1 min-w-0 pr-6">
+          <div className="flex-1 min-w-0 pr-8">
             <h3 className="font-medium text-sm text-foreground">{profile.name}</h3>
             <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
               {profile.description}
@@ -169,6 +208,64 @@ export function AgentProfileSettings() {
     );
   };
 
+  /**
+   * Render model select with grouped Claude and Ollama options
+   */
+  const renderModelSelect = (
+    phase: keyof PhaseModelConfig,
+    value: string,
+    onChange: (value: ModelTypeShort) => void
+  ) => {
+    const currentProvider = getModelProvider(value);
+
+    return (
+      <Select
+        value={value}
+        onValueChange={(v) => onChange(v as ModelTypeShort)}
+      >
+        <SelectTrigger className="h-9">
+          <div className="flex items-center gap-2">
+            {currentProvider === 'ollama' ? (
+              <Server className="h-3 w-3 text-blue-500" />
+            ) : (
+              <Cloud className="h-3 w-3 text-orange-500" />
+            )}
+            <SelectValue />
+          </div>
+        </SelectTrigger>
+        <SelectContent>
+          {/* Claude Models Group */}
+          <SelectGroup>
+            <SelectLabel className="flex items-center gap-2 text-orange-600">
+              <Cloud className="h-3 w-3" />
+              Claude (Cloud)
+            </SelectLabel>
+            {CLAUDE_MODELS.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+
+          <SelectSeparator />
+
+          {/* Ollama Models Group */}
+          <SelectGroup>
+            <SelectLabel className="flex items-center gap-2 text-blue-600">
+              <Server className="h-3 w-3" />
+              Ollama (Local)
+            </SelectLabel>
+            {OLLAMA_MODELS.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    );
+  };
+
   return (
     <SettingsSection
       title={t('agentProfile.title')}
@@ -182,9 +279,41 @@ export function AgentProfileSettings() {
           </p>
         </div>
 
-        {/* Profile cards - 2 column grid on larger screens */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {DEFAULT_AGENT_PROFILES.map(renderProfileCard)}
+        {/* Claude Profile cards - 2 column grid on larger screens */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Cloud className="h-4 w-4 text-orange-500" />
+            <h4 className="text-sm font-medium">Claude Profiles (Cloud)</h4>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {DEFAULT_AGENT_PROFILES.map((profile) => renderProfileCard(profile, false))}
+          </div>
+        </div>
+
+        {/* Ollama Profile cards */}
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={() => setShowOllamaProfiles(!showOllamaProfiles)}
+            className="flex w-full items-center justify-between mb-3"
+          >
+            <div className="flex items-center gap-2">
+              <Server className="h-4 w-4 text-blue-500" />
+              <h4 className="text-sm font-medium">Ollama Profiles (Local)</h4>
+              <span className="text-xs text-muted-foreground">(requires Ollama running)</span>
+            </div>
+            {showOllamaProfiles ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+
+          {showOllamaProfiles && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {OLLAMA_AGENT_PROFILES.map((profile) => renderProfileCard(profile, true))}
+            </div>
+          )}
         </div>
 
         {/* Phase Configuration (only for Auto profile) */}
@@ -201,6 +330,12 @@ export function AgentProfileSettings() {
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {t('agentProfile.phaseConfigurationDescription')}
                 </p>
+                {hasOllamaModels() && (
+                  <span className="inline-flex items-center gap-1 mt-1 text-[10px] text-blue-600">
+                    <Server className="h-3 w-3" />
+                    Using local models for some phases
+                  </span>
+                )}
               </div>
               {showPhaseConfig ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -240,24 +375,14 @@ export function AgentProfileSettings() {
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        {/* Model Select */}
+                        {/* Model Select with Provider Groups */}
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">{t('agentProfile.model')}</Label>
-                          <Select
-                            value={currentPhaseModels[phase]}
-                            onValueChange={(value) => handlePhaseModelChange(phase, value as ModelTypeShort)}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {AVAILABLE_MODELS.map((m) => (
-                                <SelectItem key={m.value} value={m.value}>
-                                  {m.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {renderModelSelect(
+                            phase,
+                            currentPhaseModels[phase],
+                            (value) => handlePhaseModelChange(phase, value)
+                          )}
                         </div>
                         {/* Thinking Level Select */}
                         <div className="space-y-1">
@@ -284,9 +409,21 @@ export function AgentProfileSettings() {
                 </div>
 
                 {/* Info note */}
-                <p className="text-[10px] text-muted-foreground mt-4 pt-3 border-t border-border">
-                  {t('agentProfile.phaseConfigNote')}
-                </p>
+                <div className="mt-4 pt-3 border-t border-border space-y-2">
+                  <p className="text-[10px] text-muted-foreground">
+                    {t('agentProfile.phaseConfigNote')}
+                  </p>
+                  <div className="flex items-center gap-4 text-[10px]">
+                    <span className="flex items-center gap-1 text-orange-600">
+                      <Cloud className="h-3 w-3" />
+                      Cloud = Claude API (requires internet)
+                    </span>
+                    <span className="flex items-center gap-1 text-blue-600">
+                      <Server className="h-3 w-3" />
+                      Local = Ollama (runs on your hardware)
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
