@@ -631,19 +631,29 @@ class GitHubOrchestrator:
                 await result.save(self.github_dir)
                 return result
 
-            # Check if there are new commits
-            if not followup_context.commits_since_review:
+            # Check if there are changes to review (commits OR files via blob comparison)
+            # After a rebase/force-push, commits_since_review will be empty (commit
+            # SHAs are rewritten), but files_changed_since_review will contain files
+            # that actually changed content based on blob SHA comparison.
+            has_commits = bool(followup_context.commits_since_review)
+            has_file_changes = bool(followup_context.files_changed_since_review)
+
+            if not has_commits and not has_file_changes:
+                base_sha = previous_review.reviewed_commit_sha[:8]
                 print(
-                    f"[Followup] No new commits since last review at {previous_review.reviewed_commit_sha[:8]}",
+                    f"[Followup] No changes since last review at {base_sha}",
                     flush=True,
                 )
                 # Return a result indicating no changes
+                no_change_summary = (
+                    "No new commits since last review. Previous findings still apply."
+                )
                 result = PRReviewResult(
                     pr_number=pr_number,
                     repo=self.config.repo,
                     success=True,
                     findings=previous_review.findings,
-                    summary="No new commits since last review. Previous findings still apply.",
+                    summary=no_change_summary,
                     overall_status=previous_review.overall_status,
                     verdict=previous_review.verdict,
                     verdict_reasoning="No changes since last review.",
@@ -655,10 +665,19 @@ class GitHubOrchestrator:
                 await result.save(self.github_dir)
                 return result
 
+            # Build progress message based on what changed
+            if has_commits:
+                num_commits = len(followup_context.commits_since_review)
+                change_desc = f"{num_commits} new commits"
+            else:
+                # Rebase detected - files changed but no trackable commits
+                num_files = len(followup_context.files_changed_since_review)
+                change_desc = f"{num_files} files (rebase detected)"
+
             self._report_progress(
                 "analyzing",
                 30,
-                f"Analyzing {len(followup_context.commits_since_review)} new commits...",
+                f"Analyzing {change_desc}...",
                 pr_number=pr_number,
             )
 
