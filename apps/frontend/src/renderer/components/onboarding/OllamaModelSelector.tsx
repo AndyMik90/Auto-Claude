@@ -194,13 +194,11 @@ export function OllamaModelSelector({
           RECOMMENDED_MODELS.map(model => {
             // Check multiple matching strategies:
             // 1. Exact match (e.g., "qwen3-embedding:8b" === "qwen3-embedding:8b")
-            // 2. Base name match for :latest normalization
+            // 2. Base name match for :latest normalization (handles "embeddinggemma" matching "embeddinggemma:latest")
             // 3. Version match ignoring quantization suffix (e.g., "qwen3-embedding:8b" matches "qwen3-embedding:8b-q4_K_M")
-            // 4. Base model without tag matches with :latest suffix
             const isInstalled = installedFullNames.has(model.name) ||
               installedBaseNames.has(model.name) ||
-              installedVersionNames.has(model.name) ||
-              (model.name.includes(':') ? false : installedFullNames.has(model.name + ':latest'));
+              installedVersionNames.has(model.name);
             return {
               ...model,
               installed: isInstalled,
