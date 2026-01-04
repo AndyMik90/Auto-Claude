@@ -113,9 +113,9 @@
     }
   },
   "mergeRequests": {
-    "title": "GitLab Merge Request",
-    "newMR": "새 Merge Request",
-    "selectMR": "Merge Request를 선택하여 세부 정보 보기",
+    "title": "GitLab 병합 요청",
+    "newMR": "새 병합 요청",
+    "selectMR": "병합 요청을 선택하여 세부 정보 보기",
     "states": {
       "opened": "열림",
       "closed": "닫힘",
