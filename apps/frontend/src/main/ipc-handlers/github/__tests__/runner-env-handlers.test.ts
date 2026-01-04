@@ -1,45 +1,49 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { Project } from '../../../../shared/types';
 import { IPC_CHANNELS } from '../../../../shared/constants';
+import type { BrowserWindow } from 'electron';
+import type { AgentManager } from '../../../agent/agent-manager';
 
-class MockIpcMain {
-  handlers = new Map<string, Function>();
-  listeners = new Map<string, Function>();
+const mockIpcMain = vi.hoisted(() => {
+  class HoistedMockIpcMain {
+    handlers = new Map<string, Function>();
+    listeners = new Map<string, Function>();
 
-  handle(channel: string, handler: Function): void {
-    this.handlers.set(channel, handler);
-  }
-
-  on(channel: string, listener: Function): void {
-    this.listeners.set(channel, listener);
-  }
-
-  async invokeHandler(channel: string, ...args: unknown[]): Promise<unknown> {
-    const handler = this.handlers.get(channel);
-    if (!handler) {
-      throw new Error(`No handler for channel: ${channel}`);
+    handle(channel: string, handler: Function): void {
+      this.handlers.set(channel, handler);
     }
-    return handler({}, ...args);
-  }
 
-  async emit(channel: string, ...args: unknown[]): Promise<void> {
-    const listener = this.listeners.get(channel);
-    if (!listener) {
-      throw new Error(`No listener for channel: ${channel}`);
+    on(channel: string, listener: Function): void {
+      this.listeners.set(channel, listener);
     }
-    await listener({}, ...args);
+
+    async invokeHandler(channel: string, ...args: unknown[]): Promise<unknown> {
+      const handler = this.handlers.get(channel);
+      if (!handler) {
+        throw new Error(`No handler for channel: ${channel}`);
+      }
+      return handler({}, ...args);
+    }
+
+    async emit(channel: string, ...args: unknown[]): Promise<void> {
+      const listener = this.listeners.get(channel);
+      if (!listener) {
+        throw new Error(`No listener for channel: ${channel}`);
+      }
+      await listener({}, ...args);
+    }
+
+    reset(): void {
+      this.handlers.clear();
+      this.listeners.clear();
+    }
   }
 
-  reset(): void {
-    this.handlers.clear();
-    this.listeners.clear();
-  }
-}
-
-const mockIpcMain = new MockIpcMain();
+  return new HoistedMockIpcMain();
+});
 
 const mockRunPythonSubprocess = vi.fn();
 const mockValidateGitHubModule = vi.fn();
@@ -51,10 +55,17 @@ const mockCreateIPCCommunicators = vi.fn(() => ({
 }));
 
 const projectRef: { current: Project | null } = { current: null };
+const tempDirs: string[] = [];
 
 vi.mock('electron', () => ({
   ipcMain: mockIpcMain,
   BrowserWindow: class {},
+}));
+
+vi.mock('../../../agent/agent-manager', () => ({
+  AgentManager: class {
+    startSpecCreation = vi.fn();
+  },
 }));
 
 vi.mock('../utils/ipc-communicator', () => ({
@@ -97,6 +108,7 @@ vi.mock('../../../settings-utils', () => ({
 
 function createProject(): Project {
   const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'github-env-test-'));
+  tempDirs.push(projectPath);
   return {
     id: 'project-1',
     name: 'Test Project',
@@ -127,6 +139,17 @@ describe('GitHub runner env usage', () => {
     projectRef.current = createProject();
     mockValidateGitHubModule.mockResolvedValue({ valid: true, backendPath: '/tmp/backend' });
     mockGetRunnerEnv.mockResolvedValue({ ANTHROPIC_AUTH_TOKEN: 'token' });
+  });
+
+  afterEach(() => {
+    for (const dir of tempDirs) {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors for already-removed temp dirs.
+      }
+    }
+    tempDirs.length = 0;
   });
 
   it('passes runner env to PR review subprocess', async () => {
@@ -189,6 +212,7 @@ describe('GitHub runner env usage', () => {
 
   it('passes runner env to autofix analyze preview subprocess', async () => {
     const { registerAutoFixHandlers } = await import('../autofix-handlers');
+    const { AgentManager: MockedAgentManager } = await import('../../../agent/agent-manager');
 
     mockRunPythonSubprocess.mockReturnValue({
       process: { pid: 125 },
@@ -206,7 +230,10 @@ describe('GitHub runner env usage', () => {
       }),
     });
 
-    registerAutoFixHandlers({} as any, () => ({} as unknown));
+    const agentManager: AgentManager = new MockedAgentManager();
+    const getMainWindow: () => BrowserWindow | null = () => ({ webContents: { send: vi.fn() } } as BrowserWindow);
+
+    registerAutoFixHandlers(agentManager, getMainWindow);
     await mockIpcMain.emit(IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW, projectRef.current?.id);
 
     expect(mockGetRunnerEnv).toHaveBeenCalledWith();
