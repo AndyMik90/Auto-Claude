@@ -10,11 +10,16 @@ This script verifies:
 
 import os
 import sys
+import tempfile
+import traceback
 from pathlib import Path
 
 # Add backend to Python path
 backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
+
+# Import after adding to path
+from core.client import create_client
 
 def test_vertex_ai():
     """Test Vertex AI integration."""
@@ -106,7 +111,7 @@ def test_vertex_ai():
     print("Attempting to get Google Cloud access token...")
     try:
         token = get_vertex_ai_access_token()
-        print(f"✓ Access token obtained: {token[:50]}...")
+        print("✓ Access token obtained successfully")
         print(f"  Token type: {'OAuth 2.0' if token.startswith('ya29.') else 'Unknown'}")
         print(f"  Token length: {len(token)} characters")
     except ValueError as e:
@@ -126,12 +131,8 @@ def test_vertex_ai():
     print("-" * 60)
     print("Testing create_client() with Vertex AI...")
     try:
-        from core.client import create_client
-        from pathlib import Path
-
-        # Create a temporary test directory
-        test_dir = Path("/tmp/auto-claude-vertex-test")
-        test_dir.mkdir(exist_ok=True)
+        # Create a temporary test directory (cross-platform)
+        test_dir = Path(tempfile.mkdtemp(prefix="auto-claude-vertex-test-"))
 
         print(f"Creating client with project_dir={test_dir}")
         client = create_client(
@@ -144,7 +145,6 @@ def test_vertex_ai():
         print(f"  Client type: {type(client).__name__}")
     except Exception as e:
         print(f"✗ Client creation failed: {e}")
-        import traceback
         traceback.print_exc()
         return False
     print()

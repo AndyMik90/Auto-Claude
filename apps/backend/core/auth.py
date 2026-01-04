@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import platform
+import re
 import subprocess
 
 logger = logging.getLogger(__name__)
@@ -326,6 +327,11 @@ def convert_model_for_vertex(model_id: str) -> str:
     Vertex AI uses:      claude-sonnet-4-5@20250929
 
     This function converts the last dash before a date (8 digits) to @ symbol.
+    Handles various Claude model naming patterns:
+    - claude-3.5-sonnet-20240620 (decimals in version)
+    - claude-sonnet-4-5-20250929 (multi-part version)
+    - claude-sonnet-4-20250514 (single-digit version)
+
     If already in Vertex format or Vertex AI is disabled, returns unchanged.
 
     Args:
@@ -342,12 +348,12 @@ def convert_model_for_vertex(model_id: str) -> str:
         return model_id
 
     # Convert last dash before 8-digit date to @ symbol
-    # Pattern: claude-sonnet-4-5-20250929 -> claude-sonnet-4-5@20250929
-    import re
-
-    # Match the last dash followed by 8 digits (YYYYMMDD)
-    # Only convert if it matches the Claude model pattern
-    pattern = r"^(claude-[a-z]+-[\d]+-[\d]+)-(\d{8})$"
+    # Pattern matches: claude-{model-name}-{version}-{YYYYMMDD}
+    # Examples:
+    #   claude-3.5-sonnet-20240620 -> claude-3.5-sonnet@20240620
+    #   claude-sonnet-4-5-20250929 -> claude-sonnet-4-5@20250929
+    #   claude-sonnet-4-20250514 -> claude-sonnet-4@20250514
+    pattern = r"^(claude-.*?)-(\d{8})$"
     match = re.match(pattern, model_id)
 
     if match:
@@ -434,10 +440,9 @@ def get_sdk_env_vars() -> dict[str, str]:
         env["ANTHROPIC_BASE_URL"] = get_vertex_ai_base_url()
 
         # Pass through Google Cloud credentials if set
-        if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            env["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ[
-                "GOOGLE_APPLICATION_CREDENTIALS"
-            ]
+        gac_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        if gac_path:
+            env["GOOGLE_APPLICATION_CREDENTIALS"] = gac_path
 
         logger.info(
             f"Vertex AI configured: project={vertex_config['project_id']}, "
