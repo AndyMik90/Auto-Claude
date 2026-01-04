@@ -225,6 +225,8 @@ export interface ElectronAPI {
     message?: string;
     detectedAt: string
   }) => void) => () => void;
+  /** Listen for Claude busy state changes (for visual indicator: red=busy, green=idle) */
+  onTerminalClaudeBusy: (callback: (id: string, isBusy: boolean) => void) => () => void;
 
   // Claude profile management (multi-account support)
   getClaudeProfiles: () => Promise<IPCResult<ClaudeProfileSettings>>;

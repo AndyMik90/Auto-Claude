@@ -15,6 +15,8 @@ interface SortableTerminalWrapperProps {
   tasks: Task[];
   onNewTaskClick?: () => void;
   terminalCount: number;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 export function SortableTerminalWrapper({
@@ -27,6 +29,8 @@ export function SortableTerminalWrapper({
   tasks,
   onNewTaskClick,
   terminalCount,
+  isExpanded,
+  onToggleExpand,
 }: SortableTerminalWrapperProps) {
   const {
     attributes,
@@ -71,6 +75,8 @@ export function SortableTerminalWrapper({
         terminalCount={terminalCount}
         dragHandleListeners={listeners}
         isDragging={isDragging}
+        isExpanded={isExpanded}
+        onToggleExpand={onToggleExpand}
       />
     </div>
   );

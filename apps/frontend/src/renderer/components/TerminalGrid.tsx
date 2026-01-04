@@ -72,6 +72,9 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
   const [isLoadingDates, setIsLoadingDates] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
+  // Expanded terminal state - when set, this terminal takes up the full grid space
+  const [expandedTerminalId, setExpandedTerminalId] = useState<string | null>(null);
+
   // Fetch available session dates when project changes
   useEffect(() => {
     if (!projectPath) {
@@ -188,7 +191,11 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
   const handleCloseTerminal = useCallback((id: string) => {
     window.electronAPI.destroyTerminal(id);
     removeTerminal(id);
-  }, [removeTerminal]);
+    // Clear expanded state if the closed terminal was expanded
+    if (expandedTerminalId === id) {
+      setExpandedTerminalId(null);
+    }
+  }, [removeTerminal, expandedTerminalId]);
 
   // Handle keyboard shortcut for new terminal (only when this view is active)
   useEffect(() => {
@@ -218,6 +225,11 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
       addTerminal(projectPath, projectPath);
     }
   }, [addTerminal, canAddTerminal, projectPath]);
+
+  // Toggle terminal expand state
+  const handleToggleExpand = useCallback((terminalId: string) => {
+    setExpandedTerminalId(prev => prev === terminalId ? null : terminalId);
+  }, []);
 
   const handleInvokeClaudeAll = useCallback(() => {
     terminals.forEach((terminal) => {
@@ -441,43 +453,71 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
             "flex-1 overflow-hidden p-2 transition-all duration-300 ease-out",
             fileExplorerOpen && "pr-0"
           )}>
-            <SortableContext items={terminalIds} strategy={rectSortingStrategy}>
-              <Group orientation="vertical" className="h-full">
-                {terminalRows.map((row, rowIndex) => (
-                  <React.Fragment key={rowIndex}>
-                    <Panel id={`row-${rowIndex}`} defaultSize={100 / terminalRows.length} minSize={15}>
-                      <Group orientation="horizontal" className="h-full">
-                        {row.map((terminal, colIndex) => (
-                          <React.Fragment key={terminal.id}>
-                            <Panel id={terminal.id} defaultSize={100 / row.length} minSize={20}>
-                              <div className="h-full p-1">
-                                <SortableTerminalWrapper
-                                  id={terminal.id}
-                                  cwd={terminal.cwd || projectPath}
-                                  projectPath={projectPath}
-                                  isActive={terminal.id === activeTerminalId}
-                                  onClose={() => handleCloseTerminal(terminal.id)}
-                                  onActivate={() => setActiveTerminal(terminal.id)}
-                                  tasks={tasks}
-                                  onNewTaskClick={onNewTaskClick}
-                                  terminalCount={terminals.length}
-                                />
-                              </div>
-                            </Panel>
-                            {colIndex < row.length - 1 && (
-                              <Separator className="w-1 hover:bg-primary/30 transition-colors" />
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </Group>
-                    </Panel>
-                    {rowIndex < terminalRows.length - 1 && (
-                      <Separator className="h-1 hover:bg-primary/30 transition-colors" />
-                    )}
-                  </React.Fragment>
-                ))}
-              </Group>
-            </SortableContext>
+            {expandedTerminalId ? (
+              // Show only the expanded terminal
+              (() => {
+                const expandedTerminal = terminals.find(t => t.id === expandedTerminalId);
+                if (!expandedTerminal) return null;
+                return (
+                  <div className="h-full p-1">
+                    <SortableTerminalWrapper
+                      id={expandedTerminal.id}
+                      cwd={expandedTerminal.cwd || projectPath}
+                      projectPath={projectPath}
+                      isActive={expandedTerminal.id === activeTerminalId}
+                      onClose={() => handleCloseTerminal(expandedTerminal.id)}
+                      onActivate={() => setActiveTerminal(expandedTerminal.id)}
+                      tasks={tasks}
+                      onNewTaskClick={onNewTaskClick}
+                      terminalCount={1}
+                      isExpanded={true}
+                      onToggleExpand={() => handleToggleExpand(expandedTerminal.id)}
+                    />
+                  </div>
+                );
+              })()
+            ) : (
+              // Show the normal grid layout
+              <SortableContext items={terminalIds} strategy={rectSortingStrategy}>
+                <Group orientation="vertical" className="h-full">
+                  {terminalRows.map((row, rowIndex) => (
+                    <React.Fragment key={rowIndex}>
+                      <Panel id={`row-${rowIndex}`} defaultSize={100 / terminalRows.length} minSize={15}>
+                        <Group orientation="horizontal" className="h-full">
+                          {row.map((terminal, colIndex) => (
+                            <React.Fragment key={terminal.id}>
+                              <Panel id={terminal.id} defaultSize={100 / row.length} minSize={10}>
+                                <div className="h-full p-1">
+                                  <SortableTerminalWrapper
+                                    id={terminal.id}
+                                    cwd={terminal.cwd || projectPath}
+                                    projectPath={projectPath}
+                                    isActive={terminal.id === activeTerminalId}
+                                    onClose={() => handleCloseTerminal(terminal.id)}
+                                    onActivate={() => setActiveTerminal(terminal.id)}
+                                    tasks={tasks}
+                                    onNewTaskClick={onNewTaskClick}
+                                    terminalCount={terminals.length}
+                                    isExpanded={false}
+                                    onToggleExpand={() => handleToggleExpand(terminal.id)}
+                                  />
+                                </div>
+                              </Panel>
+                              {colIndex < row.length - 1 && (
+                                <Separator className="w-1 hover:bg-primary/30 transition-colors" />
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </Group>
+                      </Panel>
+                      {rowIndex < terminalRows.length - 1 && (
+                        <Separator className="h-1 hover:bg-primary/30 transition-colors" />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </Group>
+              </SortableContext>
+            )}
           </div>
 
           {/* File explorer panel (slides from right, pushes content) */}

@@ -1,4 +1,8 @@
 {
+  "expand": {
+    "expand": "Agrandir le terminal",
+    "collapse": "Reduire le terminal"
+  },
   "worktree": {
     "create": "Worktree",
     "createNew": "Nouveau Worktree",

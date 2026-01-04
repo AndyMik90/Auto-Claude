@@ -20,6 +20,7 @@ export interface Terminal {
   associatedTaskId?: string;  // ID of task associated with this terminal (for context loading)
   projectPath?: string;  // Project this terminal belongs to (for multi-project support)
   worktreeConfig?: TerminalWorktreeConfig;  // Associated worktree for isolated development
+  isClaudeBusy?: boolean;  // Whether Claude Code is actively processing (for visual indicator)
 }
 
 interface TerminalLayout {
@@ -48,6 +49,7 @@ interface TerminalState {
   setClaudeSessionId: (id: string, sessionId: string) => void;
   setAssociatedTask: (id: string, taskId: string | undefined) => void;
   setWorktreeConfig: (id: string, config: TerminalWorktreeConfig | undefined) => void;
+  setClaudeBusy: (id: string, isBusy: boolean) => void;
   clearAllTerminals: () => void;
   setHasRestoredSessions: (value: boolean) => void;
   reorderTerminals: (activeId: string, overId: string) => void;
@@ -172,7 +174,13 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     set((state) => ({
       terminals: state.terminals.map((t) =>
         t.id === id
-          ? { ...t, isClaudeMode, status: isClaudeMode ? 'claude-active' : 'running' }
+          ? {
+              ...t,
+              isClaudeMode,
+              status: isClaudeMode ? 'claude-active' : 'running',
+              // Reset busy state when leaving Claude mode
+              isClaudeBusy: isClaudeMode ? t.isClaudeBusy : undefined
+            }
           : t
       ),
     }));
@@ -198,6 +206,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     set((state) => ({
       terminals: state.terminals.map((t) =>
         t.id === id ? { ...t, worktreeConfig: config } : t
+      ),
+    }));
+  },
+
+  setClaudeBusy: (id: string, isBusy: boolean) => {
+    set((state) => ({
+      terminals: state.terminals.map((t) =>
+        t.id === id ? { ...t, isClaudeBusy: isBusy } : t
       ),
     }));
   },

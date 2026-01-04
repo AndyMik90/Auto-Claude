@@ -79,3 +79,63 @@ export function hasRateLimitMessage(data: string): boolean {
 export function hasOAuthToken(data: string): boolean {
   return OAUTH_TOKEN_PATTERN.test(data);
 }
+
+/**
+ * Patterns indicating Claude Code is busy/processing
+ * These appear when Claude is actively thinking or working
+ */
+const CLAUDE_BUSY_PATTERNS = [
+  /Loading\.\.\./i,
+  /Thinking\.\.\./i,
+  /\[Opus 4\.5\].*\d+%/,           // Progress bar with percentage
+  /\[Sonnet\s*\d*\.?\d*\].*\d+%/i, // Sonnet model progress
+  /\[Haiku\s*\d*\.?\d*\].*\d+%/i,  // Haiku model progress
+  /░+/,                             // Progress bar characters
+  /▓+/,                             // Progress bar characters
+  /█+/,                             // Progress bar characters (filled)
+  /Analyzing\.\.\./i,
+  /Processing\.\.\./i,
+  /Working\.\.\./i,
+  /Reading\.\.\./i,
+  /Searching\.\.\./i,
+];
+
+/**
+ * Patterns indicating Claude Code is idle/ready for input
+ * The prompt character at the start of a line indicates Claude is waiting
+ */
+const CLAUDE_IDLE_PATTERNS = [
+  /^>\s*$/m,                        // Just "> " prompt on its own line
+  /\n>\s*$/,                        // "> " at end after newline
+  /^\s*>\s+$/m,                     // "> " with possible whitespace
+];
+
+/**
+ * Check if output indicates Claude is busy (processing)
+ */
+export function isClaudeBusyOutput(data: string): boolean {
+  return CLAUDE_BUSY_PATTERNS.some(pattern => pattern.test(data));
+}
+
+/**
+ * Check if output indicates Claude is idle (ready for input)
+ */
+export function isClaudeIdleOutput(data: string): boolean {
+  return CLAUDE_IDLE_PATTERNS.some(pattern => pattern.test(data));
+}
+
+/**
+ * Determine Claude busy state from output
+ * Returns: 'busy' | 'idle' | null (no change detected)
+ */
+export function detectClaudeBusyState(data: string): 'busy' | 'idle' | null {
+  // Check for idle first (prompt appearing means done)
+  if (isClaudeIdleOutput(data)) {
+    return 'idle';
+  }
+  // Check for busy indicators
+  if (isClaudeBusyOutput(data)) {
+    return 'busy';
+  }
+  return null;
+}

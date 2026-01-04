@@ -89,9 +89,24 @@ export function useTerminalEvents({
   useEffect(() => {
     const cleanup = window.electronAPI.onTerminalClaudeSession((id, sessionId) => {
       if (id === terminalId) {
-        useTerminalStore.getState().setClaudeSessionId(terminalId, sessionId);
+        const store = useTerminalStore.getState();
+        store.setClaudeSessionId(terminalId, sessionId);
+        // Also set Claude mode to true when we receive a session ID
+        // This ensures the Claude badge shows up after auto-resume
+        store.setClaudeMode(terminalId, true);
         console.warn('[Terminal] Captured Claude session ID:', sessionId);
         onClaudeSessionRef.current?.(sessionId);
+      }
+    });
+
+    return cleanup;
+  }, [terminalId]);
+
+  // Handle Claude busy state changes (for visual indicator)
+  useEffect(() => {
+    const cleanup = window.electronAPI.onTerminalClaudeBusy((id, isBusy) => {
+      if (id === terminalId) {
+        useTerminalStore.getState().setClaudeBusy(terminalId, isBusy);
       }
     });
 

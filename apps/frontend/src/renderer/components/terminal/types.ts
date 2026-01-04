@@ -17,6 +17,10 @@ export interface TerminalProps {
   dragHandleListeners?: SyntheticListenerMap;
   /** Whether this terminal is currently being dragged */
   isDragging?: boolean;
+  /** Whether the terminal is expanded to full view */
+  isExpanded?: boolean;
+  /** Callback to toggle expanded state */
+  onToggleExpand?: () => void;
 }
 
 /**
@@ -24,11 +28,11 @@ export interface TerminalProps {
  * More terminals = narrower title to fit all elements.
  */
 export function getTitleMaxWidthClass(terminalCount: number): string {
-  if (terminalCount <= 2) return 'max-w-64'; // 256px - large
-  if (terminalCount <= 4) return 'max-w-48'; // 192px - medium
-  if (terminalCount <= 6) return 'max-w-40'; // 160px - default
-  if (terminalCount <= 9) return 'max-w-32'; // 128px - compact
-  return 'max-w-24'; // 96px - very compact for 10-12 terminals
+  if (terminalCount <= 2) return 'max-w-72'; // 288px - large
+  if (terminalCount <= 4) return 'max-w-56'; // 224px - medium
+  if (terminalCount <= 6) return 'max-w-48'; // 192px - default
+  if (terminalCount <= 9) return 'max-w-40'; // 160px - compact
+  return 'max-w-36'; // 144px - compact for 10-12 terminals
 }
 
 export const STATUS_COLORS: Record<TerminalStatus, string> = {

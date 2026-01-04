@@ -1,4 +1,4 @@
-import { X, Sparkles, TerminalSquare, FolderGit, ExternalLink, GripVertical } from 'lucide-react';
+import { X, Sparkles, TerminalSquare, FolderGit, ExternalLink, GripVertical, Maximize2, Minimize2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import type { Task, TerminalWorktreeConfig } from '../../../shared/types';
@@ -36,6 +36,10 @@ interface TerminalHeaderProps {
   onOpenInIDE?: () => void;
   /** Drag handle listeners for terminal reordering */
   dragHandleListeners?: SyntheticListenerMap;
+  /** Whether the terminal is expanded to full view */
+  isExpanded?: boolean;
+  /** Callback to toggle expanded state */
+  onToggleExpand?: () => void;
 }
 
 export function TerminalHeader({
@@ -58,6 +62,8 @@ export function TerminalHeader({
   onSelectWorktree,
   onOpenInIDE,
   dragHandleListeners,
+  isExpanded,
+  onToggleExpand,
 }: TerminalHeaderProps) {
   const { t } = useTranslation(['terminal', 'common']);
   const backlogTasks = tasks.filter((t) => t.status === 'backlog');
@@ -107,25 +113,25 @@ export function TerminalHeader({
             onNewTaskClick={onNewTaskClick}
           />
         )}
-        {/* Worktree badge when associated */}
-        {worktreeConfig && (
+        {/* Worktree selector or badge - placed next to task selector */}
+        {worktreeConfig ? (
           <span className="flex items-center gap-1 text-[10px] font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
             <FolderGit className="h-2.5 w-2.5" />
             {worktreeConfig.name}
           </span>
+        ) : (
+          projectPath && onCreateWorktree && onSelectWorktree && (
+            <WorktreeSelector
+              terminalId={terminalId}
+              projectPath={projectPath}
+              currentWorktree={worktreeConfig}
+              onCreateWorktree={onCreateWorktree}
+              onSelectWorktree={onSelectWorktree}
+            />
+          )
         )}
       </div>
       <div className="flex items-center gap-1">
-        {/* Worktree selector when no worktree and project path available */}
-        {!worktreeConfig && projectPath && onCreateWorktree && onSelectWorktree && (
-          <WorktreeSelector
-            terminalId={terminalId}
-            projectPath={projectPath}
-            currentWorktree={worktreeConfig}
-            onCreateWorktree={onCreateWorktree}
-            onSelectWorktree={onSelectWorktree}
-          />
-        )}
         {/* Open in IDE button when worktree exists */}
         {worktreeConfig && onOpenInIDE && (
           <Button
@@ -153,6 +159,25 @@ export function TerminalHeader({
           >
             <Sparkles className="h-3 w-3" />
             Claude
+          </Button>
+        )}
+        {/* Expand/collapse button */}
+        {onToggleExpand && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 hover:bg-muted"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand();
+            }}
+            title={isExpanded ? t('terminal:expand.collapse') : t('terminal:expand.expand')}
+          >
+            {isExpanded ? (
+              <Minimize2 className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize2 className="h-3.5 w-3.5" />
+            )}
           </Button>
         )}
         <Button

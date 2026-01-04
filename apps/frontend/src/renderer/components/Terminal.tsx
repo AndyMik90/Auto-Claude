@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useDroppable, useDndContext } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
 import { FileDown } from 'lucide-react';
@@ -15,6 +15,10 @@ import { usePtyProcess } from './terminal/usePtyProcess';
 import { useTerminalEvents } from './terminal/useTerminalEvents';
 import { useAutoNaming } from './terminal/useAutoNaming';
 
+// Minimum dimensions to prevent PTY creation with invalid sizes
+const MIN_COLS = 10;
+const MIN_ROWS = 3;
+
 export function Terminal({
   id,
   cwd,
@@ -27,6 +31,8 @@ export function Terminal({
   terminalCount = 1,
   dragHandleListeners,
   isDragging,
+  isExpanded,
+  onToggleExpand,
 }: TerminalProps) {
   const isMountedRef = useRef(true);
   const isCreatedRef = useRef(false);
@@ -72,6 +78,17 @@ export function Terminal({
     cwd: effectiveCwd,
   });
 
+  // Track when xterm dimensions are ready for PTY creation
+  const [readyDimensions, setReadyDimensions] = useState<{ cols: number; rows: number } | null>(null);
+
+  // Callback when xterm has measured valid dimensions
+  const handleDimensionsReady = useCallback((cols: number, rows: number) => {
+    // Only set dimensions if they're valid (above minimum thresholds)
+    if (cols >= MIN_COLS && rows >= MIN_ROWS) {
+      setReadyDimensions({ cols, rows });
+    }
+  }, []);
+
   // Initialize xterm with command tracking
   const {
     terminalRef,
@@ -90,15 +107,32 @@ export function Terminal({
         window.electronAPI.resizeTerminal(id, cols, rows);
       }
     },
+    onDimensionsReady: handleDimensionsReady,
   });
 
-  // Create PTY process
+  // Use ready dimensions for PTY creation (wait until xterm has measured)
+  // This prevents creating PTY with default 80x24 when container is smaller
+  const ptyDimensions = useMemo(() => {
+    if (readyDimensions) {
+      return readyDimensions;
+    }
+    // Fallback to current dimensions if they're valid
+    if (cols >= MIN_COLS && rows >= MIN_ROWS) {
+      return { cols, rows };
+    }
+    // Return null to prevent PTY creation until dimensions are ready
+    return null;
+  }, [readyDimensions, cols, rows]);
+
+  // Create PTY process - only when we have valid dimensions
   const { prepareForRecreate, resetForRecreate } = usePtyProcess({
     terminalId: id,
     cwd: effectiveCwd,
     projectPath,
-    cols,
-    rows,
+    cols: ptyDimensions?.cols ?? 80,
+    rows: ptyDimensions?.rows ?? 24,
+    // Only allow PTY creation when dimensions are ready
+    skipCreation: !ptyDimensions,
     onCreated: () => {
       isCreatedRef.current = true;
     },
@@ -260,13 +294,24 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
   // Get backlog tasks for worktree dialog
   const backlogTasks = tasks.filter((t) => t.status === 'backlog');
 
+  // Determine border color based on Claude busy state
+  // Red (busy) = Claude is actively processing
+  // Green (idle) = Claude is ready for input
+  const isClaudeBusy = terminal?.isClaudeBusy;
+  const showClaudeBusyIndicator = terminal?.isClaudeMode && isClaudeBusy !== undefined;
+
   return (
     <div
       ref={setDropRef}
       className={cn(
         'flex h-full flex-col rounded-lg border bg-[#0B0B0F] overflow-hidden transition-all relative',
+        // Default border states
         isActive ? 'border-primary ring-1 ring-primary/20' : 'border-border',
-        showFileDropOverlay && 'ring-2 ring-info border-info'
+        // File drop overlay
+        showFileDropOverlay && 'ring-2 ring-info border-info',
+        // Claude busy state indicator (subtle colored border when in Claude mode)
+        showClaudeBusyIndicator && isClaudeBusy && 'border-red-500/60 ring-1 ring-red-500/20',
+        showClaudeBusyIndicator && !isClaudeBusy && 'border-green-500/60 ring-1 ring-green-500/20'
       )}
       onClick={handleClick}
     >
@@ -299,6 +344,8 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
         onSelectWorktree={handleSelectWorktree}
         onOpenInIDE={handleOpenInIDE}
         dragHandleListeners={dragHandleListeners}
+        isExpanded={isExpanded}
+        onToggleExpand={onToggleExpand}
       />
 
       <div
