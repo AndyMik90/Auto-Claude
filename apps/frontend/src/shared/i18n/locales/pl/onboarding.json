@@ -64,6 +64,7 @@
   "steps": {
     "welcome": "Witamy",
     "auth": "Uwierzytelnienie",
+    "authChoice": "Metoda Uwierzytelnienia",
     "claudeCode": "CLI",
     "devtools": "Narzędzia Dev",
     "memory": "Pamięć",

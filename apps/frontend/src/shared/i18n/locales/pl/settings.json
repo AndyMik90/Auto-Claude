@@ -44,6 +44,10 @@
     "debug": {
       "title": "Debugowanie i logi",
       "description": "Narzędzia do rozwiązywania problemów"
+    },
+    "api-profiles": {
+      "title": "Profile API",
+      "description": "Niestandardowe profile endpointów API"
     }
   },
   "language": {

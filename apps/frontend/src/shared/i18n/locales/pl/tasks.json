@@ -95,5 +95,8 @@
     "retry": "Spróbuj ponownie",
     "selectFile": "Wybierz plik, aby zobaczyć jego zawartość",
     "openInIDE": "Otwórz w IDE"
+  },
+  "metadata": {
+    "severity": "priorytet"
   }
 }
