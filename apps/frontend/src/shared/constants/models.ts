@@ -1,18 +1,63 @@
 /**
  * Model and agent profile constants
- * Claude models, thinking levels, memory backends, and agent profiles
+ * Claude models, Ollama models, thinking levels, memory backends, and agent profiles
  */
 
 import type { AgentProfile, PhaseModelConfig, FeatureModelConfig, FeatureThinkingConfig } from '../types/settings';
 
 // ============================================
-// Available Models
+// Provider Types
 // ============================================
 
+export type AIProvider = 'claude' | 'ollama';
+
+// ============================================
+// Available Models - Claude (Cloud)
+// ============================================
+
+export const CLAUDE_MODELS = [
+  { value: 'opus', label: 'Claude Opus 4.5', provider: 'claude' as AIProvider },
+  { value: 'sonnet', label: 'Claude Sonnet 4.5', provider: 'claude' as AIProvider },
+  { value: 'haiku', label: 'Claude Haiku 4.5', provider: 'claude' as AIProvider }
+] as const;
+
+// ============================================
+// Available Models - Ollama (Local)
+// ============================================
+
+export const OLLAMA_MODELS = [
+  // Llama 3.x Series
+  { value: 'ollama:llama3.2:3b', label: 'Llama 3.2 3B (Fast)', provider: 'ollama' as AIProvider },
+  { value: 'ollama:llama3.1:8b', label: 'Llama 3.1 8B (Balanced)', provider: 'ollama' as AIProvider },
+  { value: 'ollama:llama3.1:70b', label: 'Llama 3.1 70B (Quality)', provider: 'ollama' as AIProvider },
+  // Qwen Coder Series
+  { value: 'ollama:qwen2.5-coder:7b', label: 'Qwen 2.5 Coder 7B', provider: 'ollama' as AIProvider },
+  { value: 'ollama:qwen2.5-coder:14b', label: 'Qwen 2.5 Coder 14B', provider: 'ollama' as AIProvider },
+  { value: 'ollama:qwen2.5-coder:32b', label: 'Qwen 2.5 Coder 32B', provider: 'ollama' as AIProvider },
+  // DeepSeek Coder
+  { value: 'ollama:deepseek-coder-v2:16b', label: 'DeepSeek Coder V2 16B', provider: 'ollama' as AIProvider },
+  // CodeLlama
+  { value: 'ollama:codellama:7b', label: 'CodeLlama 7B', provider: 'ollama' as AIProvider },
+  { value: 'ollama:codellama:13b', label: 'CodeLlama 13B', provider: 'ollama' as AIProvider },
+  { value: 'ollama:codellama:34b', label: 'CodeLlama 34B', provider: 'ollama' as AIProvider },
+  // Mistral Series
+  { value: 'ollama:mistral:7b', label: 'Mistral 7B', provider: 'ollama' as AIProvider },
+  { value: 'ollama:mixtral:8x7b', label: 'Mixtral 8x7B', provider: 'ollama' as AIProvider },
+  // Phi Series (Microsoft)
+  { value: 'ollama:phi3:mini', label: 'Phi-3 Mini (3.8B)', provider: 'ollama' as AIProvider },
+  { value: 'ollama:phi3:medium', label: 'Phi-3 Medium (14B)', provider: 'ollama' as AIProvider },
+  // Gemma (Google)
+  { value: 'ollama:gemma2:9b', label: 'Gemma 2 9B', provider: 'ollama' as AIProvider },
+  { value: 'ollama:gemma2:27b', label: 'Gemma 2 27B', provider: 'ollama' as AIProvider },
+  // StarCoder
+  { value: 'ollama:starcoder2:7b', label: 'StarCoder2 7B', provider: 'ollama' as AIProvider },
+  { value: 'ollama:starcoder2:15b', label: 'StarCoder2 15B', provider: 'ollama' as AIProvider },
+] as const;
+
+// Combined available models (for backward compatibility)
 export const AVAILABLE_MODELS = [
-  { value: 'opus', label: 'Claude Opus 4.5' },
-  { value: 'sonnet', label: 'Claude Sonnet 4.5' },
-  { value: 'haiku', label: 'Claude Haiku 4.5' }
+  ...CLAUDE_MODELS,
+  ...OLLAMA_MODELS
 ] as const;
 
 // Maps model shorthand to actual Claude model IDs
@@ -138,6 +183,42 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
   }
 ];
 
+// Ollama-specific agent profiles for local-only execution
+export const OLLAMA_AGENT_PROFILES: AgentProfile[] = [
+  {
+    id: 'ollama-balanced',
+    name: 'Ollama Balanced',
+    description: 'Balanced local model for most tasks (Llama 3.1 8B)',
+    model: 'ollama:llama3.1:8b' as any,
+    thinkingLevel: 'medium',
+    icon: 'Server'
+  },
+  {
+    id: 'ollama-coder',
+    name: 'Ollama Coder',
+    description: 'Optimized for coding tasks (Qwen 2.5 Coder)',
+    model: 'ollama:qwen2.5-coder:7b' as any,
+    thinkingLevel: 'medium',
+    icon: 'Code'
+  },
+  {
+    id: 'ollama-fast',
+    name: 'Ollama Fast',
+    description: 'Fast local model for quick edits (Llama 3.2 3B)',
+    model: 'ollama:llama3.2:3b' as any,
+    thinkingLevel: 'low',
+    icon: 'Zap'
+  },
+  {
+    id: 'ollama-quality',
+    name: 'Ollama Quality',
+    description: 'High quality local model (requires 48GB+ VRAM)',
+    model: 'ollama:llama3.1:70b' as any,
+    thinkingLevel: 'high',
+    icon: 'Brain'
+  }
+];
+
 // ============================================
 // Memory Backends
 // ============================================
@@ -146,3 +227,35 @@ export const MEMORY_BACKENDS = [
   { value: 'file', label: 'File-based (default)' },
   { value: 'graphiti', label: 'Graphiti (LadybugDB)' }
 ] as const;
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Check if a model is an Ollama model
+ */
+export function isOllamaModel(model: string): boolean {
+  return model.startsWith('ollama:');
+}
+
+/**
+ * Get the provider for a model
+ */
+export function getModelProvider(model: string): AIProvider {
+  return isOllamaModel(model) ? 'ollama' : 'claude';
+}
+
+/**
+ * Get the Ollama model name (without prefix)
+ */
+export function getOllamaModelName(model: string): string {
+  return model.replace('ollama:', '');
+}
+
+/**
+ * Get models filtered by provider
+ */
+export function getModelsByProvider(provider: AIProvider) {
+  return provider === 'claude' ? CLAUDE_MODELS : OLLAMA_MODELS;
+}

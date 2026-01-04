@@ -223,31 +223,146 @@ async function checkOllamaHealth(ollamaModel: string): Promise<ProviderHealth> {
 }
 
 /**
- * Check Claude health
+ * Check Claude health with proper rate limit detection
  */
 async function checkClaudeHealth(): Promise<ProviderHealth> {
-  // Check for OAuth token
-  const hasToken = Boolean(
-    process.env.CLAUDE_CODE_OAUTH_TOKEN ||
-    process.env.ANTHROPIC_AUTH_TOKEN
-  );
+  const startTime = Date.now();
 
-  if (!hasToken) {
+  // Check for OAuth token
+  const oauthToken = process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_AUTH_TOKEN;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!oauthToken && !apiKey) {
     return {
       provider: 'claude',
       status: 'unavailable',
       model_available: false,
-      error_message: 'No Claude OAuth token configured',
+      error_message: 'No Claude authentication configured (OAuth token or API key required)',
     };
   }
 
-  // For now, assume Claude is available if token exists
-  // A full health check would require an API call
-  return {
-    provider: 'claude',
-    status: 'available',
-    model_available: true,
-  };
+  try {
+    // Make a lightweight API call to check status
+    // Using the messages endpoint with minimal payload
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+    };
+
+    if (apiKey) {
+      headers['x-api-key'] = apiKey;
+    } else if (oauthToken) {
+      headers['Authorization'] = `Bearer ${oauthToken}`;
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const responseTime = Date.now() - startTime;
+
+    // Handle different response codes
+    if (response.status === 200) {
+      return {
+        provider: 'claude',
+        status: 'available',
+        model_available: true,
+        response_time_ms: responseTime,
+      };
+    }
+
+    if (response.status === 429) {
+      // Rate limited - this is DEGRADED, not unavailable!
+      // The service is reachable, just temporarily limited
+      const retryAfter = response.headers.get('retry-after');
+      return {
+        provider: 'claude',
+        status: 'degraded',
+        model_available: true,
+        response_time_ms: responseTime,
+        error_message: `Rate limited${retryAfter ? `. Retry after ${retryAfter}s` : ''}. Service is reachable but temporarily limited.`,
+      };
+    }
+
+    if (response.status === 401) {
+      return {
+        provider: 'claude',
+        status: 'unavailable',
+        model_available: false,
+        response_time_ms: responseTime,
+        error_message: 'Authentication failed. Please check your API key or OAuth token.',
+      };
+    }
+
+    if (response.status === 503 || response.status === 502 || response.status === 500) {
+      // Service temporarily unavailable - degraded, not unavailable
+      return {
+        provider: 'claude',
+        status: 'degraded',
+        model_available: true,
+        response_time_ms: responseTime,
+        error_message: `Service temporarily unavailable (${response.status}). Will retry automatically.`,
+      };
+    }
+
+    if (response.status === 529) {
+      // Overloaded - degraded
+      return {
+        provider: 'claude',
+        status: 'degraded',
+        model_available: true,
+        response_time_ms: responseTime,
+        error_message: 'API is overloaded. Requests may be slower than usual.',
+      };
+    }
+
+    // Other errors
+    const errorBody = await response.text().catch(() => '');
+    return {
+      provider: 'claude',
+      status: 'degraded',
+      model_available: true,
+      response_time_ms: responseTime,
+      error_message: `Unexpected response (${response.status}): ${errorBody.slice(0, 100)}`,
+    };
+
+  } catch (error) {
+    // Network errors - check if it's a timeout or connection issue
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+      return {
+        provider: 'claude',
+        status: 'degraded',
+        model_available: true,
+        error_message: 'Request timed out. Service may be slow or overloaded.',
+      };
+    }
+
+    if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND')) {
+      return {
+        provider: 'claude',
+        status: 'unavailable',
+        model_available: false,
+        error_message: 'Cannot connect to Anthropic API. Check your internet connection.',
+      };
+    }
+
+    // For other errors, assume degraded (reachable but having issues)
+    return {
+      provider: 'claude',
+      status: 'degraded',
+      model_available: true,
+      error_message: `Health check error: ${errorMessage}`,
+    };
+  }
 }
 
 /**

@@ -160,8 +160,14 @@ export interface ColorThemeDefinition {
 // Thinking level for Claude model (budget token allocation)
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
 
-// Model type shorthand
-export type ModelTypeShort = 'haiku' | 'sonnet' | 'opus';
+// Model type shorthand - Claude models
+export type ClaudeModelType = 'haiku' | 'sonnet' | 'opus';
+
+// Ollama model type (prefixed with ollama:)
+export type OllamaModelType = `ollama:${string}`;
+
+// Combined model type (supports both Claude and Ollama)
+export type ModelTypeShort = ClaudeModelType | OllamaModelType;
 
 // Phase-based model configuration for Auto profile
 // Each phase can use a different model optimized for that task type
