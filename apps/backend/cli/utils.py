@@ -29,7 +29,7 @@ from ui import (
 )
 
 # Configuration - uses shorthand that resolves via API Profile if configured
-DEFAULT_MODEL = "opus"
+DEFAULT_MODEL = "sonnet"  # Changed from "opus" (fix #433)
 
 
 def setup_environment() -> Path:
