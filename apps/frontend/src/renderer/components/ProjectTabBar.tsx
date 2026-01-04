@@ -16,9 +16,6 @@ interface ProjectTabBarProps {
   className?: string;
   // Control props for active tab
   onSettingsClick?: () => void;
-  showArchived?: boolean;
-  archivedCount?: number;
-  onToggleArchived?: () => void;
 }
 
 export function ProjectTabBar({
@@ -28,10 +25,7 @@ export function ProjectTabBar({
   onProjectClose,
   onAddProject,
   className,
-  onSettingsClick,
-  showArchived,
-  archivedCount,
-  onToggleArchived
+  onSettingsClick
 }: ProjectTabBarProps) {
   const { t } = useTranslation('common');
 
@@ -112,9 +106,6 @@ export function ProjectTabBar({
               }}
               // Pass control props only for active tab
               onSettingsClick={isActiveTab ? onSettingsClick : undefined}
-              showArchived={isActiveTab ? showArchived : undefined}
-              archivedCount={isActiveTab ? archivedCount : undefined}
-              onToggleArchived={isActiveTab ? onToggleArchived : undefined}
             />
           );
         })}
