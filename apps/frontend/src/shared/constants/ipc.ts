@@ -391,6 +391,14 @@ export const IPC_CHANNELS = {
   GRAPHITI_VALIDATE_LLM: 'graphiti:validateLlm',
   GRAPHITI_TEST_CONNECTION: 'graphiti:testConnection',
 
+  // AI Provider management (Claude/Ollama hybrid)
+  PROVIDER_GET_INFO: 'provider:getInfo',
+  PROVIDER_SWITCH: 'provider:switch',
+  PROVIDER_GET_HARDWARE: 'provider:getHardware',
+  PROVIDER_CHECK_HEALTH: 'provider:checkHealth',
+  PROVIDER_GET_RECOMMENDED_SETTINGS: 'provider:getRecommendedSettings',
+  PROVIDER_SAVE_SETTINGS: 'provider:saveSettings',
+
   // Ollama model detection and management
   OLLAMA_CHECK_STATUS: 'ollama:checkStatus',
   OLLAMA_CHECK_INSTALLED: 'ollama:checkInstalled',

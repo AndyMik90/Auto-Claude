@@ -25,6 +25,10 @@
       "title": "Agent Settings",
       "description": "Default model and framework"
     },
+    "provider": {
+      "title": "AI Provider",
+      "description": "Claude/Ollama provider settings"
+    },
     "paths": {
       "title": "Paths",
       "description": "CLI tools and framework paths"
