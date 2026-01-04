@@ -72,11 +72,12 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
       const content = readFileSync(claudeJsonPath, 'utf-8');
       const data = JSON.parse(content);
       // Check for oauthAccount which indicates successful OAuth authentication
-      if (data.oauthAccount?.accountUuid || data.oauthAccount?.emailAddress) {
+      if (data && typeof data === 'object' && (data.oauthAccount?.accountUuid || data.oauthAccount?.emailAddress)) {
         return true;
       }
-    } catch {
-      // Ignore parse errors, fall through to legacy checks
+    } catch (error) {
+      // Log parse errors for debugging, but fall through to legacy checks
+      console.warn(`[profile-utils] Failed to read or parse ${claudeJsonPath}:`, error);
     }
   }
 
