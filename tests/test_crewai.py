@@ -28,7 +28,9 @@ class TestCrewAIConfig:
         """Test that default config is used when no settings file exists."""
         from orchestration.config import get_crewai_config
 
-        with patch('orchestration.config.Path.home', return_value=temp_dir):
+        # Use a non-existent path so defaults are used
+        nonexistent_path = temp_dir / "nonexistent" / "settings.json"
+        with patch('orchestration.config._get_settings_path', return_value=nonexistent_path):
             config = get_crewai_config()
 
         assert config["enabled"] is False
@@ -37,7 +39,7 @@ class TestCrewAIConfig:
 
     def test_config_loaded_from_settings_file(self, temp_dir):
         """Test that config is loaded from settings file."""
-        from orchestration.config import get_crewai_config
+        from orchestration.config import get_crewai_config, _get_settings_path
 
         # Create settings directory and file
         config_dir = temp_dir / ".config" / "Auto-Claude"
@@ -51,7 +53,8 @@ class TestCrewAIConfig:
             }
         }))
 
-        with patch('orchestration.config.Path.home', return_value=temp_dir):
+        # Patch _get_settings_path to return our test settings file
+        with patch('orchestration.config._get_settings_path', return_value=settings_file):
             config = get_crewai_config()
 
         assert config["enabled"] is True
@@ -67,20 +70,22 @@ class TestCrewAIConfig:
         settings_file = config_dir / "settings.json"
         settings_file.write_text(json.dumps({"crewaiEnabled": False}))
 
-        with patch('orchestration.config.Path.home', return_value=temp_dir):
+        with patch('orchestration.config._get_settings_path', return_value=settings_file):
             assert is_crewai_enabled() is False
 
         # Enable crewai
         settings_file.write_text(json.dumps({"crewaiEnabled": True}))
 
-        with patch('orchestration.config.Path.home', return_value=temp_dir):
+        with patch('orchestration.config._get_settings_path', return_value=settings_file):
             assert is_crewai_enabled() is True
 
     def test_get_agent_model_returns_defaults(self, temp_dir):
         """Test get_agent_model returns correct defaults."""
         from orchestration.config import get_agent_model
 
-        with patch('orchestration.config.Path.home', return_value=temp_dir):
+        # Use a non-existent path so defaults are used
+        nonexistent_path = temp_dir / "nonexistent" / "settings.json"
+        with patch('orchestration.config._get_settings_path', return_value=nonexistent_path):
             # Product Manager default is sonnet with medium thinking
             model_id, thinking_budget = get_agent_model("productManager")
             assert "sonnet" in model_id.lower()
