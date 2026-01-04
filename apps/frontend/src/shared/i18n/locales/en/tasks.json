@@ -102,5 +102,9 @@
   },
   "metadata": {
     "severity": "severity"
+  },
+  "images": {
+    "removeImageAriaLabel": "Remove image {{filename}}",
+    "pasteHint": "Tip: Paste screenshots directly with {{shortcut}} to add reference images."
   }
 }

@@ -25,6 +25,7 @@
  * ```
  */
 import { useState, useEffect, useCallback, useRef, type ClipboardEvent, type DragEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, Image as ImageIcon, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
   Dialog,
@@ -87,6 +88,7 @@ interface TaskEditDialogProps {
 }
 
 export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDialogProps) {
+  const { t } = useTranslation('tasks');
   // Get selected agent profile from settings for defaults
   const { settings } = useSettingsStore();
   const selectedProfile = DEFAULT_AGENT_PROFILES.find(
@@ -494,7 +496,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
               )}
             />
             <p id="edit-description-help" className="text-xs text-muted-foreground">
-              Tip: Paste screenshots directly with {navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V'} to add reference images.
+              {t('images.pasteHint', { shortcut: navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V' })}
             </p>
           </div>
 
