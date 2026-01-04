@@ -86,13 +86,17 @@ export function spawnPtyProcess(
 
   console.warn('[PtyManager] Spawning shell:', shell, shellArgs, '(preferred:', preferredTerminal || 'system', ')');
 
+  // Create a clean environment without DEBUG to prevent Claude Code from
+  // enabling debug mode when the Electron app is run in development mode
+  const { DEBUG, ...cleanEnv } = process.env;
+
   return pty.spawn(shell, shellArgs, {
     name: 'xterm-256color',
     cols,
     rows,
     cwd: cwd || os.homedir(),
     env: {
-      ...process.env,
+      ...cleanEnv,
       ...profileEnv,
       TERM: 'xterm-256color',
       COLORTERM: 'truecolor',
