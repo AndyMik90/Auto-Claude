@@ -7,6 +7,7 @@ Main autonomous agent loop that runs the coder agent to implement subtasks.
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 
 from core.client import create_client
@@ -92,7 +93,6 @@ async def run_autonomous_agent(
     """
     # Set environment variable for security hooks to find the correct project directory
     # This is needed because os.getcwd() may return the wrong directory in worktree mode
-    import os
     os.environ["AUTO_CLAUDE_PROJECT_DIR"] = str(project_dir.resolve())
 
     # Initialize recovery manager (handles memory persistence)

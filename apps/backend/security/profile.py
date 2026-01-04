@@ -40,8 +40,8 @@ def _get_profile_mtime(project_dir: Path) -> float | None:
     """Get the modification time of the security profile file, or None if not exists."""
     profile_path = _get_profile_path(project_dir)
     try:
-        return profile_path.stat().st_mtime if profile_path.exists() else None
-    except OSError:
+        return profile_path.stat().st_mtime
+    except (OSError, FileNotFoundError):
         return None
 
 
@@ -49,8 +49,8 @@ def _get_allowlist_mtime(project_dir: Path) -> float | None:
     """Get the modification time of the allowlist file, or None if not exists."""
     allowlist_path = _get_allowlist_path(project_dir)
     try:
-        return allowlist_path.stat().st_mtime if allowlist_path.exists() else None
-    except OSError:
+        return allowlist_path.stat().st_mtime
+    except (OSError, FileNotFoundError):
         return None
 
 

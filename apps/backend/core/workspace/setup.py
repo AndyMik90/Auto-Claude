@@ -268,21 +268,15 @@ def setup_workspace(
         )
 
     # Copy security configuration files if they exist
+    security_files = [".auto-claude-allowlist", ".auto-claude-security.json"]
     security_files_copied = []
 
-    # Copy .auto-claude-allowlist
-    allowlist_file = project_dir / ".auto-claude-allowlist"
-    if allowlist_file.is_file():
-        target_allowlist = worktree_info.path / ".auto-claude-allowlist"
-        shutil.copy2(allowlist_file, target_allowlist)
-        security_files_copied.append(".auto-claude-allowlist")
-
-    # Copy .auto-claude-security.json (generated profile)
-    security_profile = project_dir / ".auto-claude-security.json"
-    if security_profile.is_file():
-        target_profile = worktree_info.path / ".auto-claude-security.json"
-        shutil.copy2(security_profile, target_profile)
-        security_files_copied.append(".auto-claude-security.json")
+    for filename in security_files:
+        source_file = project_dir / filename
+        if source_file.is_file():
+            target_file = worktree_info.path / filename
+            shutil.copy2(source_file, target_file)
+            security_files_copied.append(filename)
 
     if security_files_copied:
         print_status(
