@@ -116,6 +116,10 @@ export function TaskCreationWizard({
   // Review setting
   const [requireReviewBeforeCoding, setRequireReviewBeforeCoding] = useState(false);
 
+  // Execution mode
+  type ExecutionMode = 'automatic' | 'local_only' | 'hybrid' | 'cloud_only';
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('automatic');
+
   // Draft state
   const [isDraftRestored, setIsDraftRestored] = useState(false);
   const [pasteSuccess, setPasteSuccess] = useState(false);
@@ -885,6 +889,7 @@ export function TaskCreationWizard({
             thinkingLevel={thinkingLevel}
             phaseModels={phaseModels}
             phaseThinking={phaseThinking}
+            executionMode={executionMode}
             onProfileChange={(newProfileId, newModel, newThinkingLevel) => {
               setProfileId(newProfileId);
               setModel(newModel);
@@ -894,7 +899,9 @@ export function TaskCreationWizard({
             onThinkingLevelChange={setThinkingLevel}
             onPhaseModelsChange={setPhaseModels}
             onPhaseThinkingChange={setPhaseThinking}
+            onExecutionModeChange={setExecutionMode}
             disabled={isCreating}
+            showExecutionMode={true}
           />
 
           {/* Paste Success Indicator */}
