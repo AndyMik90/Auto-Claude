@@ -13,6 +13,46 @@ export const UI_SCALE_DEFAULT = 100;
 export const UI_SCALE_STEP = 5;
 
 // ============================================
+// Terminal Font Constants
+// ============================================
+
+import type { TerminalFont } from '../types/settings';
+
+export const TERMINAL_FONT_DEFAULT: TerminalFont = 'jetbrains-mono';
+
+export interface TerminalFontDefinition {
+  id: TerminalFont;
+  name: string;
+  description: string;
+  cssFamily: string; // CSS font-family value
+  hasLigatures: boolean;
+}
+
+export const TERMINAL_FONTS: TerminalFontDefinition[] = [
+  {
+    id: 'jetbrains-mono',
+    name: 'JetBrains Mono',
+    description: 'Modern font with ligatures and powerline symbols',
+    cssFamily: "'JetBrains Mono', monospace",
+    hasLigatures: true
+  },
+  {
+    id: 'fira-code',
+    name: 'Fira Code',
+    description: 'Popular font with ligatures and powerline symbols',
+    cssFamily: "'Fira Code', monospace",
+    hasLigatures: true
+  },
+  {
+    id: 'cascadia-code',
+    name: 'Cascadia Code',
+    description: 'Microsoft font with ligatures and powerline symbols',
+    cssFamily: "'Cascadia Code', monospace",
+    hasLigatures: true
+  }
+];
+
+// ============================================
 // Default App Settings
 // ============================================
 
@@ -48,7 +88,9 @@ export const DEFAULT_APP_SETTINGS = {
   // Beta updates opt-in (receive pre-release versions)
   betaUpdates: false,
   // Language preference (default to English)
-  language: 'en' as const
+  language: 'en' as const,
+  // Terminal font (default JetBrains Mono)
+  terminalFont: TERMINAL_FONT_DEFAULT
 };
 
 // ============================================

@@ -9,6 +9,12 @@ import type { SupportedLanguage } from '../constants/i18n';
 // Color theme types for multi-theme support
 export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest';
 
+// Terminal font types - popular monospace fonts for code
+export type TerminalFont = 
+  | 'jetbrains-mono'    // JetBrains Mono Nerd Font (default, with ligatures and powerline symbols)
+  | 'fira-code'         // Fira Code Nerd Font (with ligatures and powerline symbols)
+  | 'cascadia-code';    // Cascadia Code Nerd Font (Microsoft, with ligatures and powerline symbols)
+
 // Developer tools preferences - IDE and terminal selection
 // Comprehensive list based on Stack Overflow Developer Survey 2024, JetBrains Survey, and market research
 export type SupportedIDE =
@@ -274,6 +280,8 @@ export interface AppSettings {
   customIDEPath?: string;      // For 'custom' IDE
   preferredTerminal?: SupportedTerminal;
   customTerminalPath?: string; // For 'custom' terminal
+  // Terminal display preferences
+  terminalFont?: TerminalFont; // Font family for terminal/code display
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)
