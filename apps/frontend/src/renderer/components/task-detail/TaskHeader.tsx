@@ -94,14 +94,14 @@ export function TaskHeader({
                 className="hover:bg-primary/10 hover:text-primary transition-colors"
                 onClick={onEdit}
                 disabled={isRunning && !isStuck}
-                aria-label={isRunning && !isStuck ? 'Cannot edit while task is running' : 'Edit task'}
+                aria-label={isRunning && !isStuck ? t('kanban.cannotEditWhileRunning') : t('kanban.editTask')}
               >
                 <Pencil className="h-4 w-4" />
               </Button>
             </span>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {isRunning && !isStuck ? 'Cannot edit while task is running' : 'Edit task'}
+            {isRunning && !isStuck ? t('kanban.cannotEditWhileRunning') : t('kanban.editTask')}
           </TooltipContent>
         </Tooltip>
         <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive transition-colors" onClick={onClose} aria-label={t('kanban.closeTaskDetailsAriaLabel')}>

@@ -61,7 +61,9 @@
     "dropHere": "Déposer ici",
     "showArchived": "Afficher les archivées",
     "addTaskAriaLabel": "Ajouter une nouvelle tâche au backlog",
-    "closeTaskDetailsAriaLabel": "Fermer les détails de la tâche"
+    "closeTaskDetailsAriaLabel": "Fermer les détails de la tâche",
+    "editTask": "Modifier la tâche",
+    "cannotEditWhileRunning": "Impossible de modifier pendant l'exécution"
   },
   "execution": {
     "phases": {

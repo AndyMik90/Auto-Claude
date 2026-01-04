@@ -61,7 +61,9 @@
     "dropHere": "Drop here",
     "showArchived": "Show archived",
     "addTaskAriaLabel": "Add new task to backlog",
-    "closeTaskDetailsAriaLabel": "Close task details"
+    "closeTaskDetailsAriaLabel": "Close task details",
+    "editTask": "Edit task",
+    "cannotEditWhileRunning": "Cannot edit while task is running"
   },
   "execution": {
     "phases": {
