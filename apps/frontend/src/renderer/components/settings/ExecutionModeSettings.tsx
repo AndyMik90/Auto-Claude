@@ -16,31 +16,31 @@ import {
   ChevronUp,
   RefreshCw
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/renderer/components/ui/button';
-import { Switch } from '@/renderer/components/ui/switch';
-import { Slider } from '@/renderer/components/ui/slider';
+import { cn } from '../../lib/utils';
+import { Button } from '../ui/button';
+import { Switch } from '../ui/switch';
+import { Slider } from '../ui/slider';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/renderer/components/ui/select';
+} from '../ui/select';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/renderer/components/ui/tooltip';
+} from '../ui/tooltip';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/renderer/components/ui/collapsible';
+} from '../ui/collapsible';
 
 // Execution mode types
-type ExecutionMode = 'local_only' | 'hybrid' | 'cloud_only';
+type ExecutionMode = 'local_only' | 'hybrid' | 'cloud_only' | 'automatic';
 type TaskComplexity = 'trivial' | 'simple' | 'moderate' | 'complex' | 'expert';
 
 interface ModeConfig {
@@ -113,6 +113,17 @@ const MODE_INFO = {
     description: 'All tasks run on Claude API. Best quality but requires internet.',
     pros: ['Highest quality', 'Handles any complexity', 'Fastest for complex tasks'],
     cons: ['Requires internet', 'API costs'],
+  },
+  automatic: {
+    name: 'Automatic',
+    icon: Zap,
+    color: 'green',
+    bgColor: 'bg-green-500/10',
+    borderColor: 'border-green-500/30',
+    textColor: 'text-green-400',
+    description: 'Intelligently selects the best provider based on task, hardware, and availability.',
+    pros: ['Optimal performance', 'Cost-efficient', 'Adapts to conditions'],
+    cons: ['Less predictable provider choice'],
   },
 };
 
