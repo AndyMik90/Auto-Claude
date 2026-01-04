@@ -530,6 +530,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
             onPhaseModelsChange={setPhaseModels}
             onPhaseThinkingChange={setPhaseThinking}
             disabled={isSaving}
+            showExecutionMode={false}
           />
 
           {/* Paste Success Indicator */}
