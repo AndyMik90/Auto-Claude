@@ -324,7 +324,7 @@ def detect_implicit_conflicts(
             # Using word boundaries to avoid false positives (e.g., 'getUser' matching 'username')
             for removed_symbol in removals_a:
                 for added_code in additions_b:
-                    if re.search(r'\b' + re.escape(removed_symbol) + r'\b', added_code):
+                    if re.search(r"\b" + re.escape(removed_symbol) + r"\b", added_code):
                         # Potential conflict: Task A removes what Task B uses
                         file_path = next(iter(task_analyses.values())).file_path
                         conflicts.append(
