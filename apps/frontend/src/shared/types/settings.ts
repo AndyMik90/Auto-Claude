@@ -201,17 +201,19 @@ export interface FeatureThinkingConfig {
 }
 
 // Agent profile for preset model/thinking configurations
+// All profiles have per-phase configuration (phaseModels/phaseThinking)
 export interface AgentProfile {
   id: string;
   name: string;
   description: string;
-  model: ModelTypeShort;
-  thinkingLevel: ThinkingLevel;
-  icon?: string;  // Lucide icon name
-  // Auto profile specific - per-phase configuration
-  isAutoProfile?: boolean;
+  model: ModelTypeShort;           // Primary model (shown in profile card)
+  thinkingLevel: ThinkingLevel;    // Primary thinking level (shown in profile card)
+  icon?: string;                   // Lucide icon name
+  // Per-phase configuration - all profiles now have this
   phaseModels?: PhaseModelConfig;
   phaseThinking?: PhaseThinkingConfig;
+  // Deprecated - kept for backwards compatibility
+  isAutoProfile?: boolean;
 }
 
 export interface AppSettings {

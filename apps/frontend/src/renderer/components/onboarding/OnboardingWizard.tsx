@@ -16,7 +16,7 @@ import { AuthChoiceStep } from './AuthChoiceStep';
 import { OAuthStep } from './OAuthStep';
 import { ClaudeCodeStep } from './ClaudeCodeStep';
 import { DevToolsStep } from './DevToolsStep';
-import { GraphitiStep } from './GraphitiStep';
+import { MemoryStep } from './MemoryStep';
 import { CompletionStep } from './CompletionStep';
 import { useSettingsStore } from '../../stores/settings-store';
 
@@ -214,10 +214,9 @@ export function OnboardingWizard({
         );
       case 'graphiti':
         return (
-          <GraphitiStep
+          <MemoryStep
             onNext={goToNextStep}
             onBack={goToPreviousStep}
-            onSkip={skipWizard}
           />
         );
       case 'completion':
