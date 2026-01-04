@@ -614,34 +614,12 @@ def handle_merge_preview_command(
             changed_files=all_changed_files[:10],  # Log first 10
         )
 
-        # FAST PATH: If 0 commits behind and no git conflicts, skip expensive analysis
-        # No conflicts are possible if main hasn't moved since the task branched
-        commits_behind = git_conflicts.get("commits_behind", 0)
-        has_git_conflicts = git_conflicts.get("has_conflicts", False)
-
-        if commits_behind == 0 and not has_git_conflicts:
-            debug(
-                MODULE,
-                "FAST PATH: 0 commits behind and no git conflicts - skipping semantic analysis",
-            )
-            return {
-                "success": True,
-                "files": all_changed_files,
-                "conflicts": [],
-                "summary": {
-                    "totalFiles": len(all_changed_files),
-                    "conflictFiles": 0,
-                    "totalConflicts": 0,
-                    "autoMergeable": 0,
-                },
-                "gitConflicts": {
-                    "hasConflicts": False,
-                    "conflictingFiles": [],
-                    "needsRebase": False,
-                    "commitsBehind": 0,
-                    "baseBranch": git_conflicts.get("base_branch", task_source_branch),
-                },
-            }
+        # NOTE: We intentionally do NOT have a fast path here.
+        # Even if commits_behind == 0 (main hasn't moved), we still need to:
+        # 1. Call refresh_from_git() to update evolution data for this task
+        # 2. Call preview_merge() to detect potential conflicts with OTHER parallel tasks
+        #    that may be tracked in the evolution data but haven't been merged yet.
+        # Skipping semantic analysis when commits_behind == 0 would miss these conflicts.
 
         debug(MODULE, "Initializing MergeOrchestrator for preview...")
 
