@@ -11,9 +11,6 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
-from ..config import get_agent_model, get_crewai_config
-
-
 class AutoClaudeBridge:
     """
     Bridge between CrewAI orchestration and Auto-Claude execution layer.
@@ -28,6 +25,7 @@ class AutoClaudeBridge:
     def __init__(
         self,
         project_dir: Path | str,
+        spec_dir: Path | str | None = None,
         on_progress: Callable[[str, dict], None] | None = None,
         on_error: Callable[[str, Exception], None] | None = None,
     ):
@@ -36,10 +34,12 @@ class AutoClaudeBridge:
 
         Args:
             project_dir: Root directory of the project
+            spec_dir: Directory for spec files (optional)
             on_progress: Callback for progress notifications
             on_error: Callback for error notifications
         """
         self.project_dir = Path(project_dir)
+        self.spec_dir = Path(spec_dir) if spec_dir else None
         self.on_progress = on_progress
         self.on_error = on_error
 
@@ -56,6 +56,7 @@ class AutoClaudeBridge:
 
                 self._spec_orchestrator = SpecOrchestrator
             except ImportError:
+                # Module not available - will use fallback or raise later when needed
                 pass
 
         if self._run_agent is None:
@@ -64,6 +65,7 @@ class AutoClaudeBridge:
 
                 self._run_agent = run_autonomous_agent
             except ImportError:
+                # Module not available - will use fallback or raise later when needed
                 pass
 
         if self._run_qa is None:
@@ -72,6 +74,7 @@ class AutoClaudeBridge:
 
                 self._run_qa = run_qa_validation_loop
             except ImportError:
+                # Module not available - will use fallback or raise later when needed
                 pass
 
     # =========================================================================
