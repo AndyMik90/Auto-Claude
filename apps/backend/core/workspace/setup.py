@@ -268,6 +268,9 @@ def setup_workspace(
         )
 
     # Copy security configuration files if they exist
+    # Note: Unlike env files, security files always overwrite to ensure
+    # the worktree uses the same security rules as the main project.
+    # This prevents security bypasses through stale worktree configs.
     security_files = [".auto-claude-allowlist", ".auto-claude-security.json"]
     security_files_copied = []
 
