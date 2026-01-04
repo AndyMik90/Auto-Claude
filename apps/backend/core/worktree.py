@@ -327,9 +327,33 @@ class WorktreeManager:
         # Delete branch if it exists (from previous attempt)
         self._run_git(["branch", "-D", branch_name])
 
-        # Create worktree with new branch from base
+        # Fetch latest from remote to ensure we have the most up-to-date code
+        # GitHub/remote is the source of truth, not the local branch
+        fetch_result = self._run_git(["fetch", "origin", self.base_branch])
+        if fetch_result.returncode != 0:
+            print(
+                f"Warning: Could not fetch {self.base_branch} from origin: {fetch_result.stderr}"
+            )
+            print("Falling back to local branch...")
+
+        # Determine the start point for the worktree
+        # Prefer origin/{base_branch} (remote) over local branch to ensure we have latest code
+        remote_ref = f"origin/{self.base_branch}"
+        start_point = self.base_branch  # Default to local branch
+
+        # Check if remote ref exists and use it as the source of truth
+        check_remote = self._run_git(["rev-parse", "--verify", remote_ref])
+        if check_remote.returncode == 0:
+            start_point = remote_ref
+            print(f"Creating worktree from remote: {remote_ref}")
+        else:
+            print(
+                f"Remote ref {remote_ref} not found, using local branch: {self.base_branch}"
+            )
+
+        # Create worktree with new branch from the start point (remote preferred)
         result = self._run_git(
-            ["worktree", "add", "-b", branch_name, str(worktree_path), self.base_branch]
+            ["worktree", "add", "-b", branch_name, str(worktree_path), start_point]
         )
 
         if result.returncode != 0:
