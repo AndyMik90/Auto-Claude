@@ -278,8 +278,12 @@ def setup_workspace(
         source_file = project_dir / filename
         if source_file.is_file():
             target_file = worktree_info.path / filename
-            shutil.copy2(source_file, target_file)
-            security_files_copied.append(filename)
+            try:
+                shutil.copy2(source_file, target_file)
+                security_files_copied.append(filename)
+            except (OSError, PermissionError) as e:
+                debug_warning(MODULE, f"Failed to copy {filename}: {e}")
+                print_status(f"Warning: Could not copy {filename} to worktree", "warning")
 
     if security_files_copied:
         print_status(
