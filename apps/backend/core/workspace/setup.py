@@ -13,8 +13,7 @@ import sys
 from pathlib import Path
 
 from merge import FileTimelineTracker
-from project import ProjectAnalyzer
-from project.structure_analyzer import StructureAnalyzer
+from security.constants import ALLOWLIST_FILENAME, PROFILE_FILENAME
 from ui import (
     Icons,
     MenuOption,
@@ -274,8 +273,8 @@ def setup_workspace(
     # the worktree uses the same security rules as the main project.
     # This prevents security bypasses through stale worktree configs.
     security_files = [
-        StructureAnalyzer.CUSTOM_ALLOWLIST_FILENAME,
-        ProjectAnalyzer.PROFILE_FILENAME,
+        ALLOWLIST_FILENAME,
+        PROFILE_FILENAME,
     ]
     security_files_copied = []
 

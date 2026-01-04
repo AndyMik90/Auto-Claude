@@ -9,11 +9,11 @@ Uses project_analyzer to create dynamic security profiles based on detected stac
 from pathlib import Path
 
 from project_analyzer import (
-    ProjectAnalyzer,
     SecurityProfile,
     get_or_create_profile,
 )
-from project.structure_analyzer import StructureAnalyzer
+
+from .constants import ALLOWLIST_FILENAME, PROFILE_FILENAME
 
 # =============================================================================
 # GLOBAL STATE
@@ -29,12 +29,12 @@ _cached_allowlist_mtime: float | None = None  # Track allowlist modification tim
 
 def _get_profile_path(project_dir: Path) -> Path:
     """Get the security profile file path for a project."""
-    return project_dir / ProjectAnalyzer.PROFILE_FILENAME
+    return project_dir / PROFILE_FILENAME
 
 
 def _get_allowlist_path(project_dir: Path) -> Path:
     """Get the allowlist file path for a project."""
-    return project_dir / StructureAnalyzer.CUSTOM_ALLOWLIST_FILENAME
+    return project_dir / ALLOWLIST_FILENAME
 
 
 def _get_profile_mtime(project_dir: Path) -> float | None:
