@@ -260,17 +260,14 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
             <span className="font-medium">Task completed</span>
           </div>
           {task.metadata?.prUrl && (
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                window.electronAPI.openExternal(task.metadata!.prUrl!);
-              }}
-              className="completion-state text-sm flex items-center gap-2 text-success cursor-pointer hover:underline"
+            <button
+              type="button"
+              onClick={() => window.electronAPI.openExternal(task.metadata!.prUrl!)}
+              className="completion-state text-sm flex items-center gap-2 text-success cursor-pointer hover:underline bg-transparent border-none p-0"
             >
               <CheckCircle2 className="h-5 w-5" />
-              <span className="font-medium">PR Created</span>
-            </a>
+              <span className="font-medium">{t('tasks:status.prCreated')}</span>
+            </button>
           )}
         </div>
       );
@@ -342,7 +339,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                           {/* Show PR Created badge for pr_created status */}
                           {task.status === 'pr_created' && (
                             <Badge variant="info" className="text-xs">
-                              PR Created
+                              {t('tasks:status.prCreated')}
                             </Badge>
                           )}
                           {task.status === 'human_review' && task.reviewReason && (
