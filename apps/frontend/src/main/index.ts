@@ -121,11 +121,11 @@ function createWindow(): void {
   const availableWidth = workAreaSize.width - screenMargin;
   const availableHeight = workAreaSize.height - screenMargin;
 
-  // Ensure minimum dimensions don't exceed available screen space
-  const minWidth = Math.min(absoluteMinWidth, availableWidth);
-  const minHeight = Math.min(absoluteMinHeight, availableHeight);
+  // Ensure minimum dimensions don't exceed available screen space (without margin)
+  const minWidth = Math.min(absoluteMinWidth, workAreaSize.width);
+  const minHeight = Math.min(absoluteMinHeight, workAreaSize.height);
 
-  // Calculate actual dimensions (preferred, but capped to available space)
+  // Calculate actual dimensions (preferred, but capped to margin-adjusted available space)
   const width = Math.min(preferredWidth, availableWidth);
   const height = Math.min(preferredHeight, availableHeight);
 
