@@ -29,7 +29,7 @@ interface CustomModelModalProps {
 }
 
 export function CustomModelModal({ currentConfig, onSave, onClose, open = true }: CustomModelModalProps) {
-  const { t } = useTranslation('dialogs');
+  const { t } = useTranslation(['dialogs', 'models']);
   const [model, setModel] = useState<ModelType>(
     currentConfig?.model || 'sonnet'
   );
@@ -90,9 +90,9 @@ export function CustomModelModal({ currentConfig, onSave, onClose, open = true }
                 {THINKING_LEVELS.map((level) => (
                   <SelectItem key={level.value} value={level.value}>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{level.label}</span>
+                      <span className="font-medium">{t(`models:thinkingLevels.${level.value}.label`)}</span>
                       <span className="text-xs text-muted-foreground">
-                        {level.description}
+                        {t(`models:thinkingLevels.${level.value}.description`)}
                       </span>
                     </div>
                   </SelectItem>

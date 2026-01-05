@@ -1,0 +1,21 @@
+{
+  "dialog": {
+    "title": "Enable Competitor Analysis?",
+    "description": "Enhance your roadmap with insights from competitor products"
+  },
+  "whatItDoes": {
+    "title": "What competitor analysis does:",
+    "item1": "Identifies 3-5 main competitors based on your project type",
+    "item2": "Searches app stores, forums, and social media for user feedback and pain points",
+    "item3": "Suggests features that address gaps in competitor products"
+  },
+  "privacy": {
+    "title": "Web searches will be performed",
+    "description": "This feature will perform web searches to gather competitor information. Your project name and type will be used in search queries. No code or sensitive data is shared."
+  },
+  "optional": "You can generate a roadmap without competitor analysis if you prefer. The roadmap will still be based on your project structure and best practices.",
+  "buttons": {
+    "decline": "No, Skip Analysis",
+    "accept": "Yes, Enable Analysis"
+  }
+}

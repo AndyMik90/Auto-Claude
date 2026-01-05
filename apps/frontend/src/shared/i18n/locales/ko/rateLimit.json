@@ -1,0 +1,67 @@
+{
+  "sources": {
+    "changelog": "변경 로그 생성",
+    "task": "작업 실행",
+    "roadmap": "로드맵 생성",
+    "ideation": "아이디어 생성",
+    "titleGenerator": "제목 생성",
+    "default": "Claude 작업"
+  },
+  "dialog": {
+    "title": "Claude Code 사용량 제한",
+    "interrupted": "{{source}}이(가) 사용량 제한으로 중단되었습니다.",
+    "profile": "(프로필: {{profile}})"
+  },
+  "swapInfo": {
+    "proactiveSwap": "✓ 사전 전환",
+    "reactiveSwap": "⚡ 즉시 전환",
+    "proactiveMessage": "사용량 제한에 도달하기 전에 {{from}}에서 {{to}}(으)로 자동 전환되었습니다.",
+    "reactiveMessage": "{{from}}에서 사용량 제한 도달. {{to}}(으)로 자동 전환하여 재시작했습니다.",
+    "continuedWork": "작업이 중단 없이 계속되었습니다.",
+    "rateLimitReached": "사용량 제한 도달",
+    "operationStopped": "{{profile}}이(가) 사용량 제한에 도달하여 작업이 중지되었습니다.",
+    "switchToAnother": "아래에서 다른 계정으로 전환하여 계속하세요.",
+    "addAnother": "다른 Claude 계정을 추가하여 계속 작업하세요."
+  },
+  "upgrade": {
+    "button": "Pro로 업그레이드하여 한도 늘리기",
+    "title": "더 많은 사용량을 위한 업그레이드",
+    "description": "Claude 구독을 업그레이드하여 더 높은 사용량 제한을 받으세요.",
+    "subscriptionButton": "구독 업그레이드"
+  },
+  "resetTime": {
+    "resets": "{{time}}에 재설정",
+    "weekly": "주간 제한 - 약 일주일 후 재설정",
+    "session": "세션 제한 - 몇 시간 후 재설정"
+  },
+  "profileSwitching": {
+    "switchAndRetry": "계정 전환 및 재시도",
+    "useAnother": "다른 계정 사용",
+    "recommended": "추천: {{profile}}에 더 많은 용량이 있습니다.",
+    "switchToAnother": "다른 Claude 계정으로 전환하여 작업을 재시도하세요:",
+    "selectAccount": "계정 선택...",
+    "recommendedLabel": "추천",
+    "addNewAccount": "새 계정 추가...",
+    "retrying": "재시도 중...",
+    "retry": "재시도",
+    "autoSwitch": "사용량 제한 시 자동 전환 및 재시도",
+    "addSubscription": "사용량 제한에 도달하면 자동으로 전환할 다른 Claude 구독을 추가하세요.",
+    "addAnother": "다른 계정 추가:",
+    "connectAccount": "Claude 계정 연결:",
+    "accountPlaceholder": "계정 이름 (예: 회사, 개인)",
+    "add": "추가",
+    "openLogin": "새 계정을 인증하기 위해 Claude 로그인을 엽니다."
+  },
+  "whatHappened": {
+    "title": "무슨 일이 일어났나요:",
+    "message": "{{source}} 작업이 중지되었습니다. Claude 계정({{profile}})이 사용량 제한에 도달했습니다.",
+    "switchOrAdd": "다른 계정으로 전환하여 재시도하거나 위에서 더 많은 계정을 추가할 수 있습니다.",
+    "addOrWait": "위에서 다른 Claude 계정을 추가하여 계속 작업하거나 제한이 재설정될 때까지 기다리세요."
+  },
+  "alerts": {
+    "terminalOpened": "\"{{profileName}}\"을(를) 인증하기 위해 터미널이 열렸습니다.\n\n완료 단계:\n1. 사이드바의 \"에이전트 터미널\" 섹션 확인\n2. 브라우저에서 OAuth 로그인 완료\n3. 토큰이 자동으로 저장됩니다\n\n완료되면 여기로 돌아오면 계정을 사용할 수 있습니다.",
+    "authFailed": "인증 시작 실패: {{error}}",
+    "addFailed": "프로필 추가 실패. 다시 시도해주세요."
+  },
+  "close": "닫기"
+}

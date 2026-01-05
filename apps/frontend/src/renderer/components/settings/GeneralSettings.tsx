@@ -41,7 +41,7 @@ function ToolDetectionDisplay({ info, isLoading, t }: ToolDetectionDisplayProps)
   if (isLoading) {
     return (
       <div className="text-xs text-muted-foreground mt-1">
-        Detecting...
+        {t('general.detecting')}
       </div>
     );
   }
@@ -90,7 +90,7 @@ function ToolDetectionDisplay({ info, isLoading, t }: ToolDetectionDisplayProps)
  * General settings component for agent configuration and paths
  */
 export function GeneralSettings({ settings, onSettingsChange, section }: GeneralSettingsProps) {
-  const { t } = useTranslation('settings');
+  const { t } = useTranslation(['settings', 'models']);
   const [toolsInfo, setToolsInfo] = useState<{
     python: ToolDetectionResult;
     git: ToolDetectionResult;
@@ -226,7 +226,7 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                           <SelectContent>
                             {THINKING_LEVELS.map((level) => (
                               <SelectItem key={level.value} value={level.value}>
-                                {level.label}
+                                {t(`models:thinkingLevels.${level.value}.label`)}
                               </SelectItem>
                             ))}
                           </SelectContent>

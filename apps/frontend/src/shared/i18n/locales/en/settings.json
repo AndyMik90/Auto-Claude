@@ -99,6 +99,7 @@
     "sourceBundled": "Bundled",
     "sourceFallback": "Fallback",
     "notDetected": "Not detected",
+    "detecting": "Detecting...",
     "autoClaudePath": "Auto Claude Path",
     "autoClaudePathDescription": "Relative path to auto-claude directory in projects",
     "autoClaudePathPlaceholder": "auto-claude (default)",
@@ -184,6 +185,7 @@
     "general": {
       "title": "General",
       "description": "Auto-Build and agent config",
+      "fullDescription": "Configure Auto-Build, agent model, and notifications for {{projectName}}",
       "useClaudeMd": "Use CLAUDE.md",
       "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context"
     },
@@ -219,6 +221,113 @@
       "integrationDescription": "Configure persistent cross-session memory for agents",
       "syncDescription": "Configure persistent memory"
     }
+  },
+  "githubIntegration": {
+    "title": "GitHub Integration",
+    "enabled": "Enabled",
+    "projectSpecific": {
+      "title": "Project-Specific Configuration",
+      "description": "This GitHub repository is configured only for {{projectName}}. Each project can have its own GitHub repository."
+    },
+    "enableToggle": {
+      "label": "Enable GitHub Issues",
+      "description": "Sync issues from GitHub and create tasks automatically"
+    },
+    "authentication": {
+      "title": "GitHub Authentication",
+      "oauthConnected": "Authenticated via GitHub OAuth (gh CLI)",
+      "useManualToken": "Use Manual Token",
+      "useOAuthInstead": "Use OAuth Instead"
+    },
+    "token": {
+      "label": "Personal Access Token",
+      "description": "Create a token with {{scope}} scope from",
+      "scope": "repo",
+      "linkText": "GitHub Settings",
+      "placeholder": "ghp_xxxxxxxx or github_pat_xxxxxxxx"
+    },
+    "repository": {
+      "label": "Repository",
+      "description": "Format: {{format}} (e.g., facebook/react)",
+      "format": "owner/repo",
+      "placeholder": "owner/repository"
+    },
+    "connection": {
+      "title": "Connection Status",
+      "connected": "Connected to {{repo}}",
+      "notConnected": "Not connected"
+    },
+    "issuesAvailable": {
+      "title": "Issues Available",
+      "description": "Access GitHub Issues from the sidebar to view, investigate, and create tasks from issues."
+    },
+    "autoSync": {
+      "label": "Auto-Sync on Load",
+      "description": "Automatically fetch issues when the project loads"
+    }
+  },
+  "linearIntegration": {
+    "title": "Linear Integration",
+    "enabled": "Enabled",
+    "enableToggle": {
+      "label": "Enable Linear Sync",
+      "description": "Create and update Linear issues automatically"
+    },
+    "apiKey": {
+      "label": "API Key",
+      "description": "Get your API key from",
+      "linkText": "Linear Settings",
+      "placeholder": "lin_api_xxxxxxxx"
+    },
+    "connection": {
+      "title": "Connection Status",
+      "connected": "Connected",
+      "connectedToTeam": "Connected to {{teamName}}",
+      "notConnected": "Not connected",
+      "tasksAvailable": "{{count}}+ tasks available to import"
+    },
+    "import": {
+      "title": "Import Existing Tasks",
+      "description": "Select which Linear issues to import into AutoBuild as tasks.",
+      "button": "Import Tasks from Linear"
+    },
+    "realtimeSync": {
+      "label": "Real-time Sync",
+      "description": "Automatically import new tasks created in Linear",
+      "warning": "When enabled, new Linear issues will be automatically imported into AutoBuild. Make sure to configure your team/project filters below to control which issues are imported."
+    },
+    "filters": {
+      "teamId": "Team ID (Optional)",
+      "teamIdPlaceholder": "Auto-detected",
+      "projectId": "Project ID (Optional)",
+      "projectIdPlaceholder": "Auto-created"
+    }
+  },
+  "autoBuildIntegration": {
+    "title": "Auto-Build Integration",
+    "notInitialized": {
+      "label": "Not Initialized",
+      "description": "Initialize Auto-Build to enable task creation and agent workflows.",
+      "button": "Initialize Auto-Build",
+      "initializing": "Initializing..."
+    },
+    "initialized": "Initialized",
+    "checkingStatus": "Checking status...",
+    "status": {
+      "initialized": "Initialized",
+      "notInitialized": "Not initialized"
+    }
+  },
+  "agentConfig": {
+    "title": "Agent Configuration",
+    "model": "Model"
+  },
+  "projectNotifications": {
+    "title": "Notifications",
+    "onTaskComplete": "On Task Complete",
+    "onTaskFailed": "On Task Failed",
+    "onReviewNeeded": "On Review Needed",
+    "sound": "Sound"
   },
   "agentProfile": {
     "label": "Agent Profile",
@@ -427,5 +536,78 @@
       "openai": "This looks like an OpenAI API. You'll need an API key.",
       "createOpenaiKey": "Create OpenAI API Key"
     }
+  },
+  "memory": {
+    "title": "Memory",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "enableMemory": "Enable Memory",
+    "enableMemoryDescription": "Persistent cross-session memory using LadybugDB (embedded database)",
+    "fileBasedMemory": "Using file-based memory. Session insights are stored locally in JSON files. Enable Memory for persistent cross-session context with semantic search.",
+    "enableAgentMemoryAccess": "Enable Agent Memory Access",
+    "enableAgentMemoryAccessDescription": "Allow agents to search and add to the knowledge graph via MCP",
+    "graphitiMcpServerUrl": "Graphiti MCP Server URL",
+    "graphitiMcpServerUrlDescription": "URL of the Graphiti MCP server for agent memory access",
+    "graphitiMcpServerUrlPlaceholder": "http://localhost:8000/mcp/",
+    "embeddingProvider": "Embedding Provider",
+    "embeddingProviderDescription": "Provider for semantic search (optional - keyword search works without)",
+    "selectEmbeddingProvider": "Select embedding provider",
+    "providers": {
+      "ollama": "Ollama (Local - Free)",
+      "openai": "OpenAI",
+      "voyage": "Voyage AI",
+      "google": "Google AI",
+      "azureOpenai": "Azure OpenAI"
+    },
+    "openai": {
+      "apiKey": "OpenAI API Key",
+      "apiKeyOverride": "(Override)",
+      "usingGlobalKey": "Using global key",
+      "usingGlobalKeyDescription": "Using key from App Settings. Enter a project-specific key below to override.",
+      "required": "Required for OpenAI embeddings",
+      "placeholder": "sk-xxxxxxxx",
+      "overridePlaceholder": "Enter to override global key...",
+      "hideKey": "Hide OpenAI API key",
+      "showKey": "Show OpenAI API key",
+      "getKey": "Get your key from"
+    },
+    "voyage": {
+      "apiKey": "Voyage AI API Key",
+      "required": "Required for Voyage AI embeddings",
+      "placeholder": "pa-xxxxxxxx",
+      "hideKey": "Hide Voyage AI API key",
+      "showKey": "Show Voyage AI API key",
+      "getKey": "Get your key from",
+      "embeddingModel": "Embedding Model (optional)",
+      "embeddingModelPlaceholder": "voyage-3"
+    },
+    "google": {
+      "apiKey": "Google AI API Key",
+      "required": "Required for Google AI embeddings",
+      "placeholder": "AIzaSy...",
+      "hideKey": "Hide Google API key",
+      "showKey": "Show Google API key",
+      "getKey": "Get your key from"
+    },
+    "azure": {
+      "configuration": "Azure OpenAI Configuration",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Azure API Key",
+      "hideKey": "Hide Azure OpenAI API key",
+      "showKey": "Show Azure OpenAI API key",
+      "baseUrl": "Base URL",
+      "baseUrlPlaceholder": "https://your-resource.openai.azure.com",
+      "embeddingDeployment": "Embedding Deployment Name",
+      "embeddingDeploymentPlaceholder": "text-embedding-ada-002"
+    },
+    "ollama": {
+      "selectModel": "Select Embedding Model"
+    },
+    "databaseName": "Database Name",
+    "databaseNameDescription": "Stored in ~/.auto-claude/memories/",
+    "databaseNamePlaceholder": "auto_claude_memory",
+    "databasePath": "Database Path (Optional)",
+    "databasePathDescription": "Custom storage location. Default: ~/.auto-claude/memories/",
+    "databasePathPlaceholder": "~/.auto-claude/memories"
   }
 }

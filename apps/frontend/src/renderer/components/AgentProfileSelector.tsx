@@ -82,7 +82,7 @@ export function AgentProfileSelector({
   onPhaseThinkingChange,
   disabled
 }: AgentProfileSelectorProps) {
-  const { t } = useTranslation('settings');
+  const { t } = useTranslation(['settings', 'models']);
   const [showPhaseDetails, setShowPhaseDetails] = useState(false);
 
   const isCustom = profileId === 'custom';
@@ -314,7 +314,7 @@ export function AgentProfileSelector({
                         <SelectContent>
                           {THINKING_LEVELS.map((level) => (
                             <SelectItem key={level.value} value={level.value}>
-                              {level.label}
+                              {t(`models:thinkingLevels.${level.value}.label`)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -371,9 +371,9 @@ export function AgentProfileSelector({
                 {THINKING_LEVELS.map((level) => (
                   <SelectItem key={level.value} value={level.value}>
                     <div className="flex items-center gap-2">
-                      <span>{level.label}</span>
+                      <span>{t(`models:thinkingLevels.${level.value}.label`)}</span>
                       <span className="text-xs text-muted-foreground">
-                        - {level.description}
+                        - {t(`models:thinkingLevels.${level.value}.description`)}
                       </span>
                     </div>
                   </SelectItem>

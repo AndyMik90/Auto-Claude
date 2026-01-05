@@ -1,0 +1,39 @@
+{
+  "header": {
+    "title": "Project Structure",
+    "description": "AI-discovered knowledge about your codebase",
+    "refresh": "Refresh",
+    "refreshTooltip": "Re-analyze project structure"
+  },
+  "errors": {
+    "loadFailed": "Failed to load project index"
+  },
+  "emptyState": {
+    "title": "No Project Index Found",
+    "description": "Click the Refresh button to analyze your project structure and create an index.",
+    "analyze": "Analyze Project"
+  },
+  "overview": {
+    "title": "Overview",
+    "services": "{{count}} service{{s}}"
+  },
+  "sections": {
+    "services": "Services",
+    "infrastructure": "Infrastructure",
+    "conventions": "Conventions"
+  },
+  "infrastructure": {
+    "dockerCompose": "Docker Compose",
+    "cicd": "CI/CD",
+    "deployment": "Deployment",
+    "dockerServices": "Docker Services"
+  },
+  "conventions": {
+    "pythonLinting": "Python Linting",
+    "jsLinting": "JS Linting",
+    "formatting": "Formatting",
+    "gitHooks": "Git Hooks",
+    "typescript": "TypeScript",
+    "enabled": "Enabled"
+  }
+}

@@ -1,4 +1,20 @@
 {
+  "expand": {
+    "expand": "Expand terminal",
+    "collapse": "Collapse terminal"
+  },
+  "grid": {
+    "title": "Agent Terminals",
+    "description": "Spawn multiple terminals to run Claude agents in parallel. Use Ctrl+T to create a new terminal.",
+    "newTerminal": "New Terminal",
+    "terminalCount": "{{count}} / 12 terminals",
+    "history": "History",
+    "restoreSessionsFrom": "Restore sessions from...",
+    "sessionCount": "{{count}} session(s)",
+    "sessionCountSingular": "{{count}} session",
+    "invokeClaudeAll": "Invoke Claude All",
+    "files": "Files"
+  },
   "worktree": {
     "create": "Worktree",
     "createNew": "+ New Worktree",

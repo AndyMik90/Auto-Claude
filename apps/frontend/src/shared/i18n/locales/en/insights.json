@@ -1,0 +1,38 @@
+{
+  "title": "Insights",
+  "subtitle": "Ask questions about your codebase",
+  "newChat": "New Chat",
+  "emptyState": {
+    "title": "Start a Conversation",
+    "description": "Ask questions about your codebase, get suggestions for improvements, or discuss features you'd like to implement.",
+    "suggestions": [
+      "What is the architecture of this project?",
+      "Suggest improvements for code quality",
+      "What features could I add next?",
+      "Are there any security concerns?"
+    ]
+  },
+  "input": {
+    "placeholder": "Ask about your codebase...",
+    "help": "Press Enter to send, Shift+Enter for new line"
+  },
+  "message": {
+    "you": "You",
+    "assistant": "Assistant"
+  },
+  "task": {
+    "suggested": "Suggested Task",
+    "creating": "Creating...",
+    "created": "Task Created",
+    "create": "Create Task"
+  },
+  "status": {
+    "thinking": "Thinking..."
+  },
+  "tools": {
+    "count": "{{count}} tool(s) used",
+    "readingFile": "Reading file",
+    "searchingFiles": "Searching files",
+    "searchingCode": "Searching code"
+  }
+}

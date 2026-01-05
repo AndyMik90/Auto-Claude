@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type ClipboardEvent, type DragEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, ChevronDown, ChevronUp, Image as ImageIcon, X, RotateCcw, FolderTree, GitBranch } from 'lucide-react';
 import {
   Dialog,
@@ -59,6 +60,8 @@ export function TaskCreationWizard({
   open,
   onOpenChange
 }: TaskCreationWizardProps) {
+  const { t } = useTranslation('dialogs');
+
   // Get selected agent profile from settings
   const { settings } = useSettingsStore();
   const selectedProfile = DEFAULT_AGENT_PROFILES.find(
@@ -265,7 +268,7 @@ export function TaskCreationWizard({
     // Check if we can add more images
     const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
     if (remainingSlots <= 0) {
-      setError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+      setError(t('taskCreation.maxImagesError', { max: MAX_IMAGES_PER_TASK }));
       return;
     }
 
@@ -281,7 +284,7 @@ export function TaskCreationWizard({
 
       // Validate image type
       if (!isValidImageMimeType(file.type)) {
-        setError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+        setError(t('taskCreation.invalidImageTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
         continue;
       }
 
@@ -306,7 +309,7 @@ export function TaskCreationWizard({
           thumbnail
         });
       } catch {
-        setError('Failed to process pasted image');
+        setError(t('taskCreation.processImageError'));
       }
     }
 
@@ -514,7 +517,7 @@ export function TaskCreationWizard({
       // Check if we can add more images
       const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
       if (remainingSlots <= 0) {
-        setError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+        setError(t('taskCreation.maxImagesError', { max: MAX_IMAGES_PER_TASK }));
         return;
       }
 
@@ -527,7 +530,7 @@ export function TaskCreationWizard({
       for (const file of imageFiles.slice(0, remainingSlots)) {
         // Validate image type
         if (!isValidImageMimeType(file.type)) {
-          setError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+          setError(t('taskCreation.invalidImageTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
           continue;
         }
 
@@ -551,7 +554,7 @@ export function TaskCreationWizard({
             thumbnail
           });
         } catch {
-          setError('Failed to process dropped image');
+          setError(t('taskCreation.processImageError'));
         }
       }
 
@@ -600,7 +603,7 @@ export function TaskCreationWizard({
 
   const handleCreate = async () => {
     if (!description.trim()) {
-      setError('Please provide a description');
+      setError(t('taskCreation.errorDescription'));
       return;
     }
 
@@ -643,10 +646,10 @@ export function TaskCreationWizard({
         resetForm();
         onOpenChange(false);
       } else {
-        setError('Failed to create task. Please try again.');
+        setError(t('taskCreation.errorCreateFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : t('taskCreation.errorCreateFailed'));
     } finally {
       setIsCreating(false);
     }
@@ -724,11 +727,11 @@ export function TaskCreationWizard({
           >
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-foreground">Create New Task</DialogTitle>
+            <DialogTitle className="text-foreground">{t('taskCreation.title')}</DialogTitle>
             {isDraftRestored && (
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-info/10 text-info px-2 py-1 rounded-md">
-                  Draft restored
+                  {t('taskCreation.draftRestored')}
                 </span>
                 <Button
                   variant="ghost"
@@ -737,14 +740,13 @@ export function TaskCreationWizard({
                   onClick={handleDiscardDraft}
                 >
                   <RotateCcw className="h-3 w-3 mr-1" />
-                  Start Fresh
+                  {t('taskCreation.startFresh')}
                 </Button>
               </div>
             )}
           </div>
           <DialogDescription>
-            Describe what you want to build. The AI will analyze your request and
-            create a detailed specification.
+            {t('taskCreation.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -752,7 +754,7 @@ export function TaskCreationWizard({
           {/* Description (Primary - Required) */}
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium text-foreground">
-              Description <span className="text-destructive">*</span>
+              {t('taskCreation.descriptionLabel')} <span className="text-destructive">{t('taskCreation.required')}</span>
             </Label>
             {/* Wrap textarea for file @mentions */}
             <div className="relative">
@@ -787,7 +789,7 @@ export function TaskCreationWizard({
               <Textarea
                 ref={descriptionRef}
                 id="description"
-                placeholder="Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior. Type @ to reference files."
+                placeholder={t('taskCreation.descriptionPlaceholder')}
                 value={description}
                 onChange={handleDescriptionChange}
                 onPaste={handlePaste}
@@ -815,7 +817,7 @@ export function TaskCreationWizard({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Files and images can be copy/pasted or dragged & dropped into the description.
+              {t('taskCreation.filesAndImagesHelp')}
             </p>
 
             {/* Image Thumbnails - displayed inline below description */}
@@ -864,17 +866,17 @@ export function TaskCreationWizard({
           {/* Title (Optional - Auto-generated if empty) */}
           <div className="space-y-2">
             <Label htmlFor="title" className="text-sm font-medium text-foreground">
-              Task Title <span className="text-muted-foreground font-normal">(optional)</span>
+              {t('taskCreation.titleLabel')} <span className="text-muted-foreground font-normal">{t('taskCreation.optional')}</span>
             </Label>
             <Input
               id="title"
-              placeholder="Leave empty to auto-generate from description"
+              placeholder={t('taskCreation.titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isCreating}
             />
             <p className="text-xs text-muted-foreground">
-              A short, descriptive title will be generated automatically if left empty.
+              {t('taskCreation.titleHelp')}
             </p>
           </div>
 
@@ -901,7 +903,7 @@ export function TaskCreationWizard({
           {pasteSuccess && (
             <div className="flex items-center gap-2 text-sm text-success animate-in fade-in slide-in-from-top-1 duration-200">
               <ImageIcon className="h-4 w-4" />
-              Image added successfully!
+              {t('taskCreation.imageAddedSuccess')}
             </div>
           )}
 
@@ -915,7 +917,7 @@ export function TaskCreationWizard({
             )}
             disabled={isCreating}
           >
-            <span>Classification (optional)</span>
+            <span>{t('taskCreation.classificationToggle')}</span>
             {showAdvanced ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
@@ -930,7 +932,7 @@ export function TaskCreationWizard({
                 {/* Category */}
                 <div className="space-y-2">
                   <Label htmlFor="category" className="text-xs font-medium text-muted-foreground">
-                    Category
+                    {t('taskCreation.categoryLabel')}
                   </Label>
                   <Select
                     value={category}
@@ -938,7 +940,7 @@ export function TaskCreationWizard({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="category" className="h-9">
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder={t('taskCreation.categoryPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_CATEGORY_LABELS).map(([value, label]) => (
@@ -953,7 +955,7 @@ export function TaskCreationWizard({
                 {/* Priority */}
                 <div className="space-y-2">
                   <Label htmlFor="priority" className="text-xs font-medium text-muted-foreground">
-                    Priority
+                    {t('taskCreation.priorityLabel')}
                   </Label>
                   <Select
                     value={priority}
@@ -961,7 +963,7 @@ export function TaskCreationWizard({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="priority" className="h-9">
-                      <SelectValue placeholder="Select priority" />
+                      <SelectValue placeholder={t('taskCreation.priorityPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
@@ -976,7 +978,7 @@ export function TaskCreationWizard({
                 {/* Complexity */}
                 <div className="space-y-2">
                   <Label htmlFor="complexity" className="text-xs font-medium text-muted-foreground">
-                    Complexity
+                    {t('taskCreation.complexityLabel')}
                   </Label>
                   <Select
                     value={complexity}
@@ -984,7 +986,7 @@ export function TaskCreationWizard({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="complexity" className="h-9">
-                      <SelectValue placeholder="Select complexity" />
+                      <SelectValue placeholder={t('taskCreation.complexityPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_COMPLEXITY_LABELS).map(([value, label]) => (
@@ -999,7 +1001,7 @@ export function TaskCreationWizard({
                 {/* Impact */}
                 <div className="space-y-2">
                   <Label htmlFor="impact" className="text-xs font-medium text-muted-foreground">
-                    Impact
+                    {t('taskCreation.impactLabel')}
                   </Label>
                   <Select
                     value={impact}
@@ -1007,7 +1009,7 @@ export function TaskCreationWizard({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="impact" className="h-9">
-                      <SelectValue placeholder="Select impact" />
+                      <SelectValue placeholder={t('taskCreation.impactPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_IMPACT_LABELS).map(([value, label]) => (
@@ -1021,7 +1023,7 @@ export function TaskCreationWizard({
               </div>
 
               <p className="text-xs text-muted-foreground">
-                These labels help organize and prioritize tasks. They&apos;re optional but useful for filtering.
+                {t('taskCreation.classificationHelp')}
               </p>
             </div>
           )}
@@ -1040,10 +1042,10 @@ export function TaskCreationWizard({
                 htmlFor="require-review"
                 className="text-sm font-medium text-foreground cursor-pointer"
               >
-                Require human review before coding
+                {t('taskCreation.requireReviewLabel')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                When enabled, you&apos;ll be prompted to review the spec and implementation plan before the coding phase begins. This allows you to approve, request changes, or provide feedback.
+                {t('taskCreation.requireReviewHelp')}
               </p>
             </div>
           </div>
@@ -1060,7 +1062,7 @@ export function TaskCreationWizard({
           >
             <span className="flex items-center gap-2">
               <GitBranch className="h-4 w-4" />
-              Git Options (optional)
+              {t('taskCreation.gitOptionsToggle')}
               {baseBranch && baseBranch !== PROJECT_DEFAULT_BRANCH && (
                 <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
                   {baseBranch}
@@ -1079,7 +1081,7 @@ export function TaskCreationWizard({
             <div className="space-y-4 p-4 rounded-lg border border-border bg-muted/30">
               <div className="space-y-2">
                 <Label htmlFor="base-branch" className="text-sm font-medium text-foreground">
-                  Base Branch (optional)
+                  {t('taskCreation.baseBranchLabel')}
                 </Label>
                 <Select
                   value={baseBranch}
@@ -1087,11 +1089,11 @@ export function TaskCreationWizard({
                   disabled={isCreating || isLoadingBranches}
                 >
                   <SelectTrigger id="base-branch" className="h-9">
-                    <SelectValue placeholder={`Use project default${projectDefaultBranch ? ` (${projectDefaultBranch})` : ''}`} />
+                    <SelectValue placeholder={projectDefaultBranch ? t('taskCreation.baseBranchDefaultOptionWithName', { branch: projectDefaultBranch }) : t('taskCreation.baseBranchPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={PROJECT_DEFAULT_BRANCH}>
-                      Use project default{projectDefaultBranch ? ` (${projectDefaultBranch})` : ''}
+                      {projectDefaultBranch ? t('taskCreation.baseBranchDefaultOptionWithName', { branch: projectDefaultBranch }) : t('taskCreation.baseBranchDefaultOption')}
                     </SelectItem>
                     {branches.map((branch) => (
                       <SelectItem key={branch} value={branch}>
@@ -1101,7 +1103,7 @@ export function TaskCreationWizard({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Override the branch this task&apos;s worktree will be created from. Leave empty to use the project&apos;s configured default branch.
+                  {t('taskCreation.baseBranchHelp')}
                 </p>
               </div>
             </div>
@@ -1129,22 +1131,22 @@ export function TaskCreationWizard({
                 className="gap-1.5"
               >
                 <FolderTree className="h-4 w-4" />
-                {showFileExplorer ? 'Hide Files' : 'Browse Files'}
+                {showFileExplorer ? t('taskCreation.hideFiles') : t('taskCreation.browseFiles')}
               </Button>
             )}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={handleClose} disabled={isCreating}>
-              Cancel
+              {t('taskCreation.cancel')}
             </Button>
             <Button onClick={handleCreate} disabled={isCreating || !description.trim()}>
               {isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {t('taskCreation.creating')}
                 </>
               ) : (
-                'Create Task'
+                t('taskCreation.createTask')
               )}
             </Button>
           </div>

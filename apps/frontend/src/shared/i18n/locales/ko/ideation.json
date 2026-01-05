@@ -1,0 +1,9 @@
+{
+  "emptyState": {
+    "title": "아이디어 없음",
+    "description": "프로젝트 컨텍스트, 기존 패턴 및 타겟 청중을 기반으로 AI 기반 기능 아이디어를 생성합니다.",
+    "enabledTypes": "활성화된 아이디어 유형",
+    "generateButton": "아이디어 생성",
+    "tokenWarning": "Claude 토큰이 구성되지 않았습니다. 생성 시 토큰 입력을 요청받게 됩니다."
+  }
+}

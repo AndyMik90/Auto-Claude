@@ -1,0 +1,25 @@
+{
+  "dialog": {
+    "title": "App Update Available",
+    "description": "A new version of Auto Claude is ready to download"
+  },
+  "version": {
+    "label": "New Version",
+    "released": "Released {{date}}"
+  },
+  "progress": {
+    "downloading": "Downloading...",
+    "size": "{{transferred}} MB / {{total}} MB"
+  },
+  "status": {
+    "downloadSuccess": "Update downloaded successfully! Click Install to restart and apply the update.",
+    "downloadError": "Failed to download update"
+  },
+  "buttons": {
+    "installLater": "Install Later",
+    "remindLater": "Remind Me Later",
+    "installRestart": "Install and Restart",
+    "downloadUpdate": "Download Update",
+    "downloading": "Downloading..."
+  }
+}

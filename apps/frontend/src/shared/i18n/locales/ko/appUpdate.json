@@ -1,0 +1,25 @@
+{
+  "dialog": {
+    "title": "앱 업데이트 사용 가능",
+    "description": "새로운 버전의 Auto Claude를 다운로드할 수 있습니다"
+  },
+  "version": {
+    "label": "새 버전",
+    "released": "출시일: {{date}}"
+  },
+  "progress": {
+    "downloading": "다운로드 중...",
+    "size": "{{transferred}} MB / {{total}} MB"
+  },
+  "status": {
+    "downloadSuccess": "업데이트 다운로드가 완료되었습니다! 설치를 클릭하여 재시작하고 업데이트를 적용하세요.",
+    "downloadError": "업데이트 다운로드 실패"
+  },
+  "buttons": {
+    "installLater": "나중에 설치",
+    "remindLater": "나중에 알림",
+    "installRestart": "설치 및 재시작",
+    "downloadUpdate": "업데이트 다운로드",
+    "downloading": "다운로드 중..."
+  }
+}

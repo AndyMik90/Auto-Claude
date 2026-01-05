@@ -1,0 +1,89 @@
+{
+  "header": {
+    "title": "변경 로그 생성기",
+    "steps": {
+      "step1": "1단계: 포함할 완료된 작업 선택",
+      "step2": "2단계: 변경 로그 구성 및 생성",
+      "step3": "3단계: 릴리스 및 작업 아카이브"
+    },
+    "stepLabels": {
+      "select": "선택",
+      "generate": "생성",
+      "release": "릴리스"
+    },
+    "refresh": "새로고침"
+  },
+  "filters": {
+    "changelogSource": "변경 로그 소스",
+    "sourceMode": {
+      "tasks": {
+        "label": "완료된 작업",
+        "description": "완료된 명세 작업에서 생성"
+      },
+      "gitHistory": {
+        "label": "Git 히스토리",
+        "description": "최근 커밋 또는 태그 범위에서 생성"
+      },
+      "branchDiff": {
+        "label": "브랜치 비교",
+        "description": "두 브랜치 간의 커밋에서 생성"
+      }
+    },
+    "gitHistory": {
+      "title": "Git 히스토리 옵션",
+      "historyType": "히스토리 유형",
+      "types": {
+        "sinceVersion": "버전 이후",
+        "recent": "최근 커밋",
+        "sinceDate": "날짜 이후",
+        "tagRange": "태그 범위"
+      },
+      "numberOfCommits": "커밋 수",
+      "sinceDate": "시작 날짜",
+      "fromTag": "시작 태그",
+      "toTag": "종료 태그 (선택)",
+      "head": "HEAD (최신)",
+      "lastVersion": "마지막 버전",
+      "selectVersion": "버전 선택...",
+      "versionHelp": "이 버전 이후의 모든 커밋이 포함됩니다",
+      "includeMergeCommits": "병합 커밋 포함",
+      "loading": "로딩 중...",
+      "loadCommits": "커밋 로드"
+    },
+    "branchComparison": {
+      "title": "브랜치 비교",
+      "baseBranch": "베이스 브랜치",
+      "selectBaseBranch": "베이스 브랜치 선택...",
+      "default": "기본",
+      "baseBranchHelp": "병합할 대상 브랜치",
+      "compareBranch": "비교 브랜치",
+      "selectCompareBranch": "비교 브랜치 선택...",
+      "current": "현재",
+      "compareBranchHelp": "변경 사항이 있는 브랜치",
+      "branchesMustBeDifferent": "브랜치는 서로 달라야 합니다"
+    }
+  },
+  "list": {
+    "taskMode": {
+      "selectedCount": "{{selected}} / {{total}} 작업 선택됨",
+      "selectAll": "모두 선택",
+      "clear": "지우기",
+      "noTasks": "완료된 작업 없음",
+      "noTasksDescription": "칸반 보드에서 작업을 완료하고 \"완료\"로 표시하면 변경 로그에 포함됩니다."
+    },
+    "gitMode": {
+      "commitsFound": "{{count}}개 커밋 발견",
+      "commitsFoundSingular": "{{count}}개 커밋 발견",
+      "loadingCommits": "커밋 로딩 중...",
+      "noCommits": "커밋 없음",
+      "noCommitsGitHistory": "히스토리 옵션을 구성하고 \"커밋 로드\"를 클릭하여 미리보기합니다.",
+      "noCommitsBranchDiff": "두 브랜치를 모두 선택하고 \"커밋 로드\"를 클릭하여 변경 사항을 확인합니다."
+    },
+    "continue": "계속",
+    "summaryLabels": {
+      "task": "작업",
+      "commit": "커밋",
+      "item": "항목"
+    }
+  }
+}

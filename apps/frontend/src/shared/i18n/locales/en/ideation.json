@@ -1,0 +1,9 @@
+{
+  "emptyState": {
+    "title": "No Ideas Yet",
+    "description": "Generate AI-powered feature ideas based on your project's context, existing patterns, and target audience.",
+    "enabledTypes": "Enabled Ideation Types",
+    "generateButton": "Generate Ideas",
+    "tokenWarning": "Claude token not configured. You'll be prompted to enter it when generating."
+  }
+}

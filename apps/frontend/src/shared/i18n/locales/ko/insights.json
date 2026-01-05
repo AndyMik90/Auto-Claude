@@ -1,0 +1,38 @@
+{
+  "title": "인사이트",
+  "subtitle": "코드베이스에 대해 질문하세요",
+  "newChat": "새 대화",
+  "emptyState": {
+    "title": "대화 시작하기",
+    "description": "코드베이스에 대해 질문하고, 개선 제안을 받거나, 구현하고 싶은 기능을 논의하세요.",
+    "suggestions": [
+      "이 프로젝트의 아키텍처는 무엇인가요?",
+      "코드 품질 개선 제안",
+      "다음에 추가할 수 있는 기능은?",
+      "보안 문제가 있나요?"
+    ]
+  },
+  "input": {
+    "placeholder": "코드베이스에 대해 질문하세요...",
+    "help": "Enter로 전송, Shift+Enter로 줄 바꿈"
+  },
+  "message": {
+    "you": "나",
+    "assistant": "어시스턴트"
+  },
+  "task": {
+    "suggested": "제안된 작업",
+    "creating": "생성 중...",
+    "created": "작업 생성됨",
+    "create": "작업 생성"
+  },
+  "status": {
+    "thinking": "생각하는 중..."
+  },
+  "tools": {
+    "count": "{{count}}개 도구 사용됨",
+    "readingFile": "파일 읽는 중",
+    "searchingFiles": "파일 검색 중",
+    "searchingCode": "코드 검색 중"
+  }
+}

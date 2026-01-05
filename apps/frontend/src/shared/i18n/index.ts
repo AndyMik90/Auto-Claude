@@ -12,6 +12,15 @@ import enDialogs from './locales/en/dialogs.json';
 import enGitlab from './locales/en/gitlab.json';
 import enTaskReview from './locales/en/taskReview.json';
 import enTerminal from './locales/en/terminal.json';
+import enInsights from './locales/en/insights.json';
+import enChangelog from './locales/en/changelog.json';
+import enRateLimit from './locales/en/rateLimit.json';
+import enCompetitorAnalysis from './locales/en/competitorAnalysis.json';
+import enAppUpdate from './locales/en/appUpdate.json';
+import enWorktrees from './locales/en/worktrees.json';
+import enIdeation from './locales/en/ideation.json';
+import enProjectIndex from './locales/en/projectIndex.json';
+import enModels from './locales/en/models.json';
 
 // Import French translation resources
 import frCommon from './locales/fr/common.json';
@@ -36,6 +45,15 @@ import koDialogs from './locales/ko/dialogs.json';
 import koGitlab from './locales/ko/gitlab.json';
 import koTaskReview from './locales/ko/taskReview.json';
 import koTerminal from './locales/ko/terminal.json';
+import koInsights from './locales/ko/insights.json';
+import koChangelog from './locales/ko/changelog.json';
+import koRateLimit from './locales/ko/rateLimit.json';
+import koCompetitorAnalysis from './locales/ko/competitorAnalysis.json';
+import koAppUpdate from './locales/ko/appUpdate.json';
+import koWorktrees from './locales/ko/worktrees.json';
+import koIdeation from './locales/ko/ideation.json';
+import koProjectIndex from './locales/ko/projectIndex.json';
+import koModels from './locales/ko/models.json';
 
 export const defaultNS = 'common';
 
@@ -50,7 +68,16 @@ export const resources = {
     dialogs: enDialogs,
     gitlab: enGitlab,
     taskReview: enTaskReview,
-    terminal: enTerminal
+    terminal: enTerminal,
+    insights: enInsights,
+    changelog: enChangelog,
+    rateLimit: enRateLimit,
+    competitorAnalysis: enCompetitorAnalysis,
+    appUpdate: enAppUpdate,
+    worktrees: enWorktrees,
+    ideation: enIdeation,
+    projectIndex: enProjectIndex,
+    models: enModels
   },
   fr: {
     common: frCommon,
@@ -74,7 +101,16 @@ export const resources = {
     dialogs: koDialogs,
     gitlab: koGitlab,
     taskReview: koTaskReview,
-    terminal: koTerminal
+    terminal: koTerminal,
+    insights: koInsights,
+    changelog: koChangelog,
+    rateLimit: koRateLimit,
+    competitorAnalysis: koCompetitorAnalysis,
+    appUpdate: koAppUpdate,
+    worktrees: koWorktrees,
+    ideation: koIdeation,
+    projectIndex: koProjectIndex,
+    models: koModels
   }
 } as const;
 
@@ -85,7 +121,7 @@ i18n
     lng: 'en', // Default language (will be overridden by settings)
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal'],
+    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'insights', 'changelog', 'rateLimit', 'competitorAnalysis', 'appUpdate', 'worktrees', 'ideation', 'projectIndex', 'models'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

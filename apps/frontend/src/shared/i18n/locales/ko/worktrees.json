@@ -1,0 +1,60 @@
+{
+  "header": {
+    "title": "워크트리",
+    "description": "Auto Claude 작업을 위한 격리된 작업 공간을 관리합니다",
+    "refresh": "새로고침"
+  },
+  "errors": {
+    "title": "오류",
+    "loadTaskWorktrees": "작업 워크트리 로드 실패",
+    "loadWorktrees": "워크트리 로드 실패",
+    "taskNotFound": "이 워크트리의 작업을 찾을 수 없습니다",
+    "mergeFailed": "병합 실패",
+    "deleteWorktree": "워크트리 삭제 실패",
+    "deleteTerminalWorktree": "터미널 워크트리 삭제 실패"
+  },
+  "emptyState": {
+    "selectProject": "워크트리를 보려면 프로젝트를 선택하세요",
+    "title": "워크트리 없음",
+    "description": "워크트리는 Auto Claude가 기능을 빌드할 때 자동으로 생성됩니다. 에이전트 터미널 탭에서 터미널 워크트리를 직접 생성할 수도 있습니다."
+  },
+  "sections": {
+    "taskWorktrees": "작업 워크트리",
+    "terminalWorktrees": "터미널 워크트리"
+  },
+  "stats": {
+    "filesChanged": "{{count}}개 파일 변경됨",
+    "commitsAhead": "{{count}}개 커밋 앞섬"
+  },
+  "buttons": {
+    "mergeTo": "{{branch}}로 병합",
+    "copyPath": "경로 복사",
+    "delete": "삭제",
+    "close": "닫기",
+    "cancel": "취소",
+    "merge": "병합",
+    "merging": "병합 중...",
+    "deleting": "삭제 중..."
+  },
+  "created": "생성일: {{date}}",
+  "mergeDialog": {
+    "title": "워크트리 병합",
+    "description": "이 워크트리의 변경 사항을 기본 브랜치로 병합합니다.",
+    "sourceBranch": "소스 브랜치",
+    "targetBranch": "대상 브랜치",
+    "changes": "변경 사항",
+    "changesCount": "{{commits}}개 커밋, {{files}}개 파일",
+    "success": "병합 성공",
+    "failed": "병합 실패",
+    "conflictFiles": "충돌 파일:"
+  },
+  "deleteDialog": {
+    "title": "워크트리를 삭제하시겠습니까?",
+    "description": "워크트리와 커밋되지 않은 모든 변경 사항이 영구적으로 삭제됩니다.",
+    "warning": "이 작업은 취소할 수 없습니다."
+  },
+  "deleteTerminalDialog": {
+    "title": "터미널 워크트리를 삭제하시겠습니까?",
+    "description": "워크트리와 브랜치가 영구적으로 삭제됩니다. 커밋되지 않은 변경 사항은 손실됩니다."
+  }
+}

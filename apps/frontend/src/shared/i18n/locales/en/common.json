@@ -242,5 +242,13 @@
     "done": "Done",
     "failedLabel": "Failed",
     "starting": "Starting..."
+  },
+  "ideationTypes": {
+    "code_improvements": "Code Improvements",
+    "ui_ux_improvements": "UI/UX Improvements",
+    "documentation_gaps": "Documentation",
+    "security_hardening": "Security",
+    "performance_optimizations": "Performance",
+    "code_quality": "Code Quality"
   }
 }

@@ -1,4 +1,5 @@
 import { Brain, Scale, Zap, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { DEFAULT_AGENT_PROFILES, AVAILABLE_MODELS, THINKING_LEVELS } from '../../shared/constants';
 import { useSettingsStore, saveSettings } from '../stores/settings-store';
@@ -18,6 +19,7 @@ const iconMap: Record<string, React.ElementType> = {
  * Displays preset agent profiles for quick model/thinking level configuration
  */
 export function AgentProfiles() {
+  const { t } = useTranslation('models');
   const settings = useSettingsStore((state) => state.settings);
   const selectedProfileId = settings.selectedAgentProfile || 'auto';
 
@@ -34,11 +36,10 @@ export function AgentProfiles() {
   };
 
   /**
-   * Get human-readable thinking level label
+   * Get human-readable thinking level label (now uses i18n)
    */
   const getThinkingLabel = (thinkingValue: string): string => {
-    const level = THINKING_LEVELS.find((l) => l.value === thinkingValue);
-    return level?.label || thinkingValue;
+    return t(`thinkingLevels.${thinkingValue}.label`, { defaultValue: thinkingValue });
   };
 
   /**

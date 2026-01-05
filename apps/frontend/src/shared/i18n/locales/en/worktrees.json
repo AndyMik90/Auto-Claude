@@ -1,0 +1,60 @@
+{
+  "header": {
+    "title": "Worktrees",
+    "description": "Manage isolated workspaces for your Auto Claude tasks",
+    "refresh": "Refresh"
+  },
+  "errors": {
+    "title": "Error",
+    "loadTaskWorktrees": "Failed to load task worktrees",
+    "loadWorktrees": "Failed to load worktrees",
+    "taskNotFound": "Task not found for this worktree",
+    "mergeFailed": "Merge failed",
+    "deleteWorktree": "Failed to delete worktree",
+    "deleteTerminalWorktree": "Failed to delete terminal worktree"
+  },
+  "emptyState": {
+    "selectProject": "Select a project to view worktrees",
+    "title": "No Worktrees",
+    "description": "Worktrees are created automatically when Auto Claude builds features. You can also create terminal worktrees from the Agent Terminals tab."
+  },
+  "sections": {
+    "taskWorktrees": "Task Worktrees",
+    "terminalWorktrees": "Terminal Worktrees"
+  },
+  "stats": {
+    "filesChanged": "{{count}} files changed",
+    "commitsAhead": "{{count}} commits ahead"
+  },
+  "buttons": {
+    "mergeTo": "Merge to {{branch}}",
+    "copyPath": "Copy Path",
+    "delete": "Delete",
+    "close": "Close",
+    "cancel": "Cancel",
+    "merge": "Merge",
+    "merging": "Merging...",
+    "deleting": "Deleting..."
+  },
+  "created": "Created {{date}}",
+  "mergeDialog": {
+    "title": "Merge Worktree",
+    "description": "Merge changes from this worktree into the base branch.",
+    "sourceBranch": "Source Branch",
+    "targetBranch": "Target Branch",
+    "changes": "Changes",
+    "changesCount": "{{commits}} commits, {{files}} files",
+    "success": "Merge Successful",
+    "failed": "Merge Failed",
+    "conflictFiles": "Conflicting files:"
+  },
+  "deleteDialog": {
+    "title": "Delete Worktree?",
+    "description": "This will permanently delete the worktree and all uncommitted changes.",
+    "warning": "This action cannot be undone."
+  },
+  "deleteTerminalDialog": {
+    "title": "Delete Terminal Worktree?",
+    "description": "This will permanently delete the worktree and its branch. Any uncommitted changes will be lost."
+  }
+}

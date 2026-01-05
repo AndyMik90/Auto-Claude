@@ -644,7 +644,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
 }
 
 export function AgentTools() {
-  const { t } = useTranslation(['settings']);
+  const { t } = useTranslation(['settings', 'models']);
   const settings = useSettingsStore((state) => state.settings);
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
@@ -1378,7 +1378,7 @@ export function AgentTools() {
                           id={id}
                           config={config}
                           modelLabel={getModelLabel(model)}
-                          thinkingLabel={getThinkingLabel(thinking)}
+                          thinkingLabel={t(`models:thinkingLevels.${thinking}.label`)}
                           overrides={envConfig?.agentMcpOverrides?.[id]}
                           mcpServerStates={envConfig?.mcpServers}
                           customServers={envConfig?.customMcpServers || []}

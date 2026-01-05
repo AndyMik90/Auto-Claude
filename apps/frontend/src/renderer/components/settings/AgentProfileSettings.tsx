@@ -40,7 +40,7 @@ const PHASE_KEYS: Array<keyof PhaseModelConfig> = ['spec', 'planning', 'coding',
  * Used in the Settings page under Agent Settings
  */
 export function AgentProfileSettings() {
-  const { t } = useTranslation('settings');
+  const { t } = useTranslation(['settings', 'models']);
   const settings = useSettingsStore((state) => state.settings);
   const selectedProfileId = settings.selectedAgentProfile || 'auto';
   const [showPhaseConfig, setShowPhaseConfig] = useState(selectedProfileId === 'auto');
@@ -91,8 +91,7 @@ export function AgentProfileSettings() {
    * Get human-readable thinking level label
    */
   const getThinkingLabel = (thinkingValue: string): string => {
-    const level = THINKING_LEVELS.find((l) => l.value === thinkingValue);
-    return level?.label || thinkingValue;
+    return t(`models:thinkingLevels.${thinkingValue}.label`, { defaultValue: thinkingValue });
   };
 
   /**
@@ -272,7 +271,7 @@ export function AgentProfileSettings() {
                             <SelectContent>
                               {THINKING_LEVELS.map((level) => (
                                 <SelectItem key={level.value} value={level.value}>
-                                  {level.label}
+                                  {t(`models:thinkingLevels.${level.value}.label`)}
                                 </SelectItem>
                               ))}
                             </SelectContent>

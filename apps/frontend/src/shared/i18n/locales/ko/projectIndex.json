@@ -1,0 +1,39 @@
+{
+  "header": {
+    "title": "프로젝트 구조",
+    "description": "코드베이스에 대한 AI가 발견한 지식",
+    "refresh": "새로고침",
+    "refreshTooltip": "프로젝트 구조 재분석"
+  },
+  "errors": {
+    "loadFailed": "프로젝트 인덱스 로드 실패"
+  },
+  "emptyState": {
+    "title": "프로젝트 인덱스를 찾을 수 없습니다",
+    "description": "새로고침 버튼을 클릭하여 프로젝트 구조를 분석하고 인덱스를 생성하세요.",
+    "analyze": "프로젝트 분석"
+  },
+  "overview": {
+    "title": "개요",
+    "services": "{{count}}개 서비스"
+  },
+  "sections": {
+    "services": "서비스",
+    "infrastructure": "인프라",
+    "conventions": "규칙"
+  },
+  "infrastructure": {
+    "dockerCompose": "Docker Compose",
+    "cicd": "CI/CD",
+    "deployment": "배포",
+    "dockerServices": "Docker 서비스"
+  },
+  "conventions": {
+    "pythonLinting": "Python 린팅",
+    "jsLinting": "JS 린팅",
+    "formatting": "포매팅",
+    "gitHooks": "Git 훅",
+    "typescript": "TypeScript",
+    "enabled": "활성화됨"
+  }
+}

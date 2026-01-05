@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, ExternalLink, Clock, RefreshCw, User, ChevronDown, Check, Star, Zap, FileText, ListTodo, Map, Lightbulb, Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -26,20 +27,6 @@ import type { SDKRateLimitInfo } from '../../shared/types';
 const CLAUDE_UPGRADE_URL = 'https://claude.ai/upgrade';
 
 /**
- * Get a human-readable name for the source
- */
-function getSourceName(source: SDKRateLimitInfo['source']): string {
-  switch (source) {
-    case 'changelog': return 'Changelog Generation';
-    case 'task': return 'Task Execution';
-    case 'roadmap': return 'Roadmap Generation';
-    case 'ideation': return 'Ideation';
-    case 'title-generator': return 'Title Generation';
-    default: return 'Claude Operation';
-  }
-}
-
-/**
  * Get an icon for the source
  */
 function getSourceIcon(source: SDKRateLimitInfo['source']) {
@@ -53,6 +40,7 @@ function getSourceIcon(source: SDKRateLimitInfo['source']) {
 }
 
 export function SDKRateLimitModal() {
+  const { t } = useTranslation('rateLimit');
   const { isSDKModalOpen, sdkRateLimitInfo, hideSDKRateLimitModal, clearPendingRateLimit } = useRateLimitStore();
   const { profiles, isSwitching, setSwitching } = useClaudeProfileStore();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -67,6 +55,18 @@ export function SDKRateLimitModal() {
     swappedFrom?: string;
     swappedTo?: string;
   } | null>(null);
+
+  // Get source name with translation
+  const getSourceName = (source: SDKRateLimitInfo['source']): string => {
+    switch (source) {
+      case 'changelog': return t('sources.changelog');
+      case 'task': return t('sources.task');
+      case 'roadmap': return t('sources.roadmap');
+      case 'ideation': return t('sources.ideation');
+      case 'title-generator': return t('sources.titleGenerator');
+      default: return t('sources.default');
+    }
+  };
 
   // Load profiles and auto-switch settings when modal opens
   useEffect(() => {
@@ -161,21 +161,14 @@ export function SDKRateLimitModal() {
           hideSDKRateLimitModal();
 
           // Alert the user about the terminal
-          alert(
-            `A terminal has been opened to authenticate "${profileName}".\n\n` +
-            `Steps to complete:\n` +
-            `1. Check the "Agent Terminals" section in the sidebar\n` +
-            `2. Complete the OAuth login in your browser\n` +
-            `3. The token will be saved automatically\n\n` +
-            `Once done, return here and the account will be available.`
-          );
+          alert(t('alerts.terminalOpened', { profileName }));
         } else {
-          alert(`Failed to start authentication: ${initResult.error || 'Please try again.'}`);
+          alert(t('alerts.authFailed', { error: initResult.error || t('alerts.addFailed') }));
         }
       }
     } catch (err) {
       console.error('Failed to add profile:', err);
-      alert('Failed to add profile. Please try again.');
+      alert(t('alerts.addFailed'));
     } finally {
       setIsAddingProfile(false);
     }
@@ -236,13 +229,13 @@ export function SDKRateLimitModal() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-warning">
             <AlertCircle className="h-5 w-5" />
-            Claude Code Rate Limit
+            {t('dialog.title')}
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             <SourceIcon className="h-4 w-4" />
-            {sourceName} was interrupted due to usage limits.
+            {t('dialog.interrupted', { source: sourceName })}
             {currentProfile && (
-              <span className="text-muted-foreground"> (Profile: {currentProfile.name})</span>
+              <span className="text-muted-foreground"> {t('dialog.profile', { profile: currentProfile.name })}</span>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -253,26 +246,26 @@ export function SDKRateLimitModal() {
             {swapInfo?.wasAutoSwapped ? (
               <>
                 <p className="font-medium mb-1">
-                  {swapInfo.swapReason === 'proactive' ? '✓ Proactive Swap' : '⚡ Reactive Swap'}
+                  {swapInfo.swapReason === 'proactive' ? t('swapInfo.proactiveSwap') : t('swapInfo.reactiveSwap')}
                 </p>
                 <p>
                   {swapInfo.swapReason === 'proactive'
-                    ? `Automatically switched from ${swapInfo.swappedFrom} to ${swapInfo.swappedTo} before hitting rate limit.`
-                    : `Rate limit hit on ${swapInfo.swappedFrom}. Automatically switched to ${swapInfo.swappedTo} and restarted.`
+                    ? t('swapInfo.proactiveMessage', { from: swapInfo.swappedFrom, to: swapInfo.swappedTo })
+                    : t('swapInfo.reactiveMessage', { from: swapInfo.swappedFrom, to: swapInfo.swappedTo })
                   }
                 </p>
                 <p className="mt-2 text-[10px]">
-                  Your work continued without interruption.
+                  {t('swapInfo.continuedWork')}
                 </p>
               </>
             ) : (
               <>
-                <p className="font-medium mb-1">Rate limit reached</p>
+                <p className="font-medium mb-1">{t('swapInfo.rateLimitReached')}</p>
                 <p>
-                  The operation was stopped because {currentProfile?.name || 'your account'} reached its usage limit.
+                  {t('swapInfo.operationStopped', { profile: currentProfile?.name || 'your account' })}
                   {hasMultipleProfiles
-                    ? ' Switch to another account below to continue.'
-                    : ' Add another Claude account to continue working.'}
+                    ? ' ' + t('swapInfo.switchToAnother')
+                    : ' ' + t('swapInfo.addAnother')}
                 </p>
               </>
             )}
@@ -286,7 +279,7 @@ export function SDKRateLimitModal() {
             onClick={() => window.open(CLAUDE_UPGRADE_URL, '_blank')}
           >
             <Zap className="h-4 w-4" />
-            Upgrade to Pro for Higher Limits
+            {t('upgrade.button')}
           </Button>
 
           {/* Reset time info */}
@@ -295,12 +288,12 @@ export function SDKRateLimitModal() {
               <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Resets {sdkRateLimitInfo.resetTime}
+                  {t('resetTime.resets', { time: sdkRateLimitInfo.resetTime })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {sdkRateLimitInfo.limitType === 'weekly'
-                    ? 'Weekly limit - resets in about a week'
-                    : 'Session limit - resets in a few hours'}
+                    ? t('resetTime.weekly')
+                    : t('resetTime.session')}
                 </p>
               </div>
             </div>
@@ -310,16 +303,16 @@ export function SDKRateLimitModal() {
           <div className="rounded-lg border border-accent/50 bg-accent/10 p-4">
             <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
               <User className="h-4 w-4" />
-              {hasMultipleProfiles ? 'Switch Account & Retry' : 'Use Another Account'}
+              {hasMultipleProfiles ? t('profileSwitching.switchAndRetry') : t('profileSwitching.useAnother')}
             </h4>
 
             {hasMultipleProfiles ? (
               <>
                 <p className="text-sm text-muted-foreground mb-3">
                   {suggestedProfile ? (
-                    <>Recommended: <strong>{suggestedProfile.name}</strong> has more capacity available.</>
+                    t('profileSwitching.recommended', { profile: suggestedProfile.name })
                   ) : (
-                    'Switch to another Claude account and retry the operation:'
+                    t('profileSwitching.switchToAnother')
                   )}
                 </p>
 
@@ -328,7 +321,7 @@ export function SDKRateLimitModal() {
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="flex-1 justify-between">
                         <span className="truncate flex items-center gap-2">
-                          {selectedProfile?.name || 'Select account...'}
+                          {selectedProfile?.name || t('profileSwitching.selectAccount')}
                           {selectedProfileId === sdkRateLimitInfo.suggestedProfile?.id && (
                             <Star className="h-3 w-3 text-yellow-500" />
                           )}
@@ -346,7 +339,7 @@ export function SDKRateLimitModal() {
                           <span className="truncate flex items-center gap-2">
                             {profile.name}
                             {profile.id === sdkRateLimitInfo.suggestedProfile?.id && (
-                              <Star className="h-3 w-3 text-yellow-500" aria-label="Recommended" />
+                              <Star className="h-3 w-3 text-yellow-500" aria-label={t('profileSwitching.recommendedLabel')} />
                             )}
                           </span>
                           {selectedProfileId === profile.id && (
@@ -364,7 +357,7 @@ export function SDKRateLimitModal() {
                         className="flex items-center gap-2 text-muted-foreground"
                       >
                         <Plus className="h-4 w-4" />
-                        Add new account...
+                        {t('profileSwitching.addNewAccount')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -379,12 +372,12 @@ export function SDKRateLimitModal() {
                     {isRetrying || isSwitching ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        Retrying...
+                        {t('profileSwitching.retrying')}
                       </>
                     ) : (
                       <>
                         <RefreshCw className="h-4 w-4" />
-                        Retry
+                        {t('profileSwitching.retry')}
                       </>
                     )}
                   </Button>
@@ -400,7 +393,7 @@ export function SDKRateLimitModal() {
                 {availableProfiles.length > 0 && (
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
                     <Label htmlFor="sdk-auto-switch" className="text-xs text-muted-foreground cursor-pointer">
-                      Auto-switch & retry on rate limit
+                      {t('profileSwitching.autoSwitch')}
                     </Label>
                     <Switch
                       id="sdk-auto-switch"
@@ -413,18 +406,18 @@ export function SDKRateLimitModal() {
               </>
             ) : (
               <p className="text-sm text-muted-foreground mb-3">
-                Add another Claude subscription to automatically switch when you hit rate limits.
+                {t('profileSwitching.addSubscription')}
               </p>
             )}
 
             {/* Add new account section */}
             <div className={hasMultipleProfiles ? "mt-4 pt-3 border-t border-border/50" : ""}>
               <p className="text-xs text-muted-foreground mb-2">
-                {hasMultipleProfiles ? 'Add another account:' : 'Connect a Claude account:'}
+                {hasMultipleProfiles ? t('profileSwitching.addAnother') : t('profileSwitching.connectAccount')}
               </p>
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="Account name (e.g., Work, Personal)"
+                  placeholder={t('profileSwitching.accountPlaceholder')}
                   value={newProfileName}
                   onChange={(e) => setNewProfileName(e.target.value)}
                   className="flex-1 h-8 text-sm"
@@ -446,11 +439,11 @@ export function SDKRateLimitModal() {
                   ) : (
                     <Plus className="h-3 w-3" />
                   )}
-                  Add
+                  {t('profileSwitching.add')}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                This will open Claude login to authenticate the new account.
+                {t('profileSwitching.openLogin')}
               </p>
             </div>
           </div>
@@ -458,10 +451,10 @@ export function SDKRateLimitModal() {
           {/* Upgrade prompt */}
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
             <h4 className="text-sm font-medium text-foreground mb-2">
-              Upgrade for more usage
+              {t('upgrade.title')}
             </h4>
             <p className="text-sm text-muted-foreground mb-3">
-              Upgrade your Claude subscription for higher usage limits.
+              {t('upgrade.description')}
             </p>
             <Button
               variant="outline"
@@ -470,26 +463,25 @@ export function SDKRateLimitModal() {
               onClick={handleUpgrade}
             >
               <ExternalLink className="h-4 w-4" />
-              Upgrade Subscription
+              {t('upgrade.subscriptionButton')}
             </Button>
           </div>
 
           {/* Info about what was interrupted */}
           <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
-            <p className="font-medium mb-1">What happened:</p>
+            <p className="font-medium mb-1">{t('whatHappened.title')}</p>
             <p>
-              The {sourceName.toLowerCase()} operation was stopped because your Claude account
-              ({currentProfile?.name || 'Default'}) reached its usage limit.
+              {t('whatHappened.message', { source: sourceName.toLowerCase(), profile: currentProfile?.name || 'Default' })}
               {hasMultipleProfiles
-                ? ' You can switch to another account and retry, or add more accounts above.'
-                : ' Add another Claude account above to continue working, or wait for the limit to reset.'}
+                ? ' ' + t('whatHappened.switchOrAdd')
+                : ' ' + t('whatHappened.addOrWait')}
             </p>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={hideSDKRateLimitModal}>
-            Close
+            {t('close')}
           </Button>
         </DialogFooter>
       </DialogContent>
