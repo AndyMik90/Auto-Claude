@@ -16,6 +16,7 @@ import { IPC_CHANNELS, MODEL_ID_MAP, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THI
 import { getGitHubConfig, githubFetch } from './utils';
 import { readSettingsFile } from '../../settings-utils';
 import { getAugmentedEnv } from '../../env-utils';
+import { getProfileEnv } from '../../rate-limit-detector';
 import type { Project, AppSettings } from '../../../shared/types';
 import { createContextLogger } from './utils/logger';
 import { withProjectOrNull } from './utils/project-middleware';
@@ -641,6 +642,10 @@ async function runPRReview(
   const subprocessEnv = await getRunnerEnv(
     getClaudeMdEnv(project)
   );
+
+  // Add decrypted OAuth token from active Claude profile
+  const profileEnv = getProfileEnv();
+  Object.assign(subprocessEnv, profileEnv);
 
   const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
     pythonPath: getPythonPath(backendPath),
@@ -1501,6 +1506,10 @@ export function registerPRHandlers(
           const followupEnv = await getRunnerEnv(
             getClaudeMdEnv(project)
           );
+
+          // Add decrypted OAuth token from active Claude profile
+          const followupProfileEnv = getProfileEnv();
+          Object.assign(followupEnv, followupProfileEnv);
 
           const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
             pythonPath: getPythonPath(backendPath),
