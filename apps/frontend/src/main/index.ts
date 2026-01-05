@@ -20,7 +20,7 @@ for (const envPath of possibleEnvPaths) {
   }
 }
 
-import { app, BrowserWindow, shell, nativeImage, session } from 'electron';
+import { app, BrowserWindow, shell, nativeImage, session, screen } from 'electron';
 import { join } from 'path';
 import { accessSync, readFileSync, writeFileSync, rmSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
@@ -106,12 +106,35 @@ let agentManager: AgentManager | null = null;
 let terminalManager: TerminalManager | null = null;
 
 function createWindow(): void {
+  // Get the primary display's work area (accounts for taskbar, dock, etc.)
+  const { workAreaSize } = screen.getPrimaryDisplay();
+
+  // Define preferred and minimum dimensions
+  const preferredWidth = 1400;
+  const preferredHeight = 900;
+  // Use smaller minimums to support high DPI displays with scaling (e.g., 4K at 300%)
+  const absoluteMinWidth = 800;
+  const absoluteMinHeight = 500;
+
+  // Calculate available space with a small margin to avoid edge-to-edge windows
+  const screenMargin = 20;
+  const availableWidth = workAreaSize.width - screenMargin;
+  const availableHeight = workAreaSize.height - screenMargin;
+
+  // Ensure minimum dimensions don't exceed available screen space
+  const minWidth = Math.min(absoluteMinWidth, availableWidth);
+  const minHeight = Math.min(absoluteMinHeight, availableHeight);
+
+  // Calculate actual dimensions (preferred, but capped to available space)
+  const width = Math.min(preferredWidth, availableWidth);
+  const height = Math.min(preferredHeight, availableHeight);
+
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1000,
-    minHeight: 700,
+    width,
+    height,
+    minWidth,
+    minHeight,
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
