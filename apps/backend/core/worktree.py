@@ -4,7 +4,7 @@ Git Worktree Manager - Per-Spec Architecture
 =============================================
 
 Each spec gets its own worktree:
-- Worktree path: .worktrees/{spec-name}/
+- Worktree path: .auto-claude/worktrees/tasks/{spec-name}/
 - Branch name: auto-claude/{spec-name}
 
 This allows:
@@ -48,14 +48,14 @@ class WorktreeManager:
     """
     Manages per-spec Git worktrees.
 
-    Each spec gets its own worktree in .worktrees/{spec-name}/ with
+    Each spec gets its own worktree in .auto-claude/worktrees/tasks/{spec-name}/ with
     a corresponding branch auto-claude/{spec-name}.
     """
 
     def __init__(self, project_dir: Path, base_branch: str | None = None):
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
-        self.worktrees_dir = project_dir / ".worktrees"
+        self.worktrees_dir = project_dir / ".auto-claude" / "worktrees" / "tasks"
         self._merge_lock = asyncio.Lock()
 
     def _detect_base_branch(self) -> str:
@@ -124,17 +124,37 @@ class WorktreeManager:
         return result.stdout.strip()
 
     def _run_git(
-        self, args: list[str], cwd: Path | None = None
+        self, args: list[str], cwd: Path | None = None, timeout: int = 60
     ) -> subprocess.CompletedProcess:
-        """Run a git command and return the result."""
-        return subprocess.run(
-            ["git"] + args,
-            cwd=cwd or self.project_dir,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
+        """Run a git command and return the result.
+
+        Args:
+            args: Git command arguments (without 'git' prefix)
+            cwd: Working directory for the command
+            timeout: Command timeout in seconds (default: 60)
+
+        Returns:
+            CompletedProcess with command results. On timeout, returns a
+            CompletedProcess with returncode=-1 and timeout error in stderr.
+        """
+        try:
+            return subprocess.run(
+                ["git"] + args,
+                cwd=cwd or self.project_dir,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            # Return a failed result on timeout instead of raising
+            return subprocess.CompletedProcess(
+                args=["git"] + args,
+                returncode=-1,
+                stdout="",
+                stderr=f"Command timed out after {timeout} seconds",
+            )
 
     def _unstage_gitignored_files(self) -> None:
         """
@@ -194,7 +214,7 @@ class WorktreeManager:
 
     def setup(self) -> None:
         """Create worktrees directory if needed."""
-        self.worktrees_dir.mkdir(exist_ok=True)
+        self.worktrees_dir.mkdir(parents=True, exist_ok=True)
 
     # ==================== Per-Spec Worktree Methods ====================
 
@@ -327,9 +347,33 @@ class WorktreeManager:
         # Delete branch if it exists (from previous attempt)
         self._run_git(["branch", "-D", branch_name])
 
-        # Create worktree with new branch from base
+        # Fetch latest from remote to ensure we have the most up-to-date code
+        # GitHub/remote is the source of truth, not the local branch
+        fetch_result = self._run_git(["fetch", "origin", self.base_branch])
+        if fetch_result.returncode != 0:
+            print(
+                f"Warning: Could not fetch {self.base_branch} from origin: {fetch_result.stderr}"
+            )
+            print("Falling back to local branch...")
+
+        # Determine the start point for the worktree
+        # Prefer origin/{base_branch} (remote) over local branch to ensure we have latest code
+        remote_ref = f"origin/{self.base_branch}"
+        start_point = self.base_branch  # Default to local branch
+
+        # Check if remote ref exists and use it as the source of truth
+        check_remote = self._run_git(["rev-parse", "--verify", remote_ref])
+        if check_remote.returncode == 0:
+            start_point = remote_ref
+            print(f"Creating worktree from remote: {remote_ref}")
+        else:
+            print(
+                f"Remote ref {remote_ref} not found, using local branch: {self.base_branch}"
+            )
+
+        # Create worktree with new branch from the start point (remote preferred)
         result = self._run_git(
-            ["worktree", "add", "-b", branch_name, str(worktree_path), self.base_branch]
+            ["worktree", "add", "-b", branch_name, str(worktree_path), start_point]
         )
 
         if result.returncode != 0:
@@ -478,14 +522,12 @@ class WorktreeManager:
         """List all spec worktrees."""
         worktrees = []
 
-        if not self.worktrees_dir.exists():
-            return worktrees
-
-        for item in self.worktrees_dir.iterdir():
-            if item.is_dir():
-                info = self.get_worktree_info(item.name)
-                if info:
-                    worktrees.append(info)
+        if self.worktrees_dir.exists():
+            for item in self.worktrees_dir.iterdir():
+                if item.is_dir():
+                    info = self.get_worktree_info(item.name)
+                    if info:
+                        worktrees.append(info)
 
         return worktrees
 
@@ -587,81 +629,12 @@ class WorktreeManager:
 
         return commands
 
-    # ==================== Backward Compatibility ====================
-    # These methods provide backward compatibility with the old single-worktree API
-
-    def get_staging_path(self) -> Path | None:
-        """
-        Backward compatibility: Get path to any existing spec worktree.
-        Prefer using get_worktree_path(spec_name) instead.
-        """
-        worktrees = self.list_all_worktrees()
-        if worktrees:
-            return worktrees[0].path
-        return None
-
-    def get_staging_info(self) -> WorktreeInfo | None:
-        """
-        Backward compatibility: Get info about any existing spec worktree.
-        Prefer using get_worktree_info(spec_name) instead.
-        """
-        worktrees = self.list_all_worktrees()
-        if worktrees:
-            return worktrees[0]
-        return None
-
-    def merge_staging(self, delete_after: bool = True) -> bool:
-        """
-        Backward compatibility: Merge first found worktree.
-        Prefer using merge_worktree(spec_name) instead.
-        """
-        worktrees = self.list_all_worktrees()
-        if worktrees:
-            return self.merge_worktree(worktrees[0].spec_name, delete_after)
-        return False
-
-    def remove_staging(self, delete_branch: bool = True) -> None:
-        """
-        Backward compatibility: Remove first found worktree.
-        Prefer using remove_worktree(spec_name) instead.
-        """
-        worktrees = self.list_all_worktrees()
-        if worktrees:
-            self.remove_worktree(worktrees[0].spec_name, delete_branch)
-
-    def get_or_create_staging(self, spec_name: str) -> WorktreeInfo:
-        """
-        Backward compatibility: Alias for get_or_create_worktree.
-        """
-        return self.get_or_create_worktree(spec_name)
-
-    def staging_exists(self) -> bool:
-        """
-        Backward compatibility: Check if any spec worktree exists.
-        Prefer using worktree_exists(spec_name) instead.
-        """
-        return len(self.list_all_worktrees()) > 0
-
-    def commit_in_staging(self, message: str) -> bool:
-        """
-        Backward compatibility: Commit in first found worktree.
-        Prefer using commit_in_worktree(spec_name, message) instead.
-        """
-        worktrees = self.list_all_worktrees()
-        if worktrees:
-            return self.commit_in_worktree(worktrees[0].spec_name, message)
-        return False
-
-    def has_uncommitted_changes(self, in_staging: bool = False) -> bool:
+    def has_uncommitted_changes(self, spec_name: str | None = None) -> bool:
         """Check if there are uncommitted changes."""
-        worktrees = self.list_all_worktrees()
-        if in_staging and worktrees:
-            cwd = worktrees[0].path
-        else:
-            cwd = None
+        cwd = None
+        if spec_name:
+            worktree_path = self.get_worktree_path(spec_name)
+            if worktree_path.exists():
+                cwd = worktree_path
         result = self._run_git(["status", "--porcelain"], cwd=cwd)
         return bool(result.stdout.strip())
-
-
-# Keep STAGING_WORKTREE_NAME for backward compatibility in imports
-STAGING_WORKTREE_NAME = "auto-claude"

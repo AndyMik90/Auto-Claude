@@ -27,7 +27,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [showDiffDialog, setShowDiffDialog] = useState(false);
-  const [stageOnly, setStageOnly] = useState(task.status === 'human_review');
+  const [stageOnly, setStageOnly] = useState(false); // Default to full merge for proper cleanup (fixes #243)
   const [stagedSuccess, setStagedSuccess] = useState<string | null>(null);
   const [stagedProjectPath, setStagedProjectPath] = useState<string | undefined>(undefined);
   const [suggestedCommitMessage, setSuggestedCommitMessage] = useState<string | undefined>(undefined);
@@ -222,19 +222,9 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     }
   }, [task.id]);
 
-  // Auto-load merge preview when worktree is ready (eliminates need to click "Check Conflicts")
-  // NOTE: This must be placed AFTER loadMergePreview definition since it depends on that callback
-  useEffect(() => {
-    // Only auto-load if:
-    // 1. Task needs review
-    // 2. Worktree exists
-    // 3. We haven't already loaded the preview for this task
-    // 4. We're not currently loading
-    const alreadyLoaded = hasLoadedPreviewRef.current === task.id;
-    if (needsReview && worktreeStatus?.exists && !alreadyLoaded && !isLoadingPreview) {
-      loadMergePreview();
-    }
-  }, [needsReview, worktreeStatus?.exists, isLoadingPreview, task.id, loadMergePreview]);
+  // NOTE: Merge preview is NO LONGER auto-loaded on modal open.
+  // User must click "Check for Conflicts" button to trigger the expensive preview operation.
+  // This improves modal open performance significantly (avoids 1-30+ second Python subprocess).
 
   return {
     // State
