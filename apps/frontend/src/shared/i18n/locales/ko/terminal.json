@@ -36,7 +36,7 @@
     "useProjectDefault": "프로젝트 기본값 사용 ({{branch}})",
     "baseBranchHelp": "워크트리를 생성할 기준 브랜치",
     "openInIDE": "IDE에서 열기",
-    "maxReached": "최대 12개의 터미널 워크트리에 도달했습니다",
+    "maxReached": "터미널 워크트리는 최대 12개까지 생성 가능합니다",
     "alreadyExists": "이 이름의 워크트리가 이미 존재합니다"
   }
 }
