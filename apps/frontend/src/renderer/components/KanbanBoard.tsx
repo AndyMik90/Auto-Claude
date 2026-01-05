@@ -266,20 +266,26 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
             </Tooltip>
           )}
           {status === 'done' && onRefresh && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 hover:bg-muted-foreground/10 hover:text-muted-foreground transition-colors"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              title={t('tooltips.refreshDone')}
-            >
-              {isRefreshing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-            </Button>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:bg-muted-foreground/10 hover:text-muted-foreground transition-colors"
+                  onClick={onRefresh}
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('tooltips.refreshDone')}
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

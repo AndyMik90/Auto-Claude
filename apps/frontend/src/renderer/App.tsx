@@ -72,7 +72,6 @@ interface ProjectTabBarWithContextProps {
   onProjectSelect: (projectId: string) => void;
   onProjectClose: (projectId: string) => void;
   onAddProject: () => void;
-  onSettingsClick: () => void;
 }
 
 function ProjectTabBarWithContext({
@@ -80,8 +79,7 @@ function ProjectTabBarWithContext({
   activeProjectId,
   onProjectSelect,
   onProjectClose,
-  onAddProject,
-  onSettingsClick
+  onAddProject
 }: ProjectTabBarWithContextProps) {
   return (
     <ProjectTabBar
@@ -90,7 +88,6 @@ function ProjectTabBarWithContext({
       onProjectSelect={onProjectSelect}
       onProjectClose={onProjectClose}
       onAddProject={onAddProject}
-      onSettingsClick={onSettingsClick}
     />
   );
 }
@@ -711,7 +708,6 @@ export function App() {
                   onProjectSelect={handleProjectTabSelect}
                   onProjectClose={handleProjectTabClose}
                   onAddProject={handleAddProject}
-                  onSettingsClick={() => setIsSettingsDialogOpen(true)}
                 />
               </SortableContext>
 
