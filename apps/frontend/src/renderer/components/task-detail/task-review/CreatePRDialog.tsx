@@ -67,7 +67,7 @@ export function CreatePRDialog({
 
         {result?.error && (
           <div className="text-sm text-destructive">
-            {t('pr.result.errorPrefix')}: {result.error}
+            {t('pr.result.errorPrefix', { defaultValue: 'Error' })}: {result.error}
           </div>
         )}
 

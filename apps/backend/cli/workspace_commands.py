@@ -354,7 +354,7 @@ def handle_create_pr_command(
     )
 
     if result.get("success"):
-        pr_url = result.get("pr_url", "")
+        pr_url = result.get("pr_url") or ""
         already_exists = result.get("already_exists", False)
 
         print()
@@ -364,7 +364,10 @@ def handle_create_pr_command(
             print_status("Pull request created successfully!", "success")
 
         print()
-        print(f"  {icon(Icons.LINK)} {highlight(pr_url)}")
+        if pr_url:
+            print(f"  {icon(Icons.LINK)} {highlight(pr_url)}")
+        else:
+            print(muted("  (PR URL not available - check GitHub for the existing PR)"))
         print()
         print(muted("Next steps:"))
         print(muted("  1. Review the PR on GitHub"))

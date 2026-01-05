@@ -827,6 +827,9 @@ class WorktreeManager:
             if result.returncode == 0:
                 return result.stdout.strip()
         except (subprocess.TimeoutExpired, Exception):
+            # Silently ignore errors when fetching existing PR URL - this is a best-effort
+            # lookup that may fail due to network issues, missing gh CLI, or auth problems.
+            # Returning None allows the caller to handle missing URLs gracefully.
             pass
         return None
 

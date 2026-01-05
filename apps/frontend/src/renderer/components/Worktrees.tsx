@@ -48,6 +48,7 @@ interface WorktreesProps {
 }
 
 export function Worktrees({ projectId }: WorktreesProps) {
+  const { t } = useTranslation('taskReview');
   const projects = useProjectStore((state) => state.projects);
   const selectedProject = projects.find((p) => p.id === projectId);
   const tasks = useTaskStore((state) => state.tasks);
@@ -87,14 +88,14 @@ export function Worktrees({ projectId }: WorktreesProps) {
       if (result.success && result.data) {
         setWorktrees(result.data.worktrees);
       } else {
-        setError(result.error || t('worktrees.errors.loadFailed'));
+        setError(result.error || t('worktrees.errors.failedToLoad'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('worktrees.errors.loadFailed'));
+      setError(err instanceof Error ? err.message : t('worktrees.errors.failedToLoad'));
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, t]);
+  }, [projectId]);
 
   // Load on mount and when project changes
   useEffect(() => {
@@ -189,13 +190,13 @@ export function Worktrees({ projectId }: WorktreesProps) {
       } else {
         setPRResult({
           success: false,
-          error: result.error || t('worktrees.errors.createPRFailed')
+          error: result.error || t('worktrees.errors.failedToCreate')
         });
       }
     } catch (err) {
       setPRResult({
         success: false,
-        error: err instanceof Error ? err.message : t('worktrees.errors.createPRFailed')
+        error: err instanceof Error ? err.message : t('worktrees.errors.failedToCreate')
       });
     } finally {
       setIsCreatingPR(false);
@@ -545,7 +546,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
           filesChanged: prWorktree?.filesChanged,
           additions: prWorktree?.additions,
           deletions: prWorktree?.deletions
-        } as WorktreeStatus}
+        }}
         isCreatingPR={isCreatingPR}
         result={prResult}
         onOpenChange={(open) => {

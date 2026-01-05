@@ -7,9 +7,8 @@
   "worktrees": {
     "errors": {
       "taskNotFound": "Task not found for this worktree",
-      "loadFailed": "Failed to load worktrees",
-      "deleteFailed": "Failed to delete worktree",
-      "createPRFailed": "Failed to create PR"
+      "failedToLoad": "Failed to load worktrees",
+      "failedToCreate": "Failed to create PR"
     }
   },
   "pr": {
@@ -30,8 +29,8 @@
       "successTitle": "PR Created Successfully",
       "alreadyExistsTitle": "PR Already Exists",
       "failureTitle": "PR Creation Failed",
-      "errorPrefix": "Error",
-      "view": "View Pull Request"
+      "view": "View Pull Request",
+      "errorPrefix": "Error"
     }
   }
 }

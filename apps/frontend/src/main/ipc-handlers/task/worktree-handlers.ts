@@ -2076,7 +2076,7 @@ export function registerWorktreeHandlers(
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_CREATE_PR,
     async (_, taskId: string, options?: { targetBranch?: string; title?: string; draft?: boolean }): Promise<IPCResult<{ success: boolean; prUrl?: string; error?: string; alreadyExists?: boolean }>> => {
-      console.log('[IPC] TASK_WORKTREE_CREATE_PR called with taskId:', taskId, 'options:', options);
+      console.warn('[IPC] TASK_WORKTREE_CREATE_PR called with taskId:', taskId, 'options:', options);
       try {
         if (!pythonEnvManager.isEnvReady()) {
           const autoBuildSource = getEffectiveSourcePath();
@@ -2141,7 +2141,7 @@ export function registerWorktreeHandlers(
         const pythonEnv = pythonEnvManagerSingleton.getPythonEnv();
 
         return new Promise((resolve) => {
-          const PR_TIMEOUT_MS = 120000;
+          const PR_TIMEOUT_MS = 120000; // 2 minutes should be sufficient for push+PR
           let timeoutId: ReturnType<typeof setTimeout> | null = null;
           let resolved = false;
 
@@ -2180,13 +2180,25 @@ export function registerWorktreeHandlers(
             stderr += data.toString();
           });
 
+          // Set up timeout to prevent hanging on network issues
+          timeoutId = setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              prProcess.kill();
+              resolve({
+                success: false,
+                error: 'PR creation timed out. Check if the PR was created on GitHub.'
+              });
+            }
+          }, PR_TIMEOUT_MS);
+
           prProcess.on('close', (code: number | null) => {
             if (resolved) return;
             resolved = true;
             if (timeoutId) clearTimeout(timeoutId);
-            console.log('[CREATE_PR] Process exited with code:', code);
-            console.log('[CREATE_PR] stdout:', stdout);
-            console.log('[CREATE_PR] stderr:', stderr);
+            console.warn('[CREATE_PR] Process exited with code:', code);
+            console.warn('[CREATE_PR] stdout:', stdout);
+            console.warn('[CREATE_PR] stderr:', stderr);
 
             if (code === 0) {
               const prUrlMatch = stdout.match(/https:\/\/github\.com\/[^\s]+\/pull\/\d+/);
@@ -2204,11 +2216,14 @@ export function registerWorktreeHandlers(
                   try {
                     const planContent = await fsPromises.readFile(planPath, 'utf-8');
                     const plan = JSON.parse(planContent);
-                    plan.status = 'done';
-                    plan.planStatus = 'completed';
+                    // Set pr_created status instead of done - PR may still need review/merge
+                    plan.status = 'pr_created';
+                    plan.planStatus = 'pr_created';
+                    plan.prUrl = prUrl;
                     plan.updated_at = new Date().toISOString();
                     await fsPromises.writeFile(planPath, JSON.stringify(plan, null, 2));
                   } catch (persistError: unknown) {
+                    // File doesn't exist - nothing to update (not an error)
                     if (persistError && typeof persistError === 'object' && 'code' in persistError && persistError.code === 'ENOENT') {
                       continue;
                     }
@@ -2223,7 +2238,8 @@ export function registerWorktreeHandlers(
 
               const mainWindow = getMainWindow();
               if (mainWindow) {
-                mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'done');
+                // Send pr_created status - PR may still need review/merge before task is truly done
+                mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'pr_created');
               }
 
               resolve({

@@ -6,10 +6,9 @@
   },
   "worktrees": {
     "errors": {
-      "taskNotFound": "Tâche non trouvée pour ce worktree",
-      "loadFailed": "Échec du chargement des worktrees",
-      "deleteFailed": "Échec de la suppression du worktree",
-      "createPRFailed": "Échec de création de la PR"
+      "taskNotFound": "Tâche introuvable pour ce worktree",
+      "failedToLoad": "Échec du chargement des worktrees",
+      "failedToCreate": "Échec de la création de la PR"
     }
   },
   "pr": {
@@ -30,8 +29,8 @@
       "successTitle": "PR créée avec succès",
       "alreadyExistsTitle": "La PR existe déjà",
       "failureTitle": "Échec de création de la PR",
-      "errorPrefix": "Erreur",
-      "view": "Voir la pull request"
+      "view": "Voir la pull request",
+      "errorPrefix": "Erreur"
     }
   }
 }
