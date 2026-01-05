@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import type { Project } from '../../../shared/types';
+import { DEFAULT_PROJECT_SETTINGS } from '../../../shared/constants';
 import { Sidebar } from '../Sidebar';
 
 const mockInitializeProject = vi.fn();
@@ -54,27 +55,16 @@ vi.mock('../GitSetupModal', () => ({
 }));
 
 function createTestProject(overrides: Partial<Project> = {}): Project {
+  const settings = { ...DEFAULT_PROJECT_SETTINGS, ...overrides.settings };
   return {
     id: 'project-1',
     name: 'Test Project',
     path: '/path/to/project',
     autoBuildPath: '',
-    settings: {
-      model: 'opus',
-      memoryBackend: 'file',
-      linearSync: false,
-      notifications: {
-        onTaskComplete: true,
-        onTaskFailed: true,
-        onReviewNeeded: true,
-        sound: false
-      },
-      graphitiMcpEnabled: true,
-      useGit: true
-    },
     createdAt: new Date(),
     updatedAt: new Date(),
-    ...overrides
+    ...overrides,
+    settings
   };
 }
 
@@ -133,5 +123,45 @@ describe('Sidebar', () => {
     });
 
     expect(screen.getByTestId('git-setup-modal')).toHaveAttribute('data-open', 'false');
+  });
+
+  it('checks git status when project useGit is undefined', async () => {
+    const project = createTestProject({
+      settings: {
+        model: 'opus',
+        memoryBackend: 'file',
+        linearSync: false,
+        notifications: {
+          onTaskComplete: true,
+          onTaskFailed: true,
+          onReviewNeeded: true,
+          sound: false
+        },
+        graphitiMcpEnabled: true,
+        useGit: undefined
+      }
+    });
+
+    const projectState = {
+      projects: [project],
+      selectedProjectId: project.id,
+      selectProject: vi.fn(),
+      error: null
+    };
+
+    mockUseProjectStore.mockImplementation((selector: (state: any) => any) =>
+      selector(projectState)
+    );
+
+    render(
+      <Sidebar
+        onSettingsClick={vi.fn()}
+        onNewTaskClick={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(window.electronAPI.checkGitStatus).toHaveBeenCalledWith(project.path);
+    });
   });
 });

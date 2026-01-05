@@ -190,22 +190,22 @@ export function Sidebar({
   useEffect(() => {
     const checkGit = async () => {
       if (selectedProject) {
-        if (selectedProject.settings?.useGit === false) {
+        if (selectedProject.settings?.useGit !== false) {
+          try {
+            const result = await window.electronAPI.checkGitStatus(selectedProject.path);
+            if (result.success && result.data) {
+              setGitStatus(result.data);
+              // Show git setup modal if project is not a git repo or has no commits
+              if (!result.data.isGitRepo || !result.data.hasCommits) {
+                setShowGitSetupModal(true);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check git status:', error);
+          }
+        } else {
           setGitStatus(null);
           setShowGitSetupModal(false);
-          return;
-        }
-        try {
-          const result = await window.electronAPI.checkGitStatus(selectedProject.path);
-          if (result.success && result.data) {
-            setGitStatus(result.data);
-            // Show git setup modal if project is not a git repo or has no commits
-            if (!result.data.isGitRepo || !result.data.hasCommits) {
-              setShowGitSetupModal(true);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to check git status:', error);
         }
       } else {
         setGitStatus(null);

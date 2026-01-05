@@ -290,7 +290,7 @@ export function initializeProject(
     };
   }
 
-  const requireGit = options.requireGit !== false;
+  const requireGit = options.requireGit ?? true;
   if (requireGit) {
     // Check git status - Auto Claude requires git for worktree-based builds
     const gitStatus = checkGitStatus(projectPath);

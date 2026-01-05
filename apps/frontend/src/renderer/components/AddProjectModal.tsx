@@ -53,7 +53,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
           setProjectLocation(defaultDir);
         }
       } catch {
-        // Ignore - will just be empty
+        console.warn('[AddProjectModal] Failed to load default project location');
       }
     };
     loadDefaultLocation();
@@ -74,7 +74,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
               });
             }
           } catch {
-            // Non-fatal - main branch can be set later in settings
+            console.warn('[AddProjectModal] Failed to detect main branch for existing project');
           }
           onProjectAdded?.(project, !project.autoBuildPath);
           onOpenChange(false);
@@ -92,7 +92,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
         setProjectLocation(path);
       }
     } catch {
-      // User cancelled - ignore
+      console.warn('[AddProjectModal] Failed to select project location');
     }
   };
 
@@ -128,8 +128,14 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
         if (!initGit) {
           try {
             await updateProjectSettings(project.id, { useGit: false });
-          } catch {
-            // Non-fatal - continue without updating git preference
+          } catch (err) {
+            console.warn('[AddProjectModal] Failed to persist git preference', {
+              projectId: project.id,
+              useGit: false,
+              error: err
+            });
+            setError(t('addProject.failedToCreate'));
+            return;
           }
         }
         // For new projects with git init, set main branch
@@ -143,7 +149,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
               });
             }
           } catch {
-            // Non-fatal - main branch can be set later in settings
+            console.warn('[AddProjectModal] Failed to detect main branch for new project');
           }
         }
         onProjectAdded?.(project, true); // New projects always need init

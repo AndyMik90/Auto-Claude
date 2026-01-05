@@ -105,25 +105,27 @@ export function registerTaskExecutionHandlers(
         return;
       }
 
-      // Check git status - Auto Claude requires git for worktree-based builds
-      const gitStatus = checkGitStatus(project.path);
-      if (!gitStatus.isGitRepo) {
-        console.warn('[TASK_START] Project is not a git repository:', project.path);
-        mainWindow.webContents.send(
-          IPC_CHANNELS.TASK_ERROR,
-          taskId,
-          'Git repository required. Please run "git init" in your project directory. Auto Claude uses git worktrees for isolated builds.'
-        );
-        return;
-      }
-      if (!gitStatus.hasCommits) {
-        console.warn('[TASK_START] Git repository has no commits:', project.path);
-        mainWindow.webContents.send(
-          IPC_CHANNELS.TASK_ERROR,
-          taskId,
-          'Git repository has no commits. Please make an initial commit first (git add . && git commit -m "Initial commit").'
-        );
-        return;
+      if (project.settings?.useGit !== false) {
+        // Check git status - Auto Claude requires git for worktree-based builds
+        const gitStatus = checkGitStatus(project.path);
+        if (!gitStatus.isGitRepo) {
+          console.warn('[TASK_START] Project is not a git repository:', project.path);
+          mainWindow.webContents.send(
+            IPC_CHANNELS.TASK_ERROR,
+            taskId,
+            'Git repository required. Please run "git init" in your project directory. Auto Claude uses git worktrees for isolated builds.'
+          );
+          return;
+        }
+        if (!gitStatus.hasCommits) {
+          console.warn('[TASK_START] Git repository has no commits:', project.path);
+          mainWindow.webContents.send(
+            IPC_CHANNELS.TASK_ERROR,
+            taskId,
+            'Git repository has no commits. Please make an initial commit first (git add . && git commit -m "Initial commit").'
+          );
+          return;
+        }
       }
 
       // Check authentication - Claude requires valid auth to run tasks
@@ -526,18 +528,20 @@ export function registerTaskExecutionHandlers(
         if (status === 'in_progress' && !agentManager.isRunning(taskId)) {
           const mainWindow = getMainWindow();
 
-          // Check git status before auto-starting
-          const gitStatusCheck = checkGitStatus(project.path);
-          if (!gitStatusCheck.isGitRepo || !gitStatusCheck.hasCommits) {
-            console.warn('[TASK_UPDATE_STATUS] Git check failed, cannot auto-start task');
-            if (mainWindow) {
-              mainWindow.webContents.send(
-                IPC_CHANNELS.TASK_ERROR,
-                taskId,
-                gitStatusCheck.error || 'Git repository with commits required to run tasks.'
-              );
+          if (project.settings?.useGit !== false) {
+            // Check git status before auto-starting
+            const gitStatusCheck = checkGitStatus(project.path);
+            if (!gitStatusCheck.isGitRepo || !gitStatusCheck.hasCommits) {
+              console.warn('[TASK_UPDATE_STATUS] Git check failed, cannot auto-start task');
+              if (mainWindow) {
+                mainWindow.webContents.send(
+                  IPC_CHANNELS.TASK_ERROR,
+                  taskId,
+                  gitStatusCheck.error || 'Git repository with commits required to run tasks.'
+                );
+              }
+              return { success: false, error: gitStatusCheck.error || 'Git repository required' };
             }
-            return { success: false, error: gitStatusCheck.error || 'Git repository required' };
           }
 
           // Check authentication before auto-starting
@@ -852,21 +856,23 @@ export function registerTaskExecutionHandlers(
         // Auto-restart the task if requested
         let autoRestarted = false;
         if (autoRestart && project) {
-          // Check git status before auto-restarting
-          const gitStatusForRestart = checkGitStatus(project.path);
-          if (!gitStatusForRestart.isGitRepo || !gitStatusForRestart.hasCommits) {
-            console.warn('[Recovery] Git check failed, cannot auto-restart task');
-            // Recovery succeeded but we can't restart without git
-            return {
-              success: true,
-              data: {
-                taskId,
-                recovered: true,
-                newStatus,
-                message: `Task recovered but cannot restart: ${gitStatusForRestart.error || 'Git repository with commits required.'}`,
-                autoRestarted: false
-              }
-            };
+          if (project.settings?.useGit !== false) {
+            // Check git status before auto-restarting
+            const gitStatusForRestart = checkGitStatus(project.path);
+            if (!gitStatusForRestart.isGitRepo || !gitStatusForRestart.hasCommits) {
+              console.warn('[Recovery] Git check failed, cannot auto-restart task');
+              // Recovery succeeded but we can't restart without git
+              return {
+                success: true,
+                data: {
+                  taskId,
+                  recovered: true,
+                  newStatus,
+                  message: `Task recovered but cannot restart: ${gitStatusForRestart.error || 'Git repository with commits required.'}`,
+                  autoRestarted: false
+                }
+              };
+            }
           }
 
           // Check authentication before auto-restarting
