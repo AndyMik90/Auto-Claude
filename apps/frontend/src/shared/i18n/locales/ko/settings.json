@@ -184,6 +184,7 @@
     "general": {
       "title": "일반",
       "description": "자동 빌드 및 에이전트 구성",
+      "fullDescription": "{{projectName}}에 대한 Auto-Build, 에이전트 모델 및 알림 설정",
       "useClaudeMd": "CLAUDE.md 사용",
       "useClaudeMdDescription": "에이전트 컨텍스트에 CLAUDE.md 지침 포함"
     },

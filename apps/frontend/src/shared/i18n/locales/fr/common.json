@@ -242,5 +242,13 @@
     "done": "Terminé",
     "failedLabel": "Échoué",
     "starting": "Démarrage..."
+  },
+  "ideationTypes": {
+    "code_improvements": "Améliorations du code",
+    "ui_ux_improvements": "Améliorations UI/UX",
+    "documentation_gaps": "Documentation",
+    "security_hardening": "Renforcement de la sécurité",
+    "performance_optimizations": "Optimisations des performances",
+    "code_quality": "Qualité du code"
   }
 }

@@ -184,6 +184,7 @@
     "general": {
       "title": "Général",
       "description": "Auto-Build et configuration de l'agent",
+      "fullDescription": "Configurez Auto-Build, le modèle d'agent et les notifications pour {{projectName}}",
       "useClaudeMd": "Utiliser CLAUDE.md",
       "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
     },

@@ -242,5 +242,13 @@
     "done": "완료",
     "failedLabel": "실패",
     "starting": "시작 중..."
+  },
+  "ideationTypes": {
+    "code_improvements": "코드 개선",
+    "ui_ux_improvements": "UI/UX 개선",
+    "documentation_gaps": "문서",
+    "security_hardening": "보안 강화",
+    "performance_optimizations": "성능 최적화",
+    "code_quality": "코드 품질"
   }
 }
