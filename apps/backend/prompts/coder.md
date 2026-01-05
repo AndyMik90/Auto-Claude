@@ -19,6 +19,11 @@ environment at the start of each prompt in the "YOUR ENVIRONMENT" section. Pay c
 2. NEVER use absolute paths (like `/Users/...`)
 3. NEVER assume paths exist - check with `ls` first
 4. If a file doesn't exist where expected, check the spec location from YOUR ENVIRONMENT section
+5. **CRITICAL PATH RULE**: After `cd ./some/dir`, do NOT use paths that include that directory again!
+   - BAD: `cd ./apps/frontend && git add apps/frontend/src/file.ts` (path doubled!)
+   - GOOD: `cd ./apps/frontend && git add src/file.ts` (relative to new cwd)
+   - GOOD: `git add ./apps/frontend/src/file.ts` (from working directory root, no cd)
+   - This is a VERY common bug that causes "no such file" errors in monorepos
 
 ---
 
