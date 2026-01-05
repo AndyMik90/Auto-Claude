@@ -19,8 +19,26 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypedDict
+
+
+class PushBranchResult(TypedDict, total=False):
+    """Result of pushing a branch to remote."""
+    success: bool
+    branch: str
+    remote: str
+    error: str
+
+
+class PullRequestResult(TypedDict, total=False):
+    """Result of creating a pull request."""
+    success: bool
+    pr_url: str
+    already_exists: bool
+    error: str
 
 
 class WorktreeError(Exception):
@@ -662,61 +680,85 @@ class WorktreeManager:
 
     def push_branch(
         self, spec_name: str, force: bool = False
-    ) -> dict:
+    ) -> PushBranchResult:
         """
-        Push a spec's branch to the remote origin.
+        Push a spec's branch to the remote origin with retry logic.
 
         Args:
             spec_name: The spec folder name
             force: Whether to force push (use with caution)
 
         Returns:
-            dict with keys:
+            PushBranchResult with keys:
                 - success: bool
                 - branch: str (branch name)
+                - remote: str (if successful)
                 - error: str (if failed)
         """
         info = self.get_worktree_info(spec_name)
         if not info:
-            return {
-                "success": False,
-                "error": f"No worktree found for spec: {spec_name}",
-            }
+            return PushBranchResult(
+                success=False,
+                error=f"No worktree found for spec: {spec_name}",
+            )
 
         # Push the branch to origin
         push_args = ["push", "-u", "origin", info.branch]
         if force:
             push_args.insert(1, "--force")
 
-        try:
-            result = subprocess.run(
-                ["git"] + push_args,
-                cwd=info.path,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=self.GIT_PUSH_TIMEOUT,
-            )
-        except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "branch": info.branch,
-                "error": f"Push timed out after {self.GIT_PUSH_TIMEOUT} seconds. Check network connection.",
-            }
+        max_retries = 3
+        last_error = ""
 
-        if result.returncode != 0:
-            return {
-                "success": False,
-                "branch": info.branch,
-                "error": f"Failed to push branch: {result.stderr}",
-            }
+        for attempt in range(1, max_retries + 1):
+            try:
+                result = subprocess.run(
+                    ["git"] + push_args,
+                    cwd=info.path,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=self.GIT_PUSH_TIMEOUT,
+                )
 
-        return {
-            "success": True,
-            "branch": info.branch,
-            "remote": "origin",
-        }
+                if result.returncode == 0:
+                    return PushBranchResult(
+                        success=True,
+                        branch=info.branch,
+                        remote="origin",
+                    )
+
+                # Check if error is retryable (network/connection issues)
+                stderr_lower = result.stderr.lower()
+                is_retryable = any(term in stderr_lower for term in [
+                    "connection", "network", "timeout", "reset", "refused"
+                ])
+
+                if attempt < max_retries and is_retryable:
+                    backoff = 2 ** (attempt - 1)
+                    time.sleep(backoff)
+                    continue
+
+                last_error = result.stderr
+                break
+
+            except subprocess.TimeoutExpired:
+                if attempt < max_retries:
+                    backoff = 2 ** (attempt - 1)
+                    time.sleep(backoff)
+                    continue
+                return PushBranchResult(
+                    success=False,
+                    branch=info.branch,
+                    error=f"Push timed out after {max_retries} attempts.",
+                )
+
+        return PushBranchResult(
+            success=False,
+            branch=info.branch,
+            error=f"Failed to push branch: {last_error}",
+        )
 
     def create_pull_request(
         self,
@@ -724,9 +766,9 @@ class WorktreeManager:
         target_branch: str | None = None,
         title: str | None = None,
         draft: bool = False,
-    ) -> dict:
+    ) -> PullRequestResult:
         """
-        Create a GitHub pull request for a spec's branch using gh CLI.
+        Create a GitHub pull request for a spec's branch using gh CLI with retry logic.
 
         Args:
             spec_name: The spec folder name
@@ -735,7 +777,7 @@ class WorktreeManager:
             draft: Whether to create as draft PR
 
         Returns:
-            dict with keys:
+            PullRequestResult with keys:
                 - success: bool
                 - pr_url: str (if created)
                 - already_exists: bool (if PR already exists)
@@ -743,10 +785,10 @@ class WorktreeManager:
         """
         info = self.get_worktree_info(spec_name)
         if not info:
-            return {
-                "success": False,
-                "error": f"No worktree found for spec: {spec_name}",
-            }
+            return PullRequestResult(
+                success=False,
+                error=f"No worktree found for spec: {spec_name}",
+            )
 
         target = target_branch or self.base_branch
         pr_title = title or f"auto-claude: {spec_name}"
@@ -765,55 +807,79 @@ class WorktreeManager:
         if draft:
             gh_args.append("--draft")
 
-        try:
-            result = subprocess.run(
-                gh_args,
-                cwd=info.path,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=self.GH_CLI_TIMEOUT,
-            )
-        except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "error": f"PR creation timed out after {self.GH_CLI_TIMEOUT} seconds.",
-            }
-        except FileNotFoundError:
-            return {
-                "success": False,
-                "error": "gh CLI not found. Install from https://cli.github.com/",
-            }
+        max_retries = 3
+        last_error = ""
 
-        # Check for "already exists" case
-        if result.returncode != 0 and "already exists" in result.stderr.lower():
-            existing_url = self._get_existing_pr_url(spec_name, target)
-            return {
-                "success": True,
-                "pr_url": existing_url,
-                "already_exists": True,
-            }
+        for attempt in range(1, max_retries + 1):
+            try:
+                result = subprocess.run(
+                    gh_args,
+                    cwd=info.path,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=self.GH_CLI_TIMEOUT,
+                )
 
-        if result.returncode != 0:
-            return {
-                "success": False,
-                "error": f"Failed to create PR: {result.stderr}",
-            }
+                # Check for "already exists" case (not an error, no retry needed)
+                if result.returncode != 0 and "already exists" in result.stderr.lower():
+                    existing_url = self._get_existing_pr_url(spec_name, target)
+                    return PullRequestResult(
+                        success=True,
+                        pr_url=existing_url,
+                        already_exists=True,
+                    )
 
-        # Extract PR URL from output
-        pr_url = result.stdout.strip()
-        if not pr_url.startswith("http"):
-            # Try to find URL in output
-            match = re.search(r"https://github\.com/[^\s]+/pull/\d+", result.stdout)
-            if match:
-                pr_url = match.group(0)
+                if result.returncode == 0:
+                    # Extract PR URL from output
+                    pr_url = result.stdout.strip()
+                    if not pr_url.startswith("http"):
+                        # Try to find URL in output
+                        match = re.search(r"https://github\.com/[^\s]+/pull/\d+", result.stdout)
+                        if match:
+                            pr_url = match.group(0)
 
-        return {
-            "success": True,
-            "pr_url": pr_url,
-            "already_exists": False,
-        }
+                    return PullRequestResult(
+                        success=True,
+                        pr_url=pr_url,
+                        already_exists=False,
+                    )
+
+                # Check if error is retryable (network/connection issues)
+                stderr_lower = result.stderr.lower()
+                is_retryable = any(term in stderr_lower for term in [
+                    "connection", "network", "timeout", "reset", "refused", "http"
+                ])
+
+                if attempt < max_retries and is_retryable:
+                    backoff = 2 ** (attempt - 1)
+                    time.sleep(backoff)
+                    continue
+
+                last_error = result.stderr
+                break
+
+            except subprocess.TimeoutExpired:
+                if attempt < max_retries:
+                    backoff = 2 ** (attempt - 1)
+                    time.sleep(backoff)
+                    continue
+                return PullRequestResult(
+                    success=False,
+                    error=f"PR creation timed out after {max_retries} attempts.",
+                )
+            except FileNotFoundError:
+                # gh CLI not installed - not retryable
+                return PullRequestResult(
+                    success=False,
+                    error="gh CLI not found. Install from https://cli.github.com/",
+                )
+
+        return PullRequestResult(
+            success=False,
+            error=f"Failed to create PR: {last_error}",
+        )
 
     def _extract_spec_summary(self, spec_name: str) -> str:
         """Extract a summary from spec.md for PR body."""

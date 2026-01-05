@@ -411,6 +411,7 @@ export interface WorktreeCreatePRResult {
   success: boolean;
   prUrl?: string;
   error?: string;
+  message?: string;  // Human-readable message for both success and error cases
   alreadyExists?: boolean;
 }
 

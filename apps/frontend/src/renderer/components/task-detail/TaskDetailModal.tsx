@@ -177,9 +177,9 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
         }
         return result.data;
       }
-      return { success: false, error: result.error || 'Failed to create PR' };
+      return { success: false, error: result.error || 'Failed to create PR', prUrl: undefined, alreadyExists: false };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error', prUrl: undefined, alreadyExists: false };
     } finally {
       state.setIsCreatingPR(false);
     }

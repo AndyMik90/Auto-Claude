@@ -203,13 +203,16 @@ export function CreatePRDialog({
             </div>
 
             {/* Draft PR Checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center gap-2">
               <Checkbox
+                id="draft-pr-checkbox"
                 checked={isDraft}
                 onCheckedChange={(checked) => setIsDraft(checked === true)}
               />
-              <span className="text-sm">{t('taskReview:pr.labels.draftPR')}</span>
-            </label>
+              <label htmlFor="draft-pr-checkbox" className="text-sm cursor-pointer">
+                {t('taskReview:pr.labels.draftPR')}
+              </label>
+            </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={handleClose} disabled={isCreating}>
