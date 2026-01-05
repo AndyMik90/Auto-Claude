@@ -205,17 +205,14 @@ export function TaskMetadata({ task }: TaskMetadataProps) {
                 <GitPullRequest className="h-3 w-3 text-info" />
                 Pull Request
               </h3>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.electronAPI.openExternal(task.metadata!.prUrl!);
-                }}
-                className="text-sm text-info hover:underline flex items-center gap-1.5"
+              <button
+                type="button"
+                onClick={() => window.electronAPI.openExternal(task.metadata!.prUrl!)}
+                className="text-sm text-info hover:underline flex items-center gap-1.5 bg-transparent border-none cursor-pointer p-0 text-left"
               >
                 {task.metadata.prUrl}
                 <ExternalLink className="h-3 w-3" />
-              </a>
+              </button>
             </div>
           )}
 
