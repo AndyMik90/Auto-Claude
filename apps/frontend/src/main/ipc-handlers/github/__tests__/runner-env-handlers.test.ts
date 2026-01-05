@@ -6,6 +6,7 @@ import type { Project } from '../../../../shared/types';
 import { IPC_CHANNELS } from '../../../../shared/constants';
 import type { BrowserWindow } from 'electron';
 import type { AgentManager } from '../../../agent/agent-manager';
+import type { createIPCCommunicators as createIPCCommunicatorsType } from '../utils/ipc-communicator';
 
 const mockIpcMain = vi.hoisted(() => {
   class HoistedMockIpcMain {
@@ -48,11 +49,15 @@ const mockIpcMain = vi.hoisted(() => {
 const mockRunPythonSubprocess = vi.fn();
 const mockValidateGitHubModule = vi.fn();
 const mockGetRunnerEnv = vi.fn();
-const mockCreateIPCCommunicators = vi.fn(() => ({
-  sendProgress: vi.fn(),
-  sendComplete: vi.fn(),
-  sendError: vi.fn(),
-}));
+type CreateIPCCommunicators = typeof createIPCCommunicatorsType;
+
+const mockCreateIPCCommunicators = vi.fn(
+  (..._args: Parameters<CreateIPCCommunicators>) => ({
+    sendProgress: vi.fn(),
+    sendComplete: vi.fn(),
+    sendError: vi.fn(),
+  })
+) as unknown as CreateIPCCommunicators;
 
 const projectRef: { current: Project | null } = { current: null };
 const tempDirs: string[] = [];
@@ -69,7 +74,8 @@ vi.mock('../../../agent/agent-manager', () => ({
 }));
 
 vi.mock('../utils/ipc-communicator', () => ({
-  createIPCCommunicators: (...args: unknown[]) => mockCreateIPCCommunicators(...args),
+  createIPCCommunicators: (...args: Parameters<CreateIPCCommunicators>) =>
+    mockCreateIPCCommunicators(...args),
 }));
 
 vi.mock('../utils/project-middleware', () => ({
@@ -105,6 +111,10 @@ vi.mock('../utils', () => ({
 vi.mock('../../../settings-utils', () => ({
   readSettingsFile: vi.fn(() => ({})),
 }));
+
+function createMockWindow(): BrowserWindow {
+  return { webContents: { send: vi.fn() } } as unknown as BrowserWindow;
+}
 
 function createProject(): Project {
   const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'github-env-test-'));
@@ -174,7 +184,7 @@ describe('GitHub runner env usage', () => {
       }),
     });
 
-    registerPRHandlers(() => ({} as unknown));
+    registerPRHandlers(() => createMockWindow());
     await mockIpcMain.emit(IPC_CHANNELS.GITHUB_PR_REVIEW, projectRef.current?.id, 123);
 
     expect(mockGetRunnerEnv).toHaveBeenCalledWith({ USE_CLAUDE_MD: 'true' });
@@ -199,7 +209,7 @@ describe('GitHub runner env usage', () => {
       }),
     });
 
-    registerTriageHandlers(() => ({} as unknown));
+    registerTriageHandlers(() => createMockWindow());
     await mockIpcMain.emit(IPC_CHANNELS.GITHUB_TRIAGE_RUN, projectRef.current?.id);
 
     expect(mockGetRunnerEnv).toHaveBeenCalledWith();
@@ -231,7 +241,7 @@ describe('GitHub runner env usage', () => {
     });
 
     const agentManager: AgentManager = new MockedAgentManager();
-    const getMainWindow: () => BrowserWindow | null = () => ({ webContents: { send: vi.fn() } } as BrowserWindow);
+    const getMainWindow: () => BrowserWindow | null = () => createMockWindow();
 
     registerAutoFixHandlers(agentManager, getMainWindow);
     await mockIpcMain.emit(IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW, projectRef.current?.id);
