@@ -343,13 +343,20 @@ export async function loadSettings(): Promise<void> {
           onboardingCompleted: migratedSettings.onboardingCompleted
         });
       }
+
+      // Only mark settings as loaded on SUCCESS
+      // This ensures Sentry respects user's opt-out preference even if settings fail to load
+      // (If settings fail to load, Sentry's beforeSend drops all events until successful load)
+      markSettingsLoaded();
     }
+    // Note: If result.success is false, we intentionally do NOT mark settings as loaded.
+    // This means Sentry will drop events, which is the safe default for privacy.
   } catch (error) {
     store.setError(error instanceof Error ? error.message : 'Failed to load settings');
+    // Note: On exception, we intentionally do NOT mark settings as loaded.
+    // Sentry's beforeSend will drop events, respecting potential user opt-out.
   } finally {
     store.setLoading(false);
-    // Mark settings as loaded for Sentry (prevents sending events before we know user preference)
-    markSettingsLoaded();
   }
 }
 
