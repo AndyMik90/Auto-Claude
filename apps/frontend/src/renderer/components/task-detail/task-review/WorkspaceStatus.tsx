@@ -15,6 +15,7 @@ import {
   Code,
   Terminal
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { cn } from '../../../lib/utils';
@@ -99,6 +100,7 @@ export function WorkspaceStatus({
   onSwitchToTerminals,
   onOpenInbuiltTerminal
 }: WorkspaceStatusProps) {
+  const { t } = useTranslation(['taskReview', 'common']);
   const { settings } = useSettingsStore();
   const preferredIDE = settings.preferredIDE || 'vscode';
   const preferredTerminal = settings.preferredTerminal || 'system';
@@ -449,12 +451,12 @@ export function WorkspaceStatus({
               {isCreatingPR ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating PR...
+                  {t('taskReview:pr.actions.creating')}
                 </>
               ) : (
                 <>
                   <GitPullRequest className="mr-2 h-4 w-4" />
-                  Create PR
+                  {t('common:buttons.createPR')}
                 </>
               )}
             </Button>
