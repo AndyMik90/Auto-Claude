@@ -1,32 +1,7 @@
 {
-  "expand": {
-    "expand": "Expandir terminal",
-    "collapse": "Recolher terminal"
-  },
-  "worktree": {
-    "create": "Worktree",
-    "createNew": "Nova Worktree",
-    "existing": "Worktrees Existentes",
-    "createTitle": "Criar Worktree de Terminal",
-    "createDescription": "Crie um espaço de trabalho isolado para este terminal. Todo o trabalho acontecerá no diretório da worktree.",
-    "name": "Nome da Worktree",
-    "namePlaceholder": "meu-recurso",
-    "nameRequired": "Nome da worktree é obrigatório",
-    "nameInvalid": "Nome deve começar e terminar com uma letra ou número",
-    "nameHelp": "Apenas letras minúsculas, números, hífens e underscores",
-    "associateTask": "Vincular à Tarefa",
-    "selectTask": "Selecione uma tarefa...",
-    "noTask": "Sem tarefa (worktree independente)",
-    "createBranch": "Criar Branch Git",
-    "branchHelp": "Cria branch: {{branch}}",
-    "baseBranch": "Branch Base",
-    "selectBaseBranch": "Selecione branch base...",
-    "useProjectDefault": "Usar padrão do projeto ({{branch}})",
-    "baseBranchHelp": "A branch da qual criar a worktree",
-    "openInIDE": "Abrir na IDE",
-    "maxReached": "Máximo de 12 worktrees de terminal atingido",
-    "alreadyExists": "Uma worktree com este nome já existe",
-    "deleteTitle": "Excluir Worktree?",
-    "deleteDescription": "Isso excluirá permanentemente a worktree e sua branch. Qualquer mudança não confirmada será perdida."
+  "terminal": {
+    "openTerminal": "Abrir terminal",
+    "openInbuilt": "Abrir em Terminal Integrado",
+    "openExternal": "Abrir em Terminal Externo"
   }
 }
