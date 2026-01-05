@@ -590,6 +590,21 @@ def create_client(
 
     # Write settings to a file in the project directory
     settings_file = project_dir / ".claude_settings.json"
+
+    # Merge with existing settings to preserve user's custom permissions
+    if settings_file.exists():
+        try:
+            with open(settings_file, "r") as f:
+                existing = json.load(f)
+            existing_allow = existing.get("permissions", {}).get("allow", [])
+            if isinstance(existing_allow, list):
+                new_allow = security_settings["permissions"]["allow"]
+                security_settings["permissions"]["allow"] = list(
+                    dict.fromkeys(existing_allow + new_allow)
+                )
+        except (json.JSONDecodeError, KeyError, TypeError):
+            logger.warning(f"Could not parse {settings_file}, overwriting")
+
     with open(settings_file, "w") as f:
         json.dump(security_settings, f, indent=2)
 
