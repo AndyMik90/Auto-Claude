@@ -294,6 +294,15 @@ def setup_workspace(
             f"Security config copied: {', '.join(security_files_copied)}", "success"
         )
 
+    # Ensure .auto-claude/ is in the worktree's .gitignore
+    # This is critical because the worktree inherits .gitignore from the base branch,
+    # which may not have .auto-claude/ if that change wasn't committed/pushed.
+    # Without this, spec files would be committed to the worktree's branch.
+    from init import ensure_gitignore_entry
+
+    if ensure_gitignore_entry(worktree_info.path, ".auto-claude/"):
+        debug(MODULE, "Added .auto-claude/ to worktree's .gitignore")
+
     # Copy spec files to worktree if provided
     localized_spec_dir = None
     if source_spec_dir and source_spec_dir.exists():
