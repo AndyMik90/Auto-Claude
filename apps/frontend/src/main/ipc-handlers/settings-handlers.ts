@@ -637,11 +637,14 @@ export function registerSettingsHandlers(
           };
         }
 
-        // Read existing content or create new
+        // Read existing content or start fresh (avoiding TOCTOU race condition)
         let existingVars: Record<string, string> = {};
-        if (existsSync(envPath)) {
+        try {
           const content = readFileSync(envPath, 'utf-8');
           existingVars = parseEnvFile(content);
+        } catch (_readError) {
+          // File doesn't exist or can't be read - start with empty vars
+          // This is expected for first-time setup
         }
 
         // Update with new values
