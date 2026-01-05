@@ -62,6 +62,53 @@ def _print_auth_failure_guidance(reason: str) -> None:
     print("   This creates a long-lived token (1 year) that avoids expiration issues.\n")
 
 
+def _is_authentication_error(exception: Exception) -> bool:
+    """
+    Check if an exception represents an authentication error (401).
+
+    Uses attribute-based detection first for accuracy, then falls back
+    to string matching for broader compatibility.
+
+    Args:
+        exception: The exception to check
+
+    Returns:
+        True if this appears to be an authentication error
+    """
+    # Check common exception attributes for 401 status code
+    for attr in ("status_code", "code", "status"):
+        value = getattr(exception, attr, None)
+        if value == 401:
+            return True
+
+    # Check nested response object (common in HTTP libraries)
+    response = getattr(exception, "response", None)
+    if response is not None:
+        status = getattr(response, "status_code", None) or getattr(response, "status", None)
+        if status == 401:
+            return True
+
+    # Check exception type name for auth-related hints
+    type_name = type(exception).__name__.lower()
+    if any(hint in type_name for hint in ("auth", "unauthorized", "credential")):
+        return True
+
+    # Fall back to string-based matching for error messages
+    # Use specific patterns to avoid false positives (e.g., "processed 401 records")
+    error_str = str(exception).lower()
+    auth_patterns = [
+        "status 401",
+        "http 401",
+        "401 unauthorized",
+        "authentication_error",
+        "token expired",
+        "token has expired",
+        "invalid token",
+        "invalid_token",
+    ]
+    return any(pattern in error_str for pattern in auth_patterns)
+
+
 async def post_session_processing(
     spec_dir: Path,
     project_dir: Path,
@@ -556,24 +603,8 @@ async def run_agent_session(
         return "continue", response_text
 
     except Exception as e:
-        error_str = str(e).lower()
-
         # Check for OAuth token expiration (401 authentication error)
-        # Use specific patterns to avoid false positives (e.g., "processed 401 records")
-        is_auth_error = any(
-            indicator in error_str
-            for indicator in [
-                "status 401",
-                "http 401",
-                "401 unauthorized",
-                "authentication_error",
-                "token expired",
-                "token has expired",
-                "invalid token",
-                "invalid_token",
-            ]
-        )
-        if is_auth_error:
+        if _is_authentication_error(e):
             debug_error(
                 "session",
                 "Authentication error detected - token may have expired",
