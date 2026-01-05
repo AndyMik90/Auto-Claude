@@ -1,30 +1,30 @@
 {
-  "spec_id": "025-improving-task-card-title-readability",
+  "spec_id": "026-tidying-up-kanban-board",
   "subtasks": [
     {
       "id": "1",
-      "title": "Restructure TaskCard header: Remove flex wrapper around title, make title standalone with full width",
+      "title": "Remove settings icon from SortableProjectTab component",
       "status": "completed"
     },
     {
       "id": "2",
-      "title": "Relocate status badges from header to metadata section",
+      "title": "Add refresh button to Done column in KanbanBoard",
       "status": "completed"
     },
     {
       "id": "3",
-      "title": "Add localization for security severity badge label",
+      "title": "Remove top bar above kanban board containing Refresh Tasks button",
       "status": "completed"
     }
   ],
   "qa_signoff": {
     "status": "fixes_applied",
-    "timestamp": "2026-01-01T11:58:40Z",
+    "timestamp": "2026-01-05T16:00:00Z",
     "fix_session": 1,
     "issues_fixed": [
       {
-        "title": "Missing localization for hardcoded 'severity' string in TaskCard",
-        "fix_commit": "de0c8e4"
+        "title": "Remove top bar above kanban board containing Refresh Tasks button",
+        "fix_commit": "114ed1b"
       }
     ],
     "ready_for_qa_revalidation": true
