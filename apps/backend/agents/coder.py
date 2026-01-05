@@ -11,7 +11,6 @@ import os
 from pathlib import Path
 
 from core.client import create_client
-from security.constants import PROJECT_DIR_ENV_VAR
 from linear_updater import (
     LinearTaskState,
     is_linear_enabled,
@@ -39,6 +38,7 @@ from prompt_generator import (
 )
 from prompts import is_first_run
 from recovery import RecoveryManager
+from security.constants import PROJECT_DIR_ENV_VAR
 from task_logger import (
     LogPhase,
     get_task_logger,
