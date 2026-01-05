@@ -48,7 +48,7 @@
     "merge": "Mesclar Worktree",
     "mergeDescription": "Mesclar mudanças desta worktree na branch base.",
     "delete": "Excluir Worktree?",
-    "deleteDescription": "Isso excluirá permanentemente a worktree e todas as mudanças não commitadas. Esta ação não pode ser desfeita."
+    "deleteDescription": "Isso excluirá permanentemente a worktree e todas as mudanças não confirmadas. Esta ação não pode ser desfeita."
   },
   "update": {
     "title": "Auto Claude",
@@ -121,7 +121,7 @@
   },
   "removeProject": {
     "title": "Remover Projeto?",
-    "description": "Isso removerá \"{{projectName}}\" do app. Seus arquivos serão preservados no disco e você pode re-adicionar o projeto depois.",
+    "description": "Isso removerá \"{{projectName}}\" do app. Seus arquivos serão preservados no disco e você pode readicionar o projeto depois.",
     "cancel": "Cancelar",
     "remove": "Remover",
     "error": "Falha ao remover projeto"

@@ -27,6 +27,6 @@
     "maxReached": "Máximo de 12 worktrees de terminal atingido",
     "alreadyExists": "Uma worktree com este nome já existe",
     "deleteTitle": "Excluir Worktree?",
-    "deleteDescription": "Isso excluirá permanentemente a worktree e sua branch. Qualquer mudança não commitada será perdida."
+    "deleteDescription": "Isso excluirá permanentemente a worktree e sua branch. Qualquer mudança não confirmada será perdida."
   }
 }

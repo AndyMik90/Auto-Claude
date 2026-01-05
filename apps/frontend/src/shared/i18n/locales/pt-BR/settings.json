@@ -419,7 +419,7 @@
     "autoSwitching": "Alternância Automática de Conta",
     "autoSwitchingDescription": "Alternar automaticamente entre contas Claude para evitar interrupções. Configure monitoramento proativo para alternar antes de atingir limites.",
     "enableAutoSwitching": "Habilitar alternância automática",
-    "masterSwitch": "Chave mestre para todos os recursos de auto-troca",
+    "masterSwitch": "Chave mestre para todos os recursos de troca automática",
     "proactiveMonitoring": "Monitoramento Proativo",
     "proactiveDescription": "Verificar uso regularmente e trocar antes de atingir limites",
     "checkUsageEvery": "Verificar uso a cada",
@@ -432,7 +432,7 @@
     "weeklyThreshold": "Limite de uso semanal",
     "weeklyThresholdDescription": "Alternar quando o uso semanal atingir este nível (recomendado: 99%)",
     "reactiveRecovery": "Recuperação Reativa",
-    "reactiveDescription": "Auto-trocar quando limite inesperado for atingido",
+    "reactiveDescription": "Trocar automaticamente quando limite inesperado for atingido",
     "apiKeys": "Chaves de API",
     "apiKeysInfo": "Chaves definidas aqui são usadas como padrões. Projetos individuais podem substituí-las em suas configurações.",
     "openaiKey": "Chave de API OpenAI",
@@ -494,12 +494,12 @@
       "graphiti": {
         "name": "Memória Graphiti",
         "description": "Grafo de conhecimento para contexto entre sessões",
-        "notConfigured": "Requer configuração de memória (veja configurações de Memória)"
+        "notConfigured": "Requer configuração de memória (veja as configurações de Memória)"
       },
       "linear": {
         "name": "Linear",
         "description": "Integração de gerenciamento de projetos",
-        "notConfigured": "Requer integração Linear (veja configurações Linear)"
+        "notConfigured": "Requer integração Linear (veja as configurações do Linear)"
       },
       "electron": {
         "name": "Electron",

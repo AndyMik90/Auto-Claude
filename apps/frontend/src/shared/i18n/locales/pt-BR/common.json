@@ -240,7 +240,7 @@
     "workflowsAwaitingApproval": "{{count}} Workflow Aguardando Aprovação",
     "workflowsAwaitingApproval_plural": "{{count}} Workflows Aguardando Aprovação",
     "blockedByWorkflows": "Bloqueado",
-    "workflowsAwaitingDescription": "Este PR é de um fork e requer aprovação de workflow antes que as verificações de CI possam ser executadas. Aprove os workflows para continuar.",
+    "workflowsAwaitingDescription": "Este PR é de um fork e requer aprovação de workflows antes que as verificações de CI possam ser executadas. Aprove os workflows para continuar.",
     "viewOnGitHub": "Ver",
     "approveWorkflow": "Aprovar",
     "approveAllWorkflows": "Aprovar Todos os Workflows"
