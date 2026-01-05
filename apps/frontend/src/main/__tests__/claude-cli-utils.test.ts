@@ -99,19 +99,24 @@ describe('claude-cli-utils', () => {
   });
 
   it('treats PATH entries case-insensitively on Windows', async () => {
-    if (process.platform !== 'win32') {
-      return;
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+
+    try {
+      const command = 'C:\\Tools\\claude\\claude.exe';
+      const env = { PATH: 'c:\\tools\\claude;C:\\Windows' };
+
+      mockGetToolPath.mockReturnValue(command);
+      mockGetAugmentedEnv.mockReturnValue(env);
+
+      const { getClaudeCliInvocation } = await import('../claude-cli-utils');
+      const result = getClaudeCliInvocation();
+
+      expect(result.env.PATH).toBe(env.PATH);
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(process, 'platform', originalPlatform);
+      }
     }
-
-    const command = 'C:\\Tools\\claude\\claude.exe';
-    const env = { PATH: 'c:\\tools\\claude;C:\\Windows' };
-
-    mockGetToolPath.mockReturnValue(command);
-    mockGetAugmentedEnv.mockReturnValue(env);
-
-    const { getClaudeCliInvocation } = await import('../claude-cli-utils');
-    const result = getClaudeCliInvocation();
-
-    expect(result.env.PATH).toBe(env.PATH);
   });
 });

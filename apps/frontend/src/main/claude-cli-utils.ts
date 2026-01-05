@@ -33,6 +33,9 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
   };
 }
 
+/**
+ * Returns the Claude CLI command path and an environment with PATH updated to include the CLI directory.
+ */
 export function getClaudeCliInvocation(): ClaudeCliInvocation {
   const command = getToolPath('claude');
   const env = getAugmentedEnv();

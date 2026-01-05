@@ -2,7 +2,6 @@ import { EventEmitter } from 'events';
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IPC_CHANNELS } from '../../shared/constants';
-import { escapeShellArg, escapeShellArgWindows } from '../../shared/utils/shell-escape';
 const {
   mockGetClaudeCliInvocation,
   mockGetProject,
@@ -65,12 +64,6 @@ function createProc(): EventEmitter & { stdout?: EventEmitter; stderr?: EventEmi
   return proc;
 }
 
-function getExpectedCommand(command: string): string {
-  return process.platform === 'win32'
-    ? `"${escapeShellArgWindows(command)}"`
-    : escapeShellArg(command);
-}
-
 describe('env-handlers Claude CLI usage', () => {
   beforeEach(() => {
     mockGetClaudeCliInvocation.mockReset();
@@ -81,7 +74,6 @@ describe('env-handlers Claude CLI usage', () => {
   it('uses resolved Claude CLI path/env for auth checks', async () => {
     const claudeEnv = { PATH: '/opt/claude/bin:/usr/bin' };
     const command = '/opt/claude/bin/claude';
-    const expectedCommand = getExpectedCommand(command);
     mockGetClaudeCliInvocation.mockReturnValue({
       command,
       env: claudeEnv,
@@ -104,9 +96,9 @@ describe('env-handlers Claude CLI usage', () => {
     const resultPromise = handler({}, 'p1');
     expect(spawnMock).toHaveBeenCalledTimes(1);
     expect(spawnMock).toHaveBeenCalledWith(
-      expectedCommand,
+      command,
       ['--version'],
-      expect.objectContaining({ env: claudeEnv })
+      expect.objectContaining({ cwd: '/tmp/project', env: claudeEnv, shell: false })
     );
 
     procs[0].emit('close', 0);
@@ -114,9 +106,9 @@ describe('env-handlers Claude CLI usage', () => {
 
     expect(spawnMock).toHaveBeenCalledTimes(2);
     expect(spawnMock).toHaveBeenCalledWith(
-      expectedCommand,
+      command,
       ['api', '--help'],
-      expect.objectContaining({ env: claudeEnv })
+      expect.objectContaining({ cwd: '/tmp/project', env: claudeEnv, shell: false })
     );
 
     procs[1].emit('close', 0);
@@ -128,7 +120,6 @@ describe('env-handlers Claude CLI usage', () => {
   it('uses resolved Claude CLI path/env for setup-token', async () => {
     const claudeEnv = { PATH: '/opt/claude/bin:/usr/bin' };
     const command = '/opt/claude/bin/claude';
-    const expectedCommand = getExpectedCommand(command);
     mockGetClaudeCliInvocation.mockReturnValue({
       command,
       env: claudeEnv,
@@ -146,9 +137,14 @@ describe('env-handlers Claude CLI usage', () => {
 
     const resultPromise = handler({}, 'p2');
     expect(spawnMock).toHaveBeenCalledWith(
-      expectedCommand,
+      command,
       ['setup-token'],
-      expect.objectContaining({ env: claudeEnv })
+      expect.objectContaining({
+        cwd: '/tmp/project',
+        env: claudeEnv,
+        shell: false,
+        stdio: 'inherit'
+      })
     );
 
     proc.emit('close', 0);
@@ -193,7 +189,6 @@ describe('env-handlers Claude CLI usage', () => {
   it('returns an error when Claude CLI exits with a non-zero code', async () => {
     const claudeEnv = { PATH: '/opt/claude/bin:/usr/bin' };
     const command = '/opt/claude/bin/claude';
-    const expectedCommand = getExpectedCommand(command);
     mockGetClaudeCliInvocation.mockReturnValue({
       command,
       env: claudeEnv,
@@ -211,9 +206,9 @@ describe('env-handlers Claude CLI usage', () => {
 
     const resultPromise = handler({}, 'p5');
     expect(spawnMock).toHaveBeenCalledWith(
-      expectedCommand,
+      command,
       ['--version'],
-      expect.objectContaining({ env: claudeEnv })
+      expect.objectContaining({ cwd: '/tmp/project', env: claudeEnv, shell: false })
     );
     proc.emit('close', 1);
 

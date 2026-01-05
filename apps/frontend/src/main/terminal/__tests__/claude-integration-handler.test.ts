@@ -195,7 +195,6 @@ describe('claude-integration-handler', () => {
 
   it('uses the temp token flow when the active profile has an oauth token', async () => {
     const command = '/opt/claude/bin/claude';
-    const expectedTokenPath = "/tmp/.claude-token-1234";
     const profileManager = {
       getActiveProfile: vi.fn(),
       getProfile: vi.fn(() => ({
@@ -220,15 +219,14 @@ describe('claude-integration-handler', () => {
     const { invokeClaude } = await import('../claude-integration-handler');
     invokeClaude(terminal, '/tmp/project', 'prof-1', () => null, vi.fn());
 
-    expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(
-      expectedTokenPath,
-      'export CLAUDE_CODE_OAUTH_TOKEN="token-value"\n',
-      { mode: 0o600 }
-    );
+    const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
+    const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
+    expect(tokenPath).toMatch(/^\/tmp\/\.claude-token-1234-[0-9a-f]{16}$/);
+    expect(tokenContents).toBe("export CLAUDE_CODE_OAUTH_TOKEN='token-value'\n");
     const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
     expect(written).toContain("HISTFILE= HISTCONTROL=ignorespace ");
-    expect(written).toContain(`source '${expectedTokenPath}'`);
-    expect(written).toContain(`rm -f '${expectedTokenPath}'`);
+    expect(written).toContain(`source '${tokenPath}'`);
+    expect(written).toContain(`rm -f '${tokenPath}'`);
     expect(written).toContain(`exec '${command}'`);
     expect(profileManager.getProfile).toHaveBeenCalledWith('prof-1');
     expect(mockPersistSession).toHaveBeenCalledWith(terminal);
@@ -238,7 +236,6 @@ describe('claude-integration-handler', () => {
 
   it('prefers the temp token flow when profile has both oauth token and config dir', async () => {
     const command = '/opt/claude/bin/claude';
-    const expectedTokenPath = "/tmp/.claude-token-5678";
     const profileManager = {
       getActiveProfile: vi.fn(),
       getProfile: vi.fn(() => ({
@@ -264,14 +261,13 @@ describe('claude-integration-handler', () => {
     const { invokeClaude } = await import('../claude-integration-handler');
     invokeClaude(terminal, '/tmp/project', 'prof-both', () => null, vi.fn());
 
-    expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(
-      expectedTokenPath,
-      'export CLAUDE_CODE_OAUTH_TOKEN="token-value"\n',
-      { mode: 0o600 }
-    );
+    const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
+    const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
+    expect(tokenPath).toMatch(/^\/tmp\/\.claude-token-5678-[0-9a-f]{16}$/);
+    expect(tokenContents).toBe("export CLAUDE_CODE_OAUTH_TOKEN='token-value'\n");
     const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    expect(written).toContain(`source '${expectedTokenPath}'`);
-    expect(written).toContain(`rm -f '${expectedTokenPath}'`);
+    expect(written).toContain(`source '${tokenPath}'`);
+    expect(written).toContain(`rm -f '${tokenPath}'`);
     expect(written).toContain(`exec '${command}'`);
     expect(written).not.toContain('CLAUDE_CONFIG_DIR=');
     expect(profileManager.getProfile).toHaveBeenCalledWith('prof-both');

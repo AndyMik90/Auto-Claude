@@ -6,6 +6,7 @@
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import * as OutputParser from './output-parser';
@@ -262,10 +263,15 @@ export function invokeClaude(
     });
 
     if (token) {
-      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}`);
+      const nonce = crypto.randomBytes(8).toString('hex');
+      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
       const escapedTempFile = escapeShellArg(tempFile);
       debugLog('[ClaudeIntegration:invokeClaude] Writing token to temp file:', tempFile);
-      fs.writeFileSync(tempFile, `export CLAUDE_CODE_OAUTH_TOKEN="${token}"\n`, { mode: 0o600 });
+      fs.writeFileSync(
+        tempFile,
+        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
+        { mode: 0o600 }
+      );
 
       // Clear terminal and run command without adding to shell history:
       // - HISTFILE= disables history file writing for the current command
@@ -369,6 +375,7 @@ export function resumeClaude(
   getWindow: WindowGetter
 ): void {
   terminal.isClaudeMode = true;
+  SessionHandler.releaseSessionId(terminal.id);
 
   const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
   const escapedClaudeCmd = escapeShellArg(claudeCmd);

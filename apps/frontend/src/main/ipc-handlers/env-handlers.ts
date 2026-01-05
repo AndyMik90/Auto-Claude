@@ -9,7 +9,6 @@ import { spawn } from 'child_process';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
 import { getClaudeCliInvocation } from '../claude-cli-utils';
-import { escapeShellArg, escapeShellArgWindows } from '../../shared/utils/shell-escape';
 import { debugError } from '../../shared/utils/debug-logger';
 
 // GitLab environment variable keys
@@ -26,6 +25,25 @@ const GITLAB_ENV_KEYS = {
  */
 function envLine(vars: Record<string, string>, key: string, defaultVal: string = ''): string {
   return vars[key] ? `${key}=${vars[key]}` : `# ${key}=${defaultVal}`;
+}
+
+type ResolvedClaudeCliInvocation =
+  | { command: string; env: NodeJS.ProcessEnv }
+  | { error: string };
+
+function resolveClaudeCliInvocation(): ResolvedClaudeCliInvocation {
+  try {
+    const invocation = getClaudeCliInvocation();
+    if (!invocation?.command) {
+      throw new Error('Claude CLI path not resolved');
+    }
+    return { command: invocation.command, env: invocation.env };
+  } catch (error) {
+    debugError('[IPC] Failed to resolve Claude CLI path:', error);
+    return {
+      error: error instanceof Error ? error.message : 'Failed to resolve Claude CLI path',
+    };
+  }
 }
 
 
@@ -555,34 +573,20 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         return { success: false, error: 'Project not found' };
       }
 
-      let claudeCmd: string;
-      let claudeEnv: NodeJS.ProcessEnv;
-      let escapedClaudeCmd: string;
-      try {
-        const invocation = getClaudeCliInvocation();
-        if (!invocation?.command) {
-          throw new Error('Claude CLI path not resolved');
-        }
-        claudeCmd = invocation.command;
-        claudeEnv = invocation.env;
-        escapedClaudeCmd = process.platform === 'win32'
-          ? `"${escapeShellArgWindows(claudeCmd)}"`
-          : escapeShellArg(claudeCmd);
-      } catch (error) {
-        debugError('[IPC] Failed to resolve Claude CLI path:', error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to resolve Claude CLI path'
-        };
+      const resolved = resolveClaudeCliInvocation();
+      if ('error' in resolved) {
+        return { success: false, error: resolved.error };
       }
+      const claudeCmd = resolved.command;
+      const claudeEnv = resolved.env;
 
       try {
         // Check if Claude CLI is available and authenticated
         const result = await new Promise<ClaudeAuthResult>((resolve) => {
-          const proc = spawn(escapedClaudeCmd, ['--version'], {
+          const proc = spawn(claudeCmd, ['--version'], {
             cwd: project.path,
             env: claudeEnv,
-            shell: true
+            shell: false
           });
 
           let _stdout = '';
@@ -600,10 +604,10 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
             if (code === 0) {
               // Claude CLI is available, check if authenticated
               // Run a simple command that requires auth
-              const authCheck = spawn(escapedClaudeCmd, ['api', '--help'], {
+              const authCheck = spawn(claudeCmd, ['api', '--help'], {
                 cwd: project.path,
                 env: claudeEnv,
-                shell: true
+                shell: false
               });
 
               authCheck.on('close', (authCode: number | null) => {
@@ -659,34 +663,20 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         return { success: false, error: 'Project not found' };
       }
 
-      let claudeCmd: string;
-      let claudeEnv: NodeJS.ProcessEnv;
-      let escapedClaudeCmd: string;
-      try {
-        const invocation = getClaudeCliInvocation();
-        if (!invocation?.command) {
-          throw new Error('Claude CLI path not resolved');
-        }
-        claudeCmd = invocation.command;
-        claudeEnv = invocation.env;
-        escapedClaudeCmd = process.platform === 'win32'
-          ? `"${escapeShellArgWindows(claudeCmd)}"`
-          : escapeShellArg(claudeCmd);
-      } catch (error) {
-        debugError('[IPC] Failed to resolve Claude CLI path:', error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to resolve Claude CLI path'
-        };
+      const resolved = resolveClaudeCliInvocation();
+      if ('error' in resolved) {
+        return { success: false, error: resolved.error };
       }
+      const claudeCmd = resolved.command;
+      const claudeEnv = resolved.env;
 
       try {
         // Run claude setup-token which will open browser for OAuth
         const result = await new Promise<ClaudeAuthResult>((resolve) => {
-          const proc = spawn(escapedClaudeCmd, ['setup-token'], {
+          const proc = spawn(claudeCmd, ['setup-token'], {
             cwd: project.path,
             env: claudeEnv,
-            shell: true,
+            shell: false,
             stdio: 'inherit' // This allows the terminal to handle the interactive auth
           });
 
