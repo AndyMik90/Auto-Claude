@@ -41,6 +41,17 @@ class PullRequestResult(TypedDict, total=False):
     error: str
 
 
+class PushAndCreatePRResult(TypedDict, total=False):
+    """Result of push_and_create_pr operation."""
+    success: bool
+    pushed: bool
+    remote: str
+    branch: str
+    pr_url: str
+    already_exists: bool
+    error: str
+
+
 class WorktreeError(Exception):
     """Error during worktree operations."""
 
@@ -958,7 +969,7 @@ class WorktreeManager:
         title: str | None = None,
         draft: bool = False,
         force_push: bool = False,
-    ) -> dict:
+    ) -> PushAndCreatePRResult:
         """
         Push branch and create a pull request in one operation.
 
@@ -970,7 +981,7 @@ class WorktreeManager:
             force_push: Whether to force push the branch
 
         Returns:
-            dict with keys:
+            PushAndCreatePRResult with keys:
                 - success: bool
                 - pr_url: str (if created)
                 - pushed: bool (if push succeeded)
@@ -980,11 +991,11 @@ class WorktreeManager:
         # Step 1: Push the branch
         push_result = self.push_branch(spec_name, force=force_push)
         if not push_result.get("success"):
-            return {
-                "success": False,
-                "pushed": False,
-                "error": push_result.get("error", "Push failed"),
-            }
+            return PushAndCreatePRResult(
+                success=False,
+                pushed=False,
+                error=push_result.get("error", "Push failed"),
+            )
 
         # Step 2: Create the PR
         pr_result = self.create_pull_request(
@@ -995,12 +1006,12 @@ class WorktreeManager:
         )
 
         # Combine results
-        return {
-            "success": pr_result.get("success", False),
-            "pushed": True,
-            "remote": push_result.get("remote"),
-            "branch": push_result.get("branch"),
-            "pr_url": pr_result.get("pr_url"),
-            "already_exists": pr_result.get("already_exists", False),
-            "error": pr_result.get("error"),
-        }
+        return PushAndCreatePRResult(
+            success=pr_result.get("success", False),
+            pushed=True,
+            remote=push_result.get("remote"),
+            branch=push_result.get("branch"),
+            pr_url=pr_result.get("pr_url"),
+            already_exists=pr_result.get("already_exists", False),
+            error=pr_result.get("error"),
+        )
