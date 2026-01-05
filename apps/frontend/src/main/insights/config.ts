@@ -137,13 +137,8 @@ export class InsightsConfig {
 
     const combinedPythonPath = pythonPathParts.join(path.delimiter);
 
-    return {
-      ...process.env as Record<string, string>,
-      ...pythonEnv,
-    // Get Python environment (PYTHONPATH for bundled packages like python-dotenv)
-    const pythonEnv = pythonEnvManager.getPythonEnv();
     // Use getAugmentedEnv() to ensure common tool paths (claude, dotnet, etc.)
-    // are available even when app is launched from Finder/Dock
+    // are available even when app is launched from Finder/Dock.
     const augmentedEnv = getAugmentedEnv();
 
     return {
