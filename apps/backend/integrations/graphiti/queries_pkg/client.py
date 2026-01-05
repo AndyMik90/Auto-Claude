@@ -137,11 +137,15 @@ class GraphitiClient:
 
             # Create cross-encoder (optional, primarily for Ollama)
             # This prevents Graphiti from creating a default OpenAI reranker
-            self._cross_encoder = create_cross_encoder(self.config, self._llm_client)
-            if self._cross_encoder:
-                logger.info("Created cross-encoder for reranking")
-            else:
-                logger.info("Cross-encoder disabled (will skip reranking)")
+            try:
+                self._cross_encoder = create_cross_encoder(self.config, self._llm_client)
+                if self._cross_encoder:
+                    logger.info("Created cross-encoder for reranking")
+                else:
+                    logger.info("Cross-encoder disabled (will skip reranking)")
+            except (ProviderNotInstalled, ProviderError) as e:
+                logger.info(f"Cross-encoder not available: {e}")
+                self._cross_encoder = None
 
             # Apply LadybugDB monkeypatch to use it via graphiti's KuzuDriver
             if not _apply_ladybug_monkeypatch():
