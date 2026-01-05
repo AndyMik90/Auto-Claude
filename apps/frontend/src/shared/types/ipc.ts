@@ -570,6 +570,7 @@ export interface ElectronAPI {
   // Electron app update operations
   checkAppUpdate: () => Promise<IPCResult<AppUpdateInfo | null>>;
   downloadAppUpdate: () => Promise<IPCResult>;
+  downloadStableUpdate: () => Promise<IPCResult>;
   installAppUpdate: () => void;
 
   // Electron app update event listeners

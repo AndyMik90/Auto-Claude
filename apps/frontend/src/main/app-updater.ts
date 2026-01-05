@@ -263,12 +263,15 @@ export function isPrerelease(version: string): boolean {
   return /-(alpha|beta|rc|dev|canary)\.\d+$/i.test(version) || version.includes('-');
 }
 
+// Timeout for GitHub API requests (10 seconds)
+const GITHUB_API_TIMEOUT = 10000;
+
 /**
  * Fetch the latest stable release from GitHub API
  * Returns the latest non-prerelease version
  */
 async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
-  return new Promise((resolve) => {
+  const fetchPromise = new Promise<AppUpdateInfo | null>((resolve) => {
     const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
     console.warn('[app-updater] Fetching releases from:', url);
 
@@ -283,13 +286,35 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
     let data = '';
 
     request.on('response', (response) => {
+      // Validate HTTP status code
+      const statusCode = response.statusCode;
+      if (statusCode !== 200) {
+        console.error(`[app-updater] GitHub API error: HTTP ${statusCode}`);
+        if (statusCode === 403) {
+          console.error('[app-updater] Rate limit may have been exceeded');
+        } else if (statusCode === 404) {
+          console.error('[app-updater] Repository or releases not found');
+        }
+        resolve(null);
+        return;
+      }
+
       response.on('data', (chunk) => {
         data += chunk.toString();
       });
 
       response.on('end', () => {
         try {
-          const releases = JSON.parse(data) as Array<{
+          const parsed = JSON.parse(data);
+
+          // Validate response is an array
+          if (!Array.isArray(parsed)) {
+            console.error('[app-updater] Unexpected response format - expected array, got:', typeof parsed);
+            resolve(null);
+            return;
+          }
+
+          const releases = parsed as Array<{
             tag_name: string;
             prerelease: boolean;
             draft: boolean;
@@ -316,7 +341,7 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
             releaseDate: latestStable.published_at
           });
         } catch (e) {
-          console.error('[app-updater] Failed to parse releases:', e);
+          console.error('[app-updater] Failed to parse releases JSON:', e);
           resolve(null);
         }
       });
@@ -329,6 +354,16 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
 
     request.end();
   });
+
+  // Add timeout to prevent hanging indefinitely
+  const timeoutPromise = new Promise<AppUpdateInfo | null>((resolve) => {
+    setTimeout(() => {
+      console.error(`[app-updater] GitHub API request timed out after ${GITHUB_API_TIMEOUT}ms`);
+      resolve(null);
+    }, GITHUB_API_TIMEOUT);
+  });
+
+  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 /**
@@ -393,21 +428,28 @@ export async function setUpdateChannelWithDowngradeCheck(
 
 /**
  * Download a specific version (for downgrade)
- * Uses electron-updater's ability to download from a specific URL
+ * Uses electron-updater with allowDowngrade enabled to download older stable versions
  */
 export async function downloadStableVersion(): Promise<void> {
-  // Switch to stable channel and trigger download
+  // Switch to stable channel
   autoUpdater.channel = 'latest';
-  console.warn('[app-updater] Downloading stable version...');
+  // Enable downgrade to allow downloading older versions (e.g., stable when on beta)
+  autoUpdater.allowDowngrade = true;
+  console.warn('[app-updater] Downloading stable version (allowDowngrade=true)...');
 
   try {
     // Force a fresh check on the stable channel, then download
     const result = await autoUpdater.checkForUpdates();
     if (result) {
       await autoUpdater.downloadUpdate();
+    } else {
+      throw new Error('No stable version available for download');
     }
   } catch (error) {
     console.error('[app-updater] Failed to download stable version:', error);
     throw error;
+  } finally {
+    // Reset allowDowngrade to prevent unintended downgrades in normal update checks
+    autoUpdater.allowDowngrade = false;
   }
 }

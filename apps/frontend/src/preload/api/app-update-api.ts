@@ -16,6 +16,7 @@ export interface AppUpdateAPI {
   // Operations
   checkAppUpdate: () => Promise<IPCResult<AppUpdateInfo | null>>;
   downloadAppUpdate: () => Promise<IPCResult>;
+  downloadStableUpdate: () => Promise<IPCResult>;
   installAppUpdate: () => void;
   getAppVersion: () => Promise<string>;
 
@@ -44,6 +45,9 @@ export const createAppUpdateAPI = (): AppUpdateAPI => ({
 
   downloadAppUpdate: (): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.APP_UPDATE_DOWNLOAD),
+
+  downloadStableUpdate: (): Promise<IPCResult> =>
+    invokeIpc(IPC_CHANNELS.APP_UPDATE_DOWNLOAD_STABLE),
 
   installAppUpdate: (): void => {
     invokeIpc(IPC_CHANNELS.APP_UPDATE_INSTALL);

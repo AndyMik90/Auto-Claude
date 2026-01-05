@@ -216,7 +216,9 @@ export function registerSettingsHandlers(
           } else {
             // Disabling beta updates - switch to stable and check if downgrade is available
             // This will notify the renderer if user is on a prerelease and stable version exists
-            setUpdateChannelWithDowngradeCheck('latest', true);
+            setUpdateChannelWithDowngradeCheck('latest', true).catch((err) => {
+              console.error('[settings-handlers] Failed to check for stable downgrade:', err);
+            });
           }
         }
 

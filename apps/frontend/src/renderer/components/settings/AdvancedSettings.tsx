@@ -140,7 +140,12 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
   const handleDownloadAppUpdate = async () => {
     setIsDownloadingAppUpdate(true);
     try {
-      await window.electronAPI.downloadAppUpdate();
+      const result = await window.electronAPI.downloadAppUpdate();
+      if (!result.success) {
+        console.error('Failed to download app update:', result.error);
+        setIsDownloadingAppUpdate(false);
+      }
+      // Note: Success case is handled by the onAppUpdateDownloaded event listener
     } catch (err) {
       console.error('Failed to download app update:', err);
       setIsDownloadingAppUpdate(false);
@@ -154,8 +159,13 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
   const handleDownloadStableVersion = async () => {
     setIsDownloadingAppUpdate(true);
     try {
-      // This will download the stable version through the normal update mechanism
-      await window.electronAPI.downloadAppUpdate();
+      // Use dedicated stable download API with allowDowngrade enabled
+      const result = await window.electronAPI.downloadStableUpdate();
+      if (!result.success) {
+        console.error('Failed to download stable version:', result.error);
+        setIsDownloadingAppUpdate(false);
+      }
+      // Note: Success case is handled by the onAppUpdateDownloaded event listener
     } catch (err) {
       console.error('Failed to download stable version:', err);
       setIsDownloadingAppUpdate(false);
@@ -328,9 +338,12 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
               checked={settings.betaUpdates ?? false}
               onCheckedChange={(checked) => {
                 onSettingsChange({ ...settings, betaUpdates: checked });
-                // Clear downgrade info when enabling beta again
                 if (checked) {
+                  // Clear downgrade info when enabling beta again
                   setStableDowngradeInfo(null);
+                } else {
+                  // Clear beta update info when disabling beta, so stable downgrade UI can show
+                  setAppUpdateInfo(null);
                 }
               }}
             />
