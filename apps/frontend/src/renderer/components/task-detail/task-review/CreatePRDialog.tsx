@@ -105,7 +105,7 @@ export function CreatePRDialog({
         </DialogHeader>
 
         {/* Success State */}
-        {result?.success && result.prUrl && (
+        {result?.success && (
           <div className="space-y-4">
             <div className="bg-success/10 border border-success/30 rounded-lg p-4">
               <p className="text-sm text-success font-medium mb-2">
@@ -113,14 +113,16 @@ export function CreatePRDialog({
                   ? t('taskReview:pr.success.alreadyExists')
                   : t('taskReview:pr.success.created')}
               </p>
-              <button
-                type="button"
-                onClick={handleOpenPR}
-                className="text-sm text-primary hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer p-0"
-              >
-                {result.prUrl}
-                <ExternalLink className="h-3 w-3" />
-              </button>
+              {result.prUrl && (
+                <button
+                  type="button"
+                  onClick={handleOpenPR}
+                  className="text-sm text-primary hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer p-0"
+                >
+                  {result.prUrl}
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              )}
             </div>
             <DialogFooter>
               <Button onClick={handleClose}>
