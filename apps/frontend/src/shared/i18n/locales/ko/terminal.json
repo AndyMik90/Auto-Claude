@@ -1,4 +1,20 @@
 {
+  "expand": {
+    "expand": "터미널 확장",
+    "collapse": "터미널 축소"
+  },
+  "grid": {
+    "title": "에이전트 터미널",
+    "description": "여러 터미널을 생성하여 Claude 에이전트를 병렬로 실행합니다. Ctrl+T를 사용하여 새 터미널을 생성하세요.",
+    "newTerminal": "새 터미널",
+    "terminalCount": "{{count}} / 12 터미널",
+    "history": "히스토리",
+    "restoreSessionsFrom": "세션 복원...",
+    "sessionCount": "{{count}}개 세션",
+    "sessionCountSingular": "{{count}}개 세션",
+    "invokeClaudeAll": "모든 터미널에 Claude 호출",
+    "files": "파일"
+  },
   "worktree": {
     "create": "워크트리 (작업 공간)",
     "createNew": "+ 새 워크트리",
