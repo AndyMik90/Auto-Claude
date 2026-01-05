@@ -1,0 +1,137 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import type { Project } from '../../../shared/types';
+import { Sidebar } from '../Sidebar';
+
+const mockInitializeProject = vi.fn();
+const mockRemoveProject = vi.fn();
+const mockUpdateProjectSettings = vi.fn();
+const mockUseProjectStore = vi.fn();
+
+const gitSetupModalSpy = vi.fn((props: { open: boolean }) => (
+  <div data-testid="git-setup-modal" data-open={props.open ? 'true' : 'false'} />
+));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en' }
+  })
+}));
+
+vi.mock('../../stores/project-store', () => ({
+  useProjectStore: (selector: (state: any) => any) => mockUseProjectStore(selector),
+  initializeProject: (...args: unknown[]) => mockInitializeProject(...args),
+  removeProject: (...args: unknown[]) => mockRemoveProject(...args),
+  updateProjectSettings: (...args: unknown[]) => mockUpdateProjectSettings(...args)
+}));
+
+vi.mock('../../stores/settings-store', () => ({
+  useSettingsStore: (selector: (state: any) => any) =>
+    selector({
+      settings: { autoBuildPath: '/tmp/auto-claude' }
+    })
+}));
+
+vi.mock('../RateLimitIndicator', () => ({
+  RateLimitIndicator: () => null
+}));
+
+vi.mock('../ClaudeCodeStatusBadge', () => ({
+  ClaudeCodeStatusBadge: () => null
+}));
+
+vi.mock('../AddProjectModal', () => ({
+  AddProjectModal: () => null
+}));
+
+vi.mock('../GitSetupModal', () => ({
+  GitSetupModal: (props: { open: boolean }) => gitSetupModalSpy(props)
+}));
+
+function createTestProject(overrides: Partial<Project> = {}): Project {
+  return {
+    id: 'project-1',
+    name: 'Test Project',
+    path: '/path/to/project',
+    autoBuildPath: '',
+    settings: {
+      model: 'opus',
+      memoryBackend: 'file',
+      linearSync: false,
+      notifications: {
+        onTaskComplete: true,
+        onTaskFailed: true,
+        onReviewNeeded: true,
+        sound: false
+      },
+      graphitiMcpEnabled: true,
+      useGit: true
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides
+  };
+}
+
+describe('Sidebar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    Object.defineProperty(window, 'electronAPI', {
+      value: {
+        checkGitStatus: vi.fn().mockResolvedValue({ success: true, data: {} }),
+        getProjectEnv: vi.fn().mockResolvedValue({ success: false }),
+        detectMainBranch: vi.fn().mockResolvedValue({ success: false }),
+        updateProjectSettings: vi.fn().mockResolvedValue({ success: true })
+      },
+      configurable: true
+    });
+  });
+
+  it('skips git setup checks when project useGit is false', async () => {
+    const project = createTestProject({
+      settings: {
+        model: 'opus',
+        memoryBackend: 'file',
+        linearSync: false,
+        notifications: {
+          onTaskComplete: true,
+          onTaskFailed: true,
+          onReviewNeeded: true,
+          sound: false
+        },
+        graphitiMcpEnabled: true,
+        useGit: false
+      }
+    });
+
+    const projectState = {
+      projects: [project],
+      selectedProjectId: project.id,
+      selectProject: vi.fn(),
+      error: null
+    };
+
+    mockUseProjectStore.mockImplementation((selector: (state: any) => any) =>
+      selector(projectState)
+    );
+
+    render(
+      <Sidebar
+        onSettingsClick={vi.fn()}
+        onNewTaskClick={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(window.electronAPI.checkGitStatus).not.toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId('git-setup-modal')).toHaveAttribute('data-open', 'false');
+  });
+});
