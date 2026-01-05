@@ -21,7 +21,9 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
     ? pathEntries
       .map((entry) => path.normalize(entry).toLowerCase())
       .includes(normalizedCommandDir.toLowerCase())
-    : pathEntries.includes(commandDir);
+    : pathEntries
+      .map((entry) => path.normalize(entry))
+      .includes(normalizedCommandDir);
 
   if (hasCommandDir) {
     return env;

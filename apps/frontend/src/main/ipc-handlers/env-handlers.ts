@@ -28,7 +28,7 @@ function envLine(vars: Record<string, string>, key: string, defaultVal: string =
 }
 
 type ResolvedClaudeCliInvocation =
-  | { command: string; env: NodeJS.ProcessEnv }
+  | { command: string; env: Record<string, string> }
   | { error: string };
 
 function resolveClaudeCliInvocation(): ResolvedClaudeCliInvocation {

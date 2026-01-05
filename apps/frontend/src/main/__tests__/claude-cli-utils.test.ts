@@ -70,7 +70,11 @@ describe('claude-cli-utils', () => {
   });
 
   it('keeps PATH unchanged when the command is not absolute', async () => {
-    const env = { PATH: '/usr/bin:/bin' };
+    const env = {
+      PATH: process.platform === 'win32'
+        ? 'C:\\Windows;C:\\Windows\\System32'
+        : '/usr/bin:/bin',
+    };
     mockGetToolPath.mockReturnValue('claude');
     mockGetAugmentedEnv.mockReturnValue(env);
 
