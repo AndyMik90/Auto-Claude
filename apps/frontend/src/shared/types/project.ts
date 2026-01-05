@@ -26,6 +26,8 @@ export interface ProjectSettings {
   mainBranch?: string;
   /** Include CLAUDE.md instructions in agent system prompt (default: true) */
   useClaudeMd?: boolean;
+  /** Whether this project should use git (default: true) */
+  useGit?: boolean;
 }
 
 export interface NotificationSettings {

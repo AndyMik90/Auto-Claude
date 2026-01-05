@@ -231,6 +231,10 @@ export interface InitializationResult {
   error?: string;
 }
 
+export interface InitializationOptions {
+  requireGit?: boolean;
+}
+
 /**
  * Check if the project has a local backend source directory
  * This indicates it's the development project itself
@@ -271,7 +275,10 @@ export function isInitialized(projectPath: string): boolean {
  * - Project directory must exist
  * - Project must be a git repository with at least one commit
  */
-export function initializeProject(projectPath: string): InitializationResult {
+export function initializeProject(
+  projectPath: string,
+  options: InitializationOptions = {}
+): InitializationResult {
   debug('initializeProject called', { projectPath });
 
   // Validate project path exists
@@ -283,14 +290,19 @@ export function initializeProject(projectPath: string): InitializationResult {
     };
   }
 
-  // Check git status - Auto Claude requires git for worktree-based builds
-  const gitStatus = checkGitStatus(projectPath);
-  if (!gitStatus.isGitRepo || !gitStatus.hasCommits) {
-    debug('Git check failed', { gitStatus });
-    return {
-      success: false,
-      error: gitStatus.error || 'Git repository required. Auto Claude uses git worktrees for isolated builds.'
-    };
+  const requireGit = options.requireGit !== false;
+  if (requireGit) {
+    // Check git status - Auto Claude requires git for worktree-based builds
+    const gitStatus = checkGitStatus(projectPath);
+    if (!gitStatus.isGitRepo || !gitStatus.hasCommits) {
+      debug('Git check failed', { gitStatus });
+      return {
+        success: false,
+        error: gitStatus.error || 'Git repository required. Auto Claude uses git worktrees for isolated builds.'
+      };
+    }
+  } else {
+    debug('Skipping git check for initialization');
   }
 
   // Check if already initialized

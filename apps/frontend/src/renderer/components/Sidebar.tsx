@@ -43,7 +43,8 @@ import { cn } from '../lib/utils';
 import {
   useProjectStore,
   removeProject,
-  initializeProject
+  initializeProject,
+  updateProjectSettings
 } from '../stores/project-store';
 import { useSettingsStore } from '../stores/settings-store';
 import { AddProjectModal } from './AddProjectModal';
@@ -189,6 +190,11 @@ export function Sidebar({
   useEffect(() => {
     const checkGit = async () => {
       if (selectedProject) {
+        if (selectedProject.settings?.useGit === false) {
+          setGitStatus(null);
+          setShowGitSetupModal(false);
+          return;
+        }
         try {
           const result = await window.electronAPI.checkGitStatus(selectedProject.path);
           if (result.success && result.data) {
@@ -217,6 +223,12 @@ export function Sidebar({
       setPendingProject(project);
       setShowInitDialog(true);
     }
+  };
+
+  const handleGitSetupSkip = async () => {
+    if (!selectedProject) return;
+    await updateProjectSettings(selectedProject.id, { useGit: false });
+    setShowGitSetupModal(false);
   };
 
   const handleInitialize = async () => {
@@ -459,6 +471,7 @@ export function Sidebar({
         project={selectedProject || null}
         gitStatus={gitStatus}
         onGitInitialized={handleGitInitialized}
+        onSkip={handleGitSetupSkip}
       />
     </TooltipProvider>
   );

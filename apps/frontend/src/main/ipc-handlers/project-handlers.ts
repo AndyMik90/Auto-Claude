@@ -344,7 +344,8 @@ export function registerProjectHandlers(
           return { success: false, error: 'Project not found' };
         }
 
-        const result = initializeProject(project.path);
+        const requireGit = project.settings?.useGit !== false;
+        const result = initializeProject(project.path, { requireGit });
 
         if (result.success) {
           // Update project's autoBuildPath

@@ -71,7 +71,9 @@ export const DEFAULT_PROJECT_SETTINGS = {
   graphitiMcpEnabled: true,
   graphitiMcpUrl: 'http://localhost:8000/mcp/',
   // Include CLAUDE.md instructions in agent context (enabled by default)
-  useClaudeMd: true
+  useClaudeMd: true,
+  // Require git for worktrees by default
+  useGit: true
 };
 
 // ============================================

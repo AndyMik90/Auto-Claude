@@ -13,7 +13,7 @@ import {
   DialogTitle
 } from './ui/dialog';
 import { cn } from '../lib/utils';
-import { addProject } from '../stores/project-store';
+import { addProject, updateProjectSettings } from '../stores/project-store';
 import type { Project } from '../../shared/types';
 
 type ModalStep = 'choose' | 'create-form';
@@ -125,6 +125,13 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
       // Add the project to our store
       const project = await addProject(result.data.path);
       if (project) {
+        if (!initGit) {
+          try {
+            await updateProjectSettings(project.id, { useGit: false });
+          } catch {
+            // Non-fatal - continue without updating git preference
+          }
+        }
         // For new projects with git init, set main branch
         // Git init creates 'main' branch by default on modern git
         if (initGit) {
