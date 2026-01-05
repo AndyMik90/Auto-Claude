@@ -225,10 +225,13 @@ export class TerminalSessionStore {
   /**
    * Get most recent sessions for a project.
    * First checks today, then looks at the most recent date with sessions.
-   * This ensures sessions survive app restarts even after midnight.
+   * When restoring from a previous date, MIGRATES sessions to today to prevent
+   * duplication issues across days.
    * Validates worktree configs - clears them if worktree no longer exists.
    */
   getSessions(projectPath: string): TerminalSession[] {
+    const today = getDateString();
+
     // First check today
     const todaySessions = this.getTodaysSessions();
     if (todaySessions[projectPath]?.length > 0) {
@@ -242,6 +245,8 @@ export class TerminalSessionStore {
     // If no sessions today, find the most recent date with sessions for this project
     const dates = Object.keys(this.data.sessionsByDate)
       .filter(date => {
+        // Exclude today since we already checked it
+        if (date === today) return false;
         const sessions = this.data.sessionsByDate[date][projectPath];
         return sessions && sessions.length > 0;
       })
@@ -249,13 +254,34 @@ export class TerminalSessionStore {
 
     if (dates.length > 0) {
       const mostRecentDate = dates[0];
-      console.warn(`[TerminalSessionStore] No sessions today, using sessions from ${mostRecentDate}`);
+      console.warn(`[TerminalSessionStore] No sessions today, migrating sessions from ${mostRecentDate} to today`);
       const sessions = this.data.sessionsByDate[mostRecentDate][projectPath] || [];
-      // Validate worktree configs before returning
-      return sessions.map(session => ({
+
+      // MIGRATE: Copy sessions to today's bucket with validated worktree configs
+      const migratedSessions = sessions.map(session => ({
         ...session,
         worktreeConfig: this.validateWorktreeConfig(session.worktreeConfig),
+        // Update lastActiveAt to now since we're restoring them
+        lastActiveAt: new Date().toISOString(),
       }));
+
+      // Add migrated sessions to today
+      todaySessions[projectPath] = migratedSessions;
+
+      // Remove sessions from the old date to prevent duplication
+      delete this.data.sessionsByDate[mostRecentDate][projectPath];
+
+      // Clean up empty date buckets
+      if (Object.keys(this.data.sessionsByDate[mostRecentDate]).length === 0) {
+        delete this.data.sessionsByDate[mostRecentDate];
+      }
+
+      // Save the migration
+      this.save();
+
+      console.warn(`[TerminalSessionStore] Migrated ${migratedSessions.length} sessions from ${mostRecentDate} to ${today}`);
+
+      return migratedSessions;
     }
 
     return [];

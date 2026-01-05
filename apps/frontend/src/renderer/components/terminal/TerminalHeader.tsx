@@ -188,6 +188,7 @@ export function TerminalHeader({
             e.stopPropagation();
             onClose();
           }}
+          title={`${t('common:close')} (${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+W)`}
         >
           <X className="h-3.5 w-3.5" />
         </Button>

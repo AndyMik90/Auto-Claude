@@ -67,6 +67,23 @@ export function useTerminalEvents({
           store.updateTerminal(terminalId, { isClaudeMode: false });
         }
         onExitRef.current?.(exitCode);
+
+        // Auto-remove exited terminals from store after a short delay
+        // This prevents them from counting toward the max terminal limit
+        // and ensures they don't get persisted and restored on next launch
+        setTimeout(() => {
+          const currentStore = useTerminalStore.getState();
+          const currentTerminal = currentStore.getTerminal(terminalId);
+          // Only remove if still exited (user hasn't recreated it)
+          if (currentTerminal?.status === 'exited') {
+            // First call destroyTerminal to clean up persisted session on disk
+            // (the PTY is already dead, but this ensures session removal)
+            window.electronAPI.destroyTerminal(terminalId).catch(() => {
+              // Ignore errors - PTY may already be gone
+            });
+            currentStore.removeTerminal(terminalId);
+          }
+        }, 2000); // 2 second delay to show exit message
       }
     });
 

@@ -46,12 +46,14 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
   const allTerminals = useTerminalStore((state) => state.terminals);
   // Filter terminals to show only those belonging to the current project
   // Also include legacy terminals without projectPath (created before this change)
-  const terminals = useMemo(() =>
-    projectPath
+  // Exclude exited terminals as they are no longer functional
+  const terminals = useMemo(() => {
+    const filtered = projectPath
       ? allTerminals.filter(t => t.projectPath === projectPath || !t.projectPath)
-      : allTerminals,
-    [allTerminals, projectPath]
-  );
+      : allTerminals;
+    // Exclude exited terminals from the visible list
+    return filtered.filter(t => t.status !== 'exited');
+  }, [allTerminals, projectPath]);
   const activeTerminalId = useTerminalStore((state) => state.activeTerminalId);
   const addTerminal = useTerminalStore((state) => state.addTerminal);
   const removeTerminal = useTerminalStore((state) => state.removeTerminal);
@@ -205,7 +207,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
       // Ctrl+T or Cmd+T for new terminal
       if ((e.ctrlKey || e.metaKey) && e.key === 't') {
         e.preventDefault();
-        if (canAddTerminal()) {
+        if (canAddTerminal(projectPath)) {
           addTerminal(projectPath, projectPath);
         }
       }
@@ -221,7 +223,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
   }, [isActive, addTerminal, canAddTerminal, projectPath, activeTerminalId, handleCloseTerminal]);
 
   const handleAddTerminal = useCallback(() => {
-    if (canAddTerminal()) {
+    if (canAddTerminal(projectPath)) {
       addTerminal(projectPath, projectPath);
     }
   }, [addTerminal, canAddTerminal, projectPath]);
@@ -423,7 +425,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
               size="sm"
               className="h-7 text-xs gap-1.5"
               onClick={handleAddTerminal}
-              disabled={!canAddTerminal()}
+              disabled={!canAddTerminal(projectPath)}
             >
               <Plus className="h-3 w-3" />
               New Terminal

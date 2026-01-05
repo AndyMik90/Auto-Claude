@@ -83,21 +83,38 @@ export function hasOAuthToken(data: string): boolean {
 /**
  * Patterns indicating Claude Code is busy/processing
  * These appear when Claude is actively thinking or working
+ *
+ * IMPORTANT: These must be universal patterns that work for ALL users,
+ * not just custom terminal configurations with progress bars.
  */
 const CLAUDE_BUSY_PATTERNS = [
+  // Universal Claude Code indicators
+  /^●/m,                            // Claude's response bullet point (appears when Claude is responding)
+  /\u25cf/,                         // Unicode bullet point (●)
+
+  // Tool execution indicators (Claude is running tools)
+  /^(Read|Write|Edit|Bash|Grep|Glob|Task|WebFetch|WebSearch|TodoWrite)\(/m,
+  /^\s*\d+\s*[│|]\s*/m,            // Line numbers in file output (Claude reading/showing files)
+
+  // Streaming/thinking indicators
   /Loading\.\.\./i,
   /Thinking\.\.\./i,
-  /\[Opus 4\.5\].*\d+%/,           // Progress bar with percentage
-  /\[Sonnet\s*\d*\.?\d*\].*\d+%/i, // Sonnet model progress
-  /\[Haiku\s*\d*\.?\d*\].*\d+%/i,  // Haiku model progress
-  /░+/,                             // Progress bar characters
-  /▓+/,                             // Progress bar characters
-  /█+/,                             // Progress bar characters (filled)
   /Analyzing\.\.\./i,
   /Processing\.\.\./i,
   /Working\.\.\./i,
-  /Reading\.\.\./i,
   /Searching\.\.\./i,
+  /Creating\.\.\./i,
+  /Updating\.\.\./i,
+  /Running\.\.\./i,
+
+  // Custom progress bar patterns (for users who have them)
+  /\[Opus\s*\d*\.?\d*\].*\d+%/i,   // Opus model progress
+  /\[Sonnet\s*\d*\.?\d*\].*\d+%/i, // Sonnet model progress
+  /\[Haiku\s*\d*\.?\d*\].*\d+%/i,  // Haiku model progress
+  /\[Claude\s*\d*\.?\d*\].*\d+%/i, // Generic Claude progress
+  /░+/,                             // Progress bar characters
+  /▓+/,                             // Progress bar characters
+  /█+/,                             // Progress bar characters (filled)
 ];
 
 /**
@@ -129,13 +146,16 @@ export function isClaudeIdleOutput(data: string): boolean {
  * Returns: 'busy' | 'idle' | null (no change detected)
  */
 export function detectClaudeBusyState(data: string): 'busy' | 'idle' | null {
-  // Check for idle first (prompt appearing means done)
-  if (isClaudeIdleOutput(data)) {
-    return 'idle';
-  }
-  // Check for busy indicators
+  // Check for busy indicators FIRST - they're more definitive
+  // Progress bars and "Loading..." mean Claude is definitely working,
+  // even if there's a ">" prompt visible elsewhere in the output
   if (isClaudeBusyOutput(data)) {
     return 'busy';
+  }
+  // Only check for idle if no busy indicators found
+  // The ">" prompt alone at end of output means Claude is waiting for input
+  if (isClaudeIdleOutput(data)) {
+    return 'idle';
   }
   return null;
 }

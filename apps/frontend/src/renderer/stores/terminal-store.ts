@@ -57,7 +57,7 @@ interface TerminalState {
   // Selectors
   getTerminal: (id: string) => Terminal | undefined;
   getActiveTerminal: () => Terminal | undefined;
-  canAddTerminal: () => boolean;
+  canAddTerminal: (projectPath?: string) => boolean;
   getTerminalsForProject: (projectPath: string) => Terminal[];
   getWorktreeCount: () => number;
 }
@@ -250,9 +250,19 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     return state.terminals.find((t) => t.id === state.activeTerminalId);
   },
 
-  canAddTerminal: () => {
+  canAddTerminal: (projectPath?: string) => {
     const state = get();
-    return state.terminals.length < state.maxTerminals;
+    // Count only non-exited terminals, optionally filtered by project
+    const activeTerminals = state.terminals.filter(t => {
+      // Exclude exited terminals from the count
+      if (t.status === 'exited') return false;
+      // If projectPath specified, only count terminals for that project (or legacy without projectPath)
+      if (projectPath) {
+        return t.projectPath === projectPath || !t.projectPath;
+      }
+      return true;
+    });
+    return activeTerminals.length < state.maxTerminals;
   },
 
   getTerminalsForProject: (projectPath: string) => {

@@ -160,6 +160,25 @@ export function Terminal({
     }
   }, [isActive, focus]);
 
+  // Handle keyboard shortcuts for this terminal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if this terminal is active
+      if (!isActive) return;
+
+      // Cmd/Ctrl+W to close terminal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    // Use capture phase to get the event before xterm
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isActive, onClose]);
+
   // Cleanup on unmount
   useEffect(() => {
     isMountedRef.current = true;
