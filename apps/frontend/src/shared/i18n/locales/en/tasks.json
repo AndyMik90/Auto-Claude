@@ -14,7 +14,9 @@
     "resume": "Resume",
     "archive": "Archive",
     "delete": "Delete",
-    "view": "View Details"
+    "view": "View Details",
+    "moveTo": "Move to",
+    "taskActions": "Task actions"
   },
   "labels": {
     "running": "Running",

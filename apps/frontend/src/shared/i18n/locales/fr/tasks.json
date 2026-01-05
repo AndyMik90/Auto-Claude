@@ -14,7 +14,9 @@
     "resume": "Reprendre",
     "archive": "Archiver",
     "delete": "Supprimer",
-    "view": "Voir les détails"
+    "view": "Voir les détails",
+    "moveTo": "Déplacer vers",
+    "taskActions": "Actions de la tâche"
   },
   "labels": {
     "running": "En cours",
