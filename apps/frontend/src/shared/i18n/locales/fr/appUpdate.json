@@ -1,10 +1,10 @@
 {
   "dialog": {
-    "title": "Mise à Jour Disponible",
+    "title": "Mise à jour disponible",
     "description": "Une nouvelle version d'Auto Claude est prête à être téléchargée"
   },
   "version": {
-    "label": "Nouvelle Version",
+    "label": "Nouvelle version",
     "released": "Publiée le {{date}}"
   },
   "progress": {
@@ -16,10 +16,10 @@
     "downloadError": "Échec du téléchargement de la mise à jour"
   },
   "buttons": {
-    "installLater": "Installer Plus Tard",
-    "remindLater": "Me Rappeler Plus Tard",
-    "installRestart": "Installer et Redémarrer",
-    "downloadUpdate": "Télécharger la Mise à Jour",
+    "installLater": "Installer plus tard",
+    "remindLater": "Me rappeler plus tard",
+    "installRestart": "Installer et redémarrer",
+    "downloadUpdate": "Télécharger la mise à jour",
     "downloading": "Téléchargement..."
   }
 }
