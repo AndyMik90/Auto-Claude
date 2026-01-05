@@ -196,7 +196,7 @@ async function executeSemanticQuery(
 
   // Build environment with embedder configuration
   // Start with sanitized Python env to prevent PYTHONHOME contamination
-  const env: Record<string, string | undefined> = { ...pythonEnvManager.getPythonEnv() };
+  const env: Record<string, string> = { ...pythonEnvManager.getPythonEnv() };
 
   // Set the embedder provider
   env.GRAPHITI_EMBEDDER_PROVIDER = embedderConfig.provider;

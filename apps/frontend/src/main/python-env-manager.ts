@@ -634,8 +634,9 @@ if sys.version_info >= (3, 12):
 
     for (const [key, value] of Object.entries(process.env)) {
       // Skip PYTHONHOME - it causes the "platform independent libraries" error
+      // Use case-insensitive check for Windows compatibility (env vars are case-insensitive on Windows)
       // Skip undefined values (TypeScript type guard)
-      if (key !== 'PYTHONHOME' && value !== undefined) {
+      if (key.toUpperCase() !== 'PYTHONHOME' && value !== undefined) {
         baseEnv[key] = value;
       }
     }
