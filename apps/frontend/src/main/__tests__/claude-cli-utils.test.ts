@@ -41,6 +41,34 @@ describe('claude-cli-utils', () => {
     expect(result.env.HOME).toBe(env.HOME);
   });
 
+  it('sets PATH to the command directory when PATH is empty', async () => {
+    const command = process.platform === 'win32'
+      ? 'C:\\Tools\\claude\\claude.exe'
+      : '/opt/claude/bin/claude';
+    const env = { PATH: '' };
+    mockGetToolPath.mockReturnValue(command);
+    mockGetAugmentedEnv.mockReturnValue(env);
+
+    const { getClaudeCliInvocation } = await import('../claude-cli-utils');
+    const result = getClaudeCliInvocation();
+
+    expect(result.env.PATH).toBe(path.dirname(command));
+  });
+
+  it('sets PATH to the command directory when PATH is missing', async () => {
+    const command = process.platform === 'win32'
+      ? 'C:\\Tools\\claude\\claude.exe'
+      : '/opt/claude/bin/claude';
+    const env = {};
+    mockGetToolPath.mockReturnValue(command);
+    mockGetAugmentedEnv.mockReturnValue(env);
+
+    const { getClaudeCliInvocation } = await import('../claude-cli-utils');
+    const result = getClaudeCliInvocation();
+
+    expect(result.env.PATH).toBe(path.dirname(command));
+  });
+
   it('keeps PATH unchanged when the command is not absolute', async () => {
     const env = { PATH: '/usr/bin:/bin' };
     mockGetToolPath.mockReturnValue('claude');

@@ -4,6 +4,7 @@ import type { TerminalProcess } from '../types';
 const mockGetClaudeCliInvocation = vi.fn();
 const mockGetClaudeProfileManager = vi.fn();
 const mockPersistSession = vi.fn();
+const mockReleaseSessionId = vi.fn();
 
 vi.mock('../../claude-cli-utils', () => ({
   getClaudeCliInvocation: mockGetClaudeCliInvocation,
@@ -15,6 +16,7 @@ vi.mock('../../claude-profile-manager', () => ({
 
 vi.mock('../session-handler', () => ({
   persistSession: mockPersistSession,
+  releaseSessionId: mockReleaseSessionId,
 }));
 
 describe('claude-integration-handler', () => {
@@ -22,6 +24,7 @@ describe('claude-integration-handler', () => {
     mockGetClaudeCliInvocation.mockReset();
     mockGetClaudeProfileManager.mockReset();
     mockPersistSession.mockReset();
+    mockReleaseSessionId.mockReset();
   });
 
   it('uses the resolved CLI path and PATH prefix when invoking Claude', async () => {

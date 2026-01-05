@@ -16,8 +16,14 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
   const commandDir = path.dirname(command);
   const currentPath = env.PATH || '';
   const pathEntries = currentPath.split(pathSeparator);
+  const normalizedCommandDir = path.normalize(commandDir);
+  const hasCommandDir = process.platform === 'win32'
+    ? pathEntries
+      .map((entry) => path.normalize(entry).toLowerCase())
+      .includes(normalizedCommandDir.toLowerCase())
+    : pathEntries.includes(commandDir);
 
-  if (pathEntries.includes(commandDir)) {
+  if (hasCommandDir) {
     return env;
   }
 

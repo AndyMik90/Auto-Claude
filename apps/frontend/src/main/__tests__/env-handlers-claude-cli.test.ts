@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IPC_CHANNELS } from '../../shared/constants';
+import { escapeShellArg, escapeShellArgWindows } from '../../shared/utils/shell-escape';
 const {
   mockGetClaudeCliInvocation,
   mockGetProject,
@@ -64,6 +65,12 @@ function createProc(): EventEmitter & { stdout?: EventEmitter; stderr?: EventEmi
   return proc;
 }
 
+function getExpectedCommand(command: string): string {
+  return process.platform === 'win32'
+    ? `"${escapeShellArgWindows(command)}"`
+    : escapeShellArg(command);
+}
+
 describe('env-handlers Claude CLI usage', () => {
   beforeEach(() => {
     mockGetClaudeCliInvocation.mockReset();
@@ -73,8 +80,10 @@ describe('env-handlers Claude CLI usage', () => {
 
   it('uses resolved Claude CLI path/env for auth checks', async () => {
     const claudeEnv = { PATH: '/opt/claude/bin:/usr/bin' };
+    const command = '/opt/claude/bin/claude';
+    const expectedCommand = getExpectedCommand(command);
     mockGetClaudeCliInvocation.mockReturnValue({
-      command: '/opt/claude/bin/claude',
+      command,
       env: claudeEnv,
     });
     mockGetProject.mockReturnValue({ id: 'p1', path: '/tmp/project' });
@@ -95,7 +104,7 @@ describe('env-handlers Claude CLI usage', () => {
     const resultPromise = handler({}, 'p1');
     expect(spawnMock).toHaveBeenCalledTimes(1);
     expect(spawnMock).toHaveBeenCalledWith(
-      '/opt/claude/bin/claude',
+      expectedCommand,
       ['--version'],
       expect.objectContaining({ env: claudeEnv })
     );
@@ -105,7 +114,7 @@ describe('env-handlers Claude CLI usage', () => {
 
     expect(spawnMock).toHaveBeenCalledTimes(2);
     expect(spawnMock).toHaveBeenCalledWith(
-      '/opt/claude/bin/claude',
+      expectedCommand,
       ['api', '--help'],
       expect.objectContaining({ env: claudeEnv })
     );
@@ -118,8 +127,10 @@ describe('env-handlers Claude CLI usage', () => {
 
   it('uses resolved Claude CLI path/env for setup-token', async () => {
     const claudeEnv = { PATH: '/opt/claude/bin:/usr/bin' };
+    const command = '/opt/claude/bin/claude';
+    const expectedCommand = getExpectedCommand(command);
     mockGetClaudeCliInvocation.mockReturnValue({
-      command: '/opt/claude/bin/claude',
+      command,
       env: claudeEnv,
     });
     mockGetProject.mockReturnValue({ id: 'p2', path: '/tmp/project' });
@@ -135,7 +146,7 @@ describe('env-handlers Claude CLI usage', () => {
 
     const resultPromise = handler({}, 'p2');
     expect(spawnMock).toHaveBeenCalledWith(
-      '/opt/claude/bin/claude',
+      expectedCommand,
       ['setup-token'],
       expect.objectContaining({ env: claudeEnv })
     );
@@ -143,5 +154,71 @@ describe('env-handlers Claude CLI usage', () => {
     proc.emit('close', 0);
     const result = await resultPromise;
     expect(result).toEqual({ success: true, data: { success: true, authenticated: true } });
+  });
+
+  it('returns an error when Claude CLI resolution throws', async () => {
+    mockGetClaudeCliInvocation.mockImplementation(() => {
+      throw new Error('Claude CLI exploded');
+    });
+    mockGetProject.mockReturnValue({ id: 'p3', path: '/tmp/project' });
+
+    registerEnvHandlers(() => null);
+    const handler = mockIpcMain.getHandler(IPC_CHANNELS.ENV_CHECK_CLAUDE_AUTH);
+    if (!handler) {
+      throw new Error('ENV_CHECK_CLAUDE_AUTH handler not registered');
+    }
+
+    const result = await handler({}, 'p3');
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Claude CLI exploded');
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it('returns an error when Claude CLI command is missing', async () => {
+    mockGetClaudeCliInvocation.mockReturnValue({ command: '', env: {} });
+    mockGetProject.mockReturnValue({ id: 'p4', path: '/tmp/project' });
+
+    registerEnvHandlers(() => null);
+    const handler = mockIpcMain.getHandler(IPC_CHANNELS.ENV_CHECK_CLAUDE_AUTH);
+    if (!handler) {
+      throw new Error('ENV_CHECK_CLAUDE_AUTH handler not registered');
+    }
+
+    const result = await handler({}, 'p4');
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Claude CLI path not resolved');
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it('returns an error when Claude CLI exits with a non-zero code', async () => {
+    const claudeEnv = { PATH: '/opt/claude/bin:/usr/bin' };
+    const command = '/opt/claude/bin/claude';
+    const expectedCommand = getExpectedCommand(command);
+    mockGetClaudeCliInvocation.mockReturnValue({
+      command,
+      env: claudeEnv,
+    });
+    mockGetProject.mockReturnValue({ id: 'p5', path: '/tmp/project' });
+
+    const proc = createProc();
+    spawnMock.mockReturnValue(proc);
+
+    registerEnvHandlers(() => null);
+    const handler = mockIpcMain.getHandler(IPC_CHANNELS.ENV_CHECK_CLAUDE_AUTH);
+    if (!handler) {
+      throw new Error('ENV_CHECK_CLAUDE_AUTH handler not registered');
+    }
+
+    const resultPromise = handler({}, 'p5');
+    expect(spawnMock).toHaveBeenCalledWith(
+      expectedCommand,
+      ['--version'],
+      expect.objectContaining({ env: claudeEnv })
+    );
+    proc.emit('close', 1);
+
+    const result = await resultPromise;
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Claude CLI not found');
   });
 });
