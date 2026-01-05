@@ -398,9 +398,7 @@ def main() -> None:
             title=args.pr_title,
             draft=args.pr_draft,
         )
-        # Output JSON for frontend IPC consumption
-        import json
-        print(json.dumps(result))
+        # JSON output is already printed by handle_create_pr_command
         if not result.get("success"):
             sys.exit(1)
         return
