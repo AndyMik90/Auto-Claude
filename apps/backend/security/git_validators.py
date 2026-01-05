@@ -56,6 +56,13 @@ def validate_git_config(command_string: str) -> ValidationResult:
     if len(tokens) < 2 or tokens[0] != "git" or tokens[1] != "config":
         return True, ""  # Not a git config command
 
+    # Check for read-only operations first - these are always allowed
+    # --get, --get-all, --get-regexp, --list are all read operations
+    read_only_flags = {"--get", "--get-all", "--get-regexp", "--list", "-l"}
+    for token in tokens[2:]:
+        if token in read_only_flags:
+            return True, ""  # Read operation, allow it
+
     # Extract the config key from the command
     # git config [options] <key> [value] - key is typically after config and any options
     config_key = None

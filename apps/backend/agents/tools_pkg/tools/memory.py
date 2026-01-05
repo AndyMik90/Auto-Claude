@@ -82,12 +82,12 @@ def _save_to_graphiti_sync(
 
         # Run async operation in event loop
         try:
-            loop = asyncio.get_running_loop()
-            # If we're already in an async context, create a task
-            future = asyncio.ensure_future(_async_save())
+            asyncio.get_running_loop()
+            # If we're already in an async context, schedule the task
             # Don't block - just fire and forget for the Graphiti save
             # The file-based save is the primary, Graphiti is supplementary
-            return True  # Optimistically return True, don't wait
+            asyncio.ensure_future(_async_save())
+            return False  # Can't confirm async success, file-based is source of truth
         except RuntimeError:
             # No running loop, create one
             return asyncio.run(_async_save())

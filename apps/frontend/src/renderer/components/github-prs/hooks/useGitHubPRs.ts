@@ -153,7 +153,7 @@ export function useGitHubPRs(projectId?: string, options: UseGitHubPRsOptions = 
               const batchReviews = await window.electronAPI.github.getPRReviewsBatch(projectId, prNumbers);
               
               // Update store with loaded results
-              for (const [prNumberStr, reviewResult] of Object.entries(batchReviews)) {
+              for (const reviewResult of Object.values(batchReviews)) {
                 if (reviewResult) {
                   usePRReviewStore.getState().setPRReviewResult(projectId, reviewResult, { preserveNewCommitsCheck: true });
                 }

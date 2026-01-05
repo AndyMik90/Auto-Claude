@@ -198,16 +198,16 @@ async function executeQuery(
 
   return new Promise((resolve) => {
     const fullArgs = [...baseArgs, scriptPath, command, ...args];
-    
+
     // Get Python environment (includes PYTHONPATH for bundled/venv packages)
     // This is critical for finding real_ladybug (LadybugDB)
     const pythonEnv = getMemoryPythonEnv();
-    
+
     const proc = spawn(pythonExe, fullArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout,
-      // Use getMemoryPythonEnv() which combines sanitized env + site-packages for real_ladybug
-      env: getMemoryPythonEnv(),
+      // Use pythonEnv which combines sanitized env + site-packages for real_ladybug
+      env: pythonEnv,
     });
 
     let stdout = '';
@@ -280,11 +280,12 @@ async function executeSemanticQuery(
   const [pythonExe, baseArgs] = parsePythonCommand(pythonCmd);
 
   // Get Python environment (includes PYTHONPATH for bundled/venv packages)
+  // This is critical for finding real_ladybug (LadybugDB)
   const pythonEnv = getMemoryPythonEnv();
-  
+
   // Build environment with embedder configuration
-  // Use getMemoryPythonEnv() which combines sanitized env + site-packages for real_ladybug
-  const env: Record<string, string | undefined> = { ...getMemoryPythonEnv() };
+  // Use pythonEnv which combines sanitized env + site-packages for real_ladybug
+  const env: Record<string, string | undefined> = { ...pythonEnv };
 
   // Set the embedder provider
   env.GRAPHITI_EMBEDDER_PROVIDER = embedderConfig.provider;
