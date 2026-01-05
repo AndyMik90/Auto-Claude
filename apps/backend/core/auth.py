@@ -36,6 +36,14 @@ SDK_ENV_VARS = [
     "DISABLE_TELEMETRY",
     "DISABLE_COST_WARNINGS",
     "API_TIMEOUT_MS",
+    # User environment paths
+    # PATH is critical for finding executables like pnpm, npm, yarn, node.
+    # The SDK spawns a non-interactive shell which doesn't source ~/.bashrc,
+    # so tools installed via version managers (nvm, fnm, volta) won't be found
+    # unless we pass through the user's PATH from the parent process.
+    "PATH",
+    "HOME",  # Unix: config files, ~ expansion
+    "USERPROFILE",  # Windows: config files, ~ expansion
 ]
 
 
