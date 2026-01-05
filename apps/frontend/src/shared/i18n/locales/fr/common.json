@@ -258,5 +258,9 @@
     "done": "Terminé",
     "failedLabel": "Échoué",
     "starting": "Démarrage..."
+  },
+  "insights": {
+    "stopTooltip": "Arrêter",
+    "helperTextIdle": "Entrée pour envoyer, Maj+Entrée pour nouvelle ligne"
   }
 }

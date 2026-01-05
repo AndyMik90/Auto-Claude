@@ -260,6 +260,19 @@ export async function clearSession(projectId: string): Promise<void> {
   }
 }
 
+export function cancelSession(projectId: string): void {
+  const store = useInsightsStore.getState();
+
+  // Call the main process to cancel
+  window.electronAPI.cancelInsightsSession(projectId);
+
+  // Reset UI state immediately
+  store.setCurrentTool(null);
+  store.clearStreamingContent();
+  store.clearToolsUsed();
+  store.setStatus({ phase: 'idle', message: '' });
+}
+
 export async function newSession(projectId: string): Promise<void> {
   const result = await window.electronAPI.newInsightsSession(projectId);
   if (result.success && result.data) {

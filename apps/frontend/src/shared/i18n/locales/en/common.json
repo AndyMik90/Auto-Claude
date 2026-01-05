@@ -258,5 +258,9 @@
     "done": "Done",
     "failedLabel": "Failed",
     "starting": "Starting..."
+  },
+  "insights": {
+    "stopTooltip": "Stop",
+    "helperTextIdle": "Press Enter to send, Shift+Enter for new line"
   }
 }
