@@ -425,7 +425,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                               onClick={() => window.electronAPI.openExternal(task.metadata!.prUrl!)}
                             >
                               <GitPullRequest className="h-3.5 w-3.5 mr-1.5" />
-                              Open PR
+                              {t('common:buttons.openPR')}
                             </Button>
                           )}
                           <Button

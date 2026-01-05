@@ -20,6 +20,7 @@
     "retry": "Retry",
     "create": "Create",
     "createPR": "Create PR",
+    "openPR": "Open PR",
     "open": "Open",
     "start": "Start",
     "stop": "Stop",
