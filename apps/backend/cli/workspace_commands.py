@@ -5,6 +5,7 @@ Workspace Commands
 CLI commands for workspace management (merge, review, discard, list, cleanup)
 """
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -854,7 +855,10 @@ def handle_create_pr_command(
 
     from core.worktree import WorktreeManager
 
-    print_banner("Create Pull Request")
+    print_banner()
+    print("\n" + "=" * 70)
+    print("  CREATE PULL REQUEST")
+    print("=" * 70)
 
     # Check if worktree exists
     worktree_path = get_existing_build_worktree(project_dir, spec_name)
@@ -902,8 +906,12 @@ def handle_create_pr_command(
         print("  2. Request reviews from your team")
         print("  3. Merge when approved")
 
+        # Output JSON for frontend parsing
+        print(json.dumps(result))
         return result
     else:
         error = result.get("error", "Unknown error")
         print(f"\n{icon(Icons.ERROR)} Failed to create PR: {error}")
+        # Output JSON for frontend parsing
+        print(json.dumps(result))
         return result

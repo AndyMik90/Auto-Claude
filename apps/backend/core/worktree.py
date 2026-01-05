@@ -224,8 +224,22 @@ class WorktreeManager:
     # ==================== Per-Spec Worktree Methods ====================
 
     def get_worktree_path(self, spec_name: str) -> Path:
-        """Get the worktree path for a spec."""
-        return self.worktrees_dir / spec_name
+        """Get the worktree path for a spec.
+
+        Checks new path first, then falls back to legacy .worktrees/ path.
+        """
+        # New path (.auto-claude/worktrees/tasks/)
+        new_path = self.worktrees_dir / spec_name
+        if new_path.exists():
+            return new_path
+
+        # Legacy fallback (.worktrees/)
+        legacy_path = self.project_dir / ".worktrees" / spec_name
+        if legacy_path.exists():
+            return legacy_path
+
+        # Return new path (for creation of new worktrees)
+        return new_path
 
     def get_branch_name(self, spec_name: str) -> str:
         """Get the branch name for a spec."""
@@ -837,9 +851,10 @@ class WorktreeManager:
             summary = "\n".join(summary_lines).strip()
             if summary:
                 return summary
-        except Exception:
+        except (OSError, UnicodeDecodeError) as e:
             # Silently fall back to default - file read errors shouldn't block PR creation
-            pass
+            from debug import debug_warning
+            debug_warning("worktree", f"Could not extract spec summary for PR body: {e}")
 
         return "Auto-generated PR from Auto-Claude build."
 
@@ -861,11 +876,12 @@ class WorktreeManager:
             )
             if result.returncode == 0:
                 return result.stdout.strip()
-        except Exception:
+        except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError) as e:
             # Silently ignore errors when fetching existing PR URL - this is a best-effort
             # lookup that may fail due to network issues, missing gh CLI, or auth problems.
             # Returning None allows the caller to handle missing URLs gracefully.
-            pass
+            from debug import debug_warning
+            debug_warning("worktree", f"Could not get existing PR URL: {e}")
 
         return None
 

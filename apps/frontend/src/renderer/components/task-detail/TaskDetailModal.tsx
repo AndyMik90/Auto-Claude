@@ -26,11 +26,13 @@ import {
   Loader2,
   AlertTriangle,
   Pencil,
-  X
+  X,
+  GitPullRequest,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { calculateProgress } from '../../lib/utils';
-import { startTask, stopTask, submitReview, recoverStuckTask, deleteTask } from '../../stores/task-store';
+import { startTask, stopTask, submitReview, recoverStuckTask, deleteTask, useTaskStore } from '../../stores/task-store';
 import { TASK_STATUS_LABELS } from '../../../shared/constants';
 import { TaskEditDialog } from '../TaskEditDialog';
 import { useTaskDetail } from './hooks/useTaskDetail';
@@ -166,6 +168,13 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
     try {
       const result = await window.electronAPI.createWorktreePR(task.id, options);
       if (result.success && result.data) {
+        // Update single task in store with new status and prUrl (more efficient than reloading all tasks)
+        if (result.data.success && result.data.prUrl && !result.data.alreadyExists) {
+          useTaskStore.getState().updateTask(task.id, {
+            status: 'pr_created',
+            metadata: { ...task.metadata, prUrl: result.data.prUrl }
+          });
+        }
         return result.data;
       }
       return { success: false, error: result.error || 'Failed to create PR' };
@@ -243,6 +252,30 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
       );
     }
 
+    if (task.status === 'pr_created') {
+      return (
+        <div className="flex items-center gap-4">
+          <div className="completion-state text-sm flex items-center gap-2 text-success">
+            <CheckCircle2 className="h-5 w-5" />
+            <span className="font-medium">Task completed</span>
+          </div>
+          {task.metadata?.prUrl && (
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                window.electronAPI.openExternal(task.metadata!.prUrl!);
+              }}
+              className="completion-state text-sm flex items-center gap-2 text-success cursor-pointer hover:underline"
+            >
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-medium">PR Created</span>
+            </a>
+          )}
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -301,11 +334,17 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                       ) : (
                         <>
                           <Badge
-                            variant={task.status === 'done' ? 'success' : task.status === 'human_review' ? 'purple' : task.status === 'in_progress' ? 'info' : 'secondary'}
+                            variant={task.status === 'done' ? 'success' : task.status === 'pr_created' ? 'success' : task.status === 'human_review' ? 'purple' : task.status === 'in_progress' ? 'info' : 'secondary'}
                             className={cn('text-xs', (task.status === 'in_progress' && !state.isStuck) && 'status-running')}
                           >
                             {TASK_STATUS_LABELS[task.status]}
                           </Badge>
+                          {/* Show PR Created badge for pr_created status */}
+                          {task.status === 'pr_created' && (
+                            <Badge variant="info" className="text-xs">
+                              PR Created
+                            </Badge>
+                          )}
                           {task.status === 'human_review' && task.reviewReason && (
                             <Badge
                               variant={task.reviewReason === 'completed' ? 'success' : task.reviewReason === 'errors' ? 'destructive' : 'warning'}

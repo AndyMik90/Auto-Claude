@@ -394,10 +394,13 @@ def main() -> None:
         result = handle_create_pr_command(
             project_dir=project_dir,
             spec_name=spec_dir.name,
-            target_branch=args.pr_target or base_branch,
+            target_branch=args.pr_target or args.base_branch,
             title=args.pr_title,
             draft=args.pr_draft,
         )
+        # Output JSON for frontend IPC consumption
+        import json
+        print(json.dumps(result))
         if not result.get("success"):
             sys.exit(1)
         return

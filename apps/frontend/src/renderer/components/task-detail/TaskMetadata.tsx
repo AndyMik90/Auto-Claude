@@ -9,8 +9,10 @@ import {
   Lightbulb,
   Users,
   GitBranch,
+  GitPullRequest,
   ListChecks,
-  Clock
+  Clock,
+  ExternalLink
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -193,6 +195,27 @@ export function TaskMetadata({ task }: TaskMetadataProps) {
                   <li key={idx}>{dep}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Pull Request */}
+          {task.metadata.prUrl && (
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <GitPullRequest className="h-3 w-3 text-info" />
+                Pull Request
+              </h3>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.electronAPI.openExternal(task.metadata!.prUrl!);
+                }}
+                className="text-sm text-info hover:underline flex items-center gap-1.5"
+              >
+                {task.metadata.prUrl}
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           )}
 

@@ -4,6 +4,7 @@
     "todo": "To Do",
     "in_progress": "In Progress",
     "review": "Review",
+    "prCreated": "PR Created",
     "complete": "Complete",
     "archived": "Archived"
   },
@@ -14,7 +15,8 @@
     "resume": "Resume",
     "archive": "Archive",
     "delete": "Delete",
-    "view": "View Details"
+    "view": "View Details",
+    "viewPR": "View PR"
   },
   "labels": {
     "running": "Running",
@@ -35,7 +37,8 @@
   },
   "tooltips": {
     "archiveTask": "Archive task",
-    "archiveAllDone": "Archive all done tasks"
+    "archiveAllDone": "Archive all done tasks",
+    "viewPR": "Open pull request in browser"
   },
   "creation": {
     "title": "Create New Task",

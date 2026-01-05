@@ -441,14 +441,22 @@ export function WorkspaceStatus({
           {/* Create PR Button */}
           {onShowPRDialog && (
             <Button
-              variant="outline"
-              size="icon"
+              variant="info"
               onClick={() => onShowPRDialog(true)}
               disabled={isMerging || isDiscarding || isCreatingPR}
-              className="text-muted-foreground hover:text-primary hover:bg-primary/10 hover:border-primary/30"
-              title="Create Pull Request"
+              className="flex-1"
             >
-              <GitPullRequest className="h-4 w-4" />
+              {isCreatingPR ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating PR...
+                </>
+              ) : (
+                <>
+                  <GitPullRequest className="mr-2 h-4 w-4" />
+                  Create PR
+                </>
+              )}
             </Button>
           )}
 

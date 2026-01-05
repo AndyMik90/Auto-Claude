@@ -19,6 +19,7 @@
     "confirm": "Confirm",
     "retry": "Retry",
     "create": "Create",
+    "createPR": "Create PR",
     "open": "Open",
     "start": "Start",
     "stop": "Stop",

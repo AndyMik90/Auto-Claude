@@ -46,12 +46,12 @@ export function CreatePRDialog({
   useEffect(() => {
     if (open) {
       setTargetBranch(worktreeStatus?.baseBranch || '');
-      setPrTitle('');
+      setPrTitle(task.title);
       setIsDraft(false);
       setResult(null);
       setError(null);
     }
-  }, [open, worktreeStatus?.baseBranch]);
+  }, [open, worktreeStatus?.baseBranch, task.title]);
 
   const handleCreatePR = async () => {
     setIsCreating(true);

@@ -5,7 +5,7 @@
 import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from './settings';
 import type { ExecutionPhase as ExecutionPhaseType } from '../constants/phase-protocol';
 
-export type TaskStatus = 'backlog' | 'in_progress' | 'ai_review' | 'human_review' | 'done';
+export type TaskStatus = 'backlog' | 'in_progress' | 'ai_review' | 'human_review' | 'pr_created' | 'done';
 
 // Reason why a task is in human_review status
 // - 'completed': All subtasks done and QA passed, ready for final approval/merge
@@ -228,6 +228,7 @@ export interface TaskMetadata {
 
   // Git/Worktree configuration
   baseBranch?: string;  // Override base branch for this task's worktree
+  prUrl?: string;  // GitHub PR URL if task has been submitted as a PR
 
   // Archive status
   archivedAt?: string;  // ISO date when task was archived

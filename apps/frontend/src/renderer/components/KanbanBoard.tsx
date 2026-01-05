@@ -342,7 +342,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   );
 
   const tasksByStatus = useMemo(() => {
-    const grouped: Record<TaskStatus, Task[]> = {
+    // Note: pr_created tasks are shown in the 'done' column since they're essentially complete
+    const grouped: Record<typeof TASK_STATUS_COLUMNS[number], Task[]> = {
       backlog: [],
       in_progress: [],
       ai_review: [],
@@ -351,14 +352,16 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     };
 
     filteredTasks.forEach((task) => {
-      if (grouped[task.status]) {
-        grouped[task.status].push(task);
+      // Map pr_created tasks to the done column
+      const targetColumn = task.status === 'pr_created' ? 'done' : task.status;
+      if (grouped[targetColumn]) {
+        grouped[targetColumn].push(task);
       }
     });
 
     // Sort tasks within each column by createdAt (newest first)
     Object.keys(grouped).forEach((status) => {
-      grouped[status as TaskStatus].sort((a, b) => {
+      grouped[status as typeof TASK_STATUS_COLUMNS[number]].sort((a, b) => {
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA; // Descending order (newest first)
@@ -404,7 +407,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     const overId = over.id as string;
 
     // Check if over a column
-    if (TASK_STATUS_COLUMNS.includes(overId as TaskStatus)) {
+    if ((TASK_STATUS_COLUMNS as readonly string[]).includes(overId)) {
       setOverColumnId(overId);
       return;
     }
@@ -427,7 +430,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     const overId = over.id as string;
 
     // Check if dropped on a column
-    if (TASK_STATUS_COLUMNS.includes(overId as TaskStatus)) {
+    if ((TASK_STATUS_COLUMNS as readonly string[]).includes(overId)) {
       const newStatus = overId as TaskStatus;
       const task = tasks.find((t) => t.id === activeTaskId);
 

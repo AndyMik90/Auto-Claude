@@ -1,10 +1,12 @@
 import { ipcMain, BrowserWindow, shell, app } from 'electron';
-import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP } from '../../../shared/constants';
+import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
-import { minimatch } from 'minimatch';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { minimatch } = require('minimatch');
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
@@ -17,6 +19,7 @@ import {
   getTaskWorktreeDir,
   findTaskWorktree,
 } from '../../worktree-paths';
+import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 
 /**
  * Read utility feature settings (for commit message, merge resolver) from settings file
@@ -2705,13 +2708,52 @@ export function registerWorktreeHandlers(
                   const result = JSON.parse(jsonMatch[0]);
                   debug('Parsed result:', result);
 
+                  const prUrl = result.pr_url || result.prUrl;
+                  const alreadyExists = result.already_exists || result.alreadyExists;
+
+                  // Only update task status if a NEW PR was created (not if it already exists)
+                  if (result.success !== false && prUrl && !alreadyExists) {
+                    const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+                    const metadataPath = path.join(specDir, 'task_metadata.json');
+
+                    // Persist status and metadata to MAIN project (don't await - fire and forget)
+                    persistPlanStatus(planPath, 'pr_created').then((persisted) => {
+                      debug('Main project status persisted to pr_created:', persisted);
+                    }).catch((err) => {
+                      debug('Failed to persist main project status:', err);
+                    });
+
+                    // Update metadata with prUrl in main project
+                    const metadataUpdated = updateTaskMetadataPrUrl(metadataPath, prUrl);
+                    debug('Main project metadata updated with prUrl:', metadataUpdated);
+
+                    // Also persist to WORKTREE location (worktree takes priority when loading tasks)
+                    // This ensures the status persists after refresh since getTasks() prefers worktree version
+                    if (worktreePath) {
+                      const specsBaseDir = getSpecsDir(project.autoBuildPath);
+                      const worktreePlanPath = path.join(worktreePath, specsBaseDir, task.specId, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+                      const worktreeMetadataPath = path.join(worktreePath, specsBaseDir, task.specId, 'task_metadata.json');
+
+                      persistPlanStatus(worktreePlanPath, 'pr_created').then((persisted) => {
+                        debug('Worktree status persisted to pr_created:', persisted);
+                      }).catch((err) => {
+                        debug('Failed to persist worktree status:', err);
+                      });
+
+                      const worktreeMetadataUpdated = updateTaskMetadataPrUrl(worktreeMetadataPath, prUrl);
+                      debug('Worktree metadata updated with prUrl:', worktreeMetadataUpdated);
+                    }
+                  } else if (alreadyExists) {
+                    debug('PR already exists, not updating task status');
+                  }
+
                   resolve({
                     success: true,
                     data: {
                       success: result.success ?? true,
-                      prUrl: result.pr_url || result.prUrl,
+                      prUrl,
                       error: result.error,
-                      alreadyExists: result.already_exists || result.alreadyExists
+                      alreadyExists
                     }
                   });
                 } else {
@@ -2738,11 +2780,49 @@ export function registerWorktreeHandlers(
               }
             } else {
               debug('Process failed with code:', code);
+
+              // Try to parse JSON from stdout even on failure - the Python script
+              // still outputs JSON with the actual error message
+              try {
+                const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  const result = JSON.parse(jsonMatch[0]);
+                  debug('Parsed error result:', result);
+
+                  // Use the error from JSON if available
+                  const errorMessage = result.error || result.message || 'Failed to create PR';
+                  resolve({
+                    success: false,
+                    error: errorMessage
+                  });
+                  return;
+                }
+              } catch (parseError) {
+                debug('Failed to parse JSON error output:', parseError);
+              }
+
+              // Fallback to raw output if JSON parsing fails
+              // Prefer stdout over stderr since stderr often contains debug messages
               resolve({
                 success: false,
-                error: stderr || stdout || 'Failed to create PR'
+                error: stdout || stderr || 'Failed to create PR'
               });
             }
+          });
+
+          // Also listen to 'exit' event in case 'close' doesn't fire
+          createPRProcess.on('exit', (code: number | null) => {
+            // Give close event a chance to fire first with complete output
+            setTimeout(() => {
+              if (resolved) return;
+              resolved = true;
+              if (timeoutId) clearTimeout(timeoutId);
+              debug('Process exited via exit event with code:', code);
+              resolve({
+                success: false,
+                error: 'Process exited unexpectedly'
+              });
+            }, 100);
           });
 
           createPRProcess.on('error', (err: Error) => {

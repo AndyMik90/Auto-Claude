@@ -4,6 +4,7 @@
     "todo": "À faire",
     "in_progress": "En cours",
     "review": "Révision",
+    "prCreated": "PR créé",
     "complete": "Terminé",
     "archived": "Archivé"
   },
@@ -14,7 +15,8 @@
     "resume": "Reprendre",
     "archive": "Archiver",
     "delete": "Supprimer",
-    "view": "Voir les détails"
+    "view": "Voir les détails",
+    "viewPR": "Voir la PR"
   },
   "labels": {
     "running": "En cours",
@@ -35,7 +37,8 @@
   },
   "tooltips": {
     "archiveTask": "Archiver la tâche",
-    "archiveAllDone": "Archiver toutes les tâches terminées"
+    "archiveAllDone": "Archiver toutes les tâches terminées",
+    "viewPR": "Ouvrir la pull request dans le navigateur"
   },
   "creation": {
     "title": "Créer une nouvelle tâche",
