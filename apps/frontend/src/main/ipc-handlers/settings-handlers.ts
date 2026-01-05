@@ -1,18 +1,21 @@
 import { ipcMain, dialog, app, shell } from 'electron';
-import { existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
+import { existsSync, writeFileSync, mkdirSync, statSync, readFileSync } from 'fs';
 import { execFileSync } from 'node:child_process';
 import path from 'path';
 import { is } from '@electron-toolkit/utils';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS, DEFAULT_AGENT_PROFILES } from '../../shared/constants';
 import type {
   AppSettings,
-  IPCResult
+  IPCResult,
+  SourceEnvConfig,
+  SourceEnvCheckResult
 } from '../../shared/types';
 import { AgentManager } from '../agent';
 import type { BrowserWindow } from 'electron';
 import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-updater';
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform } from '../cli-tool-manager';
+import { parseEnvFile } from './utils';
 
 const settingsPath = getSettingsPath();
 
@@ -502,6 +505,180 @@ export function registerSettingsHandlers(
         return {
           success: false,
           error: `Failed to open terminal: ${errorMsg}`
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Auto-Build Source Environment Operations
+  // ============================================
+
+  /**
+   * Helper to get source .env path from settings
+   */
+  const getSourceEnvPath = (): { sourcePath: string | null; envPath: string | null } => {
+    const savedSettings = readSettingsFile();
+    const settings = { ...DEFAULT_APP_SETTINGS, ...savedSettings };
+
+    // Get autoBuildPath from settings or try to auto-detect
+    let sourcePath: string | null = settings.autoBuildPath || null;
+    if (!sourcePath) {
+      sourcePath = detectAutoBuildSourcePath();
+    }
+
+    if (!sourcePath) {
+      return { sourcePath: null, envPath: null };
+    }
+
+    return {
+      sourcePath,
+      envPath: path.join(sourcePath, '.env')
+    };
+  };
+
+  ipcMain.handle(
+    IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_GET,
+    async (): Promise<IPCResult<SourceEnvConfig>> => {
+      try {
+        const { sourcePath, envPath } = getSourceEnvPath();
+
+        if (!sourcePath) {
+          return {
+            success: true,
+            data: {
+              hasClaudeToken: false,
+              envExists: false
+            }
+          };
+        }
+
+        const envExists = envPath ? existsSync(envPath) : false;
+        let hasClaudeToken = false;
+        let claudeOAuthToken: string | undefined;
+
+        if (envExists && envPath) {
+          const content = readFileSync(envPath, 'utf-8');
+          const vars = parseEnvFile(content);
+          claudeOAuthToken = vars['CLAUDE_CODE_OAUTH_TOKEN'];
+          hasClaudeToken = !!claudeOAuthToken && claudeOAuthToken.length > 0;
+        }
+
+        return {
+          success: true,
+          data: {
+            hasClaudeToken,
+            claudeOAuthToken,
+            sourcePath,
+            envExists
+          }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get source env'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_UPDATE,
+    async (_, config: { claudeOAuthToken?: string }): Promise<IPCResult> => {
+      try {
+        const { sourcePath, envPath } = getSourceEnvPath();
+
+        if (!sourcePath || !envPath) {
+          return {
+            success: false,
+            error: 'Auto-build source path not configured. Please set it in Settings.'
+          };
+        }
+
+        // Read existing content or create new
+        let existingVars: Record<string, string> = {};
+        if (existsSync(envPath)) {
+          const content = readFileSync(envPath, 'utf-8');
+          existingVars = parseEnvFile(content);
+        }
+
+        // Update with new values
+        if (config.claudeOAuthToken !== undefined) {
+          existingVars['CLAUDE_CODE_OAUTH_TOKEN'] = config.claudeOAuthToken;
+        }
+
+        // Generate content
+        const lines: string[] = [
+          '# Auto Claude Framework Environment Variables',
+          '# Managed by Auto Claude UI',
+          '',
+          '# Claude Code OAuth Token (REQUIRED)',
+          `CLAUDE_CODE_OAUTH_TOKEN=${existingVars['CLAUDE_CODE_OAUTH_TOKEN'] || ''}`,
+          ''
+        ];
+
+        // Preserve other existing variables
+        for (const [key, value] of Object.entries(existingVars)) {
+          if (key !== 'CLAUDE_CODE_OAUTH_TOKEN') {
+            lines.push(`${key}=${value}`);
+          }
+        }
+
+        writeFileSync(envPath, lines.join('\n'));
+
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to update source env'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AUTOBUILD_SOURCE_ENV_CHECK_TOKEN,
+    async (): Promise<IPCResult<SourceEnvCheckResult>> => {
+      try {
+        const { sourcePath, envPath } = getSourceEnvPath();
+
+        if (!sourcePath) {
+          return {
+            success: true,
+            data: {
+              hasToken: false,
+              error: 'Auto-build source path not configured'
+            }
+          };
+        }
+
+        if (!envPath || !existsSync(envPath)) {
+          return {
+            success: true,
+            data: {
+              hasToken: false,
+              sourcePath,
+              error: 'Source .env file not found'
+            }
+          };
+        }
+
+        const content = readFileSync(envPath, 'utf-8');
+        const vars = parseEnvFile(content);
+        const token = vars['CLAUDE_CODE_OAUTH_TOKEN'];
+        const hasToken = !!token && token.length > 0;
+
+        return {
+          success: true,
+          data: {
+            hasToken,
+            sourcePath
+          }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to check source token'
         };
       }
     }
