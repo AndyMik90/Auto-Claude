@@ -51,8 +51,8 @@ def get_security_profile(
     - The security profile file is created (was None, now exists)
     - The security profile file is modified (mtime changed)
 
-    Note: Legacy .auto-claude-allowlist files are automatically migrated
-    into the JSON profile by the analyzer on first load.
+    Note: Custom commands added to the JSON profile are preserved
+    when the profile is regenerated.
 
     Args:
         project_dir: Project root directory
