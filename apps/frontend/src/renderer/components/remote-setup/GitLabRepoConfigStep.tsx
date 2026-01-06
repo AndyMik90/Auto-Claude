@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Lock, Globe, Server, Loader2, Plus, ArrowLeft, Users } from 'lucide-react';
+import { Loader2, Plus, ArrowLeft, Server } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { cn } from '../../lib/utils';
 import { OwnerSelector } from './OwnerSelector';
+import { InstanceUrlInput } from './InstanceUrlInput';
+import { VisibilitySelector } from './VisibilitySelector';
+import { GitLabProjectSelector } from './GitLabProjectSelector';
 import type { Owner, RemoteAction, GitLabVisibility } from './types';
 
 interface GitLabRepoConfigStepProps {
@@ -66,18 +69,18 @@ export function GitLabRepoConfigStep({
   const handleComplete = async () => {
     if (action === 'link') {
       if (!existingProject.trim()) {
-        setError('Please enter a project path');
+        setError(t('remoteSetup.repoConfig.gitlab.errorProjectRequired'));
         return;
       }
       // Validate format: group/project or just project
       const format = /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)?$/;
       if (!format.test(existingProject.trim())) {
-        setError('Invalid project format. Use group/project or project');
+        setError(t('remoteSetup.repoConfig.gitlab.errorInvalidFormat'));
         return;
       }
     } else {
       if (!namespace.trim()) {
-        setError('Please select a namespace');
+        setError(t('remoteSetup.repoConfig.gitlab.errorNamespaceRequired'));
         return;
       }
     }
@@ -120,21 +123,12 @@ export function GitLabRepoConfigStep({
               {/* Create New Project Form */}
               <div className="space-y-4">
                 {/* Instance URL (optional) */}
-                <div className="space-y-2">
-                  <Label htmlFor="instance-url">
-                    {t('remoteSetup.repoConfig.instanceUrl')}
-                  </Label>
-                  <Input
-                    id="instance-url"
-                    value={instanceUrl}
-                    onChange={(e) => onChange({ instanceUrl: e.target.value })}
-                    placeholder="https://gitlab.com"
-                    disabled={isCreating}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('remoteSetup.repoConfig.instanceUrlHelp')}
-                  </p>
-                </div>
+                <InstanceUrlInput
+                  value={instanceUrl}
+                  onChange={(value) => onChange({ instanceUrl: value })}
+                  disabled={isCreating}
+                  id="instance-url"
+                />
 
                 {/* Namespace Selection */}
                 {gitlabUsername && (
@@ -169,59 +163,12 @@ export function GitLabRepoConfigStep({
                 </div>
 
                 {/* Visibility Selection */}
-                <div className="space-y-2">
-                  <Label>{t('remoteSetup.repoConfig.visibility')}</Label>
-                  <div className="flex flex-wrap gap-2" role="radiogroup">
-                    <button
-                      onClick={() => handleVisibilitySelect('private')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-md border transition-colors',
-                        visibility === 'private'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-muted hover:border-primary/50'
-                      )}
-                      disabled={isCreating}
-                      role="radio"
-                      aria-checked={visibility === 'private'}
-                    >
-                      <Lock className="h-4 w-4" />
-                      <span className="text-sm">{t('remoteSetup.repoConfig.private')}</span>
-                    </button>
-                    <button
-                      onClick={() => handleVisibilitySelect('internal')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-md border transition-colors',
-                        visibility === 'internal'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-muted hover:border-primary/50'
-                      )}
-                      disabled={isCreating}
-                      role="radio"
-                      aria-checked={visibility === 'internal'}
-                    >
-                      <Users className="h-4 w-4" />
-                      <span className="text-sm">{t('remoteSetup.repoConfig.internal')}</span>
-                    </button>
-                    <button
-                      onClick={() => handleVisibilitySelect('public')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-md border transition-colors',
-                        visibility === 'public'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-muted hover:border-primary/50'
-                      )}
-                      disabled={isCreating}
-                      role="radio"
-                      aria-checked={visibility === 'public'}
-                    >
-                      <Globe className="h-4 w-4" />
-                      <span className="text-sm">{t('remoteSetup.repoConfig.public')}</span>
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('remoteSetup.repoConfig.visibilityHelp')}
-                  </p>
-                </div>
+                <VisibilitySelector
+                  type="gitlab"
+                  value={visibility}
+                  onChange={handleVisibilitySelect}
+                  disabled={isCreating}
+                />
 
                 {/* Switch to Link Existing */}
                 <button
@@ -250,37 +197,20 @@ export function GitLabRepoConfigStep({
                 </div>
 
                 {/* Instance URL */}
-                <div className="space-y-2">
-                  <Label htmlFor="link-instance-url">
-                    {t('remoteSetup.repoConfig.instanceUrl')}
-                  </Label>
-                  <Input
-                    id="link-instance-url"
-                    value={instanceUrl}
-                    onChange={(e) => onChange({ instanceUrl: e.target.value })}
-                    placeholder="https://gitlab.com"
-                    disabled={isCreating}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('remoteSetup.repoConfig.instanceUrlHelp')}
-                  </p>
-                </div>
+                <InstanceUrlInput
+                  value={instanceUrl}
+                  onChange={(value) => onChange({ instanceUrl: value })}
+                  disabled={isCreating}
+                  id="link-instance-url"
+                />
 
-                <div className="space-y-2">
-                  <Label htmlFor="existing-project">
-                    {t('remoteSetup.repoConfig.existingProject')}
-                  </Label>
-                  <Input
-                    id="existing-project"
-                    value={existingProject}
-                    onChange={(e) => onChange({ existingProject: e.target.value })}
-                    placeholder="group/project"
-                    disabled={isCreating}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the full project path (e.g., mygroup/myproject)
-                  </p>
-                </div>
+                {/* Project Selection */}
+                <GitLabProjectSelector
+                  instanceUrl={instanceUrl}
+                  value={existingProject}
+                  onChange={(value) => onChange({ existingProject: value })}
+                  disabled={isCreating}
+                />
 
                 {/* Switch to Create New */}
                 <button

@@ -21,6 +21,9 @@ const translations: Record<string, string> = {
   'remoteSetup.repoConfig.personal': 'Personal account',
   'remoteSetup.repoConfig.organizations': 'Organizations',
   'remoteSetup.repoConfig.groups': 'Groups',
+  'remoteSetup.repoConfig.gitlab.errorProjectRequired': 'Please enter a project path',
+  'remoteSetup.repoConfig.gitlab.errorInvalidFormat': 'Invalid project format. Use group/project or project',
+  'remoteSetup.repoConfig.gitlab.errorNamespaceRequired': 'Please select a namespace',
 };
 
 const mockT = vi.fn((key: string) => translations[key] || key);

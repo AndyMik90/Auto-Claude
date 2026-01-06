@@ -159,30 +159,68 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
               .replace(/^-|-$/g, '');
 
             if (remoteConfig.service === 'gitlab') {
-              // Create GitLab remote
-              const createResult = await window.electronAPI.createGitLabProject(
-                sanitizedProjectName,
-                {
-                  description: 'Created with Auto Claude',
-                  visibility: remoteConfig.gitlabVisibility,
-                  projectPath: result.data.path,
-                  hostname: remoteConfig.gitlabInstanceUrl || undefined
-                }
-              );
-
-              if (createResult.success && createResult.data) {
-                // Add remote to local git repository
-                await window.electronAPI.addGitLabRemote(
+              if (remoteConfig.gitlabAction === 'link' && remoteConfig.gitlabExistingProject) {
+                // Link to existing GitLab project
+                const linkResult = await window.electronAPI.linkGitLabProject(
                   result.data.path,
-                  createResult.data.pathWithNamespace,
+                  remoteConfig.gitlabExistingProject,
                   remoteConfig.gitlabInstanceUrl || undefined
                 );
+
+                if (!linkResult.success) {
+                  console.warn('Failed to link GitLab project:', linkResult.error);
+                }
               } else {
-                console.warn('Failed to create GitLab remote:', createResult.error);
+                // Create new GitLab project
+                const createResult = await window.electronAPI.createGitLabProject(
+                  sanitizedProjectName,
+                  {
+                    description: 'Created with Auto Claude',
+                    visibility: remoteConfig.gitlabVisibility,
+                    projectPath: result.data.path,
+                    namespacePath: remoteConfig.gitlabNamespace,
+                    instanceUrl: remoteConfig.gitlabInstanceUrl || undefined
+                  }
+                );
+
+                if (createResult.success && createResult.data) {
+                  // Add remote to local git repository
+                  await window.electronAPI.addGitLabRemote(
+                    result.data.path,
+                    createResult.data.pathWithNamespace,
+                    remoteConfig.gitlabInstanceUrl || undefined
+                  );
+                } else {
+                  console.warn('Failed to create GitLab remote:', createResult.error);
+                }
               }
             } else if (remoteConfig.service === 'github') {
-              // TODO: Implement GitHub remote creation
-              console.log('GitHub remote creation not yet implemented');
+              if (remoteConfig.githubAction === 'link' && remoteConfig.githubExistingRepo) {
+                // Link to existing GitHub repository
+                const linkResult = await window.electronAPI.addGitRemote(
+                  result.data.path,
+                  remoteConfig.githubExistingRepo
+                );
+
+                if (!linkResult.success) {
+                  console.warn('Failed to link GitHub repository:', linkResult.error);
+                }
+              } else {
+                // Create new GitHub repository
+                const createResult = await window.electronAPI.createGitHubRepo(
+                  sanitizedProjectName,
+                  {
+                    description: 'Created with Auto Claude',
+                    isPrivate: remoteConfig.githubVisibility === 'private',
+                    projectPath: result.data.path,
+                    owner: remoteConfig.githubOwner
+                  }
+                );
+
+                if (!createResult.success) {
+                  console.warn('Failed to create GitHub remote:', createResult.error);
+                }
+              }
             }
           } catch (err) {
             // Remote creation failed, but project was created - show warning

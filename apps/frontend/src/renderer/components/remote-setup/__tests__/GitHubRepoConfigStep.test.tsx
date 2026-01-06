@@ -26,6 +26,7 @@ const translations: Record<string, string> = {
   'remoteSetup.repoConfig.visibility': 'Visibility',
   'remoteSetup.repoConfig.private': 'Private',
   'remoteSetup.repoConfig.public': 'Public',
+  'remoteSetup.repoConfig.visibilityHelp': 'Who can see the repository',
   'remoteSetup.repoConfig.github.title': 'Configure GitHub Repository',
   'remoteSetup.repoConfig.github.description': 'Create a new repository or link to an existing one',
   'remoteSetup.repoConfig.github.repoNameLabel': 'Repository Name',

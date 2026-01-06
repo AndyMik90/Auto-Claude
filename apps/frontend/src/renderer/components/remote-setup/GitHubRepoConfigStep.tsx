@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Lock, Globe, Loader2, Plus, ArrowLeft } from 'lucide-react';
+import { Loader2, Plus, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { cn } from '../../lib/utils';
 import { OwnerSelector } from './OwnerSelector';
+import { VisibilitySelector } from './VisibilitySelector';
 import type { Owner, RemoteAction, GitHubVisibility } from './types';
 
 interface GitHubRepoConfigStepProps {
@@ -147,41 +148,12 @@ export function GitHubRepoConfigStep({
                 </div>
 
                 {/* Visibility Selection */}
-                <div className="space-y-2">
-                  <Label>{t('remoteSetup.repoConfig.visibility')}</Label>
-                  <div className="flex gap-2" role="radiogroup">
-                    <button
-                      onClick={() => handleVisibilitySelect('private')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-md border transition-colors',
-                        visibility === 'private'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-muted hover:border-primary/50'
-                      )}
-                      disabled={isCreating}
-                      role="radio"
-                      aria-checked={visibility === 'private'}
-                    >
-                      <Lock className="h-4 w-4" />
-                      <span className="text-sm">{t('remoteSetup.repoConfig.private')}</span>
-                    </button>
-                    <button
-                      onClick={() => handleVisibilitySelect('public')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-md border transition-colors',
-                        visibility === 'public'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-muted hover:border-primary/50'
-                      )}
-                      disabled={isCreating}
-                      role="radio"
-                      aria-checked={visibility === 'public'}
-                    >
-                      <Globe className="h-4 w-4" />
-                      <span className="text-sm">{t('remoteSetup.repoConfig.public')}</span>
-                    </button>
-                  </div>
-                </div>
+                <VisibilitySelector
+                  type="github"
+                  value={visibility}
+                  onChange={handleVisibilitySelect}
+                  disabled={isCreating}
+                />
 
                 {/* Switch to Link Existing */}
                 <button
