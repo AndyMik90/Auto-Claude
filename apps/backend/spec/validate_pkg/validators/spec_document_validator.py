@@ -40,7 +40,12 @@ class SpecDocumentValidator:
             fixes.append("Create spec.md with required sections")
             return ValidationResult(False, "spec", errors, warnings, fixes)
 
-        content = spec_file.read_text(encoding="utf-8")
+        try:
+            content = spec_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            errors.append(f"Failed to read spec.md: {e}")
+            fixes.append("Ensure spec.md is a valid UTF-8 encoded file")
+            return ValidationResult(False, "spec", errors, warnings, fixes)
 
         # Check for required sections
         for section in SPEC_REQUIRED_SECTIONS:
