@@ -896,7 +896,7 @@ def handle_create_pr_command(
 
     # Push and create PR with exception handling for clean JSON output
     try:
-        result = manager.push_and_create_pr(
+        raw_result = manager.push_and_create_pr(
             spec_name=spec_name,
             target_branch=target_branch,
             title=title,
@@ -912,6 +912,15 @@ def handle_create_pr_command(
         print(f"\n{icon(Icons.ERROR)} Failed to create PR: {e}")
         print(json.dumps(error_result))
         return error_result
+
+    # Convert PushAndCreatePRResult to CreatePRResult
+    result: CreatePRResult = {
+        "success": raw_result.get("success", False),
+        "pr_url": raw_result.get("pr_url"),
+        "already_exists": raw_result.get("already_exists", False),
+        "error": raw_result.get("error"),
+        "message": raw_result.get("message"),
+    }
 
     if result.get("success"):
         pr_url = result.get("pr_url")
