@@ -187,72 +187,82 @@ class ModificationTracker:
                 else changed_files,
             )
 
+            processed_count = 0
             for file_path in changed_files:
-                # Get the diff for this file (using merge-base for accurate task-only diff)
-                diff_result = subprocess.run(
-                    ["git", "diff", f"{merge_base}..HEAD", "--", file_path],
-                    cwd=worktree_path,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-
-                # Get content before (from merge-base - the point where task branched)
                 try:
-                    show_result = subprocess.run(
-                        ["git", "show", f"{merge_base}:{file_path}"],
+                    # Get the diff for this file (using merge-base for accurate task-only diff)
+                    diff_result = subprocess.run(
+                        ["git", "diff", f"{merge_base}..HEAD", "--", file_path],
                         cwd=worktree_path,
                         capture_output=True,
                         text=True,
                         check=True,
                     )
-                    old_content = show_result.stdout
-                except subprocess.CalledProcessError:
-                    # File is new
-                    old_content = ""
 
-                current_file = worktree_path / file_path
-                if current_file.exists():
+                    # Get content before (from merge-base - the point where task branched)
                     try:
-                        new_content = current_file.read_text(encoding="utf-8")
-                    except UnicodeDecodeError:
-                        new_content = current_file.read_text(
-                            encoding="utf-8", errors="replace"
+                        show_result = subprocess.run(
+                            ["git", "show", f"{merge_base}:{file_path}"],
+                            cwd=worktree_path,
+                            capture_output=True,
+                            text=True,
+                            check=True,
                         )
-                else:
-                    # File was deleted
-                    new_content = ""
+                        old_content = show_result.stdout
+                    except subprocess.CalledProcessError:
+                        # File is new
+                        old_content = ""
 
-                # Auto-create FileEvolution entry if not already tracked
-                # This handles retroactive tracking when capture_baselines wasn't called
-                rel_path = self.storage.get_relative_path(file_path)
-                if rel_path not in evolutions:
-                    evolutions[rel_path] = FileEvolution(
-                        file_path=rel_path,
-                        baseline_commit=merge_base,
-                        baseline_captured_at=datetime.now(),
-                        baseline_content_hash=compute_content_hash(old_content),
-                        baseline_snapshot_path="",  # Not storing baseline file
-                        task_snapshots=[],
-                    )
-                    debug(
-                        MODULE,
-                        f"Auto-created evolution entry for {rel_path}",
-                        baseline_commit=merge_base[:8],
-                    )
+                    current_file = worktree_path / file_path
+                    if current_file.exists():
+                        try:
+                            new_content = current_file.read_text(encoding="utf-8")
+                        except UnicodeDecodeError:
+                            new_content = current_file.read_text(
+                                encoding="utf-8", errors="replace"
+                            )
+                    else:
+                        # File was deleted
+                        new_content = ""
 
-                # Record the modification
-                self.record_modification(
-                    task_id=task_id,
-                    file_path=file_path,
-                    old_content=old_content,
-                    new_content=new_content,
-                    evolutions=evolutions,
-                    raw_diff=diff_result.stdout,
-                )
+                    # Auto-create FileEvolution entry if not already tracked
+                    # This handles retroactive tracking when capture_baselines wasn't called
+                    rel_path = self.storage.get_relative_path(file_path)
+                    if rel_path not in evolutions:
+                        evolutions[rel_path] = FileEvolution(
+                            file_path=rel_path,
+                            baseline_commit=merge_base,
+                            baseline_captured_at=datetime.now(),
+                            baseline_content_hash=compute_content_hash(old_content),
+                            baseline_snapshot_path="",  # Not storing baseline file
+                            task_snapshots=[],
+                        )
+                        debug(
+                            MODULE,
+                            f"Auto-created evolution entry for {rel_path}",
+                            baseline_commit=merge_base[:8],
+                        )
+
+                    # Record the modification
+                    self.record_modification(
+                        task_id=task_id,
+                        file_path=file_path,
+                        old_content=old_content,
+                        new_content=new_content,
+                        evolutions=evolutions,
+                        raw_diff=diff_result.stdout,
+                    )
+                    processed_count += 1
+
+                except subprocess.CalledProcessError as e:
+                    # Log error but continue with remaining files
+                    logger.warning(
+                        f"Failed to process {file_path} in refresh_from_git: {e}"
+                    )
+                    continue
 
             logger.info(
-                f"Refreshed {len(changed_files)} files from worktree for task {task_id}"
+                f"Refreshed {processed_count}/{len(changed_files)} files from worktree for task {task_id}"
             )
 
         except subprocess.CalledProcessError as e:
