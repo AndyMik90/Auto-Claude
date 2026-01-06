@@ -317,13 +317,40 @@ class WorktreeManager:
             try:
                 # Parse ISO date format: "2026-01-04 00:25:25 +0100"
                 date_str = result.stdout.strip()
-                # Remove timezone info for simpler parsing
-                date_parts = date_str.rsplit(" ", 1)[0]  # Remove "+0100" part
-                last_commit_date = datetime.strptime(date_parts, "%Y-%m-%d %H:%M:%S")
-                stats["last_commit_date"] = last_commit_date
-                stats["days_since_last_commit"] = (
-                    datetime.now() - last_commit_date
-                ).days
+                # Convert git format to ISO format for fromisoformat()
+                # "2026-01-04 00:25:25 +0100" -> "2026-01-04T00:25:25+01:00"
+                parts = date_str.rsplit(" ", 1)
+                if len(parts) == 2:
+                    date_part, tz_part = parts
+                    # Convert timezone format: "+0100" -> "+01:00"
+                    if len(tz_part) == 5 and (
+                        tz_part.startswith("+") or tz_part.startswith("-")
+                    ):
+                        tz_formatted = f"{tz_part[:3]}:{tz_part[3:]}"
+                        iso_str = f"{date_part.replace(' ', 'T')}{tz_formatted}"
+                        last_commit_date = datetime.fromisoformat(iso_str)
+                        stats["last_commit_date"] = last_commit_date
+                        # Use timezone-aware now() for accurate comparison
+                        now_aware = datetime.now(last_commit_date.tzinfo)
+                        stats["days_since_last_commit"] = (
+                            now_aware - last_commit_date
+                        ).days
+                    else:
+                        # Fallback for unexpected timezone format
+                        last_commit_date = datetime.strptime(
+                            parts[0], "%Y-%m-%d %H:%M:%S"
+                        )
+                        stats["last_commit_date"] = last_commit_date
+                        stats["days_since_last_commit"] = (
+                            datetime.now() - last_commit_date
+                        ).days
+                else:
+                    # No timezone in output
+                    last_commit_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                    stats["last_commit_date"] = last_commit_date
+                    stats["days_since_last_commit"] = (
+                        datetime.now() - last_commit_date
+                    ).days
             except (ValueError, TypeError) as e:
                 # If parsing fails, silently continue without date info
                 pass

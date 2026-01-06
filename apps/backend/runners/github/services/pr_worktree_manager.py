@@ -23,16 +23,30 @@ from typing import NamedTuple
 
 logger = logging.getLogger(__name__)
 
-# Check if debug mode is enabled
-DEBUG_MODE = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
+# Default cleanup policies (can be overridden via environment variables)
+DEFAULT_MAX_PR_WORKTREES = 10  # Max worktrees to keep
+DEFAULT_PR_WORKTREE_MAX_AGE_DAYS = 7  # Max age in days
 
-# Cleanup policies (configurable via environment variables)
-MAX_PR_WORKTREES = int(
-    os.environ.get("MAX_PR_WORKTREES", "10")
-)  # Max worktrees to keep
-PR_WORKTREE_MAX_AGE_DAYS = int(
-    os.environ.get("PR_WORKTREE_MAX_AGE_DAYS", "7")
-)  # Max age in days
+
+def _get_max_pr_worktrees() -> int:
+    """Get max worktrees setting, read at runtime for testability."""
+    return int(os.environ.get("MAX_PR_WORKTREES", str(DEFAULT_MAX_PR_WORKTREES)))
+
+
+def _get_max_age_days() -> int:
+    """Get max age setting, read at runtime for testability."""
+    return int(
+        os.environ.get(
+            "PR_WORKTREE_MAX_AGE_DAYS", str(DEFAULT_PR_WORKTREE_MAX_AGE_DAYS)
+        )
+    )
+
+
+# Safe pattern for git refs (SHA, branch names)
+# Allows: alphanumeric, dots, underscores, hyphens, forward slashes
+import re
+
+SAFE_REF_PATTERN = re.compile(r"^[a-zA-Z0-9._/\-]+$")
 
 
 class WorktreeInfo(NamedTuple):
@@ -64,59 +78,85 @@ class PRWorktreeManager:
         self.project_dir = Path(project_dir)
         self.worktree_base_dir = self.project_dir / worktree_dir
 
-    def create_worktree(self, head_sha: str, pr_number: int) -> Path:
+    def create_worktree(
+        self, head_sha: str, pr_number: int, auto_cleanup: bool = True
+    ) -> Path:
         """
         Create a PR worktree with automatic cleanup of old worktrees.
 
         Args:
             head_sha: Git commit SHA to checkout
             pr_number: PR number for naming
+            auto_cleanup: If True (default), run cleanup before creating
 
         Returns:
             Path to the created worktree
 
         Raises:
             RuntimeError: If worktree creation fails
+            ValueError: If head_sha or pr_number are invalid
         """
-        # Run cleanup before creating new worktree
-        self.cleanup_worktrees()
+        # Validate inputs to prevent command injection
+        if not head_sha or not SAFE_REF_PATTERN.match(head_sha):
+            raise ValueError(
+                f"Invalid head_sha: must match pattern {SAFE_REF_PATTERN.pattern}"
+            )
+        if not isinstance(pr_number, int) or pr_number <= 0:
+            raise ValueError(
+                f"Invalid pr_number: must be a positive integer, got {pr_number}"
+            )
 
-        # Generate worktree name
+        # Run cleanup before creating new worktree (can be disabled for tests)
+        if auto_cleanup:
+            self.cleanup_worktrees()
+
+        # Generate worktree name with timestamp for uniqueness
         sha_short = head_sha[:8]
-        worktree_name = f"pr-{pr_number}-{sha_short}"
+        timestamp = int(time.time() * 1000)  # Millisecond precision
+        worktree_name = f"pr-{pr_number}-{sha_short}-{timestamp}"
 
         # Create worktree directory
         self.worktree_base_dir.mkdir(parents=True, exist_ok=True)
         worktree_path = self.worktree_base_dir / worktree_name
 
-        if DEBUG_MODE:
-            print(f"[WorktreeManager] Creating worktree: {worktree_path}", flush=True)
+        logger.debug(f"Creating worktree: {worktree_path}")
 
-        # Fetch the commit if not available locally (handles fork PRs)
-        fetch_result = subprocess.run(
-            ["git", "fetch", "origin", head_sha],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-
-        if fetch_result.returncode != 0:
-            logger.warning(
-                f"Could not fetch {head_sha} from origin (fork PR?): {fetch_result.stderr}"
+        try:
+            # Fetch the commit if not available locally (handles fork PRs)
+            fetch_result = subprocess.run(
+                ["git", "fetch", "origin", head_sha],
+                cwd=self.project_dir,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
 
-        # Create detached worktree at the PR commit
-        result = subprocess.run(
-            ["git", "worktree", "add", "--detach", str(worktree_path), head_sha],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
+            if fetch_result.returncode != 0:
+                logger.warning(
+                    f"Could not fetch {head_sha} from origin (fork PR?): {fetch_result.stderr}"
+                )
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                f"Timeout fetching {head_sha} from origin, continuing anyway"
+            )
 
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to create worktree: {result.stderr}")
+        try:
+            # Create detached worktree at the PR commit
+            result = subprocess.run(
+                ["git", "worktree", "add", "--detach", str(worktree_path), head_sha],
+                cwd=self.project_dir,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+
+            if result.returncode != 0:
+                raise RuntimeError(f"Failed to create worktree: {result.stderr}")
+        except subprocess.TimeoutExpired:
+            # Clean up partial worktree on timeout
+            if worktree_path.exists():
+                shutil.rmtree(worktree_path, ignore_errors=True)
+            raise RuntimeError(f"Timeout creating worktree for {head_sha}")
 
         logger.info(f"[WorktreeManager] Created worktree at {worktree_path}")
         return worktree_path
@@ -131,21 +171,25 @@ class PRWorktreeManager:
         if not worktree_path or not worktree_path.exists():
             return
 
-        if DEBUG_MODE:
-            print(f"[WorktreeManager] Removing worktree: {worktree_path}", flush=True)
+        logger.debug(f"Removing worktree: {worktree_path}")
 
         # Try 1: git worktree remove
-        result = subprocess.run(
-            ["git", "worktree", "remove", "--force", str(worktree_path)],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
+        try:
+            result = subprocess.run(
+                ["git", "worktree", "remove", "--force", str(worktree_path)],
+                cwd=self.project_dir,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
 
-        if result.returncode == 0:
-            logger.info(f"[WorktreeManager] Removed worktree: {worktree_path.name}")
-            return
+            if result.returncode == 0:
+                logger.info(f"[WorktreeManager] Removed worktree: {worktree_path.name}")
+                return
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                f"Timeout removing worktree {worktree_path.name}, falling back to shutil"
+            )
 
         # Try 2: shutil.rmtree fallback
         try:
@@ -210,15 +254,19 @@ class PRWorktreeManager:
         Get set of worktrees registered with git.
 
         Returns:
-            Set of Path objects for registered worktrees
+            Set of resolved Path objects for registered worktrees
         """
-        result = subprocess.run(
-            ["git", "worktree", "list", "--porcelain"],
-            cwd=self.project_dir,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        try:
+            result = subprocess.run(
+                ["git", "worktree", "list", "--porcelain"],
+                cwd=self.project_dir,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning("Timeout listing worktrees, returning empty set")
+            return set()
 
         registered = set()
         for line in result.stdout.split("\n"):
@@ -254,15 +302,16 @@ class PRWorktreeManager:
         if not self.worktree_base_dir.exists():
             return stats
 
-        # Get registered worktrees
+        # Get registered worktrees (resolved paths for consistent comparison)
         registered = self.get_registered_worktrees()
+        registered_resolved = {p.resolve() for p in registered}
 
         # Get all PR worktree info
         worktrees = self.get_worktree_info()
 
         # Phase 1: Remove orphaned worktrees
         for wt in worktrees:
-            if wt.path not in registered:
+            if wt.path.resolve() not in registered_resolved:
                 logger.info(
                     f"[WorktreeManager] Removing orphaned worktree: {wt.path.name} (age: {wt.age_days:.1f} days)"
                 )
@@ -270,40 +319,50 @@ class PRWorktreeManager:
                 stats["orphaned"] += 1
 
         # Refresh worktree list after orphan cleanup
-        subprocess.run(
-            ["git", "worktree", "prune"],
-            cwd=self.project_dir,
-            capture_output=True,
-            timeout=30,
-        )
+        try:
+            subprocess.run(
+                ["git", "worktree", "prune"],
+                cwd=self.project_dir,
+                capture_output=True,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning("Timeout pruning worktrees, continuing anyway")
 
-        # Get fresh worktree info for remaining worktrees
-        worktrees = [wt for wt in self.get_worktree_info() if wt.path in registered]
+        # Get fresh worktree info for remaining worktrees (use resolved paths)
+        worktrees = [
+            wt
+            for wt in self.get_worktree_info()
+            if wt.path.resolve() in registered_resolved
+        ]
 
         # Phase 2: Remove expired worktrees (older than max age)
+        max_age_days = _get_max_age_days()
         if not force:
             for wt in worktrees:
-                if wt.age_days > PR_WORKTREE_MAX_AGE_DAYS:
+                if wt.age_days > max_age_days:
                     logger.info(
-                        f"[WorktreeManager] Removing expired worktree: {wt.path.name} (age: {wt.age_days:.1f} days, max: {PR_WORKTREE_MAX_AGE_DAYS} days)"
+                        f"[WorktreeManager] Removing expired worktree: {wt.path.name} (age: {wt.age_days:.1f} days, max: {max_age_days} days)"
                     )
                     self.remove_worktree(wt.path)
                     stats["expired"] += 1
 
-        # Refresh worktree list after expiration cleanup
+        # Refresh worktree list after expiration cleanup (use resolved paths)
+        registered_resolved = {p.resolve() for p in self.get_registered_worktrees()}
         worktrees = [
             wt
             for wt in self.get_worktree_info()
-            if wt.path in self.get_registered_worktrees()
+            if wt.path.resolve() in registered_resolved
         ]
 
-        # Phase 3: Remove excess worktrees (keep only MAX_PR_WORKTREES most recent)
-        if len(worktrees) > MAX_PR_WORKTREES:
+        # Phase 3: Remove excess worktrees (keep only max_pr_worktrees most recent)
+        max_pr_worktrees = _get_max_pr_worktrees()
+        if len(worktrees) > max_pr_worktrees:
             # worktrees are already sorted by age (oldest first)
-            excess_count = len(worktrees) - MAX_PR_WORKTREES
+            excess_count = len(worktrees) - max_pr_worktrees
             for wt in worktrees[:excess_count]:
                 logger.info(
-                    f"[WorktreeManager] Removing excess worktree: {wt.path.name} (count: {len(worktrees)}, max: {MAX_PR_WORKTREES})"
+                    f"[WorktreeManager] Removing excess worktree: {wt.path.name} (count: {len(worktrees)}, max: {max_pr_worktrees})"
                 )
                 self.remove_worktree(wt.path)
                 stats["excess"] += 1
@@ -315,10 +374,9 @@ class PRWorktreeManager:
                 f"[WorktreeManager] Cleanup complete: {stats['total']} worktrees removed "
                 f"(orphaned={stats['orphaned']}, expired={stats['expired']}, excess={stats['excess']})"
             )
-        elif DEBUG_MODE:
-            print(
-                f"[WorktreeManager] No cleanup needed (current: {len(worktrees)}, max: {MAX_PR_WORKTREES})",
-                flush=True,
+        else:
+            logger.debug(
+                f"No cleanup needed (current: {len(worktrees)}, max: {max_pr_worktrees})"
             )
 
         return stats
@@ -342,12 +400,15 @@ class PRWorktreeManager:
             count += 1
 
         if count > 0:
-            subprocess.run(
-                ["git", "worktree", "prune"],
-                cwd=self.project_dir,
-                capture_output=True,
-                timeout=30,
-            )
+            try:
+                subprocess.run(
+                    ["git", "worktree", "prune"],
+                    cwd=self.project_dir,
+                    capture_output=True,
+                    timeout=30,
+                )
+            except subprocess.TimeoutExpired:
+                logger.warning("Timeout pruning worktrees after cleanup")
             logger.info(f"[WorktreeManager] Removed all {count} PR worktrees")
 
         return count

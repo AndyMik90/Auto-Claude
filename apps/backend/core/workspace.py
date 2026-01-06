@@ -1140,24 +1140,44 @@ def _resolve_git_conflicts_with_ai(
                     )
             else:
                 # Modified without path change - simple copy
-                content = _get_file_content_from_ref(
-                    project_dir, spec_branch, file_path
-                )
-                if content is not None:
-                    target_path = project_dir / target_file_path
-                    target_path.parent.mkdir(parents=True, exist_ok=True)
-                    target_path.write_text(content, encoding="utf-8")
-                    subprocess.run(
-                        ["git", "add", target_file_path],
-                        cwd=project_dir,
-                        capture_output=True,
+                # Check if binary file to use correct read/write method
+                target_path = project_dir / target_file_path
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                if _is_binary_file(file_path):
+                    binary_content = _get_binary_file_content_from_ref(
+                        project_dir, spec_branch, file_path
                     )
-                    resolved_files.append(target_file_path)
-                    if target_file_path != file_path:
-                        debug(
-                            MODULE,
-                            f"Merged with path mapping: {file_path} -> {target_file_path}",
+                    if binary_content is not None:
+                        target_path.write_bytes(binary_content)
+                        subprocess.run(
+                            ["git", "add", target_file_path],
+                            cwd=project_dir,
+                            capture_output=True,
                         )
+                        resolved_files.append(target_file_path)
+                        if target_file_path != file_path:
+                            debug(
+                                MODULE,
+                                f"Merged binary with path mapping: {file_path} -> {target_file_path}",
+                            )
+                else:
+                    content = _get_file_content_from_ref(
+                        project_dir, spec_branch, file_path
+                    )
+                    if content is not None:
+                        target_path.write_text(content, encoding="utf-8")
+                        subprocess.run(
+                            ["git", "add", target_file_path],
+                            cwd=project_dir,
+                            capture_output=True,
+                        )
+                        resolved_files.append(target_file_path)
+                        if target_file_path != file_path:
+                            debug(
+                                MODULE,
+                                f"Merged with path mapping: {file_path} -> {target_file_path}",
+                            )
         except Exception as e:
             print(muted(f"    Warning: Could not process {file_path}: {e}"))
 

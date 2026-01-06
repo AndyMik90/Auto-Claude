@@ -31,8 +31,16 @@ PRWorktreeManager = pr_worktree_module.PRWorktreeManager
 
 @pytest.fixture
 def temp_git_repo():
-    """Create a temporary git repository for testing."""
+    """Create a temporary git repository with remote origin for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a bare repo to act as "origin"
+        origin_dir = Path(tmpdir) / "origin.git"
+        origin_dir.mkdir()
+        subprocess.run(
+            ["git", "init", "--bare"], cwd=origin_dir, check=True, capture_output=True
+        )
+
+        # Create the working repo
         repo_dir = Path(tmpdir) / "test_repo"
         repo_dir.mkdir()
 
@@ -51,12 +59,28 @@ def temp_git_repo():
             capture_output=True,
         )
 
+        # Add origin remote
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(origin_dir)],
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+        )
+
         # Create initial commit
         test_file = repo_dir / "test.txt"
         test_file.write_text("initial content")
         subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
         subprocess.run(
             ["git", "commit", "-m", "Initial commit"],
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+        )
+
+        # Push to origin so refs exist
+        subprocess.run(
+            ["git", "push", "-u", "origin", "HEAD:main"],
             cwd=repo_dir,
             check=True,
             capture_output=True,
@@ -82,7 +106,6 @@ def temp_git_repo():
         )
 
 
-@pytest.mark.skip(reason="Test fixture missing remote origin setup - needs fix")
 def test_create_and_remove_worktree(temp_git_repo):
     """Test basic worktree creation and removal."""
     repo_dir, commit_sha = temp_git_repo
@@ -101,35 +124,28 @@ def test_create_and_remove_worktree(temp_git_repo):
     assert not worktree_path.exists()
 
 
-@pytest.mark.skip(reason="Test fixture missing remote origin setup - needs fix")
 def test_cleanup_orphaned_worktrees(temp_git_repo):
     """Test cleanup of orphaned worktrees (not registered with git)."""
     repo_dir, commit_sha = temp_git_repo
     manager = PRWorktreeManager(repo_dir, ".test-worktrees")
 
-    # Create a worktree
-    worktree_path = manager.create_worktree(commit_sha, pr_number=456)
-    assert worktree_path.exists()
+    # Manually create an orphan directory (looks like worktree but not registered)
+    orphan_path = manager.worktree_base_dir / "pr-456-orphaned-12345"
+    orphan_path.mkdir(parents=True)
+    (orphan_path / "test.txt").write_text("orphan content")
 
-    # Manually remove it from git worktree list (simulate orphan)
-    subprocess.run(
-        ["git", "worktree", "remove", "--force", str(worktree_path)],
-        cwd=repo_dir,
-        capture_output=True,
-    )
-
-    # Directory still exists but git doesn't know about it
-    assert worktree_path.exists()
+    # Verify directory exists but is not in git worktree list
+    assert orphan_path.exists()
+    registered = manager.get_registered_worktrees()
+    assert orphan_path not in registered
 
     # Cleanup should remove orphaned directory
     stats = manager.cleanup_worktrees()
 
     assert stats['orphaned'] >= 1
-    # Note: The worktree may still exist if git worktree remove succeeded
-    # The cleanup is for directories that exist but aren't in git's worktree list
+    assert not orphan_path.exists()
 
 
-@pytest.mark.skip(reason="Test fixture missing remote origin setup - needs fix")
 def test_cleanup_expired_worktrees(temp_git_repo):
     """Test cleanup of worktrees older than max age."""
     repo_dir, commit_sha = temp_git_repo
@@ -163,7 +179,6 @@ def test_cleanup_expired_worktrees(temp_git_repo):
             os.environ.pop("PR_WORKTREE_MAX_AGE_DAYS", None)
 
 
-@pytest.mark.skip(reason="Test fixture missing remote origin setup - needs fix")
 def test_cleanup_excess_worktrees(temp_git_repo):
     """Test cleanup when exceeding max worktree count."""
     repo_dir, commit_sha = temp_git_repo
@@ -175,10 +190,10 @@ def test_cleanup_excess_worktrees(temp_git_repo):
     try:
         manager = PRWorktreeManager(repo_dir, ".test-worktrees")
 
-        # Create 4 worktrees
+        # Create 4 worktrees (disable auto_cleanup so they all exist initially)
         worktrees = []
         for i in range(4):
-            wt = manager.create_worktree(commit_sha, pr_number=1000 + i)
+            wt = manager.create_worktree(commit_sha, pr_number=1000 + i, auto_cleanup=False)
             worktrees.append(wt)
             # Add small delay to ensure different timestamps
             time.sleep(0.1)
@@ -204,16 +219,15 @@ def test_cleanup_excess_worktrees(temp_git_repo):
             os.environ.pop("MAX_PR_WORKTREES", None)
 
 
-@pytest.mark.skip(reason="Test fixture missing remote origin setup - needs fix")
 def test_get_worktree_info(temp_git_repo):
     """Test retrieving worktree information."""
     repo_dir, commit_sha = temp_git_repo
     manager = PRWorktreeManager(repo_dir, ".test-worktrees")
 
-    # Create multiple worktrees
-    wt1 = manager.create_worktree(commit_sha, pr_number=111)
+    # Create multiple worktrees (disable auto_cleanup so they both exist)
+    wt1 = manager.create_worktree(commit_sha, pr_number=111, auto_cleanup=False)
     time.sleep(0.1)
-    wt2 = manager.create_worktree(commit_sha, pr_number=222)
+    wt2 = manager.create_worktree(commit_sha, pr_number=222, auto_cleanup=False)
 
     # Get info
     info_list = manager.get_worktree_info()
@@ -233,15 +247,14 @@ def test_get_worktree_info(temp_git_repo):
     manager.cleanup_all_worktrees()
 
 
-@pytest.mark.skip(reason="Test fixture missing remote origin setup - needs fix")
 def test_cleanup_all_worktrees(temp_git_repo):
     """Test removing all worktrees."""
     repo_dir, commit_sha = temp_git_repo
     manager = PRWorktreeManager(repo_dir, ".test-worktrees")
 
-    # Create several worktrees
+    # Create several worktrees (disable auto_cleanup so they all exist)
     for i in range(3):
-        manager.create_worktree(commit_sha, pr_number=500 + i)
+        manager.create_worktree(commit_sha, pr_number=500 + i, auto_cleanup=False)
 
     # Verify they exist
     info = manager.get_worktree_info()
@@ -257,15 +270,14 @@ def test_cleanup_all_worktrees(temp_git_repo):
     assert len(info) == 0
 
 
-@pytest.mark.skip(reason="Test fixture missing remote origin setup - needs fix")
 def test_worktree_reuse_prevention(temp_git_repo):
     """Test that worktrees are created fresh each time (no reuse)."""
     repo_dir, commit_sha = temp_git_repo
     manager = PRWorktreeManager(repo_dir, ".test-worktrees")
 
-    # Create two worktrees for same PR
-    wt1 = manager.create_worktree(commit_sha, pr_number=999)
-    wt2 = manager.create_worktree(commit_sha, pr_number=999)
+    # Create two worktrees for same PR (disable auto_cleanup so both exist)
+    wt1 = manager.create_worktree(commit_sha, pr_number=999, auto_cleanup=False)
+    wt2 = manager.create_worktree(commit_sha, pr_number=999, auto_cleanup=False)
 
     # Should be different paths (no reuse)
     assert wt1 != wt2

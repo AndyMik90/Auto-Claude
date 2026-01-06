@@ -33,6 +33,7 @@ LOCK_FILES = {
 }
 
 BINARY_EXTENSIONS = {
+    # Images
     ".png",
     ".jpg",
     ".jpeg",
@@ -41,6 +42,11 @@ BINARY_EXTENSIONS = {
     ".webp",
     ".bmp",
     ".svg",
+    ".tiff",
+    ".tif",
+    ".heic",
+    ".heif",
+    # Documents
     ".pdf",
     ".doc",
     ".docx",
@@ -48,32 +54,63 @@ BINARY_EXTENSIONS = {
     ".xlsx",
     ".ppt",
     ".pptx",
+    # Archives
     ".zip",
     ".tar",
     ".gz",
     ".rar",
     ".7z",
+    ".bz2",
+    ".xz",
+    ".zst",
+    # Executables and libraries
     ".exe",
     ".dll",
     ".so",
     ".dylib",
     ".bin",
+    ".msi",
+    ".app",
+    # WebAssembly
+    ".wasm",
+    # Audio
     ".mp3",
-    ".mp4",
     ".wav",
+    ".ogg",
+    ".flac",
+    ".aac",
+    ".m4a",
+    # Video
+    ".mp4",
     ".avi",
     ".mov",
     ".mkv",
+    ".webm",
+    ".wmv",
+    ".flv",
+    # Fonts
     ".woff",
     ".woff2",
     ".ttf",
     ".otf",
     ".eot",
+    # Compiled code
     ".pyc",
     ".pyo",
     ".class",
     ".o",
     ".obj",
+    # Data files
+    ".dat",
+    ".db",
+    ".sqlite",
+    ".sqlite3",
+    # Other binary formats
+    ".cur",
+    ".ani",
+    ".pbm",
+    ".pgm",
+    ".ppm",
 }
 
 # Merge lock timeout in seconds
