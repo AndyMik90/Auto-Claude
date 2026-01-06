@@ -1,0 +1,7 @@
+{
+  "terminal": {
+    "openTerminal": "ターミナルを開く",
+    "openInbuilt": "内蔵ターミナルで開く",
+    "openExternal": "外部ターミナルで開く"
+  }
+}

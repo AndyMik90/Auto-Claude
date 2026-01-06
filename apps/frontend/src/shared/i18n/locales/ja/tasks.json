@@ -1,0 +1,119 @@
+{
+  "status": {
+    "backlog": "バックログ",
+    "todo": "ToDo",
+    "in_progress": "進行中",
+    "review": "レビュー",
+    "complete": "完了",
+    "archived": "アーカイブ済み"
+  },
+  "actions": {
+    "start": "開始",
+    "stop": "停止",
+    "recover": "復旧",
+    "resume": "再開",
+    "archive": "アーカイブ",
+    "delete": "削除",
+    "view": "詳細を表示",
+    "moveTo": "移動先",
+    "taskActions": "タスク操作"
+  },
+  "labels": {
+    "running": "実行中",
+    "aiReview": "AIレビュー",
+    "needsReview": "レビュー必要",
+    "pending": "保留中",
+    "stuck": "スタック",
+    "incomplete": "未完了",
+    "recovering": "復旧中...",
+    "needsRecovery": "復旧が必要",
+    "needsResume": "再開が必要"
+  },
+  "reviewReason": {
+    "completed": "完了",
+    "hasErrors": "エラーあり",
+    "qaIssues": "QAの問題",
+    "approvePlan": "計画を承認"
+  },
+  "tooltips": {
+    "archiveTask": "タスクをアーカイブ",
+    "archiveAllDone": "完了したタスクをすべてアーカイブ"
+  },
+  "creation": {
+    "title": "新規タスク作成",
+    "description": "構築したいものを記述してください",
+    "placeholder": "タスクを記述..."
+  },
+  "empty": {
+    "title": "タスクはまだありません",
+    "description": "最初のタスクを作成して始めましょう"
+  },
+  "columns": {
+    "backlog": "計画",
+    "in_progress": "進行中",
+    "ai_review": "AIレビュー",
+    "human_review": "人間によるレビュー",
+    "done": "完了"
+  },
+  "kanban": {
+    "emptyBacklog": "計画されたタスクはありません",
+    "emptyBacklogHint": "タスクを追加して始めましょう",
+    "emptyInProgress": "実行中のタスクはありません",
+    "emptyInProgressHint": "バックログからタスクを開始してください",
+    "emptyAiReview": "レビュー中のタスクはありません",
+    "emptyAiReviewHint": "AIは完了したタスクをレビューします",
+    "emptyHumanReview": "レビューするタスクはありません",
+    "emptyHumanReviewHint": "承認待ちのタスクはここに表示されます",
+    "emptyDone": "完了したタスクはありません",
+    "emptyDoneHint": "承認されたタスクはここに表示されます",
+    "emptyDefault": "タスクなし",
+    "dropHere": "ここにドロップ",
+    "showArchived": "アーカイブを表示",
+    "addTaskAriaLabel": "バックログに新規タスクを追加",
+    "closeTaskDetailsAriaLabel": "タスク詳細を閉じる",
+    "editTask": "タスクを編集",
+    "cannotEditWhileRunning": "タスク実行中は編集できません"
+  },
+  "execution": {
+    "phases": {
+      "idle": "アイドル",
+      "planning": "計画",
+      "coding": "コーディング",
+      "reviewing": "レビュー中",
+      "fixing": "修正中",
+      "complete": "完了",
+      "failed": "失敗"
+    },
+    "labels": {
+      "interrupted": "中断",
+      "progress": "進捗",
+      "entry": "件",
+      "entries": "件"
+    },
+    "shortPhases": {
+      "plan": "計画",
+      "code": "コード",
+      "qa": "QA"
+    }
+  },
+  "files": {
+    "title": "ファイル",
+    "tab": "ファイル",
+    "noSpecPath": "仕様ファイルはありません",
+    "noFiles": "ファイルが見つかりません",
+    "loading": "ファイルを読み込み中...",
+    "loadingContent": "コンテンツを読み込み中...",
+    "errorLoading": "ファイルの読み込みに失敗しました",
+    "errorLoadingContent": "ファイルコンテンツの読み込みに失敗しました",
+    "retry": "再試行",
+    "selectFile": "ファイルを選択してコンテンツを表示",
+    "openInIDE": "IDEで開く"
+  },
+  "metadata": {
+    "severity": "重要度"
+  },
+  "images": {
+    "removeImageAriaLabel": "画像 {{filename}} を削除",
+    "pasteHint": "ヒント: {{shortcut}} でスクリーンショットを直接貼り付けて参照画像を追加できます。"
+  }
+}

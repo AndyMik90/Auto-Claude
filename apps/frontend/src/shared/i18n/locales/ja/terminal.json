@@ -1,0 +1,36 @@
+{
+  "expand": {
+    "expand": "ターミナルを展開",
+    "collapse": "ターミナルを折りたたみ"
+  },
+  "auth": {
+    "terminalTitle": "認証: {{profileName}}",
+    "maxTerminalsReached": "認証ターミナルを開けません: ターミナルの最大数に達しました。先にターミナルを閉じてください。"
+  },
+  "worktree": {
+    "create": "ワークツリー",
+    "createNew": "新規ワークツリー",
+    "existing": "既存のワークツリー",
+    "createTitle": "ターミナルワークツリーを作成",
+    "createDescription": "このターミナル用の分離されたワークスペースを作成します。すべての作業はワークツリーディレクトリ内で行われます。",
+    "name": "ワークツリー名",
+    "namePlaceholder": "my-feature",
+    "nameRequired": "ワークツリー名は必須です",
+    "nameInvalid": "名前は文字または数字で始まり終わる必要があります",
+    "nameHelp": "小文字、数字、ハイフン、アンダースコアのみ使用可能",
+    "associateTask": "タスクにリンク",
+    "selectTask": "タスクを選択...",
+    "noTask": "タスクなし (スタンドアロンワークツリー)",
+    "createBranch": "Git ブランチを作成",
+    "branchHelp": "ブランチを作成: {{branch}}",
+    "baseBranch": "ベースブランチ",
+    "selectBaseBranch": "ベースブランチを選択...",
+    "useProjectDefault": "プロジェクトのデフォルトを使用 ({{branch}})",
+    "baseBranchHelp": "ワークツリーの作成元となるブランチ",
+    "openInIDE": "IDEで開く",
+    "maxReached": "ターミナルワークツリーの最大数 (12) に達しました",
+    "alreadyExists": "この名前のワークツリーは既に存在します",
+    "deleteTitle": "ワークツリーを削除しますか？",
+    "deleteDescription": "ワークツリーとそのブランチが完全に削除されます。コミットされていない変更は失われます。"
+  }
+}
