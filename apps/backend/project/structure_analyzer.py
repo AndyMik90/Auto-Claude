@@ -17,8 +17,6 @@ from .models import CustomScripts
 class StructureAnalyzer:
     """Analyzes project structure for custom scripts."""
 
-    CUSTOM_ALLOWLIST_FILENAME = ".auto-claude-allowlist"
-
     def __init__(self, project_dir: Path):
         """
         Initialize structure analyzer.
@@ -40,7 +38,6 @@ class StructureAnalyzer:
             Tuple of (CustomScripts, script_commands, custom_commands)
         """
         self.detect_custom_scripts()
-        self.load_custom_allowlist()
         return self.custom_scripts, self.script_commands, self.custom_commands
 
     def detect_custom_scripts(self) -> None:
@@ -109,15 +106,3 @@ class StructureAnalyzer:
                 self.custom_scripts.shell_scripts.append(script_name)
                 # Allow executing these scripts
                 self.script_commands.add(f"./{script_name}")
-
-    def load_custom_allowlist(self) -> None:
-        """Load user-defined custom allowlist."""
-        content = self.parser.read_text(self.CUSTOM_ALLOWLIST_FILENAME)
-        if not content:
-            return
-
-        for line in content.splitlines():
-            line = line.strip()
-            # Skip comments and empty lines
-            if line and not line.startswith("#"):
-                self.custom_commands.add(line)
