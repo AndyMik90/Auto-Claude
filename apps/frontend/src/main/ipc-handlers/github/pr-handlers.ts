@@ -1209,7 +1209,7 @@ export function registerPRHandlers(
 
               for (const f of findings) {
                 const emoji = { critical: '🔴', high: '🟠', medium: '🟡', low: '🔵' }[f.severity] || '⚪';
-                body += `#### ${emoji} [${f.severity.toUpperCase()}] ${f.title}\n`;
+                body += `#### ${emoji} [${f.id}] [${f.severity.toUpperCase()}] ${f.title}\n`;
                 body += `📁 \`${f.file}:${f.line}\`\n\n`;
                 body += `${f.description}\n\n`;
                 const suggestedFix = f.suggestedFix?.trim();
@@ -1234,7 +1234,7 @@ export function registerPRHandlers(
 
               for (const f of findings) {
                 const emoji = { critical: '🔴', high: '🟠', medium: '🟡', low: '🔵' }[f.severity] || '⚪';
-                body += `#### ${emoji} [${f.severity.toUpperCase()}] ${f.title}\n`;
+                body += `#### ${emoji} [${f.id}] [${f.severity.toUpperCase()}] ${f.title}\n`;
                 body += `📁 \`${f.file}:${f.line}\`\n\n`;
                 body += `${f.description}\n\n`;
                 // Only show suggested fix if it has actual content
