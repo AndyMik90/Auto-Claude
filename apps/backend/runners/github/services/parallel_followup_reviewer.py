@@ -581,12 +581,41 @@ The SDK will run invoked agents in parallel automatically.
                 f"{len(resolved_ids)} resolved, {len(unresolved_ids)} unresolved"
             )
 
+            # Generate blockers from critical/high/medium severity findings
+            # (Medium also blocks merge in our strict quality gates approach)
+            blockers = []
+
+            # CRITICAL: Merge conflicts block merging - check FIRST before summary generation
+            # This must happen before _generate_summary so the summary reflects merge conflict status
+            if context.has_merge_conflicts:
+                blockers.append(
+                    "Merge Conflicts: PR has conflicts with base branch that must be resolved"
+                )
+                # Override verdict to BLOCKED if merge conflicts exist
+                verdict = MergeVerdict.BLOCKED
+                verdict_reasoning = (
+                    "Blocked: PR has merge conflicts with base branch. "
+                    "Resolve conflicts before merge."
+                )
+                print(
+                    "[ParallelFollowup] ⚠️ PR has merge conflicts - blocking merge",
+                    flush=True,
+                )
+
+            for finding in unique_findings:
+                if finding.severity in (
+                    ReviewSeverity.CRITICAL,
+                    ReviewSeverity.HIGH,
+                    ReviewSeverity.MEDIUM,
+                ):
+                    blockers.append(f"{finding.category.value}: {finding.title}")
+
             # Extract validation counts
             dismissed_count = len(result_data.get("dismissed_false_positive_ids", []))
             confirmed_count = result_data.get("confirmed_valid_count", 0)
             needs_human_count = result_data.get("needs_human_review_count", 0)
 
-            # Generate summary
+            # Generate summary (AFTER merge conflict check so it reflects correct verdict)
             summary = self._generate_summary(
                 verdict=verdict,
                 verdict_reasoning=verdict_reasoning,
@@ -608,35 +637,6 @@ The SDK will run invoked agents in parallel automatically.
                 overall_status = "comment"
             else:
                 overall_status = "approve"
-
-            # Generate blockers from critical/high/medium severity findings
-            # (Medium also blocks merge in our strict quality gates approach)
-            blockers = []
-
-            # CRITICAL: Merge conflicts block merging - check first
-            if context.has_merge_conflicts:
-                blockers.append(
-                    "Merge Conflicts: PR has conflicts with base branch that must be resolved"
-                )
-                # Override verdict to BLOCKED if merge conflicts exist
-                verdict = MergeVerdict.BLOCKED
-                verdict_reasoning = (
-                    "Blocked: PR has merge conflicts with base branch. "
-                    "Resolve conflicts before merge."
-                )
-                overall_status = "request_changes"
-                print(
-                    "[ParallelFollowup] ⚠️ PR has merge conflicts - blocking merge",
-                    flush=True,
-                )
-
-            for finding in unique_findings:
-                if finding.severity in (
-                    ReviewSeverity.CRITICAL,
-                    ReviewSeverity.HIGH,
-                    ReviewSeverity.MEDIUM,
-                ):
-                    blockers.append(f"{finding.category.value}: {finding.title}")
 
             # Get file blob SHAs for rebase-resistant follow-up reviews
             # Blob SHAs persist across rebases - same content = same blob SHA
