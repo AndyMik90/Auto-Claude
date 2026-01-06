@@ -280,6 +280,44 @@
       }
     }
   },
+  "wizard": {
+    "steps": {
+      "choose": {
+        "title": "Que souhaitez-vous faire ?",
+        "description": "Choisissez comment vous souhaitez ajouter un projet",
+        "openExisting": "Ouvrir un dossier existant",
+        "openExistingDescription": "Parcourir vers un projet existant sur votre ordinateur",
+        "createNew": "Créer un nouveau projet",
+        "createNewDescription": "Commencer avec un nouveau dossier de projet",
+        "openExistingAriaLabel": "Ouvrir un dossier de projet existant",
+        "createNewAriaLabel": "Créer un nouveau projet"
+      },
+      "createForm": {
+        "title": "Créer un nouveau projet",
+        "description": "Entrez les détails du projet et configurez le dépôt distant"
+      },
+      "serviceAuth": {
+        "title": "Se connecter à {service}",
+        "description": "Authentifiez-vous avec {service} pour configurer votre dépôt"
+      },
+      "repoConfig": {
+        "title": "Configurer le dépôt",
+        "description": "Créer un nouveau dépôt ou lier un dépôt existant"
+      },
+      "complete": {
+        "title": "Projet créé !",
+        "description": "Votre projet est prêt à être utilisé"
+      }
+    },
+    "navigation": {
+      "back": "Retour",
+      "cancel": "Annuler",
+      "next": "Suivant",
+      "create": "Créer le projet",
+      "done": "Terminé",
+      "creating": "Création en cours..."
+    }
+  },
   "customModel": {
     "title": "Configuration du modèle personnalisé",
     "description": "Configurez le modèle et le niveau de réflexion pour cette session de chat.",
