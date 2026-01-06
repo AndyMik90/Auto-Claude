@@ -373,8 +373,18 @@ Examples:
             # Execute run.py - use subprocess on Windows to maintain connection with Electron
             # Fix for issue #609: os.execv() breaks connection on Windows
             if sys.platform == "win32":
-                result = subprocess.run(run_cmd)
-                sys.exit(result.returncode)
+                try:
+                    result = subprocess.run(run_cmd)
+                    sys.exit(result.returncode)
+                except FileNotFoundError:
+                    print(f"Error: Could not start coding phase - executable not found")
+                    sys.exit(1)
+                except OSError as e:
+                    print(f"Error starting coding phase: {e}")
+                    sys.exit(1)
+                except KeyboardInterrupt:
+                    print("\n\nCoding phase interrupted.")
+                    sys.exit(130)
             else:
                 # On Unix/macOS, os.execv() works correctly - replaces current process
                 os.execv(sys.executable, run_cmd)
