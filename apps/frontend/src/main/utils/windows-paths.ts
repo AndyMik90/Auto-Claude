@@ -159,7 +159,7 @@ export function findWindowsExecutableViaWhere(
 
       // Validate the path exists and is secure
       if (existsSync(foundPath) && isSecurePath(foundPath)) {
-        console.warn(`${logPrefix} Found via where: ${foundPath}`);
+        console.log(`${logPrefix} Found via where: ${foundPath}`);
         return foundPath;
       }
     }
