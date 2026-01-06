@@ -14,6 +14,7 @@ import {
 } from './ui/dialog';
 import { cn } from '../lib/utils';
 import { addProject, updateProjectSettings } from '../stores/project-store';
+import { useToast } from '../hooks/use-toast';
 import type { Project } from '../../shared/types';
 
 type ModalStep = 'choose' | 'create-form';
@@ -25,7 +26,8 @@ interface AddProjectModalProps {
 }
 
 export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProjectModalProps) {
-  const { t } = useTranslation('dialogs');
+  const { t } = useTranslation(['dialogs', 'common']);
+  const { toast } = useToast();
   const [step, setStep] = useState<ModalStep>('choose');
   const [projectName, setProjectName] = useState('');
   const [projectLocation, setProjectLocation] = useState('');
@@ -134,7 +136,11 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
               useGit: false,
               error: err
             });
-            setError(t('addProject.failedToSaveGitPreference'));
+            toast({
+              title: t('common:labels.error'),
+              description: t('addProject.failedToSaveGitPreference'),
+              variant: 'destructive'
+            });
           }
         }
         // For new projects with git init, set main branch
