@@ -103,6 +103,26 @@ async function main() {
     process.exit(1);
   }
 
+  // Create .env file from .env.example if it doesn't exist
+  const envPath = path.join(backendDir, '.env');
+  const envExamplePath = path.join(backendDir, '.env.example');
+
+  if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
+    console.log('\nCreating .env file from .env.example...');
+    try {
+      fs.copyFileSync(envExamplePath, envPath);
+      console.log('✓ Created .env file');
+      console.log('  Please configure it with your credentials:');
+      console.log(`  - Run: claude setup-token`);
+      console.log(`  - Or edit: ${envPath}`);
+    } catch (error) {
+      console.warn('Warning: Could not create .env file:', error.message);
+      console.warn('You will need to manually copy .env.example to .env');
+    }
+  } else if (fs.existsSync(envPath)) {
+    console.log('\n✓ .env file already exists');
+  }
+
   console.log('\nBackend installation complete!');
   console.log(`Virtual environment: ${venvDir}`);
 }
