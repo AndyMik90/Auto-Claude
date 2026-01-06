@@ -89,7 +89,7 @@ const COMMON_BIN_PATHS: Record<string, string[]> = {
  * Essential system directories that must always be in PATH
  * Required for core system functionality (e.g., /usr/bin/security for Keychain access)
  */
-const ESSENTIAL_SYSTEM_PATHS = ['/usr/bin', '/bin', '/usr/sbin', '/sbin'];
+const ESSENTIAL_SYSTEM_PATHS: string[] = ['/usr/bin', '/bin', '/usr/sbin', '/sbin'];
 
 /**
  * Get augmented environment with additional PATH entries
@@ -122,9 +122,8 @@ export function getAugmentedEnv(additionalPaths?: string[]): Record<string, stri
 
   // On macOS/Linux, ensure basic system paths are always present
   if (platform !== 'win32') {
-    const essentialPaths = ESSENTIAL_SYSTEM_PATHS;
-    const currentPathSet = new Set(currentPath.split(pathSeparator).filter(Boolean));
-    const missingEssentials = essentialPaths.filter(p => !currentPathSet.has(p));
+    const pathSetForEssentials = new Set(currentPath.split(pathSeparator).filter(Boolean));
+    const missingEssentials = ESSENTIAL_SYSTEM_PATHS.filter(p => !pathSetForEssentials.has(p));
 
     if (missingEssentials.length > 0) {
       // Append essential paths if missing (append, not prepend, to respect user's PATH)
