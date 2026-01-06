@@ -69,7 +69,7 @@
     "clickToManage": "点击管理 →",
     "modalTitle": "Claude Code 使用限额已达到",
     "modalDescription": "您已达到本期间的 Claude Code 使用限制。",
-    "profile": "配置文件：{{name}}",
+    "profile": "账户：{{name}}",
     "autoSwitching": "自动切换到 {{name}}",
     "autoSwitchingDescription": "Claude 将自动使用您的另一个账户重新启动",
     "resetsTime": "重置于 {{time}}",

@@ -30,7 +30,7 @@
   },
   "oauth": {
     "title": "Claude 驗證",
-    "description": "連接您的 Claude 帳戶以啟用 AI 功能",
+    "description": "連接您的 Claude 帳號以啟用 AI 功能",
     "keychainTitle": "安全存儲",
     "keychainDescription": "您的權杖使用您系統的金鑰鏈加密。您可能會看到來自 macOS 的密碼提示 — 點擊「永遠允許」以避免再看到它。"
   },

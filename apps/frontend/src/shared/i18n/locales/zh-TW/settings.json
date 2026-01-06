@@ -31,7 +31,7 @@
     },
     "integrations": {
       "title": "整合",
-      "description": "API 金鑰和 Claude 帳戶"
+      "description": "API 金鑰和 Claude 帳號"
     },
     "api-profiles": {
       "title": "API 設定檔",
@@ -271,10 +271,10 @@
   },
   "integrations": {
     "title": "整合",
-    "description": "管理 Claude 帳戶和 API 金鑰",
-    "claudeAccounts": "Claude 帳戶",
+    "description": "管理 Claude 帳號和 API 金鑰",
+    "claudeAccounts": "Claude 帳號",
     "claudeAccountsDescription": "新增多個 Claude 訂閱以在達到速率限制時自動在它們之間切換。",
-    "noAccountsYet": "尚未設定帳戶",
+    "noAccountsYet": "尚未設定帳號",
     "default": "預設",
     "active": "作用中",
     "authenticated": "已驗證",
@@ -286,9 +286,9 @@
     "tokenPlaceholder": "sk-ant-oat01-...",
     "emailPlaceholder": "電子郵件（選用，用於顯示）",
     "saveToken": "儲存權杖",
-    "accountNamePlaceholder": "帳戶名稱（例如：工作、個人）",
-    "autoSwitching": "自動帳戶切換",
-    "autoSwitchingDescription": "自動在 Claude 帳戶之間切換以避免中斷。配置主動監視以在達到限制前進行切換。",
+    "accountNamePlaceholder": "帳號名稱（例如：工作、個人）",
+    "autoSwitching": "自動帳號切換",
+    "autoSwitchingDescription": "自動在 Claude 帳號之間切換以避免中斷。配置主動監視以在達到限制前進行切換。",
     "enableAutoSwitching": "啟用自動切換",
     "masterSwitch": "所有自動交換功能的主開關",
     "proactiveMonitoring": "主動監視",

@@ -49,7 +49,7 @@
   "kanban": {
     "emptyBacklog": "没有计划的任务",
     "emptyBacklogHint": "添加任务以开始",
-    "emptyInProgress": "没有运行的",
+    "emptyInProgress": "没有运行的任务",
     "emptyInProgressHint": "从待办事项启动任务",
     "emptyAiReview": "没有正在审查的任务",
     "emptyAiReviewHint": "AI 将审查已完成的任务",
