@@ -16,6 +16,7 @@ import copy
 import json
 import logging
 import os
+import platform
 import threading
 import time
 from pathlib import Path
@@ -491,7 +492,7 @@ def create_client(
     # Debug: Log git-bash path detection on Windows
     if "CLAUDE_CODE_GIT_BASH_PATH" in sdk_env:
         logger.info(f"Git Bash path found: {sdk_env['CLAUDE_CODE_GIT_BASH_PATH']}")
-    elif os.name == "nt":
+    elif platform.system() == "Windows":
         logger.warning("Git Bash path not detected on Windows!")
 
     # Check if Linear integration is enabled

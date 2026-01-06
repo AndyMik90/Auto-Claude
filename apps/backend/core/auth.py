@@ -250,10 +250,11 @@ def _find_git_bash_path() -> str | None:
         )
 
         if result.returncode == 0 and result.stdout.strip():
-            git_paths = result.stdout.strip().split("\n")
+            git_paths = result.stdout.strip().splitlines()
             if git_paths:
                 git_path = git_paths[0].strip()
     except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+        # Intentionally suppress errors - best-effort detection with fallback to common paths
         pass
 
     # Method 2: Check common installation paths if 'where' didn't work
