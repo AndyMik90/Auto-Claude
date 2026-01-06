@@ -420,21 +420,21 @@ describe('claude-integration-handler - Helper Functions', () => {
   describe('buildClaudeShellCommand', () => {
     it('should build default command without cwd or PATH prefix', async () => {
       const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand('', '', "'/opt/bin/claude'", 'default');
+      const result = buildClaudeShellCommand('', '', "'/opt/bin/claude'", { method: 'default' });
 
       expect(result).toBe("'/opt/bin/claude'\r");
     });
 
     it('should build command with cwd', async () => {
       const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand("cd '/tmp/project' && ", '', "'/opt/bin/claude'", 'default');
+      const result = buildClaudeShellCommand("cd '/tmp/project' && ", '', "'/opt/bin/claude'", { method: 'default' });
 
       expect(result).toBe("cd '/tmp/project' && '/opt/bin/claude'\r");
     });
 
     it('should build command with PATH prefix', async () => {
       const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand('', "PATH='/custom/path' ", "'/opt/bin/claude'", 'default');
+      const result = buildClaudeShellCommand('', "PATH='/custom/path' ", "'/opt/bin/claude'", { method: 'default' });
 
       expect(result).toBe("PATH='/custom/path' '/opt/bin/claude'\r");
     });
@@ -445,8 +445,7 @@ describe('claude-integration-handler - Helper Functions', () => {
         "cd '/tmp/project' && ",
         "PATH='/opt/bin' ",
         "'/opt/bin/claude'",
-        'temp-file',
-        { escapedTempFile: "'/tmp/.token-123'" }
+        { method: 'temp-file', escapedTempFile: "'/tmp/.token-123'" }
       );
 
       expect(result).toContain('clear && ');
@@ -464,8 +463,7 @@ describe('claude-integration-handler - Helper Functions', () => {
         "cd '/tmp/project' && ",
         "PATH='/opt/bin' ",
         "'/opt/bin/claude'",
-        'config-dir',
-        { escapedConfigDir: "'/home/user/.claude-work'" }
+        { method: 'config-dir', escapedConfigDir: "'/home/user/.claude-work'" }
       );
 
       expect(result).toContain('clear && ');
@@ -482,8 +480,7 @@ describe('claude-integration-handler - Helper Functions', () => {
         '',
         '',
         "'/opt/bin/claude'",
-        'temp-file',
-        { escapedTempFile: "'/tmp/.token'" }
+        { method: 'temp-file', escapedTempFile: "'/tmp/.token'" }
       );
 
       expect(result).toContain('clear && ');

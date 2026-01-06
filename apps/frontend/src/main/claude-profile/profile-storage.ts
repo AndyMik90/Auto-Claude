@@ -3,8 +3,8 @@
  * Handles persistence of profile data to disk
  */
 
-import { existsSync, readFileSync, writeFileSync, constants } from 'fs';
-import { readFile, access } from 'fs/promises';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import type { ClaudeProfile, ClaudeAutoSwitchSettings } from '../../shared/types';
 
 export const STORE_VERSION = 3;  // Bumped for encrypted token storage
@@ -79,10 +79,8 @@ export function loadProfileStore(storePath: string): ProfileStoreData | null {
  */
 export async function loadProfileStoreAsync(storePath: string): Promise<ProfileStoreData | null> {
   try {
-    // Check if file exists using async access()
-    await access(storePath, constants.F_OK);
-
-    // Read file asynchronously
+    // Read file directly - avoid TOCTOU race condition by not checking existence first
+    // If file doesn't exist, readFile will throw ENOENT which we handle below
     const content = await readFile(storePath, 'utf-8');
     const data = JSON.parse(content);
 

@@ -86,7 +86,7 @@ function getNpmGlobalPrefix(): string | null {
  * Common binary directories that should be in PATH
  * These are locations where commonly used tools are installed
  */
-const COMMON_BIN_PATHS: Record<string, string[]> = {
+export const COMMON_BIN_PATHS: Record<string, string[]> = {
   darwin: [
     '/opt/homebrew/bin',      // Apple Silicon Homebrew
     '/usr/local/bin',         // Intel Homebrew / system
@@ -112,6 +112,71 @@ const COMMON_BIN_PATHS: Record<string, string[]> = {
 };
 
 /**
+ * Get expanded platform paths for PATH augmentation
+ *
+ * Shared helper used by both sync and async getAugmentedEnv functions.
+ * Expands home directory (~) in paths and returns the list of candidate paths.
+ *
+ * @param additionalPaths - Optional additional paths to include
+ * @returns Array of expanded paths (without existence checking)
+ */
+function getExpandedPlatformPaths(additionalPaths?: string[]): string[] {
+  const platform = process.platform as 'darwin' | 'linux' | 'win32';
+  const homeDir = os.homedir();
+
+  // Get platform-specific paths and expand home directory
+  const platformPaths = COMMON_BIN_PATHS[platform] || [];
+  const expandedPaths = platformPaths.map(p =>
+    p.startsWith('~') ? p.replace('~', homeDir) : p
+  );
+
+  // Add user-requested additional paths (expanded)
+  if (additionalPaths) {
+    for (const p of additionalPaths) {
+      const expanded = p.startsWith('~') ? p.replace('~', homeDir) : p;
+      expandedPaths.push(expanded);
+    }
+  }
+
+  return expandedPaths;
+}
+
+/**
+ * Build augmented PATH by filtering existing paths
+ *
+ * Shared helper that takes candidate paths and a set of current PATH entries,
+ * returning only paths that should be added.
+ *
+ * @param candidatePaths - Array of paths to consider adding
+ * @param currentPathSet - Set of paths already in PATH
+ * @param existingPaths - Array of paths that actually exist on the filesystem
+ * @param npmPrefix - npm global prefix path (or null if not found)
+ * @returns Array of paths to prepend to PATH
+ */
+function buildPathsToAdd(
+  candidatePaths: string[],
+  currentPathSet: Set<string>,
+  existingPaths: Set<string>,
+  npmPrefix: string | null
+): string[] {
+  const pathsToAdd: string[] = [];
+
+  // Add platform-specific paths that exist
+  for (const p of candidatePaths) {
+    if (!currentPathSet.has(p) && existingPaths.has(p)) {
+      pathsToAdd.push(p);
+    }
+  }
+
+  // Add npm global prefix if it exists
+  if (npmPrefix && !currentPathSet.has(npmPrefix) && existingPaths.has(npmPrefix)) {
+    pathsToAdd.push(npmPrefix);
+  }
+
+  return pathsToAdd;
+}
+
+/**
  * Get augmented environment with additional PATH entries
  *
  * This ensures that tools installed in common locations (like Homebrew)
@@ -126,43 +191,24 @@ export function getAugmentedEnv(additionalPaths?: string[]): Record<string, stri
   const platform = process.platform as 'darwin' | 'linux' | 'win32';
   const pathSeparator = platform === 'win32' ? ';' : ':';
 
-  // Get platform-specific paths
-  const platformPaths = COMMON_BIN_PATHS[platform] || [];
-
-  // Expand home directory in paths
-  const homeDir = os.homedir();
-  const expandedPaths = platformPaths.map(p =>
-    p.startsWith('~') ? p.replace('~', homeDir) : p
-  );
+  // Get all candidate paths (platform + additional)
+  const candidatePaths = getExpandedPlatformPaths(additionalPaths);
 
   // Collect paths to add (only if they exist and aren't already in PATH)
   const currentPath = env.PATH || '';
   const currentPathSet = new Set(currentPath.split(pathSeparator));
 
-  const pathsToAdd: string[] = [];
+  // Check existence synchronously and build existing paths set
+  const existingPaths = new Set(candidatePaths.filter(p => fs.existsSync(p)));
 
-  // Add platform-specific paths
-  for (const p of expandedPaths) {
-    if (!currentPathSet.has(p) && fs.existsSync(p)) {
-      pathsToAdd.push(p);
-    }
-  }
-
-  // Add npm global prefix dynamically (cross-platform: works with standard npm, nvm, nvm-windows)
+  // Get npm global prefix dynamically
   const npmPrefix = getNpmGlobalPrefix();
-  if (npmPrefix && !currentPathSet.has(npmPrefix) && fs.existsSync(npmPrefix)) {
-    pathsToAdd.push(npmPrefix);
+  if (npmPrefix && fs.existsSync(npmPrefix)) {
+    existingPaths.add(npmPrefix);
   }
 
-  // Add user-requested additional paths
-  if (additionalPaths) {
-    for (const p of additionalPaths) {
-      const expanded = p.startsWith('~') ? p.replace('~', homeDir) : p;
-      if (!currentPathSet.has(expanded) && fs.existsSync(expanded)) {
-        pathsToAdd.push(expanded);
-      }
-    }
-  }
+  // Build final paths to add using shared helper
+  const pathsToAdd = buildPathsToAdd(candidatePaths, currentPathSet, existingPaths, npmPrefix);
 
   // Prepend new paths to PATH (prepend so they take priority)
   if (pathsToAdd.length > 0) {
@@ -289,46 +335,29 @@ export async function getAugmentedEnvAsync(additionalPaths?: string[]): Promise<
   const platform = process.platform as 'darwin' | 'linux' | 'win32';
   const pathSeparator = platform === 'win32' ? ';' : ':';
 
-  // Get platform-specific paths
-  const platformPaths = COMMON_BIN_PATHS[platform] || [];
-
-  // Expand home directory in paths
-  const homeDir = os.homedir();
-  const expandedPaths = platformPaths.map(p =>
-    p.startsWith('~') ? p.replace('~', homeDir) : p
-  );
+  // Get all candidate paths (platform + additional)
+  const candidatePaths = getExpandedPlatformPaths(additionalPaths);
 
   // Collect paths to add (only if they exist and aren't already in PATH)
   const currentPath = env.PATH || '';
   const currentPathSet = new Set(currentPath.split(pathSeparator));
 
-  const pathsToAdd: string[] = [];
-
-  // Add platform-specific paths (check existence in parallel for performance)
-  const platformPathChecks = await Promise.all(
-    expandedPaths.map(async (p) => ({ path: p, exists: await existsAsync(p) }))
+  // Check existence asynchronously in parallel for performance
+  const pathChecks = await Promise.all(
+    candidatePaths.map(async (p) => ({ path: p, exists: await existsAsync(p) }))
   );
-  for (const { path: p, exists } of platformPathChecks) {
-    if (!currentPathSet.has(p) && exists) {
-      pathsToAdd.push(p);
-    }
-  }
+  const existingPaths = new Set(
+    pathChecks.filter(({ exists }) => exists).map(({ path: p }) => p)
+  );
 
-  // Add npm global prefix dynamically (async - non-blocking)
+  // Get npm global prefix dynamically (async - non-blocking)
   const npmPrefix = await getNpmGlobalPrefixAsync();
-  if (npmPrefix && !currentPathSet.has(npmPrefix) && await existsAsync(npmPrefix)) {
-    pathsToAdd.push(npmPrefix);
+  if (npmPrefix && await existsAsync(npmPrefix)) {
+    existingPaths.add(npmPrefix);
   }
 
-  // Add user-requested additional paths
-  if (additionalPaths) {
-    for (const p of additionalPaths) {
-      const expanded = p.startsWith('~') ? p.replace('~', homeDir) : p;
-      if (!currentPathSet.has(expanded) && await existsAsync(expanded)) {
-        pathsToAdd.push(expanded);
-      }
-    }
-  }
+  // Build final paths to add using shared helper
+  const pathsToAdd = buildPathsToAdd(candidatePaths, currentPathSet, existingPaths, npmPrefix);
 
   // Prepend new paths to PATH (prepend so they take priority)
   if (pathsToAdd.length > 0) {

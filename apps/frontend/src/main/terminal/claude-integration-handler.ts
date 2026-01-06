@@ -31,19 +31,13 @@ function normalizePathForBash(envPath: string): string {
 // ============================================================================
 
 /**
- * Method types for building Claude shell commands
+ * Configuration for building Claude shell commands using discriminated union.
+ * This provides type safety by ensuring the correct options are provided for each method.
  */
-type ClaudeCommandMethod = 'default' | 'temp-file' | 'config-dir';
-
-/**
- * Options for building Claude shell commands
- */
-interface ClaudeCommandOptions {
-  /** Escaped path to temp file containing OAuth token (for temp-file method) */
-  escapedTempFile?: string;
-  /** Escaped config directory path (for config-dir method) */
-  escapedConfigDir?: string;
-}
+type ClaudeCommandConfig =
+  | { method: 'default' }
+  | { method: 'temp-file'; escapedTempFile: string }
+  | { method: 'config-dir'; escapedConfigDir: string };
 
 /**
  * Build the shell command for invoking Claude CLI.
@@ -59,32 +53,30 @@ interface ClaudeCommandOptions {
  * @param cwdCommand - Command to change directory (empty string if no change needed)
  * @param pathPrefix - PATH prefix for Claude CLI (empty string if not needed)
  * @param escapedClaudeCmd - Shell-escaped Claude CLI command
- * @param method - The invocation method to use
- * @param options - Additional options for temp-file and config-dir methods
+ * @param config - Configuration object with method and required options (discriminated union)
  * @returns Complete shell command string ready for terminal.pty.write()
  *
  * @example
  * // Default method
- * buildClaudeShellCommand('cd /path && ', 'PATH=/bin ', 'claude', 'default');
+ * buildClaudeShellCommand('cd /path && ', 'PATH=/bin ', 'claude', { method: 'default' });
  * // Returns: 'cd /path && PATH=/bin claude\r'
  *
  * // Temp file method
- * buildClaudeShellCommand('', '', 'claude', 'temp-file', { escapedTempFile: '/tmp/token' });
+ * buildClaudeShellCommand('', '', 'claude', { method: 'temp-file', escapedTempFile: '/tmp/token' });
  * // Returns: 'clear && HISTFILE= HISTCONTROL=ignorespace bash -c "source /tmp/token && rm -f /tmp/token && exec claude"\r'
  */
 export function buildClaudeShellCommand(
   cwdCommand: string,
   pathPrefix: string,
   escapedClaudeCmd: string,
-  method: ClaudeCommandMethod,
-  options?: ClaudeCommandOptions
+  config: ClaudeCommandConfig
 ): string {
-  switch (method) {
+  switch (config.method) {
     case 'temp-file':
-      return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace ${pathPrefix}bash -c "source ${options!.escapedTempFile} && rm -f ${options!.escapedTempFile} && exec ${escapedClaudeCmd}"\r`;
+      return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace ${pathPrefix}bash -c "source ${config.escapedTempFile} && rm -f ${config.escapedTempFile} && exec ${escapedClaudeCmd}"\r`;
 
     case 'config-dir':
-      return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CLAUDE_CONFIG_DIR=${options!.escapedConfigDir} ${pathPrefix}bash -c "exec ${escapedClaudeCmd}"\r`;
+      return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CLAUDE_CONFIG_DIR=${config.escapedConfigDir} ${pathPrefix}bash -c "exec ${escapedClaudeCmd}"\r`;
 
     default:
       return `${cwdCommand}${pathPrefix}${escapedClaudeCmd}\r`;
@@ -407,7 +399,7 @@ export function invokeClaude(
         { mode: 0o600 }
       );
 
-      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, 'temp-file', { escapedTempFile });
+      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile });
       debugLog('[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)');
       terminal.pty.write(command);
       profileManager.markProfileUsed(activeProfile.id);
@@ -416,7 +408,7 @@ export function invokeClaude(
       return;
     } else if (activeProfile.configDir) {
       const escapedConfigDir = escapeShellArg(activeProfile.configDir);
-      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, 'config-dir', { escapedConfigDir });
+      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir });
       debugLog('[ClaudeIntegration:invokeClaude] Executing command (configDir method, history-safe)');
       terminal.pty.write(command);
       profileManager.markProfileUsed(activeProfile.id);
@@ -432,7 +424,7 @@ export function invokeClaude(
     debugLog('[ClaudeIntegration:invokeClaude] Using terminal environment for non-default profile:', activeProfile.name);
   }
 
-  const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, 'default');
+  const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' });
   debugLog('[ClaudeIntegration:invokeClaude] Executing command (default method):', command);
   terminal.pty.write(command);
 
@@ -564,7 +556,7 @@ export async function invokeClaudeAsync(
         { mode: 0o600 }
       );
 
-      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, 'temp-file', { escapedTempFile });
+      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile });
       debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
       terminal.pty.write(command);
       profileManager.markProfileUsed(activeProfile.id);
@@ -573,7 +565,7 @@ export async function invokeClaudeAsync(
       return;
     } else if (activeProfile.configDir) {
       const escapedConfigDir = escapeShellArg(activeProfile.configDir);
-      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, 'config-dir', { escapedConfigDir });
+      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir });
       debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
       terminal.pty.write(command);
       profileManager.markProfileUsed(activeProfile.id);
@@ -589,7 +581,7 @@ export async function invokeClaudeAsync(
     debugLog('[ClaudeIntegration:invokeClaudeAsync] Using terminal environment for non-default profile:', activeProfile.name);
   }
 
-  const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, 'default');
+  const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' });
   debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (default method):', command);
   terminal.pty.write(command);
 
