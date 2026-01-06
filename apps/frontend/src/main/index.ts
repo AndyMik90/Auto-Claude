@@ -35,6 +35,7 @@ import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
+import { preWarmToolCache } from './cli-tool-manager';
 import type { AppSettings } from '../shared/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -347,6 +348,14 @@ app.whenReady().then(() => {
 
   // Create window
   createWindow();
+
+  // Pre-warm CLI tool cache in background (non-blocking)
+  // This ensures Claude CLI detection is done before user needs it
+  setImmediate(() => {
+    preWarmToolCache(['claude']).catch((error) => {
+      console.warn('[main] Failed to pre-warm CLI cache:', error);
+    });
+  });
 
   // Initialize usage monitoring after window is created
   if (mainWindow) {

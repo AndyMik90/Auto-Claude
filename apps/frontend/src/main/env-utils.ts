@@ -12,7 +12,14 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { execFileSync } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
+
+// Cache for npm global prefix to avoid repeated async calls
+let npmGlobalPrefixCache: string | null | undefined = undefined;
+let npmGlobalPrefixCachePromise: Promise<string | null> | null = null;
 
 /**
  * Get npm global prefix directory dynamically
@@ -34,6 +41,7 @@ function getNpmGlobalPrefix(): string | null {
       encoding: 'utf-8',
       timeout: 3000,
       windowsHide: true,
+      cwd: os.homedir(), // Run from home dir to avoid ENOWORKSPACES error in monorepos
       shell: process.platform === 'win32', // Enable shell on Windows for .cmd resolution
     }).trim();
 
@@ -186,4 +194,163 @@ export function findExecutable(command: string): string | null {
  */
 export function isCommandAvailable(command: string): boolean {
   return findExecutable(command) !== null;
+}
+
+// ============================================================================
+// ASYNC VERSIONS - Non-blocking alternatives for Electron main process
+// ============================================================================
+
+/**
+ * Get npm global prefix directory asynchronously (non-blocking)
+ *
+ * Uses caching to avoid repeated subprocess calls. Safe to call from
+ * Electron main process without blocking the event loop.
+ *
+ * @returns Promise resolving to npm global binaries directory, or null
+ */
+async function getNpmGlobalPrefixAsync(): Promise<string | null> {
+  // Return cached value if available
+  if (npmGlobalPrefixCache !== undefined) {
+    return npmGlobalPrefixCache;
+  }
+
+  // If a fetch is already in progress, wait for it
+  if (npmGlobalPrefixCachePromise) {
+    return npmGlobalPrefixCachePromise;
+  }
+
+  // Start the async fetch
+  npmGlobalPrefixCachePromise = (async () => {
+    try {
+      const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
+      const { stdout } = await execFileAsync(npmCommand, ['config', 'get', 'prefix'], {
+        encoding: 'utf-8',
+        timeout: 3000,
+        windowsHide: true,
+        cwd: os.homedir(), // Run from home dir to avoid ENOWORKSPACES error in monorepos
+        shell: process.platform === 'win32',
+      });
+
+      const rawPrefix = stdout.trim();
+      if (!rawPrefix) {
+        npmGlobalPrefixCache = null;
+        return null;
+      }
+
+      const binPath = process.platform === 'win32'
+        ? rawPrefix
+        : path.join(rawPrefix, 'bin');
+
+      const normalizedPath = path.normalize(binPath);
+      npmGlobalPrefixCache = fs.existsSync(normalizedPath) ? normalizedPath : null;
+      return npmGlobalPrefixCache;
+    } catch {
+      npmGlobalPrefixCache = null;
+      return null;
+    } finally {
+      npmGlobalPrefixCachePromise = null;
+    }
+  })();
+
+  return npmGlobalPrefixCachePromise;
+}
+
+/**
+ * Get augmented environment asynchronously (non-blocking)
+ *
+ * Same as getAugmentedEnv but uses async npm prefix detection.
+ * Safe to call from Electron main process without blocking.
+ *
+ * @param additionalPaths - Optional array of additional paths to include
+ * @returns Promise resolving to environment object with augmented PATH
+ */
+export async function getAugmentedEnvAsync(additionalPaths?: string[]): Promise<Record<string, string>> {
+  const env = { ...process.env } as Record<string, string>;
+  const platform = process.platform as 'darwin' | 'linux' | 'win32';
+  const pathSeparator = platform === 'win32' ? ';' : ':';
+
+  // Get platform-specific paths
+  const platformPaths = COMMON_BIN_PATHS[platform] || [];
+
+  // Expand home directory in paths
+  const homeDir = os.homedir();
+  const expandedPaths = platformPaths.map(p =>
+    p.startsWith('~') ? p.replace('~', homeDir) : p
+  );
+
+  // Collect paths to add (only if they exist and aren't already in PATH)
+  const currentPath = env.PATH || '';
+  const currentPathSet = new Set(currentPath.split(pathSeparator));
+
+  const pathsToAdd: string[] = [];
+
+  // Add platform-specific paths
+  for (const p of expandedPaths) {
+    if (!currentPathSet.has(p) && fs.existsSync(p)) {
+      pathsToAdd.push(p);
+    }
+  }
+
+  // Add npm global prefix dynamically (async - non-blocking)
+  const npmPrefix = await getNpmGlobalPrefixAsync();
+  if (npmPrefix && !currentPathSet.has(npmPrefix) && fs.existsSync(npmPrefix)) {
+    pathsToAdd.push(npmPrefix);
+  }
+
+  // Add user-requested additional paths
+  if (additionalPaths) {
+    for (const p of additionalPaths) {
+      const expanded = p.startsWith('~') ? p.replace('~', homeDir) : p;
+      if (!currentPathSet.has(expanded) && fs.existsSync(expanded)) {
+        pathsToAdd.push(expanded);
+      }
+    }
+  }
+
+  // Prepend new paths to PATH (prepend so they take priority)
+  if (pathsToAdd.length > 0) {
+    env.PATH = [...pathsToAdd, currentPath].filter(Boolean).join(pathSeparator);
+  }
+
+  return env;
+}
+
+/**
+ * Find the full path to an executable asynchronously (non-blocking)
+ *
+ * Same as findExecutable but uses async environment augmentation.
+ *
+ * @param command - The command name to find (e.g., 'gh', 'git')
+ * @returns Promise resolving to the full path to the executable, or null
+ */
+export async function findExecutableAsync(command: string): Promise<string | null> {
+  const env = await getAugmentedEnvAsync();
+  const pathSeparator = process.platform === 'win32' ? ';' : ':';
+  const pathDirs = (env.PATH || '').split(pathSeparator);
+
+  const extensions = process.platform === 'win32'
+    ? ['.exe', '.cmd', '.bat', '.ps1', '']
+    : [''];
+
+  for (const dir of pathDirs) {
+    for (const ext of extensions) {
+      const fullPath = path.join(dir, command + ext);
+      if (fs.existsSync(fullPath)) {
+        return fullPath;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Clear the npm global prefix cache
+ *
+ * Call this if npm configuration changes and you need fresh detection.
+ */
+export function clearNpmPrefixCache(): void {
+  npmGlobalPrefixCache = undefined;
+  npmGlobalPrefixCachePromise = null;
 }

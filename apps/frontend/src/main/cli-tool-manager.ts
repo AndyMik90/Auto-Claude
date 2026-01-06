@@ -20,12 +20,15 @@
  * - Graceful fallbacks when tools not found
  */
 
-import { execFileSync } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import os from 'os';
+import { promisify } from 'util';
 import { app } from 'electron';
-import { findExecutable } from './env-utils';
+import { findExecutable, findExecutableAsync } from './env-utils';
+
+const execFileAsync = promisify(execFile);
 import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
@@ -822,6 +825,254 @@ class CLIToolManager {
     }
   }
 
+  // ============================================================================
+  // ASYNC METHODS - Non-blocking alternatives for Electron main process
+  // ============================================================================
+
+  /**
+   * Get the path for a CLI tool asynchronously (non-blocking)
+   *
+   * Uses cached path if available, otherwise detects asynchronously.
+   * Safe to call from Electron main process without blocking.
+   *
+   * @param tool - The CLI tool to get the path for
+   * @returns Promise resolving to the tool path
+   */
+  async getToolPathAsync(tool: CLITool): Promise<string> {
+    // Check cache first (instant return if cached)
+    const cached = this.cache.get(tool);
+    if (cached) {
+      console.warn(
+        `[CLI Tools] Using cached ${tool}: ${cached.path} (${cached.source})`
+      );
+      return cached.path;
+    }
+
+    // Detect asynchronously
+    const result = await this.detectToolPathAsync(tool);
+    if (result.found && result.path) {
+      this.cache.set(tool, {
+        path: result.path,
+        version: result.version,
+        source: result.source,
+      });
+      console.warn(`[CLI Tools] Detected ${tool}: ${result.path} (${result.source})`);
+      return result.path;
+    }
+
+    // Fallback to tool name (let system PATH resolve it)
+    console.warn(`[CLI Tools] ${tool} not found, using fallback: "${tool}"`);
+    return tool;
+  }
+
+  /**
+   * Detect tool path asynchronously
+   *
+   * @param tool - The tool to detect
+   * @returns Promise resolving to detection result
+   */
+  private async detectToolPathAsync(tool: CLITool): Promise<ToolDetectionResult> {
+    switch (tool) {
+      case 'claude':
+        return this.detectClaudeAsync();
+      // For other tools, fall back to sync detection (they're less critical for startup)
+      // These can be made async later if needed
+      case 'python':
+        return this.detectPython();
+      case 'git':
+        return this.detectGit();
+      case 'gh':
+        return this.detectGitHubCLI();
+      default:
+        return {
+          found: false,
+          source: 'fallback',
+          message: `Unknown tool: ${tool}`,
+        };
+    }
+  }
+
+  /**
+   * Validate Claude CLI asynchronously (non-blocking)
+   *
+   * @param claudeCmd - The Claude CLI command to validate
+   * @returns Promise resolving to validation result
+   */
+  private async validateClaudeAsync(claudeCmd: string): Promise<ToolValidation> {
+    try {
+      const needsShell = process.platform === 'win32' &&
+        (claudeCmd.endsWith('.cmd') || claudeCmd.endsWith('.bat'));
+
+      const { stdout } = await execFileAsync(claudeCmd, ['--version'], {
+        encoding: 'utf-8',
+        timeout: 5000,
+        windowsHide: true,
+        shell: needsShell,
+      });
+
+      const version = stdout.trim();
+      const match = version.match(/(\d+\.\d+\.\d+)/);
+      const versionStr = match ? match[1] : version.split('\n')[0];
+
+      return {
+        valid: true,
+        version: versionStr,
+        message: `Claude CLI ${versionStr} is available`,
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        message: `Failed to validate Claude CLI: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  /**
+   * Detect Claude CLI asynchronously (non-blocking)
+   *
+   * Same detection logic as detectClaude but uses async validation.
+   *
+   * @returns Promise resolving to detection result
+   */
+  private async detectClaudeAsync(): Promise<ToolDetectionResult> {
+    // 1. User configuration
+    if (this.userConfig.claudePath) {
+      if (isWrongPlatformPath(this.userConfig.claudePath)) {
+        console.warn(
+          `[Claude CLI] User-configured path is from different platform, ignoring: ${this.userConfig.claudePath}`
+        );
+      } else {
+        const validation = await this.validateClaudeAsync(this.userConfig.claudePath);
+        if (validation.valid) {
+          return {
+            found: true,
+            path: this.userConfig.claudePath,
+            version: validation.version,
+            source: 'user-config',
+            message: `Using user-configured Claude CLI: ${this.userConfig.claudePath}`,
+          };
+        }
+        console.warn(
+          `[Claude CLI] User-configured path invalid: ${validation.message}`
+        );
+      }
+    }
+
+    // 2. Homebrew (macOS)
+    if (process.platform === 'darwin') {
+      const homebrewPaths = [
+        '/opt/homebrew/bin/claude',
+        '/usr/local/bin/claude',
+      ];
+
+      for (const claudePath of homebrewPaths) {
+        if (existsSync(claudePath)) {
+          const validation = await this.validateClaudeAsync(claudePath);
+          if (validation.valid) {
+            return {
+              found: true,
+              path: claudePath,
+              version: validation.version,
+              source: 'homebrew',
+              message: `Using Homebrew Claude CLI: ${claudePath}`,
+            };
+          }
+        }
+      }
+    }
+
+    // 3. System PATH (augmented) - using async findExecutable
+    const claudePath = await findExecutableAsync('claude');
+    if (claudePath) {
+      const validation = await this.validateClaudeAsync(claudePath);
+      if (validation.valid) {
+        return {
+          found: true,
+          path: claudePath,
+          version: validation.version,
+          source: 'system-path',
+          message: `Using system Claude CLI: ${claudePath}`,
+        };
+      }
+    }
+
+    // 4. Platform-specific standard locations
+    const homeDir = os.homedir();
+    const platformPaths = process.platform === 'win32'
+      ? [
+          path.join(homeDir, 'AppData', 'Local', 'Programs', 'claude', 'claude.exe'),
+          path.join(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
+          path.join(homeDir, '.local', 'bin', 'claude.exe'),
+          'C:\\Program Files\\Claude\\claude.exe',
+          'C:\\Program Files (x86)\\Claude\\claude.exe',
+        ]
+      : [
+          path.join(homeDir, '.local', 'bin', 'claude'),
+          path.join(homeDir, 'bin', 'claude'),
+        ];
+
+    // 4.5. NVM paths for Unix/Linux/macOS
+    if (process.platform !== 'win32') {
+      const nvmVersionsDir = path.join(homeDir, '.nvm', 'versions', 'node');
+      try {
+        if (existsSync(nvmVersionsDir)) {
+          const nodeVersions = readdirSync(nvmVersionsDir, { withFileTypes: true });
+          const versionDirs = nodeVersions
+            .filter((entry) => entry.isDirectory() && entry.name.startsWith('v'))
+            .sort((a, b) => {
+              const vA = a.name.slice(1).split('.').map(Number);
+              const vB = b.name.slice(1).split('.').map(Number);
+              for (let i = 0; i < 3; i++) {
+                const diff = (vB[i] ?? 0) - (vA[i] ?? 0);
+                if (diff !== 0) return diff;
+              }
+              return 0;
+            });
+
+          for (const entry of versionDirs) {
+            const nvmClaudePath = path.join(nvmVersionsDir, entry.name, 'bin', 'claude');
+            if (existsSync(nvmClaudePath)) {
+              const validation = await this.validateClaudeAsync(nvmClaudePath);
+              if (validation.valid) {
+                return {
+                  found: true,
+                  path: nvmClaudePath,
+                  version: validation.version,
+                  source: 'nvm',
+                  message: `Using NVM Claude CLI: ${nvmClaudePath}`,
+                };
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(`[Claude CLI] Unable to read NVM directory: ${error}`);
+      }
+    }
+
+    for (const claudePath of platformPaths) {
+      if (existsSync(claudePath)) {
+        const validation = await this.validateClaudeAsync(claudePath);
+        if (validation.valid) {
+          return {
+            found: true,
+            path: claudePath,
+            version: validation.version,
+            source: 'system-path',
+            message: `Using Claude CLI: ${claudePath}`,
+          };
+        }
+      }
+    }
+
+    // 5. Not found
+    return {
+      found: false,
+      source: 'fallback',
+      message: 'Claude CLI not found. Install from https://claude.ai/download',
+    };
+  }
+
   /**
    * Get bundled Python path for packaged apps
    *
@@ -994,4 +1245,53 @@ export function clearToolCache(): void {
  */
 export function isPathFromWrongPlatform(pathStr: string | undefined): boolean {
   return isWrongPlatformPath(pathStr);
+}
+
+// ============================================================================
+// ASYNC EXPORTS - Non-blocking alternatives for Electron main process
+// ============================================================================
+
+/**
+ * Get the path for a CLI tool asynchronously (non-blocking)
+ *
+ * Safe to call from Electron main process without blocking the event loop.
+ * Uses cached path if available, otherwise detects asynchronously.
+ *
+ * @param tool - The CLI tool to get the path for
+ * @returns Promise resolving to the tool path
+ *
+ * @example
+ * ```typescript
+ * import { getToolPathAsync } from './cli-tool-manager';
+ *
+ * const claudePath = await getToolPathAsync('claude');
+ * ```
+ */
+export async function getToolPathAsync(tool: CLITool): Promise<string> {
+  return cliToolManager.getToolPathAsync(tool);
+}
+
+/**
+ * Pre-warm the CLI tool cache asynchronously
+ *
+ * Call this during app startup to detect tools in the background.
+ * Subsequent calls to getToolPath/getToolPathAsync will use cached values.
+ *
+ * @param tools - Array of tools to pre-warm (defaults to ['claude'])
+ *
+ * @example
+ * ```typescript
+ * import { preWarmToolCache } from './cli-tool-manager';
+ *
+ * // In app startup
+ * app.whenReady().then(() => {
+ *   // ... setup code ...
+ *   preWarmToolCache(['claude', 'git', 'gh']);
+ * });
+ * ```
+ */
+export async function preWarmToolCache(tools: CLITool[] = ['claude']): Promise<void> {
+  console.warn('[CLI Tools] Pre-warming cache for:', tools.join(', '));
+  await Promise.all(tools.map(tool => cliToolManager.getToolPathAsync(tool)));
+  console.warn('[CLI Tools] Cache pre-warming complete');
 }

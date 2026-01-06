@@ -13,7 +13,7 @@ import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { escapeShellArg, buildCdCommand } from '../../shared/utils/shell-escape';
-import { getClaudeCliInvocation } from '../claude-cli-utils';
+import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import type {
   TerminalProcess,
   WindowGetter,
@@ -402,6 +402,206 @@ export function resumeClaude(
   }
 
   // Persist session with updated title
+  if (terminal.projectPath) {
+    SessionHandler.persistSession(terminal);
+  }
+}
+
+// ============================================================================
+// ASYNC VERSIONS - Non-blocking alternatives for Electron main process
+// ============================================================================
+
+/**
+ * Invoke Claude asynchronously (non-blocking)
+ *
+ * Safe to call from Electron main process without blocking the event loop.
+ * Uses async CLI detection which doesn't block on subprocess calls.
+ */
+export async function invokeClaudeAsync(
+  terminal: TerminalProcess,
+  cwd: string | undefined,
+  profileId: string | undefined,
+  getWindow: WindowGetter,
+  onSessionCapture: (terminalId: string, projectPath: string, startTime: number) => void
+): Promise<void> {
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE START (async) ==========');
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Terminal ID:', terminal.id);
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Requested profile ID:', profileId);
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] CWD:', cwd);
+
+  terminal.isClaudeMode = true;
+  SessionHandler.releaseSessionId(terminal.id);
+  terminal.claudeSessionId = undefined;
+
+  const startTime = Date.now();
+  const projectPath = cwd || terminal.projectPath || terminal.cwd;
+
+  const profileManager = getClaudeProfileManager();
+  const activeProfile = profileId
+    ? profileManager.getProfile(profileId)
+    : profileManager.getActiveProfile();
+
+  const previousProfileId = terminal.claudeProfileId;
+  terminal.claudeProfileId = activeProfile?.id;
+
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Profile resolution:', {
+    previousProfileId,
+    newProfileId: activeProfile?.id,
+    profileName: activeProfile?.name,
+    hasOAuthToken: !!activeProfile?.oauthToken,
+    isDefault: activeProfile?.isDefault
+  });
+
+  // Async CLI invocation - non-blocking
+  const cwdCommand = buildCdCommand(cwd);
+  const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
+  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const pathPrefix = claudeEnv.PATH
+    ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
+    : '';
+  const needsEnvOverride = profileId && profileId !== previousProfileId;
+
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Environment override check:', {
+    profileIdProvided: !!profileId,
+    previousProfileId,
+    needsEnvOverride
+  });
+
+  if (needsEnvOverride && activeProfile && !activeProfile.isDefault) {
+    const token = profileManager.getProfileToken(activeProfile.id);
+    debugLog('[ClaudeIntegration:invokeClaudeAsync] Token retrieval:', {
+      hasToken: !!token,
+      tokenLength: token?.length
+    });
+
+    if (token) {
+      const nonce = crypto.randomBytes(8).toString('hex');
+      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
+      const escapedTempFile = escapeShellArg(tempFile);
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:', tempFile);
+      fs.writeFileSync(
+        tempFile,
+        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
+        { mode: 0o600 }
+      );
+
+      const command = `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace ${pathPrefix}bash -c "source ${escapedTempFile} && rm -f ${escapedTempFile} && exec ${escapedClaudeCmd}"\r`;
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
+      terminal.pty.write(command);
+      profileManager.markProfileUsed(activeProfile.id);
+
+      const title = `Claude (${activeProfile.name})`;
+      terminal.title = title;
+      const win = getWindow();
+      if (win) {
+        win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, title);
+      }
+      if (terminal.projectPath) {
+        SessionHandler.persistSession(terminal);
+      }
+      if (projectPath) {
+        onSessionCapture(terminal.id, projectPath, startTime);
+      }
+
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
+      return;
+    } else if (activeProfile.configDir) {
+      const escapedConfigDir = escapeShellArg(activeProfile.configDir);
+      const command = `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CLAUDE_CONFIG_DIR=${escapedConfigDir} ${pathPrefix}bash -c "exec ${escapedClaudeCmd}"\r`;
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
+      terminal.pty.write(command);
+      profileManager.markProfileUsed(activeProfile.id);
+
+      const title = `Claude (${activeProfile.name})`;
+      terminal.title = title;
+      const win = getWindow();
+      if (win) {
+        win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, title);
+      }
+      if (terminal.projectPath) {
+        SessionHandler.persistSession(terminal);
+      }
+      if (projectPath) {
+        onSessionCapture(terminal.id, projectPath, startTime);
+      }
+
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
+      return;
+    } else {
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] WARNING: No token or configDir available for non-default profile');
+    }
+  }
+
+  if (activeProfile && !activeProfile.isDefault) {
+    debugLog('[ClaudeIntegration:invokeClaudeAsync] Using terminal environment for non-default profile:', activeProfile.name);
+  }
+
+  const command = `${cwdCommand}${pathPrefix}${escapedClaudeCmd}\r`;
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (default method):', command);
+  terminal.pty.write(command);
+
+  if (activeProfile) {
+    profileManager.markProfileUsed(activeProfile.id);
+  }
+
+  const title = activeProfile && !activeProfile.isDefault
+    ? `Claude (${activeProfile.name})`
+    : 'Claude';
+  terminal.title = title;
+
+  const win = getWindow();
+  if (win) {
+    win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, title);
+  }
+
+  if (terminal.projectPath) {
+    SessionHandler.persistSession(terminal);
+  }
+
+  if (projectPath) {
+    onSessionCapture(terminal.id, projectPath, startTime);
+  }
+
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (default) ==========');
+}
+
+/**
+ * Resume Claude asynchronously (non-blocking)
+ *
+ * Safe to call from Electron main process without blocking the event loop.
+ * Uses async CLI detection which doesn't block on subprocess calls.
+ */
+export async function resumeClaudeAsync(
+  terminal: TerminalProcess,
+  sessionId: string | undefined,
+  getWindow: WindowGetter
+): Promise<void> {
+  terminal.isClaudeMode = true;
+  SessionHandler.releaseSessionId(terminal.id);
+
+  // Async CLI invocation - non-blocking
+  const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
+  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const pathPrefix = claudeEnv.PATH
+    ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
+    : '';
+
+  let command: string;
+  if (sessionId) {
+    command = `${pathPrefix}${escapedClaudeCmd} --resume ${escapeShellArg(sessionId)}`;
+    terminal.claudeSessionId = sessionId;
+  } else {
+    command = `${pathPrefix}${escapedClaudeCmd} --continue`;
+  }
+
+  terminal.pty.write(`${command}\r`);
+
+  terminal.title = 'Claude';
+  const win = getWindow();
+  if (win) {
+    win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, 'Claude');
+  }
+
   if (terminal.projectPath) {
     SessionHandler.persistSession(terminal);
   }

@@ -54,7 +54,8 @@ export function registerTerminalHandlers(
   ipcMain.on(
     IPC_CHANNELS.TERMINAL_INVOKE_CLAUDE,
     (_, id: string, cwd?: string) => {
-      terminalManager.invokeClaude(id, cwd);
+      // Use async version to avoid blocking main process during CLI detection
+      terminalManager.invokeClaudeAsync(id, cwd);
     }
   );
 
@@ -626,7 +627,8 @@ export function registerTerminalHandlers(
   ipcMain.on(
     IPC_CHANNELS.TERMINAL_RESUME_CLAUDE,
     (_, id: string, sessionId?: string) => {
-      terminalManager.resumeClaude(id, sessionId);
+      // Use async version to avoid blocking main process during CLI detection
+      terminalManager.resumeClaudeAsync(id, sessionId);
     }
   );
 
