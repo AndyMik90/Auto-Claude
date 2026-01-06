@@ -109,8 +109,26 @@ export function getAugmentedEnv(additionalPaths?: string[]): Record<string, stri
     p.startsWith('~') ? p.replace('~', homeDir) : p
   );
 
+  // Ensure PATH has essential system directories when launched from Finder/Dock.
+  // When Electron launches from GUI (not terminal), PATH might be empty or minimal.
+  // The Claude Agent SDK needs /usr/bin/security to access macOS Keychain.
+  let currentPath = env.PATH || '';
+
+  // On macOS/Linux, ensure basic system paths are always present
+  if (platform !== 'win32') {
+    const essentialPaths = ['/usr/bin', '/bin', '/usr/sbin', '/sbin'];
+    const currentPathSet = new Set(currentPath.split(pathSeparator).filter(Boolean));
+    const missingEssentials = essentialPaths.filter(p => !currentPathSet.has(p));
+
+    if (missingEssentials.length > 0) {
+      // Append essential paths if missing (append, not prepend, to respect user's PATH)
+      currentPath = currentPath
+        ? `${currentPath}${pathSeparator}${missingEssentials.join(pathSeparator)}`
+        : missingEssentials.join(pathSeparator);
+    }
+  }
+
   // Collect paths to add (only if they exist and aren't already in PATH)
-  const currentPath = env.PATH || '';
   const currentPathSet = new Set(currentPath.split(pathSeparator));
 
   const pathsToAdd: string[] = [];
