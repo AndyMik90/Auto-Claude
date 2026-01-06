@@ -137,13 +137,12 @@ describe('CreatePRDialog', () => {
     );
 
     await waitFor(() => {
-      // Find the stats container by locating the "Commits:" label and getting its parent container
-      const commitsLabel = screen.getByText(/commits:/i);
-      const statsContainer = commitsLabel.closest('.bg-muted\\/50');
+      // Use data-testid for stable test targeting
+      const statsContainer = screen.getByTestId('pr-stats-container');
       expect(statsContainer).toBeInTheDocument();
 
       // Scope assertions to the stats container to avoid accidental matches elsewhere
-      const stats = within(statsContainer as HTMLElement);
+      const stats = within(statsContainer);
       expect(stats.getByText('5')).toBeInTheDocument(); // commit count
       expect(stats.getByText('+200')).toBeInTheDocument(); // additions
       expect(stats.getByText('-50')).toBeInTheDocument(); // deletions

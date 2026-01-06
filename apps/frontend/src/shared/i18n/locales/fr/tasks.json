@@ -104,7 +104,8 @@
     "openInIDE": "Ouvrir dans l'IDE"
   },
   "metadata": {
-    "severity": "sévérité"
+    "severity": "sévérité",
+    "pullRequest": "Pull Request"
   },
   "images": {
     "removeImageAriaLabel": "Supprimer l'image {{filename}}",

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import {
   Target,
   Bug,
@@ -50,6 +51,7 @@ interface TaskMetadataProps {
 }
 
 export function TaskMetadata({ task }: TaskMetadataProps) {
+  const { t } = useTranslation(['tasks']);
   const hasClassification = task.metadata && (
     task.metadata.category ||
     task.metadata.priority ||
@@ -203,7 +205,7 @@ export function TaskMetadata({ task }: TaskMetadataProps) {
             <div>
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                 <GitPullRequest className="h-3 w-3 text-info" />
-                Pull Request
+                {t('tasks:metadata.pullRequest')}
               </h3>
               <button
                 type="button"

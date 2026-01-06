@@ -36,7 +36,7 @@ class PushBranchResult(TypedDict, total=False):
 class PullRequestResult(TypedDict, total=False):
     """Result of creating a pull request."""
     success: bool
-    pr_url: str
+    pr_url: str | None  # None when PR was created but URL couldn't be extracted
     already_exists: bool
     error: str
     message: str
@@ -48,7 +48,7 @@ class PushAndCreatePRResult(TypedDict, total=False):
     pushed: bool
     remote: str
     branch: str
-    pr_url: str
+    pr_url: str | None  # None when PR was created but URL couldn't be extracted
     already_exists: bool
     error: str
     message: str

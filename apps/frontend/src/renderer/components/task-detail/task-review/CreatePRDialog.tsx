@@ -153,7 +153,7 @@ export function CreatePRDialog({
         {!result?.success && !error && (
           <div className="space-y-4">
             {/* Branch Info */}
-            <div className="bg-muted/50 rounded-lg p-3 text-sm">
+            <div className="bg-muted/50 rounded-lg p-3 text-sm" data-testid="pr-stats-container">
               <div className="flex justify-between mb-1">
                 <span className="text-muted-foreground">{t('taskReview:pr.labels.sourceBranch')}:</span>
                 <span className="font-mono">{worktreeStatus?.branch || t('taskReview:pr.labels.unknown')}</span>
