@@ -26,7 +26,7 @@ import path from 'path';
 import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
-import { findExecutable, findExecutableAsync, getAugmentedEnv } from './env-utils';
+import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync } from './env-utils';
 
 const execFileAsync = promisify(execFile);
 
@@ -1029,6 +1029,7 @@ class CLIToolManager {
         timeout: 5000,
         windowsHide: true,
         shell: needsShell,
+        env: await getAugmentedEnvAsync(),
       });
 
       const version = stdout.trim();
@@ -1066,6 +1067,7 @@ class CLIToolManager {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
+        env: await getAugmentedEnvAsync(),
       });
 
       const version = stdout.trim();
@@ -1117,6 +1119,7 @@ class CLIToolManager {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
+        env: await getAugmentedEnvAsync(),
       });
 
       const version = stdout.trim();
@@ -1148,6 +1151,7 @@ class CLIToolManager {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
+        env: await getAugmentedEnvAsync(),
       });
 
       const version = stdout.trim();

@@ -351,9 +351,10 @@ app.whenReady().then(() => {
   createWindow();
 
   // Pre-warm CLI tool cache in background (non-blocking)
-  // This ensures Claude CLI detection is done before user needs it
+  // This ensures CLI detection is done before user needs it
+  // Include all commonly used tools to prevent sync blocking on first use
   setImmediate(() => {
-    preWarmToolCache(['claude']).catch((error) => {
+    preWarmToolCache(['claude', 'git', 'gh', 'python']).catch((error) => {
       console.warn('[main] Failed to pre-warm CLI cache:', error);
     });
   });
