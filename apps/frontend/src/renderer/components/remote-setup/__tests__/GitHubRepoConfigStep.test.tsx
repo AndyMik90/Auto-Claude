@@ -10,10 +10,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import { GitHubRepoConfigStep } from './GitHubRepoConfigStep';
-import type { Owner } from './types';
-import type { RemoteAction, GitHubVisibility } from './types';
+import '@testing-library/jest-dom/vitest';
+import { GitHubRepoConfigStep } from '../GitHubRepoConfigStep';
+import type { Owner } from '../types';
+import type { RemoteAction, GitHubVisibility } from '../types';
 
 // Mock i18n with readable translations
 const translations: Record<string, string> = {
@@ -21,6 +21,30 @@ const translations: Record<string, string> = {
   'remoteSetup.repoConfig.personal': 'Personal account',
   'remoteSetup.repoConfig.organizations': 'Organizations',
   'remoteSetup.repoConfig.groups': 'Groups',
+  'remoteSetup.repoConfig.createNew': 'Create new repository',
+  'remoteSetup.repoConfig.linkExisting': 'Link existing repository',
+  'remoteSetup.repoConfig.visibility': 'Visibility',
+  'remoteSetup.repoConfig.private': 'Private',
+  'remoteSetup.repoConfig.public': 'Public',
+  'remoteSetup.repoConfig.github.title': 'Configure GitHub Repository',
+  'remoteSetup.repoConfig.github.description': 'Create a new repository or link to an existing one',
+  'remoteSetup.repoConfig.github.repoNameLabel': 'Repository Name',
+  'remoteSetup.repoConfig.github.autoFilled': 'Auto-filled from project name',
+  'remoteSetup.repoConfig.github.orLinkExisting': 'Or link to existing repository',
+  'remoteSetup.repoConfig.github.back': 'Back',
+  'remoteSetup.repoConfig.github.linkToExisting': 'Link to existing repository',
+  'remoteSetup.repoConfig.github.repoLabel': 'Repository',
+  'remoteSetup.repoConfig.github.repoPlaceholder': 'username/repository',
+  'remoteSetup.repoConfig.github.repoHelp': 'Enter the full repository path (e.g., octocat/hello-world)',
+  'remoteSetup.repoConfig.github.orCreateNew': 'Or create a new repository',
+  'remoteSetup.repoConfig.github.processing': 'Processing...',
+  'remoteSetup.repoConfig.github.linkRepo': 'Link Repository',
+  'remoteSetup.repoConfig.github.createRepo': 'Create Repository',
+  'remoteSetup.repoConfig.github.createNewDescription': 'Create a new repository on GitHub',
+  'remoteSetup.repoConfig.github.linkExistingDescription': 'Connect to an existing GitHub repository',
+  'remoteSetup.repoConfig.github.errorOwnerRequired': 'Please select an owner',
+  'remoteSetup.repoConfig.github.errorRepoRequired': 'Please enter a repository path',
+  'remoteSetup.repoConfig.github.errorInvalidFormat': 'Invalid repository format. Use owner/repo',
 };
 
 const mockT = vi.fn((key: string) => translations[key] || key);

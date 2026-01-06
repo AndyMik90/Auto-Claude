@@ -218,7 +218,28 @@
       "existingProject": "Project (group/project)",
       "instanceUrl": "GitLab instance URL",
       "instanceUrlHelp": "Leave empty for gitlab.com",
-      "visibilityHelp": "Who can see the repository"
+      "visibilityHelp": "Who can see the repository",
+      "github": {
+        "title": "Configure GitHub Repository",
+        "description": "Create a new repository or link to an existing one",
+        "repoNameLabel": "Repository Name",
+        "autoFilled": "Auto-filled from project name",
+        "orLinkExisting": "Or link to existing repository",
+        "back": "Back",
+        "linkToExisting": "Link to existing repository",
+        "repoLabel": "Repository",
+        "repoPlaceholder": "username/repository",
+        "repoHelp": "Enter the full repository path (e.g., octocat/hello-world)",
+        "orCreateNew": "Or create a new repository",
+        "processing": "Processing...",
+        "linkRepo": "Link Repository",
+        "createRepo": "Create Repository",
+        "createNewDescription": "Create a new repository on GitHub",
+        "linkExistingDescription": "Connect to an existing GitHub repository",
+        "errorOwnerRequired": "Please select an owner",
+        "errorRepoRequired": "Please enter a repository path",
+        "errorInvalidFormat": "Invalid repository format. Use owner/repo"
+      }
     }
   },
   "customModel": {

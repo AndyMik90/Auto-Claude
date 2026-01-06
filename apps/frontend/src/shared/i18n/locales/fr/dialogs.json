@@ -218,7 +218,28 @@
       "existingProject": "Projet (groupe/projet)",
       "instanceUrl": "URL de l'instance GitLab",
       "instanceUrlHelp": "Laissez vide pour utiliser gitlab.com",
-      "visibilityHelp": "Qui peut voir le dépôt"
+      "visibilityHelp": "Qui peut voir le dépôt",
+      "github": {
+        "title": "Configurer le dépôt GitHub",
+        "description": "Créer un nouveau dépôt ou lier un dépôt existant",
+        "repoNameLabel": "Nom du dépôt",
+        "autoFilled": "Rempli automatiquement à partir du nom du projet",
+        "orLinkExisting": "Ou lier un dépôt existant",
+        "back": "Retour",
+        "linkToExisting": "Lier un dépôt existant",
+        "repoLabel": "Dépôt",
+        "repoPlaceholder": "utilisateur/dépôt",
+        "repoHelp": "Entrez le chemin complet du dépôt (ex: octocat/hello-world)",
+        "orCreateNew": "Ou créer un nouveau dépôt",
+        "processing": "Traitement...",
+        "linkRepo": "Lier le dépôt",
+        "createRepo": "Créer le dépôt",
+        "createNewDescription": "Créer un nouveau dépôt sur GitHub",
+        "linkExistingDescription": "Se connecter à un dépôt GitHub existant",
+        "errorOwnerRequired": "Veuillez sélectionner un propriétaire",
+        "errorRepoRequired": "Veuillez entrer un chemin de dépôt",
+        "errorInvalidFormat": "Format de dépôt invalide. Utilisez propriétaire/dépôt"
+      }
     }
   },
   "customModel": {

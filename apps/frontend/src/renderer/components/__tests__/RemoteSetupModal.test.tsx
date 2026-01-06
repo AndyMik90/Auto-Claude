@@ -11,8 +11,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { RemoteSetupModal } from './RemoteSetupModal';
-import type { RemoteConfig } from './remote-setup/types';
+import { RemoteSetupModal } from '../RemoteSetupModal';
+import type { RemoteConfig } from '../remote-setup/types';
 
 // Mock i18n with readable translations
 const translations: Record<string, string> = {
@@ -194,11 +194,6 @@ afterEach(() => {
 
 // Simple render wrapper
 function renderWithI18n(ui: React.ReactElement) {
-  return render(ui);
-}
-
-// Helper for rerender
-function rerenderWithI18n(ui: React.ReactElement) {
   return render(ui);
 }
 

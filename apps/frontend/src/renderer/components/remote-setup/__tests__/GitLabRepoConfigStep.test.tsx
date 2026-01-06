@@ -11,9 +11,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { GitLabRepoConfigStep } from './GitLabRepoConfigStep';
-import type { Owner } from './types';
-import type { RemoteAction, GitLabVisibility } from './types';
+import { GitLabRepoConfigStep } from '../GitLabRepoConfigStep';
+import type { Owner } from '../types';
+import type { RemoteAction, GitLabVisibility } from '../types';
 
 // Mock i18n with readable translations
 const translations: Record<string, string> = {
@@ -78,7 +78,7 @@ describe('GitLabRepoConfigStep', () => {
       const config = { action: 'create' as RemoteAction };
       renderWithI18n(<GitLabRepoConfigStep {...defaultProps} config={config} />);
 
-      expect(screen.getByPlaceholderText(/https:\/\/gitlab.com/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/^https:\/\/gitlab\.com$/i)).toBeInTheDocument();
     });
 
     it('should show namespace selection', () => {
@@ -134,7 +134,7 @@ describe('GitLabRepoConfigStep', () => {
       const config = { action: 'link' as RemoteAction };
       renderWithI18n(<GitLabRepoConfigStep {...defaultProps} config={config} />);
 
-      expect(screen.getByPlaceholderText(/https:\/\/gitlab.com/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/^https:\/\/gitlab\.com$/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/group\/project/i)).toBeInTheDocument();
     });
 
@@ -269,7 +269,7 @@ describe('GitLabRepoConfigStep', () => {
         <GitLabRepoConfigStep {...defaultProps} config={config} onChange={mockOnChange} />
       );
 
-      const input = screen.getByPlaceholderText(/https:\/\/gitlab.com/i);
+      const input = screen.getByPlaceholderText(/^https:\/\/gitlab\.com$/i);
       fireEvent.change(input, { target: { value: 'https://gitlab.example.com' } });
 
       expect(mockOnChange).toHaveBeenCalled();
@@ -279,7 +279,7 @@ describe('GitLabRepoConfigStep', () => {
       const config = { action: 'create' as RemoteAction, instanceUrl: '' };
       renderWithI18n(<GitLabRepoConfigStep {...defaultProps} config={config} />);
 
-      const input = screen.getByPlaceholderText(/https:\/\/gitlab.com/i);
+      const input = screen.getByPlaceholderText(/^https:\/\/gitlab\.com$/i);
       expect(input).toBeInTheDocument();
       expect(input.getAttribute('value')).toBe('');
     });
@@ -382,7 +382,7 @@ describe('GitLabRepoConfigStep', () => {
       const config = { action: 'create' as RemoteAction };
       renderWithI18n(<GitLabRepoConfigStep {...defaultProps} config={config} />);
 
-      expect(screen.getByPlaceholderText(/https:\/\/gitlab.com/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/^https:\/\/gitlab\.com$/i)).toBeInTheDocument();
       expect(screen.getByText(/Owner/i)).toBeInTheDocument();
       expect(screen.getAllByText(/Visibility/i)).toBeTruthy();
     });
@@ -391,7 +391,7 @@ describe('GitLabRepoConfigStep', () => {
       const config = { action: 'link' as RemoteAction };
       renderWithI18n(<GitLabRepoConfigStep {...defaultProps} config={config} />);
 
-      expect(screen.getByPlaceholderText(/https:\/\/gitlab.com/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/^https:\/\/gitlab\.com$/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/group\/project/i)).toBeInTheDocument();
     });
 

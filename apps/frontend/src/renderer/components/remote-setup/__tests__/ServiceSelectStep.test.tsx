@@ -11,8 +11,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { ServiceSelectStep } from './ServiceSelectStep';
-import type { RemoteServiceOption } from './types';
+import { ServiceSelectStep } from '../ServiceSelectStep';
+import type { RemoteServiceOption } from '../types';
 
 // Mock i18n with readable translations
 const translations: Record<string, string> = {

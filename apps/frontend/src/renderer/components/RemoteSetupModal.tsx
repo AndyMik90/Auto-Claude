@@ -60,7 +60,6 @@ export function RemoteSetupModal({
   const [selectedService, setSelectedService] = useState<RemoteService | null>(null);
 
   // Auth state
-  const [authToken, setAuthToken] = useState<string | null>(null);
   const [authUsername, setAuthUsername] = useState<string | null>(null);
 
   // GitHub state
@@ -80,7 +79,6 @@ export function RemoteSetupModal({
     if (open) {
       setStep('service-select');
       setSelectedService(null);
-      setAuthToken(null);
       setAuthUsername(null);
       setGithubOrgs([]);
       setGitlabGroups([]);
@@ -102,7 +100,6 @@ export function RemoteSetupModal({
   };
 
   const handleGitHubAuthComplete = async (token: string, username?: string) => {
-    setAuthToken(token);
     setAuthUsername(username || null);
 
     // Load GitHub organizations
@@ -121,7 +118,6 @@ export function RemoteSetupModal({
   };
 
   const handleGitLabAuthComplete = async (token: string, username?: string) => {
-    setAuthToken(token);
     setAuthUsername(username || null);
 
     // Load GitLab groups

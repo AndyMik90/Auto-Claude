@@ -11,7 +11,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { GitLabOAuthFlow } from './GitLabOAuthFlow';
+import { GitLabOAuthFlow } from '../GitLabOAuthFlow';
 
 // Mock i18n with readable translations
 const translations: Record<string, string> = {

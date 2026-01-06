@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Lock, Globe, Loader2, Plus, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
@@ -59,18 +59,18 @@ export function GitHubRepoConfigStep({
   const handleComplete = async () => {
     if (action === 'link') {
       if (!existingRepo.trim()) {
-        setError('Please enter a repository path');
+        setError(t('remoteSetup.repoConfig.github.errorRepoRequired'));
         return;
       }
       // Validate format: owner/repo
       const format = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
       if (!format.test(existingRepo.trim())) {
-        setError('Invalid repository format. Use owner/repo');
+        setError(t('remoteSetup.repoConfig.github.errorInvalidFormat'));
         return;
       }
     } else {
       if (!owner.trim()) {
-        setError('Please select an owner');
+        setError(t('remoteSetup.repoConfig.github.errorOwnerRequired'));
         return;
       }
     }
@@ -100,9 +100,9 @@ export function GitHubRepoConfigStep({
     <div className="space-y-4">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h2 className="text-lg font-semibold">Configure GitHub Repository</h2>
+        <h2 className="text-lg font-semibold">{t('remoteSetup.repoConfig.github.title')}</h2>
         <p className="text-sm text-muted-foreground">
-          Create a new repository or link to an existing one
+          {t('remoteSetup.repoConfig.github.description')}
         </p>
       </div>
 
@@ -128,7 +128,7 @@ export function GitHubRepoConfigStep({
 
                 {/* Repository Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="repo-name">Repository Name</Label>
+                  <Label htmlFor="repo-name">{t('remoteSetup.repoConfig.github.repoNameLabel')}</Label>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">
                       {owner || '...'} /
@@ -142,13 +142,13 @@ export function GitHubRepoConfigStep({
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Auto-filled from project name
+                    {t('remoteSetup.repoConfig.github.autoFilled')}
                   </p>
                 </div>
 
                 {/* Visibility Selection */}
                 <div className="space-y-2">
-                  <Label>Visibility</Label>
+                  <Label>{t('remoteSetup.repoConfig.visibility')}</Label>
                   <div className="flex gap-2" role="radiogroup">
                     <button
                       onClick={() => handleVisibilitySelect('private')}
@@ -163,7 +163,7 @@ export function GitHubRepoConfigStep({
                       aria-checked={visibility === 'private'}
                     >
                       <Lock className="h-4 w-4" />
-                      <span className="text-sm">Private</span>
+                      <span className="text-sm">{t('remoteSetup.repoConfig.private')}</span>
                     </button>
                     <button
                       onClick={() => handleVisibilitySelect('public')}
@@ -178,7 +178,7 @@ export function GitHubRepoConfigStep({
                       aria-checked={visibility === 'public'}
                     >
                       <Globe className="h-4 w-4" />
-                      <span className="text-sm">Public</span>
+                      <span className="text-sm">{t('remoteSetup.repoConfig.public')}</span>
                     </button>
                   </div>
                 </div>
@@ -188,7 +188,7 @@ export function GitHubRepoConfigStep({
                   onClick={() => handleSetAction('link')}
                   className="text-sm text-primary hover:underline"
                 >
-                  Or link to existing repository
+                  {t('remoteSetup.repoConfig.github.orLinkExisting')}
                 </button>
               </div>
             </>
@@ -204,22 +204,22 @@ export function GitHubRepoConfigStep({
                     className="h-auto p-0"
                   >
                     <ArrowLeft className="h-4 w-4 mr-1" />
-                    Back
+                    {t('remoteSetup.repoConfig.github.back')}
                   </Button>
-                  <span className="text-sm text-muted-foreground">Link to existing repository</span>
+                  <span className="text-sm text-muted-foreground">{t('remoteSetup.repoConfig.github.linkToExisting')}</span>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="existing-repo">Repository</Label>
+                  <Label htmlFor="existing-repo">{t('remoteSetup.repoConfig.github.repoLabel')}</Label>
                   <Input
                     id="existing-repo"
                     value={existingRepo}
                     onChange={(e) => onChange({ existingRepo: e.target.value })}
-                    placeholder="username/repository"
+                    placeholder={t('remoteSetup.repoConfig.github.repoPlaceholder')}
                     disabled={isCreating}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Enter the full repository path (e.g., octocat/hello-world)
+                    {t('remoteSetup.repoConfig.github.repoHelp')}
                   </p>
                 </div>
 
@@ -228,7 +228,7 @@ export function GitHubRepoConfigStep({
                   onClick={() => handleSetAction('create')}
                   className="text-sm text-primary hover:underline"
                 >
-                  Or create a new repository
+                  {t('remoteSetup.repoConfig.github.orCreateNew')}
                 </button>
               </div>
             </>
@@ -244,18 +244,18 @@ export function GitHubRepoConfigStep({
           {/* Footer Actions */}
           <div className="flex gap-3">
             <Button variant="outline" onClick={onBack} disabled={isCreating}>
-              Back
+              {t('remoteSetup.repoConfig.github.back')}
             </Button>
             <Button onClick={handleComplete} disabled={isCreating}>
               {isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
+                  {t('remoteSetup.repoConfig.github.processing')}
                 </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  {action === 'link' ? 'Link Repository' : 'Create Repository'}
+                  {action === 'link' ? t('remoteSetup.repoConfig.github.linkRepo') : t('remoteSetup.repoConfig.github.createRepo')}
                 </>
               )}
             </Button>
@@ -276,9 +276,9 @@ export function GitHubRepoConfigStep({
                 <Plus className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-foreground">Create new repository</h3>
+                <h3 className="font-medium text-foreground">{t('remoteSetup.repoConfig.createNew')}</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Create a new repository on GitHub
+                  {t('remoteSetup.repoConfig.github.createNewDescription')}
                 </p>
               </div>
             </button>
@@ -306,9 +306,9 @@ export function GitHubRepoConfigStep({
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-foreground">Link existing repository</h3>
+                <h3 className="font-medium text-foreground">{t('remoteSetup.repoConfig.linkExisting')}</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Connect to an existing GitHub repository
+                  {t('remoteSetup.repoConfig.github.linkExistingDescription')}
                 </p>
               </div>
             </button>

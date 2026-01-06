@@ -11,8 +11,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { OwnerSelector } from './OwnerSelector';
-import type { Owner } from './types';
+import { OwnerSelector } from '../OwnerSelector';
+import type { Owner } from '../types';
 
 // Mock i18n with readable translations
 const translations: Record<string, string> = {
@@ -112,7 +112,7 @@ describe('OwnerSelector', () => {
       const mockOnSelect = vi.fn();
       const personal = createTestOwner({ id: 'user-1', name: 'testuser', path: 'testuser' });
 
-      const { container } = renderWithI18n(
+      renderWithI18n(
         <OwnerSelector
           type="github"
           personal={personal}
