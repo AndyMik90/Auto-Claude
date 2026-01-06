@@ -490,9 +490,9 @@ def create_client(
 
     # Debug: Log git-bash path detection on Windows
     if "CLAUDE_CODE_GIT_BASH_PATH" in sdk_env:
-        print(f"   - Git Bash path: {sdk_env['CLAUDE_CODE_GIT_BASH_PATH']}")
+        logger.info(f"Git Bash path found: {sdk_env['CLAUDE_CODE_GIT_BASH_PATH']}")
     elif os.name == "nt":
-        print("   - WARNING: Git Bash path not detected!")
+        logger.warning("Git Bash path not detected on Windows!")
 
     # Check if Linear integration is enabled
     linear_enabled = is_linear_enabled()
