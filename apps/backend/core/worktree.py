@@ -39,6 +39,7 @@ class PullRequestResult(TypedDict, total=False):
     pr_url: str
     already_exists: bool
     error: str
+    message: str
 
 
 class PushAndCreatePRResult(TypedDict, total=False):
@@ -50,6 +51,7 @@ class PushAndCreatePRResult(TypedDict, total=False):
     pr_url: str
     already_exists: bool
     error: str
+    message: str
 
 
 class WorktreeError(Exception):
@@ -836,11 +838,14 @@ class WorktreeManager:
                 # Check for "already exists" case (not an error, no retry needed)
                 if result.returncode != 0 and "already exists" in result.stderr.lower():
                     existing_url = self._get_existing_pr_url(spec_name, target)
-                    return PullRequestResult(
+                    result_dict = PullRequestResult(
                         success=True,
                         pr_url=existing_url,
                         already_exists=True,
                     )
+                    if existing_url is None:
+                        result_dict["message"] = "PR already exists but URL could not be retrieved"
+                    return result_dict
 
                 if result.returncode == 0:
                     # Extract PR URL from output
@@ -850,6 +855,9 @@ class WorktreeManager:
                         match = re.search(r"https://github\.com/[^\s]+/pull/\d+", result.stdout)
                         if match:
                             pr_url = match.group(0)
+                        else:
+                            # Invalid output - no valid URL found
+                            pr_url = None
 
                     return PullRequestResult(
                         success=True,

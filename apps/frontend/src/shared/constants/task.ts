@@ -17,21 +17,25 @@ export const TASK_STATUS_COLUMNS = [
 ] as const;
 
 // Human-readable status labels
+// Note: pr_created maps to 'done' column in Kanban view (see KanbanBoard.tsx)
 export const TASK_STATUS_LABELS: Record<string, string> = {
   backlog: 'Planning',
   in_progress: 'In Progress',
   ai_review: 'AI Review',
   human_review: 'Human Review',
-  done: 'Done'
+  done: 'Done',
+  pr_created: 'PR Created'
 };
 
 // Status colors for UI
+// Note: pr_created maps to 'done' column in Kanban view (see KanbanBoard.tsx)
 export const TASK_STATUS_COLORS: Record<string, string> = {
   backlog: 'bg-muted text-muted-foreground',
   in_progress: 'bg-info/10 text-info',
   ai_review: 'bg-warning/10 text-warning',
   human_review: 'bg-purple-500/10 text-purple-400',
-  done: 'bg-success/10 text-success'
+  done: 'bg-success/10 text-success',
+  pr_created: 'bg-info/10 text-info'
 };
 
 // ============================================

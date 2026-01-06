@@ -322,4 +322,89 @@ describe('CreatePRDialog', () => {
       expect(screen.getByLabelText(/pr title/i)).toHaveValue('Implement user authentication');
     });
   });
+
+  it('should call onCreatePR with draft: true when draft checkbox is checked', async () => {
+    render(
+      <CreatePRDialog
+        open={true}
+        task={mockTask}
+        worktreeStatus={mockWorktreeStatus}
+        onOpenChange={mockOnOpenChange}
+        onCreatePR={mockOnCreatePR}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/pr title/i)).toHaveValue('Implement user authentication');
+    });
+
+    // Find and click the draft checkbox
+    const draftCheckbox = screen.getByRole('checkbox');
+    fireEvent.click(draftCheckbox);
+
+    // Create the PR
+    const createButton = screen.getByRole('button', { name: /create pull request/i });
+    fireEvent.click(createButton);
+
+    await waitFor(() => {
+      expect(mockOnCreatePR).toHaveBeenCalledWith({
+        targetBranch: 'develop',
+        title: 'Implement user authentication',
+        draft: true
+      });
+    });
+  });
+
+  it('should show already exists message when PR already exists', async () => {
+    mockOnCreatePR.mockResolvedValue({
+      success: true,
+      prUrl: 'https://github.com/test/repo/pull/456',
+      alreadyExists: true
+    });
+
+    render(
+      <CreatePRDialog
+        open={true}
+        task={mockTask}
+        worktreeStatus={mockWorktreeStatus}
+        onOpenChange={mockOnOpenChange}
+        onCreatePR={mockOnCreatePR}
+      />
+    );
+
+    const createButton = screen.getByRole('button', { name: /create pull request/i });
+    fireEvent.click(createButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/already exists/i)).toBeInTheDocument();
+      expect(screen.getByText('https://github.com/test/repo/pull/456')).toBeInTheDocument();
+    });
+  });
+
+  it('should show success state without link when prUrl is undefined', async () => {
+    mockOnCreatePR.mockResolvedValue({
+      success: true,
+      prUrl: undefined
+    });
+
+    render(
+      <CreatePRDialog
+        open={true}
+        task={mockTask}
+        worktreeStatus={mockWorktreeStatus}
+        onOpenChange={mockOnOpenChange}
+        onCreatePR={mockOnCreatePR}
+      />
+    );
+
+    const createButton = screen.getByRole('button', { name: /create pull request/i });
+    fireEvent.click(createButton);
+
+    await waitFor(() => {
+      // Should show success message but no link
+      expect(screen.getByText(/created/i)).toBeInTheDocument();
+      // Should not have any external link button (no prUrl to display)
+      expect(screen.queryByRole('button', { name: /github\.com/i })).not.toBeInTheDocument();
+    });
+  });
 });

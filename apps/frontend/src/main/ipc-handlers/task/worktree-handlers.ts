@@ -21,6 +21,12 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 
+// Regex pattern for validating git branch names
+const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
+
+// Timeout for PR creation operations (2 minutes for network operations)
+const PR_CREATION_TIMEOUT_MS = 120000;
+
 /**
  * Read utility feature settings (for commit message, merge resolver) from settings file
  */
@@ -1288,7 +1294,10 @@ function getTaskBaseBranch(specDir: string): string | undefined {
     if (existsSync(metadataPath)) {
       const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
       // Return baseBranch if explicitly set (not the __project_default__ marker)
-      if (metadata.baseBranch && metadata.baseBranch !== '__project_default__') {
+      // Also validate it's a valid branch name to prevent malformed git commands
+      if (metadata.baseBranch &&
+          metadata.baseBranch !== '__project_default__' &&
+          GIT_BRANCH_REGEX.test(metadata.baseBranch)) {
         return metadata.baseBranch;
       }
     }
@@ -2600,8 +2609,12 @@ export function registerWorktreeHandlers(
           '--create-pr'
         ];
 
-        // Add optional arguments
+        // Add optional arguments with validation
         if (options?.targetBranch) {
+          // Validate branch name to prevent malformed git commands
+          if (!GIT_BRANCH_REGEX.test(options.targetBranch)) {
+            return { success: false, error: 'Invalid target branch name' };
+          }
           args.push('--pr-target', options.targetBranch);
         }
         if (options?.title) {
@@ -2627,7 +2640,6 @@ export function registerWorktreeHandlers(
         const profileEnv = getProfileEnv();
 
         return new Promise((resolve) => {
-          const CREATE_PR_TIMEOUT_MS = 120000; // 2 minutes timeout for PR creation (network operations)
           let timeoutId: NodeJS.Timeout | null = null;
           let resolved = false;
 
@@ -2654,7 +2666,7 @@ export function registerWorktreeHandlers(
           // Set up timeout to kill hung processes
           timeoutId = setTimeout(() => {
             if (!resolved) {
-              debug('TIMEOUT: Create PR process exceeded', CREATE_PR_TIMEOUT_MS, 'ms, killing...');
+              debug('TIMEOUT: Create PR process exceeded', PR_CREATION_TIMEOUT_MS, 'ms, killing...');
               resolved = true;
 
               // Platform-specific process termination
@@ -2680,7 +2692,7 @@ export function registerWorktreeHandlers(
                 error: 'PR creation timed out. Check if the PR was created on GitHub.'
               });
             }
-          }, CREATE_PR_TIMEOUT_MS);
+          }, PR_CREATION_TIMEOUT_MS);
 
           createPRProcess.stdout.on('data', (data: Buffer) => {
             const chunk = data.toString();
@@ -2807,9 +2819,11 @@ export function registerWorktreeHandlers(
               // Try to parse JSON from stdout even on failure - the Python script
               // still outputs JSON with the actual error message
               try {
-                const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+                // Use same pattern as success path - find last complete JSON object
+                const jsonMatches = stdout.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+                const jsonMatch = jsonMatches && jsonMatches.length > 0 ? jsonMatches[jsonMatches.length - 1] : null;
                 if (jsonMatch) {
-                  const result = JSON.parse(jsonMatch[0]);
+                  const result = JSON.parse(jsonMatch);
                   debug('Parsed error result:', result);
 
                   // Use the error from JSON if available
