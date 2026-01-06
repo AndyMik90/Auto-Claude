@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
-import { findPythonCommand, getBundledPythonPath } from './python-detector';
+import { findPythonCommand, getBundledPythonPath, getPlatformPythonFallback } from './python-detector';
 
 export interface PythonEnvStatus {
   ready: boolean;
@@ -734,6 +734,6 @@ export function getConfiguredPythonPath(): string {
     }
   }
 
-  // Fall back to system/bundled Python
-  return findPythonCommand() || 'python';
+  // Fall back to system/bundled Python with platform-appropriate command
+  return findPythonCommand() || getPlatformPythonFallback();
 }
