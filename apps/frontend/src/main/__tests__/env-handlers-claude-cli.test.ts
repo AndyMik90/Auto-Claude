@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import path from 'path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IPC_CHANNELS } from '../../shared/constants';
 const {
   mockGetClaudeCliInvocation,
@@ -54,13 +54,27 @@ vi.mock('electron', () => ({
 
 import { registerEnvHandlers } from '../ipc-handlers/env-handlers';
 
-function createProc(): EventEmitter & { stdout?: EventEmitter; stderr?: EventEmitter } {
-  const proc = new EventEmitter() as EventEmitter & {
-    stdout?: EventEmitter;
-    stderr?: EventEmitter;
-  };
+interface MockStdin {
+  write: ReturnType<typeof vi.fn>;
+  destroyed: boolean;
+}
+
+interface MockProc extends EventEmitter {
+  stdout?: EventEmitter;
+  stderr?: EventEmitter;
+  stdin?: MockStdin;
+}
+
+function createProc(includeStdin = false): MockProc {
+  const proc = new EventEmitter() as MockProc;
   proc.stdout = new EventEmitter();
   proc.stderr = new EventEmitter();
+  if (includeStdin) {
+    proc.stdin = {
+      write: vi.fn(),
+      destroyed: false
+    };
+  }
   return proc;
 }
 
@@ -69,6 +83,11 @@ describe('env-handlers Claude CLI usage', () => {
     mockGetClaudeCliInvocation.mockReset();
     mockGetProject.mockReset();
     spawnMock.mockReset();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('uses resolved Claude CLI path/env for auth checks', async () => {
@@ -117,7 +136,7 @@ describe('env-handlers Claude CLI usage', () => {
     expect(result).toEqual({ success: true, data: { success: true, authenticated: true } });
   });
 
-  it('uses resolved Claude CLI path/env for setup-token', async () => {
+  it('uses resolved Claude CLI path/env for /login authentication', async () => {
     const claudeEnv = { PATH: '/opt/claude/bin:/usr/bin' };
     const command = '/opt/claude/bin/claude';
     mockGetClaudeCliInvocation.mockReturnValue({
@@ -126,7 +145,7 @@ describe('env-handlers Claude CLI usage', () => {
     });
     mockGetProject.mockReturnValue({ id: 'p2', path: '/tmp/project' });
 
-    const proc = createProc();
+    const proc = createProc(true); // Include stdin mock
     spawnMock.mockReturnValue(proc);
 
     registerEnvHandlers(() => null);
@@ -136,17 +155,27 @@ describe('env-handlers Claude CLI usage', () => {
     }
 
     const resultPromise = handler({}, 'p2');
+
+    // Verify spawn is called with interactive Claude session (no args)
+    // and stdin pipe for sending /login command
     expect(spawnMock).toHaveBeenCalledWith(
       command,
-      ['setup-token'],
+      [],  // No arguments - spawns interactive Claude session
       expect.objectContaining({
         cwd: '/tmp/project',
         env: claudeEnv,
         shell: false,
-        stdio: 'inherit'
+        stdio: ['pipe', 'inherit', 'inherit']  // stdin piped to send /login
       })
     );
 
+    // Advance timers to trigger the setTimeout that sends /login
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // Verify /login command was sent to stdin
+    expect(proc.stdin?.write).toHaveBeenCalledWith('/login\n');
+
+    // Simulate successful close
     proc.emit('close', 0);
     const result = await resultPromise;
     expect(result).toEqual({ success: true, data: { success: true, authenticated: true } });
