@@ -43,6 +43,7 @@ from ui import (
 from workspace import (
     cleanup_all_worktrees,
     discard_existing_build,
+    get_existing_build_worktree,
     list_all_worktrees,
     merge_existing_build,
     review_existing_build,
@@ -864,7 +865,6 @@ def handle_create_pr_command(
         CreatePRResult with success status, pr_url, and any errors
     """
     from core.worktree import WorktreeManager
-    from workspace import get_existing_build_worktree
 
     print_banner()
     print("\n" + "=" * 70)
@@ -907,7 +907,7 @@ def handle_create_pr_command(
         error_result: CreatePRResult = {
             "success": False,
             "error": str(e),
-            "message": f"Failed to create PR: {e}",
+            "message": "Failed to create PR",
         }
         print(f"\n{icon(Icons.ERROR)} Failed to create PR: {e}")
         print(json.dumps(error_result))
