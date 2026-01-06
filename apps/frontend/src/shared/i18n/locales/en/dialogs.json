@@ -208,6 +208,7 @@
       }
     },
     "repoConfig": {
+      "title": "Configure Repository",
       "createNew": "Create new repository",
       "linkExisting": "Link existing repository",
       "owner": "Owner",
@@ -225,6 +226,9 @@
       "instanceUrl": "GitLab instance URL",
       "instanceUrlHelp": "Leave empty for gitlab.com",
       "visibilityHelp": "Who can see the repository",
+      "loading": "Loading...",
+      "ownerSelectHelp": "Select your personal account or an organization",
+      "ownerSelectHelpGitLab": "Select your personal account or a group",
       "github": {
         "title": "Configure GitHub Repository",
         "description": "Create a new repository or link to an existing one",

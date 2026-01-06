@@ -20,6 +20,9 @@ const translations: Record<string, string> = {
   'remoteSetup.repoConfig.personal': 'Personal account',
   'remoteSetup.repoConfig.organizations': 'Organizations',
   'remoteSetup.repoConfig.groups': 'Groups',
+  'remoteSetup.repoConfig.loading': 'Loading...',
+  'remoteSetup.repoConfig.ownerSelectHelp': 'Select your personal account or an organization',
+  'remoteSetup.repoConfig.ownerSelectHelpGitLab': 'Select your personal account or a group',
 };
 
 const mockT = vi.fn((key: string) => translations[key] || key);

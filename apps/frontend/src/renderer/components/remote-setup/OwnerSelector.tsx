@@ -39,7 +39,7 @@ export function OwnerSelector({
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading...
+          {t('remoteSetup.repoConfig.loading')}
         </div>
       ) : (
         <div
@@ -95,8 +95,8 @@ export function OwnerSelector({
       {organizations.length > 0 && !isLoading && (
         <p className="text-xs text-muted-foreground">
           {type === 'github'
-            ? 'Select your personal account or an organization'
-            : 'Select your personal account or a group'}
+            ? t('remoteSetup.repoConfig.ownerSelectHelp')
+            : t('remoteSetup.repoConfig.ownerSelectHelpGitLab')}
         </p>
       )}
     </div>

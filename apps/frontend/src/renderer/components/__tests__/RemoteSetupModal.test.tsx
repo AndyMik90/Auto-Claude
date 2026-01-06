@@ -24,6 +24,7 @@ const translations: Record<string, string> = {
   'remoteSetup.serviceSelect.gitlabDescription': 'Create or link a GitLab project',
   'remoteSetup.serviceSelect.none': 'Skip for now',
   'remoteSetup.serviceSelect.noneDescription': 'Initialize git without a remote',
+  'remoteSetup.repoConfig.title': 'Configure Repository',
   'remoteSetup.auth.title': 'Connect to {service}',
   'remoteSetup.auth.checking': 'Checking authentication...',
   'remoteSetup.auth.notInstalled': '{cli} CLI not installed',

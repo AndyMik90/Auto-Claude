@@ -190,7 +190,7 @@ export function RemoteSetupModal({
           <DialogTitle>
             {step === 'service-select' && t('remoteSetup.title')}
             {step === 'auth' && t('remoteSetup.auth.title', { service: selectedService === 'github' ? 'GitHub' : 'GitLab' })}
-            {step === 'repo-config' && 'Configure Repository'}
+            {step === 'repo-config' && t('remoteSetup.repoConfig.title')}
           </DialogTitle>
         </DialogHeader>
 

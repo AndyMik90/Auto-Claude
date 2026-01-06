@@ -208,6 +208,7 @@
       }
     },
     "repoConfig": {
+      "title": "Configurer le dépôt",
       "createNew": "Créer un nouveau dépôt",
       "linkExisting": "Lier un dépôt existant",
       "owner": "Propriétaire",
@@ -225,6 +226,9 @@
       "instanceUrl": "URL de l'instance GitLab",
       "instanceUrlHelp": "Laissez vide pour utiliser gitlab.com",
       "visibilityHelp": "Qui peut voir le dépôt",
+      "loading": "Chargement...",
+      "ownerSelectHelp": "Sélectionnez votre compte personnel ou une organisation",
+      "ownerSelectHelpGitLab": "Sélectionnez votre compte personnel ou un groupe",
       "github": {
         "title": "Configurer le dépôt GitHub",
         "description": "Créer un nouveau dépôt ou lier un dépôt existant",
