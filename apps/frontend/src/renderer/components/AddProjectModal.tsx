@@ -138,7 +138,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
             });
             toast({
               title: t('common:labels.error'),
-              description: t('addProject.failedToSaveGitPreference'),
+              description: t('dialogs:addProject.failedToSaveGitPreference'),
               variant: 'destructive'
             });
           }
