@@ -1345,8 +1345,9 @@ function parsePRJsonOutput(stdout: string): ParsedPRResult | null {
 
     // Extract and validate fields with proper type checking
     // Handle both snake_case (from Python) and camelCase field names
+    // Default success to false to avoid masking failures when field is missing
     return {
-      success: typeof parsed.success === 'boolean' ? parsed.success : true,
+      success: typeof parsed.success === 'boolean' ? parsed.success : false,
       prUrl: typeof parsed.pr_url === 'string' ? parsed.pr_url :
              typeof parsed.prUrl === 'string' ? parsed.prUrl : undefined,
       alreadyExists: typeof parsed.already_exists === 'boolean' ? parsed.already_exists :
@@ -1483,7 +1484,10 @@ async function withRetry<T>(
     shouldRetry?: (error: unknown) => boolean;
   } = {}
 ): Promise<T> {
-  const { maxRetries = 3, baseDelayMs = 100, onRetry, shouldRetry } = options;
+  const { maxRetries: rawMaxRetries = 3, baseDelayMs = 100, onRetry, shouldRetry } = options;
+
+  // Ensure at least one attempt is made (clamp to minimum of 1)
+  const maxRetries = Math.max(1, rawMaxRetries);
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
