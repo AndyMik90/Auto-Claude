@@ -601,6 +601,23 @@ The SDK will run invoked agents in parallel automatically.
                     "[ParallelFollowup] ⚠️ PR has merge conflicts - blocking merge",
                     flush=True,
                 )
+            # Check if branch is behind base (out of date) - warning, not hard blocker
+            elif context.merge_state_status == "BEHIND":
+                blockers.append(
+                    "Branch Out of Date: PR branch is behind the base branch and needs to be updated"
+                )
+                # Use NEEDS_REVISION since potential conflicts are unknown until branch is updated
+                if verdict == MergeVerdict.READY_TO_MERGE:
+                    verdict = MergeVerdict.NEEDS_REVISION
+                    verdict_reasoning = (
+                        "Branch is out of date with base branch. Update branch first - "
+                        "if no conflicts arise, you can merge. If merge conflicts arise, "
+                        "resolve them and run follow-up review again."
+                    )
+                print(
+                    "[ParallelFollowup] ⚠️ PR branch is behind base - needs update",
+                    flush=True,
+                )
 
             for finding in unique_findings:
                 if finding.severity in (

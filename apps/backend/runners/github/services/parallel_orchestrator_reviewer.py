@@ -616,9 +616,11 @@ The SDK will run invoked agents in parallel automatically.
                 f"[ParallelOrchestrator] Review complete: {len(unique_findings)} findings"
             )
 
-            # Generate verdict (includes merge conflict check)
+            # Generate verdict (includes merge conflict check and branch-behind check)
             verdict, verdict_reasoning, blockers = self._generate_verdict(
-                unique_findings, has_merge_conflicts=context.has_merge_conflicts
+                unique_findings,
+                has_merge_conflicts=context.has_merge_conflicts,
+                merge_state_status=context.merge_state_status,
             )
 
             # Generate summary
@@ -862,15 +864,24 @@ The SDK will run invoked agents in parallel automatically.
         return unique
 
     def _generate_verdict(
-        self, findings: list[PRReviewFinding], has_merge_conflicts: bool = False
+        self,
+        findings: list[PRReviewFinding],
+        has_merge_conflicts: bool = False,
+        merge_state_status: str = "",
     ) -> tuple[MergeVerdict, str, list[str]]:
-        """Generate merge verdict based on findings and merge conflict status."""
+        """Generate merge verdict based on findings, merge conflict status, and branch state."""
         blockers = []
+        is_branch_behind = merge_state_status == "BEHIND"
 
         # CRITICAL: Merge conflicts block merging - check first
         if has_merge_conflicts:
             blockers.append(
                 "Merge Conflicts: PR has conflicts with base branch that must be resolved"
+            )
+        # Branch behind base is a warning, not a hard blocker
+        elif is_branch_behind:
+            blockers.append(
+                "Branch Out of Date: PR branch is behind the base branch and needs to be updated"
             )
 
         critical = [f for f in findings if f.severity == ReviewSeverity.CRITICAL]
@@ -892,6 +903,14 @@ The SDK will run invoked agents in parallel automatically.
             elif critical:
                 verdict = MergeVerdict.BLOCKED
                 reasoning = f"Blocked by {len(critical)} critical issue(s)"
+            # Branch behind is a soft blocker - NEEDS_REVISION, not BLOCKED
+            elif is_branch_behind:
+                verdict = MergeVerdict.NEEDS_REVISION
+                reasoning = (
+                    "Branch is out of date with base branch. Update branch first - "
+                    "if no conflicts arise, you can merge. If merge conflicts arise, "
+                    "resolve them and run follow-up review again."
+                )
             else:
                 verdict = MergeVerdict.BLOCKED
                 reasoning = f"Blocked by {len(blockers)} issue(s)"
@@ -902,6 +921,16 @@ The SDK will run invoked agents in parallel automatically.
             reasoning = f"{total} issue(s) must be addressed ({len(high)} required, {len(medium)} recommended)"
             if low:
                 reasoning += f", {len(low)} suggestions"
+        # Check for branch behind even when no other blockers
+        elif is_branch_behind:
+            verdict = MergeVerdict.NEEDS_REVISION
+            reasoning = (
+                "Branch is out of date with base branch. Update branch first - "
+                "if no conflicts arise, you can merge. If merge conflicts arise, "
+                "resolve them and run follow-up review again."
+            )
+            if low:
+                reasoning += f" {len(low)} non-blocking suggestion(s) to consider."
         elif low:
             # Only Low severity suggestions - safe to merge (non-blocking)
             verdict = MergeVerdict.READY_TO_MERGE
