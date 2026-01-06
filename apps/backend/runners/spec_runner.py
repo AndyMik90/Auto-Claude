@@ -377,7 +377,7 @@ Examples:
                     result = subprocess.run(run_cmd)
                     sys.exit(result.returncode)
                 except FileNotFoundError:
-                    print(f"Error: Could not start coding phase - executable not found")
+                    print("Error: Could not start coding phase - executable not found")
                     sys.exit(1)
                 except OSError as e:
                     print(f"Error starting coding phase: {e}")
