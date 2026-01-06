@@ -61,7 +61,7 @@ function parseAndMigrateProfileData(data: Record<string, unknown>): ProfileStore
         resetAt: new Date(e.resetAt)
       }))
     }));
-    return data as ProfileStoreData;
+    return data as unknown as ProfileStoreData;
   }
 
   return null;
