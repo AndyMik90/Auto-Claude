@@ -54,7 +54,37 @@ export function CreatePRDialog({
     }
   }, [open, worktreeStatus?.baseBranch, task.title]);
 
+  // Frontend validation functions
+  const validateBranchName = (branch: string): string | null => {
+    if (!branch.trim()) return null; // Empty is OK, will use default
+    // Basic git branch name rules: no spaces, .., @{, \, etc.
+    if (!/^[a-zA-Z0-9/_-]+$/.test(branch)) {
+      return t('taskReview:pr.errors.invalidBranchName');
+    }
+    return null;
+  };
+
+  const validatePRTitle = (title: string): string | null => {
+    if (!title.trim()) {
+      return t('taskReview:pr.errors.emptyTitle');
+    }
+    return null;
+  };
+
   const handleCreatePR = async () => {
+    // Frontend validation before submitting
+    const branchError = validateBranchName(targetBranch);
+    if (branchError) {
+      setError(branchError);
+      return;
+    }
+
+    const titleError = validatePRTitle(prTitle);
+    if (titleError) {
+      setError(titleError);
+      return;
+    }
+
     setIsCreating(true);
     setError(null);
     setResult(null);

@@ -8,7 +8,9 @@
     "title": "Create Pull Request",
     "description": "Push branch and create a pull request for \"{{taskTitle}}\"",
     "errors": {
-      "unknown": "An unknown error occurred while creating the pull request"
+      "unknown": "An unknown error occurred while creating the pull request",
+      "invalidBranchName": "Branch name contains invalid characters. Use only letters, numbers, hyphens (-), underscores (_), and forward slashes (/).",
+      "emptyTitle": "Pull request title cannot be empty."
     },
     "success": {
       "created": "Pull request created successfully!",
