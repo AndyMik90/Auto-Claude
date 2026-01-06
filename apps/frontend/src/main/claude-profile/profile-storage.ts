@@ -32,6 +32,42 @@ export interface ProfileStoreData {
 }
 
 /**
+ * Parse and migrate profile data from JSON.
+ * Handles version migration and date parsing.
+ * Shared helper used by both sync and async loaders.
+ */
+function parseAndMigrateProfileData(data: Record<string, unknown>): ProfileStoreData | null {
+  // Handle version migration
+  if (data.version === 1) {
+    // Migrate v1 to v2: add usage and rateLimitEvents fields
+    data.version = STORE_VERSION;
+    data.autoSwitch = DEFAULT_AUTO_SWITCH_SETTINGS;
+  }
+
+  if (data.version === STORE_VERSION) {
+    // Parse dates
+    const profiles = data.profiles as ClaudeProfile[];
+    data.profiles = profiles.map((p: ClaudeProfile) => ({
+      ...p,
+      createdAt: new Date(p.createdAt),
+      lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined,
+      usage: p.usage ? {
+        ...p.usage,
+        lastUpdated: new Date(p.usage.lastUpdated)
+      } : undefined,
+      rateLimitEvents: p.rateLimitEvents?.map(e => ({
+        ...e,
+        hitAt: new Date(e.hitAt),
+        resetAt: new Date(e.resetAt)
+      }))
+    }));
+    return data as ProfileStoreData;
+  }
+
+  return null;
+}
+
+/**
  * Load profiles from disk
  */
 export function loadProfileStore(storePath: string): ProfileStoreData | null {
@@ -39,32 +75,7 @@ export function loadProfileStore(storePath: string): ProfileStoreData | null {
     if (existsSync(storePath)) {
       const content = readFileSync(storePath, 'utf-8');
       const data = JSON.parse(content);
-
-      // Handle version migration
-      if (data.version === 1) {
-        // Migrate v1 to v2: add usage and rateLimitEvents fields
-        data.version = STORE_VERSION;
-        data.autoSwitch = DEFAULT_AUTO_SWITCH_SETTINGS;
-      }
-
-      if (data.version === STORE_VERSION) {
-        // Parse dates
-        data.profiles = data.profiles.map((p: ClaudeProfile) => ({
-          ...p,
-          createdAt: new Date(p.createdAt),
-          lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined,
-          usage: p.usage ? {
-            ...p.usage,
-            lastUpdated: new Date(p.usage.lastUpdated)
-          } : undefined,
-          rateLimitEvents: p.rateLimitEvents?.map(e => ({
-            ...e,
-            hitAt: new Date(e.hitAt),
-            resetAt: new Date(e.resetAt)
-          }))
-        }));
-        return data;
-      }
+      return parseAndMigrateProfileData(data);
     }
   } catch (error) {
     console.error('[ProfileStorage] Error loading profiles:', error);
@@ -83,32 +94,7 @@ export async function loadProfileStoreAsync(storePath: string): Promise<ProfileS
     // If file doesn't exist, readFile will throw ENOENT which we handle below
     const content = await readFile(storePath, 'utf-8');
     const data = JSON.parse(content);
-
-    // Handle version migration
-    if (data.version === 1) {
-      // Migrate v1 to v2: add usage and rateLimitEvents fields
-      data.version = STORE_VERSION;
-      data.autoSwitch = DEFAULT_AUTO_SWITCH_SETTINGS;
-    }
-
-    if (data.version === STORE_VERSION) {
-      // Parse dates
-      data.profiles = data.profiles.map((p: ClaudeProfile) => ({
-        ...p,
-        createdAt: new Date(p.createdAt),
-        lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined,
-        usage: p.usage ? {
-          ...p.usage,
-          lastUpdated: new Date(p.usage.lastUpdated)
-        } : undefined,
-        rateLimitEvents: p.rateLimitEvents?.map(e => ({
-          ...e,
-          hitAt: new Date(e.hitAt),
-          resetAt: new Date(e.resetAt)
-        }))
-      }));
-      return data;
-    }
+    return parseAndMigrateProfileData(data);
   } catch (error) {
     // ENOENT is expected if file doesn't exist yet
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {

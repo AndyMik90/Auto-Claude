@@ -50,8 +50,10 @@ import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 import {
   getWindowsExecutablePaths,
+  getWindowsExecutablePathsAsync,
   WINDOWS_GIT_PATHS,
   findWindowsExecutableViaWhere,
+  findWindowsExecutableViaWhereAsync,
 } from './utils/windows-paths';
 
 /**
@@ -1440,9 +1442,9 @@ class CLIToolManager {
       }
     }
 
-    // 4. Windows-specific detection (sync fallback for Windows-specific utilities)
+    // 4. Windows-specific detection (async to avoid blocking main process)
     if (process.platform === 'win32') {
-      const whereGitPath = findWindowsExecutableViaWhere('git', '[Git]');
+      const whereGitPath = await findWindowsExecutableViaWhereAsync('git', '[Git]');
       if (whereGitPath) {
         const validation = await this.validateGitAsync(whereGitPath);
         if (validation.valid) {
@@ -1456,7 +1458,7 @@ class CLIToolManager {
         }
       }
 
-      const windowsPaths = getWindowsExecutablePaths(WINDOWS_GIT_PATHS, '[Git]');
+      const windowsPaths = await getWindowsExecutablePathsAsync(WINDOWS_GIT_PATHS, '[Git]');
       for (const winGitPath of windowsPaths) {
         const validation = await this.validateGitAsync(winGitPath);
         if (validation.valid) {
