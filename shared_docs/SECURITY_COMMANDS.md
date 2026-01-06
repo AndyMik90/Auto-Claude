@@ -131,7 +131,46 @@ This means:
 
 ## Migration from v1
 
-If you were using a separate `.auto-claude-allowlist` file (v1 format), manually copy your commands into the `custom_commands` array in `.auto-claude-security.json`, then delete the old allowlist file.
+If you were using a separate `.auto-claude-allowlist` file (v1 format), follow these steps:
+
+### Step 1: Check for existing allowlist
+
+```bash
+# Check if you have an allowlist file
+cat .auto-claude-allowlist
+```
+
+If the file doesn't exist, no migration is needed.
+
+### Step 2: Copy commands to JSON profile
+
+Open `.auto-claude-security.json` and add your commands to the `custom_commands` array:
+
+**Before (`.auto-claude-allowlist`):**
+```text
+bazel
+terraform
+./scripts/deploy.sh
+```
+
+**After (`.auto-claude-security.json`):**
+```json
+{
+  "version": 2,
+  "custom_commands": ["bazel", "terraform", "./scripts/deploy.sh"],
+  ...
+}
+```
+
+### Step 3: Delete the old allowlist
+
+```bash
+rm .auto-claude-allowlist
+```
+
+### Step 4: Verify
+
+Run a command that was previously in your allowlist to confirm it still works.
 
 ## Security Considerations
 
