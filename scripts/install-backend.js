@@ -107,7 +107,9 @@ async function main() {
   const envPath = path.join(backendDir, '.env');
   const envExamplePath = path.join(backendDir, '.env.example');
 
-  if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
+  if (fs.existsSync(envPath)) {
+    console.log('\n✓ .env file already exists');
+  } else if (fs.existsSync(envExamplePath)) {
     console.log('\nCreating .env file from .env.example...');
     try {
       fs.copyFileSync(envExamplePath, envPath);
@@ -119,8 +121,9 @@ async function main() {
       console.warn('Warning: Could not create .env file:', error.message);
       console.warn('You will need to manually copy .env.example to .env');
     }
-  } else if (fs.existsSync(envPath)) {
-    console.log('\n✓ .env file already exists');
+  } else {
+    console.warn('\nWarning: .env.example not found. Cannot auto-create .env file.');
+    console.warn('Please create a .env file manually if your configuration requires it.');
   }
 
   console.log('\nBackend installation complete!');
