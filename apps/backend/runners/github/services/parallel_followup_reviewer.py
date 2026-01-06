@@ -619,6 +619,7 @@ The SDK will run invoked agents in parallel automatically.
             summary = self._generate_summary(
                 verdict=verdict,
                 verdict_reasoning=verdict_reasoning,
+                blockers=blockers,
                 resolved_count=len(resolved_ids),
                 unresolved_count=len(unresolved_ids),
                 new_count=len(new_finding_ids),
@@ -968,6 +969,7 @@ The SDK will run invoked agents in parallel automatically.
         self,
         verdict: MergeVerdict,
         verdict_reasoning: str,
+        blockers: list[str],
         resolved_count: int,
         unresolved_count: int,
         new_count: int,
@@ -1003,13 +1005,22 @@ The SDK will run invoked agents in parallel automatically.
 - 👤 **Needs Human Review**: {needs_human_review_count} findings require manual verification
 """
 
+        # Build blockers section if there are any blockers
+        blockers_section = ""
+        if blockers:
+            blockers_list = "\n".join(f"- {b}" for b in blockers)
+            blockers_section = f"""
+### 🚨 Blocking Issues
+{blockers_list}
+"""
+
         summary = f"""## {emoji} Follow-up Review: {verdict.value.replace("_", " ").title()}
 
 ### Resolution Status
 - ✅ **Resolved**: {resolved_count} previous findings addressed
 - ❌ **Unresolved**: {unresolved_count} previous findings remain
 - 🆕 **New Issues**: {new_count} new findings in recent changes
-{validation_section}
+{validation_section}{blockers_section}
 ### Verdict
 {verdict_reasoning}
 
