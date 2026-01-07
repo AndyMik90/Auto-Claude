@@ -8,9 +8,13 @@ import { spawnSync } from 'child_process';
 const TASKKILL_TIMEOUT_MS = 5000;
 
 /**
- * Kill a process and all its children (process tree).
- * On Windows, uses taskkill /T to kill the entire process tree.
- * On Unix, uses standard signal-based killing.
+ * Kill a process tree on Windows, or signal a process on Unix.
+ *
+ * On Windows, uses taskkill /T to kill the entire process tree (parent + all children).
+ * On Unix, sends a signal to the specified process only. This does NOT kill the full
+ * process tree - child processes may continue running (though well-behaved children
+ * typically exit when their parent dies). Full Unix process tree killing would require
+ * spawning with detached:true and using negative PIDs, which is out of scope here.
  *
  * @param pid - Process ID to kill
  * @param signal - Signal to send (Unix only, Windows always force-kills)
