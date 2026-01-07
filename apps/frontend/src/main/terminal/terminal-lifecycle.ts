@@ -179,6 +179,12 @@ export async function restoreTerminal(
     debugLog('[TerminalLifecycle] Cleared worktree config for terminal with deleted worktree:', session.id);
   }
 
+  // Re-persist after restoring title and worktreeConfig
+  // (createTerminal persists before these are set, so we need to persist again)
+  if (terminal.projectPath) {
+    SessionHandler.persistSession(terminal);
+  }
+
   // Send title change event for all restored terminals so renderer updates
   const win = getWindow();
   if (win) {

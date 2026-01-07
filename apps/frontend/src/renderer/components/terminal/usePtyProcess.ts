@@ -88,7 +88,9 @@ export function usePtyProcess({
           claudeSessionId: terminalState.claudeSessionId,
           outputBuffer: '',
           createdAt: terminalState.createdAt.toISOString(),
-          lastActiveAt: new Date().toISOString()
+          lastActiveAt: new Date().toISOString(),
+          // Pass worktreeConfig so backend can restore it and persist correctly
+          worktreeConfig: terminalState.worktreeConfig,
         },
         cols,
         rows
