@@ -705,14 +705,17 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
 
       // Verify critical packages exist (fixes GitHub issue #416)
       // Without this check, corrupted caches with missing packages would be accepted
+      // Note: Same list exists in python-env-manager.ts - keep them in sync
       const criticalPackages = ['claude_agent_sdk', 'dotenv'];
       const missingPackages = criticalPackages.filter(pkg => {
         const pkgPath = path.join(sitePackagesDir, pkg);
-        return !fs.existsSync(pkgPath);
+        // Check both directory and __init__.py for more robust validation
+        const initFile = path.join(pkgPath, '__init__.py');
+        return !fs.existsSync(pkgPath) || !fs.existsSync(initFile);
       });
 
       if (missingPackages.length > 0) {
-        console.log(`[download-python] Critical packages missing: ${missingPackages.join(', ')}`);
+        console.log(`[download-python] Critical packages missing or incomplete: ${missingPackages.join(', ')}`);
         console.log(`[download-python] Reinstalling packages...`);
         // Remove site-packages to force reinstall, keep Python binary
         fs.rmSync(sitePackagesDir, { recursive: true, force: true });
@@ -720,8 +723,9 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
         console.log(`[download-python] All critical packages verified`);
         return { success: true, pythonPath: pythonBin, sitePackagesPath: sitePackagesDir };
       }
-    } catch {
-      console.log(`[download-python] Existing installation is broken, re-downloading...`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.log(`[download-python] Existing installation is broken: ${errorMsg}`);
       fs.rmSync(platformDir, { recursive: true, force: true });
     }
   }

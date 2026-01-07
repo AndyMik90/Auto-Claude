@@ -122,23 +122,28 @@ export class PythonEnvManager extends EventEmitter {
       return false;
     }
 
-    // Check for critical packages - both must exist for proper functionality
+    // Critical packages that must exist for proper functionality
     // This fixes GitHub issue #416 where marker exists but packages are missing
-    const claudeSdkPath = path.join(sitePackagesPath, 'claude_agent_sdk');
-    const dotenvPath = path.join(sitePackagesPath, 'dotenv');
-    const hasClaudeSdk = existsSync(claudeSdkPath);
-    const hasDotenv = existsSync(dotenvPath);
+    // Note: Same list exists in download-python.cjs - keep them in sync
+    const criticalPackages = ['claude_agent_sdk', 'dotenv'];
 
-    // Log which packages are present/missing for debugging
-    if (!hasClaudeSdk) {
-      console.log(`[PythonEnvManager] Missing critical package: claude_agent_sdk at ${claudeSdkPath}`);
-    }
-    if (!hasDotenv) {
-      console.log(`[PythonEnvManager] Missing critical package: dotenv at ${dotenvPath}`);
+    // Check each package exists with valid structure (directory + __init__.py)
+    const missingPackages = criticalPackages.filter((pkg) => {
+      const pkgPath = path.join(sitePackagesPath, pkg);
+      const initPath = path.join(pkgPath, '__init__.py');
+      // Package is valid if directory and __init__.py both exist
+      return !existsSync(pkgPath) || !existsSync(initPath);
+    });
+
+    // Log missing packages for debugging
+    for (const pkg of missingPackages) {
+      console.log(
+        `[PythonEnvManager] Missing critical package: ${pkg} at ${path.join(sitePackagesPath, pkg)}`
+      );
     }
 
-    // Both packages must exist - don't rely solely on marker file
-    if (hasClaudeSdk && hasDotenv) {
+    // All packages must exist - don't rely solely on marker file
+    if (missingPackages.length === 0) {
       // Also check marker for logging purposes
       const markerPath = path.join(sitePackagesPath, '.bundled');
       if (existsSync(markerPath)) {
