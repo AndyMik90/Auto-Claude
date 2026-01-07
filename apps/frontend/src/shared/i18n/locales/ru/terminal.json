@@ -25,12 +25,12 @@
     "branchHelp": "Создаст ветку: {{branch}}",
     "baseBranch": "Базовая ветка",
     "selectBaseBranch": "Выберите базовую ветку...",
-    "useProjectDefault": "Использовать стандартную проекта ({{branch}})",
+    "useProjectDefault": "Использовать значение по умолчанию для проекта ({{branch}})",
     "baseBranchHelp": "Ветка, из которой создать worktree",
     "openInIDE": "Открыть в IDE",
     "maxReached": "Достигнуто максимальное количество (12) worktree терминалов",
     "alreadyExists": "Worktree с таким именем уже существует",
     "deleteTitle": "Удалить Worktree?",
-    "deleteDescription": "Это навсегда удалит worktree и его ветку. Все несохраненные изменения будут потеряны."
+    "deleteDescription": "Это навсегда удалит worktree и его ветку. Все несохранённые изменения будут потеряны."
   }
 }

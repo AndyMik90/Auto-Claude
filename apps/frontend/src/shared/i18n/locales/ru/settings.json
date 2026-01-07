@@ -494,7 +494,7 @@
       "graphiti": {
         "name": "Graphiti Memory",
         "description": "Граф знаний для кросс-сессионного контекста",
-        "notConfigured": "Требуется настройка памяти (см. настройки Памяти)"
+        "notConfigured": "Требуется настройка памяти (см. настройки памяти)"
       },
       "linear": {
         "name": "Linear",

@@ -4,17 +4,17 @@
     "tools": "Инструменты"
   },
   "items": {
-    "kanban": "Kanban доска",
+    "kanban": "Kanban-доска",
     "terminals": "Терминалы агентов",
     "insights": "Аналитика",
     "roadmap": "Дорожная карта",
     "ideation": "Идеи",
     "changelog": "История изменений",
     "context": "Контекст",
-    "githubIssues": "GitHub Issues",
-    "githubPRs": "GitHub PRs",
-    "gitlabIssues": "GitLab Issues",
-    "gitlabMRs": "GitLab MRs",
+    "githubIssues": "Задачи GitHub",
+    "githubPRs": "PR GitHub",
+    "gitlabIssues": "Задачи GitLab",
+    "gitlabMRs": "MR GitLab",
     "worktrees": "Worktrees",
     "agentTools": "Обзор MCP"
   },
@@ -46,6 +46,6 @@
     "learnMoreAriaLabel": "Узнать больше о Claude Code (откроется в новом окне)",
     "updateWarningTitle": "Обновить Claude Code?",
     "updateWarningDescription": "Обновление закроет все запущенные сессии Claude Code. Любая несохраненная работа в этих сессиях может быть потеряна. Сохраните работу перед продолжением.",
-    "updateAnyway": "Все равно обновить"
+    "updateAnyway": "Всё равно обновить"
   }
 }

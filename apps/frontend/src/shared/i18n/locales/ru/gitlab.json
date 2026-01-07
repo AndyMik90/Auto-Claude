@@ -113,7 +113,7 @@
     }
   },
   "mergeRequests": {
-    "title": "Merge Request'ы GitLab",
+    "title": "Запросы на слияние GitLab",
     "newMR": "Новый Merge Request",
     "selectMR": "Выберите merge request для просмотра деталей",
     "states": {
@@ -133,8 +133,9 @@
     "runReview": "Запустить AI-ревью",
     "reviewing": "Проверка...",
     "followupReview": "Повторная проверка",
-    "newCommits": "новый коммит",
-    "newCommitsPlural": "новых коммитов",
+    "newCommits_one": "{{count}} новый коммит",
+    "newCommits_few": "{{count}} новых коммита",
+    "newCommits_many": "{{count}} новых коммитов",
     "cancel": "Отмена",
     "postFindings": "Опубликовать замечания",
     "posting": "Публикация...",
@@ -185,13 +186,13 @@
     "suggestedFix": "Предложенное исправление:",
     "posted": "Опубликовано",
     "severity": {
-      "critical": "Блокирующее",
+      "critical": "Блокирующая",
       "criticalDesc": "Необходимо исправить",
-      "high": "Обязательное",
+      "high": "Обязательная",
       "highDesc": "Следует исправить",
-      "medium": "Рекомендуемое",
+      "medium": "Рекомендуемая",
       "mediumDesc": "Улучшить качество",
-      "low": "Предложение",
+      "low": "Незначительная",
       "lowDesc": "Рассмотреть"
     },
     "category": {
