@@ -12,6 +12,7 @@ import type {
   TaskLogStreamChunk,
   SupportedIDE,
   SupportedTerminal,
+  WorktreeCreatePROptions,
   WorktreeCreatePRResult
 } from '../../shared/types';
 
@@ -58,7 +59,7 @@ export interface TaskAPI {
   worktreeDetectTools: () => Promise<IPCResult<{ ides: Array<{ id: string; name: string; path: string; installed: boolean }>; terminals: Array<{ id: string; name: string; path: string; installed: boolean }> }>>;
   archiveTasks: (projectId: string, taskIds: string[], version?: string) => Promise<IPCResult<boolean>>;
   unarchiveTasks: (projectId: string, taskIds: string[]) => Promise<IPCResult<boolean>>;
-  createWorktreePR: (taskId: string, options?: { targetBranch?: string; title?: string; draft?: boolean }) => Promise<IPCResult<WorktreeCreatePRResult>>;
+  createWorktreePR: (taskId: string, options?: WorktreeCreatePROptions) => Promise<IPCResult<WorktreeCreatePRResult>>;
 
   // Task Event Listeners
   // Note: projectId is optional for backward compatibility - events without projectId will still work

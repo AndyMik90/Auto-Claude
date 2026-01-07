@@ -406,6 +406,15 @@ export interface WorktreeDiscardResult {
 }
 
 /**
+ * Options for creating a PR from a worktree
+ */
+export interface WorktreeCreatePROptions {
+  targetBranch?: string;
+  title?: string;
+  draft?: boolean;
+}
+
+/**
  * Result of creating a PR from a worktree
  */
 export interface WorktreeCreatePRResult {

@@ -42,7 +42,7 @@ import { TaskSubtasks } from './TaskSubtasks';
 import { TaskLogs } from './TaskLogs';
 import { TaskFiles } from './TaskFiles';
 import { TaskReview } from './TaskReview';
-import type { Task } from '../../../shared/types';
+import type { Task, WorktreeCreatePROptions } from '../../../shared/types';
 
 interface TaskDetailModalProps {
   open: boolean;
@@ -164,7 +164,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
     state.setIsDiscarding(false);
   };
 
-  const handleCreatePR = async (options: { targetBranch?: string; title?: string; draft?: boolean }) => {
+  const handleCreatePR = async (options: WorktreeCreatePROptions) => {
     state.setIsCreatingPR(true);
     try {
       const result = await window.electronAPI.createWorktreePR(task.id, options);

@@ -43,7 +43,7 @@ import {
 } from './ui/alert-dialog';
 import { useProjectStore } from '../stores/project-store';
 import { useTaskStore } from '../stores/task-store';
-import type { WorktreeListItem, WorktreeMergeResult, TerminalWorktreeConfig, WorktreeStatus, Task, WorktreeCreatePRResult } from '../../shared/types';
+import type { WorktreeListItem, WorktreeMergeResult, TerminalWorktreeConfig, WorktreeStatus, Task, WorktreeCreatePROptions, WorktreeCreatePRResult } from '../../shared/types';
 import { CreatePRDialog } from './task-detail/task-review/CreatePRDialog';
 
 interface WorktreesProps {
@@ -224,7 +224,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
   };
 
   // Handle Create PR
-  const handleCreatePR = async (options: { targetBranch?: string; title?: string; draft?: boolean }): Promise<WorktreeCreatePRResult | null> => {
+  const handleCreatePR = async (options: WorktreeCreatePROptions): Promise<WorktreeCreatePRResult | null> => {
     if (!prTask) return null;
 
     try {
