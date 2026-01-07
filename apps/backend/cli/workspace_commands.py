@@ -9,21 +9,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import TypedDict
-
-
-class CreatePRResult(TypedDict, total=False):
-    """Result type for create PR command."""
-
-    success: bool
-    pr_url: str | None
-    already_exists: bool
-    error: str
-    message: str
-    pushed: bool
-    remote: str
-    branch: str
-
 
 # Ensure parent directory is in path for imports (before other imports)
 _PARENT_DIR = Path(__file__).parent.parent
@@ -38,6 +23,7 @@ from core.workspace.git_utils import (
     get_merge_base,
     is_lock_file,
 )
+from core.worktree import PushAndCreatePRResult as CreatePRResult
 from core.worktree import WorktreeManager
 from debug import debug_warning
 from ui import (

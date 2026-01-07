@@ -20,10 +20,90 @@ import re
 import shutil
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, TypeVar
+
+from core.git_executable import run_git
+
+T = TypeVar("T")
+
+
+def _is_retryable_network_error(stderr: str) -> bool:
+    """Check if an error is a retryable network/connection issue."""
+    stderr_lower = stderr.lower()
+    return any(
+        term in stderr_lower
+        for term in ["connection", "network", "timeout", "reset", "refused"]
+    )
+
+
+def _is_retryable_http_error(stderr: str) -> bool:
+    """
+    Check if an HTTP error is retryable (5xx errors, timeouts).
+    Excludes auth errors (401, 403) and client errors (404, 422).
+    """
+    stderr_lower = stderr.lower()
+    # Check for HTTP 5xx errors (server errors are retryable)
+    if re.search(r"http[s]?\s*5\d{2}", stderr_lower):
+        return True
+    # Check for HTTP timeout patterns
+    if "http" in stderr_lower and "timeout" in stderr_lower:
+        return True
+    return False
+
+
+def _with_retry(
+    operation: Callable[[], T],
+    max_retries: int = 3,
+    is_retryable: Callable[[str], bool] | None = None,
+    on_retry: Callable[[int, str], None] | None = None,
+) -> tuple[T | None, str]:
+    """
+    Execute an operation with retry logic.
+
+    Args:
+        operation: Function that returns (success: bool, result: T | None, error: str)
+        max_retries: Maximum number of retry attempts
+        is_retryable: Function to check if error is retryable
+        on_retry: Optional callback called before each retry with (attempt, error)
+
+    Returns:
+        Tuple of (result, last_error)
+    """
+    last_error = ""
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            success, result, error = operation()
+            if success:
+                return result, ""
+
+            last_error = error
+
+            # Check if error is retryable
+            if is_retryable and attempt < max_retries and is_retryable(error):
+                if on_retry:
+                    on_retry(attempt, error)
+                backoff = 2 ** (attempt - 1)
+                time.sleep(backoff)
+                continue
+
+            break
+
+        except subprocess.TimeoutExpired:
+            last_error = "Operation timed out"
+            if attempt < max_retries:
+                if on_retry:
+                    on_retry(attempt, last_error)
+                backoff = 2 ** (attempt - 1)
+                time.sleep(backoff)
+                continue
+            break
+
+    return None, last_error
 
 
 class PushBranchResult(TypedDict, total=False):
@@ -56,9 +136,6 @@ class PushAndCreatePRResult(TypedDict, total=False):
     already_exists: bool
     error: str
     message: str
-
-
-from core.git_executable import run_git
 
 
 class WorktreeError(Exception):
@@ -776,11 +853,7 @@ class WorktreeManager:
                     )
 
                 # Check if error is retryable (network/connection issues)
-                stderr_lower = result.stderr.lower()
-                is_retryable = any(
-                    term in stderr_lower
-                    for term in ["connection", "network", "timeout", "reset", "refused"]
-                )
+                is_retryable = _is_retryable_network_error(result.stderr)
 
                 if attempt < max_retries and is_retryable:
                     backoff = 2 ** (attempt - 1)
@@ -909,19 +982,10 @@ class WorktreeManager:
                         already_exists=False,
                     )
 
-                # Check if error is retryable (network/connection issues)
-                stderr_lower = result.stderr.lower()
-                is_retryable = any(
-                    term in stderr_lower
-                    for term in [
-                        "connection",
-                        "network",
-                        "timeout",
-                        "reset",
-                        "refused",
-                        "http",
-                    ]
-                )
+                # Check if error is retryable (network/connection or retryable HTTP errors)
+                is_retryable = _is_retryable_network_error(
+                    result.stderr
+                ) or _is_retryable_http_error(result.stderr)
 
                 if attempt < max_retries and is_retryable:
                     backoff = 2 ** (attempt - 1)

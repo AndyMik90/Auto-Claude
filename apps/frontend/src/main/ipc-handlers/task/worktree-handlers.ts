@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow, shell, app } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir } from '../../../shared/constants';
-import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
+import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
@@ -23,6 +23,12 @@ import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
+
+// Maximum PR title length (GitHub's limit is 256 characters)
+const MAX_PR_TITLE_LENGTH = 256;
+
+// Regex for validating PR title contains only printable characters
+const PRINTABLE_CHARS_REGEX = /^[\x20-\x7E\u00A0-\uFFFF]*$/;
 
 // Timeout for PR creation operations (2 minutes for network operations)
 const PR_CREATION_TIMEOUT_MS = 120000;
@@ -1379,8 +1385,19 @@ function parsePRJsonOutput(stdout: string): ParsedPRResult | null {
 }
 
 /**
+ * Result of updating task status after PR creation
+ */
+interface TaskStatusUpdateResult {
+  mainProjectStatus: boolean;
+  mainProjectMetadata: boolean;
+  worktreeStatus: boolean;
+  worktreeMetadata: boolean;
+}
+
+/**
  * Update task status and metadata after PR creation
  * Updates both main project and worktree locations
+ * @returns Result object indicating which updates succeeded/failed
  */
 async function updateTaskStatusAfterPRCreation(
   specDir: string,
@@ -1389,21 +1406,29 @@ async function updateTaskStatusAfterPRCreation(
   autoBuildPath: string | undefined,
   specId: string,
   debug: (...args: unknown[]) => void
-): Promise<void> {
+): Promise<TaskStatusUpdateResult> {
+  const result: TaskStatusUpdateResult = {
+    mainProjectStatus: false,
+    mainProjectMetadata: false,
+    worktreeStatus: false,
+    worktreeMetadata: false
+  };
+
   const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
   const metadataPath = path.join(specDir, 'task_metadata.json');
 
   // Await status persistence to ensure completion before resolving
   try {
     const persisted = await persistPlanStatus(planPath, 'pr_created');
+    result.mainProjectStatus = persisted;
     debug('Main project status persisted to pr_created:', persisted);
   } catch (err) {
     debug('Failed to persist main project status:', err);
   }
 
   // Update metadata with prUrl in main project
-  const metadataUpdated = updateTaskMetadataPrUrl(metadataPath, prUrl);
-  debug('Main project metadata updated with prUrl:', metadataUpdated);
+  result.mainProjectMetadata = updateTaskMetadataPrUrl(metadataPath, prUrl);
+  debug('Main project metadata updated with prUrl:', result.mainProjectMetadata);
 
   // Also persist to WORKTREE location (worktree takes priority when loading tasks)
   // This ensures the status persists after refresh since getTasks() prefers worktree version
@@ -1414,14 +1439,17 @@ async function updateTaskStatusAfterPRCreation(
 
     try {
       const persisted = await persistPlanStatus(worktreePlanPath, 'pr_created');
+      result.worktreeStatus = persisted;
       debug('Worktree status persisted to pr_created:', persisted);
     } catch (err) {
       debug('Failed to persist worktree status:', err);
     }
 
-    const worktreeMetadataUpdated = updateTaskMetadataPrUrl(worktreeMetadataPath, prUrl);
-    debug('Worktree metadata updated with prUrl:', worktreeMetadataUpdated);
+    result.worktreeMetadata = updateTaskMetadataPrUrl(worktreeMetadataPath, prUrl);
+    debug('Worktree metadata updated with prUrl:', result.worktreeMetadata);
   }
+
+  return result;
 }
 
 /**
@@ -1431,7 +1459,7 @@ function buildCreatePRArgs(
   runScript: string,
   specId: string,
   projectPath: string,
-  options: { targetBranch?: string; title?: string; draft?: boolean } | undefined,
+  options: WorktreeCreatePROptions | undefined,
   taskBaseBranch: string | undefined
 ): { args: string[]; validationError?: string } {
   const args = [
@@ -1450,6 +1478,13 @@ function buildCreatePRArgs(
     args.push('--pr-target', options.targetBranch);
   }
   if (options?.title) {
+    // Validate title for printable characters and length limit
+    if (options.title.length > MAX_PR_TITLE_LENGTH) {
+      return { args: [], validationError: `PR title exceeds maximum length of ${MAX_PR_TITLE_LENGTH} characters` };
+    }
+    if (!PRINTABLE_CHARS_REGEX.test(options.title)) {
+      return { args: [], validationError: 'PR title contains invalid characters' };
+    }
     args.push('--pr-title', options.title);
   }
   if (options?.draft) {
@@ -2774,7 +2809,7 @@ export function registerWorktreeHandlers(
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_CREATE_PR,
-    async (_, taskId: string, options?: { targetBranch?: string; title?: string; draft?: boolean }): Promise<IPCResult<WorktreeCreatePRResult>> => {
+    async (_, taskId: string, options?: WorktreeCreatePROptions): Promise<IPCResult<WorktreeCreatePRResult>> => {
       const isDebugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
       const debug = (...args: unknown[]) => {
         if (isDebugMode) {
@@ -2881,10 +2916,23 @@ export function registerWorktreeHandlers(
               debug('TIMEOUT: Create PR process exceeded', PR_CREATION_TIMEOUT_MS, 'ms, killing...');
               resolved = true;
 
-              // Platform-specific process termination
+              // Platform-specific process termination with fallback
               if (process.platform === 'win32') {
                 try {
                   createPRProcess.kill();
+                  // Fallback: forcefully kill with taskkill if process ignores initial kill
+                  if (createPRProcess.pid) {
+                    setTimeout(() => {
+                      try {
+                        spawn('taskkill', ['/pid', createPRProcess.pid!.toString(), '/f', '/t'], {
+                          stdio: 'ignore',
+                          detached: true
+                        }).unref();
+                      } catch {
+                        // Process may already be dead
+                      }
+                    }, 5000);
+                  }
                 } catch {
                   // Process may already be dead
                 }
