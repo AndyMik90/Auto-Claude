@@ -8,45 +8,17 @@ Tests the qa_loop.py module functionality including:
 - Build completion checks
 - QA/Fixer session logic
 - Loop control flow
+
+Note: SDK mocking is handled by conftest.py centralized fixtures.
+The module_mocks dict in conftest.py includes 'test_qa_loop' with the
+SDK modules it needs mocked.
 """
 
 import json
 import pytest
-import sys
 from pathlib import Path
-from unittest.mock import MagicMock
 
-# Store original modules for cleanup
-_original_modules = {}
-_mocked_module_names = [
-    'claude_code_sdk',
-    'claude_code_sdk.types',
-    'claude_agent_sdk',
-    'claude_agent_sdk.types',
-]
-
-for name in _mocked_module_names:
-    if name in sys.modules:
-        _original_modules[name] = sys.modules[name]
-
-# Mock claude_code_sdk and claude_agent_sdk before importing qa_loop
-# The SDKs aren't available in the test environment
-mock_code_sdk = MagicMock()
-mock_code_sdk.ClaudeSDKClient = MagicMock()
-mock_code_sdk.ClaudeCodeOptions = MagicMock()
-mock_code_types = MagicMock()
-mock_code_types.HookMatcher = MagicMock()
-sys.modules['claude_code_sdk'] = mock_code_sdk
-sys.modules['claude_code_sdk.types'] = mock_code_types
-
-mock_agent_sdk = MagicMock()
-mock_agent_sdk.ClaudeSDKClient = MagicMock()
-mock_agent_sdk.ClaudeCodeOptions = MagicMock()
-mock_agent_types = MagicMock()
-mock_agent_types.HookMatcher = MagicMock()
-sys.modules['claude_agent_sdk'] = mock_agent_sdk
-sys.modules['claude_agent_sdk.types'] = mock_agent_types
-
+# SDK modules are pre-mocked by conftest.py before this import
 from qa_loop import (
     load_implementation_plan,
     save_implementation_plan,
@@ -59,19 +31,6 @@ from qa_loop import (
     should_run_fixes,
     MAX_QA_ITERATIONS,
 )
-
-
-# Cleanup fixture to restore original modules after all tests in this module
-@pytest.fixture(scope="module", autouse=True)
-def cleanup_mocked_modules():
-    """Restore original modules after all tests in this module complete."""
-    yield  # Run all tests first
-    # Cleanup: restore original modules or remove mocks
-    for name in _mocked_module_names:
-        if name in _original_modules:
-            sys.modules[name] = _original_modules[name]
-        elif name in sys.modules:
-            del sys.modules[name]
 
 
 class TestImplementationPlanIO:
