@@ -115,5 +115,9 @@
   "images": {
     "removeImageAriaLabel": "Remove image {{filename}}",
     "pasteHint": "Tip: Paste screenshots directly with {{shortcut}} to add reference images."
+  },
+  "notifications": {
+    "backgroundTaskTitle": "Task continues in background",
+    "backgroundTaskDescription": "The task is still running. You can reopen this dialog to monitor progress."
   }
 }

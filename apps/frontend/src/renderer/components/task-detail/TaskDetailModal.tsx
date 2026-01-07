@@ -167,8 +167,8 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
     // Show toast notification if task is running
     if (state.isRunning && !state.isStuck) {
       toast({
-        title: 'Task continues in background',
-        description: 'The task is still running. You can reopen this dialog to monitor progress.',
+        title: t('tasks:notifications.backgroundTaskTitle'),
+        description: t('tasks:notifications.backgroundTaskDescription'),
         duration: 4000,
       });
     }

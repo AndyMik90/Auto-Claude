@@ -208,6 +208,13 @@ Examples:
 
     args = parser.parse_args()
 
+    # Warn user about direct mode risks
+    if args.direct:
+        print_status(
+            "Direct mode: Building in project directory without worktree isolation",
+            "warning",
+        )
+
     # Handle task from file if provided
     task_description = args.task
     if args.task_file:

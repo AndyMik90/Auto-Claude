@@ -13,9 +13,36 @@ a fallback parser that extracts command names even from malformed commands,
 ensuring security validation can still proceed.
 """
 
-import os
 import re
 import shlex
+from pathlib import PurePosixPath, PureWindowsPath
+
+
+def _cross_platform_basename(path: str) -> str:
+    """
+    Extract the basename from a path in a cross-platform way.
+
+    Handles both Windows paths (C:\\dir\\cmd.exe) and POSIX paths (/dir/cmd)
+    regardless of the current platform. This is critical for running tests
+    on Linux CI while handling Windows-style paths.
+
+    Args:
+        path: A file path string (Windows or POSIX format)
+
+    Returns:
+        The basename of the path (e.g., "python.exe" from "C:\\Python312\\python.exe")
+    """
+    # Strip surrounding quotes if present
+    path = path.strip('\'"')
+
+    # Check if this looks like a Windows path (contains backslash or drive letter)
+    if '\\' in path or (len(path) >= 2 and path[1] == ':'):
+        # Use PureWindowsPath to handle Windows paths on any platform
+        return PureWindowsPath(path).name
+
+    # For POSIX paths or simple command names, use PurePosixPath
+    # (os.path.basename works but PurePosixPath is more explicit)
+    return PurePosixPath(path).name
 
 
 def _fallback_extract_commands(command_string: str) -> list[str]:
@@ -73,14 +100,19 @@ def _fallback_extract_commands(command_string: str) -> list[str]:
 
         # Now extract just the command name from this token
         # Handle Windows paths (C:\dir\cmd.exe) and Unix paths (/dir/cmd)
-        # Use os.path.basename for reliable path handling
-        cmd = os.path.basename(first_token)
+        # Use cross-platform basename for reliable path handling on any OS
+        cmd = _cross_platform_basename(first_token)
 
         # Remove Windows extensions
         cmd = re.sub(r'\.(exe|cmd|bat|ps1|sh)$', '', cmd, flags=re.IGNORECASE)
 
         # Clean up any remaining quotes or special chars at the start
         cmd = re.sub(r'^["\'\\/]+', '', cmd)
+
+        # Skip tokens that look like function calls or code fragments (not shell commands)
+        # These appear when splitting on semicolons inside malformed quoted strings
+        if '(' in cmd or ')' in cmd or '.' in cmd:
+            continue
 
         if cmd and cmd.lower() not in shell_keywords:
             commands.append(cmd)
@@ -219,7 +251,8 @@ def extract_commands(command_string: str) -> list[str]:
 
             if expect_command:
                 # Extract the base command name (handle paths like /usr/bin/python)
-                cmd = os.path.basename(token)
+                # Use cross-platform basename for Windows paths on Linux CI
+                cmd = _cross_platform_basename(token)
                 commands.append(cmd)
                 expect_command = False
 

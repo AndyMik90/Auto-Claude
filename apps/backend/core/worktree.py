@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from core.git_executable import get_git_executable, run_git
+from core.git_executable import run_git
 
 
 class WorktreeError(Exception):
