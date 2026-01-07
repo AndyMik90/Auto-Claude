@@ -62,6 +62,8 @@ _POTENTIALLY_MOCKED_MODULES = [
     'claude_code_sdk.types',
     'claude_agent_sdk',
     'claude_agent_sdk.types',
+    'google',
+    'google.generativeai',
     'ui',
     'progress',
     'task_logger',
