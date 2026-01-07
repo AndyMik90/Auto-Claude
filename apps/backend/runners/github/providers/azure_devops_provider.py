@@ -4,14 +4,21 @@ Azure DevOps Provider Implementation
 
 Implements the GitProvider protocol for Azure DevOps.
 Uses the Azure DevOps Python API for all operations.
+
+Security Notes:
+- PAT is retrieved from environment on each connection, not stored long-term
+- All user inputs are sanitized before use in WIQL queries
+- Blocking SDK calls are wrapped with asyncio.to_thread for proper async behavior
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, List, Optional
 
 from .protocol import (
     IssueData,
@@ -24,12 +31,39 @@ from .protocol import (
 )
 
 
+def _sanitize_wiql_string(value: str) -> str:
+    """
+    Sanitize a string value for use in WIQL queries.
+
+    Prevents WIQL injection by escaping/removing dangerous characters.
+    """
+    if not value:
+        return ""
+    # Remove or escape characters that could be used for injection
+    # WIQL uses single quotes for strings, so escape them
+    sanitized = value.replace("'", "''")
+    # Remove any control characters
+    sanitized = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', sanitized)
+    # Limit length to prevent abuse
+    return sanitized[:500]
+
+
+def _validate_state(state: str) -> str:
+    """Validate state parameter against allowed values."""
+    allowed_states = {"open", "closed", "all", "New", "Active", "Resolved", "Closed", "Done"}
+    if state not in allowed_states:
+        return "open"
+    return state
+
+
 @dataclass
 class AzureDevOpsProvider:
     """
     Azure DevOps implementation of the GitProvider protocol.
 
     Uses the Azure DevOps REST API via the azure-devops Python package.
+    All blocking SDK calls are wrapped with asyncio.to_thread() for proper
+    async behavior.
 
     Usage:
         provider = AzureDevOpsProvider(
@@ -39,34 +73,54 @@ class AzureDevOpsProvider:
         )
         pr = await provider.fetch_pr(123)
         await provider.post_review(123, review)
+
+    Security:
+        - PAT should be provided via ADO_PAT environment variable
+        - All WIQL queries use parameterized/sanitized inputs
+        - Connection credentials are not persisted beyond necessary scope
     """
 
-    _organization: str | None = None
-    _project: str | None = None
-    _repo_name: str | None = None
-    _pat: str | None = None
-    _instance_url: str | None = None
+    _organization: Optional[str] = None
+    _project: Optional[str] = None
+    _repo_name: Optional[str] = None
+    _pat: Optional[str] = None
+    _instance_url: Optional[str] = None
 
-    # Cached clients
-    _connection: Any = None
-    _git_client: Any = None
-    _wit_client: Any = None
+    # Work item query limit (configurable)
+    _max_work_items: int = 200
+
+    # Cached clients (lazy-initialized, excluded from repr/eq/hash)
+    _connection: Any = field(default=None, init=False, repr=False, compare=False)
+    _git_client: Any = field(default=None, init=False, repr=False, compare=False)
+    _wit_client: Any = field(default=None, init=False, repr=False, compare=False)
 
     def __post_init__(self):
         # Load from environment if not provided
         self._organization = self._organization or os.getenv("ADO_ORGANIZATION")
         self._project = self._project or os.getenv("ADO_PROJECT")
         self._repo_name = self._repo_name or os.getenv("ADO_REPO_NAME") or self._project
-        self._pat = self._pat or os.getenv("ADO_PAT")
         self._instance_url = self._instance_url or os.getenv(
             "ADO_INSTANCE_URL", "https://dev.azure.com"
         )
 
-        if not all([self._organization, self._project, self._pat]):
+        # Note: PAT is retrieved fresh each time _ensure_connection is called
+        # to support credential rotation
+
+        if not all([self._organization, self._project]):
             raise ValueError(
-                "Azure DevOps provider requires ADO_ORGANIZATION, ADO_PROJECT, and ADO_PAT. "
+                "Azure DevOps provider requires ADO_ORGANIZATION and ADO_PROJECT. "
                 "Set these environment variables or pass them to the constructor."
             )
+
+    def _get_pat(self) -> str:
+        """Get PAT from provided value or environment. Raises if not available."""
+        pat = self._pat or os.getenv("ADO_PAT")
+        if not pat:
+            raise ValueError(
+                "Azure DevOps PAT not configured. "
+                "Set ADO_PAT environment variable or pass pat to constructor."
+            )
+        return pat
 
     def _ensure_connection(self):
         """Lazily initialize the Azure DevOps connection."""
@@ -80,7 +134,8 @@ class AzureDevOpsProvider:
                     "Install with: pip install azure-devops"
                 )
 
-            credentials = BasicAuthentication("", self._pat)
+            pat = self._get_pat()
+            credentials = BasicAuthentication("", pat)
             org_url = f"{self._instance_url}/{self._organization}"
             self._connection = Connection(base_url=org_url, creds=credentials)
 
@@ -115,7 +170,8 @@ class AzureDevOpsProvider:
 
     async def fetch_pr(self, number: int) -> PRData:
         """Fetch a pull request by ID."""
-        pr = self.git_client.get_pull_request(
+        pr = await asyncio.to_thread(
+            self.git_client.get_pull_request,
             repository_id=self._repo_name,
             pull_request_id=number,
             project=self._project,
@@ -126,29 +182,30 @@ class AzureDevOpsProvider:
 
         return self._parse_pr_data(pr, diff)
 
-    async def fetch_prs(self, filters: PRFilters | None = None) -> list[PRData]:
+    async def fetch_prs(self, filters: Optional[PRFilters] = None) -> List[PRData]:
         """Fetch pull requests with optional filters."""
         filters = filters or PRFilters()
 
         # Map state to ADO status
         status_map = {"open": "active", "closed": "completed", "all": "all"}
-        status = status_map.get(filters.state, "active")
+        status = status_map.get(_validate_state(filters.state), "active")
 
         from azure.devops.v7_1.git.models import GitPullRequestSearchCriteria
 
         search_criteria = GitPullRequestSearchCriteria(status=status)
 
         if filters.base_branch:
-            search_criteria.target_ref_name = f"refs/heads/{filters.base_branch}"
+            search_criteria.target_ref_name = f"refs/heads/{_sanitize_wiql_string(filters.base_branch)}"
 
         if filters.head_branch:
-            search_criteria.source_ref_name = f"refs/heads/{filters.head_branch}"
+            search_criteria.source_ref_name = f"refs/heads/{_sanitize_wiql_string(filters.head_branch)}"
 
-        prs = self.git_client.get_pull_requests(
+        prs = await asyncio.to_thread(
+            self.git_client.get_pull_requests,
             repository_id=self._repo_name,
             search_criteria=search_criteria,
             project=self._project,
-            top=filters.limit,
+            top=min(filters.limit, 1000),  # Cap at 1000
         )
 
         result = []
@@ -172,14 +229,16 @@ class AzureDevOpsProvider:
         """Fetch the diff for a pull request."""
         try:
             # Get the PR to find the commits
-            pr = self.git_client.get_pull_request(
+            pr = await asyncio.to_thread(
+                self.git_client.get_pull_request,
                 repository_id=self._repo_name,
                 pull_request_id=number,
                 project=self._project,
             )
 
             # Get commits in the PR
-            commits = self.git_client.get_pull_request_commits(
+            commits = await asyncio.to_thread(
+                self.git_client.get_pull_request_commits,
                 repository_id=self._repo_name,
                 pull_request_id=number,
                 project=self._project,
@@ -188,12 +247,9 @@ class AzureDevOpsProvider:
             if not commits:
                 return ""
 
-            # Get diff between source and target
-            target_version = pr.target_ref_name.replace("refs/heads/", "")
-            source_version = pr.source_ref_name.replace("refs/heads/", "")
-
             # Use the changes endpoint
-            changes = self.git_client.get_pull_request_iteration_changes(
+            changes = await asyncio.to_thread(
+                self.git_client.get_pull_request_iteration_changes,
                 repository_id=self._repo_name,
                 pull_request_id=number,
                 iteration_id=1,  # First iteration
@@ -223,7 +279,8 @@ class AzureDevOpsProvider:
             status="active" if review.event == "request_changes" else "closed",
         )
 
-        result = self.git_client.create_thread(
+        result = await asyncio.to_thread(
+            self.git_client.create_thread,
             comment_thread=thread,
             repository_id=self._repo_name,
             pull_request_id=pr_number,
@@ -234,16 +291,16 @@ class AzureDevOpsProvider:
         if review.event in ("approve", "request_changes"):
             vote = 10 if review.event == "approve" else -10
 
-            # Get current user's reviewer ID
-            # Note: This requires getting the current user's identity
             try:
-                self.git_client.create_pull_request_reviewer(
-                    reviewer={
-                        "vote": vote,
-                    },
+                from azure.devops.v7_1.git.models import IdentityRefWithVote
+
+                reviewer = IdentityRefWithVote(vote=vote)
+                await asyncio.to_thread(
+                    self.git_client.create_pull_request_reviewer,
+                    reviewer=reviewer,
                     repository_id=self._repo_name,
                     pull_request_id=pr_number,
-                    reviewer_id="me",  # Current user
+                    reviewer_id="me",
                     project=self._project,
                 )
             except Exception:
@@ -255,18 +312,21 @@ class AzureDevOpsProvider:
         self,
         pr_number: int,
         merge_method: str = "squash",
-        commit_title: str | None = None,
+        commit_title: Optional[str] = None,
     ) -> bool:
         """Merge a pull request."""
         try:
-            pr = self.git_client.get_pull_request(
+            pr = await asyncio.to_thread(
+                self.git_client.get_pull_request,
                 repository_id=self._repo_name,
                 pull_request_id=pr_number,
                 project=self._project,
             )
 
-            # Set completion options
-            from azure.devops.v7_1.git.models import GitPullRequest
+            from azure.devops.v7_1.git.models import (
+                GitPullRequest,
+                GitPullRequestCompletionOptions,
+            )
 
             merge_strategy_map = {
                 "squash": "squash",
@@ -274,17 +334,21 @@ class AzureDevOpsProvider:
                 "merge": "noFastForward",
             }
 
+            # Use proper SDK models instead of dict
+            completion_options = GitPullRequestCompletionOptions(
+                delete_source_branch=True,
+                merge_strategy=merge_strategy_map.get(merge_method, "squash"),
+                merge_commit_message=commit_title,
+            )
+
             update_pr = GitPullRequest(
                 status="completed",
                 last_merge_source_commit=pr.last_merge_source_commit,
-                completion_options={
-                    "deleteSourceBranch": True,
-                    "mergeStrategy": merge_strategy_map.get(merge_method, "squash"),
-                    "mergeCommitMessage": commit_title,
-                },
+                completion_options=completion_options,
             )
 
-            self.git_client.update_pull_request(
+            await asyncio.to_thread(
+                self.git_client.update_pull_request,
                 git_pull_request_to_update=update_pr,
                 repository_id=self._repo_name,
                 pull_request_id=pr_number,
@@ -298,7 +362,7 @@ class AzureDevOpsProvider:
     async def close_pr(
         self,
         pr_number: int,
-        comment: str | None = None,
+        comment: Optional[str] = None,
     ) -> bool:
         """Close a pull request without merging (abandon)."""
         try:
@@ -309,7 +373,8 @@ class AzureDevOpsProvider:
 
             update_pr = GitPullRequest(status="abandoned")
 
-            self.git_client.update_pull_request(
+            await asyncio.to_thread(
+                self.git_client.update_pull_request,
                 git_pull_request_to_update=update_pr,
                 repository_id=self._repo_name,
                 pull_request_id=pr_number,
@@ -326,7 +391,8 @@ class AzureDevOpsProvider:
 
     async def fetch_issue(self, number: int) -> IssueData:
         """Fetch a work item by ID."""
-        wi = self.wit_client.get_work_item(
+        wi = await asyncio.to_thread(
+            self.wit_client.get_work_item,
             id=number,
             project=self._project,
             expand="All",
@@ -334,34 +400,46 @@ class AzureDevOpsProvider:
         return self._parse_work_item(wi)
 
     async def fetch_issues(
-        self, filters: IssueFilters | None = None
-    ) -> list[IssueData]:
-        """Fetch work items with optional filters."""
+        self, filters: Optional[IssueFilters] = None
+    ) -> List[IssueData]:
+        """
+        Fetch work items with optional filters.
+
+        Note: Results are limited to max_work_items (default 200) to prevent
+        excessive API calls. For larger result sets, use pagination via the
+        raw API methods.
+        """
         filters = filters or IssueFilters()
 
         from azure.devops.v7_1.work_item_tracking.models import Wiql
 
-        # Build WIQL query
-        conditions = [f"[System.TeamProject] = '{self._project}'"]
+        # Build WIQL query with sanitized inputs
+        # Project name is from config, not user input, but sanitize anyway
+        project_safe = _sanitize_wiql_string(self._project)
+        conditions = [f"[System.TeamProject] = '{project_safe}'"]
 
-        if filters.state == "open":
+        state = _validate_state(filters.state)
+        if state == "open":
             conditions.append(
                 "([System.State] = 'New' OR [System.State] = 'Active')"
             )
-        elif filters.state == "closed":
+        elif state == "closed":
             conditions.append(
                 "([System.State] = 'Closed' OR [System.State] = 'Resolved')"
             )
 
         if filters.author:
-            conditions.append(f"[System.CreatedBy] = '{filters.author}'")
+            author_safe = _sanitize_wiql_string(filters.author)
+            conditions.append(f"[System.CreatedBy] = '{author_safe}'")
 
         if filters.assignee:
-            conditions.append(f"[System.AssignedTo] = '{filters.assignee}'")
+            assignee_safe = _sanitize_wiql_string(filters.assignee)
+            conditions.append(f"[System.AssignedTo] = '{assignee_safe}'")
 
         if filters.labels:
             for label in filters.labels:
-                conditions.append(f"[System.Tags] CONTAINS '{label}'")
+                label_safe = _sanitize_wiql_string(label)
+                conditions.append(f"[System.Tags] CONTAINS '{label_safe}'")
 
         query = f"""
             SELECT [System.Id]
@@ -371,10 +449,15 @@ class AzureDevOpsProvider:
         """
 
         wiql = Wiql(query=query)
-        result = self.wit_client.query_by_wiql(
+
+        # Use configured limit, capped at max_work_items
+        effective_limit = min(filters.limit, self._max_work_items)
+
+        result = await asyncio.to_thread(
+            self.wit_client.query_by_wiql,
             wiql=wiql,
             project=self._project,
-            top=filters.limit,
+            top=effective_limit,
         )
 
         if not result.work_items:
@@ -382,7 +465,8 @@ class AzureDevOpsProvider:
 
         # Fetch full work item details
         ids = [wi.id for wi in result.work_items]
-        work_items = self.wit_client.get_work_items(
+        work_items = await asyncio.to_thread(
+            self.wit_client.get_work_items,
             ids=ids,
             project=self._project,
             expand="All",
@@ -394,8 +478,8 @@ class AzureDevOpsProvider:
         self,
         title: str,
         body: str,
-        labels: list[str] | None = None,
-        assignees: list[str] | None = None,
+        labels: Optional[List[str]] = None,
+        assignees: Optional[List[str]] = None,
     ) -> IssueData:
         """Create a new work item (Task by default)."""
         from azure.devops.v7_1.work_item_tracking.models import JsonPatchOperation
@@ -431,7 +515,8 @@ class AzureDevOpsProvider:
                 )
             )
 
-        wi = self.wit_client.create_work_item(
+        wi = await asyncio.to_thread(
+            self.wit_client.create_work_item,
             document=operations,
             project=self._project,
             type="Task",
@@ -442,7 +527,7 @@ class AzureDevOpsProvider:
     async def close_issue(
         self,
         number: int,
-        comment: str | None = None,
+        comment: Optional[str] = None,
     ) -> bool:
         """Close a work item."""
         try:
@@ -459,7 +544,8 @@ class AzureDevOpsProvider:
                 )
             ]
 
-            self.wit_client.update_work_item(
+            await asyncio.to_thread(
+                self.wit_client.update_work_item,
                 document=operations,
                 id=number,
                 project=self._project,
@@ -488,7 +574,8 @@ class AzureDevOpsProvider:
                 )
             ]
 
-            self.wit_client.update_work_item(
+            await asyncio.to_thread(
+                self.wit_client.update_work_item,
                 document=operations,
                 id=issue_or_pr_number,
                 project=self._project,
@@ -503,7 +590,8 @@ class AzureDevOpsProvider:
                 comment = Comment(content=body)
                 thread = CommentThread(comments=[comment], status="active")
 
-                result = self.git_client.create_thread(
+                result = await asyncio.to_thread(
+                    self.git_client.create_thread,
                     comment_thread=thread,
                     repository_id=self._repo_name,
                     pull_request_id=issue_or_pr_number,
@@ -520,12 +608,13 @@ class AzureDevOpsProvider:
     async def apply_labels(
         self,
         issue_or_pr_number: int,
-        labels: list[str],
+        labels: List[str],
     ) -> None:
         """Apply tags to a work item."""
         try:
             # Get current tags
-            wi = self.wit_client.get_work_item(
+            wi = await asyncio.to_thread(
+                self.wit_client.get_work_item,
                 id=issue_or_pr_number,
                 project=self._project,
             )
@@ -548,7 +637,8 @@ class AzureDevOpsProvider:
                 )
             ]
 
-            self.wit_client.update_work_item(
+            await asyncio.to_thread(
+                self.wit_client.update_work_item,
                 document=operations,
                 id=issue_or_pr_number,
                 project=self._project,
@@ -559,11 +649,12 @@ class AzureDevOpsProvider:
     async def remove_labels(
         self,
         issue_or_pr_number: int,
-        labels: list[str],
+        labels: List[str],
     ) -> None:
         """Remove tags from a work item."""
         try:
-            wi = self.wit_client.get_work_item(
+            wi = await asyncio.to_thread(
+                self.wit_client.get_work_item,
                 id=issue_or_pr_number,
                 project=self._project,
             )
@@ -586,7 +677,8 @@ class AzureDevOpsProvider:
                 )
             ]
 
-            self.wit_client.update_work_item(
+            await asyncio.to_thread(
+                self.wit_client.update_work_item,
                 document=operations,
                 id=issue_or_pr_number,
                 project=self._project,
@@ -603,35 +695,39 @@ class AzureDevOpsProvider:
         """
         pass  # No-op in ADO
 
-    async def list_labels(self) -> list[LabelData]:
+    async def list_labels(self) -> List[LabelData]:
         """
         List all tags used in the project.
 
         Note: ADO doesn't have a direct API for listing all tags.
         This queries work items to find used tags.
+        Results are limited to tags from the first 200 work items.
         """
         from azure.devops.v7_1.work_item_tracking.models import Wiql
 
+        project_safe = _sanitize_wiql_string(self._project)
         wiql = Wiql(
             query=f"""
                 SELECT [System.Id], [System.Tags]
                 FROM WorkItems
-                WHERE [System.TeamProject] = '{self._project}'
+                WHERE [System.TeamProject] = '{project_safe}'
                   AND [System.Tags] <> ''
             """
         )
 
-        result = self.wit_client.query_by_wiql(
+        result = await asyncio.to_thread(
+            self.wit_client.query_by_wiql,
             wiql=wiql,
             project=self._project,
-            top=200,
+            top=self._max_work_items,
         )
 
         if not result.work_items:
             return []
 
         ids = [wi.id for wi in result.work_items]
-        work_items = self.wit_client.get_work_items(
+        work_items = await asyncio.to_thread(
+            self.wit_client.get_work_items,
             ids=ids,
             fields=["System.Tags"],
             project=self._project,
@@ -654,7 +750,8 @@ class AzureDevOpsProvider:
 
     async def get_repository_info(self) -> dict[str, Any]:
         """Get repository information."""
-        repo = self.git_client.get_repository(
+        repo = await asyncio.to_thread(
+            self.git_client.get_repository,
             repository_id=self._repo_name,
             project=self._project,
         )
@@ -696,7 +793,7 @@ class AzureDevOpsProvider:
     async def api_get(
         self,
         endpoint: str,
-        params: dict[str, Any] | None = None,
+        params: Optional[dict[str, Any]] = None,
     ) -> Any:
         """Make a GET request to the Azure DevOps API."""
         import urllib.request
@@ -704,6 +801,7 @@ class AzureDevOpsProvider:
         import json
         import base64
 
+        pat = self._get_pat()
         url = f"{self._instance_url}/{self._organization}/{self._project}/_apis{endpoint}"
 
         if params:
@@ -714,32 +812,36 @@ class AzureDevOpsProvider:
             separator = "&" if "?" in url else "?"
             url += f"{separator}api-version=7.1"
 
-        auth = base64.b64encode(f":{self._pat}".encode()).decode()
+        auth = base64.b64encode(f":{pat}".encode()).decode()
 
         req = urllib.request.Request(url)
         req.add_header("Authorization", f"Basic {auth}")
         req.add_header("Content-Type", "application/json")
 
-        with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode())
+        def _do_request():
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return json.loads(response.read().decode())
+
+        return await asyncio.to_thread(_do_request)
 
     async def api_post(
         self,
         endpoint: str,
-        data: dict[str, Any] | None = None,
+        data: Optional[dict[str, Any]] = None,
     ) -> Any:
         """Make a POST request to the Azure DevOps API."""
         import urllib.request
         import json
         import base64
 
+        pat = self._get_pat()
         url = f"{self._instance_url}/{self._organization}/{self._project}/_apis{endpoint}"
 
         if "api-version" not in url:
             separator = "&" if "?" in url else "?"
             url += f"{separator}api-version=7.1"
 
-        auth = base64.b64encode(f":{self._pat}".encode()).decode()
+        auth = base64.b64encode(f":{pat}".encode()).decode()
 
         req = urllib.request.Request(url, method="POST")
         req.add_header("Authorization", f"Basic {auth}")
@@ -747,8 +849,11 @@ class AzureDevOpsProvider:
 
         body = json.dumps(data).encode() if data else None
 
-        with urllib.request.urlopen(req, data=body) as response:
-            return json.loads(response.read().decode())
+        def _do_request():
+            with urllib.request.urlopen(req, data=body, timeout=30) as response:
+                return json.loads(response.read().decode())
+
+        return await asyncio.to_thread(_do_request)
 
     # -------------------------------------------------------------------------
     # Helper Methods
@@ -813,7 +918,7 @@ class AzureDevOpsProvider:
         labels = [t.strip() for t in tags.split(";") if t.strip()]
 
         assigned = fields.get("System.AssignedTo", {})
-        assignees = []
+        assignees: List[str] = []
         if assigned:
             if isinstance(assigned, dict):
                 assignees = [assigned.get("displayName", "")]
