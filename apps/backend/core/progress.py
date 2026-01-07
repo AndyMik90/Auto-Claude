@@ -43,7 +43,7 @@ def count_subtasks(spec_dir: Path) -> tuple[int, int]:
         return 0, 0
 
     try:
-        with open(plan_file) as f:
+        with open(plan_file, encoding="utf-8") as f:
             plan = json.load(f)
 
         total = 0
@@ -81,7 +81,7 @@ def count_subtasks_detailed(spec_dir: Path) -> dict:
         return result
 
     try:
-        with open(plan_file) as f:
+        with open(plan_file, encoding="utf-8") as f:
             plan = json.load(f)
 
         for phase in plan.get("phases", []):
@@ -182,7 +182,7 @@ def print_progress_summary(spec_dir: Path, show_next: bool = True) -> None:
 
         # Phase summary
         try:
-            with open(spec_dir / "implementation_plan.json") as f:
+            with open(spec_dir / "implementation_plan.json", encoding="utf-8") as f:
                 plan = json.load(f)
 
             print("\nPhases:")
@@ -302,7 +302,7 @@ def get_plan_summary(spec_dir: Path) -> dict:
         }
 
     try:
-        with open(plan_file) as f:
+        with open(plan_file, encoding="utf-8") as f:
             plan = json.load(f)
 
         summary = {
@@ -376,7 +376,7 @@ def get_current_phase(spec_dir: Path) -> dict | None:
         return None
 
     try:
-        with open(plan_file) as f:
+        with open(plan_file, encoding="utf-8") as f:
             plan = json.load(f)
 
         for phase in plan.get("phases", []):
