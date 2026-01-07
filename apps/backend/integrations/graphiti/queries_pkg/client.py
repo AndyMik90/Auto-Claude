@@ -34,7 +34,18 @@ def _apply_ladybug_monkeypatch() -> bool:
         sys.modules["kuzu"] = real_ladybug
         logger.info("Applied LadybugDB monkeypatch (kuzu -> real_ladybug)")
         return True
-    except ImportError:
+    except ImportError as e:
+        logger.debug(f"LadybugDB import failed: {e}")
+        # On Windows, provide more specific error details
+        if sys.platform == "win32":
+            # Check if it's the pywin32 error
+            if "pywintypes" in str(e) or "pywin32" in str(e):
+                logger.error(
+                    "LadybugDB requires pywin32 on Windows. "
+                    "Install with: pip install pywin32>=306"
+                )
+            else:
+                logger.debug(f"Windows-specific import issue: {e}")
         pass
 
     # Fall back to native kuzu
