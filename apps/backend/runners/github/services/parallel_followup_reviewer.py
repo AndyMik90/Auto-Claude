@@ -981,11 +981,12 @@ The SDK will run invoked agents in parallel automatically.
         ci_status: dict | None = None,
     ) -> str:
         """Generate a human-readable summary of the follow-up review."""
+        # Use same emojis as orchestrator.py for consistency
         status_emoji = {
             MergeVerdict.READY_TO_MERGE: "✅",
-            MergeVerdict.MERGE_WITH_CHANGES: "⚠️",
-            MergeVerdict.NEEDS_REVISION: "🔄",
-            MergeVerdict.BLOCKED: "🚫",
+            MergeVerdict.MERGE_WITH_CHANGES: "🟡",
+            MergeVerdict.NEEDS_REVISION: "🟠",
+            MergeVerdict.BLOCKED: "🔴",
         }
 
         emoji = status_emoji.get(verdict, "📝")
@@ -1086,16 +1087,16 @@ Agents invoked: {agents_str}
             # Key insight: distinguish "waiting on CI" from "needs code fixes"
             # Check code issues FIRST before checking pending CI
             if unresolved_count > 0:
-                return f"**🔄 Needs revision** - {unresolved_count} unresolved finding(s) from previous review."
+                return f"**🟠 Needs revision** - {unresolved_count} unresolved finding(s) from previous review."
             elif code_blockers:
-                return f"**🔄 Needs revision** - {len(code_blockers)} blocking issue(s) require fixes."
+                return f"**🟠 Needs revision** - {len(code_blockers)} blocking issue(s) require fixes."
             elif new_count > 0:
-                return f"**🔄 Needs revision** - {new_count} new issue(s) found in recent changes."
+                return f"**🟠 Needs revision** - {new_count} new issue(s) found in recent changes."
             elif pending_ci > 0:
                 # Only show "Ready once CI passes" when no code issues exist
                 return f"**⏳ Ready once CI passes** - {pending_ci} check(s) pending, all findings addressed."
             else:
-                return "**🔄 Needs revision** - See details below."
+                return "**🟠 Needs revision** - See details below."
 
         elif verdict == MergeVerdict.MERGE_WITH_CHANGES:
             if pending_ci > 0:
