@@ -795,6 +795,114 @@ def mock_spec_validator():
     return _create_mock
 
 
+@pytest.fixture
+def mock_graphiti_providers():
+    """
+    Mock Graphiti providers for testing.
+
+    Returns a factory that creates mock graphiti_providers module with configurable behavior.
+    This fixture provides comprehensive mocking for all graphiti_providers exports including:
+    - is_graphiti_enabled: Whether Graphiti integration is enabled
+    - get_graph_hints: Async function for retrieving graph hints
+    - create_llm_client: Factory for LLM clients
+    - create_embedder: Factory for embedding clients
+    - create_cross_encoder: Factory for cross-encoder/reranker
+    - Exceptions: ProviderError, ProviderNotInstalled
+    - Validators and utilities
+
+    Usage:
+        def test_something(mock_graphiti_providers):
+            providers = mock_graphiti_providers(enabled=False)
+            assert providers.is_graphiti_enabled() is False
+
+        async def test_async(mock_graphiti_providers):
+            providers = mock_graphiti_providers(hints=[{"content": "test hint"}])
+            hints = await providers.get_graph_hints("query", "project_id")
+            assert len(hints) == 1
+    """
+    from unittest.mock import MagicMock, AsyncMock
+
+    def _create_mock(
+        enabled: bool = False,
+        hints: list = None,
+        llm_client: MagicMock = None,
+        embedder: MagicMock = None,
+        cross_encoder: MagicMock = None,
+        install_in_sys_modules: bool = False,
+    ):
+        """Create a mock graphiti_providers module.
+
+        Args:
+            enabled: Whether is_graphiti_enabled() returns True
+            hints: List of hint dicts to return from get_graph_hints()
+            llm_client: Custom mock LLM client (creates default if None)
+            embedder: Custom mock embedder (creates default if None)
+            cross_encoder: Custom mock cross-encoder (creates default if None)
+            install_in_sys_modules: If True, install mock in sys.modules['graphiti_providers']
+        """
+        if hints is None:
+            hints = []
+
+        mock_providers = MagicMock()
+
+        # Core utility functions
+        mock_providers.is_graphiti_enabled = MagicMock(return_value=enabled)
+        mock_providers.get_graph_hints = AsyncMock(return_value=hints)
+
+        # Factory functions - create default mocks if not provided
+        if llm_client is None:
+            llm_client = MagicMock()
+            llm_client.generate = AsyncMock(return_value="Mock LLM response")
+            llm_client.agenerate = AsyncMock(return_value="Mock LLM response")
+        mock_providers.create_llm_client = MagicMock(return_value=llm_client)
+
+        if embedder is None:
+            embedder = MagicMock()
+            embedder.create = MagicMock(return_value=[[0.1, 0.2, 0.3]])
+            embedder.embed = MagicMock(return_value=[0.1, 0.2, 0.3])
+        mock_providers.create_embedder = MagicMock(return_value=embedder)
+
+        if cross_encoder is None:
+            cross_encoder = MagicMock()
+            cross_encoder.rank = MagicMock(return_value=[])
+        mock_providers.create_cross_encoder = MagicMock(return_value=cross_encoder)
+
+        # Exceptions (create actual exception classes for proper isinstance checks)
+        class MockProviderError(Exception):
+            """Mock provider error."""
+            pass
+
+        class MockProviderNotInstalled(Exception):
+            """Mock provider not installed error."""
+            pass
+
+        mock_providers.ProviderError = MockProviderError
+        mock_providers.ProviderNotInstalled = MockProviderNotInstalled
+
+        # Models and constants
+        mock_providers.EMBEDDING_DIMENSIONS = {
+            "text-embedding-3-small": 1536,
+            "text-embedding-3-large": 3072,
+            "text-embedding-ada-002": 1536,
+        }
+        mock_providers.get_expected_embedding_dim = MagicMock(return_value=1536)
+
+        # Validators - all return True by default (valid)
+        mock_providers.validate_embedding_config = MagicMock(return_value=True)
+        mock_providers.test_llm_connection = AsyncMock(return_value=True)
+        mock_providers.test_embedder_connection = AsyncMock(return_value=True)
+        mock_providers.test_ollama_connection = AsyncMock(return_value=True)
+
+        # Optionally install in sys.modules for module-level mocking
+        if install_in_sys_modules:
+            import sys
+            sys.modules['graphiti_providers'] = mock_providers
+
+        return mock_providers
+
+    return _create_mock
+
+
 # =============================================================================
 # SAMPLE DATA FIXTURES - Sample JSON data for phase testing
 # =============================================================================
