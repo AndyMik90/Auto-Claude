@@ -21,7 +21,7 @@ try:
     from dotenv import load_dotenv
 except ImportError:
     sys.exit(
-        "Error: Required Python dependencies are not installed.\n"
+        "Error: Required Python package 'python-dotenv' is not installed.\n"
         "\n"
         "This usually means you're not using the virtual environment.\n"
         "\n"
@@ -31,6 +31,7 @@ except ImportError:
         "   .venv\\Scripts\\activate   # Windows\n"
         "\n"
         "2. Or install dependencies directly:\n"
+        "   pip install python-dotenv\n"
         "   pip install -r requirements.txt\n"
         "\n"
         f"Current Python: {sys.executable}\n"

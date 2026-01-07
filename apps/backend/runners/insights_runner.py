@@ -30,7 +30,7 @@ except ImportError:
         "   .venv\\Scripts\\activate   # Windows\n"
         "\n"
         "2. Or install dependencies directly:\n"
-        "   pip install -r requirements.txt\n"
+        "   pip install -r apps/backend/requirements.txt\n"
         "\n"
         f"Current Python: {sys.executable}\n"
     )
