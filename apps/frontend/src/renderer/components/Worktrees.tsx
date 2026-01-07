@@ -16,8 +16,7 @@ import {
   ChevronRight,
   Check,
   X,
-  Terminal,
-  ExternalLink
+  Terminal
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -424,7 +423,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                             <Button
                               variant="info"
                               size="sm"
-                              onClick={() => window.electronAPI.openExternal(task.metadata!.prUrl!)}
+                              onClick={() => window.electronAPI?.openExternal(task.metadata?.prUrl ?? '')}
                             >
                               <GitPullRequest className="h-3.5 w-3.5 mr-1.5" />
                               {t('common:buttons.openPR')}

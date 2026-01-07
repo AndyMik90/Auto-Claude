@@ -163,7 +163,7 @@ export const createTaskAPI = (): TaskAPI => ({
   unarchiveTasks: (projectId: string, taskIds: string[]): Promise<IPCResult<boolean>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_UNARCHIVE, projectId, taskIds),
 
-  createWorktreePR: (taskId: string, options?: { targetBranch?: string; title?: string; draft?: boolean }): Promise<IPCResult<WorktreeCreatePRResult>> =>
+  createWorktreePR: (taskId: string, options?: WorktreeCreatePROptions): Promise<IPCResult<WorktreeCreatePRResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_CREATE_PR, taskId, options),
 
   // Task Event Listeners
