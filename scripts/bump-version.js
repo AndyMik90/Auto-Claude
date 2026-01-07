@@ -149,6 +149,11 @@ function updateBackendInit(newVersion) {
   return true;
 }
 
+// Escape special regex characters to prevent regex injection
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Check if CHANGELOG.md has an entry for the version
 function checkChangelogEntry(version) {
   const changelogPath = path.join(__dirname, '..', 'CHANGELOG.md');
