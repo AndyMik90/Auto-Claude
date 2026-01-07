@@ -61,9 +61,15 @@
   },
   "time": {
     "justNow": "Только что",
-    "minutesAgo": "{{count}} мин назад",
-    "hoursAgo": "{{count}} ч назад",
-    "daysAgo": "{{count}} д назад"
+    "minutesAgo_one": "{{count}} минуту назад",
+    "minutesAgo_few": "{{count}} минуты назад",
+    "minutesAgo_many": "{{count}} минут назад",
+    "hoursAgo_one": "{{count}} час назад",
+    "hoursAgo_few": "{{count}} часа назад",
+    "hoursAgo_many": "{{count}} часов назад",
+    "daysAgo_one": "{{count}} день назад",
+    "daysAgo_few": "{{count}} дня назад",
+    "daysAgo_many": "{{count}} дней назад"
   },
   "errors": {
     "generic": "Произошла ошибка",
