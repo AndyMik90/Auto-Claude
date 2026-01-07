@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Beta version (e.g., 2.8.0-beta.1)'
+        description: "Beta version (e.g., 2.8.0-beta.1)"
         required: true
         type: string
       dry_run:
-        description: 'Test build without creating release'
+        description: "Test build without creating release"
         required: false
         default: false
         type: boolean
@@ -74,12 +74,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Get npm cache directory
         id: npm-cache
@@ -169,12 +169,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Get npm cache directory
         id: npm-cache
@@ -260,12 +260,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Get npm cache directory
         id: npm-cache
@@ -284,7 +284,7 @@ jobs:
       - name: Cache pip wheel cache
         uses: actions/cache@v4
         with:
-          path: ~\AppData\Local\pip\Cache
+          path: ~/AppData/Local/pip/Cache
           key: pip-wheel-${{ runner.os }}-x64-${{ hashFiles('apps/backend/requirements.txt') }}
           restore-keys: |
             pip-wheel-${{ runner.os }}-x64-
@@ -330,12 +330,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Get npm cache directory
         id: npm-cache
@@ -396,7 +396,14 @@ jobs:
             apps/frontend/dist/*.yml
 
   create-release:
-    needs: [create-tag, build-macos-intel, build-macos-arm64, build-windows, build-linux]
+    needs:
+      [
+        create-tag,
+        build-macos-intel,
+        build-macos-arm64,
+        build-windows,
+        build-linux,
+      ]
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.dry_run != 'true' }}
     permissions:
@@ -461,7 +468,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   dry-run-summary:
-    needs: [create-tag, build-macos-intel, build-macos-arm64, build-windows, build-linux]
+    needs:
+      [
+        create-tag,
+        build-macos-intel,
+        build-macos-arm64,
+        build-windows,
+        build-linux,
+      ]
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.dry_run == 'true' }}
     steps:

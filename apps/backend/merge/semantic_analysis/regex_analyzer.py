@@ -10,6 +10,33 @@ import re
 from ..types import ChangeType, FileAnalysis, SemanticChange
 
 
+def _extract_func_names_from_matches(
+    matches: list[str | tuple[str, ...]]
+) -> set[str]:
+    """
+    Extract function names from regex findall matches.
+    
+    For patterns with alternation, findall() returns tuples.
+    This helper extracts the non-empty match from each tuple.
+    
+    Args:
+        matches: List of matches from re.findall(), which can be strings or tuples
+        
+    Returns:
+        Set of extracted function names
+    """
+    names = set()
+    for match in matches:
+        if isinstance(match, tuple):
+            # Get the first non-empty group from the tuple
+            name = next((m for m in match if m), None)
+            if name:
+                names.add(name)
+        elif match:
+            names.add(match)
+    return names
+
+
 def analyze_with_regex(
     file_path: str,
     before: str,
@@ -96,20 +123,8 @@ def analyze_with_regex(
     if func_pattern:
         # For JS/TS patterns with alternation, findall() returns tuples
         # Extract the non-empty match from each tuple
-        def extract_func_names(matches):
-            names = set()
-            for match in matches:
-                if isinstance(match, tuple):
-                    # Get the first non-empty group from the tuple
-                    name = next((m for m in match if m), None)
-                    if name:
-                        names.add(name)
-                elif match:
-                    names.add(match)
-            return names
-
-        funcs_before = extract_func_names(func_pattern.findall(before_normalized))
-        funcs_after = extract_func_names(func_pattern.findall(after_normalized))
+        funcs_before = _extract_func_names_from_matches(func_pattern.findall(before_normalized))
+        funcs_after = _extract_func_names_from_matches(func_pattern.findall(after_normalized))
 
         for func in funcs_after - funcs_before:
             changes.append(

@@ -42,26 +42,76 @@ const WINDOWS_SHELL_PATHS: Record<string, string[]> = {
 };
 
 /**
+ * Search for a shell executable in PATH
+ */
+function findShellInPath(shellName: string): string | null {
+  const pathEnv = process.env.PATH || '';
+  const pathSeparator = process.platform === 'win32' ? ';' : ':';
+  const paths = pathEnv.split(pathSeparator);
+  
+  for (const dir of paths) {
+    const shellPath = `${dir}\\${shellName}`;
+    if (existsSync(shellPath)) {
+      return shellPath;
+    }
+  }
+  return null;
+}
+
+/**
  * Get the Windows shell executable based on preferred terminal setting
+ * Supports user-configurable paths via terminal.shellPaths setting
  */
 function getWindowsShell(preferredTerminal: SupportedTerminal | undefined): string {
+  // Read user settings for custom shell paths
+  const settings = readSettingsFile();
+  const customShellPaths = settings?.terminal?.shellPaths as Record<string, string[]> | undefined;
+  
   // If no preference or 'system', use COMSPEC (usually cmd.exe)
   if (!preferredTerminal || preferredTerminal === 'system') {
     return process.env.COMSPEC || 'cmd.exe';
   }
 
-  // Check if we have paths defined for this terminal type
-  const paths = WINDOWS_SHELL_PATHS[preferredTerminal];
-  if (paths) {
-    // Find the first existing shell
-    for (const shellPath of paths) {
-      if (existsSync(shellPath)) {
-        return shellPath;
-      }
+  // Merge custom paths with defaults (custom paths take priority)
+  let paths: string[] = [];
+  
+  // 1. Check user-provided custom paths first
+  if (customShellPaths && customShellPaths[preferredTerminal]) {
+    paths = [...customShellPaths[preferredTerminal]];
+  }
+  
+  // 2. Add default paths as fallback
+  const defaultPaths = WINDOWS_SHELL_PATHS[preferredTerminal];
+  if (defaultPaths) {
+    paths = [...paths, ...defaultPaths];
+  }
+
+  // 3. Find the first existing shell from merged paths
+  for (const shellPath of paths) {
+    if (existsSync(shellPath)) {
+      return shellPath;
+    }
+  }
+  
+  // 4. Try to find shell in PATH as additional fallback
+  const shellExecutables: Record<string, string> = {
+    powershell: 'pwsh.exe',
+    windowsterminal: 'pwsh.exe',
+    cmd: 'cmd.exe',
+    gitbash: 'bash.exe',
+    cygwin: 'bash.exe',
+    msys2: 'bash.exe',
+  };
+  
+  const shellName = shellExecutables[preferredTerminal];
+  if (shellName) {
+    const pathShell = findShellInPath(shellName);
+    if (pathShell) {
+      return pathShell;
     }
   }
 
-  // Fallback to COMSPEC for unrecognized terminals
+  // 5. Final fallback to COMSPEC
   return process.env.COMSPEC || 'cmd.exe';
 }
 

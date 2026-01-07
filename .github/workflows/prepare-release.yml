@@ -10,8 +10,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/frontend/package.json'
-      - 'package.json'
+      - "apps/frontend/package.json"
+      - "package.json"
 
 jobs:
   check-and-tag:
@@ -87,11 +87,17 @@ jobs:
           # Extract changelog section for this version
           # Looks for "## X.Y.Z" header and captures until next "## " or "---" or end
           CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
-            BEGIN { found=0; content="" }
+            BEGIN { 
+              found=0
+              content=""
+              # Escape dots in version for regex matching
+              ver_escaped = ver
+              gsub(/\./, "\\\\.", ver_escaped)
+            }
             /^## / {
               if (found) exit
               # Match version at start of header (e.g., "## 2.7.3 -" or "## 2.7.3")
-              if ($2 == ver || $2 ~ "^"ver"[[:space:]]*-") {
+              if ($2 == ver || $2 ~ "^"ver_escaped"[[:space:]]*-") {
                 found=1
                 # Skip the header line itself, we will add our own
                 next

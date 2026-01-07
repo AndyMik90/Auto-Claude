@@ -46,10 +46,12 @@ def apply_single_task_changes(
             if change.change_type == ChangeType.ADD_IMPORT:
                 # Add import at top
                 # Use splitlines() to handle all line ending styles (LF, CRLF, CR)
+                # Detect and preserve original line ending style
+                original_ending = "\r\n" if "\r\n" in content else "\n"
                 lines = content.splitlines()
                 import_end = find_import_end(lines, file_path)
                 lines.insert(import_end, change.content_after)
-                content = "\n".join(lines)
+                content = original_ending.join(lines)
             elif change.change_type == ChangeType.ADD_FUNCTION:
                 # Add function at end (before exports)
                 content += f"\n\n{change.content_after}"

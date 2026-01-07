@@ -4,11 +4,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Test build without creating release'
+        description: "Test build without creating release"
         required: false
         default: true
         type: boolean
@@ -24,12 +24,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Get npm cache directory
         id: npm-cache
@@ -112,12 +112,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Get npm cache directory
         id: npm-cache
@@ -196,12 +196,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Get npm cache directory
         id: npm-cache
@@ -258,12 +258,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Get npm cache directory
         id: npm-cache
@@ -516,44 +516,14 @@ jobs:
 
           echo "📋 Extracting release notes for version $VERSION from CHANGELOG.md..."
 
-          if [ ! -f "$CHANGELOG_FILE" ]; then
-            echo "::warning::CHANGELOG.md not found, using minimal release notes"
-            echo "body=Release v$VERSION" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Extract changelog section for this version
-          # Looks for "## X.Y.Z" header and captures until next "## " or "---"
-          CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
-            BEGIN { found=0; content="" }
-            /^## / {
-              if (found) exit
-              # Match version at start of header (e.g., "## 2.7.3 -" or "## 2.7.3")
-              if ($2 == ver || $2 ~ "^"ver"[[:space:]]*-") {
-                found=1
-                next
-              }
-            }
-            /^---$/ { if (found) exit }
-            found { content = content $0 "\n" }
-            END {
-              if (!found) {
-                print "NOT_FOUND"
-                exit 0
-              }
-              # Trim leading/trailing whitespace
-              gsub(/^[[:space:]]+|[[:space:]]+$/, "", content)
-              print content
-            }
-          ' "$CHANGELOG_FILE")
-
-          if [ "$CHANGELOG_CONTENT" = "NOT_FOUND" ] || [ -z "$CHANGELOG_CONTENT" ]; then
+          # Use shared extraction script with proper regex escaping
+          if CHANGELOG_CONTENT=$(bash scripts/extract-changelog.sh "$VERSION" "$CHANGELOG_FILE"); then
+            echo "✅ Extracted changelog content"
+          else
             echo "::warning::Version $VERSION not found in CHANGELOG.md, using minimal release notes"
             REPO="${{ github.repository }}"
             CHANGELOG_CONTENT="Release v$VERSION"$'\n\n'"See [CHANGELOG.md](https://github.com/${REPO}/blob/main/CHANGELOG.md) for details."
           fi
-
-          echo "✅ Extracted changelog content"
 
           # Save to file first (more reliable for multiline)
           echo "$CHANGELOG_CONTENT" > changelog-body.md
