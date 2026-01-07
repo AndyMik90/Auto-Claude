@@ -130,12 +130,28 @@ export function ADOWorkItems({ onOpenSettings }: ADOWorkItemsProps) {
     adoPat: string;
     adoInstanceUrl: string;
   }) => {
-    // TODO: Save settings to project
-    // For now, settings should be saved to .env file
-    console.log('ADO settings received:', settings);
-    setShowSetupModal(false);
-    handleRefresh();
-  }, [handleRefresh]);
+    if (!selectedProject?.id) return;
+
+    try {
+      // Save ADO settings to project .env file
+      await window.electronAPI.updateProjectEnv(selectedProject.id, {
+        adoEnabled: true,
+        adoOrganization: settings.adoOrganization,
+        adoProject: settings.adoProject,
+        adoRepoName: settings.adoRepoName,
+        adoPat: settings.adoPat,
+        adoInstanceUrl: settings.adoInstanceUrl,
+      });
+
+      setShowSetupModal(false);
+      // Re-check connection after settings are saved
+      setTimeout(() => {
+        handleRefresh();
+      }, 100);
+    } catch (error) {
+      console.error('Failed to save ADO settings:', error);
+    }
+  }, [selectedProject?.id, handleRefresh]);
 
   // Not connected state
   if (isConnected === false) {
