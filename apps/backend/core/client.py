@@ -545,6 +545,59 @@ def create_client(
     # cases where Claude uses absolute paths for file operations
     project_path_str = str(project_dir.resolve())
     spec_path_str = str(spec_dir.resolve())
+
+    # Detect if we're running in a worktree and get the original project directory
+    # Worktrees are located in either:
+    # - .auto-claude/worktrees/tasks/{spec-name}/ (new location)
+    # - .worktrees/{spec-name}/ (legacy location)
+    # When running in a worktree, we need to allow access to both the worktree
+    # and the original project's .auto-claude/ directory for spec files
+    original_project_permissions = []
+    resolved_project_path = project_dir.resolve()
+
+    # Check for worktree paths and extract original project directory
+    # This handles both new (.auto-claude/worktrees/tasks/) and legacy (.worktrees/) paths
+    worktree_markers = [
+        ".auto-claude/worktrees/tasks/",  # New worktree location
+        ".auto-claude\\worktrees\\tasks\\",  # Windows path variant
+        "/.worktrees/",  # Legacy worktree location
+        "\\.worktrees\\",  # Legacy Windows path variant
+    ]
+    project_path_posix = str(resolved_project_path).replace("\\", "/")
+
+    for marker in worktree_markers:
+        marker_posix = marker.replace("\\", "/")
+        if marker_posix in project_path_posix:
+            # Extract the original project directory (parent of worktree location)
+            original_project_str = project_path_posix.split(marker_posix)[0]
+            original_project_dir = Path(original_project_str)
+
+            # Add permissions for original project's .auto-claude/ directory
+            # This allows agents to access spec files when running in a worktree
+            auto_claude_dir = original_project_dir / ".auto-claude"
+            if auto_claude_dir.exists():
+                auto_claude_str = str(auto_claude_dir.resolve())
+                original_project_permissions.extend([
+                    f"Read({auto_claude_str}/**)",
+                    f"Write({auto_claude_str}/**)",
+                    f"Edit({auto_claude_str}/**)",
+                    f"Glob({auto_claude_str}/**)",
+                    f"Grep({auto_claude_str}/**)",
+                ])
+
+            # Also add permissions for legacy .worktrees/ directory if it exists
+            legacy_worktrees_dir = original_project_dir / ".worktrees"
+            if legacy_worktrees_dir.exists():
+                legacy_worktrees_str = str(legacy_worktrees_dir.resolve())
+                original_project_permissions.extend([
+                    f"Read({legacy_worktrees_str}/**)",
+                    f"Write({legacy_worktrees_str}/**)",
+                    f"Edit({legacy_worktrees_str}/**)",
+                    f"Glob({legacy_worktrees_str}/**)",
+                    f"Grep({legacy_worktrees_str}/**)",
+                ])
+            break
+
     security_settings = {
         "sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True},
         "permissions": {
@@ -567,6 +620,9 @@ def create_client(
                 f"Read({spec_path_str}/**)",
                 f"Write({spec_path_str}/**)",
                 f"Edit({spec_path_str}/**)",
+                # Allow original project's .auto-claude/ and .worktrees/ directories
+                # when running in a worktree (fixes issue #385 - permission errors)
+                *original_project_permissions,
                 # Bash permission granted here, but actual commands are validated
                 # by the bash_security_hook (see security.py for allowed commands)
                 "Bash(*)",
@@ -603,6 +659,8 @@ def create_client(
     print(f"Security settings: {settings_file}")
     print("   - Sandbox enabled (OS-level bash isolation)")
     print(f"   - Filesystem restricted to: {project_dir.resolve()}")
+    if original_project_permissions:
+        print("   - Worktree permissions: original project's .auto-claude/ accessible")
     print("   - Bash commands restricted to allowlist")
     if max_thinking_tokens:
         print(f"   - Extended thinking: {max_thinking_tokens:,} tokens")
