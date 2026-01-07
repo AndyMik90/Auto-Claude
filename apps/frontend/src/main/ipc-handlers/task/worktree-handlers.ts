@@ -2275,7 +2275,7 @@ export function registerWorktreeHandlers(
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_DISCARD,
-    async (_, taskId: string): Promise<IPCResult<WorktreeDiscardResult>> => {
+    async (_, taskId: string, skipStatusChange?: boolean): Promise<IPCResult<WorktreeDiscardResult>> => {
       try {
         const { task, project } = findTaskAndProject(taskId);
         if (!task || !project) {
@@ -2318,9 +2318,13 @@ export function registerWorktreeHandlers(
             // Branch might already be deleted or not exist
           }
 
-          const mainWindow = getMainWindow();
-          if (mainWindow) {
-            mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'backlog');
+          // Only send status change to backlog if not skipped
+          // (skip when caller will set a different status, e.g., 'done')
+          if (!skipStatusChange) {
+            const mainWindow = getMainWindow();
+            if (mainWindow) {
+              mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'backlog');
+            }
           }
 
           return {
