@@ -275,7 +275,7 @@ def _get_recovery_context(spec_dir: Path) -> str:
         return ""
 
     try:
-        with open(attempt_history_file) as f:
+        with open(attempt_history_file, encoding="utf-8") as f:
             history = json.load(f)
 
         # Check for stuck subtasks
