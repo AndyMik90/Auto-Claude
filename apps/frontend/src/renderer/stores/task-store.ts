@@ -55,6 +55,44 @@ function updateTaskAtIndex(tasks: Task[], index: number, updater: (task: Task) =
   return newTasks;
 }
 
+/**
+ * Validates implementation plan data structure before processing.
+ * Returns true if valid, false if invalid/incomplete.
+ */
+function validatePlanData(plan: ImplementationPlan): boolean {
+  // Validate plan has phases array
+  if (!plan.phases || !Array.isArray(plan.phases)) {
+    console.warn('[validatePlanData] Invalid plan: missing or invalid phases array');
+    return false;
+  }
+
+  // Validate each phase has subtasks array
+  for (let i = 0; i < plan.phases.length; i++) {
+    const phase = plan.phases[i];
+    if (!phase || !phase.subtasks || !Array.isArray(phase.subtasks)) {
+      console.warn(`[validatePlanData] Invalid phase ${i}: missing or invalid subtasks array`);
+      return false;
+    }
+
+    // Validate each subtask has at minimum a description
+    for (let j = 0; j < phase.subtasks.length; j++) {
+      const subtask = phase.subtasks[j];
+      if (!subtask || typeof subtask !== 'object') {
+        console.warn(`[validatePlanData] Invalid subtask at phase ${i}, index ${j}: not an object`);
+        return false;
+      }
+
+      // Description is critical - we can't show a subtask without it
+      if (!subtask.description || typeof subtask.description !== 'string' || subtask.description.trim() === '') {
+        console.warn(`[validatePlanData] Invalid subtask at phase ${i}, index ${j}: missing or empty description`);
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   selectedTaskId: null,
@@ -105,21 +143,59 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   updateTaskFromPlan: (taskId, plan) =>
     set((state) => {
+      console.log('[updateTaskFromPlan] called with plan:', {
+        taskId,
+        feature: plan.feature,
+        phases: plan.phases?.length || 0,
+        totalSubtasks: plan.phases?.reduce((acc, p) => acc + (p.subtasks?.length || 0), 0) || 0,
+        planData: plan
+      });
+
       const index = findTaskIndex(state.tasks, taskId);
-      if (index === -1) return state;
+      if (index === -1) {
+        console.log('[updateTaskFromPlan] Task not found:', taskId);
+        return state;
+      }
+
+      // Validate plan data before processing
+      if (!validatePlanData(plan)) {
+        console.error('[updateTaskFromPlan] Invalid plan data, skipping update:', {
+          taskId,
+          plan
+        });
+        return state;
+      }
 
       return {
         tasks: updateTaskAtIndex(state.tasks, index, (t) => {
           const subtasks: Subtask[] = plan.phases.flatMap((phase) =>
-            phase.subtasks.map((subtask) => ({
-              id: subtask.id,
-              title: subtask.description,
-              description: subtask.description,
-              status: subtask.status,
-              files: [],
-              verification: subtask.verification as Subtask['verification']
-            }))
+            phase.subtasks.map((subtask) => {
+              // Ensure all required fields have valid values to prevent UI issues
+              const id = subtask.id || `subtask-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              const description = subtask.description || 'No description available';
+              const title = description; // Title and description are the same for subtasks
+              const status = (subtask.status as SubtaskStatus) || 'pending';
+
+              return {
+                id,
+                title,
+                description,
+                status,
+                files: [],
+                verification: subtask.verification as Subtask['verification']
+              };
+            })
           );
+
+          console.log('[updateTaskFromPlan] Created subtasks:', {
+            taskId,
+            subtaskCount: subtasks.length,
+            subtasks: subtasks.map(s => ({
+              id: s.id,
+              title: s.title,
+              status: s.status
+            }))
+          });
 
           const allCompleted = subtasks.every((s) => s.status === 'completed');
           const anyFailed = subtasks.some((s) => s.status === 'failed');
@@ -143,6 +219,18 @@ export const useTaskStore = create<TaskState>((set, get) => ({
               status = 'in_progress';
             }
           }
+
+          console.log('[updateTaskFromPlan] Status computation:', {
+            taskId,
+            currentStatus: t.status,
+            newStatus: status,
+            isInActivePhase,
+            currentPhase: t.executionProgress?.phase,
+            allCompleted,
+            anyFailed,
+            anyInProgress,
+            anyCompleted
+          });
 
           return {
             ...t,

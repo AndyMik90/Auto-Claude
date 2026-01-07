@@ -625,4 +625,508 @@ describe('Task Store', () => {
       });
     });
   });
+
+  describe('updateTaskFromPlan - validation and subtask creation edge cases', () => {
+    beforeEach(() => {
+      // Spy on console methods to test validation logging and prevent crashes
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    describe('plan validation', () => {
+      it('should reject plan with missing phases array', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const invalidPlan = { feature: 'Test' } as any;
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+        // Task should not be updated when plan is invalid
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid plan: missing or invalid phases array')
+        );
+      });
+
+      it('should reject plan with null phases', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const invalidPlan = {
+          feature: 'Test',
+          phases: null
+        } as any;
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid plan: missing or invalid phases array')
+        );
+      });
+
+      it('should reject plan with phase missing subtasks array', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const invalidPlan = {
+          feature: 'Test',
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation'
+              // Missing subtasks
+            }
+          ]
+        } as any;
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid phase 0: missing or invalid subtasks array')
+        );
+      });
+
+      it('should reject plan with phase having subtasks not as array', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const invalidPlan = {
+          feature: 'Test',
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: 'not-an-array'
+            }
+          ]
+        } as any;
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid phase 0: missing or invalid subtasks array')
+        );
+      });
+
+      it('should reject plan with subtask not being an object', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const invalidPlan = {
+          feature: 'Test',
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: ['not-an-object', 'also-not-an-object']
+            }
+          ]
+        } as any;
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid subtask at phase 0, index 0: not an object')
+        );
+      });
+
+      it('should reject plan with subtask missing description', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const invalidPlan = {
+          feature: 'Test',
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', status: 'pending' } // Missing description
+              ]
+            }
+          ]
+        } as any;
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid subtask at phase 0, index 0: missing or empty description')
+        );
+      });
+
+      it('should reject plan with subtask having empty description', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const invalidPlan = {
+          feature: 'Test',
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', description: '', status: 'pending' }
+              ]
+            }
+          ]
+        } as any;
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid subtask at phase 0, index 0: missing or empty description')
+        );
+      });
+
+      it('should reject plan with subtask having whitespace-only description', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const invalidPlan = {
+          feature: 'Test',
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', description: '   ', status: 'pending' }
+              ]
+            }
+          ]
+        } as any;
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid subtask at phase 0, index 0: missing or empty description')
+        );
+      });
+
+      it('should accept valid plan with all required fields', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const validPlan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', description: 'Valid subtask', status: 'pending' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', validPlan);
+
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(1);
+        expect(useTaskStore.getState().tasks[0].subtasks[0].description).toBe('Valid subtask');
+      });
+    });
+
+    describe('subtask creation edge cases', () => {
+      it('should generate id for subtask missing id', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { description: 'Subtask without id', status: 'pending' } as any
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
+        expect(subtask.id).toBeDefined();
+        expect(subtask.id).toMatch(/^subtask-\d+-[a-z0-9]+$/);
+      });
+
+      it('should use description as title for subtasks', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', description: 'Test Description', status: 'pending' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
+        expect(subtask.title).toBe('Test Description');
+        expect(subtask.description).toBe('Test Description');
+      });
+
+      it('should accept all valid subtask statuses', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', description: 'Pending subtask', status: 'pending' },
+                { id: 'subtask-2', description: 'In progress subtask', status: 'in_progress' },
+                { id: 'subtask-3', description: 'Completed subtask', status: 'completed' },
+                { id: 'subtask-4', description: 'Failed subtask', status: 'failed' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtasks = useTaskStore.getState().tasks[0].subtasks;
+        expect(subtasks[0].status).toBe('pending');
+        expect(subtasks[1].status).toBe('in_progress');
+        expect(subtasks[2].status).toBe('completed');
+        expect(subtasks[3].status).toBe('failed');
+      });
+
+      it('should default status to pending when status is missing', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', description: 'Test subtask' } as any
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
+        expect(subtask.status).toBe('pending');
+      });
+
+      it('should initialize subtask with empty files array', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', description: 'Test subtask', status: 'pending' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
+        expect(subtask.files).toEqual([]);
+      });
+
+      it('should preserve verification field from plan subtask', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                {
+                  id: 'subtask-1',
+                  description: 'Test subtask',
+                  status: 'pending',
+                  verification: { type: 'command', run: 'npm test' }
+                }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
+        expect(subtask.verification).toEqual({ type: 'command', run: 'npm test' });
+      });
+
+      it('should handle subtask with verification undefined', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                {
+                  id: 'subtask-1',
+                  description: 'Test subtask',
+                  status: 'pending'
+                  // verification is undefined
+                }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
+        expect(subtask.verification).toBeUndefined();
+      });
+
+      it('should flatten subtasks from all phases in correct order', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'p1-s1', description: 'Phase 1 Subtask 1', status: 'pending' },
+                { id: 'p1-s2', description: 'Phase 1 Subtask 2', status: 'pending' }
+              ]
+            },
+            {
+              phase: 2,
+              name: 'Phase 2',
+              type: 'testing',
+              subtasks: [
+                { id: 'p2-s1', description: 'Phase 2 Subtask 1', status: 'pending' },
+                { id: 'p2-s2', description: 'Phase 2 Subtask 2', status: 'pending' }
+              ]
+            },
+            {
+              phase: 3,
+              name: 'Phase 3',
+              type: 'cleanup',
+              subtasks: [
+                { id: 'p3-s1', description: 'Phase 3 Subtask 1', status: 'pending' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtasks = useTaskStore.getState().tasks[0].subtasks;
+        expect(subtasks).toHaveLength(5);
+        expect(subtasks[0].id).toBe('p1-s1');
+        expect(subtasks[1].id).toBe('p1-s2');
+        expect(subtasks[2].id).toBe('p2-s1');
+        expect(subtasks[3].id).toBe('p2-s2');
+        expect(subtasks[4].id).toBe('p3-s1');
+      });
+
+      it('should handle phase with empty subtasks array', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'subtask-1', description: 'Valid subtask', status: 'pending' }
+              ]
+            },
+            {
+              phase: 2,
+              name: 'Phase 2',
+              type: 'testing',
+              subtasks: [] // Empty array
+            },
+            {
+              phase: 3,
+              name: 'Phase 3',
+              type: 'cleanup',
+              subtasks: [
+                { id: 'subtask-2', description: 'Another valid subtask', status: 'pending' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        const subtasks = useTaskStore.getState().tasks[0].subtasks;
+        expect(subtasks).toHaveLength(2);
+        expect(subtasks[0].id).toBe('subtask-1');
+        expect(subtasks[1].id).toBe('subtask-2');
+      });
+    });
+  });
 });
