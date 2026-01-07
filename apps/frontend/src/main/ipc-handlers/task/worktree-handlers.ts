@@ -1322,6 +1322,20 @@ interface ParsedPRResult {
 }
 
 /**
+ * Validate that a URL is a valid GitHub URL
+ * @returns true if the URL is a valid https://github.com or *.github.com URL
+ */
+function isValidGitHubUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' &&
+           (parsed.hostname === 'github.com' || parsed.hostname.endsWith('.github.com'));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Parse JSON output from the create-pr Python script
  * Handles both snake_case and camelCase field names
  * @returns ParsedPRResult if valid JSON found, null otherwise
@@ -1346,10 +1360,15 @@ function parsePRJsonOutput(stdout: string): ParsedPRResult | null {
     // Extract and validate fields with proper type checking
     // Handle both snake_case (from Python) and camelCase field names
     // Default success to false to avoid masking failures when field is missing
+    const rawPrUrl = typeof parsed.pr_url === 'string' ? parsed.pr_url :
+                     typeof parsed.prUrl === 'string' ? parsed.prUrl : undefined;
+
+    // Validate PR URL is a valid GitHub URL for robustness
+    const validatedPrUrl = rawPrUrl && isValidGitHubUrl(rawPrUrl) ? rawPrUrl : undefined;
+
     return {
       success: typeof parsed.success === 'boolean' ? parsed.success : false,
-      prUrl: typeof parsed.pr_url === 'string' ? parsed.pr_url :
-             typeof parsed.prUrl === 'string' ? parsed.prUrl : undefined,
+      prUrl: validatedPrUrl,
       alreadyExists: typeof parsed.already_exists === 'boolean' ? parsed.already_exists :
                      typeof parsed.alreadyExists === 'boolean' ? parsed.alreadyExists : undefined,
       error: typeof parsed.error === 'string' ? parsed.error : undefined
