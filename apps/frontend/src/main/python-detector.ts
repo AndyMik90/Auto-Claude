@@ -462,9 +462,20 @@ export function validatePythonPath(pythonPath: string): PythonPathValidation {
   };
 }
 
+/**
+ * Get a platform-appropriate Python fallback command.
+ * Windows uses 'python', macOS/Linux use 'python3'.
+ *
+ * This is used as a last-resort fallback when findPythonCommand() returns null,
+ * ensuring we use the correct command name for the platform.
+ */
+export function getPlatformPythonFallback(): string {
+  return process.platform === 'win32' ? 'python' : 'python3';
+}
+
 export function getValidatedPythonPath(providedPath: string | undefined, serviceName: string): string {
   if (!providedPath) {
-    return findPythonCommand() || 'python';
+    return findPythonCommand() || getPlatformPythonFallback();
   }
 
   const validation = validatePythonPath(providedPath);
@@ -473,5 +484,5 @@ export function getValidatedPythonPath(providedPath: string | undefined, service
   }
 
   console.error(`[${serviceName}] Invalid Python path rejected: ${validation.reason}`);
-  return findPythonCommand() || 'python';
+  return findPythonCommand() || getPlatformPythonFallback();
 }
