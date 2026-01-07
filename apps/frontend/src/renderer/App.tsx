@@ -439,19 +439,71 @@ export function App() {
 
   // Update selected task when tasks change (for real-time updates)
   useEffect(() => {
+    console.log('[App] selectedTask update effect triggered', {
+      hasSelectedTask: !!selectedTask,
+      selectedTaskId: selectedTask?.id,
+      selectedTaskSpecId: selectedTask?.specId,
+      tasksCount: tasks.length,
+      tasksIds: tasks.map(t => t.id),
+      timestamp: new Date().toISOString()
+    });
+
     if (selectedTask) {
       const updatedTask = tasks.find(
         (t) => t.id === selectedTask.id || t.specId === selectedTask.specId
       );
+
+      console.log('[App] Updated task lookup result', {
+        found: !!updatedTask,
+        updatedTaskId: updatedTask?.id,
+        updatedTaskSpecId: updatedTask?.specId,
+        timestamp: new Date().toISOString()
+      });
+
       if (updatedTask) {
         // Check if task actually changed by comparing subtasks
         // Use JSON.stringify for deep comparison of subtasks arrays
         const selectedTaskJson = JSON.stringify(selectedTask);
         const updatedTaskJson = JSON.stringify(updatedTask);
+
+        const subtasksBefore = selectedTask.subtasks || [];
+        const subtasksAfter = updatedTask.subtasks || [];
+
+        console.log('[App] Task comparison', {
+          tasksDiffer: selectedTaskJson !== updatedTaskJson,
+          subtasksCountBefore: subtasksBefore.length,
+          subtasksCountAfter: subtasksAfter.length,
+          subtasksBefore: subtasksBefore.map(st => ({ id: st.id, title: st.title })),
+          subtasksAfter: subtasksAfter.map(st => ({ id: st.id, title: st.title })),
+          timestamp: new Date().toISOString()
+        });
+
         if (selectedTaskJson !== updatedTaskJson) {
+          console.log('[App] Updating selectedTask', {
+            taskId: updatedTask.id,
+            taskSpecId: updatedTask.specId,
+            reason: 'Task data changed',
+            timestamp: new Date().toISOString()
+          });
           setSelectedTask(updatedTask);
+        } else {
+          console.log('[App] No update needed - task data unchanged', {
+            taskId: selectedTask.id,
+            taskSpecId: selectedTask.specId,
+            timestamp: new Date().toISOString()
+          });
         }
+      } else {
+        console.log('[App] Updated task not found in tasks array', {
+          selectedTaskId: selectedTask.id,
+          selectedTaskSpecId: selectedTask.specId,
+          timestamp: new Date().toISOString()
+        });
       }
+    } else {
+      console.log('[App] No selected task to update', {
+        timestamp: new Date().toISOString()
+      });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally omit selectedTask object to prevent infinite re-render loop
   }, [tasks, selectedTask?.id, selectedTask?.specId]);
