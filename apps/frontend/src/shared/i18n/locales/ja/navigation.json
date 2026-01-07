@@ -1,0 +1,51 @@
+{
+  "sections": {
+    "project": "プロジェクト",
+    "tools": "ツール"
+  },
+  "items": {
+    "kanban": "カンバンボード",
+    "terminals": "エージェントターミナル",
+    "insights": "インサイト",
+    "roadmap": "ロードマップ",
+    "ideation": "アイデア出し",
+    "changelog": "変更履歴",
+    "context": "コンテキスト",
+    "githubIssues": "GitHub Issue",
+    "githubPRs": "GitHub PR",
+    "gitlabIssues": "GitLab Issue",
+    "gitlabMRs": "GitLab MR",
+    "worktrees": "ワークツリー",
+    "agentTools": "MCP 概要"
+  },
+  "actions": {
+    "settings": "設定",
+    "help": "ヘルプ & フィードバック",
+    "newTask": "新規タスク"
+  },
+  "tooltips": {
+    "settings": "アプリケーション設定",
+    "help": "ヘルプ & フィードバック"
+  },
+  "messages": {
+    "initializeToCreateTasks": "タスクを作成するには Auto Claude を初期化してください"
+  },
+  "claudeCode": {
+    "checking": "Claude Code を確認中...",
+    "upToDate": "Claude Code は最新です",
+    "updateAvailable": "Claude Code のアップデートが可能です",
+    "notInstalled": "Claude Code がインストールされていません",
+    "error": "Claude Code の確認エラー",
+    "installed": "インストール済み",
+    "outdated": "アップデート可能",
+    "missing": "未インストール",
+    "current": "現在",
+    "latest": "最新",
+    "lastChecked": "最終確認",
+    "learnMore": "Claude Code についての詳細",
+    "learnMoreAriaLabel": "Claude Code についての詳細（新しいウィンドウで開きます）",
+    "updateWarningTitle": "Claude Code をアップデートしますか？",
+    "updateWarningDescription": "アップデートを行うと、実行中のすべての Claude Code セッションが終了します。セッション内の保存されていない作業は失われる可能性があります。続行する前に作業を保存してください。",
+    "updateAnyway": "とにかくアップデートする"
+  }
+}

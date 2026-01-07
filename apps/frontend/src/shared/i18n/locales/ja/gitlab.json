@@ -1,0 +1,208 @@
+{
+  "title": "GitLab Issue",
+  "states": {
+    "opened": "オープン",
+    "closed": "クローズ済み"
+  },
+  "complexity": {
+    "simple": "単純",
+    "standard": "標準",
+    "complex": "複雑"
+  },
+  "header": {
+    "open": "オープン",
+    "searchPlaceholder": "Issue を検索..."
+  },
+  "filters": {
+    "opened": "オープン",
+    "closed": "クローズ済み",
+    "all": "すべて"
+  },
+  "empty": {
+    "noMatch": "検索に一致する Issue はありません",
+    "selectIssue": "詳細を表示するには Issue を選択してください"
+  },
+  "notConnected": {
+    "title": "GitLab 未接続",
+    "description": "Issue を同期するには、プロジェクト設定で GitLab トークンとプロジェクトを設定してください。",
+    "openSettings": "設定を開く"
+  },
+  "detail": {
+    "notes": "ノート",
+    "viewTask": "タスクを表示",
+    "createTask": "タスクを作成",
+    "taskLinked": "タスクがリンクされました",
+    "taskId": "タスク ID",
+    "description": "説明",
+    "noDescription": "説明はありません。",
+    "assignees": "担当者",
+    "milestone": "マイルストーン"
+  },
+  "investigation": {
+    "title": "Issue からタスクを作成",
+    "issuePrefix": "Issue",
+    "description": "この GitLab Issue からタスクを作成します。タスクはカンバンボードのバックログ列に追加されます。",
+    "selectNotes": "含めるノートを選択",
+    "deselectAll": "すべて選択解除",
+    "selectAll": "すべて選択",
+    "willInclude": "タスクに含まれる内容:",
+    "includeTitle": "Issue のタイトルと説明",
+    "includeLink": "GitLab Issue へのリンク",
+    "includeLabels": "Issue のラベルとメタデータ",
+    "noNotes": "ノートなし (この Issue にはノートがありません)",
+    "failedToLoadNotes": "ノートの読み込みに失敗しました",
+    "taskCreated": "タスクが作成されました！カンバンボードで確認してください。",
+    "creating": "作成中...",
+    "cancel": "キャンセル",
+    "done": "完了",
+    "close": "閉じる"
+  },
+  "settings": {
+    "enableIssues": "GitLab Issue を有効化",
+    "enableIssuesDescription": "GitLab から Issue を同期し、タスクを自動的に作成します",
+    "instance": "GitLab インスタンス",
+    "instanceDescription": "https://gitlab.com またはセルフホストインスタンスの URL を使用します",
+    "connectedVia": "GitLab CLI 経由で接続済み",
+    "authenticatedAs": "認証済みユーザー:",
+    "useDifferentToken": "別のトークンを使用",
+    "authentication": "GitLab 認証",
+    "useManualToken": "手動トークンを使用",
+    "authenticating": "glab CLI で認証中...",
+    "browserWindow": "ログイン用のブラウザウィンドウが開きます。",
+    "personalAccessToken": "パーソナルアクセストークン",
+    "useOAuth": "OAuth を使用",
+    "tokenScope": "トークン作成時のスコープ:",
+    "scopeApi": "api",
+    "scopeFrom": "スコープ元:",
+    "gitlabSettings": "GitLab 設定",
+    "project": "プロジェクト",
+    "enterManually": "手動入力",
+    "loadingProjects": "プロジェクトを読み込み中...",
+    "selectProject": "プロジェクトを選択...",
+    "searchProjects": "プロジェクトを検索...",
+    "noMatchingProjects": "一致するプロジェクトはありません",
+    "noProjectsFound": "プロジェクトが見つかりません",
+    "selected": "選択済み",
+    "projectFormat": "形式:",
+    "projectFormatExample": "(例: gitlab-org/gitlab)",
+    "connectionStatus": "接続ステータス",
+    "checking": "確認中...",
+    "connectedTo": "接続先:",
+    "notConnected": "未接続",
+    "issuesAvailable": "利用可能な Issue",
+    "issuesAvailableDescription": "サイドバーから GitLab Issue にアクセスして、Issue の表示、調査、タスク作成を行います。",
+    "defaultBranch": "デフォルトブランチ",
+    "defaultBranchDescription": "タスクワークツリーを作成するためのベースブランチ",
+    "loadingBranches": "ブランチを読み込み中...",
+    "autoDetect": "自動検出 (main/master)",
+    "searchBranches": "ブランチを検索...",
+    "noMatchingBranches": "一致するブランチはありません",
+    "noBranchesFound": "ブランチが見つかりません",
+    "branchFromNote": "すべての新規タスクは以下からブランチされます:",
+    "autoSyncOnLoad": "ロード時に自動同期",
+    "autoSyncDescription": "プロジェクトロード時に Issue を自動的に取得します",
+    "cli": {
+      "required": "GitLab CLI が必要です",
+      "notInstalled": "OAuth 認証には GitLab CLI (glab) が必要です。「OAuth を使用」オプションを利用するにはインストールしてください。",
+      "installButton": "glab をインストール",
+      "installing": "インストール中...",
+      "installSuccess": "インストールがターミナルで開始されました。完了したら「更新」をクリックしてください。",
+      "refresh": "更新",
+      "learnMore": "詳細を見る",
+      "installed": "GitLab CLI インストール済み:"
+    }
+  },
+  "mergeRequests": {
+    "title": "GitLab Merge Request",
+    "newMR": "新規 Merge Request",
+    "selectMR": "詳細を表示するには Merge Request を選択してください",
+    "states": {
+      "opened": "オープン",
+      "closed": "クローズ済み",
+      "merged": "マージ済み",
+      "locked": "ロック済み"
+    },
+    "filters": {
+      "opened": "オープン",
+      "closed": "クローズ済み",
+      "merged": "マージ済み",
+      "all": "すべて"
+    }
+  },
+  "mrReview": {
+    "runReview": "AIレビューを実行",
+    "reviewing": "レビュー中...",
+    "followupReview": "フォローアップレビュー",
+    "newCommits": "新しいコミット",
+    "newCommitsPlural": "新しいコミット",
+    "cancel": "キャンセル",
+    "postFindings": "指摘事項を投稿",
+    "posting": "投稿中...",
+    "postedTo": "GitLab に投稿しました",
+    "approve": "承認",
+    "approving": "承認中...",
+    "merge": "MRをマージ",
+    "merging": "マージ中...",
+    "aiReviewResult": "AIレビュー結果",
+    "followupReviewResult": "フォローアップレビュー",
+    "description": "説明",
+    "noDescription": "説明はありません。",
+    "labels": "ラベル",
+    "status": {
+      "notReviewed": "未レビュー",
+      "notReviewedDesc": "この MR を分析するために AI レビューを実行します",
+      "reviewComplete": "レビュー完了",
+      "reviewCompleteDesc": "件の指摘が見つかりました。選択して GitLab に投稿してください。",
+      "waitingForChanges": "変更待ち",
+      "waitingForChangesDesc": "件の指摘を投稿しました。コントリビューターによる対応待ちです。",
+      "readyToMerge": "マージ可能",
+      "readyToMergeDesc": "ブロッキングな問題は見つかりませんでした。この MR はマージ可能です。",
+      "needsAttention": "要確認",
+      "needsAttentionDesc": "件の指摘を GitLab に投稿する必要があります。",
+      "readyForFollowup": "フォローアップ可能",
+      "readyForFollowupDesc": "レビュー以降。問題が解決されたか確認するためにフォローアップを実行してください。",
+      "blockingIssues": "ブロッキングな問題",
+      "blockingIssuesDesc": "件のブロッキングな問題が未解決です。"
+    },
+    "overallStatus": {
+      "approve": "承認",
+      "requestChanges": "変更要求",
+      "comment": "コメント"
+    },
+    "resolution": {
+      "resolved": "解決済み",
+      "stillOpen": "未解決",
+      "newIssue": "新しい問題",
+      "newIssues": "新しい問題"
+    }
+  },
+  "findings": {
+    "summary": "選択済み",
+    "selectCriticalHigh": "ブロッカー/必須を選択",
+    "selectAll": "すべて選択",
+    "clear": "クリア",
+    "noIssues": "問題は見つかりませんでした！コードは良好です。",
+    "suggestedFix": "修正案:",
+    "posted": "投稿済み",
+    "severity": {
+      "critical": "ブロッカー",
+      "criticalDesc": "修正必須",
+      "high": "必須",
+      "highDesc": "修正すべき",
+      "medium": "推奨",
+      "mediumDesc": "品質向上",
+      "low": "提案",
+      "lowDesc": "検討事項"
+    },
+    "category": {
+      "security": "セキュリティ",
+      "quality": "品質",
+      "style": "スタイル",
+      "test": "テスト",
+      "docs": "ドキュメント",
+      "pattern": "パターン",
+      "performance": "パフォーマンス",
+      "logic": "ロジック"
+    }
+  }
+}
