@@ -1,15 +1,15 @@
 // Load .env file FIRST before any other imports that might use process.env
-import { config } from 'dotenv';
-import { resolve, dirname } from 'path';
-import { existsSync } from 'fs';
+import { config } from "dotenv";
+import { resolve, dirname } from "path";
+import { existsSync } from "fs";
 
 // Load .env from apps/frontend directory
 // In development: __dirname is out/main (compiled), so go up 2 levels
 // In production: app resources directory
 const possibleEnvPaths = [
-  resolve(__dirname, '../../.env'),           // Development: out/main -> apps/frontend/.env
-  resolve(__dirname, '../../../.env'),        // Alternative: might be in different location
-  resolve(process.cwd(), 'apps/frontend/.env'), // Fallback: from workspace root
+  resolve(__dirname, "../../.env"), // Development: out/main -> apps/frontend/.env
+  resolve(__dirname, "../../../.env"), // Alternative: might be in different location
+  resolve(process.cwd(), "apps/frontend/.env"), // Fallback: from workspace root
 ];
 
 for (const envPath of possibleEnvPaths) {
@@ -20,24 +20,31 @@ for (const envPath of possibleEnvPaths) {
   }
 }
 
-import { app, BrowserWindow, shell, nativeImage, session, screen } from 'electron';
-import { join } from 'path';
-import { accessSync, readFileSync, writeFileSync, rmSync } from 'fs';
-import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { setupIpcHandlers } from './ipc-setup';
-import { AgentManager } from './agent';
-import { TerminalManager } from './terminal-manager';
-import { pythonEnvManager } from './python-env-manager';
-import { getUsageMonitor } from './claude-profile/usage-monitor';
-import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
-import { initializeAppUpdater } from './app-updater';
-import { DEFAULT_APP_SETTINGS } from '../shared/constants';
-import { readSettingsFile } from './settings-utils';
-import { setupErrorLogging } from './app-logger';
-import { initSentryMain } from './sentry';
-import { preWarmToolCache } from './cli-tool-manager';
-import { initializeClaudeProfileManager } from './claude-profile-manager';
-import type { AppSettings } from '../shared/types';
+import {
+  app,
+  BrowserWindow,
+  shell,
+  nativeImage,
+  session,
+  screen,
+} from "electron";
+import { join } from "path";
+import { accessSync, readFileSync, writeFileSync, rmSync } from "fs";
+import { electronApp, optimizer, is } from "@electron-toolkit/utils";
+import { setupIpcHandlers } from "./ipc-setup";
+import { AgentManager } from "./agent";
+import { TerminalManager } from "./terminal-manager";
+import { pythonEnvManager } from "./python-env-manager";
+import { getUsageMonitor } from "./claude-profile/usage-monitor";
+import { initializeUsageMonitorForwarding } from "./ipc-handlers/terminal-handlers";
+import { initializeAppUpdater } from "./app-updater";
+import { DEFAULT_APP_SETTINGS } from "../shared/constants";
+import { readSettingsFile } from "./settings-utils";
+import { setupErrorLogging } from "./app-logger";
+import { initSentryMain } from "./sentry";
+import { preWarmToolCache } from "./cli-tool-manager";
+import { initializeClaudeProfileManager } from "./claude-profile-manager";
+import type { AppSettings } from "../shared/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Window sizing constants
@@ -79,10 +86,10 @@ function loadSettingsSync(): AppSettings {
  * we use the actual bundled version from app.getVersion().
  */
 function cleanupStaleUpdateMetadata(): void {
-  const userData = app.getPath('userData');
+  const userData = app.getPath("userData");
   const stalePaths = [
-    join(userData, 'auto-claude-source'),
-    join(userData, 'backend-source'),
+    join(userData, "auto-claude-source"),
+    join(userData, "backend-source"),
   ];
 
   for (const stalePath of stalePaths) {
@@ -91,7 +98,10 @@ function cleanupStaleUpdateMetadata(): void {
         rmSync(stalePath, { recursive: true, force: true });
         console.warn(`[main] Cleaned up stale update metadata: ${stalePath}`);
       } catch (e) {
-        console.warn(`[main] Failed to clean up stale metadata at ${stalePath}:`, e);
+        console.warn(
+          `[main] Failed to clean up stale metadata at ${stalePath}:`,
+          e,
+        );
       }
     }
   }
@@ -102,17 +112,17 @@ function getIconPath(): string {
   // In dev mode, __dirname is out/main, so we go up to project root then into resources
   // In production, resources are in the app's resources folder
   const resourcesPath = is.dev
-    ? join(__dirname, '../../resources')
+    ? join(__dirname, "../../resources")
     : join(process.resourcesPath);
 
   let iconName: string;
-  if (process.platform === 'darwin') {
+  if (process.platform === "darwin") {
     // Use PNG in dev mode (works better), ICNS in production
-    iconName = is.dev ? 'icon-256.png' : 'icon.icns';
-  } else if (process.platform === 'win32') {
-    iconName = 'icon.ico';
+    iconName = is.dev ? "icon-256.png" : "icon.icns";
+  } else if (process.platform === "win32") {
+    iconName = "icon.ico";
   } else {
-    iconName = 'icon.png';
+    iconName = "icon.png";
   }
 
   const iconPath = join(resourcesPath, iconName);
@@ -134,22 +144,31 @@ function createWindow(): void {
     if (
       display &&
       display.workAreaSize &&
-      typeof display.workAreaSize.width === 'number' &&
-      typeof display.workAreaSize.height === 'number' &&
+      typeof display.workAreaSize.width === "number" &&
+      typeof display.workAreaSize.height === "number" &&
       display.workAreaSize.width > 0 &&
       display.workAreaSize.height > 0
     ) {
       workAreaSize = display.workAreaSize;
     } else {
       console.error(
-        '[main] screen.getPrimaryDisplay() returned unexpected structure:',
-        JSON.stringify(display)
+        "[main] screen.getPrimaryDisplay() returned unexpected structure:",
+        JSON.stringify(display),
       );
-      workAreaSize = { width: DEFAULT_SCREEN_WIDTH, height: DEFAULT_SCREEN_HEIGHT };
+      workAreaSize = {
+        width: DEFAULT_SCREEN_WIDTH,
+        height: DEFAULT_SCREEN_HEIGHT,
+      };
     }
   } catch (error: unknown) {
-    console.error('[main] Failed to get primary display, using fallback dimensions:', error);
-    workAreaSize = { width: DEFAULT_SCREEN_WIDTH, height: DEFAULT_SCREEN_HEIGHT };
+    console.error(
+      "[main] Failed to get primary display, using fallback dimensions:",
+      error,
+    );
+    workAreaSize = {
+      width: DEFAULT_SCREEN_WIDTH,
+      height: DEFAULT_SCREEN_HEIGHT,
+    };
   }
 
   // Calculate available space with a small margin to avoid edge-to-edge windows
@@ -172,79 +191,72 @@ function createWindow(): void {
     minHeight,
     show: false,
     autoHideMenuBar: true,
-    titleBarStyle: 'hiddenInset',
+    titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 15, y: 10 },
     icon: getIconPath(),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
+      preload: join(__dirname, "../preload/index.mjs"),
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false // Prevent terminal lag when window loses focus
-    }
+      backgroundThrottling: false, // Prevent terminal lag when window loses focus
+    },
   });
 
   // Show window when ready to avoid visual flash
-  mainWindow.on('ready-to-show', () => {
+  mainWindow.on("ready-to-show", () => {
     mainWindow?.show();
   });
 
   // Handle external links
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
-    return { action: 'deny' };
+    return { action: "deny" };
   });
 
   // Load the renderer
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
+    mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 
   // Open DevTools in development
   if (is.dev) {
-    mainWindow.webContents.openDevTools({ mode: 'right' });
+    mainWindow.webContents.openDevTools({ mode: "right" });
   }
 
   // Clean up on close
-  mainWindow.on('closed', () => {
+  mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
 
 // Set app name before ready (for dock tooltip on macOS in dev mode)
-app.setName('Auto Claude');
-if (process.platform === 'darwin') {
+app.setName("Auto Claude");
+if (process.platform === "darwin") {
   // Force the name to appear in dock on macOS
-  app.name = 'Auto Claude';
+  app.name = "Auto Claude";
 }
 
 // Fix Windows GPU cache permission errors (0x5 Access Denied)
-if (process.platform === 'win32') {
-  app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
-  app.commandLine.appendSwitch('disable-gpu-program-cache');
-  console.log('[main] Applied Windows GPU cache fixes');
+if (process.platform === "win32") {
+  app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
+  app.commandLine.appendSwitch("disable-gpu-program-cache");
+  console.log("[main] Applied Windows GPU cache fixes");
 }
 
 // Initialize the application
 app.whenReady().then(() => {
   // Set app user model id for Windows
-  electronApp.setAppUserModelId('com.autoclaude.ui');
-
-  // Clear cache on Windows to prevent permission errors from stale cache
-  if (process.platform === 'win32') {
-    session.defaultSession.clearCache()
-      .then(() => console.log('[main] Cleared cache on startup'))
-      .catch((err) => console.warn('[main] Failed to clear cache:', err));
-  }
+  electronApp.setAppUserModelId("com.autoclaude.ui");
 
   // Clean up stale update metadata from the old source updater system
   // This prevents version display desync after electron-updater installs a new version
   cleanupStaleUpdateMetadata();
 
   // Set dock icon on macOS
-  if (process.platform === 'darwin') {
+  if (process.platform === "darwin") {
     const iconPath = getIconPath();
     try {
       const icon = nativeImage.createFromPath(iconPath);
@@ -252,13 +264,13 @@ app.whenReady().then(() => {
         app.dock?.setIcon(icon);
       }
     } catch (e) {
-      console.warn('Could not set dock icon:', e);
+      console.warn("Could not set dock icon:", e);
     }
   }
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
-  app.on('browser-window-created', (_, window) => {
+  app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });
 
@@ -267,15 +279,19 @@ app.whenReady().then(() => {
 
   // Load settings and configure agent manager with Python and auto-claude paths
   // Uses EAFP pattern (try/catch) instead of LBYL (existsSync) to avoid TOCTOU race conditions
-  const settingsPath = join(app.getPath('userData'), 'settings.json');
+  const settingsPath = join(app.getPath("userData"), "settings.json");
   try {
-    const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
 
     // Validate and migrate autoBuildPath - must contain runners/spec_runner.py
     // Uses EAFP pattern (try/catch with accessSync) instead of existsSync to avoid TOCTOU race conditions
     let validAutoBuildPath = settings.autoBuildPath;
     if (validAutoBuildPath) {
-      const specRunnerPath = join(validAutoBuildPath, 'runners', 'spec_runner.py');
+      const specRunnerPath = join(
+        validAutoBuildPath,
+        "runners",
+        "spec_runner.py",
+      );
       let specRunnerExists = false;
       try {
         accessSync(specRunnerPath);
@@ -289,10 +305,17 @@ app.whenReady().then(() => {
         // Old structure: /path/to/project/auto-claude
         // New structure: /path/to/project/apps/backend
         let migrated = false;
-        if (validAutoBuildPath.endsWith('/auto-claude') || validAutoBuildPath.endsWith('\\auto-claude')) {
-          const basePath = validAutoBuildPath.replace(/[/\\]auto-claude$/, '');
-          const correctedPath = join(basePath, 'apps', 'backend');
-          const correctedSpecRunnerPath = join(correctedPath, 'runners', 'spec_runner.py');
+        if (
+          validAutoBuildPath.endsWith("/auto-claude") ||
+          validAutoBuildPath.endsWith("\\auto-claude")
+        ) {
+          const basePath = validAutoBuildPath.replace(/[/\\]auto-claude$/, "");
+          const correctedPath = join(basePath, "apps", "backend");
+          const correctedSpecRunnerPath = join(
+            correctedPath,
+            "runners",
+            "spec_runner.py",
+          );
 
           let correctedPathExists = false;
           try {
@@ -303,41 +326,66 @@ app.whenReady().then(() => {
           }
 
           if (correctedPathExists) {
-            console.log('[main] Migrating autoBuildPath from old structure:', validAutoBuildPath, '->', correctedPath);
+            console.log(
+              "[main] Migrating autoBuildPath from old structure:",
+              validAutoBuildPath,
+              "->",
+              correctedPath,
+            );
             settings.autoBuildPath = correctedPath;
             validAutoBuildPath = correctedPath;
             migrated = true;
 
             // Save the corrected setting - we're the only process modifying settings at startup
             try {
-              writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-              console.log('[main] Successfully saved migrated autoBuildPath to settings');
+              writeFileSync(
+                settingsPath,
+                JSON.stringify(settings, null, 2),
+                "utf-8",
+              );
+              console.log(
+                "[main] Successfully saved migrated autoBuildPath to settings",
+              );
             } catch (writeError) {
-              console.warn('[main] Failed to save migrated autoBuildPath:', writeError);
+              console.warn(
+                "[main] Failed to save migrated autoBuildPath:",
+                writeError,
+              );
             }
           }
         }
 
         if (!migrated) {
-          console.warn('[main] Configured autoBuildPath is invalid (missing runners/spec_runner.py), will use auto-detection:', validAutoBuildPath);
+          console.warn(
+            "[main] Configured autoBuildPath is invalid (missing runners/spec_runner.py), will use auto-detection:",
+            validAutoBuildPath,
+          );
           validAutoBuildPath = undefined; // Let auto-detection find the correct path
         }
       }
     }
 
     if (settings.pythonPath || validAutoBuildPath) {
-      console.warn('[main] Configuring AgentManager with settings:', {
+      console.warn("[main] Configuring AgentManager with settings:", {
         pythonPath: settings.pythonPath,
-        autoBuildPath: validAutoBuildPath
+        autoBuildPath: validAutoBuildPath,
       });
       agentManager.configure(settings.pythonPath, validAutoBuildPath);
     }
   } catch (error: unknown) {
     // ENOENT means no settings file yet - that's fine, use defaults
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
       // No settings file, use defaults - this is expected on first run
     } else {
-      console.warn('[main] Failed to load settings for agent configuration:', error);
+      console.warn(
+        "[main] Failed to load settings for agent configuration:",
+        error,
+      );
     }
   }
 
@@ -345,7 +393,12 @@ app.whenReady().then(() => {
   terminalManager = new TerminalManager(() => mainWindow);
 
   // Setup IPC handlers (pass pythonEnvManager for Python path management)
-  setupIpcHandlers(agentManager, terminalManager, () => mainWindow, pythonEnvManager);
+  setupIpcHandlers(
+    agentManager,
+    terminalManager,
+    () => mainWindow,
+    pythonEnvManager,
+  );
 
   // Create window
   createWindow();
@@ -354,8 +407,8 @@ app.whenReady().then(() => {
   // This ensures CLI detection is done before user needs it
   // Include all commonly used tools to prevent sync blocking on first use
   setImmediate(() => {
-    preWarmToolCache(['claude', 'git', 'gh', 'python']).catch((error) => {
-      console.warn('[main] Failed to pre-warm CLI cache:', error);
+    preWarmToolCache(["claude", "git", "gh", "python"]).catch((error) => {
+      console.warn("[main] Failed to pre-warm CLI cache:", error);
     });
   });
 
@@ -363,7 +416,7 @@ app.whenReady().then(() => {
   // This ensures profile data is loaded before user clicks "Start Claude Code"
   setImmediate(() => {
     initializeClaudeProfileManager().catch((error) => {
-      console.warn('[main] Failed to pre-initialize profile manager:', error);
+      console.warn("[main] Failed to pre-initialize profile manager:", error);
     });
   });
 
@@ -375,41 +428,45 @@ app.whenReady().then(() => {
     // Start the usage monitor
     const usageMonitor = getUsageMonitor();
     usageMonitor.start();
-    console.warn('[main] Usage monitor initialized and started');
+    console.warn("[main] Usage monitor initialized and started");
 
     // Log debug mode status
-    const isDebugMode = process.env.DEBUG === 'true';
+    const isDebugMode = process.env.DEBUG === "true";
     if (isDebugMode) {
-      console.warn('[main] ========================================');
-      console.warn('[main] DEBUG MODE ENABLED (DEBUG=true)');
-      console.warn('[main] ========================================');
+      console.warn("[main] ========================================");
+      console.warn("[main] DEBUG MODE ENABLED (DEBUG=true)");
+      console.warn("[main] ========================================");
     }
 
     // Initialize app auto-updater (only in production, or when DEBUG_UPDATER is set)
-    const forceUpdater = process.env.DEBUG_UPDATER === 'true';
+    const forceUpdater = process.env.DEBUG_UPDATER === "true";
     if (app.isPackaged || forceUpdater) {
       // Load settings to get beta updates preference
       const settings = loadSettingsSync();
       const betaUpdates = settings.betaUpdates ?? false;
 
       initializeAppUpdater(mainWindow, betaUpdates);
-      console.warn('[main] App auto-updater initialized');
-      console.warn(`[main] Beta updates: ${betaUpdates ? 'enabled' : 'disabled'}`);
+      console.warn("[main] App auto-updater initialized");
+      console.warn(
+        `[main] Beta updates: ${betaUpdates ? "enabled" : "disabled"}`,
+      );
       if (forceUpdater && !app.isPackaged) {
-        console.warn('[main] Updater forced in dev mode via DEBUG_UPDATER=true');
-        console.warn('[main] Note: Updates won\'t actually work in dev mode');
+        console.warn(
+          "[main] Updater forced in dev mode via DEBUG_UPDATER=true",
+        );
+        console.warn("[main] Note: Updates won't actually work in dev mode");
       }
     } else {
-      console.warn('[main] ========================================');
-      console.warn('[main] App auto-updater DISABLED (development mode)');
-      console.warn('[main] To test updater logging, set DEBUG_UPDATER=true');
-      console.warn('[main] Note: Actual updates only work in packaged builds');
-      console.warn('[main] ========================================');
+      console.warn("[main] ========================================");
+      console.warn("[main] App auto-updater DISABLED (development mode)");
+      console.warn("[main] To test updater logging, set DEBUG_UPDATER=true");
+      console.warn("[main] Note: Actual updates only work in packaged builds");
+      console.warn("[main] ========================================");
     }
   }
 
   // macOS: re-create window when dock icon is clicked
-  app.on('activate', () => {
+  app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
@@ -417,18 +474,18 @@ app.whenReady().then(() => {
 });
 
 // Quit when all windows are closed (except on macOS)
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
 // Cleanup before quit
-app.on('before-quit', async () => {
+app.on("before-quit", async () => {
   // Stop usage monitor
   const usageMonitor = getUsageMonitor();
   usageMonitor.stop();
-  console.warn('[main] Usage monitor stopped');
+  console.warn("[main] Usage monitor stopped");
 
   // Kill all running agent processes
   if (agentManager) {
