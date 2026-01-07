@@ -96,6 +96,35 @@ function transformPhase(raw: RawRoadmapPhase): RoadmapPhase {
   };
 }
 
+// Valid status values that map to Kanban columns
+const VALID_FEATURE_STATUSES = ['under_review', 'planned', 'in_progress', 'done'] as const;
+
+function normalizeFeatureStatus(status: string | undefined): RoadmapFeature['status'] {
+  if (!status) return 'under_review';
+  
+  // Direct match
+  if (VALID_FEATURE_STATUSES.includes(status as typeof VALID_FEATURE_STATUSES[number])) {
+    return status as RoadmapFeature['status'];
+  }
+  
+  // Map common backend values to valid statuses
+  const statusMap: Record<string, RoadmapFeature['status']> = {
+    'idea': 'under_review',
+    'backlog': 'under_review', 
+    'proposed': 'under_review',
+    'pending': 'under_review',
+    'approved': 'planned',
+    'scheduled': 'planned',
+    'active': 'in_progress',
+    'building': 'in_progress',
+    'complete': 'done',
+    'completed': 'done',
+    'shipped': 'done'
+  };
+  
+  return statusMap[status.toLowerCase()] || 'under_review';
+}
+
 function transformFeature(raw: RawRoadmapFeature): RoadmapFeature {
   return {
     id: raw.id,
@@ -107,13 +136,14 @@ function transformFeature(raw: RawRoadmapFeature): RoadmapFeature {
     impact: (raw.impact as RoadmapFeature['impact']) || 'medium',
     phaseId: raw.phase_id || raw.phaseId || '',
     dependencies: raw.dependencies || [],
-    status: (raw.status as RoadmapFeature['status']) || 'under_review',
+    status: normalizeFeatureStatus(raw.status),
     acceptanceCriteria: raw.acceptance_criteria || raw.acceptanceCriteria || [],
     userStories: raw.user_stories || raw.userStories || [],
     linkedSpecId: raw.linked_spec_id || raw.linkedSpecId,
     competitorInsightIds: raw.competitor_insight_ids || raw.competitorInsightIds
   };
 }
+
 
 export function transformRoadmapFromSnakeCase(
   raw: RawRoadmap,

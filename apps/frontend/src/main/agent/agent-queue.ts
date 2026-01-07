@@ -195,6 +195,30 @@ export class AgentQueueManager {
   ): Promise<void> {
     debugLog('[Agent Queue] Spawning ideation process:', { projectId, projectPath });
 
+    // Run from auto-claude source directory so imports work correctly
+    const autoBuildSource = this.processManager.getAutoBuildSourcePath();
+    const cwd = autoBuildSource || process.cwd();
+
+    // Ensure Python environment is ready before spawning (has dependencies installed)
+    // This prevents the race condition where ideation generation starts before deps are installed,
+    // which would cause it to fall back to system Python and fail with ModuleNotFoundError
+    if (!pythonEnvManager.isEnvReady()) {
+      debugLog('[Agent Queue] Python environment not ready, waiting for initialization...');
+      if (autoBuildSource) {
+        const status = await pythonEnvManager.initialize(autoBuildSource);
+        if (!status.ready) {
+          debugError('[Agent Queue] Python environment initialization failed:', status.error);
+          this.emitter.emit('ideation-error', projectId, `Python environment not ready: ${status.error || 'initialization failed'}`);
+          return;
+        }
+        debugLog('[Agent Queue] Python environment now ready');
+      } else {
+        debugError('[Agent Queue] Cannot initialize Python - auto-build source not found');
+        this.emitter.emit('ideation-error', projectId, 'Python environment not ready: auto-build source not found');
+        return;
+      }
+    }
+
     // Kill existing process for this project if any
     const wasKilled = this.processManager.killProcess(projectId);
     if (wasKilled) {
@@ -205,9 +229,6 @@ export class AgentQueueManager {
     const spawnId = this.state.generateSpawnId();
     debugLog('[Agent Queue] Generated spawn ID:', spawnId);
 
-    // Run from auto-claude source directory so imports work correctly
-    const autoBuildSource = this.processManager.getAutoBuildSourcePath();
-    const cwd = autoBuildSource || process.cwd();
 
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
@@ -516,6 +537,30 @@ export class AgentQueueManager {
   ): Promise<void> {
     debugLog('[Agent Queue] Spawning roadmap process:', { projectId, projectPath });
 
+    // Run from auto-claude source directory so imports work correctly
+    const autoBuildSource = this.processManager.getAutoBuildSourcePath();
+    const cwd = autoBuildSource || process.cwd();
+
+    // Ensure Python environment is ready before spawning (has dependencies installed)
+    // This prevents the race condition where roadmap generation starts before deps are installed,
+    // which would cause it to fall back to system Python and fail with ModuleNotFoundError
+    if (!pythonEnvManager.isEnvReady()) {
+      debugLog('[Agent Queue] Python environment not ready, waiting for initialization...');
+      if (autoBuildSource) {
+        const status = await pythonEnvManager.initialize(autoBuildSource);
+        if (!status.ready) {
+          debugError('[Agent Queue] Python environment initialization failed:', status.error);
+          this.emitter.emit('roadmap-error', projectId, `Python environment not ready: ${status.error || 'initialization failed'}`);
+          return;
+        }
+        debugLog('[Agent Queue] Python environment now ready');
+      } else {
+        debugError('[Agent Queue] Cannot initialize Python - auto-build source not found');
+        this.emitter.emit('roadmap-error', projectId, 'Python environment not ready: auto-build source not found');
+        return;
+      }
+    }
+
     // Kill existing process for this project if any
     const wasKilled = this.processManager.killProcess(projectId);
     if (wasKilled) {
@@ -526,9 +571,6 @@ export class AgentQueueManager {
     const spawnId = this.state.generateSpawnId();
     debugLog('[Agent Queue] Generated roadmap spawn ID:', spawnId);
 
-    // Run from auto-claude source directory so imports work correctly
-    const autoBuildSource = this.processManager.getAutoBuildSourcePath();
-    const cwd = autoBuildSource || process.cwd();
 
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
