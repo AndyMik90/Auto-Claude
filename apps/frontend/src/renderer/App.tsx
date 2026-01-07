@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, RefreshCw, AlertCircle } from 'lucide-react';
-import { debugLog, isDebugEnabled } from '../shared/utils/debug-logger';
+import { debugLog } from '../shared/utils/debug-logger';
 import {
   DndContext,
   DragOverlay,
