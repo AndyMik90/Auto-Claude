@@ -8,10 +8,19 @@
  * To run: npx playwright test terminal-copy-paste.e2e.ts --config=e2e/playwright.config.ts
  */
 import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
-import { _android as android } from 'playwright';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync } from 'fs';
 import path from 'path';
 import * as os from 'os';
+
+// Global Navigator declaration for clipboard
+declare global {
+  interface Navigator {
+    clipboard: {
+      readText(): Promise<string>;
+      writeText(text: string): Promise<void>;
+    };
+  }
+}
 
 // Test data directory
 const TEST_DATA_DIR = path.join(os.tmpdir(), 'auto-claude-terminal-e2e');
@@ -37,19 +46,9 @@ function cleanupTestEnvironment(): void {
   }
 }
 
-// Helper to get platform-specific copy shortcut keys
-function getCopyShortcutModifier(): 'meta' | 'ctrl' {
-  return isMac ? 'meta' : 'ctrl';
-}
-
 // Helper to get platform-specific copy shortcut
 function getCopyShortcutKey(): string {
   return isMac ? 'Meta' : 'Control';
-}
-
-// Helper to get paste shortcut modifier
-function getPasteShortcutModifier(): 'meta' | 'ctrl' {
-  return isMac ? 'meta' : 'ctrl';
 }
 
 // Helper to check if test should run on current platform
@@ -76,8 +75,9 @@ test.describe('Terminal Copy/Paste Flows', () => {
 
   test.beforeEach(async () => {
     // Launch Electron app
+    const appPath = path.join(__dirname, '..');
     app = await electron.launch({
-      args: ['.'],
+      args: [appPath],
       executablePath: electron.executablePath()
     });
 
@@ -146,7 +146,7 @@ test.describe('Terminal Copy/Paste Flows', () => {
 
       // Verify clipboard contains selected text
       const clipboardText = await window.evaluate(async () => {
-        return await (window as any).navigator.clipboard.readText();
+        return await navigator.clipboard.readText();
       });
 
       expect(clipboardText).toContain('test output for copy');
@@ -218,7 +218,7 @@ test.describe('Terminal Copy/Paste Flows', () => {
       // Set clipboard content
       const testText = 'hello world from clipboard';
       await window.evaluate(async (text) => {
-        await (window as any).navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(text);
       }, testText);
 
       const terminal = window.locator(terminalSelector).first();
@@ -286,7 +286,7 @@ test.describe('Terminal Copy/Paste Flows', () => {
 
       // Verify clipboard contains selected text
       const clipboardText = await window.evaluate(async () => {
-        return await (window as any).navigator.clipboard.readText();
+        return await navigator.clipboard.readText();
       });
 
       expect(clipboardText).toContain('linux copy test');
@@ -315,7 +315,7 @@ test.describe('Terminal Copy/Paste Flows', () => {
       // Set clipboard content
       const testText = 'pasted via ctrl+shift+v';
       await window.evaluate(async (text) => {
-        await (window as any).navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(text);
       }, testText);
 
       const terminal = window.locator(terminalSelector).first();
@@ -403,8 +403,8 @@ test.describe('Terminal Copy/Paste Flows', () => {
       await window.evaluate(async () => {
         // Try to read clipboard (may fail if permission denied)
         try {
-          await (window as any).navigator.clipboard.readText();
-        } catch (e) {
+          await navigator.clipboard.readText();
+        } catch (_error) {
           // Expected - clipboard may not be accessible in test environment
           console.log('Clipboard not accessible (expected in some environments)');
         }

@@ -7,7 +7,7 @@
  * Tests xterm.js selection API integration with clipboard operations
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, renderHook, act } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import React from 'react';
 import type { Mock } from 'vitest';
 import { Terminal as XTerm } from '@xterm/xterm';
@@ -254,6 +254,7 @@ describe('Terminal copy/paste integration', () => {
       const { useXterm } = await import('../../renderer/components/terminal/useXterm');
 
       // Mock Windows platform
+      const originalPlatformValue = process.platform;
       Object.defineProperty(process, 'platform', {
         value: 'win32',
         writable: true
@@ -327,11 +328,18 @@ describe('Terminal copy/paste integration', () => {
 
       // Verify integration: xterm.paste() called with clipboard content
       expect(mockPaste).toHaveBeenCalledWith('pasted text');
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatformValue,
+        writable: true
+      });
     });
 
     it('should not paste when clipboard is empty', async () => {
       const { useXterm } = await import('../../renderer/components/terminal/useXterm');
 
+      const originalPlatformValue = process.platform;
       Object.defineProperty(process, 'platform', {
         value: 'linux',
         writable: true
@@ -406,6 +414,12 @@ describe('Terminal copy/paste integration', () => {
 
       // Verify paste was NOT called for empty clipboard
       expect(mockPaste).not.toHaveBeenCalled();
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatformValue,
+        writable: true
+      });
     });
   });
 
@@ -613,7 +627,7 @@ describe('Terminal copy/paste integration', () => {
       let errorLogged = false;
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(function(...args: unknown[]) {
-        if (args[0]?.toString().includes('[useXterm]')) {
+        if (String(args[0]).includes('[useXterm]')) {
           errorLogged = true;
         }
       });
