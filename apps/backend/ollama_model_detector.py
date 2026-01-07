@@ -36,10 +36,26 @@ KNOWN_EMBEDDING_MODELS = {
         "dim": 768,
         "description": "Google EmbeddingGemma (lightweight)",
     },
-    "qwen3-embedding": {"dim": 1024, "description": "Qwen3 Embedding (0.6B)", "min_version": "0.10.0"},
-    "qwen3-embedding:0.6b": {"dim": 1024, "description": "Qwen3 Embedding 0.6B", "min_version": "0.10.0"},
-    "qwen3-embedding:4b": {"dim": 2560, "description": "Qwen3 Embedding 4B", "min_version": "0.10.0"},
-    "qwen3-embedding:8b": {"dim": 4096, "description": "Qwen3 Embedding 8B", "min_version": "0.10.0"},
+    "qwen3-embedding": {
+        "dim": 1024,
+        "description": "Qwen3 Embedding (0.6B)",
+        "min_version": "0.10.0",
+    },
+    "qwen3-embedding:0.6b": {
+        "dim": 1024,
+        "description": "Qwen3 Embedding 0.6B",
+        "min_version": "0.10.0",
+    },
+    "qwen3-embedding:4b": {
+        "dim": 2560,
+        "description": "Qwen3 Embedding 4B",
+        "min_version": "0.10.0",
+    },
+    "qwen3-embedding:8b": {
+        "dim": 4096,
+        "description": "Qwen3 Embedding 8B",
+        "min_version": "0.10.0",
+    },
     "bge-base-en": {"dim": 768, "description": "BAAI General Embedding - Base"},
     "bge-large-en": {"dim": 1024, "description": "BAAI General Embedding - Large"},
     "bge-small-en": {"dim": 384, "description": "BAAI General Embedding - Small"},
@@ -120,8 +136,10 @@ EMBEDDING_PATTERNS = [
 ]
 
 
-def parse_version(version_str: str) -> tuple[int, ...]:
+def parse_version(version_str: str | None) -> tuple[int, ...]:
     """Parse a version string like '0.10.0' into a tuple for comparison."""
+    if not version_str or not isinstance(version_str, str):
+        return (0, 0, 0)
     # Extract just the numeric parts (handles versions like "0.10.0-rc1")
     match = re.match(r"(\d+)\.(\d+)\.(\d+)", version_str)
     if match:
@@ -129,7 +147,7 @@ def parse_version(version_str: str) -> tuple[int, ...]:
     return (0, 0, 0)
 
 
-def version_gte(version: str, min_version: str) -> bool:
+def version_gte(version: str | None, min_version: str | None) -> bool:
     """Check if version >= min_version."""
     return parse_version(version) >= parse_version(min_version)
 
@@ -226,9 +244,11 @@ def get_model_min_version(model_name: str) -> str | None:
     """Get the minimum Ollama version required for a model."""
     name_lower = model_name.lower()
 
-    for known_model, info in KNOWN_EMBEDDING_MODELS.items():
+    # Sort keys by length descending to match more specific names first
+    # e.g., "qwen3-embedding:8b" before "qwen3-embedding"
+    for known_model in sorted(KNOWN_EMBEDDING_MODELS.keys(), key=len, reverse=True):
         if known_model in name_lower:
-            return info.get("min_version")
+            return KNOWN_EMBEDDING_MODELS[known_model].get("min_version")
 
     return None
 
@@ -248,7 +268,11 @@ def cmd_check_status(args) -> None:
                 "running": True,
                 "url": base_url,
                 "version": version,
-                "supports_new_models": version_gte(version, MIN_OLLAMA_VERSION_FOR_NEW_MODELS) if version != "unknown" else None,
+                "supports_new_models": version_gte(
+                    version, MIN_OLLAMA_VERSION_FOR_NEW_MODELS
+                )
+                if version != "unknown"
+                else None,
             },
         )
     else:
@@ -386,15 +410,20 @@ def cmd_get_recommended_models(args) -> None:
         # Check version compatibility
         min_version = model.get("min_ollama_version")
         is_compatible = True
+        compatibility_note = None
         if min_version and ollama_version:
             is_compatible = version_gte(ollama_version, min_version)
+            if not is_compatible:
+                compatibility_note = f"Requires Ollama {min_version}+"
+        elif min_version and not ollama_version:
+            compatibility_note = "Version compatibility could not be verified"
 
         recommended.append(
             {
                 **model,
                 "installed": is_installed,
                 "compatible": is_compatible,
-                "compatibility_note": f"Requires Ollama {min_version}+" if min_version and not is_compatible else None,
+                "compatibility_note": compatibility_note,
             }
         )
 
