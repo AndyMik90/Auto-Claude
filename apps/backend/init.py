@@ -177,7 +177,7 @@ def ensure_all_gitignore_entries(
 
     # Read existing content or start fresh
     if gitignore_path.exists():
-        content = gitignore_path.read_text()
+        content = gitignore_path.read_text(encoding="utf-8")
         lines = content.splitlines()
     else:
         content = ""
@@ -203,7 +203,7 @@ def ensure_all_gitignore_entries(
         content += entry + "\n"
         added_entries.append(entry)
 
-    gitignore_path.write_text(content)
+    gitignore_path.write_text(content, encoding="utf-8")
 
     # Auto-commit if requested and entries were added
     if auto_commit and added_entries:
