@@ -96,33 +96,55 @@ function transformPhase(raw: RawRoadmapPhase): RoadmapPhase {
   };
 }
 
-// Valid status values that map to Kanban columns
-const VALID_FEATURE_STATUSES = ['under_review', 'planned', 'in_progress', 'done'] as const;
+/**
+ * Maps all known backend status values to canonical Kanban column statuses.
+ * Includes valid statuses as identity mappings for consistent lookup.
+ * Module-level constant for efficiency (not recreated on each call).
+ */
+const STATUS_MAP: Record<string, RoadmapFeature['status']> = {
+  // Canonical Kanban statuses (identity mappings)
+  'under_review': 'under_review',
+  'planned': 'planned',
+  'in_progress': 'in_progress',
+  'done': 'done',
+  // Early-stage / ideation statuses → under_review
+  'idea': 'under_review',
+  'backlog': 'under_review',
+  'proposed': 'under_review',
+  'pending': 'under_review',
+  // Approved / scheduled statuses → planned
+  'approved': 'planned',
+  'scheduled': 'planned',
+  // Active development statuses → in_progress
+  'active': 'in_progress',
+  'building': 'in_progress',
+  // Completed statuses → done
+  'complete': 'done',
+  'completed': 'done',
+  'shipped': 'done'
+};
 
+/**
+ * Normalizes a feature status string to a valid Kanban column status.
+ * Handles case-insensitive matching and maps backend values to canonical statuses.
+ *
+ * @param status - The raw status string from the backend
+ * @returns A valid RoadmapFeature status for Kanban display
+ */
 function normalizeFeatureStatus(status: string | undefined): RoadmapFeature['status'] {
   if (!status) return 'under_review';
-  
-  // Direct match
-  if (VALID_FEATURE_STATUSES.includes(status as typeof VALID_FEATURE_STATUSES[number])) {
-    return status as RoadmapFeature['status'];
+
+  const normalized = STATUS_MAP[status.toLowerCase()];
+
+  if (!normalized) {
+    // Debug log for unmapped statuses to aid future mapping additions
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(`[Roadmap] normalizeFeatureStatus: unmapped status "${status}", defaulting to "under_review"`);
+    }
+    return 'under_review';
   }
-  
-  // Map common backend values to valid statuses
-  const statusMap: Record<string, RoadmapFeature['status']> = {
-    'idea': 'under_review',
-    'backlog': 'under_review', 
-    'proposed': 'under_review',
-    'pending': 'under_review',
-    'approved': 'planned',
-    'scheduled': 'planned',
-    'active': 'in_progress',
-    'building': 'in_progress',
-    'complete': 'done',
-    'completed': 'done',
-    'shipped': 'done'
-  };
-  
-  return statusMap[status.toLowerCase()] || 'under_review';
+
+  return normalized;
 }
 
 function transformFeature(raw: RawRoadmapFeature): RoadmapFeature {
