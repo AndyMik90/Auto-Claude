@@ -138,30 +138,34 @@ export function registerAgenteventsHandlers(
 
           if (code === 0) {
             notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
-            
+
             // Fallback: Ensure status is updated even if COMPLETE phase event was missed
             // This prevents tasks from getting stuck in ai_review status
             // Uses inverted logic to also handle tasks with no subtasks (treats them as complete)
             const isActiveStatus = task.status === 'in_progress' || task.status === 'ai_review';
-            const hasIncompleteSubtasks = task.subtasks && task.subtasks.length > 0 && 
+            const hasIncompleteSubtasks = task.subtasks && task.subtasks.length > 0 &&
               task.subtasks.some((s) => s.status !== 'completed');
-            
+
             if (isActiveStatus && !hasIncompleteSubtasks) {
               console.warn(`[Task ${taskId}] Fallback: Moving to human_review (process exited successfully)`);
               persistStatus('human_review');
+              // Include projectId for multi-project filtering (issue #723)
               mainWindow.webContents.send(
                 IPC_CHANNELS.TASK_STATUS_CHANGE,
                 taskId,
-                'human_review' as TaskStatus
+                'human_review' as TaskStatus,
+                projectId
               );
             }
           } else {
             notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
             persistStatus('human_review');
+            // Include projectId for multi-project filtering (issue #723)
             mainWindow.webContents.send(
               IPC_CHANNELS.TASK_STATUS_CHANGE,
               taskId,
-              'human_review' as TaskStatus
+              'human_review' as TaskStatus,
+              projectId
             );
           }
         }
@@ -174,7 +178,21 @@ export function registerAgenteventsHandlers(
   agentManager.on('execution-progress', (taskId: string, progress: ExecutionProgressData) => {
     const mainWindow = getMainWindow();
     if (mainWindow) {
-      mainWindow.webContents.send(IPC_CHANNELS.TASK_EXECUTION_PROGRESS, taskId, progress);
+      // Find the project that owns this task to include projectId in events
+      // This enables multi-project support by allowing the renderer to filter events
+      let taskProjectId: string | undefined;
+      const projects = projectStore.getProjects();
+      for (const p of projects) {
+        const tasks = projectStore.getTasks(p.id);
+        const task = tasks.find((t) => t.id === taskId || t.specId === taskId);
+        if (task) {
+          taskProjectId = p.id;
+          break;
+        }
+      }
+
+      // Include projectId in execution progress event for multi-project filtering
+      mainWindow.webContents.send(IPC_CHANNELS.TASK_EXECUTION_PROGRESS, taskId, progress, taskProjectId);
 
       const phaseToStatus: Record<string, TaskStatus | null> = {
         'idle': null,
@@ -188,10 +206,12 @@ export function registerAgenteventsHandlers(
 
       const newStatus = phaseToStatus[progress.phase];
       if (newStatus) {
+        // Include projectId in status change event for multi-project filtering
         mainWindow.webContents.send(
           IPC_CHANNELS.TASK_STATUS_CHANGE,
           taskId,
-          newStatus
+          newStatus,
+          taskProjectId
         );
 
         // CRITICAL: Persist status to plan file(s) to prevent flip-flop on task list refresh
@@ -201,7 +221,6 @@ export function registerAgenteventsHandlers(
         // IMPORTANT: We persist to BOTH main project AND worktree (if exists) to ensure
         // consistency, since getTasks() prefers the worktree version.
         try {
-          const projects = projectStore.getProjects();
           for (const p of projects) {
             const tasks = projectStore.getTasks(p.id);
             const task = tasks.find((t) => t.id === taskId || t.specId === taskId);
@@ -243,7 +262,18 @@ export function registerAgenteventsHandlers(
   fileWatcher.on('progress', (taskId: string, plan: ImplementationPlan) => {
     const mainWindow = getMainWindow();
     if (mainWindow) {
-      mainWindow.webContents.send(IPC_CHANNELS.TASK_PROGRESS, taskId, plan);
+      // Find projectId for this task to enable multi-project filtering
+      let taskProjectId: string | undefined;
+      const projects = projectStore.getProjects();
+      for (const p of projects) {
+        const tasks = projectStore.getTasks(p.id);
+        const task = tasks.find((t) => t.id === taskId || t.specId === taskId);
+        if (task) {
+          taskProjectId = p.id;
+          break;
+        }
+      }
+      mainWindow.webContents.send(IPC_CHANNELS.TASK_PROGRESS, taskId, plan, taskProjectId);
     }
   });
 
