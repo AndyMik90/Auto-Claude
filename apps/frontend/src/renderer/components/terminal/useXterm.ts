@@ -81,8 +81,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     xterm.open(terminalRef.current);
 
     // Platform detection for copy/paste shortcuts (renderer process uses navigator)
+    // macOS uses system Cmd+V, no custom handler needed
     const navigatorPlatform = navigator.platform.toLowerCase();
-    const isMac = navigatorPlatform.includes('mac'); // macOS uses system Cmd+V, no custom handler needed
     const isWindows = navigatorPlatform.includes('win');
     const isLinux = navigatorPlatform.includes('linux');
 
