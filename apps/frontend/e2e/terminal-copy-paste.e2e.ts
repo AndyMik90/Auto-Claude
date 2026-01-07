@@ -76,10 +76,7 @@ test.describe('Terminal Copy/Paste Flows', () => {
   test.beforeEach(async () => {
     // Launch Electron app
     const appPath = path.join(__dirname, '..');
-    app = await electron.launch({
-      args: [appPath],
-      executablePath: electron.executablePath()
-    });
+    app = await electron.launch({ args: [appPath] });
 
     window = await app.firstWindow({
       timeout: 15000
