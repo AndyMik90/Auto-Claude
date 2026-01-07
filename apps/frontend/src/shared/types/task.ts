@@ -229,6 +229,7 @@ export interface TaskMetadata {
   // Git/Worktree configuration
   baseBranch?: string;  // Override base branch for this task's worktree
   prUrl?: string;  // GitHub PR URL if task has been submitted as a PR
+  useWorktree?: boolean;  // If false, use direct mode (no worktree isolation) - default is true for safety
 
   // Archive status
   archivedAt?: string;  // ISO date when task was archived

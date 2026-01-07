@@ -16,7 +16,9 @@
     "archive": "Archive",
     "delete": "Delete",
     "view": "View Details",
-    "viewPR": "View PR"
+    "viewPR": "View PR",
+    "moveTo": "Move to",
+    "taskActions": "Task actions"
   },
   "labels": {
     "running": "Running",
@@ -48,6 +50,13 @@
   "empty": {
     "title": "No tasks yet",
     "description": "Create your first task to get started"
+  },
+  "columns": {
+    "backlog": "Planning",
+    "in_progress": "In Progress",
+    "ai_review": "AI Review",
+    "human_review": "Human Review",
+    "done": "Done"
   },
   "kanban": {
     "emptyBacklog": "No tasks planned",
@@ -110,5 +119,15 @@
   "images": {
     "removeImageAriaLabel": "Remove image {{filename}}",
     "pasteHint": "Tip: Paste screenshots directly with {{shortcut}} to add reference images."
+  },
+  "notifications": {
+    "backgroundTaskTitle": "Task continues in background",
+    "backgroundTaskDescription": "The task is still running. You can reopen this dialog to monitor progress."
+  },
+  "wizard": {
+    "gitOptions": {
+      "useWorktreeLabel": "Use isolated workspace (recommended)",
+      "useWorktreeDescription": "Creates changes in a separate git worktree for safe review before merging. Disable to build directly in your project (faster but riskier)."
+    }
   }
 }
