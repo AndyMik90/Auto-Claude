@@ -702,7 +702,24 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
     try {
       const version = verifyPythonBinary(pythonBin);
       console.log(`[download-python] Verified: ${version}`);
-      return { success: true, pythonPath: pythonBin, sitePackagesPath: sitePackagesDir };
+
+      // Verify critical packages exist (fixes GitHub issue #416)
+      // Without this check, corrupted caches with missing packages would be accepted
+      const criticalPackages = ['claude_agent_sdk', 'dotenv'];
+      const missingPackages = criticalPackages.filter(pkg => {
+        const pkgPath = path.join(sitePackagesDir, pkg);
+        return !fs.existsSync(pkgPath);
+      });
+
+      if (missingPackages.length > 0) {
+        console.log(`[download-python] Critical packages missing: ${missingPackages.join(', ')}`);
+        console.log(`[download-python] Reinstalling packages...`);
+        // Remove site-packages to force reinstall, keep Python binary
+        fs.rmSync(sitePackagesDir, { recursive: true, force: true });
+      } else {
+        console.log(`[download-python] All critical packages verified`);
+        return { success: true, pythonPath: pythonBin, sitePackagesPath: sitePackagesDir };
+      }
     } catch {
       console.log(`[download-python] Existing installation is broken, re-downloading...`);
       fs.rmSync(platformDir, { recursive: true, force: true });

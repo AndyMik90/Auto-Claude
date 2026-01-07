@@ -122,19 +122,30 @@ export class PythonEnvManager extends EventEmitter {
       return false;
     }
 
-    // Check for the marker file that indicates successful bundling
-    const markerPath = path.join(sitePackagesPath, '.bundled');
-    if (existsSync(markerPath)) {
-      console.log(`[PythonEnvManager] Found bundle marker, using bundled packages`);
-      return true;
-    }
-
-    // Fallback: check if key packages exist
-    // This handles cases where the marker might be missing but packages are there
+    // Check for critical packages - both must exist for proper functionality
+    // This fixes GitHub issue #416 where marker exists but packages are missing
     const claudeSdkPath = path.join(sitePackagesPath, 'claude_agent_sdk');
     const dotenvPath = path.join(sitePackagesPath, 'dotenv');
-    if (existsSync(claudeSdkPath) || existsSync(dotenvPath)) {
-      console.log(`[PythonEnvManager] Found key packages, using bundled packages`);
+    const hasClaudeSdk = existsSync(claudeSdkPath);
+    const hasDotenv = existsSync(dotenvPath);
+
+    // Log which packages are present/missing for debugging
+    if (!hasClaudeSdk) {
+      console.log(`[PythonEnvManager] Missing critical package: claude_agent_sdk at ${claudeSdkPath}`);
+    }
+    if (!hasDotenv) {
+      console.log(`[PythonEnvManager] Missing critical package: dotenv at ${dotenvPath}`);
+    }
+
+    // Both packages must exist - don't rely solely on marker file
+    if (hasClaudeSdk && hasDotenv) {
+      // Also check marker for logging purposes
+      const markerPath = path.join(sitePackagesPath, '.bundled');
+      if (existsSync(markerPath)) {
+        console.log(`[PythonEnvManager] Found bundle marker and all critical packages`);
+      } else {
+        console.log(`[PythonEnvManager] Found critical packages (marker missing)`);
+      }
       return true;
     }
 
