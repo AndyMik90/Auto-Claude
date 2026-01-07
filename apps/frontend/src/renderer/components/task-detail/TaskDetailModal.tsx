@@ -286,12 +286,12 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
             <CheckCircle2 className="h-5 w-5" />
             <span className="font-medium">{t('tasks:status.complete')}</span>
           </div>
-          {task.metadata?.prUrl && (
-            <button
-              type="button"
-              onClick={() => window.electronAPI.openExternal(task.metadata!.prUrl!)}
-              className="completion-state text-sm flex items-center gap-2 text-info cursor-pointer hover:underline bg-transparent border-none p-0"
-            >
+           {task.metadata?.prUrl && (
+             <button
+               type="button"
+               onClick={() => window.electronAPI?.openExternal(task.metadata!.prUrl!)}
+               className="completion-state text-sm flex items-center gap-2 text-info cursor-pointer hover:underline bg-transparent border-none p-0"
+             >
               <GitPullRequest className="h-5 w-5" />
               <span className="font-medium">{t(TASK_STATUS_LABELS[task.status])}</span>
             </button>
