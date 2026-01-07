@@ -42,6 +42,11 @@ if 'claude_code_sdk' not in sys.modules:
     sys.modules['claude_code_sdk'] = _create_sdk_mock()
     sys.modules['claude_code_sdk.types'] = MagicMock()
 
+# Pre-mock google.generativeai if not installed
+if 'google.generativeai' not in sys.modules:
+    sys.modules['google'] = MagicMock()
+    sys.modules['google.generativeai'] = MagicMock()
+
 # Add apps/backend directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
 
