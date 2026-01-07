@@ -23,6 +23,7 @@ Desktop.ini
 .secrets
 secrets/
 credentials/
+/config.json
 
 # ===========================
 # IDE & Editors
@@ -62,6 +63,7 @@ lerna-debug.log*
 .auto-claude-status
 .claude_settings.json
 .update-metadata.json
+/config.json
 
 # ===========================
 # Python (apps/backend)
