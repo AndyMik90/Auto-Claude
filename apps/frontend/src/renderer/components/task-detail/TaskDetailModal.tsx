@@ -200,6 +200,22 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
     onOpenChange(false);
   };
 
+  // Helper function to get status badge variant
+  const getStatusBadgeVariant = (status: string, isStuck: boolean) => {
+    if (isStuck) return 'warning';
+    switch (status) {
+      case 'done':
+      case 'pr_created':
+        return 'success';
+      case 'human_review':
+        return 'purple';
+      case 'in_progress':
+        return 'info';
+      default:
+        return 'secondary';
+    }
+  };
+
   // Render primary action button based on state
   const renderPrimaryAction = () => {
     if (state.isStuck) {
@@ -258,7 +274,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
       return (
         <div className="completion-state text-sm flex items-center gap-2 text-success">
           <CheckCircle2 className="h-5 w-5" />
-          <span className="font-medium">Task completed</span>
+          <span className="font-medium">{t('tasks:status.complete')}</span>
         </div>
       );
     }
@@ -268,7 +284,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
         <div className="flex items-center gap-4">
           <div className="completion-state text-sm flex items-center gap-2 text-success">
             <CheckCircle2 className="h-5 w-5" />
-            <span className="font-medium">Task completed</span>
+            <span className="font-medium">{t('tasks:status.complete')}</span>
           </div>
           {task.metadata?.prUrl && (
             <button
@@ -342,7 +358,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                       ) : (
                         <>
                            <Badge
-                             variant={task.status === 'done' ? 'success' : task.status === 'pr_created' ? 'success' : task.status === 'human_review' ? 'purple' : task.status === 'in_progress' ? 'info' : 'secondary'}
+                             variant={getStatusBadgeVariant(task.status, state.isStuck)}
                              className={cn('text-xs', (task.status === 'in_progress' && !state.isStuck) && 'status-running')}
                            >
                              {t(TASK_STATUS_LABELS[task.status])}

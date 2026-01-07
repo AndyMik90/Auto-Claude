@@ -264,7 +264,7 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
       case 'human_review':
         return 'purple';
       case 'pr_created':
-        return 'info';
+        return 'success';
       case 'done':
         return 'success';
       default:
@@ -384,14 +384,14 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
              {/* Status badge - hide when execution phase badge is showing */}
              {!hasActiveExecution && (
                <>
-                 {task.status === 'pr_created' ? (
-                   <Badge
-                     variant="success"
-                     className="text-[10px] px-1.5 py-0.5"
-                   >
-                     {getStatusLabel(task.status)}
-                   </Badge>
-                 ) : (
+                  {task.status === 'pr_created' ? (
+                    <Badge
+                      variant={getStatusBadgeVariant(task.status)}
+                      className="text-[10px] px-1.5 py-0.5"
+                    >
+                      {getStatusLabel(task.status)}
+                    </Badge>
+                  ) : (
                    <Badge
                      variant={isStuck ? 'warning' : isIncomplete ? 'warning' : getStatusBadgeVariant(task.status)}
                      className="text-[10px] px-1.5 py-0.5"
