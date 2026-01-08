@@ -389,17 +389,37 @@ class GitHubOrchestrator:
                 pr_number=pr_number,
             )
 
-            # Check CI status
-            ci_status = await self.gh_client.get_pr_checks(pr_number)
+            # Check CI status (comprehensive - includes workflows awaiting approval)
+            ci_status = await self.gh_client.get_pr_checks_comprehensive(pr_number)
+
+            # Log CI status with awaiting approval info
+            awaiting = ci_status.get("awaiting_approval", 0)
+            pending_without_awaiting = ci_status.get("pending", 0) - awaiting
+            ci_log_parts = [
+                f"{ci_status.get('passing', 0)} passing",
+                f"{ci_status.get('failing', 0)} failing",
+            ]
+            if pending_without_awaiting > 0:
+                ci_log_parts.append(f"{pending_without_awaiting} pending")
+            if awaiting > 0:
+                ci_log_parts.append(f"{awaiting} awaiting approval")
             print(
-                f"[DEBUG orchestrator] CI status: {ci_status.get('passing', 0)} passing, "
-                f"{ci_status.get('failing', 0)} failing, {ci_status.get('pending', 0)} pending",
+                f"[orchestrator] CI status: {', '.join(ci_log_parts)}",
                 flush=True,
             )
+            if awaiting > 0:
+                print(
+                    f"[orchestrator] ⚠️ {awaiting} workflow(s) from fork need maintainer approval to run",
+                    flush=True,
+                )
 
-            # Generate verdict (now includes CI status)
+            # Generate verdict (includes CI status and merge conflict check)
             verdict, verdict_reasoning, blockers = self._generate_verdict(
-                findings, structural_issues, ai_triages, ci_status
+                findings,
+                structural_issues,
+                ai_triages,
+                ci_status,
+                has_merge_conflicts=pr_context.has_merge_conflicts,
             )
             print(
                 f"[DEBUG orchestrator] Verdict: {verdict.value} - {verdict_reasoning}",
@@ -430,6 +450,7 @@ class GitHubOrchestrator:
                 structural_issues=structural_issues,
                 ai_triages=ai_triages,
                 risk_assessment=risk_assessment,
+                ci_status=ci_status,
             )
 
             # Get HEAD SHA for follow-up review tracking
@@ -499,6 +520,9 @@ class GitHubOrchestrator:
 
             # Save result
             await result.save(self.github_dir)
+
+            # Note: PR review memory is now saved by the Electron app after the review completes
+            # This ensures memory is saved to the embedded LadybugDB managed by the app
 
             # Mark as reviewed (head_sha already fetched above)
             if head_sha:
@@ -615,19 +639,29 @@ class GitHubOrchestrator:
                 await result.save(self.github_dir)
                 return result
 
-            # Check if there are new commits
-            if not followup_context.commits_since_review:
+            # Check if there are changes to review (commits OR files via blob comparison)
+            # After a rebase/force-push, commits_since_review will be empty (commit
+            # SHAs are rewritten), but files_changed_since_review will contain files
+            # that actually changed content based on blob SHA comparison.
+            has_commits = bool(followup_context.commits_since_review)
+            has_file_changes = bool(followup_context.files_changed_since_review)
+
+            if not has_commits and not has_file_changes:
+                base_sha = previous_review.reviewed_commit_sha[:8]
                 print(
-                    f"[Followup] No new commits since last review at {previous_review.reviewed_commit_sha[:8]}",
+                    f"[Followup] No changes since last review at {base_sha}",
                     flush=True,
                 )
                 # Return a result indicating no changes
+                no_change_summary = (
+                    "No new commits since last review. Previous findings still apply."
+                )
                 result = PRReviewResult(
                     pr_number=pr_number,
                     repo=self.config.repo,
                     success=True,
                     findings=previous_review.findings,
-                    summary="No new commits since last review. Previous findings still apply.",
+                    summary=no_change_summary,
                     overall_status=previous_review.overall_status,
                     verdict=previous_review.verdict,
                     verdict_reasoning="No changes since last review.",
@@ -639,12 +673,25 @@ class GitHubOrchestrator:
                 await result.save(self.github_dir)
                 return result
 
+            # Build progress message based on what changed
+            if has_commits:
+                num_commits = len(followup_context.commits_since_review)
+                change_desc = f"{num_commits} new commits"
+            else:
+                # Rebase detected - files changed but no trackable commits
+                num_files = len(followup_context.files_changed_since_review)
+                change_desc = f"{num_files} files (rebase detected)"
+
             self._report_progress(
                 "analyzing",
                 30,
-                f"Analyzing {len(followup_context.commits_since_review)} new commits...",
+                f"Analyzing {change_desc}...",
                 pr_number=pr_number,
             )
+
+            # Fetch CI status BEFORE calling reviewer so AI can factor it into verdict
+            ci_status = await self.gh_client.get_pr_checks_comprehensive(pr_number)
+            followup_context.ci_status = ci_status
 
             # Use parallel orchestrator for follow-up if enabled
             if self.config.use_parallel_orchestrator:
@@ -690,9 +737,9 @@ class GitHubOrchestrator:
                 )
                 result = await reviewer.review_followup(followup_context)
 
-            # Check CI status and override verdict if failing
-            ci_status = await self.gh_client.get_pr_checks(pr_number)
-            failed_checks = ci_status.get("failed_checks", [])
+            # Fallback: ensure CI failures block merge even if AI didn't factor it in
+            # (CI status was already passed to AI via followup_context.ci_status)
+            failed_checks = followup_context.ci_status.get("failed_checks", [])
             if failed_checks:
                 print(
                     f"[Followup] CI checks failing: {failed_checks}",
@@ -724,6 +771,9 @@ class GitHubOrchestrator:
             # Save result
             await result.save(self.github_dir)
 
+            # Note: PR review memory is now saved by the Electron app after the review completes
+            # This ensures memory is saved to the embedded LadybugDB managed by the app
+
             # Mark as reviewed with new commit SHA
             if result.reviewed_commit_sha:
                 self.bot_detector.mark_reviewed(pr_number, result.reviewed_commit_sha)
@@ -751,15 +801,25 @@ class GitHubOrchestrator:
         structural_issues: list[StructuralIssue],
         ai_triages: list[AICommentTriage],
         ci_status: dict | None = None,
+        has_merge_conflicts: bool = False,
     ) -> tuple[MergeVerdict, str, list[str]]:
         """
-        Generate merge verdict based on all findings and CI status.
+        Generate merge verdict based on all findings, CI status, and merge conflicts.
 
-        NEW: Strengthened to block on verification failures, redundancy issues,
-        and failing CI checks.
+        Blocks on:
+        - Merge conflicts (must be resolved before merging)
+        - Verification failures
+        - Redundancy issues
+        - Failing CI checks
         """
         blockers = []
         ci_status = ci_status or {}
+
+        # CRITICAL: Merge conflicts block merging - check first
+        if has_merge_conflicts:
+            blockers.append(
+                "Merge Conflicts: PR has conflicts with base branch that must be resolved"
+            )
 
         # Count by severity
         critical = [f for f in findings if f.severity == ReviewSeverity.CRITICAL]
@@ -801,6 +861,13 @@ class GitHubOrchestrator:
         for check_name in failed_checks:
             blockers.append(f"CI Failed: {check_name}")
 
+        # Workflows awaiting approval block merging (fork PRs)
+        awaiting_approval = ci_status.get("awaiting_approval", 0)
+        if awaiting_approval > 0:
+            blockers.append(
+                f"Workflows Pending: {awaiting_approval} workflow(s) awaiting maintainer approval"
+            )
+
         # NEW: Verification failures block merging
         for f in verification_failures:
             note = f" - {f.verification_note}" if f.verification_note else ""
@@ -833,14 +900,28 @@ class GitHubOrchestrator:
             )
             blockers.append(f"{t.tool_name}: {summary}")
 
-        # Determine verdict with CI, verification and redundancy checks
+        # Determine verdict with merge conflicts, CI, verification and redundancy checks
         if blockers:
+            # Merge conflicts are the highest priority blocker
+            if has_merge_conflicts:
+                verdict = MergeVerdict.BLOCKED
+                reasoning = (
+                    "Blocked: PR has merge conflicts with base branch. "
+                    "Resolve conflicts before merge."
+                )
             # CI failures are always blockers
-            if failed_checks:
+            elif failed_checks:
                 verdict = MergeVerdict.BLOCKED
                 reasoning = (
                     f"Blocked: {len(failed_checks)} CI check(s) failing. "
                     "Fix CI before merge."
+                )
+            # Workflows awaiting approval block merging
+            elif awaiting_approval > 0:
+                verdict = MergeVerdict.BLOCKED
+                reasoning = (
+                    f"Blocked: {awaiting_approval} workflow(s) awaiting approval. "
+                    "Approve workflows on GitHub to run CI checks."
                 )
             # NEW: Prioritize verification failures
             elif verification_failures:
@@ -946,6 +1027,7 @@ class GitHubOrchestrator:
         structural_issues: list[StructuralIssue],
         ai_triages: list[AICommentTriage],
         risk_assessment: dict,
+        ci_status: dict | None = None,
     ) -> str:
         """Generate enhanced summary with verdict, risk, and actionable next steps."""
         verdict_emoji = {
@@ -955,8 +1037,19 @@ class GitHubOrchestrator:
             MergeVerdict.BLOCKED: "🔴",
         }
 
+        # Generate bottom line for quick scanning
+        bottom_line = self._generate_bottom_line(
+            verdict=verdict,
+            ci_status=ci_status,
+            blockers=blockers,
+            findings=findings,
+        )
+
         lines = [
             f"### Merge Verdict: {verdict_emoji.get(verdict, '⚪')} {verdict.value.upper().replace('_', ' ')}",
+            "",
+            f"> {bottom_line}",
+            "",
             verdict_reasoning,
             "",
             "### Risk Assessment",
@@ -1022,6 +1115,70 @@ class GitHubOrchestrator:
         lines.append("_Generated by Auto Claude PR Review_")
 
         return "\n".join(lines)
+
+    def _generate_bottom_line(
+        self,
+        verdict: MergeVerdict,
+        ci_status: dict | None,
+        blockers: list[str],
+        findings: list[PRReviewFinding],
+    ) -> str:
+        """Generate a one-line summary for quick scanning at the top of the review."""
+        # Check CI status
+        ci = ci_status or {}
+        pending_ci = ci.get("pending", 0)
+        failing_ci = ci.get("failing", 0)
+        awaiting_approval = ci.get("awaiting_approval", 0)
+
+        # Count blocking findings and issues
+        blocking_findings = [
+            f for f in findings if f.severity.value in ("critical", "high", "medium")
+        ]
+        code_blockers = [
+            b for b in blockers if "CI" not in b and "Merge Conflict" not in b
+        ]
+        has_merge_conflicts = any("Merge Conflict" in b for b in blockers)
+
+        # Determine the bottom line based on verdict and context
+        if verdict == MergeVerdict.READY_TO_MERGE:
+            return (
+                "**✅ Ready to merge** - All checks passing, no blocking issues found."
+            )
+
+        elif verdict == MergeVerdict.BLOCKED:
+            if has_merge_conflicts:
+                return "**🔴 Blocked** - Merge conflicts must be resolved before merge."
+            elif failing_ci > 0:
+                return f"**🔴 Blocked** - {failing_ci} CI check(s) failing. Fix CI before merge."
+            elif awaiting_approval > 0:
+                return "**🔴 Blocked** - Awaiting maintainer approval for fork PR workflow."
+            elif blocking_findings:
+                return f"**🔴 Blocked** - {len(blocking_findings)} critical/high/medium issue(s) must be fixed."
+            else:
+                return "**🔴 Blocked** - Critical issues must be resolved before merge."
+
+        elif verdict == MergeVerdict.NEEDS_REVISION:
+            # Key insight: distinguish "waiting on CI" from "needs code fixes"
+            # Check code issues FIRST before checking pending CI
+            if blocking_findings:
+                return f"**🟠 Needs revision** - {len(blocking_findings)} issue(s) require attention."
+            elif code_blockers:
+                return f"**🟠 Needs revision** - {len(code_blockers)} structural/other issue(s) require attention."
+            elif pending_ci > 0:
+                # Only show "Ready once CI passes" when no code issues exist
+                return f"**⏳ Ready once CI passes** - {pending_ci} check(s) pending, no blocking code issues."
+            else:
+                return "**🟠 Needs revision** - See details below."
+
+        elif verdict == MergeVerdict.MERGE_WITH_CHANGES:
+            if pending_ci > 0:
+                return (
+                    "**🟡 Can merge once CI passes** - Minor suggestions, no blockers."
+                )
+            else:
+                return "**🟡 Can merge** - Minor suggestions noted, no blockers."
+
+        return "**📝 Review complete** - See details below."
 
     def _format_review_body(self, result: PRReviewResult) -> str:
         """Format the review body for posting to GitHub."""

@@ -101,13 +101,11 @@ def mock_bot_detector(tmp_path):
 class TestPRReviewResult:
     """Test PRReviewResult model."""
 
-    def test_save_and_load(self, temp_github_dir, sample_review_result):
+    @pytest.mark.asyncio
+    async def test_save_and_load(self, temp_github_dir, sample_review_result):
         """Test saving and loading review result."""
         # Save
-        import asyncio
-        asyncio.get_event_loop().run_until_complete(
-            sample_review_result.save(temp_github_dir)
-        )
+        await sample_review_result.save(temp_github_dir)
 
         # Verify file exists
         review_file = temp_github_dir / "pr" / f"review_{sample_review_result.pr_number}.json"
@@ -227,6 +225,54 @@ class TestFollowupReviewContext:
         assert context.error is not None
         assert "Failed to compare commits" in context.error
 
+    def test_context_rebase_detected_files_changed_no_commits(self, sample_review_result):
+        """Test follow-up context when PR was rebased (files changed but no trackable commits).
+
+        After a rebase/force-push, commit SHAs are rewritten so we can't identify "new" commits.
+        However, blob SHA comparison can still identify which files actually changed content.
+        The follow-up review should proceed based on file changes, not skip the review.
+        """
+        context = FollowupReviewContext(
+            pr_number=123,
+            previous_review=sample_review_result,
+            previous_commit_sha="abc123",  # This SHA no longer exists in PR after rebase
+            current_commit_sha="xyz789",
+            commits_since_review=[],  # Empty after rebase - can't determine "new" commits
+            files_changed_since_review=["src/db.py", "src/api.py"],  # But blob comparison found changes
+            diff_since_review="--- a/src/db.py\n+++ b/src/db.py\n@@ -1,3 +1,3 @@\n-old\n+new",
+        )
+
+        # Verify context reflects rebase scenario
+        assert context.pr_number == 123
+        assert len(context.commits_since_review) == 0  # No trackable commits
+        assert len(context.files_changed_since_review) == 2  # But files did change
+        assert context.error is None
+
+        # The key assertion: this context should NOT be treated as "no changes"
+        # The orchestrator should check both commits AND files
+        has_changes = bool(context.commits_since_review) or bool(
+            context.files_changed_since_review
+        )
+        assert has_changes is True, "Rebase with file changes should be treated as having changes"
+
+    def test_context_truly_no_changes(self, sample_review_result):
+        """Test follow-up context when there are truly no changes (same SHA, no files)."""
+        context = FollowupReviewContext(
+            pr_number=123,
+            previous_review=sample_review_result,
+            previous_commit_sha="abc123",
+            current_commit_sha="abc123",  # Same SHA
+            commits_since_review=[],
+            files_changed_since_review=[],  # No file changes either
+            diff_since_review="",
+        )
+
+        # This should be treated as no changes
+        has_changes = bool(context.commits_since_review) or bool(
+            context.files_changed_since_review
+        )
+        assert has_changes is False, "No commits and no file changes means no changes"
+
 
 # ============================================================================
 # Bot Detection Integration Tests
@@ -289,14 +335,11 @@ class TestBotDetectionIntegration:
 class TestOrchestratorSkipLogic:
     """Test orchestrator behavior when bot detection skips."""
 
-    def test_skip_returns_existing_review(self, temp_github_dir, sample_review_result):
+    @pytest.mark.asyncio
+    async def test_skip_returns_existing_review(self, temp_github_dir, sample_review_result):
         """Test that skipping 'Already reviewed' returns existing review."""
-        import asyncio
-
         # Save existing review
-        asyncio.get_event_loop().run_until_complete(
-            sample_review_result.save(temp_github_dir)
-        )
+        await sample_review_result.save(temp_github_dir)
 
         # Simulate the orchestrator logic for "Already reviewed" skip
         skip_reason = "Already reviewed commit abc123"
@@ -418,19 +461,16 @@ class TestPostedFindingsTracking:
         assert sample_review_result.has_posted_findings is True
         assert len(sample_review_result.posted_finding_ids) == 1
 
-    def test_posted_findings_serialization(self, temp_github_dir, sample_review_result):
+    @pytest.mark.asyncio
+    async def test_posted_findings_serialization(self, temp_github_dir, sample_review_result):
         """Test that posted findings are serialized correctly."""
-        import asyncio
-
         # Set posted findings
         sample_review_result.has_posted_findings = True
         sample_review_result.posted_finding_ids = ["finding-001"]
         sample_review_result.posted_at = "2025-01-01T10:00:00"
 
         # Save
-        asyncio.get_event_loop().run_until_complete(
-            sample_review_result.save(temp_github_dir)
-        )
+        await sample_review_result.save(temp_github_dir)
 
         # Load and verify
         loaded = PRReviewResult.load(temp_github_dir, sample_review_result.pr_number)
