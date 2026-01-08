@@ -28,6 +28,45 @@ try:
 except (ImportError, ValueError, SystemError):
     from gh_client import GHClient, PRTooLargeError
 
+# Validation patterns for git refs and paths (defense-in-depth)
+# These patterns allow common valid characters while rejecting potentially dangerous ones
+SAFE_REF_PATTERN = re.compile(r"^[a-zA-Z0-9._/\-]+$")
+SAFE_PATH_PATTERN = re.compile(r"^[a-zA-Z0-9._/\-@]+$")
+
+
+def _validate_git_ref(ref: str) -> bool:
+    """
+    Validate git ref (branch name or commit SHA) for safe use in commands.
+
+    Args:
+        ref: Git ref to validate
+
+    Returns:
+        True if ref is safe, False otherwise
+    """
+    if not ref or len(ref) > 256:
+        return False
+    return bool(SAFE_REF_PATTERN.match(ref))
+
+
+def _validate_file_path(path: str) -> bool:
+    """
+    Validate file path for safe use in git commands.
+
+    Args:
+        path: File path to validate
+
+    Returns:
+        True if path is safe, False otherwise
+    """
+    if not path or len(path) > 1024:
+        return False
+    # Reject path traversal attempts
+    if ".." in path or path.startswith("/"):
+        return False
+    return bool(SAFE_PATH_PATTERN.match(path))
+
+
 if TYPE_CHECKING:
     try:
         from .models import FollowupReviewContext, PRReviewResult
@@ -62,27 +101,80 @@ class AIBotComment:
 
 
 # Known AI code review bots and their display names
+# Organized by category for maintainability
 AI_BOT_PATTERNS: dict[str, str] = {
+    # === AI Code Review Tools ===
     "coderabbitai": "CodeRabbit",
     "coderabbit-ai": "CodeRabbit",
     "coderabbit[bot]": "CodeRabbit",
     "greptile": "Greptile",
     "greptile[bot]": "Greptile",
+    "greptile-ai": "Greptile",
+    "greptile-apps": "Greptile",
+    "cursor": "Cursor",
     "cursor-ai": "Cursor",
     "cursor[bot]": "Cursor",
     "sourcery-ai": "Sourcery",
     "sourcery-ai[bot]": "Sourcery",
+    "sourcery-ai-bot": "Sourcery",
     "codiumai": "Qodo",
     "codium-ai[bot]": "Qodo",
+    "codiumai-agent": "Qodo",
     "qodo-merge-bot": "Qodo",
+    # === Google AI ===
+    "gemini-code-assist": "Gemini Code Assist",
+    "gemini-code-assist[bot]": "Gemini Code Assist",
+    "google-code-assist": "Gemini Code Assist",
+    "google-code-assist[bot]": "Gemini Code Assist",
+    # === AI Coding Assistants ===
     "copilot": "GitHub Copilot",
     "copilot[bot]": "GitHub Copilot",
+    "copilot-swe-agent[bot]": "GitHub Copilot",
+    "sweep-ai[bot]": "Sweep AI",
+    "sweep-nightly[bot]": "Sweep AI",
+    "sweep-canary[bot]": "Sweep AI",
+    "bitoagent": "Bito AI",
+    "codeium-ai-superpowers": "Codeium",
+    "devin-ai-integration": "Devin AI",
+    # === GitHub Native Bots ===
     "github-actions": "GitHub Actions",
     "github-actions[bot]": "GitHub Actions",
-    "deepsource-autofix": "DeepSource",
-    "deepsource-autofix[bot]": "DeepSource",
+    "github-advanced-security": "GitHub Advanced Security",
+    "github-advanced-security[bot]": "GitHub Advanced Security",
+    "dependabot": "Dependabot",
+    "dependabot[bot]": "Dependabot",
+    "github-merge-queue[bot]": "GitHub Merge Queue",
+    # === Code Quality & Static Analysis ===
     "sonarcloud": "SonarCloud",
     "sonarcloud[bot]": "SonarCloud",
+    "deepsource-autofix": "DeepSource",
+    "deepsource-autofix[bot]": "DeepSource",
+    "deepsourcebot": "DeepSource",
+    "codeclimate[bot]": "CodeClimate",
+    "codefactor-io[bot]": "CodeFactor",
+    "codacy[bot]": "Codacy",
+    # === Security Scanning ===
+    "snyk-bot": "Snyk",
+    "snyk[bot]": "Snyk",
+    "snyk-security-bot": "Snyk",
+    "gitguardian[bot]": "GitGuardian",
+    "semgrep-app[bot]": "Semgrep",
+    "semgrep-bot": "Semgrep",
+    # === Code Coverage ===
+    "codecov[bot]": "Codecov",
+    "codecov-commenter": "Codecov",
+    "coveralls": "Coveralls",
+    "coveralls[bot]": "Coveralls",
+    # === Dependency Management ===
+    "renovate[bot]": "Renovate",
+    "renovate-bot": "Renovate",
+    "self-hosted-renovate[bot]": "Renovate",
+    # === PR Automation ===
+    "mergify[bot]": "Mergify",
+    "imgbotapp": "Imgbot",
+    "imgbot[bot]": "Imgbot",
+    "allstar[bot]": "Allstar",
+    "percy[bot]": "Percy",
 }
 
 
@@ -109,18 +201,28 @@ class PRContext:
     ai_bot_comments: list[AIBotComment] = field(default_factory=list)
     # Flag indicating if full diff was skipped (PR > 20K lines)
     diff_truncated: bool = False
+    # Commit SHAs for worktree creation (PR review isolation)
+    head_sha: str = ""  # Commit SHA of PR head (headRefOid)
+    base_sha: str = ""  # Commit SHA of PR base (baseRefOid)
+    # Merge conflict status
+    has_merge_conflicts: bool = False  # True if PR has conflicts with base branch
+    merge_state_status: str = (
+        ""  # BEHIND, BLOCKED, CLEAN, DIRTY, HAS_HOOKS, UNKNOWN, UNSTABLE
+    )
 
 
 class PRContextGatherer:
     """Gathers all context needed for PR review BEFORE the AI starts."""
 
-    def __init__(self, project_dir: Path, pr_number: int):
+    def __init__(self, project_dir: Path, pr_number: int, repo: str | None = None):
         self.project_dir = Path(project_dir)
         self.pr_number = pr_number
+        self.repo = repo
         self.gh_client = GHClient(
             project_dir=self.project_dir,
             default_timeout=30.0,
             max_retries=3,
+            repo=repo,
         )
 
     async def gather(self) -> PRContext:
@@ -138,6 +240,19 @@ class PRContextGatherer:
             f"[Context] PR metadata: {pr_data['title']} by {pr_data['author']['login']}",
             flush=True,
         )
+
+        # Ensure PR refs are available locally (fetches commits for fork PRs)
+        head_sha = pr_data.get("headRefOid", "")
+        base_sha = pr_data.get("baseRefOid", "")
+        refs_available = False
+        if head_sha and base_sha:
+            refs_available = await self._ensure_pr_refs_available(head_sha, base_sha)
+            if not refs_available:
+                print(
+                    "[Context] Warning: Could not fetch PR refs locally. "
+                    "Will use GitHub API patches as fallback.",
+                    flush=True,
+                )
 
         # Fetch changed files with content
         changed_files = await self._fetch_changed_files(pr_data)
@@ -166,6 +281,17 @@ class PRContextGatherer:
         # Check if diff was truncated (empty diff but files were changed)
         diff_truncated = len(diff) == 0 and len(changed_files) > 0
 
+        # Check merge conflict status
+        mergeable = pr_data.get("mergeable", "UNKNOWN")
+        merge_state_status = pr_data.get("mergeStateStatus", "UNKNOWN")
+        has_merge_conflicts = mergeable == "CONFLICTING"
+
+        if has_merge_conflicts:
+            print(
+                f"[Context] ⚠️  PR has merge conflicts (mergeStateStatus: {merge_state_status})",
+                flush=True,
+            )
+
         return PRContext(
             pr_number=self.pr_number,
             title=pr_data["title"],
@@ -184,6 +310,10 @@ class PRContextGatherer:
             total_deletions=pr_data.get("deletions", 0),
             ai_bot_comments=ai_bot_comments,
             diff_truncated=diff_truncated,
+            head_sha=pr_data.get("headRefOid", ""),
+            base_sha=pr_data.get("baseRefOid", ""),
+            has_merge_conflicts=has_merge_conflicts,
+            merge_state_status=merge_state_status,
         )
 
     async def _fetch_pr_metadata(self) -> dict:
@@ -197,14 +327,95 @@ class PRContextGatherer:
                 "state",
                 "headRefName",
                 "baseRefName",
+                "headRefOid",  # Commit SHA for head - works even when branch is unavailable locally
+                "baseRefOid",  # Commit SHA for base - works even when branch is unavailable locally
                 "author",
                 "files",
                 "additions",
                 "deletions",
                 "changedFiles",
                 "labels",
+                "mergeable",  # MERGEABLE, CONFLICTING, or UNKNOWN
+                "mergeStateStatus",  # BEHIND, BLOCKED, CLEAN, DIRTY, HAS_HOOKS, UNKNOWN, UNSTABLE
             ],
         )
+
+    async def _ensure_pr_refs_available(self, head_sha: str, base_sha: str) -> bool:
+        """
+        Ensure PR refs are available locally by fetching the commit SHAs.
+
+        This solves the "fatal: bad revision" error when PR branches aren't
+        available locally (e.g., PRs from forks or unfetched branches).
+
+        Args:
+            head_sha: The head commit SHA (from headRefOid)
+            base_sha: The base commit SHA (from baseRefOid)
+
+        Returns:
+            True if refs are available, False otherwise
+        """
+        # Validate SHAs before using in git commands
+        if not _validate_git_ref(head_sha):
+            print(
+                f"[Context] Invalid head SHA rejected: {head_sha[:50]}...", flush=True
+            )
+            return False
+        if not _validate_git_ref(base_sha):
+            print(
+                f"[Context] Invalid base SHA rejected: {base_sha[:50]}...", flush=True
+            )
+            return False
+
+        try:
+            # Fetch the specific commits - this works even for fork PRs
+            proc = await asyncio.create_subprocess_exec(
+                "git",
+                "fetch",
+                "origin",
+                head_sha,
+                base_sha,
+                cwd=self.project_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+
+            if proc.returncode == 0:
+                print(
+                    f"[Context] Fetched PR refs: base={base_sha[:8]} → head={head_sha[:8]}",
+                    flush=True,
+                )
+                return True
+            else:
+                # If direct SHA fetch fails, try fetching the PR ref
+                print("[Context] Direct SHA fetch failed, trying PR ref...", flush=True)
+                proc2 = await asyncio.create_subprocess_exec(
+                    "git",
+                    "fetch",
+                    "origin",
+                    f"pull/{self.pr_number}/head:refs/pr/{self.pr_number}",
+                    cwd=self.project_dir,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await asyncio.wait_for(proc2.communicate(), timeout=30.0)
+                if proc2.returncode == 0:
+                    print(
+                        f"[Context] Fetched PR ref: refs/pr/{self.pr_number}",
+                        flush=True,
+                    )
+                    return True
+                print(
+                    f"[Context] Failed to fetch PR refs: {stderr.decode('utf-8')}",
+                    flush=True,
+                )
+                return False
+        except asyncio.TimeoutError:
+            print("[Context] Timeout fetching PR refs", flush=True)
+            return False
+        except Exception as e:
+            print(f"[Context] Error fetching PR refs: {e}", flush=True)
+            return False
 
     async def _fetch_changed_files(self, pr_data: dict) -> list[ChangedFile]:
         """
@@ -226,16 +437,18 @@ class PRContextGatherer:
 
             print(f"[Context]   Processing {path} ({status})...", flush=True)
 
-            # Get current content (from PR head branch)
-            content = await self._read_file_content(path, pr_data["headRefName"])
+            # Use commit SHAs if available (works for fork PRs), fallback to branch names
+            head_ref = pr_data.get("headRefOid") or pr_data["headRefName"]
+            base_ref = pr_data.get("baseRefOid") or pr_data["baseRefName"]
 
-            # Get base content (from base branch)
-            base_content = await self._read_file_content(path, pr_data["baseRefName"])
+            # Get current content (from PR head commit)
+            content = await self._read_file_content(path, head_ref)
+
+            # Get base content (from base commit)
+            base_content = await self._read_file_content(path, base_ref)
 
             # Get the patch for this specific file
-            patch = await self._get_file_patch(
-                path, pr_data["baseRefName"], pr_data["headRefName"]
-            )
+            patch = await self._get_file_patch(path, base_ref, head_ref)
 
             changed_files.append(
                 ChangedFile(
@@ -276,6 +489,14 @@ class PRContextGatherer:
         Returns:
             File content as string, or empty string if file doesn't exist
         """
+        # Validate inputs to prevent command injection
+        if not _validate_file_path(path):
+            print(f"[Context] Invalid file path rejected: {path[:50]}...", flush=True)
+            return ""
+        if not _validate_git_ref(ref):
+            print(f"[Context] Invalid git ref rejected: {ref[:50]}...", flush=True)
+            return ""
+
         try:
             proc = await asyncio.create_subprocess_exec(
                 "git",
@@ -312,6 +533,21 @@ class PRContextGatherer:
         Returns:
             Unified diff patch for this file
         """
+        # Validate inputs to prevent command injection
+        if not _validate_file_path(path):
+            print(f"[Context] Invalid file path rejected: {path[:50]}...", flush=True)
+            return ""
+        if not _validate_git_ref(base_ref):
+            print(
+                f"[Context] Invalid base ref rejected: {base_ref[:50]}...", flush=True
+            )
+            return ""
+        if not _validate_git_ref(head_ref):
+            print(
+                f"[Context] Invalid head ref rejected: {head_ref[:50]}...", flush=True
+            )
+            return ""
+
         try:
             proc = await asyncio.create_subprocess_exec(
                 "git",
@@ -664,8 +900,9 @@ class PRContextGatherer:
         # Start from the directory containing the source file
         base_dir = source_path.parent
 
-        # Resolve relative path
-        resolved = (base_dir / import_path).resolve()
+        # Resolve relative path - MUST prepend project_dir to resolve correctly
+        # when CWD is different from project root (e.g., running from apps/backend/)
+        resolved = (self.project_dir / base_dir / import_path).resolve()
 
         # Try common extensions if no extension provided
         if not resolved.suffix:
@@ -749,14 +986,17 @@ class FollowupContextGatherer:
         project_dir: Path,
         pr_number: int,
         previous_review: PRReviewResult,  # Forward reference
+        repo: str | None = None,
     ):
         self.project_dir = Path(project_dir)
         self.pr_number = pr_number
         self.previous_review = previous_review
+        self.repo = repo
         self.gh_client = GHClient(
             project_dir=self.project_dir,
             default_timeout=30.0,
             max_retries=3,
+            repo=repo,
         )
 
     async def gather(self) -> FollowupReviewContext:
@@ -816,27 +1056,56 @@ class FollowupContextGatherer:
             f"[Followup] Comparing {previous_sha[:8]}...{current_sha[:8]}", flush=True
         )
 
-        # Get commit comparison
+        # Get PR-scoped files and commits (excludes merge-introduced changes)
+        # This solves the problem where merging develop into a feature branch
+        # would include commits from other PRs in the follow-up review.
+        # Pass reviewed_file_blobs for rebase-resistant comparison
+        reviewed_file_blobs = getattr(self.previous_review, "reviewed_file_blobs", {})
         try:
-            comparison = await self.gh_client.compare_commits(previous_sha, current_sha)
-        except Exception as e:
-            print(f"[Followup] Error comparing commits: {e}", flush=True)
-            return FollowupReviewContext(
-                pr_number=self.pr_number,
-                previous_review=self.previous_review,
-                previous_commit_sha=previous_sha,
-                current_commit_sha=current_sha,
+            pr_files, new_commits = await self.gh_client.get_pr_files_changed_since(
+                self.pr_number, previous_sha, reviewed_file_blobs=reviewed_file_blobs
             )
+            print(
+                f"[Followup] PR has {len(pr_files)} files, "
+                f"{len(new_commits)} commits since last review"
+                + (" (blob comparison used)" if reviewed_file_blobs else ""),
+                flush=True,
+            )
+        except Exception as e:
+            print(f"[Followup] Error getting PR files/commits: {e}", flush=True)
+            # Fallback to compare_commits if PR endpoints fail
+            print("[Followup] Falling back to commit comparison...", flush=True)
+            try:
+                comparison = await self.gh_client.compare_commits(
+                    previous_sha, current_sha
+                )
+                new_commits = comparison.get("commits", [])
+                pr_files = comparison.get("files", [])
+                print(
+                    f"[Followup] Fallback: Found {len(new_commits)} commits, "
+                    f"{len(pr_files)} files (may include merge-introduced changes)",
+                    flush=True,
+                )
+            except Exception as e2:
+                print(f"[Followup] Fallback also failed: {e2}", flush=True)
+                return FollowupReviewContext(
+                    pr_number=self.pr_number,
+                    previous_review=self.previous_review,
+                    previous_commit_sha=previous_sha,
+                    current_commit_sha=current_sha,
+                    error=f"Failed to get PR context: {e}, fallback: {e2}",
+                )
 
-        # Extract data from comparison
-        commits = comparison.get("commits", [])
-        files = comparison.get("files", [])
+        # Use PR files as the canonical list (excludes files from merged branches)
+        commits = new_commits
+        files = pr_files
         print(
             f"[Followup] Found {len(commits)} new commits, {len(files)} changed files",
             flush=True,
         )
 
         # Build diff from file patches
+        # Note: PR files endpoint returns 'filename' key, compare returns 'filename' too
         diff_parts = []
         files_changed = []
         for file_info in files:
@@ -856,6 +1125,15 @@ class FollowupContextGatherer:
         except Exception as e:
             print(f"[Followup] Error fetching comments: {e}", flush=True)
             comments = {"review_comments": [], "issue_comments": []}
+
+        # Get formal PR reviews since last review (from Cursor, CodeRabbit, etc.)
+        try:
+            pr_reviews = await self.gh_client.get_reviews_since(
+                self.pr_number, self.previous_review.reviewed_at
+            )
+        except Exception as e:
+            print(f"[Followup] Error fetching PR reviews: {e}", flush=True)
+            pr_reviews = []
 
         # Separate AI bot comments from contributor comments
         ai_comments = []
@@ -879,10 +1157,55 @@ class FollowupContextGatherer:
             else:
                 contributor_comments.append(comment)
 
+        # Separate AI bot reviews from contributor reviews
+        ai_reviews = []
+        contributor_reviews = []
+
+        for review in pr_reviews:
+            author = ""
+            if isinstance(review.get("user"), dict):
+                author = review["user"].get("login", "").lower()
+
+            is_ai_bot = any(pattern in author for pattern in AI_BOT_PATTERNS.keys())
+
+            if is_ai_bot:
+                ai_reviews.append(review)
+            else:
+                contributor_reviews.append(review)
+
+        # Combine AI comments and reviews for reporting
+        total_ai_feedback = len(ai_comments) + len(ai_reviews)
+        total_contributor_feedback = len(contributor_comments) + len(
+            contributor_reviews
+        )
+
         print(
-            f"[Followup] Found {len(contributor_comments)} contributor comments, {len(ai_comments)} AI comments",
+            f"[Followup] Found {total_contributor_feedback} contributor feedback "
+            f"({len(contributor_comments)} comments, {len(contributor_reviews)} reviews), "
+            f"{total_ai_feedback} AI feedback "
+            f"({len(ai_comments)} comments, {len(ai_reviews)} reviews)",
             flush=True,
         )
+
+        # Fetch current merge conflict status
+        has_merge_conflicts = False
+        merge_state_status = "UNKNOWN"
+        try:
+            pr_status = await self.gh_client.pr_get(
+                self.pr_number,
+                json_fields=["mergeable", "mergeStateStatus"],
+            )
+            mergeable = pr_status.get("mergeable", "UNKNOWN")
+            merge_state_status = pr_status.get("mergeStateStatus", "UNKNOWN")
+            has_merge_conflicts = mergeable == "CONFLICTING"
+
+            if has_merge_conflicts:
+                print(
+                    f"[Followup] ⚠️  PR has merge conflicts (mergeStateStatus: {merge_state_status})",
+                    flush=True,
+                )
+        except Exception as e:
+            print(f"[Followup] Could not fetch merge status: {e}", flush=True)
 
         return FollowupReviewContext(
             pr_number=self.pr_number,
@@ -892,6 +1215,10 @@ class FollowupContextGatherer:
             commits_since_review=commits,
             files_changed_since_review=files_changed,
             diff_since_review=diff_since_review,
-            contributor_comments_since_review=contributor_comments,
+            contributor_comments_since_review=contributor_comments
+            + contributor_reviews,
             ai_bot_comments_since_review=ai_comments,
+            pr_reviews_since_review=pr_reviews,
+            has_merge_conflicts=has_merge_conflicts,
+            merge_state_status=merge_state_status,
         )

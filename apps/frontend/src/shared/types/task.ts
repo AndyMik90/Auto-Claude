@@ -5,7 +5,7 @@
 import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from './settings';
 import type { ExecutionPhase as ExecutionPhaseType } from '../constants/phase-protocol';
 
-export type TaskStatus = 'backlog' | 'in_progress' | 'ai_review' | 'human_review' | 'done';
+export type TaskStatus = 'backlog' | 'in_progress' | 'ai_review' | 'human_review' | 'pr_created' | 'done';
 
 // Reason why a task is in human_review status
 // - 'completed': All subtasks done and QA passed, ready for final approval/merge
@@ -170,7 +170,7 @@ export type TaskCategory =
 
 export interface TaskMetadata {
   // Origin tracking
-  sourceType?: 'ideation' | 'manual' | 'imported' | 'insights' | 'roadmap' | 'linear' | 'github';
+  sourceType?: 'ideation' | 'manual' | 'imported' | 'insights' | 'roadmap' | 'linear' | 'github' | 'gitlab';
   ideationType?: string;  // e.g., 'code_improvements', 'security_hardening'
   ideaId?: string;  // Reference to original idea if converted
   featureId?: string;  // Reference to roadmap feature if from roadmap
@@ -181,6 +181,8 @@ export interface TaskMetadata {
   githubIssueNumbers?: number[];  // Reference to multiple GitHub issues if from a batch
   githubUrl?: string;  // GitHub issue URL
   githubBatchTheme?: string;  // Theme/title of the GitHub issue batch
+  gitlabIssueIid?: number;  // Reference to GitLab issue IID if from GitLab
+  gitlabUrl?: string;  // GitLab issue URL
 
   // Classification
   category?: TaskCategory;
@@ -226,6 +228,8 @@ export interface TaskMetadata {
 
   // Git/Worktree configuration
   baseBranch?: string;  // Override base branch for this task's worktree
+  prUrl?: string;  // GitHub PR URL if task has been submitted as a PR
+  useWorktree?: boolean;  // If false, use direct mode (no worktree isolation) - default is true for safety
 
   // Archive status
   archivedAt?: string;  // ISO date when task was archived
@@ -399,6 +403,26 @@ export interface WorktreeMergeResult {
 export interface WorktreeDiscardResult {
   success: boolean;
   message: string;
+}
+
+/**
+ * Options for creating a PR from a worktree
+ */
+export interface WorktreeCreatePROptions {
+  targetBranch?: string;
+  title?: string;
+  draft?: boolean;
+}
+
+/**
+ * Result of creating a PR from a worktree
+ */
+export interface WorktreeCreatePRResult {
+  success: boolean;
+  prUrl?: string;
+  error?: string;
+  message?: string;  // Human-readable message for both success and error cases
+  alreadyExists?: boolean;
 }
 
 /**
