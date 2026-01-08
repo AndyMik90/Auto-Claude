@@ -930,13 +930,21 @@ class CLIToolManager {
     try {
       const needsShell = shouldUseShell(claudeCmd);
 
+      // On Windows with shell mode, quote the path if it contains spaces to handle paths like
+      // "C:\Users\Jane Smith\AppData\Roaming\npm\claude.cmd". Only add quotes if not already quoted.
+      const command =
+        needsShell &&
+        claudeCmd.includes(" ") &&
+        !(claudeCmd.startsWith('"') && claudeCmd.endsWith('"'))
+          ? `"${claudeCmd}"`
+          : claudeCmd;
+
       let version: string;
 
       if (needsShell) {
         // For .cmd/.bat files on Windows, use execSync with quoted path
         // execFileSync doesn't handle spaces in .cmd paths correctly even with shell:true
-        const quotedCmd = `"${claudeCmd}"`;
-        version = execSync(`${quotedCmd} --version`, {
+        version = execSync(`${command} --version`, {
           encoding: 'utf-8',
           timeout: 5000,
           windowsHide: true,
@@ -1045,12 +1053,20 @@ class CLIToolManager {
     try {
       const needsShell = shouldUseShell(claudeCmd);
 
+      // On Windows with shell mode, quote the path if it contains spaces to handle paths like
+      // "C:\Users\Jane Smith\AppData\Roaming\npm\claude.cmd". Only add quotes if not already quoted.
+      const command =
+        needsShell &&
+        claudeCmd.includes(" ") &&
+        !(claudeCmd.startsWith('"') && claudeCmd.endsWith('"'))
+          ? `"${claudeCmd}"`
+          : claudeCmd;
+
       let stdout: string;
 
       if (needsShell) {
         // For .cmd/.bat files on Windows, use exec with quoted path
-        const quotedCmd = `"${claudeCmd}"`;
-        const result = await execAsync(`${quotedCmd} --version`, {
+        const result = await execAsync(`${command} --version`, {
           encoding: 'utf-8',
           timeout: 5000,
           windowsHide: true,

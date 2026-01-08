@@ -324,15 +324,18 @@ export function createGenerationScript(prompt: string, claudePath: string): stri
   const base64Prompt = Buffer.from(prompt, "utf-8").toString("base64");
 
   // On Windows, .cmd and .bat files need shell=True for proper execution
-  // When using shell=True, we need to quote paths containing spaces
+  // When using shell=True, we need to quote paths containing spaces.
+  // Only add quotes if not already quoted to avoid double-quoting.
   const isWindowsBatchFile = claudePath.endsWith(".cmd") || claudePath.endsWith(".bat");
   const needsShell = isWindowsBatchFile;
-  const quotedPath = needsShell && claudePath.includes(" ") ? `"${claudePath}"` : claudePath;
+  const isAlreadyQuoted = claudePath.startsWith('"') && claudePath.endsWith('"');
+  const needsQuoting = needsShell && claudePath.includes(" ") && !isAlreadyQuoted;
+  const quotedPath = needsQuoting ? `"${claudePath}"` : claudePath;
 
   // For shell mode, escape the path for the shell command string
   // For list mode, escape backslashes for Python string
   const escapedPath = needsShell
-    ? claudePath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+    ? quotedPath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
     : claudePath.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 
   return `

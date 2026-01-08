@@ -130,14 +130,18 @@ Respond with ONLY a JSON object in this exact format (no markdown, no extra text
     const escapedPrompt = prompt.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
 
     // On Windows, .cmd and .bat files need shell=True for proper execution
-    // When using shell=True, we need to quote paths containing spaces
+    // When using shell=True, we need to quote paths containing spaces.
+    // Only add quotes if not already quoted to avoid double-quoting.
     const isWindowsBatchFile = this.claudePath.endsWith(".cmd") || this.claudePath.endsWith(".bat");
     const needsShell = isWindowsBatchFile;
+    const isAlreadyQuoted = this.claudePath.startsWith('"') && this.claudePath.endsWith('"');
+    const needsQuoting = needsShell && this.claudePath.includes(" ") && !isAlreadyQuoted;
+    const quotedPath = needsQuoting ? `"${this.claudePath}"` : this.claudePath;
 
     // For shell mode, escape the path for the shell command string
     // For list mode, escape backslashes for Python string
     const escapedClaudePath = needsShell
-      ? this.claudePath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+      ? quotedPath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
       : this.claudePath.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 
     return `
