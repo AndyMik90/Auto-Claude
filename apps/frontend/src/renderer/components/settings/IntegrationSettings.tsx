@@ -30,6 +30,7 @@ import { SettingsSection } from './SettingsSection';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
 import { useClaudeLoginTerminal } from '../../hooks/useClaudeLoginTerminal';
 import { useToast } from '../../hooks/use-toast';
+import { debugLog } from '../../../shared/utils/debug-logger';
 import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings } from '../../../shared/types';
 
 interface IntegrationSettingsProps {
@@ -212,12 +213,12 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   };
 
   const handleAuthenticateProfile = async (profileId: string) => {
-    console.log('[IntegrationSettings] handleAuthenticateProfile called for:', profileId);
+    debugLog('[IntegrationSettings] handleAuthenticateProfile called for:', profileId);
     setAuthenticatingProfileId(profileId);
     try {
-      console.log('[IntegrationSettings] Calling initializeClaudeProfile IPC...');
+      debugLog('[IntegrationSettings] Calling initializeClaudeProfile IPC...');
       const initResult = await window.electronAPI.initializeClaudeProfile(profileId);
-      console.log('[IntegrationSettings] IPC returned:', initResult);
+      debugLog('[IntegrationSettings] IPC returned:', initResult);
       if (!initResult.success) {
         toast({
           variant: 'destructive',
@@ -235,7 +236,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         description: t('integrations.toast.tryAgain'),
       });
     } finally {
-      console.log('[IntegrationSettings] finally block - clearing authenticatingProfileId');
+      debugLog('[IntegrationSettings] finally block - clearing authenticatingProfileId');
       setAuthenticatingProfileId(null);
     }
   };
