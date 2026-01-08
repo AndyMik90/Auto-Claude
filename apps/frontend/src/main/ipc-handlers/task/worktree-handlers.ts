@@ -1328,14 +1328,18 @@ interface ParsedPRResult {
 }
 
 /**
- * Validate that a URL is a valid GitHub URL
- * @returns true if the URL is a valid https://github.com or *.github.com URL
+ * Validate that a URL is a valid GitHub PR URL.
+ * Supports both github.com and GitHub Enterprise instances (custom domains).
+ * @returns true if the URL is a valid HTTPS URL with /pull/ in the path
  */
 function isValidGitHubUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
+    // Must be HTTPS with non-empty hostname and a PR path
+    // This supports GH Enterprise instances with custom domains
     return parsed.protocol === 'https:' &&
-           (parsed.hostname === 'github.com' || parsed.hostname.endsWith('.github.com'));
+           parsed.hostname.length > 0 &&
+           /\/pull\/\d+/.test(parsed.pathname);
   } catch {
     return false;
   }
@@ -1904,10 +1908,10 @@ export function registerWorktreeHandlers(
         const taskBaseBranch = getTaskBaseBranch(specDir);
         const projectMainBranch = project.settings?.mainBranch;
         const effectiveBaseBranch = taskBaseBranch || projectMainBranch;
-        
+
         if (effectiveBaseBranch) {
           args.push('--base-branch', effectiveBaseBranch);
-          debug('Using base branch:', effectiveBaseBranch, 
+          debug('Using base branch:', effectiveBaseBranch,
             `(source: ${taskBaseBranch ? 'task metadata' : 'project settings'})`);
         }
 
@@ -2440,10 +2444,10 @@ export function registerWorktreeHandlers(
         const taskBaseBranch = getTaskBaseBranch(specDir);
         const projectMainBranch = project.settings?.mainBranch;
         const effectiveBaseBranch = taskBaseBranch || projectMainBranch;
-        
+
         if (effectiveBaseBranch) {
           args.push('--base-branch', effectiveBaseBranch);
-          console.warn('[IPC] Using base branch for preview:', effectiveBaseBranch, 
+          console.warn('[IPC] Using base branch for preview:', effectiveBaseBranch,
             `(source: ${taskBaseBranch ? 'task metadata' : 'project settings'})`);
         }
 

@@ -830,49 +830,46 @@ class WorktreeManager:
         if force:
             push_args.insert(1, "--force")
 
-        max_retries = 3
-        last_error = ""
+        def do_push() -> tuple[bool, PushBranchResult | None, str]:
+            """Execute push operation for retry wrapper."""
+            result = subprocess.run(
+                ["git"] + push_args,
+                cwd=info.path,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=self.GIT_PUSH_TIMEOUT,
+            )
 
-        for attempt in range(1, max_retries + 1):
-            try:
-                result = subprocess.run(
-                    ["git"] + push_args,
-                    cwd=info.path,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=self.GIT_PUSH_TIMEOUT,
-                )
-
-                if result.returncode == 0:
-                    return PushBranchResult(
+            if result.returncode == 0:
+                return (
+                    True,
+                    PushBranchResult(
                         success=True,
                         branch=info.branch,
                         remote="origin",
-                    )
-
-                # Check if error is retryable (network/connection issues)
-                is_retryable = _is_retryable_network_error(result.stderr)
-
-                if attempt < max_retries and is_retryable:
-                    backoff = 2 ** (attempt - 1)
-                    time.sleep(backoff)
-                    continue
-
-                last_error = result.stderr
-                break
-
-            except subprocess.TimeoutExpired:
-                if attempt < max_retries:
-                    backoff = 2 ** (attempt - 1)
-                    time.sleep(backoff)
-                    continue
-                return PushBranchResult(
-                    success=False,
-                    branch=info.branch,
-                    error=f"Push timed out after {max_retries} attempts.",
+                    ),
+                    "",
                 )
+            return (False, None, result.stderr)
+
+        result, last_error = _with_retry(
+            operation=do_push,
+            max_retries=3,
+            is_retryable=_is_retryable_network_error,
+        )
+
+        if result:
+            return result
+
+        # Handle timeout error message
+        if last_error == "Operation timed out":
+            return PushBranchResult(
+                success=False,
+                branch=info.branch,
+                error="Push timed out after 3 attempts.",
+            )
 
         return PushBranchResult(
             success=False,
@@ -933,10 +930,14 @@ class WorktreeManager:
         if draft:
             gh_args.append("--draft")
 
-        max_retries = 3
-        last_error = ""
+        def is_pr_retryable(stderr: str) -> bool:
+            """Check if PR creation error is retryable (network or HTTP 5xx)."""
+            return _is_retryable_network_error(stderr) or _is_retryable_http_error(
+                stderr
+            )
 
-        for attempt in range(1, max_retries + 1):
+        def do_create_pr() -> tuple[bool, PullRequestResult | None, str]:
+            """Execute PR creation for retry wrapper."""
             try:
                 result = subprocess.run(
                     gh_args,
@@ -948,7 +949,7 @@ class WorktreeManager:
                     timeout=self.GH_CLI_TIMEOUT,
                 )
 
-                # Check for "already exists" case (not an error, no retry needed)
+                # Check for "already exists" case (success, no retry needed)
                 if result.returncode != 0 and "already exists" in result.stderr.lower():
                     existing_url = self._get_existing_pr_url(spec_name, target)
                     result_dict = PullRequestResult(
@@ -960,11 +961,11 @@ class WorktreeManager:
                         result_dict["message"] = (
                             "PR already exists but URL could not be retrieved"
                         )
-                    return result_dict
+                    return (True, result_dict, "")
 
                 if result.returncode == 0:
                     # Extract PR URL from output
-                    pr_url = result.stdout.strip()
+                    pr_url: str | None = result.stdout.strip()
                     if not pr_url.startswith("http"):
                         # Try to find URL in output
                         match = re.search(
@@ -976,45 +977,50 @@ class WorktreeManager:
                             # Invalid output - no valid URL found
                             pr_url = None
 
-                    return PullRequestResult(
-                        success=True,
-                        pr_url=pr_url,
-                        already_exists=False,
+                    return (
+                        True,
+                        PullRequestResult(
+                            success=True,
+                            pr_url=pr_url,
+                            already_exists=False,
+                        ),
+                        "",
                     )
 
-                # Check if error is retryable (network/connection or retryable HTTP errors)
-                is_retryable = _is_retryable_network_error(
-                    result.stderr
-                ) or _is_retryable_http_error(result.stderr)
+                return (False, None, result.stderr)
 
-                if attempt < max_retries and is_retryable:
-                    backoff = 2 ** (attempt - 1)
-                    time.sleep(backoff)
-                    continue
-
-                last_error = result.stderr
-                break
-
-            except subprocess.TimeoutExpired:
-                if attempt < max_retries:
-                    backoff = 2 ** (attempt - 1)
-                    time.sleep(backoff)
-                    continue
-                return PullRequestResult(
-                    success=False,
-                    error=f"PR creation timed out after {max_retries} attempts.",
-                )
             except FileNotFoundError:
-                # gh CLI not installed - not retryable
+                # gh CLI not installed - not retryable, raise to exit retry loop
+                raise
+
+        try:
+            result, last_error = _with_retry(
+                operation=do_create_pr,
+                max_retries=3,
+                is_retryable=is_pr_retryable,
+            )
+
+            if result:
+                return result
+
+            # Handle timeout error message
+            if last_error == "Operation timed out":
                 return PullRequestResult(
                     success=False,
-                    error="gh CLI not found. Install from https://cli.github.com/",
+                    error="PR creation timed out after 3 attempts.",
                 )
 
-        return PullRequestResult(
-            success=False,
-            error=f"Failed to create PR: {last_error}",
-        )
+            return PullRequestResult(
+                success=False,
+                error=f"Failed to create PR: {last_error}",
+            )
+
+        except FileNotFoundError:
+            # gh CLI not installed
+            return PullRequestResult(
+                success=False,
+                error="gh CLI not found. Install from https://cli.github.com/",
+            )
 
     def _extract_spec_summary(self, spec_name: str) -> str:
         """Extract a summary from spec.md for PR body."""
