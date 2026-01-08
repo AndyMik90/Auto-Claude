@@ -261,6 +261,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           const incomingSeq = progress.sequenceNumber ?? 0;
           const currentSeq = existingProgress.sequenceNumber ?? 0;
           if (incomingSeq > 0 && currentSeq > 0 && incomingSeq < currentSeq) {
+            // FIX (ACS-55): Log when updates are dropped due to sequence numbers
+            // This helps debug phase transition issues
+            console.warn('[updateExecutionProgress] Dropping out-of-order update:', {
+              taskId,
+              incomingSeq,
+              currentSeq,
+              incomingPhase: progress.phase,
+              currentPhase: existingProgress.phase
+            });
             return t; // Skip out-of-order update
           }
 

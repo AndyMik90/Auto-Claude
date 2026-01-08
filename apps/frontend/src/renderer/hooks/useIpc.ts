@@ -93,6 +93,30 @@ function flushBatch(): void {
 function queueUpdate(taskId: string, update: BatchedUpdate): void {
   const existing = batchQueue.get(taskId) || {};
 
+  // FIX (ACS-55): Phase changes bypass batching - apply immediately
+  // This prevents losing intermediate phases when transitions happen rapidly
+  // (e.g., planning → coding within 16ms would lose the "planning" display)
+  // Phase changes are rare (~3-4 per task) vs progress ticks (hundreds), so this is safe for perf
+  if (update.progress?.phase && storeActionsRef) {
+    const currentPhase = existing.progress?.phase ||
+      useTaskStore.getState().tasks.find(t => t.id === taskId || t.specId === taskId)?.executionProgress?.phase;
+
+    if (update.progress.phase !== currentPhase) {
+      // Flush any pending updates first to ensure correct ordering
+      if (batchTimeout) {
+        clearTimeout(batchTimeout);
+        batchTimeout = null;
+        flushBatch();
+      }
+      // Apply phase change immediately
+      if (window.DEBUG) {
+        console.warn(`[IPC Batch] Phase change detected: ${currentPhase} → ${update.progress.phase}, applying immediately`);
+      }
+      storeActionsRef.updateExecutionProgress(taskId, update.progress);
+      return;
+    }
+  }
+
   // For logs, accumulate rather than replace
   let mergedLogs = existing.logs;
   if (update.logs) {
