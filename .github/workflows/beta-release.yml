@@ -355,8 +355,31 @@ jobs:
           files-folder: apps/frontend/dist
           files-folder-filter: exe
           file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-rfc3161: https://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
+
+      - name: Verify Windows executable is signed
+        if: env.AZURE_CLIENT_ID != ''
+        shell: pwsh
+        run: |
+          cd apps/frontend/dist
+          $exeFile = Get-ChildItem -Filter "*.exe" | Select-Object -First 1
+          if ($exeFile) {
+            Write-Host "Verifying signature on $($exeFile.Name)..."
+            $sig = Get-AuthenticodeSignature -FilePath $exeFile.FullName
+            if ($sig.Status -ne 'Valid') {
+              Write-Host "::error::Signature verification failed: $($sig.Status)"
+              Write-Host "::error::Status Message: $($sig.StatusMessage)"
+              exit 1
+            }
+            Write-Host "✅ Signature verified successfully"
+            Write-Host "  Subject: $($sig.SignerCertificate.Subject)"
+            Write-Host "  Issuer: $($sig.SignerCertificate.Issuer)"
+            Write-Host "  Thumbprint: $($sig.SignerCertificate.Thumbprint)"
+          } else {
+            Write-Host "::error::No .exe file found to verify"
+            exit 1
+          }
 
       - name: Regenerate checksums after signing
         if: env.AZURE_CLIENT_ID != ''
