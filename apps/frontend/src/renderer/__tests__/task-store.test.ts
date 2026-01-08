@@ -1193,7 +1193,7 @@ describe('Task Store', () => {
 
     // FIX (PR Review): Test coverage for explicit human_review from plan file
     describe('explicit human_review from plan file', () => {
-      it('should preserve human_review when plan explicitly sets status', () => {
+      it('should skip status recalculation when plan explicitly sets human_review', () => {
         useTaskStore.setState({
           tasks: [createTestTask({
             id: 'task-1',

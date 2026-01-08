@@ -319,7 +319,7 @@ describe('Task Lifecycle Integration', () => {
 
     it('should handle task update status IPC call', async () => {
       await import('../../preload/index');
-      const electronAPI = exposedApis['electronAPI'] as Record<string, unknown>;
+      // Note: electronAPI is exposed but we test the IPC channel directly below
 
       // Check if updateTaskStatus method exists (might be part of updateTask)
       // Based on IPC_CHANNELS, we have TASK_UPDATE_STATUS
