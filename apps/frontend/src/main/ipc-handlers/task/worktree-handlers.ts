@@ -3056,17 +3056,77 @@ export function registerWorktreeHandlers(
           });
 
           // Also listen to 'exit' event in case 'close' doesn't fire
-          createPRProcess.on('exit', (code: number | null) => {
+          createPRProcess.on('exit', async (code: number | null) => {
             // Give close event a chance to fire first with complete output
-            setTimeout(() => {
+            setTimeout(async () => {
               if (resolved) return;
               resolved = true;
               if (timeoutId) clearTimeout(timeoutId);
+
               debug('Process exited via exit event with code:', code);
-              resolve({
-                success: false,
-                error: 'Process exited unexpectedly'
-              });
+              debug('Full stdout:', stdout);
+              debug('Full stderr:', stderr);
+
+              if (code === 0) {
+                // Parse JSON output using helper function
+                const result = parsePRJsonOutput(stdout);
+                if (result) {
+                  debug('Parsed result:', result);
+
+                  // Only update task status if a NEW PR was created (not if it already exists)
+                  if (result.success !== false && result.prUrl && !result.alreadyExists) {
+                    await updateTaskStatusAfterPRCreation(
+                      specDir,
+                      worktreePath,
+                      result.prUrl,
+                      project.autoBuildPath,
+                      task.specId,
+                      debug
+                    );
+                  } else if (result.alreadyExists) {
+                    debug('PR already exists, not updating task status');
+                  }
+
+                  resolve({
+                    success: true,
+                    data: {
+                      success: result.success,
+                      prUrl: result.prUrl,
+                      error: result.error,
+                      alreadyExists: result.alreadyExists
+                    }
+                  });
+                } else {
+                  // No JSON found, but process succeeded
+                  debug('No JSON in output, assuming success');
+                  resolve({
+                    success: true,
+                    data: {
+                      success: true,
+                      prUrl: undefined
+                    }
+                  });
+                }
+              } else {
+                debug('Process failed with code:', code);
+
+                // Try to parse JSON from stdout even on failure
+                const result = parsePRJsonOutput(stdout);
+                if (result) {
+                  debug('Parsed error result:', result);
+                  resolve({
+                    success: false,
+                    error: result.error || 'Failed to create PR'
+                  });
+                } else {
+                  // Fallback to raw output if JSON parsing fails
+                  // Prefer stdout over stderr since stderr often contains debug messages
+                  resolve({
+                    success: false,
+                    error: stdout || stderr || 'Failed to create PR'
+                  });
+                }
+              }
             }, 100);
           });
 

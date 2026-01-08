@@ -26,7 +26,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TypedDict, TypeVar
 
-from core.git_executable import run_git
+from core.git_executable import get_git_executable, run_git
+from debug import debug_warning
 
 T = TypeVar("T")
 
@@ -832,31 +833,36 @@ class WorktreeManager:
 
         def do_push() -> tuple[bool, PushBranchResult | None, str]:
             """Execute push operation for retry wrapper."""
-            result = subprocess.run(
-                ["git"] + push_args,
-                cwd=info.path,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=self.GIT_PUSH_TIMEOUT,
-            )
-
-            if result.returncode == 0:
-                return (
-                    True,
-                    PushBranchResult(
-                        success=True,
-                        branch=info.branch,
-                        remote="origin",
-                    ),
-                    "",
+            try:
+                git_executable = get_git_executable()
+                result = subprocess.run(
+                    [git_executable] + push_args,
+                    cwd=info.path,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=self.GIT_PUSH_TIMEOUT,
                 )
-            return (False, None, result.stderr)
 
+                if result.returncode == 0:
+                    return (
+                        True,
+                        PushBranchResult(
+                            success=True,
+                            branch=info.branch,
+                            remote="origin",
+                        ),
+                        "",
+                    )
+                return (False, None, result.stderr)
+            except FileNotFoundError:
+                return (False, None, "git executable not found")
+
+        max_retries = 3
         result, last_error = _with_retry(
             operation=do_push,
-            max_retries=3,
+            max_retries=max_retries,
             is_retryable=_is_retryable_network_error,
         )
 
@@ -868,7 +874,7 @@ class WorktreeManager:
             return PushBranchResult(
                 success=False,
                 branch=info.branch,
-                error="Push timed out after 3 attempts.",
+                error=f"Push timed out after {max_retries} attempts.",
             )
 
         return PushBranchResult(
@@ -993,10 +999,11 @@ class WorktreeManager:
                 # gh CLI not installed - not retryable, raise to exit retry loop
                 raise
 
+        max_retries = 3
         try:
             result, last_error = _with_retry(
                 operation=do_create_pr,
-                max_retries=3,
+                max_retries=max_retries,
                 is_retryable=is_pr_retryable,
             )
 
@@ -1007,7 +1014,7 @@ class WorktreeManager:
             if last_error == "Operation timed out":
                 return PullRequestResult(
                     success=False,
-                    error="PR creation timed out after 3 attempts.",
+                    error=f"PR creation timed out after {max_retries} attempts.",
                 )
 
             return PullRequestResult(
@@ -1062,8 +1069,6 @@ class WorktreeManager:
                 return summary
         except (OSError, UnicodeDecodeError) as e:
             # Silently fall back to default - file read errors shouldn't block PR creation
-            from debug import debug_warning
-
             debug_warning(
                 "worktree", f"Could not extract spec summary for PR body: {e}"
             )
@@ -1096,8 +1101,6 @@ class WorktreeManager:
             # Silently ignore errors when fetching existing PR URL - this is a best-effort
             # lookup that may fail due to network issues, missing gh CLI, or auth problems.
             # Returning None allows the caller to handle missing URLs gracefully.
-            from debug import debug_warning
-
             debug_warning("worktree", f"Could not get existing PR URL: {e}")
 
         return None

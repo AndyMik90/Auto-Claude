@@ -390,11 +390,39 @@ def main() -> None:
         handle_discard_command(project_dir, spec_dir.name)
         return
 
+    # Compute base branch for PR creation (consistent with other handlers)
+    import subprocess
+
+    base_branch = args.base_branch
+    if not base_branch:
+        # Auto-detect base branch (similar to WorktreeManager logic)
+        base_branch = os.getenv("DEFAULT_BRANCH") or "main"
+        # Check if main exists, otherwise try master
+        try:
+            result = subprocess.run(
+                ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{base_branch}"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0 and base_branch == "main":
+                # Try master
+                result = subprocess.run(
+                    ["git", "show-ref", "--verify", "--quiet", "refs/heads/master"],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode == 0:
+                    base_branch = "master"
+        except (subprocess.SubprocessError, OSError):
+            pass  # Fall back to default
+
     if args.create_pr:
         result = handle_create_pr_command(
             project_dir=project_dir,
             spec_name=spec_dir.name,
-            target_branch=args.pr_target or args.base_branch,
+            target_branch=args.pr_target or base_branch,
             title=args.pr_title,
             draft=args.pr_draft,
         )
