@@ -138,11 +138,12 @@ Respond with ONLY a JSON object in this exact format (no markdown, no extra text
     const needsQuoting = needsShell && this.claudePath.includes(" ") && !isAlreadyQuoted;
     const quotedPath = needsQuoting ? `"${this.claudePath}"` : this.claudePath;
 
-    // For shell mode, escape the path for the shell command string
-    // For list mode, escape backslashes for Python string
-    const escapedClaudePath = needsShell
-      ? quotedPath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-      : this.claudePath.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    // For shell mode, the path must be quoted in the command string.
+    // We escape the quoted path for Python string representation.
+    // For list mode, escape backslashes for Python string.
+    const commandPath = needsShell
+      ? `"${quotedPath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+      : quotedPath.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 
     return `
 import subprocess
@@ -155,7 +156,7 @@ try:
     ${
       needsShell
         ? `# On Windows with .cmd/.bat files, use shell=True with quoted path
-    command = "${escapedClaudePath} chat --model haiku --prompt \\"{prompt}\\""
+    command = ${commandPath} + ' chat --model haiku --prompt "' + prompt + '"'
     result = subprocess.run(
         command,
         capture_output=True,
@@ -164,7 +165,7 @@ try:
         shell=True
     )`
         : `result = subprocess.run(
-        ['${escapedClaudePath}', 'chat', '--model', 'haiku', '--prompt', prompt],
+        ['${commandPath}', 'chat', '--model', 'haiku', '--prompt', prompt],
         capture_output=True,
         text=True,
         check=True
