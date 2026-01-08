@@ -126,7 +126,7 @@ export function ChatHistorySidebar({
               <Plus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>New conversation</TooltipContent>
+          <TooltipContent>{t('accessibility.newConversationAriaLabel')}</TooltipContent>
         </Tooltip>
       </div>
 

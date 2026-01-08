@@ -47,7 +47,12 @@
     "collapseAriaLabel": "Collapse",
     "selectIdeaAriaLabel": "Select idea: {{title}}",
     "convertToTaskAriaLabel": "Convert to task",
-    "goToTaskAriaLabel": "Go to task"
+    "goToTaskAriaLabel": "Go to task",
+    "reAuthenticateProfileAriaLabel": "Re-authenticate profile",
+    "hideTokenEntryAriaLabel": "Hide token entry",
+    "enterTokenManuallyAriaLabel": "Enter token manually",
+    "renameProfileAriaLabel": "Rename profile",
+    "deleteProfileAriaLabel": "Delete profile"
   },
   "buttons": {
     "save": "Save",

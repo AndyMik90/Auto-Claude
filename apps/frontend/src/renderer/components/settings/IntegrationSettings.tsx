@@ -442,7 +442,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                   )}
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Re-authenticate profile</TooltipContent>
+                              <TooltipContent>{t('common:accessibility.reAuthenticateProfileAriaLabel')}</TooltipContent>
                             </Tooltip>
                           )}
                           {profile.id !== activeProfileId && (
@@ -474,7 +474,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {expandedTokenProfileId === profile.id ? 'Hide token entry' : 'Enter token manually'}
+                              {expandedTokenProfileId === profile.id ? t('common:accessibility.hideTokenEntryAriaLabel') : t('common:accessibility.enterTokenManuallyAriaLabel')}
                             </TooltipContent>
                           </Tooltip>
                           <Tooltip>
@@ -489,7 +489,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                 <Pencil className="h-3 w-3" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Rename profile</TooltipContent>
+                            <TooltipContent>{t('common:accessibility.renameProfileAriaLabel')}</TooltipContent>
                           </Tooltip>
                           {!profile.isDefault && (
                             <Tooltip>
@@ -509,7 +509,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                   )}
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Delete profile</TooltipContent>
+                              <TooltipContent>{t('common:accessibility.deleteProfileAriaLabel')}</TooltipContent>
                             </Tooltip>
                           )}
                         </div>

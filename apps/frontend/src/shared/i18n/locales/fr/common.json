@@ -47,7 +47,12 @@
     "collapseAriaLabel": "Réduire",
     "selectIdeaAriaLabel": "Sélectionner l'idée : {{title}}",
     "convertToTaskAriaLabel": "Convertir en tâche",
-    "goToTaskAriaLabel": "Aller à la tâche"
+    "goToTaskAriaLabel": "Aller à la tâche",
+    "reAuthenticateProfileAriaLabel": "Ré-authentifier le profil",
+    "hideTokenEntryAriaLabel": "Masquer la saisie du jeton",
+    "enterTokenManuallyAriaLabel": "Saisir le jeton manuellement",
+    "renameProfileAriaLabel": "Renommer le profil",
+    "deleteProfileAriaLabel": "Supprimer le profil"
   },
   "buttons": {
     "save": "Enregistrer",
