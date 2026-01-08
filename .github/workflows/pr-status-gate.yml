@@ -223,12 +223,12 @@ jobs:
 
             console.log(`PR #${prNumber} - /check-status by @${requestedBy}, SHA: ${headSha.slice(0, 8)}`);
 
-            // Fetch check runs
-            const { data: checksData } = await github.rest.checks.listForRef({
-              owner, repo, ref: headSha, per_page: 100
-            });
-
-            const checkRuns = checksData.check_runs;
+            // Fetch check runs with pagination to handle >100 checks
+            const checkRuns = await github.paginate(
+              github.rest.checks.listForRef,
+              { owner, repo, ref: headSha, per_page: 100 },
+              (response) => response.data
+            );
             console.log(`Found ${checkRuns.length} check runs`);
 
             // Analyze results
