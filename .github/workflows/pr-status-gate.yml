@@ -203,7 +203,8 @@ jobs:
               'AC: Approved',
               'AC: Changes Requested',
               'AC: Blocked',
-              'AC: Needs Re-review'
+              'AC: Needs Re-review',
+              'AC: Reviewed'
             ]);
 
             const REQUIRED_CHECKS = process.env.REQUIRED_CHECKS
@@ -533,7 +534,7 @@ jobs:
 
             console.log('PR was AC-approved, resetting to require re-review');
 
-            // Remove AC: Approved
+            // Remove AC: Approved - throw on non-404 errors to prevent conflicting labels
             try {
               await github.rest.issues.removeLabel({
                 owner, repo, issue_number: prNumber, name: 'AC: Approved'
@@ -541,7 +542,9 @@ jobs:
               console.log('  Removed: AC: Approved');
             } catch (e) {
               if (e && e.status !== 404) {
-                core.warning(`Failed to remove 'AC: Approved' label: ${e.message}`);
+                // Throw to prevent adding 'AC: Needs Re-review' if removal failed (could cause conflicting labels)
+                core.error(`Failed to remove 'AC: Approved' label: ${e.message}`);
+                throw e;
               }
             }
 
