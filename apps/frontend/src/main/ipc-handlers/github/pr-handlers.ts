@@ -22,6 +22,7 @@ import { createContextLogger } from './utils/logger';
 import { withProjectOrNull } from './utils/project-middleware';
 import { createIPCCommunicators } from './utils/ipc-communicator';
 import { getRunnerEnv } from './utils/runner-env';
+import { loadProjectEnvVars, getGraphitiDatabaseDetails } from '../context/utils';
 import {
   runPythonSubprocess,
   getPythonPath,
@@ -190,11 +191,13 @@ export interface PRReviewMemory {
  * @param result The completed PR review result
  * @param repo Repository name (owner/repo)
  * @param isFollowup Whether this is a follow-up review
+ * @param database Database name to save to (defaults to auto_claude_memory)
  */
 async function savePRReviewToMemory(
   result: PRReviewResult,
   repo: string,
-  isFollowup: boolean = false
+  isFollowup: boolean = false,
+  database: string = 'auto_claude_memory'
 ): Promise<void> {
   const settings = readSettingsFile();
   if (!settings?.memoryEnabled) {
@@ -205,8 +208,9 @@ async function savePRReviewToMemory(
   try {
     const memoryService = getMemoryService({
       dbPath: getDefaultDbPath(),
-      database: 'auto_claude_memory',
+      database,
     });
+    debugLog('Saving PR review to memory', { prNumber: result.prNumber, database });
 
     // Build the memory content with comprehensive insights
     // We want to capture ALL meaningful findings so the AI can learn from patterns
@@ -295,6 +299,52 @@ async function savePRReviewToMemory(
     } else {
       debugLog('Failed to save PR review to memory', { error: saveResult.error });
     }
+
+    // =========================================================================
+    // FIX: Save patterns and gotchas as separate episodes for searchability
+    //
+    // ROOT CAUSE: The backend's get_patterns_and_gotchas() searches for episodes
+    // with type='pattern' or type='gotcha', but we were embedding them as JSON
+    // fields within 'pr_review' episodes - making them unsearchable.
+    //
+    // This fix saves each pattern/gotcha as a separate episode with the correct
+    // type so they can be retrieved by the backend's pattern/gotcha queries.
+    // =========================================================================
+    const groupId = `pr_review_${repo.replace('/', '_')}`;
+
+    // Save each pattern as a separate 'pattern' episode
+    for (const pattern of patternsToSave) {
+      try {
+        await memoryService.addEpisode(
+          `Pattern: ${pattern.split(':')[0]}`, // Use category as name
+          `[PR #${result.prNumber}] ${pattern}`,
+          'pattern',
+          groupId
+        );
+      } catch (err) {
+        debugLog('Failed to save pattern to memory', { pattern, error: err instanceof Error ? err.message : err });
+      }
+    }
+
+    // Save each gotcha as a separate 'gotcha' episode
+    for (const gotcha of gotchasToSave) {
+      try {
+        await memoryService.addEpisode(
+          `Gotcha: ${gotcha.substring(0, 50)}...`, // Truncate for name
+          `[PR #${result.prNumber}] ${gotcha}`,
+          'gotcha',
+          groupId
+        );
+      } catch (err) {
+        debugLog('Failed to save gotcha to memory', { gotcha, error: err instanceof Error ? err.message : err });
+      }
+    }
+
+    debugLog('Saved patterns and gotchas as separate episodes', {
+      patternCount: patternsToSave.length,
+      gotchaCount: gotchasToSave.length
+    });
+    // =========================================================================
 
   } catch (error) {
     // Don't fail the review if memory save fails
@@ -862,8 +912,12 @@ async function runPRReview(
     // Finalize logs with success
     logCollector.finalize(true);
 
+    // Get project's configured database for memory storage
+    const projectEnvVars = loadProjectEnvVars(project.path, project.autoBuildPath);
+    const { database } = getGraphitiDatabaseDetails(projectEnvVars);
+
     // Save PR review insights to memory (async, non-blocking)
-    savePRReviewToMemory(result.data!, repo, false).catch(err => {
+    savePRReviewToMemory(result.data!, repo, false, database).catch(err => {
       debugLog('Failed to save PR review to memory', { error: err.message });
     });
 
@@ -1918,8 +1972,12 @@ export function registerPRHandlers(
             // Finalize logs with success
             logCollector.finalize(true);
 
+            // Get project's configured database for memory storage
+            const followupEnvVars = loadProjectEnvVars(project.path, project.autoBuildPath);
+            const { database: followupDatabase } = getGraphitiDatabaseDetails(followupEnvVars);
+
             // Save follow-up PR review insights to memory (async, non-blocking)
-            savePRReviewToMemory(result.data!, repo, true).catch(err => {
+            savePRReviewToMemory(result.data!, repo, true, followupDatabase).catch(err => {
               debugLog('Failed to save follow-up PR review to memory', { error: err.message });
             });
 
