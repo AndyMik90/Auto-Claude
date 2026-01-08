@@ -503,18 +503,65 @@ export function preparePythonSubprocessCommand(executablePath: string): PythonSu
 export interface ShellCommandResult {
   /** The command to use (with quotes if needed) */
   command: string;
-  /** Whether shell mode is required */
+  /**
+   * Whether shell mode is required for Windows batch files (.cmd/.bat)
+   *
+   * This is true ONLY when the path ends with .cmd/.bat on Windows.
+   * The returned {command} will be quoted ONLY when needsShell is true and the
+   * path contains spaces or shell metacharacters.
+   *
+   * IMPORTANT: If you set shell: true for other reasons (e.g., custom shell
+   * scripts, environment variable expansion), you MUST perform your own quoting
+   * and escaping of executablePath before calling this function.
+   */
   needsShell: boolean;
 }
 
 /**
  * Prepare a Windows executable path for Node.js shell execution
  *
- * This is a simpler version of preparePythonSubprocessCommand for use with
- * Node.js child_process functions (execFileSync, execFile) with shell: true.
+ * This function prepares paths for use with Node.js child_process functions
+ * (execFileSync, execFile) when shell: true is required.
+ *
+ * Behavior:
+ * - Sets needsShell=true ONLY for Windows .cmd/.bat files
+ * - Quotes the path ONLY when needsShell=true AND path contains spaces or
+ *   shell metacharacters (& | < > ^ % ())
+ * - Does NOT quote .exe or other files even if they contain spaces
  *
  * @param executablePath - The path to the executable
- * @returns Object containing command (quoted if needed) and needsShell flag
+ * @returns {ShellCommandResult} Object containing:
+ *   - command: The path to use (quoted if needsShell=true and quoting is needed)
+ *   - needsShell: true ONLY for .cmd/.bat files on Windows
+ *
+ * @example
+ * ```typescript
+ * const { command, needsShell } = prepareShellCommand('C:\\npm\\claude.cmd');
+ * // command: 'C:\\npm\\claude.cmd' (no spaces, not quoted)
+ * // needsShell: true
+ *
+ * execFileSync(command, ['--version'], { shell: needsShell });
+ * ```
+ *
+ * @example
+ * ```typescript
+ * const { command, needsShell } = prepareShellCommand('C:\\Jane Smith\\npm\\claude.cmd');
+ * // command: '"C:\\Jane Smith\\npm\\claude.cmd"' (quoted due to spaces)
+ * // needsShell: true
+ *
+ * execFileSync(command, ['--version'], { shell: needsShell });
+ * ```
+ *
+ * @example
+ * ```typescript
+ * const { command, needsShell } = prepareShellCommand('C:\\Program Files\\app.exe');
+ * // command: 'C:\\Program Files\\app.exe' (NOT quoted - needsShell is false for .exe)
+ * // needsShell: false
+ *
+ * // Caller must quote if using shell: true for other reasons:
+ * const quotedCmd = command.includes(' ') ? `"${command}"` : command;
+ * execFileSync(quotedCmd, ['--version'], { shell: true });
+ * ```
  */
 export function prepareShellCommand(executablePath: string): ShellCommandResult {
   // On Windows, .cmd and .bat files need shell: true for proper execution
