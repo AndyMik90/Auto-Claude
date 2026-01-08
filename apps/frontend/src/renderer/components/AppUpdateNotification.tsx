@@ -13,6 +13,9 @@ import {
 } from "./ui/dialog";
 import type { AppUpdateAvailableEvent, AppUpdateProgress } from "../../shared/types";
 
+const CLAUDE_CODE_CHANGELOG_URL =
+  "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md";
+
 /**
  * Simple markdown renderer for release notes
  * Handles: headers, bold, lists, line breaks
@@ -64,7 +67,7 @@ function ReleaseNotesRenderer({ markdown }: { markdown: string }) {
  * Shows when a new app version is available and handles download/install workflow
  */
 export function AppUpdateNotification() {
-  const { t } = useTranslation(["dialogs", "common"]);
+  const { t } = useTranslation(["dialogs"]);
   const [isOpen, setIsOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<AppUpdateAvailableEvent | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<AppUpdateProgress | null>(null);
@@ -190,11 +193,7 @@ export function AppUpdateNotification() {
             variant="link"
             size="sm"
             className="w-full text-xs text-muted-foreground gap-1"
-            onClick={() =>
-              window.electronAPI?.openExternal?.(
-                "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md"
-              )
-            }
+            onClick={() => window.electronAPI?.openExternal?.(CLAUDE_CODE_CHANGELOG_URL)}
             aria-label={t(
               "dialogs:appUpdate.claudeCodeChangelogAriaLabel",
               "View Claude Code Changelog (opens in new window)"
