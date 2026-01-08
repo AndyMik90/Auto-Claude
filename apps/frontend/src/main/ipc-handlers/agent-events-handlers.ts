@@ -2,6 +2,7 @@ import type { BrowserWindow } from 'electron';
 import path from 'path';
 import { existsSync } from 'fs';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../shared/constants';
+import { wouldPhaseRegress, isTerminalPhase, isValidExecutionPhase } from '../../shared/constants/phase-protocol';
 import type {
   SDKRateLimitInfo,
   Task,
@@ -23,6 +24,7 @@ import { findTaskAndProject } from './task/shared';
 /**
  * Validates status transitions to prevent invalid state changes.
  * FIX (ACS-55, ACS-71): Adds guardrails against bad status transitions.
+ * FIX (PR Review): Uses comprehensive wouldPhaseRegress() utility instead of hardcoded checks.
  *
  * @param task - The current task (may be undefined if not found)
  * @param newStatus - The proposed new status
@@ -44,12 +46,22 @@ function validateStatusTransition(
     return false;
   }
 
-  // Don't regress from coding phase back to planning phase
-  // This prevents UI flickering when out-of-order events arrive
+  // FIX (PR Review): Use comprehensive phase regression check instead of hardcoded checks
+  // This handles all phase regressions (qa_review→coding, complete→coding, etc.)
+  // not just the specific coding→planning case
   const currentPhase = task.executionProgress?.phase;
-  if (phase === 'planning' && currentPhase === 'coding') {
-    console.warn(`[validateStatusTransition] Blocking phase regression: coding -> planning for task ${task.id}`);
-    return false;
+  if (currentPhase && isValidExecutionPhase(currentPhase) && isValidExecutionPhase(phase)) {
+    // Block transitions from terminal phases (complete/failed)
+    if (isTerminalPhase(currentPhase)) {
+      console.warn(`[validateStatusTransition] Blocking transition from terminal phase: ${currentPhase} for task ${task.id}`);
+      return false;
+    }
+
+    // Block any phase regression (going backwards in the workflow)
+    if (wouldPhaseRegress(currentPhase, phase)) {
+      console.warn(`[validateStatusTransition] Blocking phase regression: ${currentPhase} -> ${phase} for task ${task.id}`);
+      return false;
+    }
   }
 
   return true;

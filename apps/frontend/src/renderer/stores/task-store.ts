@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Task, TaskStatus, SubtaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft } from '../../shared/types';
+import { debugLog } from '../../shared/utils/debug-logger';
 
 interface TaskState {
   tasks: Task[];
@@ -143,12 +144,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   updateTaskFromPlan: (taskId, plan) =>
     set((state) => {
-      console.log('[updateTaskFromPlan] called with plan:', {
+      // FIX (PR Review): Gate debug logging to prevent production console clutter
+      debugLog('[updateTaskFromPlan] called with plan:', {
         taskId,
         feature: plan.feature,
         phases: plan.phases?.length || 0,
-        totalSubtasks: plan.phases?.reduce((acc, p) => acc + (p.subtasks?.length || 0), 0) || 0,
-        planData: plan
+        totalSubtasks: plan.phases?.reduce((acc, p) => acc + (p.subtasks?.length || 0), 0) || 0
+        // Note: planData removed to avoid verbose output in logs
       });
 
       const index = findTaskIndex(state.tasks, taskId);
@@ -187,7 +189,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             })
           );
 
-          console.log('[updateTaskFromPlan] Created subtasks:', {
+          debugLog('[updateTaskFromPlan] Created subtasks:', {
             taskId,
             subtaskCount: subtasks.length,
             subtasks: subtasks.map(s => ({
@@ -216,7 +218,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
           // FIX (Flip-Flop Bug): Respect explicit human_review status from plan file
           // When the plan explicitly says 'human_review', don't override it with calculated status
-          const planStatus = (plan as { status?: string })?.status;
+          // Note: ImplementationPlan type already defines status?: TaskStatus
+          const planStatus = plan.status;
           const isExplicitHumanReview = planStatus === 'human_review';
 
           // Only recalculate status if:
@@ -225,9 +228,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // 3. Plan doesn't explicitly say human_review
           if (!isInActivePhase && !isInTerminalPhase && !isExplicitHumanReview) {
             if (allCompleted) {
-              // FIX (Flip-Flop Bug): Don't downgrade from human_review to ai_review
-              // Once a task reaches human_review, it should stay there unless explicitly changed
-              if (t.status !== 'human_review') {
+              // FIX (Flip-Flop Bug): Don't downgrade from terminal statuses to ai_review
+              // Once a task reaches human_review, pr_created, or done, it should stay there
+              // unless explicitly changed (these are finalized workflow states)
+              const terminalStatuses: TaskStatus[] = ['human_review', 'pr_created', 'done'];
+              if (!terminalStatuses.includes(t.status)) {
                 status = 'ai_review';
               }
             } else if (anyFailed) {
@@ -238,7 +243,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             }
           }
 
-          console.log('[updateTaskFromPlan] Status computation:', {
+          debugLog('[updateTaskFromPlan] Status computation:', {
             taskId,
             currentStatus: t.status,
             newStatus: status,

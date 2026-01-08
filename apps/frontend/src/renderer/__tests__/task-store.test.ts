@@ -1128,5 +1128,222 @@ describe('Task Store', () => {
         expect(subtasks[1].id).toBe('subtask-2');
       });
     });
+
+    // FIX (PR Review): Test coverage for terminal phase status preservation
+    describe('terminal phase status preservation', () => {
+      it('should NOT update status when task is in terminal phase (complete)', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({
+            id: 'task-1',
+            status: 'human_review',
+            executionProgress: { phase: 'complete', phaseProgress: 100, overallProgress: 100 }
+          })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'c1', description: 'Subtask 1', status: 'completed' },
+                { id: 'c2', description: 'Subtask 2', status: 'completed' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        // Status should remain human_review, not be recalculated to ai_review
+        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
+      });
+
+      it('should NOT update status when task is in terminal phase (failed)', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({
+            id: 'task-1',
+            status: 'human_review',
+            executionProgress: { phase: 'failed', phaseProgress: 50, overallProgress: 30 }
+          })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'c1', description: 'Subtask 1', status: 'completed' },
+                { id: 'c2', description: 'Subtask 2', status: 'failed' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        // Status should remain human_review, not be recalculated
+        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
+      });
+    });
+
+    // FIX (PR Review): Test coverage for explicit human_review from plan file
+    describe('explicit human_review from plan file', () => {
+      it('should preserve human_review when plan explicitly sets status', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({
+            id: 'task-1',
+            status: 'backlog',
+            executionProgress: undefined
+          })]
+        });
+
+        // Plan explicitly sets status to human_review
+        const plan = {
+          ...createTestPlan({
+            phases: [
+              {
+                phase: 1,
+                name: 'Phase 1',
+                type: 'implementation',
+                subtasks: [
+                  { id: 'c1', description: 'Subtask 1', status: 'completed' },
+                  { id: 'c2', description: 'Subtask 2', status: 'completed' }
+                ]
+              }
+            ]
+          }),
+          status: 'human_review' as const
+        };
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        // Status should remain as set in plan (backlog), not recalculated
+        // The isExplicitHumanReview check prevents status recalculation
+        expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
+      });
+
+      it('should NOT preserve status when plan does not explicitly set human_review', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({
+            id: 'task-1',
+            status: 'backlog',
+            executionProgress: undefined
+          })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'c1', description: 'Subtask 1', status: 'completed' },
+                { id: 'c2', description: 'Subtask 2', status: 'completed' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        // Status should be recalculated to ai_review since no explicit human_review
+        expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
+      });
+    });
+
+    // FIX (PR Review): Test coverage for terminal status downgrade prevention
+    describe('terminal status downgrade prevention', () => {
+      it('should NOT downgrade from pr_created to ai_review', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({
+            id: 'task-1',
+            status: 'pr_created',
+            executionProgress: undefined
+          })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'c1', description: 'Subtask 1', status: 'completed' },
+                { id: 'c2', description: 'Subtask 2', status: 'completed' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        // Status should remain pr_created, not downgrade to ai_review
+        expect(useTaskStore.getState().tasks[0].status).toBe('pr_created');
+      });
+
+      it('should NOT downgrade from done to ai_review', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({
+            id: 'task-1',
+            status: 'done',
+            executionProgress: undefined
+          })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'c1', description: 'Subtask 1', status: 'completed' },
+                { id: 'c2', description: 'Subtask 2', status: 'completed' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        // Status should remain done, not downgrade to ai_review
+        expect(useTaskStore.getState().tasks[0].status).toBe('done');
+      });
+
+      it('should NOT downgrade from human_review to ai_review', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({
+            id: 'task-1',
+            status: 'human_review',
+            executionProgress: undefined
+          })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'c1', description: 'Subtask 1', status: 'completed' },
+                { id: 'c2', description: 'Subtask 2', status: 'completed' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        // Status should remain human_review, not downgrade to ai_review
+        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
+      });
+    });
   });
 });

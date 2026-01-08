@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
-import { checkTaskRunning, isIncompleteHumanReview, getTaskProgress } from '../../../stores/task-store';
+import { checkTaskRunning, isIncompleteHumanReview, getTaskProgress, useTaskStore } from '../../../stores/task-store';
 import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo } from '../../../../shared/types';
 
 /**
@@ -339,6 +339,17 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
       console.log('[reloadPlanForIncompleteTask] Successfully reloaded plan with valid subtasks:', {
         taskId: task.id,
         subtaskCount: updatedTask.subtasks.length
+      });
+
+      // FIX (PR Review): Update the Zustand store with the reloaded task data
+      // Without this, the UI continues to display stale/invalid subtasks
+      const store = useTaskStore.getState();
+      store.updateTask(task.id, {
+        subtasks: updatedTask.subtasks,
+        title: updatedTask.title,
+        description: updatedTask.description,
+        metadata: updatedTask.metadata,
+        updatedAt: new Date()
       });
 
       return true;
