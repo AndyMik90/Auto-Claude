@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useToast } from '../../hooks/use-toast';
@@ -212,6 +213,11 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
     }
     onOpenChange(false);
   };
+
+  // Memoized callback for navigating to logs tab from subtasks
+  const handleViewAllLogs = useCallback(() => {
+    state.setActiveTab('logs');
+  }, [state.setActiveTab]);
 
   // Helper function to get status badge variant
   const getStatusBadgeVariant = (status: string, isStuck: boolean) => {
@@ -539,7 +545,11 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
 
                 {/* Subtasks Tab */}
                 <TabsContent value="subtasks" className="flex-1 min-h-0 overflow-hidden mt-0">
-                  <TaskSubtasks task={task} />
+                  <TaskSubtasks
+                    task={task}
+                    phaseLogs={state.phaseLogs}
+                    onViewAllLogs={handleViewAllLogs}
+                  />
                 </TabsContent>
 
                 {/* Logs Tab */}
