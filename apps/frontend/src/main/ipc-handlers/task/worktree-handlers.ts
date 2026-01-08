@@ -1330,16 +1330,16 @@ interface ParsedPRResult {
 /**
  * Validate that a URL is a valid GitHub PR URL.
  * Supports both github.com and GitHub Enterprise instances (custom domains).
- * @returns true if the URL is a valid HTTPS URL with /pull/ in the path
+ * Only requires HTTPS protocol and non-empty hostname to allow any GH Enterprise URL.
+ * @returns true if the URL is a valid HTTPS URL with a non-empty hostname
  */
 function isValidGitHubUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    // Must be HTTPS with non-empty hostname and a PR path
+    // Only require HTTPS with non-empty hostname
     // This supports GH Enterprise instances with custom domains
-    return parsed.protocol === 'https:' &&
-           parsed.hostname.length > 0 &&
-           /\/pull\/\d+/.test(parsed.pathname);
+    // The URL comes from gh CLI output which we trust to be valid
+    return parsed.protocol === 'https:' && parsed.hostname.length > 0;
   } catch {
     return false;
   }
