@@ -108,14 +108,21 @@ jobs:
               for (const label of allLabels) {
                 try {
                   await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
-                } catch (e) { /* ignore 404 */ }
+                } catch (e) {
+                  if (e && e.status !== 404) {
+                    core.warning(`Failed to remove label '${label}': ${e.message}`);
+                  }
+                }
               }
 
               try {
                 await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newLabel] });
               } catch (e) {
-                if (e.status !== 404) throw e;
-                core.warning(`Label '${newLabel}' does not exist`);
+                if (e && e.status === 404) {
+                  core.warning(`Label '${newLabel}' does not exist`);
+                } else {
+                  throw e;
+                }
               }
             }
 
@@ -186,7 +193,7 @@ jobs:
               'Missing AC Approval',
               'AC: Approved',
               'AC: Changes Requested',
-              'AC: Rejected',
+              'AC: Blocked',
               'AC: Needs Re-review'
             ]);
 
@@ -259,7 +266,11 @@ jobs:
                 for (const label of Object.values(STATUS_LABELS)) {
                   try {
                     await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
-                  } catch (e) { /* ignore */ }
+                  } catch (e) {
+                    if (e && e.status !== 404) {
+                      core.warning(`Failed to remove label '${label}': ${e.message}`);
+                    }
+                  }
                 }
                 await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newStatusLabel] });
               }
@@ -348,7 +359,7 @@ jobs:
             const VERDICTS = Object.freeze({
               APPROVED: {
                 patterns: ['Auto Claude Review - APPROVED', '✅ Auto Claude Review - APPROVED'],
-                regex: /Merge Verdict:.*(?:✅|🟢).*(?:APPROVED|READY TO MERGE)/i,
+                regex: /Merge Verdict:.*✅.*(?:APPROVED|READY TO MERGE)/i,
                 label: 'AC: Approved'
               },
               CHANGES_REQUESTED: {
@@ -356,15 +367,10 @@ jobs:
                 regex: /Merge Verdict:.*🟠/,
                 label: 'AC: Changes Requested'
               },
-              REJECTED: {
-                patterns: ['REJECTED'],
+              BLOCKED: {
+                patterns: ['BLOCKED'],
                 regex: /Merge Verdict:.*🔴/,
-                label: 'AC: Rejected'
-              },
-              RE_REVIEW: {
-                patterns: ['Re-review', 're-review', 'RE-REVIEW'],
-                regex: null,
-                label: 'AC: Needs Re-review'
+                label: 'AC: Blocked'
               }
             });
 
@@ -372,7 +378,7 @@ jobs:
               'Missing AC Approval',
               'AC: Approved',
               'AC: Changes Requested',
-              'AC: Rejected',
+              'AC: Blocked',
               'AC: Needs Re-review',
               'AC: Reviewed'
             ]);
@@ -409,14 +415,18 @@ jobs:
                 try {
                   await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
                   console.log(`  Removed: ${label}`);
-                } catch (e) { /* ignore 404 */ }
+                } catch (e) {
+                  if (e && e.status !== 404) {
+                    core.warning(`Failed to remove label '${label}': ${e.message}`);
+                  }
+                }
               }
 
               try {
                 await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newLabel] });
                 console.log(`  Added: ${newLabel}`);
               } catch (e) {
-                if (e.status === 404) {
+                if (e && e.status === 404) {
                   core.warning(`Label '${newLabel}' does not exist`);
                 } else {
                   throw e;
@@ -505,7 +515,11 @@ jobs:
                 owner, repo, issue_number: prNumber, name: 'AC: Approved'
               });
               console.log('  Removed: AC: Approved');
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+              if (e && e.status !== 404) {
+                core.warning(`Failed to remove 'AC: Approved' label: ${e.message}`);
+              }
+            }
 
             // Add AC: Needs Re-review
             try {
@@ -514,27 +528,12 @@ jobs:
               });
               console.log('  Added: AC: Needs Re-review');
             } catch (e) {
-              if (e.status === 404) {
+              if (e && e.status === 404) {
                 core.warning("Label 'AC: Needs Re-review' does not exist");
               } else {
                 throw e;
               }
             }
-
-            // Reset CI status
-            const statusLabels = ['🔄 Checking', '✅ Ready for Review', '❌ Checks Failed'];
-            for (const label of statusLabels) {
-              try {
-                await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
-              } catch (e) { /* ignore */ }
-            }
-
-            try {
-              await github.rest.issues.addLabels({
-                owner, repo, issue_number: prNumber, labels: ['🔄 Checking']
-              });
-              console.log('  Reset status: 🔄 Checking');
-            } catch (e) { /* ignore */ }
 
             // Post notification comment
             const commentLines = [
