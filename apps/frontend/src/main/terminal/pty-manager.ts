@@ -153,9 +153,51 @@ export function setupPtyHandlers(
 
 /**
  * Write data to a PTY process
+ * Uses setImmediate to prevent blocking the event loop on large writes
  */
 export function writeToPty(terminal: TerminalProcess, data: string): void {
-  terminal.pty.write(data);
+  console.log('[PtyManager:writeToPty] About to write to pty, data length:', data.length);
+
+  // For large commands, write in chunks to prevent blocking
+  if (data.length > 1000) {
+    console.log('[PtyManager:writeToPty] Large write detected, using chunked write');
+    const chunkSize = 100; // Smaller chunks
+    let offset = 0;
+    let chunkNum = 0;
+
+    const writeChunk = () => {
+      if (offset >= data.length) {
+        console.log('[PtyManager:writeToPty] Chunked write completed, total chunks:', chunkNum);
+        return;
+      }
+
+      const chunk = data.slice(offset, offset + chunkSize);
+      chunkNum++;
+      console.log('[PtyManager:writeToPty] Writing chunk', chunkNum, 'offset:', offset, 'size:', chunk.length);
+      try {
+        terminal.pty.write(chunk);
+        console.log('[PtyManager:writeToPty] Chunk', chunkNum, 'written');
+        offset += chunkSize;
+        // Use setImmediate to yield to the event loop between chunks
+        setImmediate(writeChunk);
+      } catch (error) {
+        console.error('[PtyManager:writeToPty] Chunked write FAILED at chunk', chunkNum, 'offset', offset, ':', error);
+      }
+    };
+
+    // Start the chunked write after yielding
+    console.log('[PtyManager:writeToPty] Scheduling first chunk...');
+    setImmediate(writeChunk);
+    console.log('[PtyManager:writeToPty] First chunk scheduled, returning');
+  } else {
+    try {
+      terminal.pty.write(data);
+      console.log('[PtyManager:writeToPty] Write completed successfully');
+    } catch (error) {
+      console.error('[PtyManager:writeToPty] Write FAILED:', error);
+      throw error;
+    }
+  }
 }
 
 /**

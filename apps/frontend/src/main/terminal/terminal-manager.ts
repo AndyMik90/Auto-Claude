@@ -120,9 +120,14 @@ export class TerminalManager {
    * Send input to a terminal
    */
   write(id: string, data: string): void {
+    console.log('[TerminalManager:write] Writing to terminal:', id, 'data length:', data.length);
     const terminal = this.terminals.get(id);
     if (terminal) {
+      console.log('[TerminalManager:write] Terminal found, calling writeToPty...');
       PtyManager.writeToPty(terminal, data);
+      console.log('[TerminalManager:write] writeToPty completed');
+    } else {
+      console.error('[TerminalManager:write] Terminal NOT found:', id);
     }
   }
 

@@ -27,6 +27,7 @@ import { Card, CardContent } from '../ui/card';
 import { cn } from '../../lib/utils';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
 import { useClaudeLoginTerminal } from '../../hooks/useClaudeLoginTerminal';
+import { useToast } from '../../hooks/use-toast';
 import type { ClaudeProfile } from '../../../shared/types';
 
 interface OAuthStepProps {
@@ -42,6 +43,7 @@ interface OAuthStepProps {
  */
 export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
   const { t } = useTranslation('onboarding');
+  const { toast } = useToast();
 
   // Claude Profiles state
   const [claudeProfiles, setClaudeProfiles] = useState<ClaudeProfile[]>([]);
@@ -102,13 +104,16 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
       if (info.success && info.profileId) {
         // Reload profiles to show updated state
         await loadClaudeProfiles();
-        // Show simple success notification
-        alert(`✅ Profile authenticated successfully!\n\n${info.email ? `Account: ${info.email}` : 'Authentication complete.'}\n\nYou can now use this profile.`);
+        // Show simple success notification (non-blocking)
+        toast({
+          title: 'Profile authenticated successfully',
+          description: info.email ? `Account: ${info.email}` : 'Authentication complete. You can now use this profile.',
+        });
       }
     });
 
     return unsubscribe;
-  }, []);
+  }, [toast]);
 
   // Profile management handlers - following patterns from IntegrationSettings.tsx
   const handleAddProfile = async () => {
@@ -152,12 +157,20 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
           // Users can see the 'claude setup-token' output directly
         } else {
           await loadClaudeProfiles();
-          alert(`Failed to start authentication: ${initResult.error || 'Please try again.'}`);
+          toast({
+            variant: 'destructive',
+            title: 'Failed to start authentication',
+            description: initResult.error || 'Please try again.',
+          });
         }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add profile');
-      alert('Failed to add profile. Please try again.');
+      toast({
+        variant: 'destructive',
+        title: 'Failed to add profile',
+        description: 'Please try again.',
+      });
     } finally {
       setIsAddingProfile(false);
     }
@@ -224,13 +237,21 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
     try {
       const initResult = await window.electronAPI.initializeClaudeProfile(profileId);
       if (!initResult.success) {
-        alert(`Failed to start authentication: ${initResult.error || 'Please try again.'}`);
+        toast({
+          variant: 'destructive',
+          title: 'Failed to start authentication',
+          description: initResult.error || 'Please try again.',
+        });
       }
       // Note: If successful, the terminal is now visible in the UI via the onTerminalAuthCreated event
       // Users can see the 'claude setup-token' output and complete OAuth flow directly
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to authenticate profile');
-      alert('Failed to start authentication. Please try again.');
+      toast({
+        variant: 'destructive',
+        title: 'Failed to start authentication',
+        description: 'Please try again.',
+      });
     } finally {
       setAuthenticatingProfileId(null);
     }
@@ -267,12 +288,24 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
         setManualToken('');
         setManualTokenEmail('');
         setShowManualToken(false);
+        toast({
+          title: 'Token saved',
+          description: 'Your token has been saved successfully.',
+        });
       } else {
-        alert(`Failed to save token: ${result.error || 'Please try again.'}`);
+        toast({
+          variant: 'destructive',
+          title: 'Failed to save token',
+          description: result.error || 'Please try again.',
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save token');
-      alert('Failed to save token. Please try again.');
+      toast({
+        variant: 'destructive',
+        title: 'Failed to save token',
+        description: 'Please try again.',
+      });
     } finally {
       setSavingTokenProfileId(null);
     }
