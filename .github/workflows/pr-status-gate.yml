@@ -8,18 +8,33 @@ on:
   issue_comment:
     types: [created, edited]
 
-# Prevent concurrent runs for the same workflow trigger
+  pull_request:
+    types: [synchronize]
+
 concurrency:
-  group: pr-status-gate-${{ github.event.workflow_run.pull_requests[0].number || github.event.issue.number || github.run_id }}
+  group: pr-status-gate-${{ github.event.workflow_run.pull_requests[0].number || github.event.issue.number || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 permissions:
   pull-requests: write
   checks: read
 
+env:
+  # Shared configuration - single source of truth
+  REQUIRED_CHECKS: |
+    CI / test-frontend
+    CI / test-python (3.12)
+    CI / test-python (3.13)
+    Lint / python
+    Quality Security / CodeQL (javascript-typescript)
+    Quality Security / CodeQL (python)
+    Quality Security / Python Security (Bandit)
+    Quality Security / Security Summary
+
 jobs:
   # ═══════════════════════════════════════════════════════════════════════════
   # JOB 1: CI STATUS (triggered by workflow_run)
+  # Updates CI status labels when monitored workflows complete
   # ═══════════════════════════════════════════════════════════════════════════
   update-ci-status:
     name: Update CI Status
@@ -30,54 +45,28 @@ jobs:
     steps:
       - name: Check all required checks and update label
         uses: actions/github-script@v7
+        env:
+          REQUIRED_CHECKS: ${{ env.REQUIRED_CHECKS }}
         with:
           retries: 3
           retry-exempt-status-codes: 400,401,403,404,422
           script: |
-            // ═══════════════════════════════════════════════════════════════
-            // CONFIGURATION
-            // ═══════════════════════════════════════════════════════════════
+            const STATUS_LABELS = Object.freeze({
+              CHECKING: '🔄 Checking',
+              PASSED: '✅ Ready for Review',
+              FAILED: '❌ Checks Failed'
+            });
 
-            const CONFIG = {
-              // Required check runs - Job-level checks (not workflow-level)
-              // Format: "{Workflow Name} / {Job Name}"
-              // Last validated: 2026-01-08
-              REQUIRED_CHECKS: Object.freeze([
-                'CI / test-frontend',
-                'CI / test-python (3.12)',
-                'CI / test-python (3.13)',
-                'Lint / python',
-                'Quality Security / CodeQL (javascript-typescript)',
-                'Quality Security / CodeQL (python)',
-                'Quality Security / Python Security (Bandit)',
-                'Quality Security / Security Summary'
-              ]),
+            const REQUIRED_CHECKS = process.env.REQUIRED_CHECKS
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
 
-              STATUS_LABELS: Object.freeze({
-                CHECKING: '🔄 Checking',
-                PASSED: '✅ Ready for Review',
-                FAILED: '❌ Checks Failed'
-              })
-            };
-
-            // ═══════════════════════════════════════════════════════════════
-            // HELPER FUNCTIONS
-            // ═══════════════════════════════════════════════════════════════
-
-            /**
-             * Fetch all check runs for a commit
-             * @param {string} sha - Commit SHA
-             * @returns {Array} Check runs
-             */
             async function fetchCheckRuns(sha) {
               const { owner, repo } = context.repo;
-
               try {
                 const { data } = await github.rest.checks.listForRef({
-                  owner,
-                  repo,
-                  ref: sha,
-                  per_page: 100
+                  owner, repo, ref: sha, per_page: 100
                 });
                 return data.check_runs;
               } catch (error) {
@@ -86,17 +75,12 @@ jobs:
               }
             }
 
-            /**
-             * Analyze check results
-             * @param {Array} checkRuns - All check runs
-             * @returns {{allComplete: boolean, anyFailed: boolean, results: Array}}
-             */
             function analyzeChecks(checkRuns) {
               const results = [];
               let allComplete = true;
               let anyFailed = false;
 
-              for (const checkName of CONFIG.REQUIRED_CHECKS) {
+              for (const checkName of REQUIRED_CHECKS) {
                 const check = checkRuns.find(c => c.name === checkName);
 
                 if (!check) {
@@ -114,122 +98,223 @@ jobs:
                   anyFailed = true;
                 }
               }
-
               return { allComplete, anyFailed, results };
             }
 
-            /**
-             * Update status labels on PR
-             * @param {number} prNumber - PR number
-             * @param {string} newLabel - Label to apply
-             */
             async function updateStatusLabels(prNumber, newLabel) {
               const { owner, repo } = context.repo;
-              const allLabels = Object.values(CONFIG.STATUS_LABELS);
+              const allLabels = Object.values(STATUS_LABELS);
 
-              // Remove old status labels
               for (const label of allLabels) {
                 try {
-                  await github.rest.issues.removeLabel({
-                    owner,
-                    repo,
-                    issue_number: prNumber,
-                    name: label
-                  });
-                } catch (e) {
-                  // Ignore 404 - label wasn't present
-                }
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
+                } catch (e) { /* ignore 404 */ }
               }
 
-              // Add new label
-              await github.rest.issues.addLabels({
-                owner,
-                repo,
-                issue_number: prNumber,
-                labels: [newLabel]
-              });
-            }
-
-            /**
-             * Print check results table to log
-             * @param {Array} results - Check results
-             */
-            function logResults(results) {
-              console.log('\nCheck Status:');
-              console.log('─'.repeat(70));
-              for (const r of results) {
-                const name = r.name.length > 50 ? r.name.slice(0, 47) + '...' : r.name;
-                console.log(`  ${r.status.padEnd(12)} ${name}`);
+              try {
+                await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newLabel] });
+              } catch (e) {
+                if (e.status !== 404) throw e;
+                core.warning(`Label '${newLabel}' does not exist`);
               }
-              console.log('─'.repeat(70));
             }
 
-            // ═══════════════════════════════════════════════════════════════
-            // MAIN LOGIC
-            // ═══════════════════════════════════════════════════════════════
-
+            // Main logic
             const prNumber = context.payload.workflow_run.pull_requests[0].number;
             const headSha = context.payload.workflow_run.head_sha;
             const triggerWorkflow = context.payload.workflow_run.name;
 
-            console.log(`::group::PR #${prNumber} - CI Status Check`);
-            console.log(`Triggered by: ${triggerWorkflow}`);
-            console.log(`Commit: ${headSha.slice(0, 8)}`);
+            console.log(`PR #${prNumber} - Triggered by: ${triggerWorkflow}, SHA: ${headSha.slice(0, 8)}`);
 
-            // Fetch check runs
             const checkRuns = await fetchCheckRuns(headSha);
-            if (!checkRuns) {
-              console.log('::endgroup::');
-              return;
-            }
+            if (!checkRuns) return;
 
             console.log(`Found ${checkRuns.length} check runs`);
-
-            // Analyze results
             const { allComplete, anyFailed, results } = analyzeChecks(checkRuns);
-            logResults(results);
-            console.log('::endgroup::');
 
-            // Only update if all checks are complete
+            for (const r of results) {
+              console.log(`  ${r.status} ${r.name}`);
+            }
+
             if (!allComplete) {
               const pending = results.filter(r => !r.complete).length;
-              console.log(`⏳ ${pending}/${CONFIG.REQUIRED_CHECKS.length} checks pending`);
+              console.log(`⏳ ${pending}/${REQUIRED_CHECKS.length} checks pending`);
               return;
             }
 
-            // Update labels
-            const newLabel = anyFailed ? CONFIG.STATUS_LABELS.FAILED : CONFIG.STATUS_LABELS.PASSED;
+            const newLabel = anyFailed ? STATUS_LABELS.FAILED : STATUS_LABELS.PASSED;
             await updateStatusLabels(prNumber, newLabel);
 
-            // Log and write summary
             const passedCount = results.filter(r => r.status === '✅ Passed').length;
-            const skippedCount = results.filter(r => r.skipped).length;
             const failedCount = results.filter(r => r.failed).length;
 
             if (anyFailed) {
               console.log(`❌ PR #${prNumber}: ${failedCount} check(s) failed`);
-              core.summary.addRaw(`## ❌ PR #${prNumber} - Checks Failed\n\n`);
-              core.summary.addRaw(`**${failedCount}** of **${CONFIG.REQUIRED_CHECKS.length}** checks failed.\n\n`);
             } else {
-              console.log(`✅ PR #${prNumber}: Ready for review`);
-              core.summary.addRaw(`## ✅ PR #${prNumber} - Ready for Review\n\n`);
-              core.summary.addRaw(`All **${CONFIG.REQUIRED_CHECKS.length}** checks passed.\n\n`);
+              console.log(`✅ PR #${prNumber}: Ready for review (${passedCount}/${REQUIRED_CHECKS.length} passed)`);
             }
 
-            core.summary.addTable([
-              [{ data: 'Check', header: true }, { data: 'Status', header: true }],
-              ...results.map(r => [r.name, r.status])
+  # ═══════════════════════════════════════════════════════════════════════════
+  # JOB 2: /check-status COMMAND
+  # Manual status check - anyone can trigger by commenting /check-status
+  # ═══════════════════════════════════════════════════════════════════════════
+  check-status-command:
+    name: Check Status Command
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/check-status')
+    timeout-minutes: 5
+
+    steps:
+      - name: Run status check and post report
+        uses: actions/github-script@v7
+        env:
+          REQUIRED_CHECKS: ${{ env.REQUIRED_CHECKS }}
+        with:
+          retries: 3
+          retry-exempt-status-codes: 400,401,403,404,422
+          script: |
+            const STATUS_LABELS = Object.freeze({
+              CHECKING: '🔄 Checking',
+              PASSED: '✅ Ready for Review',
+              FAILED: '❌ Checks Failed'
+            });
+
+            const REVIEW_LABELS = Object.freeze([
+              'Missing AC Approval',
+              'AC: Approved',
+              'AC: Changes Requested',
+              'AC: Rejected',
+              'AC: Needs Re-review'
             ]);
-            await core.summary.write();
+
+            const REQUIRED_CHECKS = process.env.REQUIRED_CHECKS
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.issue.number;
+            const requestedBy = context.payload.comment.user.login;
+
+            // Get PR details
+            const { data: pr } = await github.rest.pulls.get({
+              owner, repo, pull_number: prNumber
+            });
+            const headSha = pr.head.sha;
+
+            console.log(`PR #${prNumber} - /check-status by @${requestedBy}, SHA: ${headSha.slice(0, 8)}`);
+
+            // Fetch check runs
+            const { data: checksData } = await github.rest.checks.listForRef({
+              owner, repo, ref: headSha, per_page: 100
+            });
+
+            const checkRuns = checksData.check_runs;
+            console.log(`Found ${checkRuns.length} check runs`);
+
+            // Analyze results
+            const results = [];
+            let allComplete = true;
+            let anyFailed = false;
+
+            for (const checkName of REQUIRED_CHECKS) {
+              const check = checkRuns.find(c => c.name === checkName);
+
+              if (!check) {
+                results.push({ name: checkName, emoji: '⏳', complete: false });
+                allComplete = false;
+              } else if (check.status !== 'completed') {
+                results.push({ name: checkName, emoji: '🔄', complete: false });
+                allComplete = false;
+              } else if (check.conclusion === 'success') {
+                results.push({ name: checkName, emoji: '✅', complete: true });
+              } else if (check.conclusion === 'skipped') {
+                results.push({ name: checkName, emoji: '⏭️', complete: true, skipped: true });
+              } else {
+                results.push({ name: checkName, emoji: '❌', complete: true, failed: true });
+                anyFailed = true;
+              }
+            }
+
+            // Get current labels
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner, repo, issue_number: prNumber
+            });
+            const labelNames = currentLabels.map(l => l.name);
+            const currentStatusLabel = Object.values(STATUS_LABELS).find(l => labelNames.includes(l)) || 'None';
+            const currentReviewLabel = REVIEW_LABELS.find(l => labelNames.includes(l)) || 'None';
+
+            // Update label if all checks complete
+            let newStatusLabel = STATUS_LABELS.CHECKING;
+            let statusChanged = false;
+
+            if (allComplete) {
+              newStatusLabel = anyFailed ? STATUS_LABELS.FAILED : STATUS_LABELS.PASSED;
+
+              if (newStatusLabel !== currentStatusLabel) {
+                statusChanged = true;
+                for (const label of Object.values(STATUS_LABELS)) {
+                  try {
+                    await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
+                  } catch (e) { /* ignore */ }
+                }
+                await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newStatusLabel] });
+              }
+            }
+
+            // Build status report
+            const passedCount = results.filter(r => r.emoji === '✅').length;
+            let statusEmoji = '🔄';
+            if (allComplete && !anyFailed) statusEmoji = '✅';
+            else if (allComplete && anyFailed) statusEmoji = '❌';
+
+            const checksTable = results.map(r => `| ${r.emoji} | ${r.name} |`).join('\n');
+
+            const lines = [
+              `## ${statusEmoji} PR Status Report`,
+              '',
+              `| Label | Value |`,
+              `|-------|-------|`,
+              `| CI Status | ${newStatusLabel} |`,
+              `| AC Review | ${currentReviewLabel} |`,
+              ''
+            ];
+
+            if (statusChanged) {
+              lines.push(`> Status updated: \`${currentStatusLabel}\` → \`${newStatusLabel}\``);
+              lines.push('');
+            }
+
+            lines.push(`### CI Checks (${passedCount}/${REQUIRED_CHECKS.length} passed)`);
+            lines.push('');
+            lines.push('| Status | Check |');
+            lines.push('|--------|-------|');
+            lines.push(checksTable);
+            lines.push('');
+            lines.push('---');
+            lines.push(`<sub>Triggered by \`/check-status\` from @${requestedBy}</sub>`);
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: prNumber, body: lines.join('\n')
+            });
+
+            console.log(`✅ Posted status report to PR #${prNumber}`);
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # JOB 2: AUTO-CLAUDE REVIEW (triggered by comments)
-  # Security: Validates commenter is a trusted bot before updating labels
+  # JOB 3: AUTO-CLAUDE REVIEW
+  # Processes Auto-Claude review comments from trusted sources
+  # Security: Only bots and collaborators can update labels
   # ═══════════════════════════════════════════════════════════════════════════
   update-review-status:
     name: Update Review Status
     runs-on: ubuntu-latest
-    if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      !contains(github.event.comment.body, '/check-status')
     timeout-minutes: 5
 
     steps:
@@ -239,251 +324,236 @@ jobs:
           retries: 3
           retry-exempt-status-codes: 400,401,403,404,422
           script: |
-            // ═══════════════════════════════════════════════════════════════
-            // CONFIGURATION
-            // ═══════════════════════════════════════════════════════════════
+            // Security configuration
+            const TRUSTED_BOT_ACCOUNTS = Object.freeze([
+              'github-actions[bot]',
+              'github-actions',
+              'auto-claude[bot]',
+              'auto-claude',
+              'AutoClaudeBot'
+            ]);
 
-            const CONFIG = {
-              // Trusted bot accounts for Auto-Claude reviews
-              // Security: These accounts are always trusted for label updates
-              TRUSTED_BOT_ACCOUNTS: Object.freeze([
-                'github-actions[bot]',
-                'github-actions',
-                'auto-claude[bot]',
-                'auto-claude',
-                'AutoClaudeBot'
-              ]),
+            const TRUSTED_AUTHOR_ASSOCIATIONS = Object.freeze([
+              'COLLABORATOR',
+              'MEMBER',
+              'OWNER'
+            ]);
 
-              // Trusted author associations (GitHub's author_association field)
-              // These users can post Auto-Claude reviews when running locally
-              // Values: COLLABORATOR, MEMBER, OWNER, CONTRIBUTOR
-              TRUSTED_AUTHOR_ASSOCIATIONS: Object.freeze([
-                'COLLABORATOR',
-                'MEMBER',
-                'OWNER'
-              ]),
+            const IDENTIFIER_PATTERNS = Object.freeze([
+              '🤖 Auto Claude PR Review',
+              'Auto Claude Review',
+              'Auto-Claude Review'
+            ]);
 
-              // Patterns that identify Auto-Claude review comments
-              IDENTIFIER_PATTERNS: Object.freeze([
-                '🤖 Auto Claude PR Review',
-                'Auto Claude Review',
-                'Auto-Claude Review'
-              ]),
+            const VERDICTS = Object.freeze({
+              APPROVED: {
+                patterns: ['Auto Claude Review - APPROVED', '✅ Auto Claude Review - APPROVED'],
+                regex: /Merge Verdict:.*(?:✅|🟢).*(?:APPROVED|READY TO MERGE)/i,
+                label: 'AC: Approved'
+              },
+              CHANGES_REQUESTED: {
+                patterns: ['NEEDS REVISION', 'Needs Revision'],
+                regex: /Merge Verdict:.*🟠/,
+                label: 'AC: Changes Requested'
+              },
+              REJECTED: {
+                patterns: ['REJECTED'],
+                regex: /Merge Verdict:.*🔴/,
+                label: 'AC: Rejected'
+              },
+              RE_REVIEW: {
+                patterns: ['Re-review', 're-review', 'RE-REVIEW'],
+                regex: null,
+                label: 'AC: Needs Re-review'
+              }
+            });
 
-              // Verdict patterns and their corresponding labels
-              VERDICTS: Object.freeze({
-                APPROVED: {
-                  // Only match specific Auto-Claude approval tokens
-                  // Removed ambiguous 'Ready To Merge' patterns that could match unrelated text
-                  patterns: [
-                    'Auto Claude Review - APPROVED',
-                    '✅ Auto Claude Review - APPROVED'
-                  ],
-                  // Match "Merge Verdict: ✅ READY TO MERGE" or "Merge Verdict: 🟢 APPROVED"
-                  regex: /Merge Verdict:.*(?:✅|🟢).*(?:APPROVED|READY TO MERGE)/i,
-                  label: 'AC: Approved'
-                },
-                CHANGES_REQUESTED: {
-                  patterns: [
-                    'NEEDS REVISION',
-                    'Needs Revision'
-                  ],
-                  regex: /Merge Verdict:.*🟠/,
-                  label: 'AC: Changes Requested'
-                },
-                REJECTED: {
-                  patterns: ['REJECTED'],
-                  regex: /Merge Verdict:.*🔴/,
-                  label: 'AC: Rejected'
-                },
-                RE_REVIEW: {
-                  patterns: [
-                    'Re-review',
-                    're-review',
-                    'RE-REVIEW'
-                  ],
-                  regex: null,
-                  label: 'AC: Needs Re-review'
-                }
-              }),
+            const REVIEW_LABELS = Object.freeze([
+              'Missing AC Approval',
+              'AC: Approved',
+              'AC: Changes Requested',
+              'AC: Rejected',
+              'AC: Needs Re-review',
+              'AC: Reviewed'
+            ]);
 
-              // All review labels (for cleanup)
-              REVIEW_LABELS: Object.freeze([
-                'Missing AC Approval',
-                'AC: Approved',
-                'AC: Changes Requested',
-                'AC: Rejected',
-                'AC: Needs Re-review',
-                'AC: Reviewed'
-              ])
-            };
-
-            // ═══════════════════════════════════════════════════════════════
-            // HELPER FUNCTIONS
-            // ═══════════════════════════════════════════════════════════════
-
-            /**
-             * Check if commenter is a trusted bot account
-             * @param {string} username - GitHub username
-             * @returns {boolean}
-             */
+            // Helper functions
             function isTrustedBot(username) {
-              return CONFIG.TRUSTED_BOT_ACCOUNTS.some(trusted =>
-                username.toLowerCase() === trusted.toLowerCase()
-              );
+              return TRUSTED_BOT_ACCOUNTS.some(t => username.toLowerCase() === t.toLowerCase());
             }
 
-            /**
-             * Check if commenter has trusted author association
-             * @param {string} authorAssociation - GitHub author_association field
-             * @returns {boolean}
-             */
-            function isTrustedAssociation(authorAssociation) {
-              return CONFIG.TRUSTED_AUTHOR_ASSOCIATIONS.includes(authorAssociation);
+            function isTrustedAssociation(assoc) {
+              return TRUSTED_AUTHOR_ASSOCIATIONS.includes(assoc);
             }
 
-            /**
-             * Check if comment is from Auto-Claude based on content
-             * @param {string} body - Comment body
-             * @returns {boolean}
-             */
             function isAutoClaudeComment(body) {
-              return CONFIG.IDENTIFIER_PATTERNS.some(pattern =>
-                body.includes(pattern)
-              );
+              return IDENTIFIER_PATTERNS.some(p => body.includes(p));
             }
 
-            /**
-             * Parse verdict from comment body
-             * @param {string} body - Comment body
-             * @returns {string|null} Label to apply or null
-             */
             function parseVerdict(body) {
-              // Limit body length for security
               const safeBody = body.slice(0, 5000);
-
-              for (const [key, config] of Object.entries(CONFIG.VERDICTS)) {
-                // Check pattern matches
+              for (const [key, config] of Object.entries(VERDICTS)) {
                 const patternMatch = config.patterns.some(p => safeBody.includes(p));
                 const regexMatch = config.regex && config.regex.test(safeBody);
-
                 if (patternMatch || regexMatch) {
                   return { verdict: key, label: config.label };
                 }
               }
-
               return null;
             }
 
-            /**
-             * Update review labels on PR
-             * @param {number} prNumber - PR number
-             * @param {string} newLabel - Label to apply
-             */
             async function updateReviewLabels(prNumber, newLabel) {
               const { owner, repo } = context.repo;
 
-              // Remove all review labels
-              for (const label of CONFIG.REVIEW_LABELS) {
+              for (const label of REVIEW_LABELS) {
                 try {
-                  await github.rest.issues.removeLabel({
-                    owner,
-                    repo,
-                    issue_number: prNumber,
-                    name: label
-                  });
-                  console.log(`  ✓ Removed: ${label}`);
-                } catch (e) {
-                  // Ignore 404 - label wasn't present
-                }
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
+                  console.log(`  Removed: ${label}`);
+                } catch (e) { /* ignore 404 */ }
               }
 
-              // Add new label
               try {
-                await github.rest.issues.addLabels({
-                  owner,
-                  repo,
-                  issue_number: prNumber,
-                  labels: [newLabel]
-                });
-                console.log(`  ✓ Added: ${newLabel}`);
+                await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newLabel] });
+                console.log(`  Added: ${newLabel}`);
               } catch (e) {
                 if (e.status === 404) {
-                  // Label doesn't exist - warn but don't fail the workflow
-                  core.warning(`Label '${newLabel}' does not exist.`);
+                  core.warning(`Label '${newLabel}' does not exist`);
                 } else {
                   throw e;
                 }
               }
             }
 
-            // ═══════════════════════════════════════════════════════════════
-            // MAIN LOGIC
-            // ═══════════════════════════════════════════════════════════════
-
+            // Main logic
             const prNumber = context.payload.issue.number;
             const comment = context.payload.comment;
             const commenter = comment.user.login;
             const authorAssociation = comment.author_association;
             const body = comment.body || '';
 
-            console.log(`::group::PR #${prNumber} - Review Gate`);
-            console.log(`Commenter: ${commenter}`);
-            console.log(`Author Association: ${authorAssociation}`);
-            console.log(`Comment ID: ${comment.id}`);
+            console.log(`PR #${prNumber} - Comment by: ${commenter} (${authorAssociation})`);
 
-            // Security Check 1: Verify commenter is trusted
+            // Security checks
             const isBot = isTrustedBot(commenter);
             const isCollaborator = isTrustedAssociation(authorAssociation);
-            console.log(`Trusted bot: ${isBot}`);
-            console.log(`Trusted collaborator: ${isCollaborator}`);
-
-            // Security Check 2: Verify comment contains Auto-Claude identifier
             const isACComment = isAutoClaudeComment(body);
-            console.log(`Auto-Claude comment: ${isACComment}`);
 
-            // Security Policy:
-            // - ALLOW: Trusted bot account + AC identifier
-            // - ALLOW: Trusted collaborator/member/owner + AC identifier
-            // - DENY: Random users (even with AC identifier - prevents spoofing)
-            //
-            // This allows collaborators to run Auto-Claude locally and post reviews,
-            // while preventing arbitrary users from manipulating labels.
+            console.log(`  Trusted bot: ${isBot}, Collaborator: ${isCollaborator}, AC comment: ${isACComment}`);
+
             if (!isBot && !isCollaborator) {
-              console.log(`Skipping: ${commenter} is not a trusted bot or collaborator`);
-              console.log('::endgroup::');
+              console.log('Skipping: Not a trusted bot or collaborator');
               return;
             }
 
-            // Always require the AC identifier to prevent accidental triggering
             if (!isACComment) {
-              console.log('Skipping: Comment does not contain Auto-Claude identifier');
-              console.log('::endgroup::');
+              console.log('Skipping: Not an Auto-Claude comment');
               return;
             }
 
-            // Parse verdict
             const verdictResult = parseVerdict(body);
             if (!verdictResult) {
-              console.log('Could not parse verdict from comment');
-              console.log('::endgroup::');
+              console.log('Skipping: Could not parse verdict');
               return;
             }
 
             console.log(`Verdict: ${verdictResult.verdict} → ${verdictResult.label}`);
-
-            // Update labels
-            console.log('\nUpdating labels:');
             await updateReviewLabels(prNumber, verdictResult.label);
+            console.log(`✅ PR #${prNumber} review status updated`);
 
-            console.log('::endgroup::');
-            console.log(`✅ PR #${prNumber} review status: ${verdictResult.label}`);
+  # ═══════════════════════════════════════════════════════════════════════════
+  # JOB 4: RE-REVIEW ON PUSH
+  # When new commits pushed after AC approval, require re-review
+  # ═══════════════════════════════════════════════════════════════════════════
+  require-re-review:
+    name: Require Re-review on Push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
+    timeout-minutes: 5
 
-            // Write summary
-            const trustedBy = isBot ? 'bot account' : `collaborator (${authorAssociation})`;
-            await core.summary
-              .addHeading(`PR #${prNumber} Review Gate`, 3)
-              .addRaw(`**Verdict:** ${verdictResult.verdict}\n\n`)
-              .addRaw(`**Label:** ${verdictResult.label}\n\n`)
-              .addRaw(`**Commenter:** ${commenter} (${trustedBy})\n`)
-              .write();
+    steps:
+      - name: Check and reset AC approval if needed
+        uses: actions/github-script@v7
+        with:
+          retries: 3
+          retry-exempt-status-codes: 400,401,403,404,422
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+            const pusher = context.payload.sender.login;
+
+            console.log(`PR #${prNumber} - New commits by: ${pusher}`);
+
+            // Get current labels
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+              owner, repo, issue_number: prNumber
+            });
+            const labelNames = labels.map(l => l.name);
+
+            // Check if PR was approved
+            const wasApproved = labelNames.includes('AC: Approved');
+
+            if (!wasApproved) {
+              console.log('PR was not AC-approved, no action needed');
+              return;
+            }
+
+            console.log('PR was AC-approved, resetting to require re-review');
+
+            // Remove AC: Approved
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: prNumber, name: 'AC: Approved'
+              });
+              console.log('  Removed: AC: Approved');
+            } catch (e) { /* ignore */ }
+
+            // Add AC: Needs Re-review
+            try {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: prNumber, labels: ['AC: Needs Re-review']
+              });
+              console.log('  Added: AC: Needs Re-review');
+            } catch (e) {
+              if (e.status === 404) {
+                core.warning("Label 'AC: Needs Re-review' does not exist");
+              } else {
+                throw e;
+              }
+            }
+
+            // Reset CI status
+            const statusLabels = ['🔄 Checking', '✅ Ready for Review', '❌ Checks Failed'];
+            for (const label of statusLabels) {
+              try {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
+              } catch (e) { /* ignore */ }
+            }
+
+            try {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: prNumber, labels: ['🔄 Checking']
+              });
+              console.log('  Reset status: 🔄 Checking');
+            } catch (e) { /* ignore */ }
+
+            // Post notification comment
+            const commentLines = [
+              '## 🔄 Re-review Required',
+              '',
+              'New commits were pushed after Auto-Claude approval.',
+              '',
+              '| Previous | Current |',
+              '|----------|---------|',
+              '| `AC: Approved` | `AC: Needs Re-review` |',
+              '',
+              'Please run Auto-Claude review again or request a manual review.',
+              '',
+              '---',
+              `<sub>Triggered by push from @${pusher}</sub>`
+            ];
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: prNumber, body: commentLines.join('\n')
+            });
+
+            console.log(`✅ Posted re-review notification to PR #${prNumber}`);
