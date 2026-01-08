@@ -57,7 +57,7 @@ def _is_retryable_http_error(stderr: str) -> bool:
 
 
 def _with_retry(
-    operation: Callable[[], T],
+    operation: Callable[[], tuple[bool, T | None, str]],
     max_retries: int = 3,
     is_retryable: Callable[[str], bool] | None = None,
     on_retry: Callable[[int, str], None] | None = None,
@@ -66,13 +66,15 @@ def _with_retry(
     Execute an operation with retry logic.
 
     Args:
-        operation: Function that returns (success: bool, result: T | None, error: str)
+        operation: Function that returns a tuple of (success: bool, result: T | None, error: str).
+                   On success (success=True), result contains the value and error is empty.
+                   On failure (success=False), result is None and error contains the message.
         max_retries: Maximum number of retry attempts
-        is_retryable: Function to check if error is retryable
+        is_retryable: Function to check if error is retryable based on error message
         on_retry: Optional callback called before each retry with (attempt, error)
 
     Returns:
-        Tuple of (result, last_error)
+        Tuple of (result, last_error) where result is T on success, None on failure
     """
     last_error = ""
 
@@ -974,9 +976,9 @@ class WorktreeManager:
                     pr_url: str | None = result.stdout.strip()
                     if not pr_url.startswith("http"):
                         # Try to find URL in output
-                        match = re.search(
-                            r"https://github\.com/[^\s]+/pull/\d+", result.stdout
-                        )
+                        # Use general pattern to support GitHub Enterprise instances
+                        # Matches any HTTPS URL with /pull/<number> path
+                        match = re.search(r"https://[^\s]+/pull/\d+", result.stdout)
                         if match:
                             pr_url = match.group(0)
                         else:

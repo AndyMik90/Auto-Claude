@@ -178,8 +178,6 @@ def _detect_worktree_base_branch(
     Returns:
         The detected base branch name, or None if unable to detect
     """
-    import json
-
     # Strategy 1: Check for worktree config file
     config_path = worktree_path / ".auto-claude" / "worktree-config.json"
     if config_path.exists():
