@@ -438,6 +438,54 @@ export function clearNpmPrefixCache(): void {
 // ============================================================================
 
 /**
+ * Result of analyzing path quoting requirements
+ *
+ * @internal Shared helper for preparePythonSubprocessCommand and prepareShellCommand
+ */
+interface QuotingDecision {
+  /** Whether shell mode is required (only true for .cmd/.bat files on Windows) */
+  needsShell: boolean;
+  /** Whether the path needs to be quoted (only when needsShell=true and path has spaces/metacharacters) */
+  needsQuoting: boolean;
+  /** Whether the path is already wrapped in quotes */
+  isAlreadyQuoted: boolean;
+}
+
+/**
+ * Analyze a path to determine quoting requirements for shell execution
+ *
+ * This is a shared helper that detects:
+ * - Windows batch files (.cmd/.bat) that require shell mode
+ * - Paths already wrapped in quotes
+ * - Shell metacharacters (& | < > ^ % ()) and spaces that require quoting
+ *
+ * @param executablePath - The path to analyze
+ * @returns Quoting decision object
+ * @internal
+ */
+function analyzePathQuoting(executablePath: string): QuotingDecision {
+  // On Windows, .cmd and .bat files need shell mode for proper execution
+  // Use case-insensitive check since Windows file extensions are case-insensitive
+  const lowerPath = executablePath.toLowerCase();
+  const isWindowsBatchFile =
+    process.platform === "win32" && (lowerPath.endsWith(".cmd") || lowerPath.endsWith(".bat"));
+  const needsShell = isWindowsBatchFile;
+
+  // Check if path is already wrapped in quotes
+  const isAlreadyQuoted = executablePath.startsWith('"') && executablePath.endsWith('"');
+
+  // Detect shell metacharacters that require quoting in shell mode
+  // Windows cmd.exe interprets: & | < > ^ % ( ) as special characters
+  const hasShellMetacharacters = /[&|<>^%()]/.test(executablePath);
+  const hasSpaces = executablePath.includes(" ");
+
+  // Add quotes if: shell mode AND (has spaces OR shell metacharacters) AND not already quoted
+  const needsQuoting = needsShell && (hasSpaces || hasShellMetacharacters) && !isAlreadyQuoted;
+
+  return { needsShell, needsQuoting, isAlreadyQuoted };
+}
+
+/**
  * Result of preparing a path for Python subprocess execution
  */
 export interface PythonSubprocessCommand {
@@ -473,18 +521,15 @@ export interface PythonSubprocessCommand {
  * ```
  */
 export function preparePythonSubprocessCommand(executablePath: string): PythonSubprocessCommand {
-  // On Windows, .cmd and .bat files need shell=True for proper execution
-  // Use case-insensitive check since Windows file extensions are case-insensitive
-  const lowerPath = executablePath.toLowerCase();
-  const isWindowsBatchFile =
-    process.platform === "win32" && (lowerPath.endsWith(".cmd") || lowerPath.endsWith(".bat"));
-  const needsShell = isWindowsBatchFile;
+  // Validate input
+  if (!executablePath || typeof executablePath !== "string") {
+    throw new Error(
+      "preparePythonSubprocessCommand: executablePath is required and must be a string"
+    );
+  }
 
-  // Check if path is already wrapped in quotes
-  const isAlreadyQuoted = executablePath.startsWith('"') && executablePath.endsWith('"');
-
-  // Only add quotes if: shell mode AND path contains spaces AND not already quoted
-  const needsQuoting = needsShell && executablePath.includes(" ") && !isAlreadyQuoted;
+  // Analyze path to determine quoting requirements
+  const { needsShell, needsQuoting } = analyzePathQuoting(executablePath);
   const quotedPath = needsQuoting ? `"${executablePath}"` : executablePath;
 
   // For shell mode, the path must be quoted in the command string.
@@ -564,21 +609,16 @@ export interface ShellCommandResult {
  * ```
  */
 export function prepareShellCommand(executablePath: string): ShellCommandResult {
-  // On Windows, .cmd and .bat files need shell: true for proper execution
-  // Use case-insensitive check since Windows file extensions are case-insensitive
-  const lowerPath = executablePath.toLowerCase();
-  const isWindowsBatchFile =
-    process.platform === "win32" && (lowerPath.endsWith(".cmd") || lowerPath.endsWith(".bat"));
-  const needsShell = isWindowsBatchFile;
+  // Validate input
+  if (!executablePath || typeof executablePath !== "string") {
+    throw new Error("prepareShellCommand: executablePath is required and must be a string");
+  }
 
-  // Check if path is already wrapped in quotes
-  const isAlreadyQuoted = executablePath.startsWith('"') && executablePath.endsWith('"');
+  // Analyze path to determine quoting requirements
+  const { needsShell, needsQuoting } = analyzePathQuoting(executablePath);
 
-  // Only add quotes if: shell mode AND path contains spaces AND not already quoted
-  const command =
-    needsShell && executablePath.includes(" ") && !isAlreadyQuoted
-      ? `"${executablePath}"`
-      : executablePath;
+  // Add quotes if: shell mode AND quoting is needed
+  const command = needsQuoting ? `"${executablePath}"` : executablePath;
 
   return { command, needsShell };
 }
