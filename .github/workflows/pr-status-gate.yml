@@ -5,17 +5,28 @@ on:
     workflows: [CI, Lint, Quality Security]
     types: [completed]
 
+  issue_comment:
+    types: [created, edited]
+
+# Prevent concurrent runs for the same workflow trigger
+concurrency:
+  group: pr-status-gate-${{ github.event.workflow_run.pull_requests[0].number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
+
 permissions:
   pull-requests: write
   checks: read
 
 jobs:
-  update-status:
-    name: Update PR Status
+  # ═══════════════════════════════════════════════════════════════════════════
+  # JOB 1: CI STATUS (triggered by workflow_run)
+  # ═══════════════════════════════════════════════════════════════════════════
+  update-ci-status:
+    name: Update CI Status
     runs-on: ubuntu-latest
-    # Only run if this workflow_run is associated with a PR
-    if: github.event.workflow_run.pull_requests[0] != null
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0] != null
     timeout-minutes: 5
+
     steps:
       - name: Check all required checks and update label
         uses: actions/github-script@v7
@@ -23,169 +34,432 @@ jobs:
           retries: 3
           retry-exempt-status-codes: 400,401,403,404,422
           script: |
-            const { owner, repo } = context.repo;
-            const prNumber = context.payload.workflow_run.pull_requests[0].number;
-            const headSha = context.payload.workflow_run.head_sha;
-            const triggerWorkflow = context.payload.workflow_run.name;
+            // ═══════════════════════════════════════════════════════════════
+            // CONFIGURATION
+            // ═══════════════════════════════════════════════════════════════
 
-            // ═══════════════════════════════════════════════════════════════════════
-            // REQUIRED CHECK RUNS - Job-level checks (not workflow-level)
-            // ═══════════════════════════════════════════════════════════════════════
-            // Format: "{Workflow Name} / {Job Name}" or "{Workflow Name} / {Job Custom Name}"
-            //
-            // To find check names: Go to PR → Checks tab → copy exact name
-            // To update: Edit this list when workflow jobs are added/renamed/removed
-            //
-            // Last validated: 2026-01-02
-            // ═══════════════════════════════════════════════════════════════════════
-            const requiredChecks = [
-              // CI workflow (ci.yml) - 3 checks
-              'CI / test-frontend',
-              'CI / test-python (3.12)',
-              'CI / test-python (3.13)',
-              // Lint workflow (lint.yml) - 1 check
-              'Lint / python',
-              // Quality Security workflow (quality-security.yml) - 4 checks
-              'Quality Security / CodeQL (javascript-typescript)',
-              'Quality Security / CodeQL (python)',
-              'Quality Security / Python Security (Bandit)',
-              'Quality Security / Security Summary'
-            ];
+            const CONFIG = {
+              // Required check runs - Job-level checks (not workflow-level)
+              // Format: "{Workflow Name} / {Job Name}"
+              // Last validated: 2026-01-08
+              REQUIRED_CHECKS: Object.freeze([
+                'CI / test-frontend',
+                'CI / test-python (3.12)',
+                'CI / test-python (3.13)',
+                'Lint / python',
+                'Quality Security / CodeQL (javascript-typescript)',
+                'Quality Security / CodeQL (python)',
+                'Quality Security / Python Security (Bandit)',
+                'Quality Security / Security Summary'
+              ]),
 
-            const statusLabels = {
-              checking: '🔄 Checking',
-              passed: '✅ Ready for Review',
-              failed: '❌ Checks Failed'
+              STATUS_LABELS: Object.freeze({
+                CHECKING: '🔄 Checking',
+                PASSED: '✅ Ready for Review',
+                FAILED: '❌ Checks Failed'
+              })
             };
 
-            console.log(`::group::PR #${prNumber} - Checking required checks`);
-            console.log(`Triggered by: ${triggerWorkflow}`);
-            console.log(`Head SHA: ${headSha}`);
-            console.log(`Required checks: ${requiredChecks.length}`);
-            console.log('');
+            // ═══════════════════════════════════════════════════════════════
+            // HELPER FUNCTIONS
+            // ═══════════════════════════════════════════════════════════════
 
-            // Fetch all check runs for this commit
-            let allCheckRuns = [];
-            try {
-              const { data } = await github.rest.checks.listForRef({
-                owner,
-                repo,
-                ref: headSha,
-                per_page: 100
-              });
-              allCheckRuns = data.check_runs;
-              console.log(`Found ${allCheckRuns.length} total check runs`);
-            } catch (error) {
-              // Add warning annotation so maintainers are alerted
-              core.warning(`Failed to fetch check runs for PR #${prNumber}: ${error.message}. PR label may be outdated.`);
-              console.log(`::error::Failed to fetch check runs: ${error.message}`);
-              console.log('::endgroup::');
-              return;
-            }
+            /**
+             * Fetch all check runs for a commit
+             * @param {string} sha - Commit SHA
+             * @returns {Array} Check runs
+             */
+            async function fetchCheckRuns(sha) {
+              const { owner, repo } = context.repo;
 
-            let allComplete = true;
-            let anyFailed = false;
-            const results = [];
-
-            // Check each required check
-            for (const checkName of requiredChecks) {
-              const check = allCheckRuns.find(c => c.name === checkName);
-
-              if (!check) {
-                results.push({ name: checkName, status: '⏳ Pending', complete: false });
-                allComplete = false;
-              } else if (check.status !== 'completed') {
-                results.push({ name: checkName, status: '🔄 Running', complete: false });
-                allComplete = false;
-              } else if (check.conclusion === 'success') {
-                results.push({ name: checkName, status: '✅ Passed', complete: true });
-              } else if (check.conclusion === 'skipped') {
-                // Skipped checks are treated as passed (e.g., path filters, conditional jobs)
-                results.push({ name: checkName, status: '⏭️ Skipped', complete: true, skipped: true });
-              } else {
-                results.push({ name: checkName, status: '❌ Failed', complete: true, failed: true });
-                anyFailed = true;
-              }
-            }
-
-            // Print results table
-            console.log('');
-            console.log('Check Status:');
-            console.log('─'.repeat(70));
-            for (const r of results) {
-              const shortName = r.name.length > 55 ? r.name.substring(0, 52) + '...' : r.name;
-              console.log(`  ${r.status.padEnd(12)} ${shortName}`);
-            }
-            console.log('─'.repeat(70));
-            console.log('::endgroup::');
-
-            // Only update label if all required checks are complete
-            if (!allComplete) {
-              const pending = results.filter(r => !r.complete).length;
-              console.log(`⏳ ${pending}/${requiredChecks.length} checks still pending - keeping current label`);
-              return;
-            }
-
-            // Determine final label
-            const newLabel = anyFailed ? statusLabels.failed : statusLabels.passed;
-
-            console.log(`::group::Updating PR #${prNumber} label`);
-
-            // Remove old status labels
-            for (const label of Object.values(statusLabels)) {
               try {
-                await github.rest.issues.removeLabel({
+                const { data } = await github.rest.checks.listForRef({
                   owner,
                   repo,
-                  issue_number: prNumber,
-                  name: label
+                  ref: sha,
+                  per_page: 100
                 });
-                console.log(`  ✓ Removed: ${label}`);
-              } catch (e) {
-                if (e.status !== 404) {
-                  console.log(`  ⚠ Could not remove ${label}: ${e.message}`);
-                }
+                return data.check_runs;
+              } catch (error) {
+                core.warning(`Failed to fetch check runs: ${error.message}`);
+                return null;
               }
             }
 
-            // Add final status label
-            try {
+            /**
+             * Analyze check results
+             * @param {Array} checkRuns - All check runs
+             * @returns {{allComplete: boolean, anyFailed: boolean, results: Array}}
+             */
+            function analyzeChecks(checkRuns) {
+              const results = [];
+              let allComplete = true;
+              let anyFailed = false;
+
+              for (const checkName of CONFIG.REQUIRED_CHECKS) {
+                const check = checkRuns.find(c => c.name === checkName);
+
+                if (!check) {
+                  results.push({ name: checkName, status: '⏳ Pending', complete: false });
+                  allComplete = false;
+                } else if (check.status !== 'completed') {
+                  results.push({ name: checkName, status: '🔄 Running', complete: false });
+                  allComplete = false;
+                } else if (check.conclusion === 'success') {
+                  results.push({ name: checkName, status: '✅ Passed', complete: true });
+                } else if (check.conclusion === 'skipped') {
+                  results.push({ name: checkName, status: '⏭️ Skipped', complete: true, skipped: true });
+                } else {
+                  results.push({ name: checkName, status: '❌ Failed', complete: true, failed: true });
+                  anyFailed = true;
+                }
+              }
+
+              return { allComplete, anyFailed, results };
+            }
+
+            /**
+             * Update status labels on PR
+             * @param {number} prNumber - PR number
+             * @param {string} newLabel - Label to apply
+             */
+            async function updateStatusLabels(prNumber, newLabel) {
+              const { owner, repo } = context.repo;
+              const allLabels = Object.values(CONFIG.STATUS_LABELS);
+
+              // Remove old status labels
+              for (const label of allLabels) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: prNumber,
+                    name: label
+                  });
+                } catch (e) {
+                  // Ignore 404 - label wasn't present
+                }
+              }
+
+              // Add new label
               await github.rest.issues.addLabels({
                 owner,
                 repo,
                 issue_number: prNumber,
                 labels: [newLabel]
               });
-              console.log(`  ✓ Added: ${newLabel}`);
-            } catch (e) {
-              if (e.status === 404) {
-                core.warning(`Label '${newLabel}' does not exist. Please create it in repository settings.`);
-              }
-              throw e;
             }
 
+            /**
+             * Print check results table to log
+             * @param {Array} results - Check results
+             */
+            function logResults(results) {
+              console.log('\nCheck Status:');
+              console.log('─'.repeat(70));
+              for (const r of results) {
+                const name = r.name.length > 50 ? r.name.slice(0, 47) + '...' : r.name;
+                console.log(`  ${r.status.padEnd(12)} ${name}`);
+              }
+              console.log('─'.repeat(70));
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // MAIN LOGIC
+            // ═══════════════════════════════════════════════════════════════
+
+            const prNumber = context.payload.workflow_run.pull_requests[0].number;
+            const headSha = context.payload.workflow_run.head_sha;
+            const triggerWorkflow = context.payload.workflow_run.name;
+
+            console.log(`::group::PR #${prNumber} - CI Status Check`);
+            console.log(`Triggered by: ${triggerWorkflow}`);
+            console.log(`Commit: ${headSha.slice(0, 8)}`);
+
+            // Fetch check runs
+            const checkRuns = await fetchCheckRuns(headSha);
+            if (!checkRuns) {
+              console.log('::endgroup::');
+              return;
+            }
+
+            console.log(`Found ${checkRuns.length} check runs`);
+
+            // Analyze results
+            const { allComplete, anyFailed, results } = analyzeChecks(checkRuns);
+            logResults(results);
             console.log('::endgroup::');
 
-            // Summary
+            // Only update if all checks are complete
+            if (!allComplete) {
+              const pending = results.filter(r => !r.complete).length;
+              console.log(`⏳ ${pending}/${CONFIG.REQUIRED_CHECKS.length} checks pending`);
+              return;
+            }
+
+            // Update labels
+            const newLabel = anyFailed ? CONFIG.STATUS_LABELS.FAILED : CONFIG.STATUS_LABELS.PASSED;
+            await updateStatusLabels(prNumber, newLabel);
+
+            // Log and write summary
             const passedCount = results.filter(r => r.status === '✅ Passed').length;
             const skippedCount = results.filter(r => r.skipped).length;
             const failedCount = results.filter(r => r.failed).length;
 
             if (anyFailed) {
-              console.log(`❌ PR #${prNumber} has ${failedCount} failing check(s)`);
+              console.log(`❌ PR #${prNumber}: ${failedCount} check(s) failed`);
               core.summary.addRaw(`## ❌ PR #${prNumber} - Checks Failed\n\n`);
-              core.summary.addRaw(`**${failedCount}** of **${requiredChecks.length}** required checks failed.\n\n`);
+              core.summary.addRaw(`**${failedCount}** of **${CONFIG.REQUIRED_CHECKS.length}** checks failed.\n\n`);
             } else {
-              const skippedNote = skippedCount > 0 ? ` (${skippedCount} skipped)` : '';
-              const totalSuccessful = passedCount + skippedCount;
-              console.log(`✅ PR #${prNumber} is ready for review (${totalSuccessful}/${requiredChecks.length} checks succeeded${skippedNote})`);
+              console.log(`✅ PR #${prNumber}: Ready for review`);
               core.summary.addRaw(`## ✅ PR #${prNumber} - Ready for Review\n\n`);
-              core.summary.addRaw(`All **${requiredChecks.length}** required checks succeeded${skippedNote}.\n\n`);
+              core.summary.addRaw(`All **${CONFIG.REQUIRED_CHECKS.length}** checks passed.\n\n`);
             }
 
-            // Add results to summary
             core.summary.addTable([
-              [{data: 'Check', header: true}, {data: 'Status', header: true}],
+              [{ data: 'Check', header: true }, { data: 'Status', header: true }],
               ...results.map(r => [r.name, r.status])
             ]);
             await core.summary.write();
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # JOB 2: AUTO-CLAUDE REVIEW (triggered by comments)
+  # Security: Validates commenter is a trusted bot before updating labels
+  # ═══════════════════════════════════════════════════════════════════════════
+  update-review-status:
+    name: Update Review Status
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+    timeout-minutes: 5
+
+    steps:
+      - name: Check for Auto-Claude review
+        uses: actions/github-script@v7
+        with:
+          retries: 3
+          retry-exempt-status-codes: 400,401,403,404,422
+          script: |
+            // ═══════════════════════════════════════════════════════════════
+            // CONFIGURATION
+            // ═══════════════════════════════════════════════════════════════
+
+            const CONFIG = {
+              // Trusted bot/user patterns for Auto-Claude reviews
+              // Security: Only these accounts can update review labels via comments
+              TRUSTED_COMMENTERS: Object.freeze([
+                'github-actions[bot]',
+                'github-actions',
+                'auto-claude[bot]',
+                'auto-claude',
+                'AutoClaudeBot'
+              ]),
+
+              // Patterns that identify Auto-Claude review comments
+              IDENTIFIER_PATTERNS: Object.freeze([
+                '🤖 Auto Claude PR Review',
+                'Auto Claude Review',
+                'Auto-Claude Review'
+              ]),
+
+              // Verdict patterns and their corresponding labels
+              VERDICTS: Object.freeze({
+                APPROVED: {
+                  patterns: [
+                    'Ready To Merge',
+                    'Ready to Merge',
+                    'READY TO MERGE',
+                    '✅ APPROVED',
+                    'Auto Claude Review - APPROVED'
+                  ],
+                  regex: /Merge Verdict:.*🟢.*APPROVED/i,
+                  label: 'AC: Approved'
+                },
+                CHANGES_REQUESTED: {
+                  patterns: [
+                    'NEEDS REVISION',
+                    'Needs Revision'
+                  ],
+                  regex: /Merge Verdict:.*🟠/,
+                  label: 'AC: Changes Requested'
+                },
+                REJECTED: {
+                  patterns: ['REJECTED'],
+                  regex: /Merge Verdict:.*🔴/,
+                  label: 'AC: Changes Requested'
+                },
+                RE_REVIEW: {
+                  patterns: [
+                    'Re-review',
+                    're-review',
+                    'RE-REVIEW'
+                  ],
+                  regex: null,
+                  label: 'AC: Needs Re-review'
+                }
+              }),
+
+              // All review labels (for cleanup)
+              REVIEW_LABELS: Object.freeze([
+                'Missing AC Approval',
+                'AC: Approved',
+                'AC: Changes Requested',
+                'AC: Needs Re-review',
+                'AC: Reviewed'
+              ])
+            };
+
+            // ═══════════════════════════════════════════════════════════════
+            // HELPER FUNCTIONS
+            // ═══════════════════════════════════════════════════════════════
+
+            /**
+             * Check if commenter is trusted
+             * Security: Prevents arbitrary users from manipulating labels
+             * @param {string} username - GitHub username
+             * @returns {boolean}
+             */
+            function isTrustedCommenter(username) {
+              return CONFIG.TRUSTED_COMMENTERS.some(trusted =>
+                username.toLowerCase() === trusted.toLowerCase()
+              );
+            }
+
+            /**
+             * Check if comment is from Auto-Claude based on content
+             * @param {string} body - Comment body
+             * @returns {boolean}
+             */
+            function isAutoClaudeComment(body) {
+              return CONFIG.IDENTIFIER_PATTERNS.some(pattern =>
+                body.includes(pattern)
+              );
+            }
+
+            /**
+             * Parse verdict from comment body
+             * @param {string} body - Comment body
+             * @returns {string|null} Label to apply or null
+             */
+            function parseVerdict(body) {
+              // Limit body length for security
+              const safeBody = body.slice(0, 5000);
+
+              for (const [key, config] of Object.entries(CONFIG.VERDICTS)) {
+                // Check pattern matches
+                const patternMatch = config.patterns.some(p => safeBody.includes(p));
+                const regexMatch = config.regex && config.regex.test(safeBody);
+
+                if (patternMatch || regexMatch) {
+                  return { verdict: key, label: config.label };
+                }
+              }
+
+              return null;
+            }
+
+            /**
+             * Update review labels on PR
+             * @param {number} prNumber - PR number
+             * @param {string} newLabel - Label to apply
+             */
+            async function updateReviewLabels(prNumber, newLabel) {
+              const { owner, repo } = context.repo;
+
+              // Remove all review labels
+              for (const label of CONFIG.REVIEW_LABELS) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: prNumber,
+                    name: label
+                  });
+                  console.log(`  ✓ Removed: ${label}`);
+                } catch (e) {
+                  // Ignore 404 - label wasn't present
+                }
+              }
+
+              // Add new label
+              try {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: prNumber,
+                  labels: [newLabel]
+                });
+                console.log(`  ✓ Added: ${newLabel}`);
+              } catch (e) {
+                if (e.status === 404) {
+                  core.warning(`Label '${newLabel}' does not exist.`);
+                }
+                throw e;
+              }
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // MAIN LOGIC
+            // ═══════════════════════════════════════════════════════════════
+
+            const prNumber = context.payload.issue.number;
+            const comment = context.payload.comment;
+            const commenter = comment.user.login;
+            const body = comment.body || '';
+
+            console.log(`::group::PR #${prNumber} - Review Gate`);
+            console.log(`Commenter: ${commenter}`);
+            console.log(`Comment ID: ${comment.id}`);
+
+            // Security Check 1: Verify commenter is trusted
+            const isTrusted = isTrustedCommenter(commenter);
+            console.log(`Trusted commenter: ${isTrusted}`);
+
+            // Security Check 2: Verify comment contains Auto-Claude identifier
+            const isACComment = isAutoClaudeComment(body);
+            console.log(`Auto-Claude comment: ${isACComment}`);
+
+            // Security Policy:
+            // - ALLOW: Trusted commenter (bot accounts) with AC identifier
+            // - ALLOW: Trusted commenter without identifier (for bot flexibility)
+            // - DENY: Untrusted commenter (even with AC identifier - prevents spoofing)
+            //
+            // This prevents malicious users from posting fake "Auto Claude" comments
+            // to manipulate PR labels.
+            if (!isTrusted) {
+              console.log('Skipping: Commenter is not in trusted list');
+              console.log('::endgroup::');
+              return;
+            }
+
+            // For trusted commenters, still require the AC identifier
+            // to prevent accidental triggering from other bot comments
+            if (!isACComment) {
+              console.log('Skipping: Comment does not contain Auto-Claude identifier');
+              console.log('::endgroup::');
+              return;
+            }
+
+            // Parse verdict
+            const verdictResult = parseVerdict(body);
+            if (!verdictResult) {
+              console.log('Could not parse verdict from comment');
+              console.log('::endgroup::');
+              return;
+            }
+
+            console.log(`Verdict: ${verdictResult.verdict} → ${verdictResult.label}`);
+
+            // Update labels
+            console.log('\nUpdating labels:');
+            await updateReviewLabels(prNumber, verdictResult.label);
+
+            console.log('::endgroup::');
+            console.log(`✅ PR #${prNumber} review status: ${verdictResult.label}`);
+
+            // Write summary
+            await core.summary
+              .addHeading(`PR #${prNumber} Review Gate`, 3)
+              .addRaw(`**Verdict:** ${verdictResult.verdict}\n\n`)
+              .addRaw(`**Label:** ${verdictResult.label}\n\n`)
+              .addRaw(`**Commenter:** ${commenter}\n`)
+              .write();
