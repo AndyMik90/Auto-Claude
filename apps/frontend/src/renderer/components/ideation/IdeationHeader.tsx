@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, CheckSquare, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -39,6 +40,7 @@ export function IdeationHeader({
   hasActiveIdeas,
   canAddMore
 }: IdeationHeaderProps) {
+  const { t } = useTranslation('common');
   const hasSelection = selectedCount > 0;
   return (
     <div className="shrink-0 border-b border-border p-4 bg-card/50">
@@ -75,6 +77,7 @@ export function IdeationHeader({
                     variant="ghost"
                     size="icon"
                     onClick={onClearSelection}
+                    aria-label={t('accessibility.clearSelectionAriaLabel')}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -91,6 +94,7 @@ export function IdeationHeader({
                     variant="ghost"
                     size="icon"
                     onClick={onSelectAll}
+                    aria-label={t('accessibility.selectAllAriaLabel')}
                   >
                     <CheckSquare className="h-4 w-4" />
                   </Button>
@@ -107,6 +111,7 @@ export function IdeationHeader({
                 variant={showDismissed ? 'secondary' : 'outline'}
                 size="icon"
                 onClick={onToggleShowDismissed}
+                aria-label={showDismissed ? t('accessibility.hideDismissedAriaLabel') : t('accessibility.showDismissedAriaLabel')}
               >
                 {showDismissed ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
@@ -121,6 +126,7 @@ export function IdeationHeader({
                 variant="outline"
                 size="icon"
                 onClick={onOpenConfig}
+                aria-label={t('accessibility.configureAriaLabel')}
               >
                 <Settings2 className="h-4 w-4" />
               </Button>
@@ -133,6 +139,7 @@ export function IdeationHeader({
                 <Button
                   variant="outline"
                   onClick={onOpenAddMore}
+                  aria-label={t('accessibility.addMoreAriaLabel')}
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Add More
@@ -149,6 +156,7 @@ export function IdeationHeader({
                   size="icon"
                   className="text-muted-foreground hover:text-destructive"
                   onClick={onDismissAll}
+                  aria-label={t('accessibility.dismissAllAriaLabel')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -158,7 +166,7 @@ export function IdeationHeader({
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onRefresh}>
+              <Button variant="outline" size="icon" onClick={onRefresh} aria-label={t('accessibility.regenerateIdeasAriaLabel')}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
