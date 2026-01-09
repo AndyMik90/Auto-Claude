@@ -92,7 +92,7 @@ interface TaskFormFieldsProps {
 export function TaskFormFields({
   description,
   onDescriptionChange,
-  descriptionPlaceholder = 'Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior.',
+  descriptionPlaceholder,
   descriptionOverlay,
   descriptionRef: externalDescriptionRef,
   title,
@@ -133,7 +133,7 @@ export function TaskFormFields({
   const descriptionRef = externalDescriptionRef || internalDescriptionRef;
   const prefix = idPrefix ? `${idPrefix}-` : '';
 
-  // Use the shared image upload hook
+  // Use the shared image upload hook with translated error messages
   const {
     isDragOver,
     pasteSuccess,
@@ -146,7 +146,13 @@ export function TaskFormFields({
     images,
     onImagesChange,
     disabled,
-    onError
+    onError,
+    errorMessages: {
+      maxImagesReached: t('tasks:form.errors.maxImagesReached'),
+      invalidImageType: t('tasks:form.errors.invalidImageType'),
+      processPasteFailed: t('tasks:form.errors.processPasteFailed'),
+      processDropFailed: t('tasks:form.errors.processDropFailed')
+    }
   });
 
   return (
@@ -162,7 +168,7 @@ export function TaskFormFields({
           <Textarea
             ref={descriptionRef}
             id={`${prefix}description`}
-            placeholder={descriptionPlaceholder}
+            placeholder={descriptionPlaceholder || t('tasks:form.descriptionPlaceholder')}
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
             onPaste={handlePaste}

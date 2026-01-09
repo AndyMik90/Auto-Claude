@@ -13,13 +13,13 @@ import {
   SelectTrigger,
   SelectValue
 } from '../ui/select';
-import {
-  TASK_CATEGORY_LABELS,
-  TASK_PRIORITY_LABELS,
-  TASK_COMPLEXITY_LABELS,
-  TASK_IMPACT_LABELS
-} from '../../../shared/constants';
 import type { TaskCategory, TaskPriority, TaskComplexity, TaskImpact } from '../../../shared/types';
+
+// Classification option keys (values are used for translation key lookup)
+const CATEGORY_OPTIONS: TaskCategory[] = ['feature', 'bug_fix', 'refactoring', 'documentation', 'security'];
+const PRIORITY_OPTIONS: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
+const COMPLEXITY_OPTIONS: TaskComplexity[] = ['trivial', 'small', 'medium', 'large', 'complex'];
+const IMPACT_OPTIONS: TaskImpact[] = ['low', 'medium', 'high', 'critical'];
 
 interface ClassificationFieldsProps {
   /** Current category value */
@@ -76,9 +76,9 @@ export function ClassificationFields({
               <SelectValue placeholder={t('form.classification.selectCategory')} />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(TASK_CATEGORY_LABELS).map(([value, label]) => (
+              {CATEGORY_OPTIONS.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {t(`form.classification.values.category.${value}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -99,9 +99,9 @@ export function ClassificationFields({
               <SelectValue placeholder={t('form.classification.selectPriority')} />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
+              {PRIORITY_OPTIONS.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {t(`form.classification.values.priority.${value}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -122,9 +122,9 @@ export function ClassificationFields({
               <SelectValue placeholder={t('form.classification.selectComplexity')} />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(TASK_COMPLEXITY_LABELS).map(([value, label]) => (
+              {COMPLEXITY_OPTIONS.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {t(`form.classification.values.complexity.${value}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -145,9 +145,9 @@ export function ClassificationFields({
               <SelectValue placeholder={t('form.classification.selectImpact')} />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(TASK_IMPACT_LABELS).map(([value, label]) => (
+              {IMPACT_OPTIONS.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {t(`form.classification.values.impact.${value}`)}
                 </SelectItem>
               ))}
             </SelectContent>

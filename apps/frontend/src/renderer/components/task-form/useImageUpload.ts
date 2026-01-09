@@ -18,6 +18,14 @@ import {
   ALLOWED_IMAGE_TYPES_DISPLAY
 } from '../../../shared/constants';
 
+/** Error messages that can be customized/translated by callers */
+interface ImageUploadErrorMessages {
+  maxImagesReached?: string;
+  invalidImageType?: string;
+  processPasteFailed?: string;
+  processDropFailed?: string;
+}
+
 interface UseImageUploadOptions {
   /** Current images array */
   images: ImageAttachment[];
@@ -27,6 +35,8 @@ interface UseImageUploadOptions {
   disabled?: boolean;
   /** Callback to set error message */
   onError?: (error: string | null) => void;
+  /** Custom error messages for i18n support */
+  errorMessages?: ImageUploadErrorMessages;
 }
 
 interface UseImageUploadReturn {
@@ -50,15 +60,30 @@ interface UseImageUploadReturn {
   remainingSlots: number;
 }
 
+// Default error messages (English fallbacks)
+const DEFAULT_ERROR_MESSAGES: Required<ImageUploadErrorMessages> = {
+  maxImagesReached: `Maximum of ${MAX_IMAGES_PER_TASK} images allowed`,
+  invalidImageType: `Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`,
+  processPasteFailed: 'Failed to process pasted image',
+  processDropFailed: 'Failed to process dropped image'
+};
+
 export function useImageUpload({
   images,
   onImagesChange,
   disabled = false,
-  onError
+  onError,
+  errorMessages = {}
 }: UseImageUploadOptions): UseImageUploadReturn {
   const [isDragOver, setIsDragOver] = useState(false);
   const [pasteSuccess, setPasteSuccess] = useState(false);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Merge custom error messages with defaults
+  const errors: Required<ImageUploadErrorMessages> = {
+    ...DEFAULT_ERROR_MESSAGES,
+    ...errorMessages
+  };
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -83,7 +108,7 @@ export function useImageUpload({
       if (disabled) return;
 
       if (remainingSlots <= 0) {
-        onError?.(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+        onError?.(errors.maxImagesReached);
         return;
       }
 
@@ -108,7 +133,7 @@ export function useImageUpload({
 
         // Validate image type
         if (!isValidImageMimeType(file.type)) {
-          onError?.(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+          onError?.(errors.invalidImageType);
           continue;
         }
 
@@ -138,8 +163,9 @@ export function useImageUpload({
             data: dataUrl.split(',')[1], // Store base64 without data URL prefix
             thumbnail
           });
-        } catch {
-          onError?.(options.isFromPaste ? 'Failed to process pasted image' : 'Failed to process dropped image');
+        } catch (error) {
+          console.error('Image processing error:', error);
+          onError?.(options.isFromPaste ? errors.processPasteFailed : errors.processDropFailed);
         }
       }
 
@@ -153,7 +179,7 @@ export function useImageUpload({
         successTimeoutRef.current = setTimeout(() => setPasteSuccess(false), 2000);
       }
     },
-    [images, onImagesChange, disabled, remainingSlots, onError]
+    [images, onImagesChange, disabled, remainingSlots, onError, errors]
   );
 
   /**

@@ -317,7 +317,7 @@ export function TaskCreationWizard({
 
   const handleCreate = async () => {
     if (!description.trim()) {
-      setError('Please provide a description');
+      setError(t('tasks:form.errors.descriptionRequired'));
       return;
     }
 
@@ -352,10 +352,10 @@ export function TaskCreationWizard({
         resetForm();
         onOpenChange(false);
       } else {
-        setError('Failed to create task. Please try again.');
+        setError(t('tasks:wizard.errors.createFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : t('common:errors.unknownError'));
     } finally {
       setIsCreating(false);
     }
@@ -512,7 +512,7 @@ export function TaskCreationWizard({
         <TaskFormFields
           description={description}
           onDescriptionChange={handleDescriptionChange}
-          descriptionPlaceholder="Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior. Type @ to reference files."
+          descriptionPlaceholder={t('tasks:wizard.descriptionPlaceholder')}
           descriptionOverlay={descriptionOverlay}
           descriptionRef={descriptionRef}
           title={title}

@@ -165,7 +165,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
   const handleSave = async () => {
     // Validate input
     if (!description.trim()) {
-      setError('Description is required');
+      setError(t('tasks:form.errors.descriptionRequired'));
       return;
     }
 
@@ -205,7 +205,8 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       metadataUpdates.phaseModels = phaseModels;
       metadataUpdates.phaseThinking = phaseThinking;
     }
-    if (images.length > 0) metadataUpdates.attachedImages = images;
+    // Always set attachedImages to persist removal when all images are deleted
+    metadataUpdates.attachedImages = images.length > 0 ? images : [];
     metadataUpdates.requireReviewBeforeCoding = requireReviewBeforeCoding;
 
     const success = await persistUpdateTask(task.id, {
@@ -218,7 +219,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       onOpenChange(false);
       onSaved?.();
     } else {
-      setError('Failed to update task. Please try again.');
+      setError(t('tasks:edit.errors.updateFailed'));
     }
 
     setIsSaving(false);
