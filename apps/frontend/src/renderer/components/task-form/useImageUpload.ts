@@ -4,7 +4,7 @@
  * Extracts the duplicated image handling logic from TaskCreationWizard and TaskEditDialog
  * into a reusable hook.
  */
-import { useState, useCallback, useRef, useEffect, type ClipboardEvent, type DragEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type ClipboardEvent, type DragEvent } from 'react';
 import {
   generateImageId,
   blobToBase64,
@@ -79,11 +79,11 @@ export function useImageUpload({
   const [pasteSuccess, setPasteSuccess] = useState(false);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Merge custom error messages with defaults
-  const errors: Required<ImageUploadErrorMessages> = {
+  // Merge custom error messages with defaults (memoized to prevent useCallback invalidation)
+  const errors = useMemo<Required<ImageUploadErrorMessages>>(() => ({
     ...DEFAULT_ERROR_MESSAGES,
     ...errorMessages
-  };
+  }), [errorMessages]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

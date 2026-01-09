@@ -155,18 +155,20 @@ export function TaskCreationWizard({
 
   // Fetch branches when dialog opens
   useEffect(() => {
+    let isMounted = true;
+
     const fetchBranches = async () => {
       if (!projectPath) return;
-      setIsLoadingBranches(true);
+      if (isMounted) setIsLoadingBranches(true);
       try {
         const result = await window.electronAPI.getGitBranches(projectPath);
-        if (result.success && result.data) {
+        if (isMounted && result.success && result.data) {
           setBranches(result.data);
         }
       } catch (err) {
         console.error('Failed to fetch branches:', err);
       } finally {
-        setIsLoadingBranches(false);
+        if (isMounted) setIsLoadingBranches(false);
       }
     };
 
@@ -174,11 +176,11 @@ export function TaskCreationWizard({
       if (!projectId) return;
       try {
         const result = await window.electronAPI.getProjectEnv(projectId);
-        if (result.success && result.data?.defaultBranch) {
+        if (isMounted && result.success && result.data?.defaultBranch) {
           setProjectDefaultBranch(result.data.defaultBranch);
         } else if (projectPath) {
           const detectResult = await window.electronAPI.detectMainBranch(projectPath);
-          if (detectResult.success && detectResult.data) {
+          if (isMounted && detectResult.success && detectResult.data) {
             setProjectDefaultBranch(detectResult.data);
           }
         }
@@ -191,6 +193,10 @@ export function TaskCreationWizard({
       fetchBranches();
       fetchProjectDefaultBranch();
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [open, projectPath, projectId]);
 
   /**
