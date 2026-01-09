@@ -12,6 +12,8 @@ import enDialogs from './locales/en/dialogs.json';
 import enGitlab from './locales/en/gitlab.json';
 import enTaskReview from './locales/en/taskReview.json';
 import enTerminal from './locales/en/terminal.json';
+import enRoadmap from './locales/en/roadmap.json';
+import enWorktrees from './locales/en/worktrees.json';
 
 // Import French translation resources
 // import frCommon from './locales/fr/common.json';
@@ -36,6 +38,8 @@ import zhDialogs from './locales/zh/dialogs.json';
 import zhGitlab from './locales/zh/gitlab.json';
 import zhTaskReview from './locales/zh/taskReview.json';
 import zhTerminal from './locales/zh/terminal.json';
+import zhRoadmap from './locales/zh/roadmap.json';
+import zhWorktrees from './locales/zh/worktrees.json';
 
 export const defaultNS = 'common';
 
@@ -50,7 +54,9 @@ export const resources = {
     dialogs: enDialogs,
     gitlab: enGitlab,
     taskReview: enTaskReview,
-    terminal: enTerminal
+    terminal: enTerminal,
+    roadmap: enRoadmap,
+    worktrees: enWorktrees
   },
   // fr: {
   //   common: frCommon,
@@ -74,7 +80,9 @@ export const resources = {
     dialogs: zhDialogs,
     gitlab: zhGitlab,
     taskReview: zhTaskReview,
-    terminal: zhTerminal
+    terminal: zhTerminal,
+    roadmap: zhRoadmap,
+    worktrees: zhWorktrees
   }
 } as const;
 
@@ -85,7 +93,7 @@ i18n
     lng: 'zh', // Default language (will be overridden by settings)
     fallbackLng: 'zh',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal'],
+    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'roadmap', 'worktrees'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

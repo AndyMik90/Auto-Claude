@@ -485,7 +485,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
             className="gap-2 text-muted-foreground hover:text-foreground"
           >
             <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh Tasks'}
+            {isRefreshing ? t('kanban.refreshing') : t('kanban.refreshTasks')}
           </Button>
         </div>
       )}

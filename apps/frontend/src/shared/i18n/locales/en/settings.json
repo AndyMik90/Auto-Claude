@@ -351,7 +351,10 @@
     "label": "Agent Profile",
     "title": "Default Agent Profile",
     "sectionDescription": "Select a preset configuration for model and thinking level",
+    "pageTitle": "Agent Profiles",
+    "pageDescription": "Select a preset configuration for model and thinking level",
     "profilesInfo": "Agent profiles provide preset configurations for Claude model and thinking level. When you create a new task, these settings will be used as defaults. You can always override them in the task creation wizard.",
+    "thinking": "Thinking",
     "custom": "Custom",
     "customConfiguration": "Custom Configuration",
     "customDescription": "Choose model & thinking level",
@@ -368,6 +371,8 @@
     "resetToProfileDefaults": "Reset to {{profile}} defaults",
     "customized": "Customized",
     "phaseConfigNote": "These settings will be used as defaults when creating new tasks with this profile. You can override them per-task in the task creation wizard.",
+    "autoOptimized": "Auto (Optimized)",
+    "autoOptimizedDescription": "Uses Opus across all phases with optimized thinking levels",
     "phases": {
       "spec": {
         "label": "Spec Creation",
@@ -460,6 +465,10 @@
     "noProjectSelected": {
       "title": "No Project Selected",
       "description": "Select a project from the sidebar to configure its settings."
+    },
+    "changelogNoProjectSelected": {
+      "title": "No Project Selected",
+      "description": "Select a project from the sidebar to generate changelogs."
     }
   },
   "mcp": {
@@ -539,6 +548,10 @@
     "errorUrlRequired": "URL is required for HTTP-based servers",
     "testConnection": "Test",
     "testing": "Testing...",
+    "testConnectionTitle": "Test Connection",
+    "textOnlyNoTools": "Text-only (no tools)",
+    "edit": "Edit",
+    "delete": "Delete",
     "authToken": "Authentication Token",
     "authTokenPlaceholder": "Paste your API token or PAT here",
     "authTokenHint": "Used as Bearer token in the Authorization header",

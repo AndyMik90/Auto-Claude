@@ -351,7 +351,10 @@
     "label": "代理配置文件",
     "title": "默认代理配置文件",
     "sectionDescription": "选择模型和思考级别的预设配置",
+    "pageTitle": "代理配置文件",
+    "pageDescription": "选择模型和思考级别的预设配置",
     "profilesInfo": "代理配置文件为 Claude 模型和思考级别提供预设配置。当您创建新任务时,这些设置将用作默认值。您始终可以在任务创建向导中覆盖它们。",
+    "thinking": "思考",
     "custom": "自定义",
     "customConfiguration": "自定义配置",
     "customDescription": "选择模型和思考级别",
@@ -368,6 +371,8 @@
     "resetToProfileDefaults": "重置为 {{profile}} 默认值",
     "customized": "已自定义",
     "phaseConfigNote": "使用此配置文件创建新任务时,这些设置将用作默认值。您可以在任务创建向导中针对每个任务覆盖它们。",
+    "autoOptimized": "自动(已优化)",
+    "autoOptimizedDescription": "在所有阶段使用 Opus 模型并采用优化的思考级别",
     "phases": {
       "spec": {
         "label": "规范创建",
@@ -460,6 +465,10 @@
     "noProjectSelected": {
       "title": "未选择项目",
       "description": "从侧边栏选择一个项目以配置其设置。"
+    },
+    "changelogNoProjectSelected": {
+      "title": "未选择项目",
+      "description": "从侧边栏选择一个项目以生成更新日志。"
     }
   },
   "mcp": {
@@ -539,6 +548,10 @@
     "errorUrlRequired": "基于 HTTP 的服务器需要 URL",
     "testConnection": "测试",
     "testing": "测试中...",
+    "testConnectionTitle": "测试连接",
+    "textOnlyNoTools": "仅文本(无工具)",
+    "edit": "编辑",
+    "delete": "删除",
     "authToken": "认证令牌",
     "authTokenPlaceholder": "在此处粘贴您的 API 令牌或 PAT",
     "authTokenHint": "用作授权标头中的不记名令牌",

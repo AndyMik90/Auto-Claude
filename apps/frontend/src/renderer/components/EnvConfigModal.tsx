@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertCircle,
   Key,
@@ -46,10 +47,11 @@ export function EnvConfigModal({
   open,
   onOpenChange,
   onConfigured,
-  title = 'Claude Authentication Required',
-  description = 'A Claude Code OAuth token is required to use AI features like Ideation and Roadmap generation.',
+  title,
+  description,
   projectId
 }: EnvConfigModalProps) {
+  const { t } = useTranslation('dialogs');
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -97,7 +99,7 @@ export function EnvConfigModal({
             setSuccess(true);
           }
         } else {
-          setError(tokenResult.error || 'Failed to check token status');
+          setError(tokenResult.error || t('envConfig.errorFailedToCheckToken'));
         }
 
         // Handle Claude profiles
@@ -156,7 +158,7 @@ export function EnvConfigModal({
       // Get the selected profile's token
       const profile = claudeProfiles.find(p => p.id === selectedProfileId);
       if (!profile?.oauthToken) {
-        setError('Selected profile does not have a valid token');
+        setError(t('envConfig.errorInvalidProfile'));
         setIsSaving(false);
         return;
       }
@@ -176,10 +178,10 @@ export function EnvConfigModal({
           onOpenChange(false);
         }, 1500);
       } else {
-        setError(result.error || 'Failed to save token');
+        setError(result.error || t('envConfig.errorFailedToSave'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : t('envConfig.errorUnknown'));
     } finally {
       setIsSaving(false);
     }
@@ -187,7 +189,7 @@ export function EnvConfigModal({
 
   const handleAuthenticateWithBrowser = async () => {
     if (!projectId) {
-      setError('No project selected. Please select a project first.');
+      setError(t('envConfig.errorNoProjectSelected'));
       return;
     }
 
@@ -199,19 +201,19 @@ export function EnvConfigModal({
       const result = await window.electronAPI.invokeClaudeSetup(projectId);
 
       if (!result.success) {
-        setError(result.error || 'Failed to start authentication');
+        setError(result.error || t('envConfig.errorFailedToStartAuth'));
         setIsAuthenticating(false);
       }
       // Keep isAuthenticating true - will be cleared when token is received
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start authentication');
+      setError(err instanceof Error ? err.message : t('envConfig.errorFailedToStartAuth'));
       setIsAuthenticating(false);
     }
   };
 
   const handleSave = async () => {
     if (!token.trim()) {
-      setError('Please enter a token');
+      setError(t('envConfig.errorPleaseEnterToken'));
       return;
     }
 
@@ -234,10 +236,10 @@ export function EnvConfigModal({
           onOpenChange(false);
         }, 1500);
       } else {
-        setError(result.error || 'Failed to save token');
+        setError(result.error || t('envConfig.errorFailedToSave'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : t('envConfig.errorUnknown'));
     } finally {
       setIsSaving(false);
     }
@@ -267,9 +269,9 @@ export function EnvConfigModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Key className="h-5 w-5" />
-            {title}
+            {title || t('envConfig.title')}
           </DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription>{description || t('envConfig.description')}</DialogDescription>
         </DialogHeader>
 
         {/* Loading state */}
@@ -286,10 +288,10 @@ export function EnvConfigModal({
               <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-success">
-                  Token configured successfully
+                  {t('envConfig.success')}
                 </p>
                 <p className="text-xs text-success/80 mt-1">
-                  You can now use AI features like Ideation and Roadmap generation.
+                  {t('envConfig.successDescription')}
                 </p>
               </div>
             </div>
@@ -315,10 +317,10 @@ export function EnvConfigModal({
                     <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm text-foreground font-medium mb-1">
-                        Use Existing Account
+                        {t('envConfig.useExistingAccount')}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        You have {claudeProfiles.length} authenticated Claude account{claudeProfiles.length > 1 ? 's' : ''}. Select one to use:
+                        {t('envConfig.useExistingAccountDescription', { count: claudeProfiles.length })}
                       </p>
                     </div>
                   </div>
@@ -327,7 +329,7 @@ export function EnvConfigModal({
                 {/* Profile selector */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-foreground">
-                    Select Account
+                    {t('envConfig.selectAccount')}
                   </Label>
                   <div className="space-y-2">
                     {claudeProfiles.map((profile) => (
@@ -355,7 +357,7 @@ export function EnvConfigModal({
                           <p className="text-sm font-medium text-foreground">
                             {profile.name}
                             {profile.isDefault && (
-                              <span className="ml-2 text-xs text-muted-foreground">(Default)</span>
+                              <span className="ml-2 text-xs text-muted-foreground">({t('envConfig.default')})</span>
                             )}
                           </p>
                           {profile.email && (
@@ -382,12 +384,12 @@ export function EnvConfigModal({
                   {isSaving ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Saving...
+                      {t('envConfig.saving')}
                     </>
                   ) : (
                     <>
                       <Key className="mr-2 h-5 w-5" />
-                      Use This Account
+                      {t('envConfig.useThisAccount')}
                     </>
                   )}
                 </Button>
@@ -398,7 +400,7 @@ export function EnvConfigModal({
                     <div className="w-full border-t border-border"></div>
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">or</span>
+                    <span className="bg-background px-2 text-muted-foreground">{t('envConfig.or')}</span>
                   </div>
                 </div>
               </div>
@@ -412,12 +414,12 @@ export function EnvConfigModal({
                     <Info className="h-5 w-5 text-info shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm text-foreground font-medium mb-1">
-                        {claudeProfiles.length > 0 ? 'Or Authenticate New Account' : 'Authenticate with Browser'}
+                        {claudeProfiles.length > 0 ? t('envConfig.orAuthenticateNewAccount') : t('envConfig.authenticateWithBrowser')}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {claudeProfiles.length > 0
-                          ? 'Add a new Claude account by logging in with your browser.'
-                          : 'Click below to open your browser and log in with your Claude account.'
+                          ? t('envConfig.authenticateNewAccountDescription')
+                          : t('envConfig.authenticateWithBrowserDescription')
                         }
                       </p>
                     </div>
@@ -434,19 +436,19 @@ export function EnvConfigModal({
                   {isAuthenticating ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Waiting for authentication...
+                      {t('envConfig.waitingForAuth')}
                     </>
                   ) : (
                     <>
                       <LogIn className="mr-2 h-5 w-5" />
-                      {claudeProfiles.length > 0 ? 'Authenticate New Account' : 'Authenticate with Browser'}
+                      {claudeProfiles.length > 0 ? t('envConfig.authenticateNewAccount') : t('envConfig.authenticateWithBrowser')}
                     </>
                   )}
                 </Button>
 
                 {isAuthenticating && (
                   <p className="text-xs text-muted-foreground text-center">
-                    A browser window should open. Complete the authentication there, then return here.
+                    {t('envConfig.browserAuthHint')}
                   </p>
                 )}
               </div>
@@ -459,7 +461,7 @@ export function EnvConfigModal({
                   <div className="w-full border-t border-border"></div>
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">or</span>
+                  <span className="bg-background px-2 text-muted-foreground">{t('envConfig.or')}</span>
                 </div>
               </div>
             )}
@@ -470,7 +472,7 @@ export function EnvConfigModal({
                 onClick={() => setShowManualEntry(!showManualEntry)}
                 className="w-full flex items-center justify-between text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                <span>Enter token manually</span>
+                <span>{t('envConfig.enterTokenManually')}</span>
                 {showManualEntry ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
@@ -482,11 +484,12 @@ export function EnvConfigModal({
                 <div className="space-y-3 pl-4 border-l-2 border-border">
                   {/* Manual token instructions */}
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p className="font-medium text-foreground">Steps:</p>
+                    <p className="font-medium text-foreground">{t('envConfig.steps')}</p>
                     <ol className="list-decimal list-inside space-y-1">
-                      <li>Install Claude Code CLI if you haven't already</li>
+                      <li>{t('envConfig.step1InstallCLI')}</li>
                       <li>
-                        Run{' '}
+                        {t('envConfig.step2RunCommand')}
+                        {' '}
                         <code className="px-1 py-0.5 bg-muted rounded font-mono">
                           claude setup-token
                         </code>
@@ -498,21 +501,21 @@ export function EnvConfigModal({
                           <Copy className="h-3 w-3 ml-1" />
                         </button>
                       </li>
-                      <li>Copy the token and paste it below</li>
+                      <li>{t('envConfig.step3CopyToken')}</li>
                     </ol>
                     <button
                       onClick={handleOpenDocs}
                       className="text-info hover:text-info/80 flex items-center gap-1 mt-2"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      View documentation
+                      {t('envConfig.viewDocumentation')}
                     </button>
                   </div>
 
                   {/* Token input */}
                   <div className="space-y-2">
                     <Label htmlFor="token" className="text-sm font-medium text-foreground">
-                      Claude Code OAuth Token
+                      {t('envConfig.tokenLabel')}
                     </Label>
                     <div className="relative">
                       <Input

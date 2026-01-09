@@ -61,7 +61,7 @@ export function TaskCreationWizard({
   onOpenChange
 }: TaskCreationWizardProps) {
   const { t } = useTranslation('tasks');
-  // Get selected agent profile from settings
+  // 从设置中获取选定的代理配置
   const { settings } = useSettingsStore();
   const selectedProfile = DEFAULT_AGENT_PROFILES.find(
     p => p.id === settings.selectedAgentProfile
@@ -75,35 +75,35 @@ export function TaskCreationWizard({
   const [showFileExplorer, setShowFileExplorer] = useState(false);
   const [showGitOptions, setShowGitOptions] = useState(false);
 
-  // Git options state
-  // Use a special value to represent "use project default" since Radix UI Select doesn't allow empty string values
+  // Git 选项状态
+  // 使用特殊值表示"使用项目默认值"，因为 Radix UI Select 不允许空字符串值
   const PROJECT_DEFAULT_BRANCH = '__project_default__';
   const [branches, setBranches] = useState<string[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [baseBranch, setBaseBranch] = useState<string>(PROJECT_DEFAULT_BRANCH);
   const [projectDefaultBranch, setProjectDefaultBranch] = useState<string>('');
-  // Worktree isolation - default to true for safety
+  // 工作树隔离 - 默认为 true 以确保安全
   const [useWorktree, setUseWorktree] = useState(true);
 
-  // Get project path from project store
+  // 从项目存储中获取项目路径
   const projects = useProjectStore((state) => state.projects);
   const projectPath = useMemo(() => {
     const project = projects.find((p) => p.id === projectId);
     return project?.path ?? null;
   }, [projects, projectId]);
 
-  // Metadata fields
+  // 元数据字段
   const [category, setCategory] = useState<TaskCategory | ''>('');
   const [priority, setPriority] = useState<TaskPriority | ''>('');
   const [complexity, setComplexity] = useState<TaskComplexity | ''>('');
   const [impact, setImpact] = useState<TaskImpact | ''>('');
 
-  // Model configuration (initialized from selected agent profile)
+  // 模型配置（从选定的代理配置初始化）
   const [profileId, setProfileId] = useState<string>(settings.selectedAgentProfile || 'auto');
   const [model, setModel] = useState<ModelType | ''>(selectedProfile.model);
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel | ''>(selectedProfile.thinkingLevel);
-  // Auto profile - per-phase configuration
-  // Use custom settings from app settings if available, otherwise fall back to defaults
+  // 自动配置 - 每阶段配置
+  // 优先使用应用设置中的自定义设置，否则回退到默认值
   const [phaseModels, setPhaseModels] = useState<PhaseModelConfig | undefined>(
     settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS
   );
@@ -111,29 +111,29 @@ export function TaskCreationWizard({
     settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING
   );
 
-  // Image attachments
+  // 图片附件
   const [images, setImages] = useState<ImageAttachment[]>([]);
 
-  // Referenced files from file explorer
+  // 从文件浏览器引用的文件
   const [referencedFiles, setReferencedFiles] = useState<ReferencedFile[]>([]);
 
-  // Review setting
+  // 审查设置
   const [requireReviewBeforeCoding, setRequireReviewBeforeCoding] = useState(false);
 
-  // Draft state
+  // 草稿状态
   const [isDraftRestored, setIsDraftRestored] = useState(false);
   const [pasteSuccess, setPasteSuccess] = useState(false);
 
-  // Ref for the textarea to handle paste events
+  // 用于处理粘贴事件的文本区域引用
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
-  // Ref for the form scroll container (for drag auto-scroll)
+  // 表单滚动容器引用（用于拖拽自动滚动）
   const formContainerRef = useRef<HTMLDivElement>(null);
 
-  // Drag-and-drop state for images over textarea
+  // 文本区域上的图片拖放状态
   const [isDragOverTextarea, setIsDragOverTextarea] = useState(false);
 
-  // @ autocomplete state
+  // @ 自动完成状态
   const [autocomplete, setAutocomplete] = useState<{
     show: boolean;
     query: string;
@@ -141,7 +141,7 @@ export function TaskCreationWizard({
     position: { top: number; left: number };
   } | null>(null);
 
-  // Load draft when dialog opens, or initialize from selected profile
+  // 当对话框打开时加载草稿，或从选定的配置初始化
   useEffect(() => {
     if (open && projectId) {
       const draft = loadDraft(projectId);
@@ -163,12 +163,12 @@ export function TaskCreationWizard({
         setRequireReviewBeforeCoding(draft.requireReviewBeforeCoding ?? false);
         setIsDraftRestored(true);
 
-        // Expand sections if they have content
+        // 如果有内容，则展开相应部分
         if (draft.category || draft.priority || draft.complexity || draft.impact) {
           setShowAdvanced(true);
         }
       } else {
-        // No draft - initialize from selected profile and custom settings
+        // 无草稿 - 从选定的配置和自定义设置初始化
         setProfileId(settings.selectedAgentProfile || 'auto');
         setModel(selectedProfile.model);
         setThinkingLevel(selectedProfile.thinkingLevel);
@@ -176,9 +176,9 @@ export function TaskCreationWizard({
         setPhaseThinking(settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
       }
     }
-  }, [open, projectId, settings.selectedAgentProfile, settings.customPhaseModels, settings.customPhaseThinking, selectedProfile.model, selectedProfile.thinkingLevel]);
+  }, [open, projectId, settings.selectedAgentProfile, settings.customPhaseModels, settings.customPhaseThinking, selectedProfile.model, selectedProfile.thinkingLevel, selectedProfile.phaseModels, selectedProfile.phaseThinking]);
 
-  // Fetch branches and project default branch when dialog opens
+  // 当对话框打开时获取分支和项目默认分支
   useEffect(() => {
     if (open && projectPath) {
       fetchBranches();
@@ -260,22 +260,22 @@ export function TaskCreationWizard({
       }
     }
 
-    // If no images, allow normal paste behavior
+    // 如果没有图片，允许正常的粘贴行为
     if (imageItems.length === 0) return;
 
-    // Prevent default paste when we have images
+    // 当有图片时阻止默认粘贴
     e.preventDefault();
 
-    // Check if we can add more images
+    // 检查是否可以添加更多图片
     const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
     if (remainingSlots <= 0) {
-      setError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+      setError(t('wizard.errors.maxImages', { max: MAX_IMAGES_PER_TASK }));
       return;
     }
 
     setError(null);
 
-    // Process image items
+    // 处理图片项
     const newImages: ImageAttachment[] = [];
     const existingFilenames = images.map(img => img.filename);
 
@@ -283,9 +283,9 @@ export function TaskCreationWizard({
       const file = item.getAsFile();
       if (!file) continue;
 
-      // Validate image type
+      // 验证图片类型
       if (!isValidImageMimeType(file.type)) {
-        setError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+        setError(t('wizard.errors.invalidImageType', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
         continue;
       }
 
@@ -293,7 +293,7 @@ export function TaskCreationWizard({
         const dataUrl = await blobToBase64(file);
         const thumbnail = await createThumbnail(dataUrl);
 
-        // Generate filename for pasted images (screenshot-timestamp.ext)
+        // 为粘贴的图片生成文件名（screenshot-时间戳.扩展名）
         const extension = file.type.split('/')[1] || 'png';
         const baseFilename = `screenshot-${Date.now()}.${extension}`;
         const resolvedFilename = resolveFilename(baseFilename, [
@@ -310,24 +310,24 @@ export function TaskCreationWizard({
           thumbnail
         });
       } catch {
-        setError('Failed to process pasted image');
+        setError(t('wizard.errors.failedPasteImage'));
       }
     }
 
     if (newImages.length > 0) {
       setImages(prev => [...prev, ...newImages]);
-      // Show success feedback
+      // 显示成功反馈
       setPasteSuccess(true);
       setTimeout(() => setPasteSuccess(false), 2000);
     }
-  }, [images]);
+  }, [images, t]);
 
   /**
-   * Detect @ mention being typed and show autocomplete
+   * 检测正在输入的 @ 提及并显示自动完成
    */
   const detectAtMention = useCallback((text: string, cursorPos: number) => {
     const beforeCursor = text.slice(0, cursorPos);
-    // Match @ followed by optional path characters (letters, numbers, dots, dashes, slashes)
+    // 匹配 @ 后跟可选路径字符（字母、数字、点、短横线、斜杠）
     const match = beforeCursor.match(/@([\w\-./\\]*)$/);
 
     if (match) {
@@ -348,11 +348,11 @@ export function TaskCreationWizard({
 
     setDescription(newValue);
 
-    // Check for @ mention at cursor
+    // 检查光标处的 @ 提及
     const mention = detectAtMention(newValue, cursorPos);
 
     if (mention) {
-      // Calculate popup position based on cursor
+      // 根据光标计算弹出位置
       const textarea = descriptionRef.current;
       if (textarea) {
         const rect = textarea.getBoundingClientRect();
@@ -361,14 +361,14 @@ export function TaskCreationWizard({
         const paddingTop = parseFloat(textareaStyle.paddingTop) || 8;
         const paddingLeft = parseFloat(textareaStyle.paddingLeft) || 12;
 
-        // Estimate cursor position (simplified - assumes fixed-width font)
+        // 估算光标位置（简化版 - 假设等宽字体）
         const textBeforeCursor = newValue.slice(0, cursorPos);
         const lines = textBeforeCursor.split('\n');
         const currentLineIndex = lines.length - 1;
         const currentLineLength = lines[currentLineIndex].length;
 
-        // Calculate position relative to textarea
-        const charWidth = 8; // Approximate character width
+        // 计算相对于文本区域的位置
+        const charWidth = 8; // 近似字符宽度
         const top = paddingTop + (currentLineIndex + 1) * lineHeight + 4;
         const left = paddingLeft + Math.min(currentLineLength * charWidth, rect.width - 300);
 
@@ -380,7 +380,7 @@ export function TaskCreationWizard({
         });
       }
     } else {
-      // No @ mention at cursor, close autocomplete
+      // 光标处没有 @ 提及，关闭自动完成
       if (autocomplete?.show) {
         setAutocomplete(null);
       }
@@ -396,7 +396,7 @@ export function TaskCreationWizard({
     const textarea = descriptionRef.current;
     if (!textarea) return;
 
-    // Replace the @query with @filename
+    // 将 @查询 替换为 @文件名
     const beforeMention = description.slice(0, autocomplete.startPos);
     const afterMention = description.slice(autocomplete.startPos + 1 + autocomplete.query.length);
     const newDescription = beforeMention + '@' + filename + afterMention;
@@ -404,7 +404,7 @@ export function TaskCreationWizard({
     setDescription(newDescription);
     setAutocomplete(null);
 
-    // Set cursor after the inserted mention
+    // 将光标设置在插入的提及之后
     setTimeout(() => {
       const newCursorPos = autocomplete.startPos + 1 + filename.length;
       textarea.focus();
@@ -427,10 +427,10 @@ export function TaskCreationWizard({
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
-    const edgeThreshold = 60; // px from edge to trigger scroll
+    const edgeThreshold = 60; // 距离边缘触发滚动的像素值
     const scrollSpeed = 8;
 
-    // Auto-scroll when dragging near top or bottom edges
+    // 在顶部或底部边缘附近拖拽时自动滚动
     if (e.clientY < rect.top + edgeThreshold) {
       container.scrollTop -= scrollSpeed;
     } else if (e.clientY > rect.bottom - edgeThreshold) {
@@ -467,44 +467,44 @@ export function TaskCreationWizard({
 
       if (isCreating) return;
 
-      // First, check for file reference drops (from the file explorer)
+      // 首先检查文件引用拖放（来自文件浏览器）
       const jsonData = e.dataTransfer?.getData('application/json');
       if (jsonData) {
         try {
           const data = JSON.parse(jsonData);
           if (data.type === 'file-reference' && data.name) {
-            // Insert @mention at cursor position in the textarea
+            // 在文本区域的光标位置插入 @提及
             const textarea = descriptionRef.current;
             if (textarea) {
               const cursorPos = textarea.selectionStart || 0;
               const textBefore = description.substring(0, cursorPos);
               const textAfter = description.substring(cursorPos);
 
-              // Insert @mention at cursor position
+              // 在光标位置插入 @提及
               const mention = `@${data.name}`;
               const newDescription = textBefore + mention + textAfter;
               setDescription(newDescription);
 
-              // Set cursor after the inserted mention
+              // 将光标设置在插入的提及之后
               setTimeout(() => {
                 textarea.focus();
                 const newCursorPos = cursorPos + mention.length;
                 textarea.setSelectionRange(newCursorPos, newCursorPos);
               }, 0);
 
-              return; // Don't process as image
+              return; // 不作为图片处理
             }
           }
         } catch {
-          // Not valid JSON, continue to image handling
+          // 不是有效的 JSON，继续处理图片
         }
       }
 
-      // Fall back to image file handling
+      // 回退到图片文件处理
       const files = e.dataTransfer?.files;
       if (!files || files.length === 0) return;
 
-      // Filter for image files
+      // 筛选图片文件
       const imageFiles: File[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -518,20 +518,20 @@ export function TaskCreationWizard({
       // Check if we can add more images
       const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
       if (remainingSlots <= 0) {
-        setError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+        setError(t('wizard.errors.maxImages', { max: MAX_IMAGES_PER_TASK }));
         return;
       }
 
       setError(null);
 
-      // Process image files
+      // 处理图片文件
       const newImages: ImageAttachment[] = [];
       const existingFilenames = images.map(img => img.filename);
 
       for (const file of imageFiles.slice(0, remainingSlots)) {
-        // Validate image type
+        // 验证图片类型
         if (!isValidImageMimeType(file.type)) {
-          setError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+          setError(t('wizard.errors.invalidImageType', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
           continue;
         }
 
@@ -539,7 +539,7 @@ export function TaskCreationWizard({
           const dataUrl = await blobToBase64(file);
           const thumbnail = await createThumbnail(dataUrl);
 
-          // Use original filename or generate one
+          // 使用原始文件名或生成一个
           const baseFilename = file.name || `dropped-image-${Date.now()}.${file.type.split('/')[1] || 'png'}`;
           const resolvedFilename = resolveFilename(baseFilename, [
             ...existingFilenames,
@@ -551,51 +551,51 @@ export function TaskCreationWizard({
             filename: resolvedFilename,
             mimeType: file.type,
             size: file.size,
-            data: dataUrl.split(',')[1], // Store base64 without data URL prefix
+            data: dataUrl.split(',')[1], // 存储不含 data URL 前缀的 base64
             thumbnail
           });
         } catch {
-          setError('Failed to process dropped image');
+          setError(t('wizard.errors.failedDropImage'));
         }
       }
 
       if (newImages.length > 0) {
         setImages(prev => [...prev, ...newImages]);
-        // Show success feedback
+        // 显示成功反馈
         setPasteSuccess(true);
         setTimeout(() => setPasteSuccess(false), 2000);
       }
     },
-    [images, isCreating, description]
+    [images, isCreating, description, t]
   );
 
   /**
-   * Parse @mentions from description and create ReferencedFile entries
-   * Merges with existing referencedFiles, avoiding duplicates
+   * 从描述中解析 @提及 并创建 ReferencedFile 条目
+   * 与现有的 referencedFiles 合并，避免重复
    */
   const parseFileMentions = useCallback((text: string, existingFiles: ReferencedFile[]): ReferencedFile[] => {
-    // Match @filename patterns (supports filenames with dots, hyphens, underscores, and path separators)
+    // 匹配 @文件名 模式（支持包含点、短横线、下划线和路径分隔符的文件名）
     const mentionRegex = /@([\w\-./\\]+\.\w+)/g;
     const matches = Array.from(text.matchAll(mentionRegex));
 
     if (matches.length === 0) return existingFiles;
 
-    // Create a set of existing file names for quick lookup
+    // 创建现有文件名的集合以快速查找
     const existingNames = new Set(existingFiles.map(f => f.name));
 
-    // Parse mentioned files that aren't already in the list
+    // 解析不在列表中的提及文件
     const newFiles: ReferencedFile[] = [];
     matches.forEach(match => {
       const fileName = match[1];
       if (!existingNames.has(fileName)) {
         newFiles.push({
           id: crypto.randomUUID(),
-          path: fileName, // Store relative path from @mention
+          path: fileName, // 存储来自 @提及的相对路径
           name: fileName,
           isDirectory: false,
           addedAt: new Date()
         });
-        existingNames.add(fileName); // Prevent duplicates within mentions
+        existingNames.add(fileName); // 防止提及中出现重复
       }
     });
 
@@ -604,7 +604,7 @@ export function TaskCreationWizard({
 
   const handleCreate = async () => {
     if (!description.trim()) {
-      setError('Please provide a description');
+      setError(t('wizard.errors.descriptionRequired'));
       return;
     }
 
@@ -612,10 +612,10 @@ export function TaskCreationWizard({
     setError(null);
 
     try {
-      // Parse @mentions from description and merge with referenced files
+      // 从描述中解析 @提及并与引用文件合并
       const allReferencedFiles = parseFileMentions(description, referencedFiles);
 
-      // Build metadata from selected values
+      // 根据选择的值构建元数据
       const metadata: TaskMetadata = {
         sourceType: 'manual'
       };
@@ -626,8 +626,8 @@ export function TaskCreationWizard({
       if (impact) metadata.impact = impact;
       if (model) metadata.model = model;
       if (thinkingLevel) metadata.thinkingLevel = thinkingLevel;
-      // All profiles now support per-phase configuration
-      // isAutoProfile indicates task uses phase-specific models/thinking
+      // 所有配置现在都支持每阶段配置
+      // isAutoProfile 表示任务使用特定阶段的模型/思考
       if (phaseModels && phaseThinking) {
         metadata.isAutoProfile = true;
         metadata.phaseModels = phaseModels;
@@ -636,12 +636,12 @@ export function TaskCreationWizard({
       if (images.length > 0) metadata.attachedImages = images;
       if (allReferencedFiles.length > 0) metadata.referencedFiles = allReferencedFiles;
       if (requireReviewBeforeCoding) metadata.requireReviewBeforeCoding = true;
-      // Only include baseBranch if it's not the project default placeholder
+      // 仅当 baseBranch 不是项目默认占位符时才包含它
       if (baseBranch && baseBranch !== PROJECT_DEFAULT_BRANCH) metadata.baseBranch = baseBranch;
-      // Pass worktree preference - false means use --direct mode
+      // 传递工作树偏好 - false 表示使用 --direct 模式
       if (!useWorktree) metadata.useWorktree = false;
 
-      // Title is optional - if empty, it will be auto-generated by the backend
+      // 标题是可选的 - 如果为空，将由后端自动生成
       const task = await createTask(projectId, title.trim(), description.trim(), metadata);
       if (task) {
         // Clear draft on successful creation
@@ -650,10 +650,10 @@ export function TaskCreationWizard({
         resetForm();
         onOpenChange(false);
       } else {
-        setError('Failed to create task. Please try again.');
+        setError(t('wizard.errors.createFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : t('wizard.errors.unknownError'));
     } finally {
       setIsCreating(false);
     }
@@ -666,7 +666,7 @@ export function TaskCreationWizard({
     setPriority('');
     setComplexity('');
     setImpact('');
-    // Reset to selected profile defaults and custom settings
+    // 重置为选定的配置默认值和自定义设置
     setProfileId(settings.selectedAgentProfile || 'auto');
     setModel(selectedProfile.model);
     setThinkingLevel(selectedProfile.thinkingLevel);
@@ -686,18 +686,18 @@ export function TaskCreationWizard({
   };
 
   /**
-   * Handle dialog close - save draft if content exists
+   * 处理对话框关闭 - 如果有内容则保存草稿
    */
   const handleClose = () => {
     if (isCreating) return;
 
     const draft = getCurrentDraft();
 
-    // Save draft if there's any content
+    // 如果有任何内容，则保存草稿
     if (!isDraftEmpty(draft)) {
       saveDraft(draft);
     } else {
-      // Clear any existing draft if form is empty
+      // 如果表单为空，则清除任何现有草稿
       clearDraft(projectId);
     }
 
@@ -706,7 +706,7 @@ export function TaskCreationWizard({
   };
 
   /**
-   * Discard draft and start fresh
+   * 丢弃草稿并重新开始
    */
   const handleDiscardDraft = () => {
     clearDraft(projectId);
@@ -724,7 +724,7 @@ export function TaskCreationWizard({
         hideCloseButton={showFileExplorer}
       >
         <div className="flex h-full min-h-0 overflow-hidden">
-          {/* Form content */}
+          {/* 表单内容 */}
           <div
             ref={formContainerRef}
             onDragOver={handleContainerDragOver}
@@ -732,11 +732,11 @@ export function TaskCreationWizard({
           >
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-foreground">Create New Task</DialogTitle>
+            <DialogTitle className="text-foreground">{t('wizard.title')}</DialogTitle>
             {isDraftRestored && (
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-info/10 text-info px-2 py-1 rounded-md">
-                  Draft restored
+                  {t('wizard.draftRestored')}
                 </span>
                 <Button
                   variant="ghost"
@@ -745,14 +745,13 @@ export function TaskCreationWizard({
                   onClick={handleDiscardDraft}
                 >
                   <RotateCcw className="h-3 w-3 mr-1" />
-                  Start Fresh
+                  {t('wizard.startFresh')}
                 </Button>
               </div>
             )}
           </div>
           <DialogDescription>
-            Describe what you want to build. The AI will analyze your request and
-            create a detailed specification.
+            {t('wizard.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -760,7 +759,7 @@ export function TaskCreationWizard({
           {/* Description (Primary - Required) */}
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium text-foreground">
-              Description <span className="text-destructive">*</span>
+              {t('wizard.descriptionLabel')} <span className="text-destructive">*</span>
             </Label>
             {/* Wrap textarea for file @mentions */}
             <div className="relative">
@@ -777,7 +776,7 @@ export function TaskCreationWizard({
                 }}
               >
                 {description.split(/(@[\w\-./\\]+\.\w+)/g).map((part, i) => {
-                  // Check if this part is an @mention
+                  // 检查这部分是否是 @提及
                   if (part.match(/^@[\w\-./\\]+\.\w+$/)) {
                     return (
                       <span
@@ -795,7 +794,7 @@ export function TaskCreationWizard({
               <Textarea
                 ref={descriptionRef}
                 id="description"
-                placeholder="Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior. Type @ to reference files."
+                placeholder={t('wizard.descriptionPlaceholder')}
                 value={description}
                 onChange={handleDescriptionChange}
                 onPaste={handlePaste}
@@ -808,12 +807,12 @@ export function TaskCreationWizard({
                 aria-describedby="description-help"
                 className={cn(
                   "resize-y min-h-[120px] max-h-[400px] relative bg-transparent",
-                  // Visual feedback when dragging over textarea
+                  // 在文本区域上拖拽时的视觉反馈
                   isDragOverTextarea && !isCreating && "border-primary bg-primary/5 ring-2 ring-primary/20"
                 )}
                 style={{ caretColor: 'auto' }}
               />
-              {/* File autocomplete popup */}
+              {/* 文件自动完成弹出框 */}
               {autocomplete?.show && projectPath && (
                 <FileAutocomplete
                   query={autocomplete.query}
@@ -825,10 +824,10 @@ export function TaskCreationWizard({
               )}
             </div>
             <p id="description-help" className="text-xs text-muted-foreground">
-              Files and images can be copy/pasted or dragged & dropped into the description.
+              {t('wizard.descriptionHint')}
             </p>
 
-            {/* Image Thumbnails - displayed inline below description */}
+            {/* 图片缩略图 - 在描述下方内联显示 */}
             {images.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {images.map((image) => (
@@ -837,7 +836,7 @@ export function TaskCreationWizard({
                     className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                     style={{ width: '64px', height: '64px' }}
                     onClick={() => {
-                      // Open full-size image in a new window/modal could be added here
+                      // 可以在此处添加在新窗口/模态框中打开完整尺寸图片的功能
                     }}
                     title={image.filename}
                   >
@@ -852,7 +851,7 @@ export function TaskCreationWizard({
                         <ImageIcon className="h-6 w-6 text-muted-foreground" />
                       </div>
                     )}
-                    {/* Remove button */}
+                    {/* 移除按钮 */}
                     {!isCreating && (
                       <button
                         type="button"
@@ -872,20 +871,20 @@ export function TaskCreationWizard({
             )}
           </div>
 
-          {/* Title (Optional - Auto-generated if empty) */}
+          {/* 标题（可选 - 如果为空则自动生成） */}
           <div className="space-y-2">
             <Label htmlFor="title" className="text-sm font-medium text-foreground">
-              Task Title <span className="text-muted-foreground font-normal">(optional)</span>
+              {t('wizard.titleLabel')} <span className="text-muted-foreground font-normal">{t('wizard.optional')}</span>
             </Label>
             <Input
               id="title"
-              placeholder="Leave empty to auto-generate from description"
+              placeholder={t('wizard.titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isCreating}
             />
             <p className="text-xs text-muted-foreground">
-              A short, descriptive title will be generated automatically if left empty.
+              {t('wizard.titleHint')}
             </p>
           </div>
 
@@ -912,7 +911,7 @@ export function TaskCreationWizard({
           {pasteSuccess && (
             <div className="flex items-center gap-2 text-sm text-success animate-in fade-in slide-in-from-top-1 duration-200">
               <ImageIcon className="h-4 w-4" />
-              Image added successfully!
+              {t('wizard.imageAdded')}
             </div>
           )}
 
@@ -928,7 +927,7 @@ export function TaskCreationWizard({
             aria-expanded={showAdvanced}
             aria-controls="advanced-options-section"
           >
-            <span>Classification (optional)</span>
+            <span>{t('wizard.classificationLabel')} {t('wizard.optional')}</span>
             {showAdvanced ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
@@ -943,7 +942,7 @@ export function TaskCreationWizard({
                 {/* Category */}
                 <div className="space-y-2">
                   <Label htmlFor="category" className="text-xs font-medium text-muted-foreground">
-                    Category
+                    {t('wizard.categoryLabel')}
                   </Label>
                   <Select
                     value={category}
@@ -951,7 +950,7 @@ export function TaskCreationWizard({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="category" className="h-9">
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder={t('wizard.selectCategory')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_CATEGORY_LABELS).map(([value, label]) => (
@@ -966,7 +965,7 @@ export function TaskCreationWizard({
                 {/* Priority */}
                 <div className="space-y-2">
                   <Label htmlFor="priority" className="text-xs font-medium text-muted-foreground">
-                    Priority
+                    {t('wizard.priorityLabel')}
                   </Label>
                   <Select
                     value={priority}
@@ -974,7 +973,7 @@ export function TaskCreationWizard({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="priority" className="h-9">
-                      <SelectValue placeholder="Select priority" />
+                      <SelectValue placeholder={t('wizard.selectPriority')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
@@ -989,7 +988,7 @@ export function TaskCreationWizard({
                 {/* Complexity */}
                 <div className="space-y-2">
                   <Label htmlFor="complexity" className="text-xs font-medium text-muted-foreground">
-                    Complexity
+                    {t('wizard.complexityLabel')}
                   </Label>
                   <Select
                     value={complexity}
@@ -997,7 +996,7 @@ export function TaskCreationWizard({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="complexity" className="h-9">
-                      <SelectValue placeholder="Select complexity" />
+                      <SelectValue placeholder={t('wizard.selectComplexity')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_COMPLEXITY_LABELS).map(([value, label]) => (
@@ -1012,7 +1011,7 @@ export function TaskCreationWizard({
                 {/* Impact */}
                 <div className="space-y-2">
                   <Label htmlFor="impact" className="text-xs font-medium text-muted-foreground">
-                    Impact
+                    {t('wizard.impactLabel')}
                   </Label>
                   <Select
                     value={impact}
@@ -1020,7 +1019,7 @@ export function TaskCreationWizard({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="impact" className="h-9">
-                      <SelectValue placeholder="Select impact" />
+                      <SelectValue placeholder={t('wizard.selectImpact')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_IMPACT_LABELS).map(([value, label]) => (
@@ -1034,7 +1033,7 @@ export function TaskCreationWizard({
               </div>
 
               <p className="text-xs text-muted-foreground">
-                These labels help organize and prioritize tasks. They&apos;re optional but useful for filtering.
+                {t('wizard.classificationHint')}
               </p>
             </div>
           )}
@@ -1053,10 +1052,10 @@ export function TaskCreationWizard({
                 htmlFor="require-review"
                 className="text-sm font-medium text-foreground cursor-pointer"
               >
-                Require human review before coding
+                {t('wizard.requireReviewLabel')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                When enabled, you&apos;ll be prompted to review the spec and implementation plan before the coding phase begins. This allows you to approve, request changes, or provide feedback.
+                {t('wizard.requireReviewHint')}
               </p>
             </div>
           </div>
@@ -1075,7 +1074,7 @@ export function TaskCreationWizard({
           >
             <span className="flex items-center gap-2">
               <GitBranch className="h-4 w-4" />
-              Git Options (optional)
+              {t('wizard.gitOptionsLabel')} {t('wizard.optional')}
               {baseBranch && baseBranch !== PROJECT_DEFAULT_BRANCH && (
                 <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
                   {baseBranch}
@@ -1094,7 +1093,7 @@ export function TaskCreationWizard({
             <div id="git-options-section" className="space-y-4 p-4 rounded-lg border border-border bg-muted/30">
               <div className="space-y-2">
                 <Label htmlFor="base-branch" className="text-sm font-medium text-foreground">
-                  Base Branch (optional)
+                  {t('wizard.baseBranchLabel')} {t('wizard.optional')}
                 </Label>
                 <Select
                   value={baseBranch}
@@ -1102,11 +1101,11 @@ export function TaskCreationWizard({
                   disabled={isCreating || isLoadingBranches}
                 >
                   <SelectTrigger id="base-branch" className="h-9">
-                    <SelectValue placeholder={`Use project default${projectDefaultBranch ? ` (${projectDefaultBranch})` : ''}`} />
+                    <SelectValue placeholder={t('wizard.useProjectDefault', { branch: projectDefaultBranch ? ` (${projectDefaultBranch})` : '' })} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={PROJECT_DEFAULT_BRANCH}>
-                      Use project default{projectDefaultBranch ? ` (${projectDefaultBranch})` : ''}
+                      {t('wizard.useProjectDefault', { branch: projectDefaultBranch ? ` (${projectDefaultBranch})` : '' })}
                     </SelectItem>
                     {branches.map((branch) => (
                       <SelectItem key={branch} value={branch}>
@@ -1116,7 +1115,7 @@ export function TaskCreationWizard({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Override the branch this task&apos;s worktree will be created from. Leave empty to use the project&apos;s configured default branch.
+                  {t('wizard.baseBranchHint')}
                 </p>
               </div>
 
@@ -1165,22 +1164,22 @@ export function TaskCreationWizard({
                 className="gap-1.5"
               >
                 <FolderTree className="h-4 w-4" />
-                {showFileExplorer ? 'Hide Files' : 'Browse Files'}
+                {showFileExplorer ? t('wizard.hideFiles') : t('wizard.browseFiles')}
               </Button>
             )}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={handleClose} disabled={isCreating}>
-              Cancel
+              {t('wizard.cancel')}
             </Button>
             <Button onClick={handleCreate} disabled={isCreating || !description.trim()}>
               {isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {t('wizard.creating')}
                 </>
               ) : (
-                'Create Task'
+                t('wizard.createTask')
               )}
             </Button>
           </div>

@@ -307,5 +307,29 @@
     "done": "Done",
     "failedLabel": "Failed",
     "starting": "Starting..."
+  },
+  "fileExplorer": {
+    "projectFiles": "Project Files",
+    "dragToTerminal": "Drag files into a terminal to insert the path",
+    "noFilesFound": "No files found"
+  },
+  "chatHistory": {
+    "title": "Chat History",
+    "noConversations": "No conversations yet",
+    "deleteTitle": "Delete conversation?",
+    "deleteDescription": "This will permanently delete this conversation and all its messages.",
+    "deleteDescriptionWarning": "This action cannot be undone.",
+    "rename": "Rename",
+    "message": "message",
+    "message_plural": "messages",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago"
+  },
+  "auth": {
+    "oauth": "OAuth",
+    "authentication": "Authentication",
+    "apiProfile": "API Profile",
+    "usingProfile": "Using profile:"
   }
 }

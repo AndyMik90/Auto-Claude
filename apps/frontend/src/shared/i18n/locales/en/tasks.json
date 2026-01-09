@@ -76,7 +76,9 @@
     "addTaskAriaLabel": "Add new task to backlog",
     "closeTaskDetailsAriaLabel": "Close task details",
     "editTask": "Edit task",
-    "cannotEditWhileRunning": "Cannot edit while task is running"
+    "cannotEditWhileRunning": "Cannot edit while task is running",
+    "refreshing": "Refreshing...",
+    "refreshTasks": "Refresh Tasks"
   },
   "execution": {
     "phases": {
@@ -126,9 +128,51 @@
     "backgroundTaskDescription": "The task is still running. You can reopen this dialog to monitor progress."
   },
   "wizard": {
+    "title": "Create New Task",
+    "description": "Describe what you want to build. The AI will analyze your request and create a detailed specification.",
+    "draftRestored": "Draft restored",
+    "startFresh": "Start Fresh",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior. Type @ to reference files.",
+    "descriptionHint": "Files and images can be copy/pasted or dragged & dropped into the description.",
+    "titleLabel": "Task Title",
+    "optional": "(optional)",
+    "titlePlaceholder": "Leave empty to auto-generate from description",
+    "titleHint": "A short, descriptive title will be generated automatically if left empty.",
+    "imageAdded": "Image added successfully!",
+    "classificationLabel": "Classification",
+    "categoryLabel": "Category",
+    "selectCategory": "Select category",
+    "priorityLabel": "Priority",
+    "selectPriority": "Select priority",
+    "complexityLabel": "Complexity",
+    "selectComplexity": "Select complexity",
+    "impactLabel": "Impact",
+    "selectImpact": "Select impact",
+    "classificationHint": "These labels help organize and prioritize tasks. They're optional but useful for filtering.",
+    "requireReviewLabel": "Require human review before coding",
+    "requireReviewHint": "When enabled, you'll be prompted to review the spec and implementation plan before the coding phase begins. This allows you to approve, request changes, or provide feedback.",
+    "gitOptionsLabel": "Git Options",
+    "baseBranchLabel": "Base Branch",
+    "useProjectDefault": "Use project default{{branch}}",
+    "baseBranchHint": "Override the branch this task's worktree will be created from. Leave empty to use the project's configured default branch.",
+    "hideFiles": "Hide Files",
+    "browseFiles": "Browse Files",
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "createTask": "Create Task",
     "gitOptions": {
       "useWorktreeLabel": "Use isolated workspace (recommended)",
       "useWorktreeDescription": "Creates changes in a separate git worktree for safe review before merging. Disable to build directly in your project (faster but riskier)."
+    },
+    "errors": {
+      "maxImages": "Maximum of {{max}} images allowed",
+      "invalidImageType": "Invalid image type. Allowed: {{types}}",
+      "failedPasteImage": "Failed to process pasted image",
+      "failedDropImage": "Failed to process dropped image",
+      "descriptionRequired": "Please provide a description",
+      "createFailed": "Failed to create task. Please try again.",
+      "unknownError": "Unknown error"
     }
   }
 }

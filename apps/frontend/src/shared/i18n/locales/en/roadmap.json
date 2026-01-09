@@ -1,0 +1,23 @@
+{
+  "emptyState": {
+    "title": "No Roadmap Yet",
+    "description": "Generate an AI-powered roadmap that understands your project's target audience and creates a strategic feature plan.",
+    "generateButton": "Generate Roadmap"
+  },
+  "competitorAnalysis": {
+    "title": "Enable Competitor Analysis?",
+    "description": "Enhance your roadmap with insights from competitor products",
+    "whatItDoes": "What competitor analysis does:",
+    "identifiesCompetitors": "Identifies 3-5 main competitors based on your project type",
+    "searchesForFeedback": "Searches app stores, forums, and social media for user feedback and pain points",
+    "suggestsFeatures": "Suggests features that address gaps in competitor products",
+    "webSearchesTitle": "Web searches will be performed",
+    "webSearchesDescription": "This feature will perform web searches to gather competitor information.",
+    "webSearchesDetails": "Your project name and type will be used in search queries.",
+    "webSearchesNote": "No code or sensitive data is shared.",
+    "optionalInfo": "You can generate a roadmap without competitor analysis if you prefer.",
+    "optionalInfoNote": "The roadmap will still be based on your project structure and best practices.",
+    "skipButton": "No, Skip Analysis",
+    "enableButton": "Yes, Enable Analysis"
+  }
+}
