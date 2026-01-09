@@ -139,8 +139,8 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         setProfileId(matchingProfile?.id || 'custom');
         setModel(taskModel);
         setThinkingLevel(taskThinking);
-        setPhaseModels(DEFAULT_PHASE_MODELS);
-        setPhaseThinking(DEFAULT_PHASE_THINKING);
+        setPhaseModels(task.metadata?.phaseModels || DEFAULT_PHASE_MODELS);
+        setPhaseThinking(task.metadata?.phaseThinking || DEFAULT_PHASE_THINKING);
       } else {
         setProfileId(settings.selectedAgentProfile || 'auto');
         setModel(selectedProfile.model);
