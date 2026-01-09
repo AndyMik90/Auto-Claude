@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from './button';
 import { Card, CardContent } from './card';
 import { captureException } from '../../lib/sentry';
@@ -44,6 +45,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   };
 
   render(): React.ReactNode {
+    const { t } = useTranslation(['common']);
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
@@ -55,9 +57,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             <div className="flex flex-col items-center gap-4 text-center">
               <AlertTriangle className="h-10 w-10 text-destructive" />
               <div className="space-y-2">
-                <h3 className="font-semibold text-lg">Something went wrong</h3>
+                <h3 className="font-semibold text-lg">{t('common:errorBoundary.title')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  An error occurred while rendering this content.
+                  {t('common:errorBoundary.description')}
                 </p>
                 {this.state.error && (
                   <p className="text-xs text-muted-foreground font-mono bg-muted p-2 rounded max-w-md overflow-auto">
@@ -67,7 +69,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               </div>
               <Button onClick={this.handleReset} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
+                {t('common:buttons.tryAgain')}
               </Button>
             </div>
           </CardContent>

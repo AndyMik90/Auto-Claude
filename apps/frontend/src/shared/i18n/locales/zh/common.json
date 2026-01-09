@@ -78,7 +78,8 @@
     "add": "添加",
     "gotIt": "知道了",
     "continue": "继续",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "tryAgain": "重试"
   },
   "labels": {
     "loading": "加载中...",
@@ -90,7 +91,8 @@
     "noData": "无数据",
     "optional": "可选",
     "required": "必填",
-    "dismiss": "忽略"
+    "dismiss": "忽略",
+    "pending": "等待中"
   },
   "time": {
     "justNow": "刚刚",
@@ -334,5 +336,9 @@
     "authentication": "身份验证",
     "apiProfile": "API 配置文件",
     "usingProfile": "使用配置文件:"
+  },
+  "errorBoundary": {
+    "title": "出错了",
+    "description": "渲染此内容时发生错误。"
   }
 }

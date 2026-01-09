@@ -1,0 +1,30 @@
+{
+  "createWorkspace": "Create Workspace",
+  "workspaceDescription": "Group related projects together for cross-repo specs and validation.",
+  "name": "Name",
+  "description": "Description (optional)",
+  "projects": "Projects",
+  "addProject": "Add a project...",
+  "allProjectsAdded": "All projects have been added",
+  "noProjectsAvailable": "No projects available",
+  "workspaceNameRequired": "Workspace name is required",
+  "workspaceApiNotAvailable": "Workspace API not available",
+  "creatingWorkspace": "Creating...",
+  "create": "Create Workspace",
+  "roles": {
+    "backend": "Backend",
+    "backendDesc": "API server, services",
+    "frontend": "Frontend",
+    "frontendDesc": "Web application",
+    "mobile": "Mobile",
+    "mobileDesc": "Mobile app",
+    "shared": "Shared",
+    "sharedDesc": "Shared types/utils",
+    "api": "API Gateway",
+    "apiDesc": "Gateway, BFF",
+    "worker": "Worker",
+    "workerDesc": "Background jobs",
+    "other": "Other",
+    "otherDesc": "Other project type"
+  }
+}

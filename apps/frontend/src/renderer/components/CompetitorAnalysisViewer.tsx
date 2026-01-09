@@ -22,7 +22,7 @@ export function CompetitorAnalysisViewer({
   open,
   onOpenChange,
 }: CompetitorAnalysisViewerProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('roadmap');
 
   if (!analysis) return null;
 
@@ -32,10 +32,10 @@ export function CompetitorAnalysisViewer({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            Competitor Analysis Results
+            {t('competitorAnalysisResults')}
           </DialogTitle>
           <DialogDescription>
-            Analyzed {analysis.competitors.length} competitors to identify market gaps and opportunities
+            {t('analyzedCompetitorsCount', { count: analysis.competitors.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -72,7 +72,7 @@ export function CompetitorAnalysisViewer({
                       aria-label={t('accessibility.visitExternalLink', { name: competitor.name })}
                     >
                       <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                      Visit
+                      {t('visit')}
                       <span className="sr-only">({t('accessibility.opensInNewWindow')})</span>
                     </a>
                   )}
@@ -82,12 +82,12 @@ export function CompetitorAnalysisViewer({
                 <div>
                   <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-warning" />
-                    Identified Pain Points ({competitor.painPoints.length})
+                    {t('identifiedPainPoints', { count: competitor.painPoints.length })}
                   </h4>
                   <div className="space-y-2">
                     {competitor.painPoints.length === 0 ? (
                       <p className="text-sm text-muted-foreground italic">
-                        No pain points identified
+                        {t('noPainPoints')}
                       </p>
                     ) : (
                       competitor.painPoints.map((painPoint) => (
@@ -149,11 +149,11 @@ export function CompetitorAnalysisViewer({
             {/* Insights Summary */}
             {analysis.insightsSummary && (
               <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 space-y-3">
-                <h4 className="text-sm font-semibold">Market Insights Summary</h4>
+                <h4 className="text-sm font-semibold">{t('marketInsightsSummary')}</h4>
 
                 {analysis.insightsSummary.topPainPoints.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Top Pain Points:</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">{t('topPainPoints')}</p>
                     <ul className="text-sm space-y-1">
                       {analysis.insightsSummary.topPainPoints.map((point, idx) => (
                         <li key={idx} className="text-muted-foreground">• {point}</li>
@@ -164,7 +164,7 @@ export function CompetitorAnalysisViewer({
 
                 {analysis.insightsSummary.differentiatorOpportunities.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Differentiator Opportunities:</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">{t('differentiatorOpportunities')}</p>
                     <ul className="text-sm space-y-1">
                       {analysis.insightsSummary.differentiatorOpportunities.map((opp, idx) => (
                         <li key={idx} className="text-muted-foreground">• {opp}</li>
@@ -175,7 +175,7 @@ export function CompetitorAnalysisViewer({
 
                 {analysis.insightsSummary.marketTrends.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Market Trends:</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">{t('marketTrends')}</p>
                     <ul className="text-sm space-y-1">
                       {analysis.insightsSummary.marketTrends.map((trend, idx) => (
                         <li key={idx} className="text-muted-foreground">• {trend}</li>

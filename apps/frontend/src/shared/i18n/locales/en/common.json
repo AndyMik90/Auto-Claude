@@ -78,7 +78,8 @@
     "add": "Add",
     "gotIt": "Got it",
     "continue": "Continue",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "tryAgain": "Try Again"
   },
   "labels": {
     "loading": "Loading...",
@@ -90,7 +91,8 @@
     "noData": "No data",
     "optional": "Optional",
     "required": "Required",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "pending": "Pending"
   },
   "time": {
     "justNow": "Just now",
@@ -331,5 +333,9 @@
     "authentication": "Authentication",
     "apiProfile": "API Profile",
     "usingProfile": "Using profile:"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "An error occurred while rendering this content."
   }
 }

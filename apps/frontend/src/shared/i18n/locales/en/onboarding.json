@@ -32,7 +32,23 @@
     "title": "Claude Authentication",
     "description": "Connect your Claude account to enable AI features",
     "keychainTitle": "Secure Storage",
-    "keychainDescription": "Your tokens are encrypted using your system's keychain. You may see a password prompt from macOS — click \"Always Allow\" to avoid seeing it again."
+    "keychainDescription": "Your tokens are encrypted using your system's keychain. You may see a password prompt from macOS — click \"Always Allow\" to avoid seeing it again.",
+    "rateLimitInfo": "Add multiple Claude subscriptions to automatically switch between them when you hit rate limits.",
+    "noAccounts": "No accounts configured yet",
+    "default": "Default",
+    "active": "Active",
+    "authenticated": "Authenticated",
+    "needsAuth": "Needs Auth",
+    "authenticate": "Authenticate",
+    "setActive": "Set Active",
+    "manualTokenEntry": "Manual Token Entry",
+    "tokenSetupInstructions": "Run <code>claude setup-token</code> to get your token",
+    "emailPlaceholder": "Email (optional, for display)",
+    "cancel": "Cancel",
+    "saveToken": "Save Token",
+    "accountNamePlaceholder": "Account name (e.g., Work, Personal)",
+    "add": "Add",
+    "authenticatedSuccess": "You have at least one authenticated Claude account. You can continue to the next step."
   },
   "memory": {
     "title": "Memory",
@@ -71,7 +87,32 @@
       "voyage": "Voyage AI",
       "google": "Google AI",
       "azure": "Azure OpenAI"
-    }
+    },
+    "configuredSuccess": "Graphiti configured successfully",
+    "configuredSuccessDesc": "Memory features are enabled. Auto Claude will maintain context across sessions for improved code understanding.",
+    "reconfigure": "Reconfigure Graphiti settings",
+    "dbAutoCreateTitle": "Database will be created automatically",
+    "dbAutoCreateDesc": "LadybugDB uses an embedded database - no Docker required. The database will be created when you first use memory features.",
+    "whatIsGraphiti": "What is Graphiti?",
+    "graphitiDescription": "Graphiti is an intelligent memory layer that helps Auto Claude remember context across sessions. It uses a knowledge graph to store discoveries, patterns, and insights about your codebase.",
+    "benefit1": "Persistent memory across coding sessions",
+    "benefit2": "Better understanding of your codebase over time",
+    "benefit3": "Reduces repetitive explanations",
+    "benefit4": "No Docker required - uses embedded database",
+    "learnMore": "Learn more about Graphiti",
+    "enableGraphiti": "Enable Graphiti Memory",
+    "enableGraphitiDesc": "Uses LadybugDB (embedded) and an LLM/embedding provider",
+    "databaseName": "Database Name",
+    "ready": "Ready",
+    "issue": "Issue",
+    "dbStoragePath": "Stored in ~/.auto-claude/graphs/",
+    "llmProvider": "LLM Provider",
+    "embeddingProvider": "Embedding Provider",
+    "testingConnection": "Testing connection...",
+    "testConnection": "Test Connection",
+    "validationSuccess": "All connections validated successfully!",
+    "apiKeyValidationNote": "Note: API key validation currently only fully supports OpenAI. Your key will be saved and used at runtime.",
+    "ollamaNote": "Note: Ollama connection will be tested by checking if the server is reachable."
   },
   "completion": {
     "title": "You're All Set!",
@@ -105,6 +146,20 @@
     "privacy": "Privacy",
     "memory": "Memory",
     "done": "Done"
+  },
+  "authChoice": {
+    "title": "Choose Your Authentication Method",
+    "description": "Select how you want to authenticate with Claude. You can change this later in Settings.",
+    "oauth": {
+      "title": "Sign in with Anthropic",
+      "description": "Use your Anthropic account to authenticate. Simple and secure OAuth flow."
+    },
+    "apiKey": {
+      "title": "Use Custom API Key",
+      "description": "Bring your own API key from Anthropic or a compatible API provider. Highly experimental — may incur significant costs."
+    },
+    "info": "Both options provide full access to Claude Code features. Choose based on your preference.",
+    "skip": "Skip for now"
   },
   "privacy": {
     "title": "Help Improve Auto Claude",
@@ -172,6 +227,8 @@
     },
     "detectedSummary": "Detected on your system:",
     "noToolsDetected": "No additional tools detected (VS Code and system terminal will be used)",
+    "ideSelectPlaceholder": "Select IDE...",
+    "terminalSelectPlaceholder": "Select terminal...",
     "custom": "Custom...",
     "saveAndContinue": "Save & Continue"
   },

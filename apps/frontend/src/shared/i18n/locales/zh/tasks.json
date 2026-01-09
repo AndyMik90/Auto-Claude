@@ -192,7 +192,33 @@
     "less": "收起",
     "more": "更多",
     "running": "运行中",
-    "interrupted": "已中断"
+    "interrupted": "已中断",
+    "tools": {
+      "read": "读取中",
+      "glob": "搜索文件",
+      "grep": "搜索代码",
+      "edit": "编辑中",
+      "write": "写入中",
+      "bash": "执行中"
+    },
+    "phases": {
+      "planning": "规划",
+      "coding": "编码",
+      "validation": "验证"
+    },
+    "models": {
+      "opus": "Opus",
+      "sonnet": "Sonnet",
+      "haiku": "Haiku"
+    },
+    "thinking": {
+      "none": "无",
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "ultrathink": "深度思考"
+    },
+    "thinkingLabel": "思考"
   },
   "taskActions": {
     "completedSuccessfully": "任务已完成"

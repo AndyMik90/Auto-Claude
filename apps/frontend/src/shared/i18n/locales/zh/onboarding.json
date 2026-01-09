@@ -32,7 +32,23 @@
     "title": "Claude 认证",
     "description": "连接您的 Claude 账户以启用 AI 功能",
     "keychainTitle": "安全存储",
-    "keychainDescription": "您的令牌使用系统的钥匙串进行加密。您可能会看到来自 macOS 的密码提示 — 点击\"始终允许\"以避免再次看到它。"
+    "keychainDescription": "您的令牌使用系统的钥匙串进行加密。您可能会看到来自 macOS 的密码提示 — 点击\"始终允许\"以避免再次看到它。",
+    "rateLimitInfo": "添加多个 Claude 订阅，以便在达到速率限制时在它们之间自动切换。",
+    "noAccounts": "尚未配置账户",
+    "default": "默认",
+    "active": "已激活",
+    "authenticated": "已认证",
+    "needsAuth": "需要认证",
+    "authenticate": "认证",
+    "setActive": "设为激活",
+    "manualTokenEntry": "手动令牌输入",
+    "tokenSetupInstructions": "运行 <code>claude setup-token</code> 获取您的令牌",
+    "emailPlaceholder": "邮箱（可选，用于显示）",
+    "cancel": "取消",
+    "saveToken": "保存令牌",
+    "accountNamePlaceholder": "账户名称（例如：工作、个人）",
+    "add": "添加",
+    "authenticatedSuccess": "您至少有一个已认证的 Claude 账户。您可以继续下一步。"
   },
   "memory": {
     "title": "记忆",
@@ -71,7 +87,32 @@
       "voyage": "Voyage AI",
       "google": "Google AI",
       "azure": "Azure OpenAI"
-    }
+    },
+    "configuredSuccess": "Graphiti 配置成功",
+    "configuredSuccessDesc": "记忆功能已启用。Auto Claude 将保持跨会话的上下文,以提高代码理解能力。",
+    "reconfigure": "重新配置 Graphiti 设置",
+    "dbAutoCreateTitle": "数据库将自动创建",
+    "dbAutoCreateDesc": "LadybugDB 使用嵌入式数据库 - 无需 Docker。数据库将在您首次使用记忆功能时创建。",
+    "whatIsGraphiti": "什么是 Graphiti?",
+    "graphitiDescription": "Graphiti 是一个智能记忆层,帮助 Auto Claude 记住跨会话的上下文。它使用知识图谱来存储发现、模式和有关代码库的洞察。",
+    "benefit1": "跨编码会话的持久记忆",
+    "benefit2": "随着时间推移更好地理解您的代码库",
+    "benefit3": "减少重复解释",
+    "benefit4": "无需 Docker - 使用嵌入式数据库",
+    "learnMore": "了解更多关于 Graphiti",
+    "enableGraphiti": "启用 Graphiti 记忆",
+    "enableGraphitiDesc": "使用 LadybugDB(嵌入式)以及 LLM/嵌入提供商",
+    "databaseName": "数据库名称",
+    "ready": "就绪",
+    "issue": "问题",
+    "dbStoragePath": "存储在 ~/.auto-claude/graphs/",
+    "llmProvider": "LLM 提供商",
+    "embeddingProvider": "嵌入提供商",
+    "testingConnection": "正在测试连接...",
+    "testConnection": "测试连接",
+    "validationSuccess": "所有连接验证成功!",
+    "apiKeyValidationNote": "注意:API 密钥验证目前仅完全支持 OpenAI。您的密钥将被保存并在运行时使用。",
+    "ollamaNote": "注意:将通过检查服务器是否可访问来测试 Ollama 连接。"
   },
   "completion": {
     "title": "全部完成!",
@@ -156,7 +197,7 @@
   "devtools": {
     "title": "开发者工具",
     "description": "选择您首选的 IDE 和终端以使用 Auto Claude 工作树",
-    "detecting": "检测已安装的工具...",
+    "detecting": "正在检测已安装的工具...",
     "detectAgain": "再次检测",
     "whyConfigure": "为什么要配置这些?",
     "whyConfigureDescription": "当 Auto Claude 在隔离的工作树中构建功能时,您可以直接在您首选的 IDE 或终端中打开它们以测试和审查更改。",
@@ -172,6 +213,8 @@
     },
     "detectedSummary": "在您的系统上检测到:",
     "noToolsDetected": "未检测到其他工具(将使用 VS Code 和系统终端)",
+    "ideSelectPlaceholder": "选择 IDE...",
+    "terminalSelectPlaceholder": "选择终端...",
     "custom": "自定义...",
     "saveAndContinue": "保存并继续"
   },
@@ -225,5 +268,19 @@
     "back": "返回",
     "skip": "跳过",
     "continue": "继续"
+  },
+  "authChoice": {
+    "title": "选择您的认证方式",
+    "description": "选择您想要如何向 Claude 认证。您可以稍后在设置中更改此选项。",
+    "oauth": {
+      "title": "使用 Anthropic 登录",
+      "description": "使用您的 Anthropic 账户进行认证。简单安全的 OAuth 流程。"
+    },
+    "apiKey": {
+      "title": "使用自定义 API 密钥",
+      "description": "使用来自 Anthropic 或兼容 API 提供商的您自己的 API 密钥。高度实验性 — 可能产生显著成本。"
+    },
+    "info": "两种选项都提供对 Claude Code 功能的完全访问。根据您的偏好进行选择。",
+    "skip": "暂时跳过"
   }
 }

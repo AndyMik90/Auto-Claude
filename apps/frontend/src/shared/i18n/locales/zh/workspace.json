@@ -1,0 +1,30 @@
+{
+  "createWorkspace": "创建工作区",
+  "workspaceDescription": "将相关项目分组在一起，用于跨仓库规范和验证。",
+  "name": "名称",
+  "description": "描述（可选）",
+  "projects": "项目",
+  "addProject": "添加项目...",
+  "allProjectsAdded": "所有项目已添加",
+  "noProjectsAvailable": "没有可用项目",
+  "workspaceNameRequired": "工作区名称为必填项",
+  "workspaceApiNotAvailable": "工作区 API 不可用",
+  "creatingWorkspace": "正在创建...",
+  "create": "创建工作区",
+  "roles": {
+    "backend": "后端",
+    "backendDesc": "API 服务器、服务",
+    "frontend": "前端",
+    "frontendDesc": "Web 应用程序",
+    "mobile": "移动端",
+    "mobileDesc": "移动应用",
+    "shared": "共享",
+    "sharedDesc": "共享类型/工具",
+    "api": "API 网关",
+    "apiDesc": "网关、BFF",
+    "worker": "Worker",
+    "workerDesc": "后台作业",
+    "other": "其他",
+    "otherDesc": "其他项目类型"
+  }
+}

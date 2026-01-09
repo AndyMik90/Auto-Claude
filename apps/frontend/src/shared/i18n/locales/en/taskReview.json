@@ -44,5 +44,72 @@
     "cancel": "Cancel",
     "discarding": "Discarding...",
     "discard": "Discard Build"
+  },
+  "mergePreview": {
+    "branchDiverged": "Branch Diverged - AI Will Resolve",
+    "noConflictsDetected": "No Conflicts Detected",
+    "conflictsFound_one": "{{count}} Conflict Found",
+    "conflictsFound_other": "{{count}} Conflicts Found",
+    "viewDetails": "View Details",
+    "branchDivergedDetail": "Branch has diverged - AI will resolve",
+    "commitsBehind_one": "The main branch has {{count}} new commit since this worktree was created.",
+    "commitsBehind_other": "The main branch has {{count}} new commits since this worktree was created.",
+    "filesNeedMerge_one": "{{count}} file will need intelligent merging:",
+    "filesNeedMerge_other": "{{count}} files will need intelligent merging:",
+    "aiWillResolve": "AI will automatically merge these conflicts when you click Stage Changes.",
+    "filesToMerge": "Files to merge:",
+    "aiWillResolveConflicts": "AI will resolve conflicts",
+    "autoMergeable": "Auto-mergeable:",
+    "aiResolved": "AI resolved:",
+    "manualReview": "Manual review:",
+    "readyToMerge": "Ready to merge"
+  },
+  "stagedSuccess": {
+    "title": "Changes Staged Successfully",
+    "aiGeneratedCommitMessage": "AI-generated commit message",
+    "copied": "Copied!",
+    "copy": "Copy",
+    "commitMessagePlaceholder": "Commit message...",
+    "commitMessageHint": "Edit as needed, then copy and use with {{command}}",
+    "nextSteps": "Next steps:",
+    "step1": "Open your project in your IDE or terminal",
+    "step2": "Review the staged changes with {{statusCommand}} and {{diffCommand}}",
+    "step3": "Commit when ready: {{commitCommand}}"
+  },
+  "workspaceMessages": {
+    "loadingWorkspace": "Loading workspace info...",
+    "noWorkspaceFound": "No Workspace Found",
+    "noWorkspaceHint": "No isolated workspace was found for this task. The changes may have been made directly in your project.",
+    "updating": "Updating...",
+    "markAsDone": "Mark as Done",
+    "changesStagedInProject": "Changes Staged in Project",
+    "changesStagedHint": "This task's changes have been staged in your main project{{date}}.",
+    "nextSteps": "Next steps:",
+    "step1": "Review staged changes with {{statusCommand}} and {{diffCommand}}",
+    "step2": "Commit when ready: {{commitCommand}}",
+    "step3": "Push to remote when satisfied",
+    "cleaningUp": "Cleaning up...",
+    "deleteWorktreeMarkDone": "Delete Worktree & Mark Done",
+    "cleanupHint": "This will delete the isolated workspace and mark the task as complete."
+  },
+  "diffView": {
+    "title": "Changed Files",
+    "noChangesFound": "No changes found",
+    "noChangedFiles": "No changed files found",
+    "close": "Close"
+  },
+  "conflictDetails": {
+    "title": "Merge Conflicts Preview",
+    "conflictsDetected_one": "{{count}} potential conflict detected.",
+    "conflictsDetected_other": "{{count}} potential conflicts detected.",
+    "autoMergeable": "can be auto-merged.",
+    "noConflictsDetected": "No conflicts detected",
+    "close": "Close",
+    "stageWithAIMerge": "Stage with AI Merge",
+    "mergeWithAI": "Merge with AI",
+    "location": "Location:",
+    "reason": "Reason:",
+    "strategy": "Strategy:",
+    "autoMerge": "auto-merge"
   }
 }

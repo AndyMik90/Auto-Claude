@@ -86,5 +86,18 @@
   "customInstructionsPlaceholder": "Add any special instructions for the AI...",
   "customInstructionsHint": "Optional. Guide the AI on tone, specific details to include, etc.",
   "generating": "Generating...",
-  "generateChangelog": "Generate Changelog"
+  "generateChangelog": "Generate Changelog",
+  "changelogSaved": "Changelog Saved!",
+  "versionAdded": "Version {{tag}} has been added to CHANGELOG.md",
+  "done": "Done",
+  "createGitHubRelease": "Create GitHub Release",
+  "releaseCreated": "Release created successfully!",
+  "viewReleaseOnGitHub": "View Release on GitHub",
+  "createReleaseTag": "Create Release {{tag}}",
+  "creatingRelease": "Creating Release...",
+  "archiveCompletedTasks": "Archive Completed Tasks",
+  "tasksArchived": "{{count}} task{{count !== 1 ? 's' : ''}} archived!",
+  "archiveTasksHint": "Archive {{count}} task{{count !== 1 ? 's' : ''}} to clean up your Kanban board. Archived tasks can be viewed using the \"Show Archived\" toggle.",
+  "archiving": "Archiving...",
+  "archiveCount": "Archive {{count}} Task{{count !== 1 ? 's' : ''}}"
 }

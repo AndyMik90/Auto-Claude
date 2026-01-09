@@ -44,5 +44,72 @@
     "cancel": "取消",
     "discarding": "正在放弃...",
     "discard": "放弃构建"
+  },
+  "mergePreview": {
+    "branchDiverged": "分支已分离 - AI 将解决",
+    "noConflictsDetected": "未检测到冲突",
+    "conflictsFound_one": "发现 {{count}} 个冲突",
+    "conflictsFound_other": "发现 {{count}} 个冲突",
+    "viewDetails": "查看详情",
+    "branchDivergedDetail": "分支已分离 - AI 将解决",
+    "commitsBehind_one": "自创建此工作区以来，主分支有 {{count}} 个新提交。",
+    "commitsBehind_other": "自创建此工作区以来，主分支有 {{count}} 个新提交。",
+    "filesNeedMerge_one": "需要智能合并 {{count}} 个文件：",
+    "filesNeedMerge_other": "需要智能合并 {{count}} 个文件：",
+    "aiWillResolve": "点击「暂存更改」时，AI 将自动合并这些冲突。",
+    "filesToMerge": "待合并文件：",
+    "aiWillResolveConflicts": "AI 将解决冲突",
+    "autoMergeable": "可自动合并：",
+    "aiResolved": "AI 已解决：",
+    "manualReview": "需人工审查：",
+    "readyToMerge": "准备好合并"
+  },
+  "stagedSuccess": {
+    "title": "更改已成功暂存",
+    "aiGeneratedCommitMessage": "AI 生成的提交信息",
+    "copied": "已复制！",
+    "copy": "复制",
+    "commitMessagePlaceholder": "提交信息...",
+    "commitMessageHint": "根据需要编辑，然后复制并使用 {{command}}",
+    "nextSteps": "后续步骤：",
+    "step1": "在 IDE 或终端中打开您的项目",
+    "step2": "使用 {{statusCommand}} 和 {{diffCommand}} 查看暂存的更改",
+    "step3": "准备好后提交：{{commitCommand}}"
+  },
+  "workspaceMessages": {
+    "loadingWorkspace": "正在加载工作区信息...",
+    "noWorkspaceFound": "未找到工作区",
+    "noWorkspaceHint": "未找到此任务的独立工作区。更改可能直接在您的项目中进行。",
+    "updating": "正在更新...",
+    "markAsDone": "标记为完成",
+    "changesStagedInProject": "更改已暂存到项目",
+    "changesStagedHint": "此任务的更改已暂存到主项目{{date}}。",
+    "nextSteps": "后续步骤：",
+    "step1": "使用 {{statusCommand}} 和 {{diffCommand}} 查看暂存的更改",
+    "step2": "准备好后提交：{{commitCommand}}",
+    "step3": "满意后推送到远程",
+    "cleaningUp": "正在清理...",
+    "deleteWorktreeMarkDone": "删除工作区并标记完成",
+    "cleanupHint": "这将删除独立工作区并标记任务为完成。"
+  },
+  "diffView": {
+    "title": "已更改的文件",
+    "noChangesFound": "未发现更改",
+    "noChangedFiles": "未找到已更改的文件",
+    "close": "关闭"
+  },
+  "conflictDetails": {
+    "title": "合并冲突预览",
+    "conflictsDetected_one": "检测到 {{count}} 个潜在冲突。",
+    "conflictsDetected_other": "检测到 {{count}} 个潜在冲突。",
+    "autoMergeable": "可以自动合并。",
+    "noConflictsDetected": "未检测到冲突",
+    "close": "关闭",
+    "stageWithAIMerge": "使用 AI 合并暂存",
+    "mergeWithAI": "使用 AI 合并",
+    "location": "位置：",
+    "reason": "原因：",
+    "strategy": "策略：",
+    "autoMerge": "自动合并"
   }
 }

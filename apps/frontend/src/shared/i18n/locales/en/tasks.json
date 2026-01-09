@@ -184,7 +184,33 @@
     "less": "Less",
     "more": "More",
     "running": "Running",
-    "interrupted": "Interrupted"
+    "interrupted": "Interrupted",
+    "tools": {
+      "read": "Reading",
+      "glob": "Searching files",
+      "grep": "Searching code",
+      "edit": "Editing",
+      "write": "Writing",
+      "bash": "Running"
+    },
+    "phases": {
+      "planning": "Planning",
+      "coding": "Coding",
+      "validation": "Validation"
+    },
+    "models": {
+      "opus": "Opus",
+      "sonnet": "Sonnet",
+      "haiku": "Haiku"
+    },
+    "thinking": {
+      "none": "None",
+      "low": "Low",
+      "medium": "Med",
+      "high": "High",
+      "ultrathink": "Ultra"
+    },
+    "thinkingLabel": "Thinking"
   },
   "taskActions": {
     "completedSuccessfully": "Task completed successfully"

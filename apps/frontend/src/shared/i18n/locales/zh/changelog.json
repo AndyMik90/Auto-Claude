@@ -68,5 +68,18 @@
   "customInstructionsPlaceholder": "为 AI 添加特殊指令...",
   "customInstructionsHint": "可选。指导 AI 的语气、需要包含的特定细节等。",
   "generating": "生成中...",
-  "generateChangelog": "生成更新日志"
+  "generateChangelog": "生成更新日志",
+  "changelogSaved": "更新日志已保存！",
+  "versionAdded": "版本 {{tag}} 已添加到 CHANGELOG.md",
+  "done": "完成",
+  "createGitHubRelease": "创建 GitHub 发布",
+  "releaseCreated": "发布创建成功！",
+  "viewReleaseOnGitHub": "在 GitHub 上查看发布",
+  "createReleaseTag": "创建发布 {{tag}}",
+  "creatingRelease": "正在创建发布...",
+  "archiveCompletedTasks": "归档已完成的任务",
+  "tasksArchived": "{{count}} 个任务已归档！",
+  "archiveTasksHint": "归档 {{count}} 个任务以清理看板。已归档的任务可以通过「显示已归档」开关查看。",
+  "archiving": "正在归档...",
+  "archiveCount": "归档 {{count}} 个任务"
 }

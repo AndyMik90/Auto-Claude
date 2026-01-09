@@ -13,5 +13,52 @@
     "gotchasDiscovered": "Gotchas Discovered",
     "patternsIdentified": "Patterns Identified",
     "viewPR": "View PR on GitHub"
+  },
+  "projectIndex": {
+    "title": "Project Structure",
+    "refresh": "Refresh",
+    "reAnalyze": "Re-analyze project structure",
+    "failedToLoad": "Failed to load project index",
+    "noIndexFound": "No Project Index Found",
+    "analyzeProject": "Analyze Project",
+    "overview": "Overview",
+    "dockerServices": "Docker Services",
+    "pythonLinting": "Python Linting",
+    "jsLinting": "JS Linting",
+    "formatting": "Formatting",
+    "gitHooks": "Git Hooks",
+    "typescript": "TypeScript"
+  },
+  "memoryCard": {
+    "whatWorked": "What Worked",
+    "whatFailed": "What Failed",
+    "approach": "Approach",
+    "recommendations": "Recommendations",
+    "patterns": "Patterns",
+    "gotchas": "Gotchas",
+    "changedFiles": "Changed Files",
+    "fileInsights": "File Insights",
+    "subtasksCompleted": "Subtasks Completed"
+  },
+  "memoryTab": {
+    "database": "Database",
+    "path": "Path",
+    "total": "Total",
+    "prReviews": "PR Reviews",
+    "sessions": "Sessions",
+    "codebase": "Codebase",
+    "patternsLabel": "Patterns",
+    "gotchasLabel": "Gotchas"
+  },
+  "serviceCard": {
+    "appleFrameworks": "Apple Frameworks",
+    "spmDependencies": "SPM Dependencies",
+    "keyDirectories": "Key Directories"
+  },
+  "externalServices": {
+    "databases": "Databases",
+    "email": "Email",
+    "payments": "Payments",
+    "cache": "Cache"
   }
 }
