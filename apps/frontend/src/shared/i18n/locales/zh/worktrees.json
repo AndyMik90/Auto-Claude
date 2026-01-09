@@ -48,5 +48,6 @@
   "failed": "失败",
   "conflicts": "冲突",
   "additions": "增加",
-  "deletions": "删除"
+  "deletions": "删除",
+  "created": "创建于"
 }

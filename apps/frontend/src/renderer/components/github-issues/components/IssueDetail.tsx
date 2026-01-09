@@ -23,7 +23,7 @@ export function IssueDetail({
   autoFixConfig,
   autoFixQueueItem,
 }: IssueDetailProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'github-issues']);
   // Determine which task ID to use - either already linked or just created
   const taskId = linkedTaskId || (investigationResult?.success ? investigationResult.taskId : undefined);
   const hasLinkedTask = !!taskId;
@@ -158,7 +158,7 @@ export function IssueDetail({
         {/* Body */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Description</CardTitle>
+            <CardTitle className="text-sm">{t('github-issues:issueDetail.description')}</CardTitle>
           </CardHeader>
           <CardContent>
             {issue.body ? (
@@ -169,7 +169,7 @@ export function IssueDetail({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">
-                No description provided.
+                {t('github-issues:issueDetail.noDescription')}
               </p>
             )}
           </CardContent>
@@ -179,7 +179,7 @@ export function IssueDetail({
         {issue.assignees.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Assignees</CardTitle>
+              <CardTitle className="text-sm">{t('github-issues:issueDetail.assignees')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -198,7 +198,7 @@ export function IssueDetail({
         {issue.milestone && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Milestone</CardTitle>
+              <CardTitle className="text-sm">{t('github-issues:issueDetail.milestone')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Badge variant="outline">{issue.milestone.title}</Badge>

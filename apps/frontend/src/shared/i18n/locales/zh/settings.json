@@ -186,7 +186,14 @@
     "fineTuneDescription": "以 5% 为增量从 75% 调整到 200%",
     "default": "默认",
     "comfortable": "舒适",
-    "large": "大"
+    "large": "大",
+    "apply": "应用"
+  },
+  "theme": {
+    "appearanceMode": "外观模式",
+    "appearanceModeDescription": "选择浅色、深色或系统偏好",
+    "colorTheme": "颜色主题",
+    "colorThemeDescription": "为界面选择配色方案"
   },
   "general": {
     "otherAgentSettings": "其他代理设置",

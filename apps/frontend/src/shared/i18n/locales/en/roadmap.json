@@ -48,5 +48,41 @@
   "phasesTab": "Phases",
   "allFeatures": "All Features",
   "byPriority": "By Priority",
-  "insight": "Insight"
+  "insight": "Insight",
+  "painPointSource": "Source",
+  "painPointFrequency": "Frequency",
+  "painPointOpportunity": "Opportunity",
+  "generation": {
+    "progress": "Progress",
+    "stop": "Stop",
+    "stopping": "Stopping...",
+    "stopGeneration": "Stop generation",
+    "phases": {
+      "analyzing": {
+        "label": "Analyzing",
+        "description": "Analyzing project structure and codebase..."
+      },
+      "discovering": {
+        "label": "Discovering",
+        "description": "Discovering target audience and user needs..."
+      },
+      "generating": {
+        "label": "Generating",
+        "description": "Generating feature roadmap..."
+      },
+      "complete": {
+        "label": "Complete",
+        "description": "Roadmap generation complete!"
+      },
+      "error": {
+        "label": "Error",
+        "description": "Generation failed"
+      }
+    },
+    "steps": {
+      "analyze": "Analyze",
+      "discover": "Discover",
+      "generate": "Generate"
+    }
+  }
 }

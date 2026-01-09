@@ -186,7 +186,14 @@
     "fineTuneDescription": "Adjust from 75% to 200% in 5% increments",
     "default": "Default",
     "comfortable": "Comfortable",
-    "large": "Large"
+    "large": "Large",
+    "apply": "Apply"
+  },
+  "theme": {
+    "appearanceMode": "Appearance Mode",
+    "appearanceModeDescription": "Choose light, dark, or system preference",
+    "colorTheme": "Color Theme",
+    "colorThemeDescription": "Select a color palette for the interface"
   },
   "general": {
     "otherAgentSettings": "Other Agent Settings",

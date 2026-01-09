@@ -48,5 +48,6 @@
   "failed": "Failed",
   "conflicts": "conflicts",
   "additions": "additions",
-  "deletions": "deletions"
+  "deletions": "deletions",
+  "created": "Created"
 }

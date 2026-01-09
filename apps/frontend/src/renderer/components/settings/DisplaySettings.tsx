@@ -230,7 +230,7 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
               title="Apply scale changes"
             >
               <Check className="h-4 w-4" />
-              <span className="text-sm font-medium">Apply</span>
+              <span className="text-sm font-medium">{t('scale.apply')}</span>
             </button>
           </div>
 

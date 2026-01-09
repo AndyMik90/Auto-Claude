@@ -52,7 +52,10 @@
     "hideTokenEntryAriaLabel": "隐藏令牌输入",
     "enterTokenManuallyAriaLabel": "手动输入令牌",
     "renameProfileAriaLabel": "重命名配置文件",
-    "deleteProfileAriaLabel": "删除配置文件"
+    "deleteProfileAriaLabel": "删除配置文件",
+    "navigate": "导航",
+    "select": "选择",
+    "close": "关闭"
   },
   "buttons": {
     "save": "保存",
@@ -112,6 +115,13 @@
     "swapFrom": "从",
     "swapTo": "切换到",
     "swapReason": "({{reason}} 切换)"
+  },
+  "usage": {
+    "sessionUsage": "会话使用量",
+    "weeklyUsage": "每周使用量",
+    "resets": "重置时间: {{time}}",
+    "activeAccount": "当前账户",
+    "claudeUsageStatus": "Claude 使用状态"
   },
   "rateLimit": {
     "title": "达到速率限制",

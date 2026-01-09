@@ -60,5 +60,18 @@
     "email": "邮件",
     "payments": "支付",
     "cache": "缓存"
+  },
+  "infrastructureStatus": {
+    "memoryInfrastructure": "内存基础设施",
+    "kuzuDatabase": "Kuzu 数据库",
+    "installed": "已安装",
+    "notAvailable": "不可用",
+    "database": "数据库",
+    "ready": "就绪",
+    "willBeCreatedOnFirstUse": "将在首次使用时创建",
+    "requiresKuzu": "需要 Kuzu",
+    "availableDatabases": "可用数据库:",
+    "graphMemoryReady": "图内存已准备好使用",
+    "graphMemoryRequirements": "图内存需要 Python 3.12+ 和 LadybugDB。无需 Docker。"
   }
 }

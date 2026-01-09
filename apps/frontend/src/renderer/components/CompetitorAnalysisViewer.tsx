@@ -115,21 +115,21 @@ export function CompetitorAnalysisViewer({
                               {painPoint.source && (
                                 <div className="mt-2">
                                   <span className="text-xs text-muted-foreground">
-                                    Source: <span className="italic">{painPoint.source}</span>
+                                    {t('roadmap:painPointSource')}: <span className="italic">{painPoint.source}</span>
                                   </span>
                                 </div>
                               )}
                               {painPoint.frequency && (
                                 <div className="mt-1">
                                   <span className="text-xs text-muted-foreground">
-                                    Frequency: {painPoint.frequency}
+                                    {t('roadmap:painPointFrequency')}: {painPoint.frequency}
                                   </span>
                                 </div>
                               )}
                               {painPoint.opportunity && (
                                 <div className="mt-1">
                                   <span className="text-xs text-muted-foreground">
-                                    Opportunity:{' '}
+                                    {t('roadmap:painPointOpportunity')}:{' '}
                                     <span className="font-medium text-foreground">
                                       {painPoint.opportunity}
                                     </span>

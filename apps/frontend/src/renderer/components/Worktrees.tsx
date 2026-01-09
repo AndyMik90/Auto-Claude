@@ -448,7 +448,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                             disabled={!task}
                           >
                             <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                            Delete
+                            {t('worktrees.delete')}
                           </Button>
                         </div>
                       </CardContent>
@@ -463,7 +463,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Terminal className="h-4 w-4" />
-                  Terminal Worktrees
+                  {t('worktrees.terminalWorktrees')}
                 </h3>
                 {terminalWorktrees.map((wt) => (
                   <Card key={wt.name} className="overflow-hidden">
@@ -500,7 +500,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                       {/* Created at */}
                       {wt.createdAt && (
                         <div className="text-xs text-muted-foreground mb-4">
-                          Created {new Date(wt.createdAt).toLocaleDateString()}
+                          {t('worktrees.created')} {new Date(wt.createdAt).toLocaleDateString()}
                         </div>
                       )}
 
@@ -515,7 +515,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                           }}
                         >
                           <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
-                          Copy Path
+                          {t('worktrees.copyPath')}
                         </Button>
                         <Button
                           variant="outline"
@@ -524,7 +524,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                           onClick={() => setTerminalWorktreeToDelete(wt)}
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                          Delete
+                          {t('worktrees.delete')}
                         </Button>
                       </div>
                     </CardContent>

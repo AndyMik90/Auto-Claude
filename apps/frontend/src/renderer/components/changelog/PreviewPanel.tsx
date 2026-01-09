@@ -137,7 +137,7 @@ export function PreviewPanel({
               onClick={() => setViewMode('markdown')}
               className="h-7 px-3 text-xs"
             >
-              Markdown
+              {t('changelog.markdown')}
             </Button>
             <Button
               variant={viewMode === 'preview' ? 'default' : 'ghost'}

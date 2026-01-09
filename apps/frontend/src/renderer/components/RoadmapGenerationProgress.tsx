@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Users, Sparkles, CheckCircle2, AlertCircle, Square } from 'lucide-react';
 import { Button } from './ui/button';
@@ -44,61 +45,6 @@ interface RoadmapGenerationProgressProps {
 // Type for generation phases (excluding idle)
 type GenerationPhase = Exclude<RoadmapGenerationStatus['phase'], 'idle'>;
 
-// Phase display configuration
-const PHASE_CONFIG: Record<
-  GenerationPhase,
-  {
-    label: string;
-    description: string;
-    icon: typeof Search;
-    color: string;
-    bgColor: string;
-  }
-> = {
-  analyzing: {
-    label: 'Analyzing',
-    description: 'Analyzing project structure and codebase...',
-    icon: Search,
-    color: 'bg-amber-500',
-    bgColor: 'bg-amber-500/20',
-  },
-  discovering: {
-    label: 'Discovering',
-    description: 'Discovering target audience and user needs...',
-    icon: Users,
-    color: 'bg-info',
-    bgColor: 'bg-info/20',
-  },
-  generating: {
-    label: 'Generating',
-    description: 'Generating feature roadmap...',
-    icon: Sparkles,
-    color: 'bg-primary',
-    bgColor: 'bg-primary/20',
-  },
-  complete: {
-    label: 'Complete',
-    description: 'Roadmap generation complete!',
-    icon: CheckCircle2,
-    color: 'bg-success',
-    bgColor: 'bg-success/20',
-  },
-  error: {
-    label: 'Error',
-    description: 'Generation failed',
-    icon: AlertCircle,
-    color: 'bg-destructive',
-    bgColor: 'bg-destructive/20',
-  },
-};
-
-// Phases shown in the step indicator (excluding complete and error)
-const STEP_PHASES: { key: GenerationPhase; label: string }[] = [
-  { key: 'analyzing', label: 'Analyze' },
-  { key: 'discovering', label: 'Discover' },
-  { key: 'generating', label: 'Generate' },
-];
-
 /**
  * Internal component for showing phase steps indicator
  */
@@ -109,6 +55,7 @@ function PhaseStepsIndicator({
   currentPhase: RoadmapGenerationStatus['phase'];
   reducedMotion: boolean;
 }) {
+  const { t } = useTranslation('roadmap');
   const getPhaseState = (
     phaseKey: GenerationPhase
   ): 'pending' | 'active' | 'complete' | 'error' => {
@@ -134,12 +81,18 @@ function PhaseStepsIndicator({
     return { duration: 1.5, repeat: Infinity, ease: 'easeInOut' as const };
   };
 
+  const stepLabels = [
+    t('generation.steps.analyze'),
+    t('generation.steps.discover'),
+    t('generation.steps.generate'),
+  ];
+
   return (
     <div className="flex items-center justify-center gap-1 mt-4">
-      {STEP_PHASES.map((phase, index) => {
-        const state = getPhaseState(phase.key);
+      {(['analyzing', 'discovering', 'generating'] as GenerationPhase[]).map((phaseKey, index) => {
+        const state = getPhaseState(phaseKey);
         return (
-          <div key={phase.key} className="flex items-center">
+          <div key={phaseKey} className="flex items-center">
             <motion.div
               className={cn(
                 'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium',
@@ -166,13 +119,13 @@ function PhaseStepsIndicator({
                   />
                 </svg>
               )}
-              {phase.label}
+              {stepLabels[index]}
             </motion.div>
-            {index < STEP_PHASES.length - 1 && (
+            {index < 2 && (
               <div
                 className={cn(
                   'w-4 h-px mx-1',
-                  getPhaseState(STEP_PHASES[index + 1].key) !== 'pending'
+                  getPhaseState((['analyzing', 'discovering', 'generating'][index + 1] as GenerationPhase)) !== 'pending'
                     ? 'bg-success/50'
                     : 'bg-border'
                 )}
@@ -195,9 +148,35 @@ export function RoadmapGenerationProgress({
   className,
   onStop
 }: RoadmapGenerationProgressProps) {
+  const { t } = useTranslation('roadmap');
   const { phase, progress, message, error } = generationStatus;
   const reducedMotion = useReducedMotion();
   const [isStopping, setIsStopping] = useState(false);
+
+  // Get phase config from translations
+  const getPhaseConfig = (phaseKey: GenerationPhase) => {
+    const phases = t(`generation.phases.${phaseKey}`, { returnObjects: true }) as { label: string; description: string };
+    const icons: Record<GenerationPhase, typeof Search> = {
+      analyzing: Search,
+      discovering: Users,
+      generating: Sparkles,
+      complete: CheckCircle2,
+      error: AlertCircle,
+    };
+    const colors: Record<GenerationPhase, { color: string; bgColor: string }> = {
+      analyzing: { color: 'bg-amber-500', bgColor: 'bg-amber-500/20' },
+      discovering: { color: 'bg-info', bgColor: 'bg-info/20' },
+      generating: { color: 'bg-primary', bgColor: 'bg-primary/20' },
+      complete: { color: 'bg-success', bgColor: 'bg-success/20' },
+      error: { color: 'bg-destructive', bgColor: 'bg-destructive/20' },
+    };
+    return {
+      label: phases?.label || phaseKey,
+      description: phases?.description || '',
+      icon: icons[phaseKey],
+      ...colors[phaseKey],
+    };
+  };
 
   /**
    * Handle stop button click with error handling and double-click prevention
@@ -220,7 +199,7 @@ export function RoadmapGenerationProgress({
     return null;
   }
 
-  const config = PHASE_CONFIG[phase];
+  const config = getPhaseConfig(phase);
   const Icon = config.icon;
   const isActivePhase = phase !== 'complete' && phase !== 'error';
 
@@ -281,10 +260,10 @@ export function RoadmapGenerationProgress({
                 disabled={isStopping}
               >
                 <Square className="h-4 w-4 mr-1" />
-                {isStopping ? 'Stopping...' : 'Stop'}
+                {isStopping ? t('generation.stopping') : t('generation.stop')}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Stop generation</TooltipContent>
+            <TooltipContent>{t('generation.stopGeneration')}</TooltipContent>
           </Tooltip>
         </div>
       )}
@@ -333,7 +312,7 @@ export function RoadmapGenerationProgress({
       {isActivePhase && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Progress</span>
+            <span className="text-xs text-muted-foreground">{t('generation.progress')}</span>
             <span className="text-xs font-medium">{progress}%</span>
           </div>
           <div className="relative h-2 w-full overflow-hidden rounded-full bg-border">

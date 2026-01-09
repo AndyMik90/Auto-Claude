@@ -32,5 +32,58 @@
   "ideas": "ideas",
   "selected": "selected",
   "addMore": "Add More",
-  "aiGeneratedDescription": "AI-generated feature ideas for your project"
+  "aiGeneratedDescription": "AI-generated feature ideas for your project",
+  "codeQuality": {
+    "severity": "Severity",
+    "effort": "Effort",
+    "category": "Category",
+    "breakingChange": "Breaking Change",
+    "breakingChangeWarning": "This refactoring may break existing code or tests.",
+    "currentState": "Current State",
+    "proposedChange": "Proposed Change",
+    "codeExample": "Code Example",
+    "metrics": "Metrics",
+    "lines": "Lines",
+    "complexity": "Complexity",
+    "duplicateLines": "Duplicate Lines",
+    "testCoverage": "Test Coverage",
+    "affectedFiles": "Affected Files",
+    "bestPractice": "Best Practice",
+    "prerequisites": "Prerequisites"
+  },
+  "securityHardening": {
+    "files": "Files",
+    "vulnerability": "Vulnerability",
+    "currentRisk": "Current Risk",
+    "remediation": "Remediation",
+    "references": "References",
+    "compliance": "Compliance"
+  },
+  "documentationGap": {
+    "targetAudience": "Target Audience",
+    "currentDocumentation": "Current Documentation",
+    "proposedContent": "Proposed Content",
+    "affectedAreas": "Affected Areas",
+    "priority": "Priority"
+  },
+  "codeImprovement": {
+    "files": "Files",
+    "buildsUpon": "Builds Upon",
+    "implementationApproach": "Implementation Approach",
+    "patternsToFollow": "Patterns to Follow"
+  },
+  "generationProgressScreen": {
+    "generatingIdeas": "Generating Ideas",
+    "complete": "complete",
+    "hide": "Hide",
+    "show": "Show",
+    "logs": "Logs",
+    "stopping": "Stopping...",
+    "stop": "Stop",
+    "stopGeneration": "Stop generation",
+    "ideas": "ideas",
+    "waitingToStart": "Waiting to start...",
+    "failedToGenerate": "Failed to generate ideas for this category",
+    "noIdeasGenerated": "No ideas generated for this category"
+  }
 }

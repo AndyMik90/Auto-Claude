@@ -128,10 +128,10 @@ export function GitSetupModal({
             {t('gitSetup.manual')}
           </summary>
           <div className="mt-3 rounded-lg bg-muted/50 p-3 font-mono text-xs space-y-1">
-            <p className="text-muted-foreground">Open a terminal in your project folder and run:</p>
-            {needsGitInit && <p>git init</p>}
-            <p>git add .</p>
-            <p>git commit -m "Initial commit"</p>
+            <p className="text-muted-foreground">{t('gitSetup.manualInstructions')}</p>
+            {needsGitInit && <p>{t('gitSetup.gitInit')}</p>}
+            <p>{t('gitSetup.gitAdd')}</p>
+            <p>{t('gitSetup.gitCommit')}</p>
           </div>
         </details>
 

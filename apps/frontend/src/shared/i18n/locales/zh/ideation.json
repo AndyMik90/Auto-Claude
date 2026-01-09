@@ -32,5 +32,58 @@
   "ideas": "个想法",
   "selected": "已选择",
   "addMore": "添加更多",
-  "aiGeneratedDescription": "为您的项目生成 AI 驱动的功能想法"
+  "aiGeneratedDescription": "为您的项目生成 AI 驱动的功能想法",
+  "codeQuality": {
+    "severity": "严重程度",
+    "effort": "工作量",
+    "category": "类别",
+    "breakingChange": "破坏性变更",
+    "breakingChangeWarning": "此重构可能会破坏现有代码或测试。",
+    "currentState": "当前状态",
+    "proposedChange": "建议变更",
+    "codeExample": "代码示例",
+    "metrics": "指标",
+    "lines": "行数",
+    "complexity": "复杂度",
+    "duplicateLines": "重复行数",
+    "testCoverage": "测试覆盖率",
+    "affectedFiles": "受影响文件",
+    "bestPractice": "最佳实践",
+    "prerequisites": "前置条件"
+  },
+  "securityHardening": {
+    "files": "文件",
+    "vulnerability": "漏洞",
+    "currentRisk": "当前风险",
+    "remediation": "修复措施",
+    "references": "参考资料",
+    "compliance": "合规性"
+  },
+  "documentationGap": {
+    "targetAudience": "目标受众",
+    "currentDocumentation": "当前文档",
+    "proposedContent": "建议内容",
+    "affectedAreas": "受影响区域",
+    "priority": "优先级"
+  },
+  "codeImprovement": {
+    "files": "文件",
+    "buildsUpon": "建立于",
+    "implementationApproach": "实施方法",
+    "patternsToFollow": "遵循的模式"
+  },
+  "generationProgressScreen": {
+    "generatingIdeas": "正在生成想法",
+    "complete": "已完成",
+    "hide": "隐藏",
+    "show": "显示",
+    "logs": "日志",
+    "stopping": "停止中...",
+    "stop": "停止",
+    "stopGeneration": "停止生成",
+    "ideas": "个想法",
+    "waitingToStart": "等待开始...",
+    "failedToGenerate": "此类别的想法生成失败",
+    "noIdeasGenerated": "此类别没有生成想法"
+  }
 }

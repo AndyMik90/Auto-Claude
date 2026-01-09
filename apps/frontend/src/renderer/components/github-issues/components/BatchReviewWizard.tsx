@@ -9,6 +9,7 @@ import {
   Play,
   AlertTriangle,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { Progress } from '../../ui/progress';
@@ -58,6 +59,7 @@ export function BatchReviewWizard({
   isAnalyzing,
   isApproving,
 }: BatchReviewWizardProps) {
+  const { t } = useTranslation('github-issues');
   // Track which batches are selected for approval
   const [selectedBatchIds, setSelectedBatchIds] = useState<Set<number>>(new Set());
   // Track which single issues are selected for approval
@@ -198,10 +200,9 @@ export function BatchReviewWizard({
         <Layers className="h-12 w-12 text-primary" />
       </div>
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Analyze & Group Issues</h3>
+        <h3 className="text-lg font-semibold">{t('batchReview.title')}</h3>
         <p className="text-sm text-muted-foreground max-w-md">
-          This will analyze up to 200 open issues, group similar ones together,
-          and let you review the proposed batches before creating any tasks.
+          {t('batchReview.intro.analyzeDescription')}
         </p>
       </div>
       {analysisError && (
@@ -212,7 +213,7 @@ export function BatchReviewWizard({
       )}
       <Button onClick={onStartAnalysis} size="lg">
         <Layers className="h-4 w-4 mr-2" />
-        Start Analysis
+        {t('batchReview.intro.startAnalysis')}
       </Button>
     </div>
   );
@@ -221,15 +222,15 @@ export function BatchReviewWizard({
     <div className="flex flex-col items-center justify-center py-8 space-y-6">
       <Loader2 className="h-12 w-12 text-primary animate-spin" />
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Analyzing Issues...</h3>
+        <h3 className="text-lg font-semibold">{t('batchReview.analyzing.title')}</h3>
         <p className="text-sm text-muted-foreground">
-          {analysisProgress?.message || 'Computing similarity and validating batches...'}
+          {analysisProgress?.message || t('batchReview.intro.computingSimilarity')}
         </p>
       </div>
       <div className="w-full max-w-md">
         <Progress value={analysisProgress?.progress ?? 0} />
         <p className="text-xs text-center text-muted-foreground mt-2">
-          {analysisProgress?.progress ?? 0}% complete
+          {t('batchReview.intro.progressComplete', { progress: analysisProgress?.progress ?? 0 })}
         </p>
       </div>
     </div>
@@ -250,23 +251,23 @@ export function BatchReviewWizard({
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg mb-4">
           <div className="flex items-center gap-4 text-sm">
             <span>
-              <strong>{totalIssues}</strong> issues analyzed
+              <strong>{totalIssues}</strong> {t('batchReview.review.issuesAnalyzed', { count: totalIssues })}
             </span>
             <span className="text-muted-foreground">|</span>
             <span>
-              <strong>{proposedBatches.length}</strong> batches proposed
+              <strong>{proposedBatches.length}</strong> {t('batchReview.review.batchesProposed', { count: proposedBatches.length })}
             </span>
             <span className="text-muted-foreground">|</span>
             <span>
-              <strong>{singleIssues.length}</strong> single issues
+              <strong>{singleIssues.length}</strong> {t('batchReview.review.singleIssues', { count: singleIssues.length })}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={selectAllBatches}>
-              Select All
+              {t('batchReview.review.selectAll')}
             </Button>
             <Button variant="ghost" size="sm" onClick={deselectAllBatches}>
-              Deselect All
+              {t('batchReview.review.deselectAll')}
             </Button>
           </div>
         </div>
@@ -341,9 +342,9 @@ export function BatchReviewWizard({
     <div className="flex flex-col items-center justify-center py-8 space-y-6">
       <Loader2 className="h-12 w-12 text-primary animate-spin" />
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Creating Batches...</h3>
+        <h3 className="text-lg font-semibold">{t('batchReview.creating.title')}</h3>
         <p className="text-sm text-muted-foreground">
-          Setting up the approved issue batches for processing.
+          {t('batchReview.creating.description')}
         </p>
       </div>
     </div>
@@ -355,13 +356,13 @@ export function BatchReviewWizard({
         <CheckCircle2 className="h-12 w-12 text-green-500" />
       </div>
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Batches Created</h3>
+        <h3 className="text-lg font-semibold">{t('batchReview.created.title')}</h3>
         <p className="text-sm text-muted-foreground">
-          Your selected issue batches are ready for processing.
+          {t('batchReview.created.description')}
         </p>
       </div>
       <Button onClick={onClose}>
-        Close
+        {t('batchReview.created.close')}
       </Button>
     </div>
   );
@@ -372,14 +373,14 @@ export function BatchReviewWizard({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Layers className="h-5 w-5" />
-            Analyze & Group Issues
+            {t('batchReview.title')}
           </DialogTitle>
           <DialogDescription>
-            {step === 'intro' && 'Analyze open issues and group similar ones for batch processing.'}
-            {step === 'analyzing' && 'Analyzing issues for semantic similarity...'}
-            {step === 'review' && 'Review and approve the proposed issue batches.'}
-            {step === 'approving' && 'Creating the approved batches...'}
-            {step === 'done' && 'Batches have been created successfully.'}
+            {step === 'intro' && t('batchReview.intro.description')}
+            {step === 'analyzing' && t('batchReview.analyzing.description')}
+            {step === 'review' && t('batchReview.review.description')}
+            {step === 'approving' && t('batchReview.approving.description')}
+            {step === 'done' && t('batchReview.done.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -394,7 +395,7 @@ export function BatchReviewWizard({
         {step === 'review' && (
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>
-              Cancel
+              {t('batchReview.review.cancel')}
             </Button>
             <Button
               onClick={handleApprove}
@@ -403,12 +404,12 @@ export function BatchReviewWizard({
               {isApproving ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
+                  {t('batchReview.review.creating')}
                 </>
               ) : (
                 <>
                   <Play className="h-4 w-4 mr-2" />
-                  Approve & Create ({selectedBatchIds.size + selectedSingleIssueNumbers.size} {selectedBatchIds.size + selectedSingleIssueNumbers.size === 1 ? 'batch' : 'batches'})
+                  {t('batchReview.review.approveCreate')}
                 </>
               )}
             </Button>

@@ -48,5 +48,41 @@
   "phasesTab": "阶段",
   "allFeatures": "所有功能",
   "byPriority": "按优先级",
-  "insight": "洞察"
+  "insight": "洞察",
+  "painPointSource": "来源",
+  "painPointFrequency": "频率",
+  "painPointOpportunity": "机会",
+  "generation": {
+    "progress": "进度",
+    "stop": "停止",
+    "stopping": "停止中...",
+    "stopGeneration": "停止生成",
+    "phases": {
+      "analyzing": {
+        "label": "分析中",
+        "description": "正在分析项目结构和代码库..."
+      },
+      "discovering": {
+        "label": "探索中",
+        "description": "正在探索目标用户和需求..."
+      },
+      "generating": {
+        "label": "生成中",
+        "description": "正在生成功能路线图..."
+      },
+      "complete": {
+        "label": "完成",
+        "description": "路线图生成完成!"
+      },
+      "error": {
+        "label": "错误",
+        "description": "生成失败"
+      }
+    },
+    "steps": {
+      "analyze": "分析",
+      "discover": "探索",
+      "generate": "生成"
+    }
+  }
 }

@@ -52,7 +52,10 @@
     "hideTokenEntryAriaLabel": "Hide token entry",
     "enterTokenManuallyAriaLabel": "Enter token manually",
     "renameProfileAriaLabel": "Rename profile",
-    "deleteProfileAriaLabel": "Delete profile"
+    "deleteProfileAriaLabel": "Delete profile",
+    "navigate": "navigate",
+    "select": "select",
+    "close": "close"
   },
   "buttons": {
     "save": "Save",
@@ -112,6 +115,13 @@
     "swapFrom": "Switched from",
     "swapTo": "to",
     "swapReason": "({{reason}} swap)"
+  },
+  "usage": {
+    "sessionUsage": "Session Usage",
+    "weeklyUsage": "Weekly Usage",
+    "resets": "Resets: {{time}}",
+    "activeAccount": "Active Account",
+    "claudeUsageStatus": "Claude usage status"
   },
   "rateLimit": {
     "title": "Rate Limited",

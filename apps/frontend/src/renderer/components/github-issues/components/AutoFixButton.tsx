@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Wand2, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { Progress } from '../../ui/progress';
 import type { GitHubIssue } from '../../../../shared/types';
@@ -13,6 +14,7 @@ interface AutoFixButtonProps {
 }
 
 export function AutoFixButton({ issue, projectId, config, queueItem }: AutoFixButtonProps) {
+  const { t } = useTranslation('github-issues');
   const [isStarting, setIsStarting] = useState(false);
   const [progress, setProgress] = useState<AutoFixProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export function AutoFixButton({ issue, projectId, config, queueItem }: AutoFixBu
     return (
       <div className="flex items-center gap-2 text-success text-sm">
         <CheckCircle2 className="h-4 w-4" />
-        <span>Spec created from issue</span>
+        <span>{t('autoFix.specCreated')}</span>
       </div>
     );
   }
@@ -95,11 +97,11 @@ export function AutoFixButton({ issue, projectId, config, queueItem }: AutoFixBu
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-destructive text-sm">
           <AlertCircle className="h-4 w-4" />
-          <span>{error || queueItem?.error || 'Auto-fix failed'}</span>
+          <span>{error || queueItem?.error || t('autoFix.failed')}</span>
         </div>
         <Button size="sm" variant="outline" onClick={handleStartAutoFix}>
           <Wand2 className="h-4 w-4 mr-2" />
-          Retry Auto Fix
+          {t('autoFix.retry')}
         </Button>
       </div>
     );

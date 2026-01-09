@@ -1,0 +1,69 @@
+{
+  "batchReview": {
+    "title": "Analyze & Group Issues",
+    "intro": {
+      "description": "Analyze open issues and group similar ones for batch processing.",
+      "analyzeDescription": "This will analyze up to 200 open issues, group similar ones together, and let you review the proposed batches before creating any tasks.",
+      "startAnalysis": "Start Analysis",
+      "computingSimilarity": "Computing similarity and validating batches...",
+      "progressComplete": "{{progress}}% complete"
+    },
+    "analyzing": {
+      "title": "Analyzing Issues...",
+      "description": "Analyzing issues for semantic similarity..."
+    },
+    "creating": {
+      "title": "Creating Batches...",
+      "description": "Setting up the approved issue batches for processing."
+    },
+    "created": {
+      "title": "Batches Created",
+      "description": "Your selected issue batches are ready for processing.",
+      "close": "Close"
+    },
+    "review": {
+      "description": "Review and approve the proposed issue batches.",
+      "issuesAnalyzed": "{{count}} issues analyzed",
+      "batchesProposed": "{{count}} batches proposed",
+      "singleIssues": "{{count}} single issues",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "batchSelected": "{{count}} batch{{count !== 1 ? 'es' : ''}} selected ({{issues}} issues)",
+      "singleIssueSelected": " + {{count}} single issue{{count !== 1 ? 's' : ''}}",
+      "cancel": "Cancel",
+      "approveCreate": "Approve & Create",
+      "creating": "Creating...",
+      "batch": "batch",
+      "batches": "batches"
+    },
+    "approving": {
+      "description": "Creating the approved batches..."
+    },
+    "done": {
+      "description": "Batches have been created successfully."
+    }
+  },
+  "issueDetail": {
+    "description": "Description",
+    "noDescription": "No description provided.",
+    "assignees": "Assignees",
+    "milestone": "Milestone"
+  },
+  "autoFix": {
+    "specCreated": "Spec created from issue",
+    "failed": "Auto-fix failed",
+    "retry": "Retry Auto Fix"
+  },
+  "issueList": {
+    "analyzeDescription": "Analyze up to 200 open issues, group similar ones, and review proposed batches before creating tasks.",
+    "autoFixDescription": "Automatically fix new issues as they come in.",
+    "processingIssues": "Processing {{count}} issue{{count !== 1 ? 's' : ''}}...",
+    "statusOpen": "Open",
+    "statusClosed": "Closed",
+    "statusAll": "All"
+  },
+  "investigation": {
+    "failedToLoadComments": "Failed to load comments",
+    "taskWillInclude": "The task will include:"
+  }
+}

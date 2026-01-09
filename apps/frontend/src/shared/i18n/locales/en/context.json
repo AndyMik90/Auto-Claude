@@ -60,5 +60,18 @@
     "email": "Email",
     "payments": "Payments",
     "cache": "Cache"
+  },
+  "infrastructureStatus": {
+    "memoryInfrastructure": "Memory Infrastructure",
+    "kuzuDatabase": "Kuzu Database",
+    "installed": "Installed",
+    "notAvailable": "Not Available",
+    "database": "Database",
+    "ready": "Ready",
+    "willBeCreatedOnFirstUse": "Will be created on first use",
+    "requiresKuzu": "Requires Kuzu",
+    "availableDatabases": "Available databases:",
+    "graphMemoryReady": "Graph memory is ready to use",
+    "graphMemoryRequirements": "Graph memory requires Python 3.12+ with LadybugDB. No Docker needed."
   }
 }

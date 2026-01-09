@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { File, Folder, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useFileExplorerStore } from '../stores/file-explorer-store';
@@ -25,6 +26,7 @@ export function FileAutocomplete({
   onClose,
   maxResults = 10
 }: FileAutocompleteProps) {
+  const { t } = useTranslation('common');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const { files, loadDirectory } = useFileExplorerStore();
@@ -229,7 +231,7 @@ export function FileAutocomplete({
         ))}
       </div>
       <div className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground bg-muted/30">
-        <span className="font-medium">↑↓</span> navigate · <span className="font-medium">Enter</span> select · <span className="font-medium">Esc</span> close
+        <span className="font-medium">↑↓</span> {t('accessibility.navigate')} · <span className="font-medium">Enter</span> {t('accessibility.select')} · <span className="font-medium">Esc</span> {t('accessibility.close')}
       </div>
     </div>
   );
