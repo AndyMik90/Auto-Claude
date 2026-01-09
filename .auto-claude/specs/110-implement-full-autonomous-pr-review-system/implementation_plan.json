@@ -536,7 +536,9 @@
             "command": "grep -c 'AutoPRReview' apps/frontend/src/renderer/components/github-issues/types.ts",
             "expected": "2"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created apps/frontend/src/renderer/components/github-issues/types.ts with centralized TypeScript interfaces:\n- Re-exports from preload API: AutoPRReviewConfig, AutoPRReviewProgress, AutoPRReviewStatus, CICheckStatus, ExternalBotStatus, request/response types\n- Re-exports of helpers: DEFAULT_AUTO_PR_REVIEW_CONFIG, isTerminalStatus, isInProgressStatus\n- AutoPRReviewProgressCardProps interface with progress data, onCancel callback, className, and t (translation) props\n- StatusConfig interface for consistent status visual styling (label, color, bgColor, borderColor)\n- AutoPRReviewStatusConfigMap type alias for status configuration mapping\n- Full JSDoc documentation for all exported types\nVerification passed: grep -c 'AutoPRReview' returned 16 (>= expected 2). Committed as 2bba387b.",
+          "updated_at": "2026-01-08T23:38:55.103738+00:00"
         }
       ]
     },
@@ -566,7 +568,9 @@
             "command": "grep -c 'structlog' apps/backend/runners/github/services/auto_pr_review_orchestrator.py",
             "expected": "1"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Configured structlog with context binding for correlation IDs. Added _bind_context() and _clear_context() methods that use structlog.contextvars for automatic context propagation throughout the PR review flow. The correlation_id, pr_number, and repo are now automatically included in all log statements without explicit passing.",
+          "updated_at": "2026-01-08T23:41:58.850668+00:00"
         },
         {
           "id": "subtask-5-2",
@@ -584,7 +588,9 @@
             "command": "cd apps/backend && python -c \"from runners.github.models.telemetry import PRReviewLoopTelemetry; print(hasattr(PRReviewLoopTelemetry, 'save'))\"",
             "expected": "True"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created PRReviewLoopTelemetry dataclass in apps/backend/runners/github/models/telemetry.py with:\\n- IterationMetrics for per-iteration tracking (check metrics, fix metrics, SHA tracking)\\n- CheckMetrics for CI and external bot check metrics (counts, durations, circuit breaker)\\n- FixMetrics for fix application metrics (findings, fixes, files, syntax validation)\\n- Full serialization/deserialization (to_dict/from_dict methods)\\n- File-based persistence (save/load methods to .auto-claude/github/telemetry/)\\n- Aggregate metrics tracking (total CI checks, fixes, API calls, errors)\\n- get_summary() method for logging/display\\nVerification passed: hasattr(PRReviewLoopTelemetry, 'save') = True. Committed as a028beef.",
+          "updated_at": "2026-01-08T23:45:27.374227+00:00"
         },
         {
           "id": "subtask-5-3",
@@ -602,7 +608,9 @@
             "command": "grep -c 'HEALTH' apps/frontend/src/main/ipc-handlers/github/autofix-handlers.ts",
             "expected": "1"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Added GITHUB_AUTO_PR_REVIEW_HEALTH IPC handler with circuit breaker state. Implemented CircuitBreakerState interface, handleAutoPRReviewHealth handler returning health status, circuit breaker state, active review count, and timestamps. Registered/unregistered in handler functions. Verification shows 4 occurrences of HEALTH (handler, registration, unregistration, and interface reference).",
+          "updated_at": "2026-01-08T23:47:29.680874+00:00"
         }
       ]
     },
@@ -633,7 +641,9 @@
             "command": "apps/backend/.venv/bin/pytest tests/test_input_sanitizer.py -v --tb=short 2>&1 | tail -5",
             "expected": "passed"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created comprehensive unit tests for InputSanitizer covering:\n- Prompt injection detection (13 test cases covering ignore instructions, roleplay, system prompt manipulation, jailbreak, developer mode, prompt revelation)\n- Path traversal prevention (5 test cases for basic, URL-encoded, double-encoded, null byte patterns)\n- Dangerous Unicode stripping (8 test cases for RTL, zero-width, BOM, directional, Cyrillic homoglyphs, Greek homoglyphs)\n- Content sanitization (HTML removal, truncation, empty content, warnings)\n- File path validation (empty, too long, traversal, null byte, absolute paths, allowlist)\n- Filename validation (empty, directory separators, dangerous names)\n- Logging sanitization (API key, password, token redaction)\n- Edge cases (mixed attacks, nested HTML, Unicode in paths, very long content)\n\nAlso created the standalone InputSanitizer class in apps/backend/runners/github/security/input_sanitizer.py for proper testability.\n\nAll 72 tests passing. Committed as 6cd0e601.",
+          "updated_at": "2026-01-08T23:52:13.567003+00:00"
         },
         {
           "id": "subtask-6-2",
@@ -651,7 +661,9 @@
             "command": "apps/backend/.venv/bin/pytest tests/test_permission_manager.py -v --tb=short 2>&1 | tail -5",
             "expected": "passed"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created PermissionManager class in apps/backend/runners/github/security/permission_manager.py with: allowlist-based authorization via GITHUB_AUTO_PR_REVIEW_ALLOWED_USERS env var, case-insensitive username matching, wildcard (*) support, PermissionCheckResult dataclass, can_trigger_auto_pr_review() method, check_permission() method with audit info, require_permission() method with PermissionError exception, comprehensive logging. Created 44 unit tests in tests/test_permission_manager.py covering: allowlist tests (single/multiple users, spaces), case insensitivity, wildcard (*), deny scenarios (empty/unset/not in list), permission check results, require_permission, get_allowed_users, caching, module functions, and edge cases (special chars, unicode, long allowlist, duplicates). All 44 tests passed. Committed as 34ae63c8.",
+          "updated_at": "2026-01-08T23:56:09.737898+00:00"
         },
         {
           "id": "subtask-6-3",
@@ -669,7 +681,9 @@
             "command": "apps/backend/.venv/bin/pytest tests/test_pr_check_waiter.py -v --tb=short 2>&1 | tail -5",
             "expected": "passed"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created comprehensive unit tests for PRCheckWaiter covering: timeout configuration, exponential backoff calculation, circuit breaker (manual fallback), cancellation, PR state exceptions, dataclasses, helper methods, statistics, environment configuration, module functions, and async timeout behavior. All 63 tests pass.",
+          "updated_at": "2026-01-09T00:00:12.710300+00:00"
         },
         {
           "id": "subtask-6-4",
@@ -687,7 +701,9 @@
             "command": "apps/backend/.venv/bin/pytest tests/test_auto_pr_review_orchestrator.py -v --tb=short 2>&1 | tail -5",
             "expected": "passed"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created comprehensive unit tests for AutoPRReviewOrchestrator covering state transitions, max iterations, cancellation, authorization, and more. 46 tests all passing.",
+          "updated_at": "2026-01-09T00:03:47.277735+00:00"
         },
         {
           "id": "subtask-6-5",
@@ -895,5 +911,5 @@
   "status": "ai_review",
   "planStatus": "review",
   "updated_at": "2026-01-08T23:02:50.190Z",
-  "last_updated": "2026-01-08T23:37:13.023631+00:00"
+  "last_updated": "2026-01-09T00:03:47.277741+00:00"
 }
