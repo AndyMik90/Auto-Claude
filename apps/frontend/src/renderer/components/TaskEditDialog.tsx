@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TaskEditDialog - Dialog for editing task details
  *
  * Allows users to modify all task properties including title, description,
@@ -20,7 +20,7 @@
  *   task={selectedTask}
  *   open={isEditDialogOpen}
  *   onOpenChange={setIsEditDialogOpen}
- *   onSaved={() => console.log('Task updated!')}
+ *   onSaved={() => console.debug('Task updated!')}
  * />
  * ```
  */
@@ -494,7 +494,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
               )}
             />
             <p id="edit-description-help" className="text-xs text-muted-foreground">
-              {t('images.pasteHint', { shortcut: navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V' })}
+              {t('images.pasteHint', { shortcut: navigator.platform.includes('Mac') ? 'âŒ˜V' : 'Ctrl+V' })}
             </p>
           </div>
 

@@ -314,23 +314,31 @@ async function createTerminalWorktree(
     }
 
     // Determine the base ref to use for worktree creation
+    // FIX for #854: Prioritize exact branch match (local) over auto-promotion to origin/
     let baseRef = baseBranch;
-    if (isRemoteRef) {
-      // Already a remote ref, use as-is
-      baseRef = baseBranch;
-      debugLog('[TerminalWorktree] Using remote ref directly:', baseRef);
-    } else {
-      // Check if remote version exists and use it for latest code
+
+    try {
+      // 1. Try to verify the branch exactly as requested (e.g. "main" or "origin/main")
+      execFileSync('git', ['rev-parse', '--verify', baseBranch], {
+        cwd: projectPath,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      debugLog('[TerminalWorktree] Found ref exactly as requested:', baseRef);
+    } catch {
+      // 2. If exact match fails, try finding it on origin (auto-fallback)
+      // This handles cases where user requests "feature-z" but only "origin/feature-z" exists
+      const remoteRef = `origin/${baseBranch}`;
       try {
-        execFileSync('git', ['rev-parse', '--verify', `origin/${baseBranch}`], {
+        execFileSync('git', ['rev-parse', '--verify', remoteRef], {
           cwd: projectPath,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
-        baseRef = `origin/${baseBranch}`;
-        debugLog('[TerminalWorktree] Using remote ref:', baseRef);
+        baseRef = remoteRef;
+        debugLog('[TerminalWorktree] Local ref not found, falling back to remote:', baseRef);
       } catch {
-        debugLog('[TerminalWorktree] Remote ref not found, using local branch:', baseBranch);
+        debugLog('[TerminalWorktree] Ref not found locally or on remote, proceeding with original name (letting worktree add fail if invalid):', baseBranch);
       }
     }
 

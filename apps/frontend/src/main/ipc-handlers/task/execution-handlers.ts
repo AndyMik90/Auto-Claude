@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron';
+﻿import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, TaskStartOptions, TaskStatus } from '../../../shared/types';
 import path from 'path';
@@ -226,7 +226,7 @@ export function registerTaskExecutionHandlers(
 
       const DEBUG = process.env.DEBUG === 'true';
       if (DEBUG) {
-        console.log(`[TASK_START] IPC sent immediately for task ${taskId}, deferring file persistence`);
+        console.debug(`[TASK_START] IPC sent immediately for task ${taskId}, deferring file persistence`);
       }
 
       // CRITICAL: Persist status to implementation_plan.json to prevent status flip-flop
@@ -246,7 +246,7 @@ export function registerTaskExecutionHandlers(
           if (DEBUG) {
             const delay = persistStart - ipcSentAt;
             const duration = Date.now() - persistStart;
-            console.log(`[TASK_START] File persistence: delayed ${delay}ms after IPC, completed in ${duration}ms`);
+            console.debug(`[TASK_START] File persistence: delayed ${delay}ms after IPC, completed in ${duration}ms`);
           }
         } catch (err) {
           console.error('[TASK_START] Failed to persist plan status:', err);
@@ -277,7 +277,7 @@ export function registerTaskExecutionHandlers(
     }
 
     if (DEBUG) {
-      console.log(`[TASK_STOP] IPC sent immediately for task ${taskId}, deferring file persistence`);
+      console.debug(`[TASK_STOP] IPC sent immediately for task ${taskId}, deferring file persistence`);
     }
 
     // Find task and project to update the plan file (async, non-blocking)
@@ -298,7 +298,7 @@ export function registerTaskExecutionHandlers(
           if (DEBUG) {
             const delay = persistStart - ipcSentAt;
             const duration = Date.now() - persistStart;
-            console.log(`[TASK_STOP] File persistence: delayed ${delay}ms after IPC, completed in ${duration}ms`);
+            console.debug(`[TASK_STOP] File persistence: delayed ${delay}ms after IPC, completed in ${duration}ms`);
           }
         } catch (err) {
           console.error('[TASK_STOP] Failed to persist plan status:', err);
@@ -371,7 +371,7 @@ export function registerTaskExecutionHandlers(
             stdio: 'pipe'
           });
           if (resetResult.status === 0) {
-            console.log('[TASK_REVIEW] Unstaged changes in main');
+            console.debug('[TASK_REVIEW] Unstaged changes in main');
           }
 
           // Step 2: Discard all working tree changes (restore to pre-merge state)
@@ -381,7 +381,7 @@ export function registerTaskExecutionHandlers(
             stdio: 'pipe'
           });
           if (checkoutResult.status === 0) {
-            console.log('[TASK_REVIEW] Discarded working tree changes in main');
+            console.debug('[TASK_REVIEW] Discarded working tree changes in main');
           }
 
           // Step 3: Clean untracked files that came from the merge
@@ -392,10 +392,10 @@ export function registerTaskExecutionHandlers(
             stdio: 'pipe'
           });
           if (cleanResult.status === 0) {
-            console.log('[TASK_REVIEW] Cleaned untracked files in main (excluding .auto-claude)');
+            console.debug('[TASK_REVIEW] Cleaned untracked files in main (excluding .auto-claude)');
           }
 
-          console.log('[TASK_REVIEW] Main branch restored to pre-merge state');
+          console.debug('[TASK_REVIEW] Main branch restored to pre-merge state');
         }
 
         // Write feedback for QA fixer - write to WORKTREE spec dir if it exists
@@ -469,7 +469,7 @@ export function registerTaskExecutionHandlers(
           };
         } else {
           // No worktree - allow marking as done (limbo state recovery)
-          console.log(`[TASK_UPDATE_STATUS] Allowing status 'done' for task ${taskId} (no worktree found - limbo state)`);
+          console.debug(`[TASK_UPDATE_STATUS] Allowing status 'done' for task ${taskId} (no worktree found - limbo state)`);
         }
       }
 
@@ -689,7 +689,7 @@ export function registerTaskExecutionHandlers(
 
       // Update implementation_plan.json
       const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-      console.log(`[Recovery] Writing to plan file at: ${planPath} (task location: ${task.location || 'main'})`);
+      console.debug(`[Recovery] Writing to plan file at: ${planPath} (task location: ${task.location || 'main'})`);
 
       // Also update the OTHER location if task exists in both main and worktree
       // This ensures consistency regardless of which version getTasks() prefers
@@ -706,7 +706,7 @@ export function registerTaskExecutionHandlers(
       if (worktreeSpecDir && worktreeSpecDir !== specDir && existsSync(path.join(worktreeSpecDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN))) {
         planPathsToUpdate.push(path.join(worktreeSpecDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN));
       }
-      console.log(`[Recovery] Will update ${planPathsToUpdate.length} plan file(s):`, planPathsToUpdate);
+      console.debug(`[Recovery] Will update ${planPathsToUpdate.length} plan file(s):`, planPathsToUpdate);
 
       try {
         // Read the plan to analyze subtask progress
@@ -763,7 +763,7 @@ export function registerTaskExecutionHandlers(
           const { allCompleted } = checkSubtasksCompletion(plan);
 
           if (allCompleted) {
-            console.log('[Recovery] Task is fully complete (all subtasks done), setting to human_review without restart');
+            console.debug('[Recovery] Task is fully complete (all subtasks done), setting to human_review without restart');
             // Don't reset any subtasks - task is done!
             // Just update status in plan file (project store reads from file, no separate update needed)
             plan.status = 'human_review';
@@ -775,7 +775,7 @@ export function registerTaskExecutionHandlers(
             for (const pathToUpdate of planPathsToUpdate) {
               try {
                 atomicWriteFileSync(pathToUpdate, planContent);
-                console.log(`[Recovery] Successfully wrote to: ${pathToUpdate}`);
+                console.debug(`[Recovery] Successfully wrote to: ${pathToUpdate}`);
                 writeSucceededForComplete = true;
               } catch (writeError) {
                 console.error(`[Recovery] Failed to write plan file at ${pathToUpdate}:`, writeError);
@@ -817,7 +817,7 @@ export function registerTaskExecutionHandlers(
                     delete subtask.actual_output;
                     delete subtask.started_at;
                     delete subtask.completed_at;
-                    console.log(`[Recovery] Reset stuck subtask: ${originalStatus} -> pending`);
+                    console.debug(`[Recovery] Reset stuck subtask: ${originalStatus} -> pending`);
                   }
                   // Also reset failed subtasks so they can be retried
                   if (subtask.status === 'failed') {
@@ -826,7 +826,7 @@ export function registerTaskExecutionHandlers(
                     delete subtask.actual_output;
                     delete subtask.started_at;
                     delete subtask.completed_at;
-                    console.log(`[Recovery] Reset failed subtask for retry`);
+                    console.debug(`[Recovery] Reset failed subtask for retry`);
                   }
                 }
               }
@@ -839,7 +839,7 @@ export function registerTaskExecutionHandlers(
           for (const pathToUpdate of planPathsToUpdate) {
             try {
               atomicWriteFileSync(pathToUpdate, planContent);
-              console.log(`[Recovery] Successfully wrote to: ${pathToUpdate}`);
+              console.debug(`[Recovery] Successfully wrote to: ${pathToUpdate}`);
               writeSucceeded = true;
             } catch (writeError) {
               console.error(`[Recovery] Failed to write plan file at ${pathToUpdate}:`, writeError);
@@ -905,7 +905,7 @@ export function registerTaskExecutionHandlers(
               for (const pathToUpdate of planPathsToUpdate) {
                 try {
                   atomicWriteFileSync(pathToUpdate, restartPlanContent);
-                  console.log(`[Recovery] Wrote restart status to: ${pathToUpdate}`);
+                  console.debug(`[Recovery] Wrote restart status to: ${pathToUpdate}`);
                 } catch (writeError) {
                   console.error(`[Recovery] Failed to write plan file for restart at ${pathToUpdate}:`, writeError);
                   // Continue with restart attempt even if file write fails

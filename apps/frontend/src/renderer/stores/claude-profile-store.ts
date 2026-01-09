@@ -106,3 +106,23 @@ export async function switchTerminalToProfile(
     store.setSwitching(false);
   }
 }
+
+/**
+ * Automatically select the profile if it's the only one available and has an OAuth token
+ * This improves UX by removing the need to manually select the only valid profile
+ */
+export function checkAndAutoSelectProfile(): void {
+  const store = useClaudeProfileStore.getState();
+  const { profiles, activeProfileId } = store;
+
+  // Only auto-select if we have exactly one profile
+  if (profiles.length === 1) {
+    const profile = profiles[0];
+
+    // Check if it's an OAuth profile (has token) and not already active
+    if (profile.oauthToken && profile.id !== activeProfileId) {
+      console.log('[ClaudeProfileStore] Auto-selecting single available OAuth profile:', profile.name);
+      store.setActiveProfile(profile.id);
+    }
+  }
+}

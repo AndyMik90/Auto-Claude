@@ -1,4 +1,4 @@
-import { app } from 'electron';
+﻿import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -173,7 +173,7 @@ export class ProjectStore {
         : null,
       tabOrder: tabState.tabOrder.filter(id => validProjectIds.includes(id))
     };
-    console.log('[ProjectStore] Saving tab state:', this.data.tabState);
+    console.debug('[ProjectStore] Saving tab state:', this.data.tabState);
     this.save();
   }
 
@@ -734,7 +734,7 @@ export class ProjectStore {
 
       // If spec directory doesn't exist anywhere, skip gracefully
       if (specPaths.length === 0) {
-        console.log(`[ProjectStore] archiveTasks: Spec directory not found for ${taskId}, skipping (already removed)`);
+        console.debug(`[ProjectStore] archiveTasks: Spec directory not found for ${taskId}, skipping (already removed)`);
         continue;
       }
 
@@ -761,7 +761,7 @@ export class ProjectStore {
           }
 
           writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-          console.log(`[ProjectStore] archiveTasks: Successfully archived task ${taskId} at ${specPath}`);
+          console.debug(`[ProjectStore] archiveTasks: Successfully archived task ${taskId} at ${specPath}`);
         } catch (error) {
           console.error(`[ProjectStore] archiveTasks: Failed to archive task ${taskId} at ${specPath}:`, error);
           hasErrors = true;
@@ -820,7 +820,7 @@ export class ProjectStore {
           delete metadata.archivedAt;
           delete metadata.archivedInVersion;
           writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-          console.log(`[ProjectStore] unarchiveTasks: Successfully unarchived task ${taskId} at ${specPath}`);
+          console.debug(`[ProjectStore] unarchiveTasks: Successfully unarchived task ${taskId} at ${specPath}`);
         } catch (error) {
           console.error(`[ProjectStore] unarchiveTasks: Failed to unarchive task ${taskId} at ${specPath}:`, error);
           hasErrors = true;

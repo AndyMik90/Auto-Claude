@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'motion/react';
+﻿import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { memo, useRef, useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
@@ -67,7 +67,7 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
         const nowVisible = entry.isIntersecting;
 
         if (prevVisibleRef.current !== nowVisible && window.DEBUG) {
-          console.log(`[PhaseProgress] Visibility changed: ${prevVisibleRef.current} -> ${nowVisible}, animations ${nowVisible ? 'resumed' : 'paused'}`);
+          console.debug(`[PhaseProgress] Visibility changed: ${prevVisibleRef.current} -> ${nowVisible}, animations ${nowVisible ? 'resumed' : 'paused'}`);
         }
 
         prevVisibleRef.current = nowVisible;
@@ -141,7 +141,7 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
               {activeEntries} {activeEntries === 1 ? t('execution.labels.entry') : t('execution.labels.entries')}
             </span>
           ) : (
-            '—'
+            'â€”'
           )}
         </span>
       </div>

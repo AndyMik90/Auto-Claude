@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type {
   IdeationSession,
   Idea,
@@ -399,7 +399,7 @@ export function generateIdeation(projectId: string): void {
   const config = store.config;
 
   if (window.DEBUG) {
-    console.log('[Ideation] Starting generation:', {
+    console.debug('[Ideation] Starting generation:', {
       projectId,
       enabledTypes: config.enabledTypes,
       includeRoadmapContext: config.includeRoadmapContext,
@@ -436,7 +436,7 @@ export function generateIdeation(projectId: string): void {
         message: '',
         error: 'Generation timed out. Some ideas may have been generated - check the results.'
       });
-      currentState.addLog('⚠ Generation timed out');
+      currentState.addLog('âš  Generation timed out');
     }
   }, GENERATION_TIMEOUT_MS);
   generationTimeoutIds.set(projectId, timeoutId);
@@ -449,7 +449,7 @@ export async function stopIdeation(projectId: string): Promise<boolean> {
 
   // Debug logging
   if (window.DEBUG) {
-    console.log('[Ideation] Stop requested:', { projectId });
+    console.debug('[Ideation] Stop requested:', { projectId });
   }
 
   store.setIsGenerating(false);
@@ -464,7 +464,7 @@ export async function stopIdeation(projectId: string): Promise<boolean> {
 
   // Debug logging
   if (window.DEBUG) {
-    console.log('[Ideation] Stop result:', { projectId, success: result.success });
+    console.debug('[Ideation] Stop result:', { projectId, success: result.success });
   }
 
   if (!result.success) {
@@ -652,14 +652,14 @@ export function setupIdeationListeners(): () => void {
     // Only process events for the current project
     if (!isCurrentProject(projectId)) {
       if (window.DEBUG) {
-        console.log('[Ideation] Ignoring progress for different project:', projectId);
+        console.debug('[Ideation] Ignoring progress for different project:', projectId);
       }
       return;
     }
 
     // Debug logging
     if (window.DEBUG) {
-      console.log('[Ideation] Progress update:', {
+      console.debug('[Ideation] Progress update:', {
         projectId,
         phase: status.phase,
         progress: status.progress,
@@ -681,14 +681,14 @@ export function setupIdeationListeners(): () => void {
       // Only process events for the current project
       if (!isCurrentProject(projectId)) {
         if (window.DEBUG) {
-          console.log('[Ideation] Ignoring type complete for different project:', projectId);
+          console.debug('[Ideation] Ignoring type complete for different project:', projectId);
         }
         return;
       }
 
       // Debug logging
       if (window.DEBUG) {
-        console.log('[Ideation] Type completed:', {
+        console.debug('[Ideation] Type completed:', {
           projectId,
           ideationType,
           ideasCount: ideas.length,
@@ -697,7 +697,7 @@ export function setupIdeationListeners(): () => void {
       }
 
       store().addIdeasForType(ideationType, ideas);
-      store().addLog(`✓ ${ideationType} completed with ${ideas.length} ideas`);
+      store().addLog(`âœ“ ${ideationType} completed with ${ideas.length} ideas`);
 
       // Update progress based on completed types
       // Calculate with the expected state since React 18 batches state updates.
@@ -737,7 +737,7 @@ export function setupIdeationListeners(): () => void {
       }
 
       store().setTypeState(ideationType as IdeationType, 'failed');
-      store().addLog(`✗ ${ideationType} failed`);
+      store().addLog(`âœ— ${ideationType} failed`);
     }
   );
 
@@ -745,13 +745,13 @@ export function setupIdeationListeners(): () => void {
     // Only process events for the current project
     if (!isCurrentProject(projectId)) {
       if (window.DEBUG) {
-        console.log('[Ideation] Ignoring complete for different project:', projectId);
+        console.debug('[Ideation] Ignoring complete for different project:', projectId);
       }
       return;
     }
 
     if (window.DEBUG) {
-      console.log('[Ideation] Generation complete:', {
+      console.debug('[Ideation] Generation complete:', {
         projectId,
         totalIdeas: session.ideas.length,
         ideaTypes: session.ideas.reduce((acc, idea) => {
@@ -800,7 +800,7 @@ export function setupIdeationListeners(): () => void {
     if (!isCurrentProject(projectId)) return;
 
     if (window.DEBUG) {
-      console.log('[Ideation] Stopped:', { projectId });
+      console.debug('[Ideation] Stopped:', { projectId });
     }
 
     clearGenerationTimeout(projectId);

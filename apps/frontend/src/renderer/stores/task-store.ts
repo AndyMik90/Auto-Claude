@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type { Task, TaskStatus, SubtaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 
@@ -155,7 +155,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
       const index = findTaskIndex(state.tasks, taskId);
       if (index === -1) {
-        console.log('[updateTaskFromPlan] Task not found:', taskId);
+        console.debug('[updateTaskFromPlan] Task not found:', taskId);
         return state;
       }
 

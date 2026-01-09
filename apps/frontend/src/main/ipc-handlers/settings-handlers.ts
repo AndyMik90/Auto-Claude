@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, shell } from 'electron';
+﻿import { ipcMain, dialog, app, shell } from 'electron';
 import { existsSync, writeFileSync, mkdirSync, statSync, readFileSync } from 'fs';
 import { execFileSync } from 'node:child_process';
 import path from 'path';
@@ -71,7 +71,7 @@ const detectAutoBuildSourcePath = (): string | null => {
     const exists = existsSync(p) && existsSync(markerPath);
 
     if (debug) {
-      console.warn(`[detectAutoBuildSourcePath] Checking ${p}: ${exists ? '✓ FOUND' : '✗ not found'}`);
+      console.warn(`[detectAutoBuildSourcePath] Checking ${p}: ${exists ? 'âœ“ FOUND' : 'âœ— not found'}`);
     }
 
     if (exists) {
@@ -397,7 +397,7 @@ export function registerSettingsHandlers(
   ipcMain.handle(IPC_CHANNELS.APP_VERSION, async (): Promise<string> => {
     // Return the actual bundled version from package.json
     const version = app.getVersion();
-    console.log('[settings-handlers] APP_VERSION returning:', version);
+    console.debug('[settings-handlers] APP_VERSION returning:', version);
     return version;
   });
 

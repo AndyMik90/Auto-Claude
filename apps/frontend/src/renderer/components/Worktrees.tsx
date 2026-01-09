@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   GitBranch,
@@ -94,8 +94,8 @@ export function Worktrees({ projectId }: WorktreesProps) {
         window.electronAPI.listTerminalWorktrees(selectedProject.path)
       ]);
 
-      console.log('[Worktrees] Task worktrees result:', taskResult);
-      console.log('[Worktrees] Terminal worktrees result:', terminalResult);
+      console.debug('[Worktrees] Task worktrees result:', taskResult);
+      console.debug('[Worktrees] Terminal worktrees result:', terminalResult);
 
       if (taskResult.success && taskResult.data) {
         setWorktrees(taskResult.data.worktrees);
@@ -104,7 +104,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
       }
 
       if (terminalResult.success && terminalResult.data) {
-        console.log('[Worktrees] Setting terminal worktrees:', terminalResult.data);
+        console.debug('[Worktrees] Setting terminal worktrees:', terminalResult.data);
         setTerminalWorktrees(terminalResult.data);
       } else {
         console.warn('[Worktrees] Terminal worktrees fetch failed or empty:', terminalResult);

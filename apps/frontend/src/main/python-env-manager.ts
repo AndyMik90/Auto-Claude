@@ -1,4 +1,4 @@
-import { spawn, execSync, ChildProcess } from 'child_process';
+﻿import { spawn, execSync, ChildProcess } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
@@ -103,11 +103,11 @@ export class PythonEnvManager extends EventEmitter {
     const sitePackagesPath = path.join(process.resourcesPath, 'python-site-packages');
 
     if (existsSync(sitePackagesPath)) {
-      console.log(`[PythonEnvManager] Found bundled site-packages at: ${sitePackagesPath}`);
+      console.debug(`[PythonEnvManager] Found bundled site-packages at: ${sitePackagesPath}`);
       return sitePackagesPath;
     }
 
-    console.log(`[PythonEnvManager] Bundled site-packages not found at: ${sitePackagesPath}`);
+    console.debug(`[PythonEnvManager] Bundled site-packages not found at: ${sitePackagesPath}`);
     return null;
   }
 
@@ -138,7 +138,7 @@ export class PythonEnvManager extends EventEmitter {
 
     // Log missing packages for debugging
     for (const pkg of missingPackages) {
-      console.log(
+      console.debug(
         `[PythonEnvManager] Missing critical package: ${pkg} at ${path.join(sitePackagesPath, pkg)}`
       );
     }
@@ -148,9 +148,9 @@ export class PythonEnvManager extends EventEmitter {
       // Also check marker for logging purposes
       const markerPath = path.join(sitePackagesPath, '.bundled');
       if (existsSync(markerPath)) {
-        console.log(`[PythonEnvManager] Found bundle marker and all critical packages`);
+        console.debug(`[PythonEnvManager] Found bundle marker and all critical packages`);
       } else {
-        console.log(`[PythonEnvManager] Found critical packages (marker missing)`);
+        console.debug(`[PythonEnvManager] Found critical packages (marker missing)`);
       }
       return true;
     }
@@ -211,19 +211,19 @@ if sys.version_info >= (3, 12):
     // If this is the bundled Python path, use it directly
     const bundledPath = getBundledPythonPath();
     if (bundledPath && pythonCmd === bundledPath) {
-      console.log(`[PythonEnvManager] Using bundled Python: ${bundledPath}`);
+      console.debug(`[PythonEnvManager] Using bundled Python: ${bundledPath}`);
       return bundledPath;
     }
 
     try {
       // Get the actual executable path from the command
       // For commands like "py -3", we need to resolve to the actual executable
-      const pythonPath = execSync(`${pythonCmd} -c "import sys; print(sys.executable)"`, {
+      const pythonPath = execSync(`"${pythonCmd}" -c "import sys; print(sys.executable)"`, {
         stdio: 'pipe',
         timeout: 5000
       }).toString().trim();
 
-      console.log(`[PythonEnvManager] Found Python at: ${pythonPath}`);
+      console.debug(`[PythonEnvManager] Found Python at: ${pythonPath}`);
       return pythonPath;
     } catch (err) {
       console.error(`[PythonEnvManager] Failed to get Python path for ${pythonCmd}:`, err);
@@ -242,11 +242,11 @@ if sys.version_info >= (3, 12):
       const isPackaged = app.isPackaged;
       const errorMsg = isPackaged
         ? 'Python not found. The bundled Python may be corrupted.\n\n' +
-          'Please try reinstalling the application, or install Python 3.10+ manually:\n' +
-          'https://www.python.org/downloads/'
+        'Please try reinstalling the application, or install Python 3.10+ manually:\n' +
+        'https://www.python.org/downloads/'
         : 'Python 3.10+ not found. Please install Python 3.10 or higher.\n\n' +
-          'This is required for development mode. Download from:\n' +
-          'https://www.python.org/downloads/';
+        'This is required for development mode. Download from:\n' +
+        'https://www.python.org/downloads/';
       this.emit('error', errorMsg);
       return false;
     }

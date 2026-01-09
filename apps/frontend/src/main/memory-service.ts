@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Memory Service
  *
  * Queries the LadybugDB graph database for memories stored by Graphiti.
@@ -123,7 +123,7 @@ function getBackendPythonPath(): string {
   // For packaged apps, use the bundled Python which has real_ladybug in site-packages
   if (app.isPackaged) {
     const fallbackPython = getConfiguredPythonPath();
-    console.log(`[MemoryService] Using bundled Python for packaged app: ${fallbackPython}`);
+    console.debug(`[MemoryService] Using bundled Python for packaged app: ${fallbackPython}`);
     return fallbackPython;
   }
 
@@ -141,14 +141,14 @@ function getBackendPythonPath(): string {
       : path.join(backendPath, '.venv', 'bin', 'python');
 
     if (fs.existsSync(venvPython)) {
-      console.log(`[MemoryService] Using backend venv Python: ${venvPython}`);
+      console.debug(`[MemoryService] Using backend venv Python: ${venvPython}`);
       return venvPython;
     }
   }
 
   // Fall back to configured Python path
   const fallbackPython = getConfiguredPythonPath();
-  console.log(`[MemoryService] Backend venv not found, falling back to: ${fallbackPython}`);
+  console.debug(`[MemoryService] Backend venv not found, falling back to: ${fallbackPython}`);
   return fallbackPython;
 }
 

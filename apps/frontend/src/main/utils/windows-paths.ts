@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Windows Executable Path Discovery Utility
  *
  * Provides reusable logic for finding Windows executables in common installation
@@ -128,7 +128,7 @@ export function getWindowsExecutablePaths(
  * Works regardless of where the tool is installed (custom paths, different drives, etc.)
  *
  * @param executable - The executable name (e.g., 'git', 'gh', 'python')
- * @param logPrefix - Prefix for console logging
+ * @param logPrefix - Prefix for console.debugging
  * @returns The full path to the executable, or null if not found
  */
 export function findWindowsExecutableViaWhere(
@@ -163,7 +163,7 @@ export function findWindowsExecutableViaWhere(
 
       // Validate the path exists and is secure
       if (existsSync(foundPath) && isSecurePath(foundPath)) {
-        console.log(`${logPrefix} Found via where: ${foundPath}`);
+        console.debug(`${logPrefix} Found via where: ${foundPath}`);
         return foundPath;
       }
     }
@@ -230,7 +230,7 @@ export async function getWindowsExecutablePathsAsync(
  * Works regardless of where the tool is installed (custom paths, different drives, etc.)
  *
  * @param executable - The executable name (e.g., 'git', 'gh', 'python')
- * @param logPrefix - Prefix for console logging
+ * @param logPrefix - Prefix for console.debugging
  * @returns The full path to the executable, or null if not found
  */
 export async function findWindowsExecutableViaWhereAsync(
@@ -267,7 +267,7 @@ export async function findWindowsExecutableViaWhereAsync(
       try {
         await access(foundPath, constants.F_OK);
         if (isSecurePath(foundPath)) {
-          console.log(`${logPrefix} Found via where: ${foundPath}`);
+          console.debug(`${logPrefix} Found via where: ${foundPath}`);
           return foundPath;
         }
       } catch {

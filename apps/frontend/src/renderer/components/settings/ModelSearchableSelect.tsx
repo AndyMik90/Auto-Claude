@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ModelSearchableSelect - Searchable dropdown for API model selection
  *
  * A custom dropdown component that:
@@ -93,7 +93,7 @@ export function ModelSearchableSelect({
    * Uses store's discoverModels action which has built-in caching.
    */
   const fetchModels = async () => {
-    console.log('[ModelSearchableSelect] fetchModels called with:', { baseUrl, apiKey: `${apiKey.slice(-4)}` });
+    console.debug('[ModelSearchableSelect] fetchModels called with:', { baseUrl, apiKey: `${apiKey.slice(-4)}` });
     // Fetch from API
     setIsLoading(true);
     setError(null);
@@ -102,7 +102,7 @@ export function ModelSearchableSelect({
 
     try {
       const result = await discoverModels(baseUrl, apiKey, abortControllerRef.current.signal);
-      console.log('[ModelSearchableSelect] discoverModels result:', result);
+      console.debug('[ModelSearchableSelect] discoverModels result:', result);
 
       if (result && Array.isArray(result)) {
         setModels(result);

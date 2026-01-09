@@ -36,7 +36,7 @@ TOOL_UPDATE_SUBTASK_STATUS = "mcp__auto-claude__update_subtask_status"
 TOOL_GET_BUILD_PROGRESS = "mcp__auto-claude__get_build_progress"
 TOOL_RECORD_DISCOVERY = "mcp__auto-claude__record_discovery"
 TOOL_RECORD_GOTCHA = "mcp__auto-claude__record_gotcha"
-TOOL_GET_SESSION_CONTEXT = "mcp__auto-claude__get_session_context"
+TOOL_GET_SESSION_CONTEXT = "get_context"
 TOOL_UPDATE_QA_STATUS = "mcp__auto-claude__update_qa_status"
 
 # =============================================================================
@@ -253,13 +253,13 @@ AGENT_CONFIGS = {
         "tools": [],  # Text-only analysis
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "low",
+        "thinking_default": "none",
     },
     "commit_message": {
         "tools": [],
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "low",
+        "thinking_default": "none",
     },
     "pr_reviewer": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,  # Read-only
@@ -293,13 +293,13 @@ AGENT_CONFIGS = {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "low",
+        "thinking_default": "none",
     },
     "batch_validation": {
         "tools": BASE_READ_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
-        "thinking_default": "low",
+        "thinking_default": "none",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # ROADMAP & IDEATION

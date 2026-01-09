@@ -56,6 +56,9 @@ from ui import (
     print_status,
 )
 
+# Configuration
+MAX_CONSECUTIVE_ERRORS = 3  # Stop after 3 consecutive errors without progress
+
 from .base import AUTO_CONTINUE_DELAY_SECONDS, HUMAN_INTERVENTION_FILE
 from .memory_manager import debug_memory_system_status, get_graphiti_context
 from .session import post_session_processing, run_agent_session
@@ -196,6 +199,7 @@ async def run_autonomous_agent(
 
     # Main loop
     iteration = 0
+    consecutive_errors = 0
 
     while True:
         iteration += 1
@@ -434,6 +438,9 @@ async def run_autonomous_agent(
             break
 
         elif status == "continue":
+            # Reset error tracking on successful progress
+            consecutive_errors = 0
+
             print(
                 muted(
                     f"\nAgent will auto-continue in {AUTO_CONTINUE_DELAY_SECONDS}s..."
@@ -461,9 +468,19 @@ async def run_autonomous_agent(
             await asyncio.sleep(AUTO_CONTINUE_DELAY_SECONDS)
 
         elif status == "error":
+            consecutive_errors += 1
             emit_phase(ExecutionPhase.FAILED, "Session encountered an error")
             print_status("Session encountered an error", "error")
             print(muted("Will retry with a fresh session..."))
+
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                print_status(
+                    f"Max consecutive errors ({MAX_CONSECUTIVE_ERRORS}) reached. Stopping.",
+                    "error",
+                )
+                status_manager.update(state=BuildState.ERROR)
+                break
+
             status_manager.update(state=BuildState.ERROR)
             await asyncio.sleep(AUTO_CONTINUE_DELAY_SECONDS)
 

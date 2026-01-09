@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { unstable_batchedUpdates } from 'react-dom';
 import { useTaskStore } from '../stores/task-store';
 import { useRoadmapStore } from '../stores/roadmap-store';
@@ -95,7 +95,7 @@ function queueUpdate(taskId: string, update: BatchedUpdate): void {
 
   // FIX (ACS-55): Phase changes bypass batching - apply immediately
   // This ensures phase transitions are applied in order and not batched together,
-  // so the UI accurately reflects each phase state (e.g., planning → coding shows both)
+  // so the UI accurately reflects each phase state (e.g., planning â†’ coding shows both)
   // rather than skipping directly to the latest phase if they arrive within 16ms.
   // Phase changes are rare (~3-4 per task) vs progress ticks (hundreds), so this is safe for perf
   if (update.progress?.phase && storeActionsRef) {
@@ -111,7 +111,7 @@ function queueUpdate(taskId: string, update: BatchedUpdate): void {
       }
       // Apply phase change immediately
       if (window.DEBUG) {
-        console.warn(`[IPC Batch] Phase change detected: ${currentPhase} → ${update.progress.phase}, applying immediately`);
+        console.warn(`[IPC Batch] Phase change detected: ${currentPhase} â†’ ${update.progress.phase}, applying immediately`);
       }
       storeActionsRef.updateExecutionProgress(taskId, update.progress);
       return;
@@ -243,7 +243,7 @@ export function useIpcListeners(): void {
       async (taskId: string, projectId?: string) => {
         if (!isTaskForCurrentProject(projectId)) return;
 
-        console.log('[IPC] Spec completed for task, force reloading plan:', taskId);
+        console.debug('[IPC] Spec completed for task, force reloading plan:', taskId);
         // Force reload the task plan from backend
         // We need to fetch the plan explicitly because the 'progress' event might have been empty
         try {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Profile IPC Handlers
  *
  * IPC handlers for API profile management:
@@ -266,7 +266,7 @@ export function registerProfileHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.PROFILES_DISCOVER_MODELS,
     async (_event, baseUrl: string, apiKey: string, requestId: number): Promise<IPCResult<DiscoverModelsResult>> => {
-      console.log('[discoverModels] Called with:', { baseUrl, requestId });
+      console.debug('[discoverModels] Called with:', { baseUrl, requestId });
 
       // Create AbortController for timeout and cancellation
       const controller = new AbortController();

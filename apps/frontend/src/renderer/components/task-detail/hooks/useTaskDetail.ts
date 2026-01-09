@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
 import { checkTaskRunning, isIncompleteHumanReview, getTaskProgress, useTaskStore } from '../../../stores/task-store';
 import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo } from '../../../../shared/types';
@@ -303,7 +303,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
 
     // Check if subtasks are valid
     if (validateTaskSubtasks(task)) {
-      console.log('[reloadPlanForIncompleteTask] Subtasks are valid, no reload needed');
+      console.debug('[reloadPlanForIncompleteTask] Subtasks are valid, no reload needed');
       return true; // Subtasks are valid, proceed
     }
 
@@ -336,7 +336,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
         return false;
       }
 
-      console.log('[reloadPlanForIncompleteTask] Successfully reloaded plan with valid subtasks:', {
+      console.debug('[reloadPlanForIncompleteTask] Successfully reloaded plan with valid subtasks:', {
         taskId: task.id,
         subtaskCount: updatedTask.subtasks?.length ?? 0
       });

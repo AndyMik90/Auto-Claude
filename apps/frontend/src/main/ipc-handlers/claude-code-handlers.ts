@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Claude Code CLI Handlers
  *
  * IPC handlers for Claude Code CLI version checking and installation.
@@ -137,8 +137,8 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
   const settings = readSettingsFile();
   const preferredTerminal = settings?.preferredTerminal as string | undefined;
 
-  console.log('[Claude Code] Platform:', platform);
-  console.log('[Claude Code] Preferred terminal:', preferredTerminal);
+  console.debug('[Claude Code] Platform:', platform);
+  console.debug('[Claude Code] Preferred terminal:', preferredTerminal);
 
   if (platform === 'darwin') {
     // macOS: Use AppleScript to open terminal with command
@@ -149,7 +149,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     // Values come from settings.preferredTerminal (SupportedTerminal type)
     const terminalId = preferredTerminal?.toLowerCase() || 'terminal';
 
-    console.log('[Claude Code] Using terminal:', terminalId);
+    console.debug('[Claude Code] Using terminal:', terminalId);
 
     if (terminalId === 'iterm2') {
       // iTerm2
@@ -234,7 +234,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       `;
     }
 
-    console.log('[Claude Code] Running AppleScript...');
+    console.debug('[Claude Code] Running AppleScript...');
     execFileSync('osascript', ['-e', script], { stdio: 'pipe' });
 
   } else if (platform === 'win32') {
@@ -243,8 +243,8 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     // 'gitbash', 'alacritty', 'wezterm', 'hyper', 'tabby', 'cygwin', 'msys2'
     const terminalId = preferredTerminal?.toLowerCase() || 'powershell';
 
-    console.log('[Claude Code] Using terminal:', terminalId);
-    console.log('[Claude Code] Command to run:', command);
+    console.debug('[Claude Code] Using terminal:', terminalId);
+    console.debug('[Claude Code] Command to run:', command);
 
     // For Windows, use exec with a properly formed command string
     // This is more reliable than spawn for complex PowerShell commands with pipes
@@ -252,7 +252,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
 
     const runWindowsCommand = (cmdString: string): Promise<void> => {
       return new Promise((resolve) => {
-        console.log(`[Claude Code] Executing: ${cmdString}`);
+        console.debug(`[Claude Code] Executing: ${cmdString}`);
         // Fire and forget - don't wait for the terminal to close
         // The -NoExit flag keeps the terminal open, so we can't wait for exec to complete
         const child = exec(cmdString, { windowsHide: false });
@@ -280,7 +280,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
           'C:\\Program Files\\Git\\git-bash.exe',
           'C:\\Program Files (x86)\\Git\\git-bash.exe',
         ];
-        let gitBashPath = gitBashPaths.find(p => existsSync(p));
+        const gitBashPath = gitBashPaths.find(p => existsSync(p));
         if (gitBashPath) {
           await runWindowsCommand(`"${gitBashPath}" -c "${escapedBashCommand}"`);
         } else {
@@ -340,7 +340,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
           // Launch Hyper and it will pick up the shell; send command via PowerShell since Hyper
           // doesn't have a built-in way to run commands on startup
           await runWindowsCommand(`start "" "${hyperPath}"`);
-          console.log('[Claude Code] Hyper opened - command must be pasted manually');
+          console.debug('[Claude Code] Hyper opened - command must be pasted manually');
         } else {
           console.warn('[Claude Code] Hyper not found, falling back to PowerShell');
           await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
@@ -355,7 +355,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         if (tabbyPath) {
           // Tabby opens with default shell; similar to Hyper, no command line arg for running commands
           await runWindowsCommand(`start "" "${tabbyPath}"`);
-          console.log('[Claude Code] Tabby opened - command must be pasted manually');
+          console.debug('[Claude Code] Tabby opened - command must be pasted manually');
         } else {
           console.warn('[Claude Code] Tabby not found, falling back to PowerShell');
           await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
@@ -411,7 +411,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     // Values match SupportedTerminal type: 'gnometerminal', 'konsole', 'xfce4terminal', 'tilix', etc.
     const terminalId = preferredTerminal?.toLowerCase() || '';
 
-    console.log('[Claude Code] Using terminal:', terminalId || 'auto-detect');
+    console.debug('[Claude Code] Using terminal:', terminalId || 'auto-detect');
 
     // Command to run (keep terminal open after execution)
     const bashCommand = `${command}; exec bash`;
@@ -490,7 +490,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       try {
         spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
         opened = true;
-        console.log('[Claude Code] Opened terminal:', cmd);
+        console.debug('[Claude Code] Opened terminal:', cmd);
         break;
       } catch {
         continue;
@@ -512,27 +512,27 @@ export function registerClaudeCodeHandlers(): void {
     IPC_CHANNELS.CLAUDE_CODE_CHECK_VERSION,
     async (): Promise<IPCResult<ClaudeCodeVersionInfo>> => {
       try {
-        console.log('[Claude Code] Checking version...');
+        console.debug('[Claude Code] Checking version...');
 
         // Get installed version via cli-tool-manager
         let detectionResult;
         try {
           detectionResult = getToolInfo('claude');
-          console.log('[Claude Code] Detection result:', JSON.stringify(detectionResult, null, 2));
+          console.debug('[Claude Code] Detection result:', JSON.stringify(detectionResult, null, 2));
         } catch (detectionError) {
           console.error('[Claude Code] Detection error:', detectionError);
           throw new Error(`Detection failed: ${detectionError instanceof Error ? detectionError.message : 'Unknown error'}`);
         }
 
         const installed = detectionResult.found ? detectionResult.version || null : null;
-        console.log('[Claude Code] Installed version:', installed);
+        console.debug('[Claude Code] Installed version:', installed);
 
         // Fetch latest version from npm
         let latest: string;
         try {
-          console.log('[Claude Code] Fetching latest version from npm...');
+          console.debug('[Claude Code] Fetching latest version from npm...');
           latest = await fetchLatestVersion();
-          console.log('[Claude Code] Latest version:', latest);
+          console.debug('[Claude Code] Latest version:', latest);
         } catch (error) {
           console.warn('[Claude Code] Failed to fetch latest version, continuing with unknown:', error);
           // If we can't fetch latest, still return installed info
@@ -562,7 +562,7 @@ export function registerClaudeCodeHandlers(): void {
           }
         }
 
-        console.log('[Claude Code] Check complete:', { installed, latest, isOutdated });
+        console.debug('[Claude Code] Check complete:', { installed, latest, isOutdated });
         return {
           success: true,
           data: {
@@ -594,17 +594,17 @@ export function registerClaudeCodeHandlers(): void {
         try {
           const detectionResult = getToolInfo('claude');
           isUpdate = detectionResult.found && !!detectionResult.version;
-          console.log('[Claude Code] Is update:', isUpdate, 'detected version:', detectionResult.version);
+          console.debug('[Claude Code] Is update:', isUpdate, 'detected version:', detectionResult.version);
         } catch {
           // Detection failed, assume fresh install
           isUpdate = false;
         }
 
         const command = getInstallCommand(isUpdate);
-        console.log('[Claude Code] Install command:', command);
-        console.log('[Claude Code] Opening terminal...');
+        console.debug('[Claude Code] Install command:', command);
+        console.debug('[Claude Code] Opening terminal...');
         await openTerminalWithCommand(command);
-        console.log('[Claude Code] Terminal opened successfully');
+        console.debug('[Claude Code] Terminal opened successfully');
 
         return {
           success: true,

@@ -274,14 +274,14 @@ def create_memory_tools(spec_dir: Path, project_dir: Path) -> list:
     tools.append(record_gotcha)
 
     # -------------------------------------------------------------------------
-    # Tool: get_session_context
+    # Tool: get_context
     # -------------------------------------------------------------------------
     @tool(
-        "get_session_context",
+        "get_context",
         "Get context from previous sessions including discoveries, gotchas, and patterns.",
         {},
     )
-    async def get_session_context(args: dict[str, Any]) -> dict[str, Any]:
+    async def get_context(args: dict[str, Any]) -> dict[str, Any]:
         """Get accumulated session context."""
         memory_dir = spec_dir / "memory"
 
@@ -349,6 +349,6 @@ def create_memory_tools(spec_dir: Path, project_dir: Path) -> list:
 
         return {"content": [{"type": "text", "text": "\n".join(result_parts)}]}
 
-    tools.append(get_session_context)
+    tools.append(get_context)
 
     return tools

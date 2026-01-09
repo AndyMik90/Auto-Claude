@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Claude Integration Handler
  * Manages Claude-specific operations including profile switching, rate limiting, and OAuth token detection
  */
@@ -119,7 +119,7 @@ type SessionCaptureCallback = (terminalId: string, projectPath: string, startTim
  *   '/path/to/project',
  *   Date.now(),
  *   () => mainWindow,
- *   (id, path, time) => console.log('Session captured')
+ *   (id, path, time) => console.debug('Session captured')
  * );
  */
 export function finalizeClaudeInvoke(
@@ -683,10 +683,10 @@ interface WaitForExitResult {
  * These patterns match common shell prompts across bash, zsh, fish, etc.
  */
 const SHELL_PROMPT_PATTERNS = [
-  /[$%#>❯]\s*$/m,                    // Common prompt endings: $, %, #, >, ❯
+  /[$%#>â¯]\s*$/m,                    // Common prompt endings: $, %, #, >, â¯
   /\w+@[\w.-]+[:\s]/,                // user@hostname: format
-  /^\s*\S+\s*[$%#>❯]\s*$/m,          // hostname/path followed by prompt char
-  /\(.*\)\s*[$%#>❯]\s*$/m,           // (venv) or (branch) followed by prompt
+  /^\s*\S+\s*[$%#>â¯]\s*$/m,          // hostname/path followed by prompt char
+  /\(.*\)\s*[$%#>â¯]\s*$/m,           // (venv) or (branch) followed by prompt
 ];
 
 /**

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Sentry Error Tracking for Main Process
  *
  * Initializes Sentry with:
@@ -102,8 +102,8 @@ export function initSentryMain(): void {
   const shouldEnable = hasDsn && (app.isPackaged || process.env.SENTRY_DEV === 'true');
 
   if (!hasDsn) {
-    console.log('[Sentry] No SENTRY_DSN configured - error reporting disabled');
-    console.log('[Sentry] To enable: set SENTRY_DSN environment variable');
+    console.debug('[Sentry] No SENTRY_DSN configured - error reporting disabled');
+    console.debug('[Sentry] To enable: set SENTRY_DSN environment variable');
   }
 
   Sentry.init({
@@ -130,7 +130,7 @@ export function initSentryMain(): void {
   // Listen for settings changes from renderer process
   ipcMain.on(IPC_CHANNELS.SENTRY_STATE_CHANGED, (_event, enabled: boolean) => {
     sentryEnabledState = enabled;
-    console.log(`[Sentry] Error reporting ${enabled ? 'enabled' : 'disabled'} (via IPC)`);
+    console.debug(`[Sentry] Error reporting ${enabled ? 'enabled' : 'disabled'} (via IPC)`);
   });
 
   // IPC handler for renderer to get Sentry config
@@ -147,7 +147,7 @@ export function initSentryMain(): void {
   });
 
   if (hasDsn) {
-    console.log(`[Sentry] Main process initialized (enabled: ${sentryEnabledState}, traces: ${cachedTracesSampleRate}, profiles: ${cachedProfilesSampleRate})`);
+    console.debug(`[Sentry] Main process initialized (enabled: ${sentryEnabledState}, traces: ${cachedTracesSampleRate}, profiles: ${cachedProfilesSampleRate})`);
   }
 }
 
@@ -163,5 +163,5 @@ export function isSentryEnabled(): boolean {
  */
 export function setSentryEnabled(enabled: boolean): void {
   sentryEnabledState = enabled;
-  console.log(`[Sentry] Error reporting ${enabled ? 'enabled' : 'disabled'} (programmatic)`);
+  console.debug(`[Sentry] Error reporting ${enabled ? 'enabled' : 'disabled'} (programmatic)`);
 }

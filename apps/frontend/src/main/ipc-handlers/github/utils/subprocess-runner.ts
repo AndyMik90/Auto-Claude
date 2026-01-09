@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Subprocess runner utilities for GitHub Python runners
  *
  * Provides a consistent abstraction for spawning and managing Python subprocesses
@@ -156,10 +156,10 @@ export function runPythonSubprocess<T = unknown>(
 
       // Debug logging only in development mode
       if (process.env.NODE_ENV === 'development') {
-        console.log('[DEBUG] Process exited with code:', exitCode);
-        console.log('[DEBUG] Raw stdout length:', stdout.length);
-        console.log('[DEBUG] Raw stdout (first 1000 chars):', stdout.substring(0, 1000));
-        console.log('[DEBUG] Raw stderr (first 500 chars):', stderr.substring(0, 500));
+        console.debug('[DEBUG] Process exited with code:', exitCode);
+        console.debug('[DEBUG] Raw stdout length:', stdout.length);
+        console.debug('[DEBUG] Raw stdout (first 1000 chars):', stdout.substring(0, 1000));
+        console.debug('[DEBUG] Raw stderr (first 500 chars):', stderr.substring(0, 500));
       }
 
       if (exitCode === 0) {
@@ -449,7 +449,7 @@ export function parseJSONFromOutput<T>(stdout: string): T {
 
     try {
       // Debug: log the exact string we're trying to parse
-      console.log('[DEBUG] Attempting to parse JSON:', jsonStr.substring(0, 200) + '...');
+      console.debug('[DEBUG] Attempting to parse JSON:', jsonStr.substring(0, 200) + '...');
       return JSON.parse(jsonStr);
     } catch (parseError) {
       // Provide a more helpful error message with details

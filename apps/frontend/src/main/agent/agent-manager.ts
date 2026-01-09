@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+﻿import { EventEmitter } from 'events';
 import path from 'path';
 import { existsSync } from 'fs';
 import { AgentState } from './agent-state';
@@ -45,9 +45,9 @@ export class AgentManager extends EventEmitter {
 
     // Listen for auto-swap restart events
     this.on('auto-swap-restart-task', (taskId: string, newProfileId: string) => {
-      console.log('[AgentManager] Received auto-swap-restart-task event:', { taskId, newProfileId });
+      console.debug('[AgentManager] Received auto-swap-restart-task event:', { taskId, newProfileId });
       const success = this.restartTask(taskId, newProfileId);
-      console.log('[AgentManager] Task restart result:', success ? 'SUCCESS' : 'FAILED');
+      console.debug('[AgentManager] Task restart result:', success ? 'SUCCESS' : 'FAILED');
     });
 
     // Listen for task completion to clean up context (prevent memory leak)
@@ -375,16 +375,16 @@ export class AgentManager extends EventEmitter {
    * @param newProfileId - Optional new profile ID to apply (from auto-swap)
    */
   restartTask(taskId: string, newProfileId?: string): boolean {
-    console.log('[AgentManager] restartTask called for:', taskId, 'with newProfileId:', newProfileId);
+    console.debug('[AgentManager] restartTask called for:', taskId, 'with newProfileId:', newProfileId);
 
     const context = this.taskExecutionContext.get(taskId);
     if (!context) {
       console.error('[AgentManager] No context for task:', taskId);
-      console.log('[AgentManager] Available task contexts:', Array.from(this.taskExecutionContext.keys()));
+      console.debug('[AgentManager] Available task contexts:', Array.from(this.taskExecutionContext.keys()));
       return false;
     }
 
-    console.log('[AgentManager] Task context found:', {
+    console.debug('[AgentManager] Task context found:', {
       taskId,
       projectPath: context.projectPath,
       specId: context.specId,
@@ -399,28 +399,28 @@ export class AgentManager extends EventEmitter {
     }
 
     context.swapCount++;
-    console.log('[AgentManager] Incremented swap count to:', context.swapCount);
+    console.debug('[AgentManager] Incremented swap count to:', context.swapCount);
 
     // If a new profile was specified, ensure it's set as active before restart
     if (newProfileId) {
       const profileManager = getClaudeProfileManager();
       const currentActiveId = profileManager.getActiveProfile()?.id;
       if (currentActiveId !== newProfileId) {
-        console.log('[AgentManager] Setting active profile to:', newProfileId);
+        console.debug('[AgentManager] Setting active profile to:', newProfileId);
         profileManager.setActiveProfile(newProfileId);
       }
     }
 
     // Kill current process
-    console.log('[AgentManager] Killing current process for task:', taskId);
+    console.debug('[AgentManager] Killing current process for task:', taskId);
     this.killTask(taskId);
 
     // Wait for cleanup, then restart
-    console.log('[AgentManager] Scheduling task restart in 500ms');
+    console.debug('[AgentManager] Scheduling task restart in 500ms');
     setTimeout(() => {
-      console.log('[AgentManager] Restarting task now:', taskId);
+      console.debug('[AgentManager] Restarting task now:', taskId);
       if (context.isSpecCreation) {
-        console.log('[AgentManager] Restarting as spec creation');
+        console.debug('[AgentManager] Restarting as spec creation');
         this.startSpecCreation(
           taskId,
           context.projectPath,
@@ -430,7 +430,7 @@ export class AgentManager extends EventEmitter {
           context.baseBranch
         );
       } else {
-        console.log('[AgentManager] Restarting as task execution');
+        console.debug('[AgentManager] Restarting as task execution');
         this.startTaskExecution(
           taskId,
           context.projectPath,

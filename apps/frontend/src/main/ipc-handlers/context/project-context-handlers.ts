@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+﻿import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
@@ -163,7 +163,7 @@ export function registerProjectContextHandlers(
         // Get configured Python path (venv if ready, otherwise bundled/system)
         // This ensures we use the venv Python which has dependencies installed
         const pythonCmd = getConfiguredPythonPath();
-        console.log('[project-context] Using Python:', pythonCmd);
+        console.debug('[project-context] Using Python:', pythonCmd);
 
         const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonCmd);
 
@@ -192,7 +192,7 @@ export function registerProjectContextHandlers(
 
           proc.on('close', (code: number) => {
             if (code === 0) {
-              console.log('[project-context] Analyzer stdout:', stdout);
+              console.debug('[project-context] Analyzer stdout:', stdout);
               resolve();
             } else {
               console.error('[project-context] Analyzer failed with code', code);

@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, shell, app } from 'electron';
+﻿import { ipcMain, BrowserWindow, shell, app } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
 import path from 'path';
@@ -1049,7 +1049,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
   const terminals: DetectedTool[] = [];
 
   // Build app cache using platform-native detection (fast!)
-  console.log('[DevTools] Starting smart app detection...');
+  console.debug('[DevTools] Starting smart app detection...');
   const startTime = Date.now();
 
   if (platform === 'darwin') {
@@ -1060,7 +1060,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
     installedAppsCache = await detectLinuxApps();
   }
 
-  console.log(`[DevTools] Found ${installedAppsCache.size} apps in ${Date.now() - startTime}ms`);
+  console.debug(`[DevTools] Found ${installedAppsCache.size} apps in ${Date.now() - startTime}ms`);
 
   // Detect IDEs using cached app list + specific path checks
   for (const [id, config] of Object.entries(IDE_DETECTION)) {
@@ -1136,7 +1136,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
     });
   }
 
-  console.log(`[DevTools] Detection complete: ${ides.length} IDEs, ${terminals.length} terminals`);
+  console.debug(`[DevTools] Detection complete: ${ides.length} IDEs, ${terminals.length} terminals`);
   return { ides, terminals };
 }
 

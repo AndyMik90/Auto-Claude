@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CLI Tool Manager
  *
  * Centralized management for CLI tools (Python, Git, GitHub CLI, Claude CLI) used throughout
@@ -1705,10 +1705,10 @@ export function configureTools(config: ToolConfig): void {
  * import { getToolInfo } from './cli-tool-manager';
  *
  * const pythonInfo = getToolInfo('python');
- * console.log(`Found: ${pythonInfo.found}`);
- * console.log(`Path: ${pythonInfo.path}`);
- * console.log(`Version: ${pythonInfo.version}`);
- * console.log(`Source: ${pythonInfo.source}`);
+ * console.debug(`Found: ${pythonInfo.found}`);
+ * console.debug(`Path: ${pythonInfo.path}`);
+ * console.debug(`Version: ${pythonInfo.version}`);
+ * console.debug(`Source: ${pythonInfo.source}`);
  * ```
  */
 export function getToolInfo(tool: CLITool): ToolDetectionResult {

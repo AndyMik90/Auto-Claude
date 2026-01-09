@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Memory Infrastructure IPC Handlers
  *
  * Provides memory database status and validation for the Graphiti integration.
@@ -292,7 +292,7 @@ async function executeOllamaDetector(
   }
 
   if (process.env.DEBUG) {
-    console.log('[OllamaDetector] Using script at:', scriptPath);
+    console.debug('[OllamaDetector] Using script at:', scriptPath);
   }
 
   const [pythonExe, baseArgs] = parsePythonCommand(pythonCmd);
@@ -610,12 +610,12 @@ export function registerMemoryHandlers(): void {
     async (): Promise<IPCResult<{ command: string }>> => {
       try {
         const command = getOllamaInstallCommand();
-        console.log('[Ollama] Platform:', process.platform);
-        console.log('[Ollama] Install command:', command);
-        console.log('[Ollama] Opening terminal...');
+        console.debug('[Ollama] Platform:', process.platform);
+        console.debug('[Ollama] Install command:', command);
+        console.debug('[Ollama] Opening terminal...');
 
         await openTerminalWithCommand(command);
-        console.log('[Ollama] Terminal opened successfully');
+        console.debug('[Ollama] Terminal opened successfully');
 
         return {
           success: true,

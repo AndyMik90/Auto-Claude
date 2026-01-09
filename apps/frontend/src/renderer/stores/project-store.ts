@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type { Project, ProjectSettings, AutoBuildVersionInfo, InitializationResult } from '../../shared/types';
 
 // localStorage keys for persisting project state (legacy - now using IPC)
@@ -96,7 +96,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   // Tab management actions
   openProjectTab: (projectId) => {
     const state = get();
-    console.log('[ProjectStore] openProjectTab called:', {
+    console.debug('[ProjectStore] openProjectTab called:', {
       projectId,
       currentOpenProjectIds: state.openProjectIds,
       currentTabOrder: state.tabOrder
@@ -107,7 +107,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ? state.tabOrder
         : [...state.tabOrder, projectId];
 
-      console.log('[ProjectStore] Adding new tab:', {
+      console.debug('[ProjectStore] Adding new tab:', {
         newOpenProjectIds,
         newTabOrder
       });
@@ -121,7 +121,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       // Save to main process (debounced)
       saveTabStateToMain();
     } else {
-      console.log('[ProjectStore] Project already open, just activating');
+      console.debug('[ProjectStore] Project already open, just activating');
       // Project already open, just make it active
       get().setActiveProject(projectId);
     }
@@ -170,7 +170,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   restoreTabState: () => {
     // This is now handled by loadTabStateFromMain() called during loadProjects()
-    console.log('[ProjectStore] restoreTabState called - now handled by IPC');
+    console.debug('[ProjectStore] restoreTabState called - now handled by IPC');
   },
 
 
@@ -222,7 +222,7 @@ function saveTabStateToMain(): void {
       activeProjectId: store.activeProjectId,
       tabOrder: store.tabOrder
     };
-    console.log('[ProjectStore] Saving tab state to main process:', tabState);
+    console.debug('[ProjectStore] Saving tab state to main process:', tabState);
     try {
       await window.electronAPI.saveTabState(tabState);
     } catch (err) {
@@ -242,7 +242,7 @@ export async function loadProjects(): Promise<void> {
   try {
     // First, load tab state from main process (reliable persistence)
     const tabStateResult = await window.electronAPI.getTabState();
-    console.log('[ProjectStore] Loaded tab state from main process:', tabStateResult.data);
+    console.debug('[ProjectStore] Loaded tab state from main process:', tabStateResult.data);
 
     if (tabStateResult.success && tabStateResult.data) {
       useProjectStore.setState({
@@ -254,7 +254,7 @@ export async function loadProjects(): Promise<void> {
 
     // Then load projects
     const result = await window.electronAPI.getProjects();
-    console.log('[ProjectStore] getProjects result:', {
+    console.debug('[ProjectStore] getProjects result:', {
       success: result.success,
       projectCount: result.data?.length,
       projectIds: result.data?.map(p => p.id)
@@ -278,7 +278,7 @@ export async function loadProjects(): Promise<void> {
         ? currentState.activeProjectId
         : null;
 
-      console.log('[ProjectStore] Tab state cleanup:', {
+      console.debug('[ProjectStore] Tab state cleanup:', {
         originalOpenProjectIds: currentState.openProjectIds,
         validOpenProjectIds,
         originalTabOrder: currentState.tabOrder,
@@ -291,7 +291,7 @@ export async function loadProjects(): Promise<void> {
       if (validOpenProjectIds.length !== currentState.openProjectIds.length ||
           validTabOrder.length !== currentState.tabOrder.length ||
           validActiveProjectId !== currentState.activeProjectId) {
-        console.log('[ProjectStore] Updating cleaned tab state');
+        console.debug('[ProjectStore] Updating cleaned tab state');
         useProjectStore.setState({
           openProjectIds: validOpenProjectIds,
           tabOrder: validTabOrder,
@@ -300,7 +300,7 @@ export async function loadProjects(): Promise<void> {
         // Save cleaned state back to main process
         saveTabStateToMain();
       } else {
-        console.log('[ProjectStore] Tab state is valid, no cleanup needed');
+        console.debug('[ProjectStore] Tab state is valid, no cleanup needed');
       }
 
       // Restore last selected project from localStorage for backward compatibility,
@@ -429,22 +429,22 @@ export async function initializeProject(
   const store = useProjectStore.getState();
 
   try {
-    console.log('[ProjectStore] initializeProject called for:', projectId);
+    console.debug('[ProjectStore] initializeProject called for:', projectId);
     const result = await window.electronAPI.initializeProject(projectId);
-    console.log('[ProjectStore] IPC result:', result);
+    console.debug('[ProjectStore] IPC result:', result);
 
     if (result.success && result.data) {
-      console.log('[ProjectStore] IPC succeeded, result.data:', result.data);
+      console.debug('[ProjectStore] IPC succeeded, result.data:', result.data);
       // Update the project's autoBuildPath in local state
       if (result.data.success) {
-        console.log('[ProjectStore] Updating project autoBuildPath to .auto-claude');
+        console.debug('[ProjectStore] Updating project autoBuildPath to .auto-claude');
         store.updateProject(projectId, { autoBuildPath: '.auto-claude' });
       } else {
-        console.log('[ProjectStore] result.data.success is false, not updating project');
+        console.debug('[ProjectStore] result.data.success is false, not updating project');
       }
       return result.data;
     }
-    console.log('[ProjectStore] IPC failed or no data, setting error');
+    console.debug('[ProjectStore] IPC failed or no data, setting error');
     store.setError(result.error || 'Failed to initialize project');
     return null;
   } catch (error) {

@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+﻿import { useState, useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewState } from '../contexts/ViewStateContext';
 import {
@@ -104,7 +104,7 @@ function droppableColumnPropsAreEqual(
 
   // Only log when re-rendering (reduces noise)
   if (window.DEBUG && !tasksEqual) {
-    console.log(`[DroppableColumn] Re-render: ${nextProps.status} column (${nextProps.tasks.length} tasks)`);
+    console.debug(`[DroppableColumn] Re-render: ${nextProps.status} column (${nextProps.tasks.length} tasks)`);
   }
 
   return tasksEqual;

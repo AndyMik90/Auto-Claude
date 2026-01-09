@@ -1,4 +1,4 @@
-import { execSync, execFileSync } from 'child_process';
+﻿import { execSync, execFileSync } from 'child_process';
 import { existsSync, accessSync, constants } from 'fs';
 import path from 'path';
 import { app } from 'electron';
@@ -25,11 +25,11 @@ export function getBundledPythonPath(): string | null {
     : path.join(resourcesPath, 'python', 'bin', 'python3');
 
   if (existsSync(pythonPath)) {
-    console.log(`[Python] Found bundled Python at: ${pythonPath}`);
+    console.debug(`[Python] Found bundled Python at: ${pythonPath}`);
     return pythonPath;
   }
 
-  console.log(`[Python] Bundled Python not found at: ${pythonPath}`);
+  console.debug(`[Python] Bundled Python not found at: ${pythonPath}`);
   return null;
 }
 
@@ -60,7 +60,7 @@ export function findPythonCommand(): string | null {
     try {
       const validation = validatePythonVersion(bundledPython);
       if (validation.valid) {
-        console.log(`[Python] Using bundled Python: ${bundledPython} (${validation.version})`);
+        console.debug(`[Python] Using bundled Python: ${bundledPython} (${validation.version})`);
         return bundledPython;
       } else {
         console.warn(`[Python] Bundled Python version issue: ${validation.message}`);
@@ -71,7 +71,7 @@ export function findPythonCommand(): string | null {
   }
 
   // 2. Fall back to system Python
-  console.log(`[Python] Searching for system Python...`);
+  console.debug(`[Python] Searching for system Python...`);
 
   // Build candidate list prioritizing Homebrew Python on macOS
   let candidates: string[];
@@ -89,7 +89,7 @@ export function findPythonCommand(): string | null {
       // Validate version meets minimum requirement (Python 3.10+)
       const validation = validatePythonVersion(cmd);
       if (validation.valid) {
-        console.log(`[Python] Found valid system Python: ${cmd} (${validation.version})`);
+        console.debug(`[Python] Found valid system Python: ${cmd} (${validation.version})`);
         return cmd;
       } else {
         console.warn(`[Python] ${cmd} version too old: ${validation.message}`);
@@ -117,7 +117,7 @@ export function findPythonCommand(): string | null {
  */
 function getPythonVersion(pythonCmd: string): string | null {
   try {
-    const version = execSync(`${pythonCmd} --version`, {
+    const version = execSync(`"${pythonCmd}" --version`, {
       stdio: 'pipe',
       timeout: 5000,
       windowsHide: true
@@ -212,7 +212,7 @@ export function parsePythonCommand(pythonPath: string): [string, string[]] {
   }
 
   if ((cleanPath.startsWith('"') && cleanPath.endsWith('"')) ||
-      (cleanPath.startsWith("'") && cleanPath.endsWith("'"))) {
+    (cleanPath.startsWith("'") && cleanPath.endsWith("'"))) {
     cleanPath = cleanPath.slice(1, -1);
     // Validate again after quote removal
     if (cleanPath === '') {
@@ -381,7 +381,7 @@ export function validatePythonPath(pythonPath: string): PythonPathValidation {
   // Strip surrounding quotes for validation
   let cleanPath = trimmedPath;
   if ((cleanPath.startsWith('"') && cleanPath.endsWith('"')) ||
-      (cleanPath.startsWith("'") && cleanPath.endsWith("'"))) {
+    (cleanPath.startsWith("'") && cleanPath.endsWith("'"))) {
     cleanPath = cleanPath.slice(1, -1);
   }
 

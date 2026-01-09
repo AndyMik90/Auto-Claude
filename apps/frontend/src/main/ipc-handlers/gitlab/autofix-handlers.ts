@@ -1,4 +1,4 @@
-/**
+﻿/**
  * GitLab Auto-Fix IPC handlers
  *
  * Handles automatic fixing of GitLab issues by:
@@ -27,7 +27,7 @@ import type {
 
 // Debug logging
 function debugLog(message: string, ...args: unknown[]): void {
-  console.log(`[GitLab AutoFix] ${message}`, ...args);
+  console.debug(`[GitLab AutoFix] ${message}`, ...args);
 }
 
 function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {

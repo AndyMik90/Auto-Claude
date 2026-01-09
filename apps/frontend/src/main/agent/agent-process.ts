@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+﻿import { spawn } from 'child_process';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { app } from 'electron';
@@ -55,14 +55,14 @@ function deriveGitBashPath(gitExePath: string): string | null {
     const bashPath = path.join(gitRoot, 'bin', 'bash.exe');
 
     if (existsSync(bashPath)) {
-      console.log('[AgentProcess] Derived git-bash path:', bashPath);
+      console.debug('[AgentProcess] Derived git-bash path:', bashPath);
       return bashPath;
     }
 
     // Fallback: check one level up if gitRoot didn't work
     const altBashPath = path.join(path.dirname(gitRoot), 'bin', 'bash.exe');
     if (existsSync(altBashPath)) {
-      console.log('[AgentProcess] Found git-bash at alternate path:', altBashPath);
+      console.debug('[AgentProcess] Found git-bash at alternate path:', altBashPath);
       return altBashPath;
     }
 
@@ -126,7 +126,7 @@ export class AgentProcessManager {
           const bashPath = deriveGitBashPath(gitInfo.path);
           if (bashPath) {
             gitBashEnv['CLAUDE_CODE_GIT_BASH_PATH'] = bashPath;
-            console.log('[AgentProcess] Setting CLAUDE_CODE_GIT_BASH_PATH:', bashPath);
+            console.debug('[AgentProcess] Setting CLAUDE_CODE_GIT_BASH_PATH:', bashPath);
           }
         }
       } catch (error) {
@@ -150,10 +150,10 @@ export class AgentProcessManager {
     allOutput: string,
     processType: ProcessType
   ): boolean {
-    console.log('[AgentProcess] Checking for rate limit in output (last 500 chars):', allOutput.slice(-500));
+    console.debug('[AgentProcess] Checking for rate limit in output (last 500 chars):', allOutput.slice(-500));
 
     const rateLimitDetection = detectRateLimit(allOutput);
-    console.log('[AgentProcess] Rate limit detection result:', {
+    console.debug('[AgentProcess] Rate limit detection result:', {
       isRateLimited: rateLimitDetection.isRateLimited,
       resetTime: rateLimitDetection.resetTime,
       limitType: rateLimitDetection.limitType,
@@ -171,7 +171,7 @@ export class AgentProcessManager {
 
       const source = processType === 'spec-creation' ? 'roadmap' : 'task';
       const rateLimitInfo = createSDKRateLimitInfo(source, rateLimitDetection, { taskId });
-      console.log('[AgentProcess] Emitting sdk-rate-limit event (manual):', rateLimitInfo);
+      console.debug('[AgentProcess] Emitting sdk-rate-limit event (manual):', rateLimitInfo);
       this.emitter.emit('sdk-rate-limit', rateLimitInfo);
       return true;
     }
@@ -187,31 +187,31 @@ export class AgentProcessManager {
     const profileManager = getClaudeProfileManager();
     const autoSwitchSettings = profileManager.getAutoSwitchSettings();
 
-    console.log('[AgentProcess] Auto-switch settings:', {
+    console.debug('[AgentProcess] Auto-switch settings:', {
       enabled: autoSwitchSettings.enabled,
       autoSwitchOnRateLimit: autoSwitchSettings.autoSwitchOnRateLimit,
       proactiveSwapEnabled: autoSwitchSettings.proactiveSwapEnabled
     });
 
     if (!autoSwitchSettings.enabled || !autoSwitchSettings.autoSwitchOnRateLimit) {
-      console.log('[AgentProcess] Auto-switch disabled - showing manual modal');
+      console.debug('[AgentProcess] Auto-switch disabled - showing manual modal');
       return false;
     }
 
     const currentProfileId = rateLimitDetection.profileId;
     const bestProfile = profileManager.getBestAvailableProfile(currentProfileId);
 
-    console.log('[AgentProcess] Best available profile:', bestProfile ? {
+    console.debug('[AgentProcess] Best available profile:', bestProfile ? {
       id: bestProfile.id,
       name: bestProfile.name
     } : 'NONE');
 
     if (!bestProfile) {
-      console.log('[AgentProcess] No alternative profile available - falling back to manual modal');
+      console.debug('[AgentProcess] No alternative profile available - falling back to manual modal');
       return false;
     }
 
-    console.log('[AgentProcess] AUTO-SWAP: Switching from', currentProfileId, 'to', bestProfile.id);
+    console.debug('[AgentProcess] AUTO-SWAP: Switching from', currentProfileId, 'to', bestProfile.id);
     profileManager.setActiveProfile(bestProfile.id);
 
     const source = processType === 'spec-creation' ? 'roadmap' : 'task';
@@ -220,20 +220,20 @@ export class AgentProcessManager {
     rateLimitInfo.swappedToProfile = { id: bestProfile.id, name: bestProfile.name };
     rateLimitInfo.swapReason = 'reactive';
 
-    console.log('[AgentProcess] Emitting sdk-rate-limit event (auto-swapped):', rateLimitInfo);
+    console.debug('[AgentProcess] Emitting sdk-rate-limit event (auto-swapped):', rateLimitInfo);
     this.emitter.emit('sdk-rate-limit', rateLimitInfo);
 
-    console.log('[AgentProcess] Emitting auto-swap-restart-task event for task:', taskId);
+    console.debug('[AgentProcess] Emitting auto-swap-restart-task event for task:', taskId);
     this.emitter.emit('auto-swap-restart-task', taskId, bestProfile.id);
     return true;
   }
 
   private handleAuthFailure(taskId: string, allOutput: string): boolean {
-    console.log('[AgentProcess] No rate limit detected - checking for auth failure');
+    console.debug('[AgentProcess] No rate limit detected - checking for auth failure');
     const authFailureDetection = detectAuthFailure(allOutput);
 
     if (authFailureDetection.isAuthFailure) {
-      console.log('[AgentProcess] Auth failure detected:', authFailureDetection);
+      console.debug('[AgentProcess] Auth failure detected:', authFailureDetection);
       this.emitter.emit('auth-failure', taskId, {
         profileId: authFailureDetection.profileId,
         failureType: authFailureDetection.failureType,
@@ -243,7 +243,7 @@ export class AgentProcessManager {
       return true;
     }
 
-    console.log('[AgentProcess] Process failed but no rate limit or auth failure detected');
+    console.debug('[AgentProcess] Process failed but no rate limit or auth failure detected');
     return false;
   }
 
@@ -470,20 +470,20 @@ export class AgentProcessManager {
 
       const hasMarker = line.includes('__EXEC_PHASE__');
       if (isDebug && hasMarker) {
-        console.log(`[PhaseDebug:${taskId}] Found marker in line: "${line.substring(0, 200)}"`);
+        console.debug(`[PhaseDebug:${taskId}] Found marker in line: "${line.substring(0, 200)}"`);
       }
 
       const phaseUpdate = this.events.parseExecutionPhase(line, currentPhase, isSpecRunner);
 
       if (isDebug && hasMarker) {
-        console.log(`[PhaseDebug:${taskId}] Parse result:`, phaseUpdate);
+        console.debug(`[PhaseDebug:${taskId}] Parse result:`, phaseUpdate);
       }
 
       if (phaseUpdate) {
         const phaseChanged = phaseUpdate.phase !== currentPhase;
 
         if (isDebug) {
-          console.log(`[PhaseDebug:${taskId}] Phase update: ${currentPhase} -> ${phaseUpdate.phase} (changed: ${phaseChanged})`);
+          console.debug(`[PhaseDebug:${taskId}] Phase update: ${currentPhase} -> ${phaseUpdate.phase} (changed: ${phaseChanged})`);
         }
 
         currentPhase = phaseUpdate.phase;
@@ -504,7 +504,7 @@ export class AgentProcessManager {
         const overallProgress = this.events.calculateOverallProgress(currentPhase, phaseProgress);
 
         if (isDebug) {
-          console.log(`[PhaseDebug:${taskId}] Emitting execution-progress:`, { phase: currentPhase, phaseProgress, overallProgress });
+          console.debug(`[PhaseDebug:${taskId}] Emitting execution-progress:`, { phase: currentPhase, phaseProgress, overallProgress });
         }
 
         this.emitter.emit('execution-progress', taskId, {
@@ -520,8 +520,8 @@ export class AgentProcessManager {
 
     const processBufferedOutput = (buffer: string, newData: string): string => {
       if (isDebug && newData.includes('__EXEC_PHASE__')) {
-        console.log(`[PhaseDebug:${taskId}] Raw chunk with marker (${newData.length} bytes): "${newData.substring(0, 300)}"`);
-        console.log(`[PhaseDebug:${taskId}] Current buffer before append (${buffer.length} bytes): "${buffer.substring(0, 100)}"`);
+        console.debug(`[PhaseDebug:${taskId}] Raw chunk with marker (${newData.length} bytes): "${newData.substring(0, 300)}"`);
+        console.debug(`[PhaseDebug:${taskId}] Current buffer before append (${buffer.length} bytes): "${buffer.substring(0, 100)}"`);
       }
 
       buffer += newData;
@@ -529,7 +529,7 @@ export class AgentProcessManager {
       const remaining = lines.pop() || '';
 
       if (isDebug && newData.includes('__EXEC_PHASE__')) {
-        console.log(`[PhaseDebug:${taskId}] Split into ${lines.length} complete lines, remaining buffer: "${remaining.substring(0, 100)}"`);
+        console.debug(`[PhaseDebug:${taskId}] Split into ${lines.length} complete lines, remaining buffer: "${remaining.substring(0, 100)}"`);
       }
 
       for (const line of lines) {
@@ -537,7 +537,7 @@ export class AgentProcessManager {
           this.emitter.emit('log', taskId, line + '\n');
           processLog(line);
           if (isDebug) {
-            console.log(`[Agent:${taskId}] ${line}`);
+            console.debug(`[Agent:${taskId}] ${line}`);
           }
         }
       }
@@ -571,7 +571,7 @@ export class AgentProcessManager {
       }
 
       if (code !== 0) {
-        console.log('[AgentProcess] Process failed with code:', code, 'for task:', taskId);
+        console.debug('[AgentProcess] Process failed with code:', code, 'for task:', taskId);
         const wasHandled = this.handleProcessFailure(taskId, allOutput, processType);
         if (wasHandled) {
           this.emitter.emit('exit', taskId, code, processType);

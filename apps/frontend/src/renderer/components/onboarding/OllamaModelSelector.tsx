@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Check,
@@ -97,7 +97,7 @@ const RECOMMENDED_MODELS: OllamaModel[] = [
  * ```tsx
  * <OllamaModelSelector
  *   selectedModel="embeddinggemma"
- *   onModelSelect={(model, dim) => console.log(`Selected ${model} with ${dim} dimensions`)}
+ *   onModelSelect={(model, dim) => console.debug(`Selected ${model} with ${dim} dimensions`)}
  *   disabled={false}
  * />
  * ```

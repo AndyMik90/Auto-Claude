@@ -1,4 +1,4 @@
-// Load .env file FIRST before any other imports that might use process.env
+﻿// Load .env file FIRST before any other imports that might use process.env
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
 import { existsSync } from 'fs';
@@ -15,7 +15,7 @@ const possibleEnvPaths = [
 for (const envPath of possibleEnvPaths) {
   if (existsSync(envPath)) {
     config({ path: envPath });
-    console.log(`[dotenv] Loaded environment from: ${envPath}`);
+    console.debug(`[dotenv] Loaded environment from: ${envPath}`);
     break;
   }
 }
@@ -39,9 +39,9 @@ import { preWarmToolCache } from './cli-tool-manager';
 import { initializeClaudeProfileManager } from './claude-profile-manager';
 import type { AppSettings } from '../shared/types';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Window sizing constants
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /** Preferred window width on startup */
 const WINDOW_PREFERRED_WIDTH: number = 1400;
 /** Preferred window height on startup */
@@ -224,7 +224,7 @@ if (process.platform === 'darwin') {
 if (process.platform === 'win32') {
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
   app.commandLine.appendSwitch('disable-gpu-program-cache');
-  console.log('[main] Applied Windows GPU cache fixes');
+  console.debug('[main] Applied Windows GPU cache fixes');
 }
 
 // Initialize the application
@@ -235,7 +235,7 @@ app.whenReady().then(() => {
   // Clear cache on Windows to prevent permission errors from stale cache
   if (process.platform === 'win32') {
     session.defaultSession.clearCache()
-      .then(() => console.log('[main] Cleared cache on startup'))
+      .then(() => console.debug('[main] Cleared cache on startup'))
       .catch((err) => console.warn('[main] Failed to clear cache:', err));
   }
 
@@ -303,7 +303,7 @@ app.whenReady().then(() => {
           }
 
           if (correctedPathExists) {
-            console.log('[main] Migrating autoBuildPath from old structure:', validAutoBuildPath, '->', correctedPath);
+            console.debug('[main] Migrating autoBuildPath from old structure:', validAutoBuildPath, '->', correctedPath);
             settings.autoBuildPath = correctedPath;
             validAutoBuildPath = correctedPath;
             migrated = true;
@@ -311,7 +311,7 @@ app.whenReady().then(() => {
             // Save the corrected setting - we're the only process modifying settings at startup
             try {
               writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-              console.log('[main] Successfully saved migrated autoBuildPath to settings');
+              console.debug('[main] Successfully saved migrated autoBuildPath to settings');
             } catch (writeError) {
               console.warn('[main] Failed to save migrated autoBuildPath:', writeError);
             }

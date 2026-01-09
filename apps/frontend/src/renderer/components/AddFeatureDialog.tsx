@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AddFeatureDialog - Dialog for adding new features to the roadmap
  *
  * Allows users to create new roadmap features with title, description,
@@ -16,7 +16,7 @@
  *   phases={roadmap.phases}
  *   open={isAddDialogOpen}
  *   onOpenChange={setIsAddDialogOpen}
- *   onFeatureAdded={(featureId) => console.log('Feature added:', featureId)}
+ *   onFeatureAdded={(featureId) => console.debug('Feature added:', featureId)}
  * />
  * ```
  */

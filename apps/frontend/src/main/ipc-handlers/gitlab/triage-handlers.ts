@@ -1,4 +1,4 @@
-/**
+﻿/**
  * GitLab Triage IPC handlers
  *
  * Handles automatic triage of GitLab issues by:
@@ -23,7 +23,7 @@ import type {
 
 // Debug logging
 function debugLog(message: string, ...args: unknown[]): void {
-  console.log(`[GitLab Triage] ${message}`, ...args);
+  console.debug(`[GitLab Triage] ${message}`, ...args);
 }
 
 const TRIAGE_CATEGORIES: GitLabTriageCategory[] = [
