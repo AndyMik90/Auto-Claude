@@ -63,6 +63,7 @@
     "warning": "Make sure you have merged or saved any changes you want to keep before proceeding.",
     "confirm": "Delete Worktree & Complete",
     "completing": "Completing...",
+    "retry": "Try Again",
     "errorTitle": "Cleanup Failed",
     "errorDescription": "Failed to cleanup worktree. Please try again."
   },

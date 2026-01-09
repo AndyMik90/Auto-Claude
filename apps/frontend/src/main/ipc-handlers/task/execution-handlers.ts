@@ -478,9 +478,10 @@ export function registerTaskExecutionHandlers(
                   encoding: 'utf-8',
                   timeout: 30000
                 }).trim();
-              } catch {
+              } catch (branchError) {
                 // If we can't get branch name, use the default pattern
                 branch = `auto-claude/${task.specId}`;
+                console.log(`[TASK_UPDATE_STATUS] Could not get branch name, using fallback pattern: ${branch}`, branchError);
               }
 
               // Remove the worktree

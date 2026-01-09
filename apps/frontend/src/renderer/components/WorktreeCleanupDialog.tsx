@@ -1,5 +1,5 @@
 import { useTranslation, Trans } from 'react-i18next';
-import { CheckCircle2, FolderX, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FolderX, Loader2, RefreshCw } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ interface WorktreeCleanupDialogProps {
   taskTitle: string;
   worktreePath?: string;
   isProcessing: boolean;
+  error?: string;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }
@@ -28,6 +29,7 @@ export function WorktreeCleanupDialog({
   taskTitle,
   worktreePath,
   isProcessing,
+  error,
   onOpenChange,
   onConfirm
 }: WorktreeCleanupDialogProps) {
@@ -38,29 +40,41 @@ export function WorktreeCleanupDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-success" />
-            {t('dialogs:worktreeCleanup.title')}
+            {error ? (
+              <AlertCircle className="h-5 w-5 text-destructive" />
+            ) : (
+              <CheckCircle2 className="h-5 w-5 text-success" />
+            )}
+            {error ? t('dialogs:worktreeCleanup.errorTitle') : t('dialogs:worktreeCleanup.title')}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="text-sm text-muted-foreground space-y-3">
-              <p>
-                <Trans
-                  i18nKey="dialogs:worktreeCleanup.hasWorktree"
-                  values={{ taskTitle }}
-                  components={{ strong: <strong className="text-foreground" /> }}
-                />
-              </p>
-              <p>
-                {t('dialogs:worktreeCleanup.willDelete')}
-              </p>
+              {error ? (
+                <p className="text-destructive">{error}</p>
+              ) : (
+                <>
+                  <p>
+                    <Trans
+                      i18nKey="dialogs:worktreeCleanup.hasWorktree"
+                      values={{ taskTitle }}
+                      components={{ strong: <strong className="text-foreground" /> }}
+                    />
+                  </p>
+                  <p>
+                    {t('dialogs:worktreeCleanup.willDelete')}
+                  </p>
+                </>
+              )}
               {worktreePath && (
                 <div className="bg-muted/50 rounded-lg p-3 text-sm font-mono text-xs break-all">
                   {worktreePath}
                 </div>
               )}
-              <p className="text-amber-600 dark:text-amber-500">
-                {t('dialogs:worktreeCleanup.warning')}
-              </p>
+              {!error && (
+                <p className="text-amber-600 dark:text-amber-500">
+                  {t('dialogs:worktreeCleanup.warning')}
+                </p>
+              )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -72,12 +86,17 @@ export function WorktreeCleanupDialog({
               onConfirm();
             }}
             disabled={isProcessing}
-            className="bg-success text-success-foreground hover:bg-success/90"
+            className={error ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-success text-success-foreground hover:bg-success/90"}
           >
             {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 {t('dialogs:worktreeCleanup.completing')}
+              </>
+            ) : error ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {t('dialogs:worktreeCleanup.retry')}
               </>
             ) : (
               <>

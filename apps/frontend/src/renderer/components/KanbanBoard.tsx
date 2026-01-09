@@ -29,7 +29,6 @@ import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants'
 import { cn } from '../lib/utils';
 import { persistTaskStatus, forceCompleteTask, archiveTasks } from '../stores/task-store';
 import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
-import { useToast } from '../hooks/use-toast';
 import type { Task, TaskStatus } from '../../shared/types';
 
 // Type guard for valid drop column targets - preserves literal type from TASK_STATUS_COLUMNS
@@ -334,7 +333,6 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
 
 export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isRefreshing }: KanbanBoardProps) {
   const { t } = useTranslation(['tasks', 'dialogs']);
-  const { toast } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const { showArchived, toggleShowArchived } = useViewState();
@@ -506,11 +504,6 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         isProcessing: false,
         error: t('dialogs:worktreeCleanup.errorDescription')
       }));
-      toast({
-        variant: 'destructive',
-        title: t('dialogs:worktreeCleanup.errorTitle'),
-        description: t('dialogs:worktreeCleanup.errorDescription')
-      });
     }
   };
 

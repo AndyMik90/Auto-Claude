@@ -63,6 +63,7 @@
     "warning": "Assurez-vous d'avoir fusionné ou sauvegardé les modifications que vous souhaitez conserver avant de continuer.",
     "confirm": "Supprimer le worktree et terminer",
     "completing": "Finalisation...",
+    "retry": "Réessayer",
     "errorTitle": "Échec du nettoyage",
     "errorDescription": "Échec du nettoyage du worktree. Veuillez réessayer."
   },
