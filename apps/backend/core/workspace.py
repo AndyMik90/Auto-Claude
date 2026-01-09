@@ -605,6 +605,12 @@ def _try_smart_merge_inner(
                         debug_warning(
                             MODULE, f"Failed to stage files for direct copy: {e.stderr}"
                         )
+                        # Return failure - files were written but not staged
+                        return {
+                            "success": False,
+                            "error": f"Failed to stage files: {e.stderr}",
+                            "resolved_files": [],
+                        }
 
                 return {
                     "success": True,
