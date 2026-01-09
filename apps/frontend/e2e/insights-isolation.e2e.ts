@@ -69,16 +69,19 @@ function getSessionKey(projectId: string, sessionId: string): string {
 // ============================================
 
 test.describe('Insights Cross-Session Isolation (Interactive)', () => {
-  let app: ElectronApplication;
-  let _page: Page;
+  // These variables are placeholders for future interactive Electron tests
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _app: ElectronApplication | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _page: Page | undefined;
 
   test.beforeAll(async () => {
     setupTestEnvironment();
   });
 
   test.afterAll(async () => {
-    if (app) {
-      await app.close();
+    if (_app) {
+      await _app.close();
     }
     cleanupTestEnvironment();
   });
@@ -146,16 +149,19 @@ test.describe('Insights Cross-Session Isolation (Interactive)', () => {
 });
 
 test.describe('Insights Cross-Project Isolation (Interactive)', () => {
-  let app: ElectronApplication;
-  let _page: Page;
+  // These variables are placeholders for future interactive Electron tests
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _app: ElectronApplication | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _page: Page | undefined;
 
   test.beforeAll(async () => {
     setupTestEnvironment();
   });
 
   test.afterAll(async () => {
-    if (app) {
-      await app.close();
+    if (_app) {
+      await _app.close();
     }
     cleanupTestEnvironment();
   });
@@ -268,9 +274,7 @@ test.describe('Insights Session Isolation (Mock-based)', () => {
     setupTestEnvironment();
 
     const sessionStates = new Map<string, MockSessionState>();
-    // Active context is project-1:session-a
-    const _activeProjectId = 'project-1';
-    const _activeSessionId = 'session-a';
+    // Active context: project-1:session-a
 
     // Initialize both sessions
     const sessionAKey = getSessionKey('project-1', 'session-a');
@@ -345,9 +349,7 @@ test.describe('Insights Session Isolation (Mock-based)', () => {
     setupTestEnvironment();
 
     const sessionStates = new Map<string, MockSessionState>();
-    // Track which session is active (simulating component state)
-    const _activeProjectId = 'project-1';
-    let _activeSessionId = 'session-a';
+    // Simulating: active context is project-1:session-a
 
     // Set up initial state for session A
     const sessionAKey = getSessionKey('project-1', 'session-a');
@@ -358,8 +360,7 @@ test.describe('Insights Session Isolation (Mock-based)', () => {
       toolsUsed: [{ name: 'Grep', timestamp: new Date() }]
     }));
 
-    // Switch to session B
-    _activeSessionId = 'session-b';
+    // Simulating: switch to session B
     const sessionBKey = getSessionKey('project-1', 'session-b');
     sessionStates.set(sessionBKey, createMockSessionState());
 
@@ -367,8 +368,7 @@ test.describe('Insights Session Isolation (Mock-based)', () => {
     expect(sessionStates.get(sessionBKey)?.status.phase).toBe('idle');
     expect(sessionStates.get(sessionBKey)?.currentTool).toBeNull();
 
-    // Switch back to session A - state should be preserved
-    _activeSessionId = 'session-a';
+    // Simulating: switch back to session A - state should be preserved
     const restoredState = sessionStates.get(sessionAKey);
 
     expect(restoredState?.streamingContent).toBe('Session A content');
@@ -476,8 +476,6 @@ test.describe('Insights Project Isolation (Mock-based)', () => {
     setupTestEnvironment();
 
     const sessionStates = new Map<string, MockSessionState>();
-    let activeProjectId = 'project-1';
-    let activeSessionId = 'session-1';
 
     // Set up states for both projects
     const project1Session1 = getSessionKey('project-1', 'session-1');
@@ -497,9 +495,9 @@ test.describe('Insights Project Isolation (Mock-based)', () => {
       status: { phase: 'idle', message: '' }
     }));
 
-    // Switch to project 2
-    activeProjectId = 'project-2';
-    activeSessionId = 'session-1';
+    // Simulating: switch to project 2, session 1
+    const activeProjectId = 'project-2';
+    const activeSessionId = 'session-1';
 
     // Verify we see project 2 state
     const activeKey = getSessionKey(activeProjectId, activeSessionId);

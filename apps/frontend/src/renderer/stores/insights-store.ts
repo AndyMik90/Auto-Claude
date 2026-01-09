@@ -357,8 +357,14 @@ export const useInsightsStore = create<InsightsState>((set, get) => ({
 
   finalizeStreamingMessage: (suggestedTask) => {
     const state = get();
-    const content = state.streamingContent;
-    const toolsUsedList = state.toolsUsed.length > 0 ? [...state.toolsUsed] : undefined;
+
+    // Read from session-specific state if available to ensure correct isolation
+    const sessionState = state.activeProjectId && state.activeSessionId
+      ? getOrCreateSessionState(getSessionKey(state.activeProjectId, state.activeSessionId), state.sessionStates)
+      : null;
+    const content = sessionState?.streamingContent ?? state.streamingContent;
+    const toolsUsed = sessionState?.toolsUsed ?? state.toolsUsed;
+    const toolsUsedList = toolsUsed.length > 0 ? [...toolsUsed] : undefined;
 
     // Also clear session-specific state if we have active context
     if (state.activeProjectId && state.activeSessionId) {
@@ -612,6 +618,17 @@ export async function newSession(projectId: string): Promise<void> {
   if (result.success && result.data) {
     const store = useInsightsStore.getState();
     store.setSession(result.data);
+
+    // Sync global state with the new session's default state to prevent stale data
+    const key = getSessionKey(projectId, result.data.id);
+    const sessionState = getOrCreateSessionState(key, store.sessionStates);
+    useInsightsStore.setState({
+      streamingContent: sessionState.streamingContent,
+      currentTool: sessionState.currentTool,
+      toolsUsed: sessionState.toolsUsed,
+      status: sessionState.status
+    });
+
     // Cleanup old session states to prevent memory leaks
     store.cleanupOldSessions(projectId);
     // Reload sessions list

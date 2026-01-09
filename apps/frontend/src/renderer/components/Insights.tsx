@@ -188,11 +188,7 @@ export function Insights({ projectId }: InsightsProps) {
 
   const handleNewSession = async () => {
     await newSession(projectId);
-    // Reset local state for new session
-    setTaskCreated(new Set());
-    setCreatingTask(null);
-    setInputValue('');
-    textareaRef.current?.focus();
+    // Note: Local state reset is handled by the useEffect that watches [projectId, session?.id]
   };
 
   const handleSelectSession = async (sessionId: string) => {
