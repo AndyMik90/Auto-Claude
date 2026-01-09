@@ -169,5 +169,8 @@
       "selectImpact": "Select impact",
       "helpText": "These labels help organize and prioritize tasks. They're optional but useful for filtering."
     }
+  },
+  "subtasks": {
+    "untitled": "Untitled subtask"
   }
 }

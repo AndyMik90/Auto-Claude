@@ -204,28 +204,34 @@ export function useImageUpload({
 
   /**
    * Handle drop on textarea for image files
+   * Note: Only prevents default if image files are detected, allowing file reference
+   * drops (which use text/plain) to work via browser's default behavior
    */
   const handleDrop = useCallback(
     async (e: DragEvent<HTMLTextAreaElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
       setIsDragOver(false);
 
       if (disabled) return;
 
       const files = e.dataTransfer?.files;
-      if (!files || files.length === 0) return;
 
       // Filter for image files
       const imageFiles: File[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.type.startsWith('image/')) {
-          imageFiles.push(file);
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          if (file.type.startsWith('image/')) {
+            imageFiles.push(file);
+          }
         }
       }
 
+      // Only prevent default if we have image files to process
+      // This allows file reference drops (@mention text) to work via default behavior
       if (imageFiles.length === 0) return;
+
+      e.preventDefault();
+      e.stopPropagation();
 
       await processImageItems(imageFiles, { isFromPaste: false });
     },

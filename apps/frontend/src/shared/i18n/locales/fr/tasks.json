@@ -169,5 +169,8 @@
       "selectImpact": "Sélectionner un impact",
       "helpText": "Ces étiquettes aident à organiser et à prioriser les tâches. Elles sont optionnelles mais utiles pour le filtrage."
     }
+  },
+  "subtasks": {
+    "untitled": "Sous-tâche sans titre"
   }
 }
