@@ -151,7 +151,7 @@ jobs:
   ci-status-update:
     name: CI Status Update
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0] != null
+    if: github.event_name == 'workflow_run'
     timeout-minutes: 5
 
     steps:
@@ -175,8 +175,28 @@ jobs:
             ];
 
             const { owner, repo } = context.repo;
-            const prNumber = context.payload.workflow_run.pull_requests[0].number;
             const headSha = context.payload.workflow_run.head_sha;
+            const headBranch = context.payload.workflow_run.head_branch;
+            
+            // Get PR number - for fork PRs, pull_requests array is empty
+            let prNumber = context.payload.workflow_run.pull_requests?.[0]?.number;
+            
+            if (!prNumber) {
+              console.log('PR not in event (likely fork PR), searching by SHA...');
+              // Search for open PRs with this head SHA
+              const { data: prs } = await github.rest.pulls.list({
+                owner, repo, state: 'open', per_page: 100
+              });
+              
+              const matchingPr = prs.find(pr => pr.head.sha === headSha);
+              if (matchingPr) {
+                prNumber = matchingPr.number;
+                console.log(`Found PR #${prNumber} by SHA match`);
+              } else {
+                console.log(`No open PR found for SHA ${headSha.slice(0, 8)}, skipping`);
+                return;
+              }
+            }
 
             console.log(`PR #${prNumber} - CI status update (SHA: ${headSha.slice(0, 8)})`);
 
