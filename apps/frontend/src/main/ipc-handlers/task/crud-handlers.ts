@@ -26,6 +26,34 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
   );
 
   /**
+   * Get task implementation plan (fresh from disk)
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_GET_PLAN,
+    async (_, projectId: string, taskId: string): Promise<IPCResult<any>> => {
+      try {
+        const { task, project } = findTaskAndProject(taskId);
+        if (!task || !project) return { success: false, error: 'Task or project not found' };
+
+        const autoBuildDir = project.autoBuildPath || '.auto-claude';
+        const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        // Handle worktree paths if available (similar to TASK_DELETE)
+        const specDir = task.specsPath || path.join(project.path, specsBaseDir, task.specId);
+        const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+
+        if (!existsSync(planPath)) return { success: false, error: 'Plan file not found' };
+
+        const planContent = readFileSync(planPath, 'utf-8');
+        const plan = JSON.parse(planContent);
+
+        return { success: true, data: plan };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    }
+  );
+
+  /**
    * Create a new task
    */
   ipcMain.handle(

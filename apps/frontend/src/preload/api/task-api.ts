@@ -30,6 +30,7 @@ export interface TaskAPI {
     taskId: string,
     updates: { title?: string; description?: string }
   ) => Promise<IPCResult<Task>>;
+  getTaskPlan: (projectId: string, taskId: string) => Promise<IPCResult<ImplementationPlan>>;
   startTask: (taskId: string, options?: TaskStartOptions) => void;
   stopTask: (taskId: string) => void;
   submitReview: (
@@ -70,6 +71,7 @@ export interface TaskAPI {
   onTaskExecutionProgress: (
     callback: (taskId: string, progress: import('../../shared/types').ExecutionProgress, projectId?: string) => void
   ) => () => void;
+  onSpecComplete: (callback: (taskId: string, projectId?: string) => void) => () => void;
 
   // Task Phase Logs
   getTaskLogs: (projectId: string, specId: string) => Promise<IPCResult<TaskLogs | null>>;
@@ -100,6 +102,9 @@ export const createTaskAPI = (): TaskAPI => ({
     updates: { title?: string; description?: string }
   ): Promise<IPCResult<Task>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_UPDATE, taskId, updates),
+
+  getTaskPlan: (projectId: string, taskId: string): Promise<IPCResult<ImplementationPlan>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_GET_PLAN, projectId, taskId),
 
   startTask: (taskId: string, options?: TaskStartOptions): void =>
     ipcRenderer.send(IPC_CHANNELS.TASK_START, taskId, options),
@@ -249,6 +254,22 @@ export const createTaskAPI = (): TaskAPI => ({
     ipcRenderer.on(IPC_CHANNELS.TASK_EXECUTION_PROGRESS, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.TASK_EXECUTION_PROGRESS, handler);
+    };
+  },
+
+  onSpecComplete: (
+    callback: (taskId: string, projectId?: string) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      taskId: string,
+      projectId?: string
+    ): void => {
+      callback(taskId, projectId);
+    };
+    ipcRenderer.on(IPC_CHANNELS.TASK_SPEC_COMPLETE, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.TASK_SPEC_COMPLETE, handler);
     };
   },
 

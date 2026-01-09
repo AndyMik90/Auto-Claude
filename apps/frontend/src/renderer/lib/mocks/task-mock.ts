@@ -45,6 +45,21 @@ export const taskMock = {
     }
   }),
 
+  getTaskPlan: async (projectId: string, taskId: string) => ({
+    success: true,
+    data: {
+      feature: 'Mock Feature',
+      description: 'Mock Description',
+      workflow_type: 'feature',
+      final_acceptance: [],
+      spec_file: 'specs/001-mock/spec.md',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'backlog' as const,
+      phases: []
+    }
+  }),
+
   startTask: () => {
     console.warn('[Browser Mock] startTask called');
   },
@@ -85,11 +100,12 @@ export const taskMock = {
   unwatchTaskLogs: async () => ({ success: true }),
 
   // Event Listeners (no-op in browser)
-  onTaskProgress: () => () => {},
-  onTaskError: () => () => {},
-  onTaskLog: () => () => {},
-  onTaskStatusChange: () => () => {},
-  onTaskExecutionProgress: () => () => {},
-  onTaskLogsChanged: () => () => {},
-  onTaskLogsStream: () => () => {}
+  onTaskProgress: () => () => { },
+  onTaskError: () => () => { },
+  onTaskLog: () => () => { },
+  onTaskStatusChange: () => () => { },
+  onTaskExecutionProgress: () => () => { },
+  onSpecComplete: () => () => { },
+  onTaskLogsChanged: () => () => { },
+  onTaskLogsStream: () => () => { }
 };

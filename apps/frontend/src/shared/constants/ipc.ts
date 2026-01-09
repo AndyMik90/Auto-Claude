@@ -21,6 +21,7 @@ export const IPC_CHANNELS = {
   TASK_CREATE: 'task:create',
   TASK_DELETE: 'task:delete',
   TASK_UPDATE: 'task:update',
+  TASK_GET_PLAN: 'task:getPlan',
   TASK_START: 'task:start',
   TASK_STOP: 'task:stop',
   TASK_REVIEW: 'task:review',
@@ -44,6 +45,7 @@ export const IPC_CHANNELS = {
   TASK_UNARCHIVE: 'task:unarchive',
 
   // Task events (main -> renderer)
+  TASK_SPEC_COMPLETE: 'task:specComplete',
   TASK_PROGRESS: 'task:progress',
   TASK_ERROR: 'task:error',
   TASK_LOG: 'task:log',
@@ -236,7 +238,7 @@ export const IPC_CHANNELS = {
   GITHUB_INVESTIGATION_COMPLETE: 'github:investigationComplete',
   GITHUB_INVESTIGATION_ERROR: 'github:investigationError',
 
-// GitLab integration
+  // GitLab integration
   GITLAB_GET_PROJECTS: 'gitlab:getProjects',
   GITLAB_GET_ISSUES: 'gitlab:getIssues',
   GITLAB_GET_ISSUE: 'gitlab:getIssue',

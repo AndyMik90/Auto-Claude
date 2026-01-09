@@ -132,6 +132,12 @@ export function registerAgenteventsHandlers(
 
       if (processType === 'spec-creation') {
         console.warn(`[Task ${taskId}] Spec creation completed with code ${code}`);
+        // FIX (ACS-71): Notify renderer that spec creation is complete so it can reload the plan
+        if (code === 0 && mainWindow) {
+          // Include projectId for multi-project filtering
+          const { project } = findTaskAndProject(taskId);
+          mainWindow.webContents.send(IPC_CHANNELS.TASK_SPEC_COMPLETE, taskId, project?.id);
+        }
         return;
       }
 

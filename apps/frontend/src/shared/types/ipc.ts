@@ -156,6 +156,7 @@ export interface ElectronAPI {
   createTask: (projectId: string, title: string, description: string, metadata?: TaskMetadata) => Promise<IPCResult<Task>>;
   deleteTask: (taskId: string) => Promise<IPCResult>;
   updateTask: (taskId: string, updates: { title?: string; description?: string }) => Promise<IPCResult<Task>>;
+  getTaskPlan: (projectId: string, taskId: string) => Promise<IPCResult<ImplementationPlan>>;
   startTask: (taskId: string, options?: TaskStartOptions) => void;
   stopTask: (taskId: string) => void;
   submitReview: (taskId: string, approved: boolean, feedback?: string) => Promise<IPCResult>;
@@ -186,6 +187,7 @@ export interface ElectronAPI {
   onTaskLog: (callback: (taskId: string, log: string) => void) => () => void;
   onTaskStatusChange: (callback: (taskId: string, status: TaskStatus) => void) => () => void;
   onTaskExecutionProgress: (callback: (taskId: string, progress: ExecutionProgress) => void) => () => void;
+  onSpecComplete: (callback: (taskId: string, projectId?: string) => void) => () => void;
 
   // Terminal operations
   createTerminal: (options: TerminalCreateOptions) => Promise<IPCResult>;
