@@ -925,9 +925,8 @@ class CLIToolManager {
 
       // When using shell: true on Windows, paths with spaces must be quoted
       // to prevent cmd.exe from splitting at spaces
-      const cmdToRun = needsShell && claudeCmd.includes(' ') && !(claudeCmd.startsWith('"') && claudeCmd.endsWith('"'))
-        ? `"${claudeCmd}"`
-        : claudeCmd;
+      const needsQuoting = needsShell && /[ &|<>^%]/.test(claudeCmd);
+      const cmdToRun = needsQuoting ? `"${claudeCmd}"` : claudeCmd;
 
       const version = execFileSync(cmdToRun, ['--version'], {
         encoding: 'utf-8',
@@ -1034,9 +1033,8 @@ class CLIToolManager {
 
       // When using shell: true on Windows, paths with spaces must be quoted
       // to prevent cmd.exe from splitting at spaces
-      const cmdToRun = needsShell && claudeCmd.includes(' ') && !(claudeCmd.startsWith('"') && claudeCmd.endsWith('"'))
-      ? `"${claudeCmd}"`
-      : claudeCmd;
+      const needsQuoting = needsShell && /[ &|<>^%]/.test(claudeCmd);
+      const cmdToRun = needsQuoting ? `"${claudeCmd}"` : claudeCmd;
 
       const { stdout } = await execFileAsync(cmdToRun, ['--version'], {
         encoding: 'utf-8',
