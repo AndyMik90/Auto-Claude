@@ -1,486 +1,150 @@
 name: PR Status Gate
 
-# Single scheduled workflow that handles ALL PR status and AC review logic
-# Benefits: No race conditions, fork-friendly, self-healing, no flip-flop
+# SINGLE WORKFLOW for ALL PR labeling
+# Handles: Size, Area, Type, CI Status, AC Review labels
 on:
-  schedule:
-    - cron: '*/5 * * * *'  # Every 5 minutes
+  # Immediate: When PR is opened/updated - add size/area/type labels
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 
-  # Also run on workflow_run for faster CI status updates (optional optimization)
+  # Fast: When CI workflows complete - update status labels quickly
   workflow_run:
     workflows: [CI, Lint, Quality Security]
     types: [completed]
 
-concurrency:
-  # Use PR number for workflow_run, run_id for schedule (each schedule run is independent)
-  group: pr-status-gate-${{ github.event.workflow_run.pull_requests[0].number || github.run_id }}
-  cancel-in-progress: true  # Cancel previous runs for same PR to prevent flip-flop
+  # Manual: @AutoClaudeCheck comment trigger
+  issue_comment:
+    types: [created]
+
+  # Scheduled: Catch-up for missed updates, 3-min AC label, 30-min auto-check
+  schedule:
+    - cron: '*/5 * * * *'
 
 permissions:
   pull-requests: write
   checks: read
-
-env:
-  REQUIRED_CHECKS: |
-    CI / test-frontend
-    CI / test-python (3.12)
-    CI / test-python (3.13)
-    Lint / python
-    Quality Security / CodeQL (javascript-typescript)
-    Quality Security / CodeQL (python)
-    Quality Security / Python Security (Bandit)
-    Quality Security / Security Summary
+  contents: read
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════════
-  # SINGLE JOB: Process all open PRs (SCHEDULED ONLY)
-  # Handles: CI status, AC labels (3-min, 30-min), review detection, re-review
+  # IMMEDIATE LABELING (on PR open/sync) - Size, Area, Type
   # ═══════════════════════════════════════════════════════════════════════════
-  process-prs:
-    name: Process Open PRs
+  immediate-labels:
+    name: Immediate Labels
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    timeout-minutes: 10
+    if: github.event_name == 'pull_request_target'
+    timeout-minutes: 5
 
     steps:
-      - name: Process all open PRs
+      - name: Add size/area/type labels
         uses: actions/github-script@v7
-        env:
-          REQUIRED_CHECKS: ${{ env.REQUIRED_CHECKS }}
         with:
           retries: 3
-          retry-exempt-status-codes: 400,401,403,404,422
           script: |
-            // ═══════════════════════════════════════════════════════════════
-            // CONFIGURATION
-            // ═══════════════════════════════════════════════════════════════
-            
             const CONFIG = {
-              // Timing thresholds (minutes)
-              MISSING_APPROVAL_DELAY: 3,    // Add "Missing AC Approval" after 3 min
-              AUTO_CHECK_DELAY: 30,         // Post auto status report after 30 min
-              AUTO_CHECK_WINDOW: 35,        // Don't re-post if older than 35 min
-              RECENT_COMMENT_WINDOW: 10,    // @AutoClaudeCheck within last 10 min
-              
-              // Labels
-              STATUS_LABELS: Object.freeze({
-                CHECKING: '🔄 Checking',
-                PASSED: '✅ Ready for Review',
-                FAILED: '❌ Checks Failed'
-              }),
-              
-              REVIEW_LABELS: Object.freeze([
-                'Missing AC Approval',
-                'AC: Approved',
-                'AC: Changes Requested',
-                'AC: Blocked',
-                'AC: Needs Re-review'
-              ]),
-              
-              // Auto Claude detection
-              AC_PATTERNS: Object.freeze([
-                '🤖 Auto Claude PR Review',
-                'Auto Claude Review',
-                'Auto-Claude Review'
-              ]),
-              
-              AC_VERDICTS: Object.freeze({
-                APPROVED: {
-                  patterns: ['Auto Claude Review - APPROVED', '✅ Auto Claude Review - APPROVED'],
-                  regex: /Merge Verdict:\s*✅\s*(?:APPROVED|READY TO MERGE)/i,
-                  label: 'AC: Approved'
-                },
-                CHANGES_REQUESTED: {
-                  patterns: ['NEEDS REVISION', 'Needs Revision'],
-                  regex: /Merge Verdict:\s*🟠/,
-                  label: 'AC: Changes Requested'
-                },
-                BLOCKED: {
-                  patterns: ['BLOCKED'],
-                  regex: /Merge Verdict:\s*🔴/,
-                  label: 'AC: Blocked'
-                }
-              }),
-              
-              // Trusted sources for AC reviews
-              TRUSTED_BOTS: ['github-actions[bot]', 'auto-claude[bot]'],
-              TRUSTED_ASSOCIATIONS: ['COLLABORATOR', 'MEMBER', 'OWNER']
+              SIZE_THRESHOLDS: { XS: 10, S: 100, M: 500, L: 1000 },
+              TYPE_MAP: {
+                'feat': 'feature', 'fix': 'bug', 'docs': 'documentation',
+                'refactor': 'refactor', 'test': 'test', 'ci': 'ci',
+                'chore': 'chore', 'perf': 'performance', 'style': 'style', 'build': 'build'
+              },
+              AREA_PATHS: { frontend: 'apps/frontend/', backend: 'apps/backend/', ci: '.github/' },
+              SIZE_LABELS: ['size/XS', 'size/S', 'size/M', 'size/L', 'size/XL'],
+              AREA_LABELS: ['area/frontend', 'area/backend', 'area/fullstack', 'area/ci']
             };
-            
-            const REQUIRED_CHECKS = process.env.REQUIRED_CHECKS
-              .split('\n')
-              .map(s => s.trim())
-              .filter(Boolean);
-            
-            // ═══════════════════════════════════════════════════════════════
-            // HELPER FUNCTIONS
-            // ═══════════════════════════════════════════════════════════════
-            
+
             const { owner, repo } = context.repo;
-            
-            function getAgeMinutes(dateStr) {
-              return (Date.now() - new Date(dateStr).getTime()) / 60000;
-            }
-            
-            function hasLabel(labels, name) {
-              return labels.some(l => l.name === name);
-            }
-            
-            function hasAnyACLabel(labels) {
-              return CONFIG.REVIEW_LABELS.some(l => hasLabel(labels, l));
-            }
-            
-            async function addLabelIfMissing(prNumber, labels, labelName) {
-              if (hasLabel(labels, labelName)) return false;
-              try {
-                await github.rest.issues.addLabels({
-                  owner, repo, issue_number: prNumber, labels: [labelName]
-                });
-                console.log(`    ✓ Added: ${labelName}`);
-                return true;
-              } catch (e) {
-                if (e.status !== 404) console.log(`    ⚠ Failed to add ${labelName}: ${e.message}`);
-                return false;
+            const pr = context.payload.pull_request;
+            const prNumber = pr.number;
+            const title = pr.title || '';
+
+            console.log(`PR #${prNumber} - Immediate labeling`);
+
+            const labelsToAdd = [];
+            const labelsToRemove = [];
+
+            // 1. Type label from conventional commit
+            const match = title.slice(0, 200).match(/^(\w{1,20})(\([^)]{0,50}\))?(!)?:/);
+            if (match) {
+              const type = match[1].toLowerCase();
+              if (CONFIG.TYPE_MAP[type]) {
+                labelsToAdd.push(CONFIG.TYPE_MAP[type]);
+                console.log(`  Type: ${type} → ${CONFIG.TYPE_MAP[type]}`);
               }
+              if (match[3] === '!') labelsToAdd.push('breaking-change');
             }
-            
-            async function removeLabelIfPresent(prNumber, labels, labelName) {
-              if (!hasLabel(labels, labelName)) return false;
-              try {
-                await github.rest.issues.removeLabel({
-                  owner, repo, issue_number: prNumber, name: labelName
-                });
-                console.log(`    ✓ Removed: ${labelName}`);
-                return true;
-              } catch (e) {
-                if (e.status !== 404) console.log(`    ⚠ Failed to remove ${labelName}: ${e.message}`);
-                return false;
-              }
-            }
-            
-            async function setStatusLabel(prNumber, labels, newLabel) {
-              const currentStatus = Object.values(CONFIG.STATUS_LABELS).find(l => hasLabel(labels, l));
-              if (currentStatus === newLabel) return; // Already correct
-              
-              // Remove other status labels
-              for (const label of Object.values(CONFIG.STATUS_LABELS)) {
-                if (label !== newLabel) await removeLabelIfPresent(prNumber, labels, label);
-              }
-              await addLabelIfMissing(prNumber, labels, newLabel);
-            }
-            
-            async function setReviewLabel(prNumber, labels, newLabel) {
-              // Remove all other review labels
-              for (const label of CONFIG.REVIEW_LABELS) {
-                if (label !== newLabel) await removeLabelIfPresent(prNumber, labels, label);
-              }
-              await addLabelIfMissing(prNumber, labels, newLabel);
-            }
-            
-            async function fetchCheckRuns(sha) {
-              const checkRuns = await github.paginate(
-                github.rest.checks.listForRef,
-                { owner, repo, ref: sha, per_page: 100 },
-                (response) => response.data
-              );
-              return checkRuns;
-            }
-            
-            function analyzeChecks(checkRuns) {
-              let allComplete = true;
-              let anyFailed = false;
-              let passedCount = 0;
-              
-              for (const checkName of REQUIRED_CHECKS) {
-                const check = checkRuns.find(c => c.name === checkName);
-                if (!check || check.status !== 'completed') {
-                  allComplete = false;
-                } else if (check.conclusion === 'success' || check.conclusion === 'skipped') {
-                  passedCount++;
-                } else {
-                  anyFailed = true;
-                }
-              }
-              return { allComplete, anyFailed, passedCount };
-            }
-            
-            function parseACVerdict(body) {
-              if (!body) return null;
-              const safeBody = body.slice(0, 5000);
-              
-              // Check if it's an AC comment first
-              const isACComment = CONFIG.AC_PATTERNS.some(p => safeBody.includes(p));
-              if (!isACComment) return null;
-              
-              for (const [key, config] of Object.entries(CONFIG.AC_VERDICTS)) {
-                const patternMatch = config.patterns.some(p => safeBody.includes(p));
-                const regexMatch = config.regex && config.regex.test(safeBody);
-                if (patternMatch || regexMatch) {
-                  return { verdict: key, label: config.label };
-                }
-              }
-              return null;
-            }
-            
-            function isTrustedSource(comment) {
-              const username = comment.user.login;
-              const userType = comment.user.type;
-              const assoc = comment.author_association;
-              
-              const isBot = CONFIG.TRUSTED_BOTS.some(b => 
-                username.toLowerCase() === b.toLowerCase()
-              ) && userType === 'Bot';
-              
-              const isCollaborator = CONFIG.TRUSTED_ASSOCIATIONS.includes(assoc);
-              
-              return isBot || isCollaborator;
-            }
-            
-            async function postStatusReport(prNumber, pr, checkRuns, triggeredBy) {
-              const { allComplete, anyFailed, passedCount } = analyzeChecks(checkRuns);
-              
-              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
-                owner, repo, issue_number: prNumber
-              });
-              const currentReviewLabel = CONFIG.REVIEW_LABELS.find(l => hasLabel(labels, l)) || 'None';
-              
-              let statusEmoji = '🔄';
-              let statusLabel = CONFIG.STATUS_LABELS.CHECKING;
-              if (allComplete && !anyFailed) {
-                statusEmoji = '✅';
-                statusLabel = CONFIG.STATUS_LABELS.PASSED;
-              } else if (allComplete && anyFailed) {
-                statusEmoji = '❌';
-                statusLabel = CONFIG.STATUS_LABELS.FAILED;
-              }
-              
-              const lines = [
-                `## ${statusEmoji} PR Status Report`,
-                '',
-                `| Label | Value |`,
-                `|-------|-------|`,
-                `| CI Status | ${statusLabel} |`,
-                `| AC Review | ${currentReviewLabel} |`,
-                '',
-                `### CI Checks (${passedCount}/${REQUIRED_CHECKS.length} passed)`,
-                '',
-                '| Status | Check |',
-                '|--------|-------|'
-              ];
-              
-              for (const checkName of REQUIRED_CHECKS) {
-                const check = checkRuns.find(c => c.name === checkName);
-                let emoji = '⏳';
-                if (check) {
-                  if (check.status !== 'completed') emoji = '🔄';
-                  else if (check.conclusion === 'success') emoji = '✅';
-                  else if (check.conclusion === 'skipped') emoji = '⏭️';
-                  else emoji = '❌';
-                }
-                lines.push(`| ${emoji} | ${checkName} |`);
-              }
-              
-              lines.push('');
-              lines.push('---');
-              lines.push(`<sub>${triggeredBy}</sub>`);
-              
-              await github.rest.issues.createComment({
-                owner, repo, issue_number: prNumber, body: lines.join('\n')
-              });
-            }
-            
-            // ═══════════════════════════════════════════════════════════════
-            // MAIN LOGIC
-            // ═══════════════════════════════════════════════════════════════
-            
-            console.log('::group::Fetching open PRs');
-            
-            // Get all open PRs
-            const { data: prs } = await github.rest.pulls.list({
-              owner, repo, state: 'open', sort: 'created', direction: 'desc', per_page: 100
+
+            // 2. Area label from changed files
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number: prNumber, per_page: 100
             });
             
-            console.log(`Found ${prs.length} open PR(s)`);
-            console.log('::endgroup::');
-            
-            if (prs.length === 0) {
-              console.log('No open PRs to process');
-              return;
+            const areas = { frontend: false, backend: false, ci: false };
+            for (const file of files) {
+              if (file.filename.startsWith(CONFIG.AREA_PATHS.frontend)) areas.frontend = true;
+              if (file.filename.startsWith(CONFIG.AREA_PATHS.backend)) areas.backend = true;
+              if (file.filename.startsWith(CONFIG.AREA_PATHS.ci)) areas.ci = true;
             }
             
-            // Process each PR
-            for (const pr of prs) {
-              const prNumber = pr.number;
-              const ageMinutes = getAgeMinutes(pr.created_at);
-              const headSha = pr.head.sha;
-              
-              console.log(`::group::PR #${prNumber} (age: ${Math.floor(ageMinutes)} min)`);
-              
-              // Get current labels
-              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
-                owner, repo, issue_number: prNumber
-              });
-              
-              // ─────────────────────────────────────────────────────────────
-              // 1. UPDATE CI STATUS
-              // ─────────────────────────────────────────────────────────────
-              console.log('  [1] Checking CI status...');
-              const checkRuns = await fetchCheckRuns(headSha);
-              const { allComplete, anyFailed } = analyzeChecks(checkRuns);
-              
-              if (allComplete) {
-                const newStatus = anyFailed ? CONFIG.STATUS_LABELS.FAILED : CONFIG.STATUS_LABELS.PASSED;
-                await setStatusLabel(prNumber, labels, newStatus);
-              } else {
-                await setStatusLabel(prNumber, labels, CONFIG.STATUS_LABELS.CHECKING);
-              }
-              
-              // ─────────────────────────────────────────────────────────────
-              // 2. ADD "Missing AC Approval" AFTER 3 MINUTES
-              // ─────────────────────────────────────────────────────────────
-              if (ageMinutes >= CONFIG.MISSING_APPROVAL_DELAY && !hasAnyACLabel(labels)) {
-                console.log('  [2] PR is 3+ min old with no AC label...');
-                await addLabelIfMissing(prNumber, labels, 'Missing AC Approval');
-              }
-              
-              // ─────────────────────────────────────────────────────────────
-              // 3. SCAN COMMENTS FOR AUTO CLAUDE VERDICT
-              // ─────────────────────────────────────────────────────────────
-              console.log('  [3] Scanning for Auto Claude verdicts...');
-              const { data: comments } = await github.rest.issues.listComments({
-                owner, repo, issue_number: prNumber, per_page: 50
-              });
-              
-              // Find most recent AC verdict from trusted source
-              let latestVerdict = null;
-              let latestVerdictTime = 0;
-              
-              for (const comment of comments) {
-                if (!isTrustedSource(comment)) continue;
-                const verdict = parseACVerdict(comment.body);
-                if (verdict) {
-                  const commentTime = new Date(comment.created_at).getTime();
-                  if (commentTime > latestVerdictTime) {
-                    latestVerdict = verdict;
-                    latestVerdictTime = commentTime;
-                  }
-                }
-              }
-              
-              if (latestVerdict) {
-                const currentACLabel = CONFIG.REVIEW_LABELS.find(l => hasLabel(labels, l));
-                if (currentACLabel !== latestVerdict.label) {
-                  console.log(`    Found verdict: ${latestVerdict.verdict}`);
-                  await setReviewLabel(prNumber, labels, latestVerdict.label);
-                }
-              }
-              
-              // ─────────────────────────────────────────────────────────────
-              // 4. CHECK FOR @AutoClaudeCheck COMMAND (recent comments)
-              // ─────────────────────────────────────────────────────────────
-              console.log('  [4] Checking for @AutoClaudeCheck command...');
-              const recentAutoCheck = comments.find(c => {
-                const age = getAgeMinutes(c.created_at);
-                return age <= CONFIG.RECENT_COMMENT_WINDOW && 
-                       c.body && c.body.includes('@AutoClaudeCheck');
-              });
-              
-              if (recentAutoCheck) {
-                // Check if we already responded (look for our status report)
-                const alreadyResponded = comments.some(c => {
-                  const cAge = getAgeMinutes(c.created_at);
-                  return cAge < getAgeMinutes(recentAutoCheck.created_at) - 0.1 && // After the command
-                         c.body && c.body.includes('## ') && c.body.includes('PR Status Report');
-                });
-                
-                if (!alreadyResponded) {
-                  console.log(`    Responding to @AutoClaudeCheck from @${recentAutoCheck.user.login}`);
-                  await postStatusReport(prNumber, pr, checkRuns, 
-                    `Triggered by \`@AutoClaudeCheck\` from @${recentAutoCheck.user.login}`);
-                }
-              }
-              
-              // ─────────────────────────────────────────────────────────────
-              // 5. AUTO STATUS REPORT AT 30 MINUTES
-              // ─────────────────────────────────────────────────────────────
-              if (ageMinutes >= CONFIG.AUTO_CHECK_DELAY && 
-                  ageMinutes < CONFIG.AUTO_CHECK_WINDOW &&
-                  hasLabel(labels, 'Missing AC Approval')) {
-                
-                // Check if we already posted auto report
-                const hasAutoReport = comments.some(c => 
-                  c.body && c.body.includes('Auto status check (30 min)')
-                );
-                
-                if (!hasAutoReport) {
-                  console.log('  [5] Posting 30-min auto status report...');
-                  await postStatusReport(prNumber, pr, checkRuns, 
-                    '🤖 Auto status check (30 min) - PR still missing AC approval');
-                }
-              }
-              
-              // ─────────────────────────────────────────────────────────────
-              // 6. CHECK FOR NEW COMMITS AFTER APPROVAL
-              // ─────────────────────────────────────────────────────────────
-              if (hasLabel(labels, 'AC: Approved')) {
-                console.log('  [6] Checking for commits after approval...');
-                
-                // Find the approval comment time
-                let approvalTime = 0;
-                for (const comment of comments) {
-                  if (!isTrustedSource(comment)) continue;
-                  const verdict = parseACVerdict(comment.body);
-                  if (verdict && verdict.label === 'AC: Approved') {
-                    const t = new Date(comment.created_at).getTime();
-                    if (t > approvalTime) approvalTime = t;
-                  }
-                }
-                
-                if (approvalTime > 0) {
-                  // Get commits and check if any are newer than approval
-                  const { data: commits } = await github.rest.pulls.listCommits({
-                    owner, repo, pull_number: prNumber, per_page: 10
-                  });
-                  
-                  const newCommits = commits.filter(c => {
-                    const commitTime = new Date(c.commit.committer.date).getTime();
-                    return commitTime > approvalTime;
-                  });
-                  
-                  if (newCommits.length > 0) {
-                    console.log(`    Found ${newCommits.length} commit(s) after approval, resetting...`);
-                    await setReviewLabel(prNumber, labels, 'AC: Needs Re-review');
-                    
-                    // Post notification
-                    const notifyLines = [
-                      '## 🔄 Re-review Required',
-                      '',
-                      'New commits were pushed after Auto-Claude approval.',
-                      '',
-                      '| Previous | Current |',
-                      '|----------|---------|',
-                      '| `AC: Approved` | `AC: Needs Re-review` |',
-                      '',
-                      'Please run Auto-Claude review again or request a manual review.'
-                    ];
-                    
-                    await github.rest.issues.createComment({
-                      owner, repo, issue_number: prNumber, body: notifyLines.join('\n')
-                    });
-                  }
-                }
-              }
-              
-              console.log('::endgroup::');
-            }
+            let areaLabel = null;
+            if (areas.frontend && areas.backend) areaLabel = 'area/fullstack';
+            else if (areas.frontend) areaLabel = 'area/frontend';
+            else if (areas.backend) areaLabel = 'area/backend';
+            else if (areas.ci) areaLabel = 'area/ci';
             
-            console.log(`✅ Processed ${prs.length} PR(s)`);
+            if (areaLabel) {
+              labelsToAdd.push(areaLabel);
+              CONFIG.AREA_LABELS.filter(l => l !== areaLabel).forEach(l => labelsToRemove.push(l));
+              console.log(`  Area: ${areaLabel}`);
+            }
+
+            // 3. Size label
+            const totalLines = (pr.additions || 0) + (pr.deletions || 0);
+            let sizeLabel = 'size/XL';
+            if (totalLines < CONFIG.SIZE_THRESHOLDS.XS) sizeLabel = 'size/XS';
+            else if (totalLines < CONFIG.SIZE_THRESHOLDS.S) sizeLabel = 'size/S';
+            else if (totalLines < CONFIG.SIZE_THRESHOLDS.M) sizeLabel = 'size/M';
+            else if (totalLines < CONFIG.SIZE_THRESHOLDS.L) sizeLabel = 'size/L';
+            
+            labelsToAdd.push(sizeLabel);
+            CONFIG.SIZE_LABELS.filter(l => l !== sizeLabel).forEach(l => labelsToRemove.push(l));
+            console.log(`  Size: ${sizeLabel} (${totalLines} lines)`);
+
+            // 4. Add initial status label on new PRs
+            if (context.payload.action === 'opened' || context.payload.action === 'reopened') {
+              labelsToAdd.push('🔄 Checking');
+              console.log(`  Status: 🔄 Checking (new PR)`);
+            }
+
+            // Apply labels
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner, repo, issue_number: prNumber
+            });
+            const currentNames = currentLabels.map(l => l.name);
+
+            // Remove old labels
+            for (const label of labelsToRemove) {
+              if (currentNames.includes(label)) {
+                try {
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
+                } catch (e) { /* ignore */ }
+              }
+            }
+
+            // Add new labels (filter out already present)
+            const toAdd = labelsToAdd.filter(l => !currentNames.includes(l));
+            if (toAdd.length > 0) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: toAdd });
+              console.log(`  Added: ${toAdd.join(', ')}`);
+            }
+
+            console.log(`✅ PR #${prNumber} labeled`);
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # FAST CI UPDATE (optional - triggered by workflow_run for quicker feedback)
+  # CI STATUS UPDATE (on workflow completion) - Fast status update
   # ═══════════════════════════════════════════════════════════════════════════
-  fast-ci-update:
-    name: Fast CI Update
+  ci-status-update:
+    name: CI Status Update
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0] != null
     timeout-minutes: 5
@@ -488,74 +152,452 @@ jobs:
     steps:
       - name: Update CI status label
         uses: actions/github-script@v7
-        env:
-          REQUIRED_CHECKS: ${{ env.REQUIRED_CHECKS }}
         with:
           retries: 3
           script: |
-            const STATUS_LABELS = {
-              CHECKING: '🔄 Checking',
-              PASSED: '✅ Ready for Review',
-              FAILED: '❌ Checks Failed'
-            };
+            const STATUS = { CHECKING: '🔄 Checking', PASSED: '✅ Ready for Review', FAILED: '❌ Checks Failed' };
             
-            const REQUIRED_CHECKS = process.env.REQUIRED_CHECKS
-              .split('\n')
-              .map(s => s.trim())
-              .filter(Boolean);
-            
+            // Required checks - use partial matching to handle "(pull_request)" suffix
+            const REQUIRED_PATTERNS = [
+              'CI / test-frontend',
+              'CI / test-python (3.12)',
+              'CI / test-python (3.13)',
+              'Lint / python',
+              'Quality Security / CodeQL (javascript-typescript)',
+              'Quality Security / CodeQL (python)',
+              'Quality Security / Python Security (Bandit)',
+              'Quality Security / Security Summary'
+            ];
+
             const { owner, repo } = context.repo;
             const prNumber = context.payload.workflow_run.pull_requests[0].number;
             const headSha = context.payload.workflow_run.head_sha;
+
+            console.log(`PR #${prNumber} - CI status update (SHA: ${headSha.slice(0, 8)})`);
+
+            // Fetch all check runs
+            const checkRuns = await github.paginate(
+              github.rest.checks.listForRef,
+              { owner, repo, ref: headSha, per_page: 100 },
+              (response) => response.data
+            );
+
+            // Match checks using startsWith (handles "(pull_request)" suffix)
+            let allComplete = true;
+            let anyFailed = false;
+
+            for (const pattern of REQUIRED_PATTERNS) {
+              const check = checkRuns.find(c => c.name.startsWith(pattern));
+              if (!check || check.status !== 'completed') {
+                allComplete = false;
+                console.log(`  ⏳ ${pattern}: ${check ? 'running' : 'pending'}`);
+              } else if (check.conclusion !== 'success' && check.conclusion !== 'skipped') {
+                anyFailed = true;
+                console.log(`  ❌ ${pattern}: ${check.conclusion}`);
+              } else {
+                console.log(`  ✅ ${pattern}: ${check.conclusion}`);
+              }
+            }
+
+            // Determine new status
+            let newStatus = STATUS.CHECKING;
+            if (allComplete) {
+              newStatus = anyFailed ? STATUS.FAILED : STATUS.PASSED;
+            }
+
+            // Get current labels and check if update needed
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+              owner, repo, issue_number: prNumber
+            });
+            const labelNames = labels.map(l => l.name);
+            const currentStatus = Object.values(STATUS).find(s => labelNames.includes(s));
+
+            if (currentStatus === newStatus) {
+              console.log(`Status already ${newStatus}, skipping`);
+              return;
+            }
+
+            // Update status label
+            for (const status of Object.values(STATUS)) {
+              if (labelNames.includes(status)) {
+                try {
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: status });
+                } catch (e) { /* ignore */ }
+              }
+            }
             
-            console.log(`PR #${prNumber} - Fast CI update, SHA: ${headSha.slice(0, 8)}`);
-            
+            await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newStatus] });
+            console.log(`✅ Status updated: ${currentStatus || 'none'} → ${newStatus}`);
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # @AutoClaudeCheck COMMAND - Manual status check
+  # ═══════════════════════════════════════════════════════════════════════════
+  manual-check:
+    name: Manual Check (@AutoClaudeCheck)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@AutoClaudeCheck')
+    timeout-minutes: 5
+
+    steps:
+      - name: Run status check and post report
+        uses: actions/github-script@v7
+        with:
+          retries: 3
+          script: |
+            const STATUS = { CHECKING: '🔄 Checking', PASSED: '✅ Ready for Review', FAILED: '❌ Checks Failed' };
+            const REVIEW_LABELS = ['Missing AC Approval', 'AC: Approved', 'AC: Changes Requested', 'AC: Blocked', 'AC: Needs Re-review'];
+            const REQUIRED_PATTERNS = [
+              'CI / test-frontend',
+              'CI / test-python (3.12)',
+              'CI / test-python (3.13)',
+              'Lint / python',
+              'Quality Security / CodeQL (javascript-typescript)',
+              'Quality Security / CodeQL (python)',
+              'Quality Security / Python Security (Bandit)',
+              'Quality Security / Security Summary'
+            ];
+
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.issue.number;
+            const requestedBy = context.payload.comment.user.login;
+
+            console.log(`PR #${prNumber} - @AutoClaudeCheck by @${requestedBy}`);
+
+            // Get PR details
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            const headSha = pr.head.sha;
+
             // Fetch check runs
             const checkRuns = await github.paginate(
               github.rest.checks.listForRef,
               { owner, repo, ref: headSha, per_page: 100 },
               (response) => response.data
             );
-            
-            // Analyze
+
+            // Analyze checks
+            const results = [];
             let allComplete = true;
             let anyFailed = false;
-            
-            for (const checkName of REQUIRED_CHECKS) {
-              const check = checkRuns.find(c => c.name === checkName);
-              if (!check || check.status !== 'completed') {
+
+            for (const pattern of REQUIRED_PATTERNS) {
+              const check = checkRuns.find(c => c.name.startsWith(pattern));
+              if (!check) {
+                results.push({ name: pattern, emoji: '⏳' });
                 allComplete = false;
-              } else if (check.conclusion !== 'success' && check.conclusion !== 'skipped') {
+              } else if (check.status !== 'completed') {
+                results.push({ name: pattern, emoji: '🔄' });
+                allComplete = false;
+              } else if (check.conclusion === 'success' || check.conclusion === 'skipped') {
+                results.push({ name: pattern, emoji: check.conclusion === 'skipped' ? '⏭️' : '✅' });
+              } else {
+                results.push({ name: pattern, emoji: '❌' });
                 anyFailed = true;
               }
             }
-            
+
             // Get current labels
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: prNumber });
+            const labelNames = labels.map(l => l.name);
+            const currentReview = REVIEW_LABELS.find(l => labelNames.includes(l)) || 'None';
+
+            // Determine and update status
+            let newStatus = STATUS.CHECKING;
+            if (allComplete) newStatus = anyFailed ? STATUS.FAILED : STATUS.PASSED;
+
+            const currentStatus = Object.values(STATUS).find(s => labelNames.includes(s));
+            if (currentStatus !== newStatus) {
+              for (const s of Object.values(STATUS)) {
+                if (labelNames.includes(s)) {
+                  try { await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: s }); } catch (e) {}
+                }
+              }
+              await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newStatus] });
+            }
+
+            // Build and post report
+            const passedCount = results.filter(r => r.emoji === '✅' || r.emoji === '⏭️').length;
+            const checksTable = results.map(r => `| ${r.emoji} | ${r.name} |`).join('\n');
+
+            let statusEmoji = '🔄';
+            if (allComplete && !anyFailed) statusEmoji = '✅';
+            else if (allComplete && anyFailed) statusEmoji = '❌';
+
+            const body = [
+              `## ${statusEmoji} PR Status Report`,
+              '',
+              '| Label | Value |',
+              '|-------|-------|',
+              `| CI Status | ${newStatus} |`,
+              `| AC Review | ${currentReview} |`,
+              '',
+              `### CI Checks (${passedCount}/${REQUIRED_PATTERNS.length} passed)`,
+              '',
+              '| Status | Check |',
+              '|--------|-------|',
+              checksTable,
+              '',
+              '---',
+              `<sub>Triggered by \`@AutoClaudeCheck\` from @${requestedBy}</sub>`
+            ].join('\n');
+
+            await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+            console.log(`✅ Posted status report`);
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SCHEDULED CHECK (every 5 min) - Catch-up, AC labels, auto-check
+  # ═══════════════════════════════════════════════════════════════════════════
+  scheduled-check:
+    name: Scheduled Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    timeout-minutes: 10
+
+    steps:
+      - name: Process all open PRs
+        uses: actions/github-script@v7
+        with:
+          retries: 3
+          script: |
+            const STATUS = { CHECKING: '🔄 Checking', PASSED: '✅ Ready for Review', FAILED: '❌ Checks Failed' };
+            const REVIEW_LABELS = ['Missing AC Approval', 'AC: Approved', 'AC: Changes Requested', 'AC: Blocked', 'AC: Needs Re-review'];
+            const AC_PATTERNS = ['🤖 Auto Claude PR Review', 'Auto Claude Review', 'Auto-Claude Review'];
+            const TRUSTED_BOTS = ['github-actions[bot]', 'auto-claude[bot]'];
+            const TRUSTED_ASSOC = ['COLLABORATOR', 'MEMBER', 'OWNER'];
+            const REQUIRED_PATTERNS = [
+              'CI / test-frontend',
+              'CI / test-python (3.12)',
+              'CI / test-python (3.13)',
+              'Lint / python',
+              'Quality Security / CodeQL (javascript-typescript)',
+              'Quality Security / CodeQL (python)',
+              'Quality Security / Python Security (Bandit)',
+              'Quality Security / Security Summary'
+            ];
+
+            const { owner, repo } = context.repo;
+
+            // Get all open PRs
+            const { data: prs } = await github.rest.pulls.list({
+              owner, repo, state: 'open', sort: 'created', direction: 'desc', per_page: 100
+            });
+
+            console.log(`Processing ${prs.length} open PR(s)`);
+            if (prs.length === 0) return;
+
+            for (const pr of prs) {
+              const prNumber = pr.number;
+              const ageMinutes = (Date.now() - new Date(pr.created_at).getTime()) / 60000;
+              
+              console.log(`\n::group::PR #${prNumber} (${Math.floor(ageMinutes)} min old)`);
+
+              // Get labels
+              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+                owner, repo, issue_number: prNumber
+              });
+              const labelNames = labels.map(l => l.name);
+
+              // Helper to update labels
+              async function setLabel(allLabels, newLabel) {
+                if (labelNames.includes(newLabel)) return;
+                for (const l of allLabels) {
+                  if (labelNames.includes(l) && l !== newLabel) {
+                    try { await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: l }); } catch (e) {}
+                  }
+                }
+                try { 
+                  await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newLabel] });
+                  console.log(`  Added: ${newLabel}`);
+                } catch (e) { console.log(`  Failed to add ${newLabel}: ${e.message}`); }
+              }
+
+              // 1. Update CI status
+              console.log('  [CI Status]');
+              const checkRuns = await github.paginate(
+                github.rest.checks.listForRef,
+                { owner, repo, ref: pr.head.sha, per_page: 100 },
+                (response) => response.data
+              );
+
+              let allComplete = true;
+              let anyFailed = false;
+              for (const pattern of REQUIRED_PATTERNS) {
+                const check = checkRuns.find(c => c.name.startsWith(pattern));
+                if (!check || check.status !== 'completed') allComplete = false;
+                else if (check.conclusion !== 'success' && check.conclusion !== 'skipped') anyFailed = true;
+              }
+
+              if (allComplete) {
+                await setLabel(Object.values(STATUS), anyFailed ? STATUS.FAILED : STATUS.PASSED);
+              } else {
+                await setLabel(Object.values(STATUS), STATUS.CHECKING);
+              }
+
+              // 2. Add "Missing AC Approval" after 3 minutes (if no AC label)
+              const hasACLabel = REVIEW_LABELS.some(l => labelNames.includes(l));
+              if (ageMinutes >= 3 && !hasACLabel) {
+                console.log('  [AC Label] Adding Missing AC Approval (3+ min, no AC label)');
+                await setLabel(REVIEW_LABELS, 'Missing AC Approval');
+              }
+
+              // 3. Scan comments for Auto Claude verdicts
+              console.log('  [AC Verdicts]');
+              const { data: comments } = await github.rest.issues.listComments({
+                owner, repo, issue_number: prNumber, per_page: 50
+              });
+
+              let latestVerdict = null;
+              let latestTime = 0;
+
+              for (const comment of comments) {
+                const isTrusted = (TRUSTED_BOTS.includes(comment.user.login) && comment.user.type === 'Bot') ||
+                                  TRUSTED_ASSOC.includes(comment.author_association);
+                if (!isTrusted) continue;
+
+                const body = (comment.body || '').slice(0, 5000);
+                const isAC = AC_PATTERNS.some(p => body.includes(p));
+                if (!isAC) continue;
+
+                let verdict = null;
+                if (/Merge Verdict:\s*✅/i.test(body) || body.includes('APPROVED')) verdict = 'AC: Approved';
+                else if (/Merge Verdict:\s*🟠/.test(body) || body.includes('NEEDS REVISION')) verdict = 'AC: Changes Requested';
+                else if (/Merge Verdict:\s*🔴/.test(body) || body.includes('BLOCKED')) verdict = 'AC: Blocked';
+
+                if (verdict) {
+                  const t = new Date(comment.created_at).getTime();
+                  if (t > latestTime) {
+                    latestVerdict = verdict;
+                    latestTime = t;
+                  }
+                }
+              }
+
+              if (latestVerdict && !labelNames.includes(latestVerdict)) {
+                console.log(`  Found verdict: ${latestVerdict}`);
+                await setLabel(REVIEW_LABELS, latestVerdict);
+              }
+
+              // 4. Check for new commits after approval
+              if (labelNames.includes('AC: Approved') && latestTime > 0) {
+                const { data: commits } = await github.rest.pulls.listCommits({
+                  owner, repo, pull_number: prNumber, per_page: 10
+                });
+                
+                const hasNewCommits = commits.some(c => 
+                  new Date(c.commit.committer.date).getTime() > latestTime
+                );
+
+                if (hasNewCommits) {
+                  console.log('  [Re-review] New commits after approval');
+                  await setLabel(REVIEW_LABELS, 'AC: Needs Re-review');
+                  
+                  await github.rest.issues.createComment({
+                    owner, repo, issue_number: prNumber,
+                    body: '## 🔄 Re-review Required\n\nNew commits were pushed after Auto-Claude approval.\n\nPlease run Auto-Claude review again.'
+                  });
+                }
+              }
+
+              // 5. Auto status report at 30 min (if still missing approval)
+              if (ageMinutes >= 30 && ageMinutes < 35 && labelNames.includes('Missing AC Approval')) {
+                const hasAutoReport = comments.some(c => c.body?.includes('Auto status check (30 min)'));
+                if (!hasAutoReport) {
+                  console.log('  [30-min Report]');
+                  const passedCount = REQUIRED_PATTERNS.filter(p => {
+                    const c = checkRuns.find(cr => cr.name.startsWith(p));
+                    return c?.status === 'completed' && (c.conclusion === 'success' || c.conclusion === 'skipped');
+                  }).length;
+
+                  const statusEmoji = allComplete ? (anyFailed ? '❌' : '✅') : '🔄';
+                  
+                  await github.rest.issues.createComment({
+                    owner, repo, issue_number: prNumber,
+                    body: `## ${statusEmoji} Auto Status Check (30 min)\n\nThis PR is still missing AC approval.\n\n**CI:** ${passedCount}/${REQUIRED_PATTERNS.length} checks passed\n\n---\n<sub>🤖 Auto status check (30 min)</sub>`
+                  });
+                }
+              }
+
+              console.log('::endgroup::');
+            }
+
+            console.log(`\n✅ Processed ${prs.length} PR(s)`);
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # AUTO-CLAUDE REVIEW DETECTION (from comments)
+  # ═══════════════════════════════════════════════════════════════════════════
+  ac-review-detection:
+    name: AC Review Detection
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      !contains(github.event.comment.body, '@AutoClaudeCheck')
+    timeout-minutes: 5
+
+    steps:
+      - name: Check for Auto-Claude review
+        uses: actions/github-script@v7
+        with:
+          retries: 3
+          script: |
+            const REVIEW_LABELS = ['Missing AC Approval', 'AC: Approved', 'AC: Changes Requested', 'AC: Blocked', 'AC: Needs Re-review'];
+            const AC_PATTERNS = ['🤖 Auto Claude PR Review', 'Auto Claude Review', 'Auto-Claude Review'];
+            const TRUSTED_BOTS = ['github-actions[bot]', 'auto-claude[bot]'];
+            const TRUSTED_ASSOC = ['COLLABORATOR', 'MEMBER', 'OWNER'];
+
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.issue.number;
+            const comment = context.payload.comment;
+            const body = (comment.body || '').slice(0, 5000);
+
+            // Check if trusted source
+            const isTrusted = (TRUSTED_BOTS.includes(comment.user.login) && comment.user.type === 'Bot') ||
+                              TRUSTED_ASSOC.includes(comment.author_association);
+            
+            if (!isTrusted) {
+              console.log('Not a trusted source, skipping');
+              return;
+            }
+
+            // Check if AC comment
+            const isAC = AC_PATTERNS.some(p => body.includes(p));
+            if (!isAC) {
+              console.log('Not an Auto-Claude comment, skipping');
+              return;
+            }
+
+            // Parse verdict
+            let verdict = null;
+            if (/Merge Verdict:\s*✅/i.test(body) || body.includes('Auto Claude Review - APPROVED')) verdict = 'AC: Approved';
+            else if (/Merge Verdict:\s*🟠/.test(body) || body.includes('NEEDS REVISION')) verdict = 'AC: Changes Requested';
+            else if (/Merge Verdict:\s*🔴/.test(body) || body.includes('BLOCKED')) verdict = 'AC: Blocked';
+
+            if (!verdict) {
+              console.log('Could not parse verdict, skipping');
+              return;
+            }
+
+            console.log(`PR #${prNumber} - AC verdict: ${verdict}`);
+
+            // Update label
             const { data: labels } = await github.rest.issues.listLabelsOnIssue({
               owner, repo, issue_number: prNumber
             });
             const labelNames = labels.map(l => l.name);
-            
-            // Determine new label
-            let newLabel = STATUS_LABELS.CHECKING;
-            if (allComplete) {
-              newLabel = anyFailed ? STATUS_LABELS.FAILED : STATUS_LABELS.PASSED;
-            }
-            
-            // Skip if already correct
-            if (labelNames.includes(newLabel)) {
-              console.log(`Label '${newLabel}' already set`);
+
+            if (labelNames.includes(verdict)) {
+              console.log('Label already set');
               return;
             }
-            
-            // Update labels
-            for (const label of Object.values(STATUS_LABELS)) {
-              if (labelNames.includes(label)) {
-                try {
-                  await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
-                } catch (e) { /* ignore */ }
+
+            // Remove old AC labels
+            for (const l of REVIEW_LABELS) {
+              if (labelNames.includes(l)) {
+                try { await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: l }); } catch (e) {}
               }
             }
-            
-            await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [newLabel] });
-            console.log(`✅ Updated to: ${newLabel}`);
+
+            await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [verdict] });
+            console.log(`✅ Updated to: ${verdict}`);
