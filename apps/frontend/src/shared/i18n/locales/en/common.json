@@ -293,7 +293,10 @@
     "workflowsAwaitingDescription": "This PR is from a fork and requires workflow approval before CI checks can run. Approve the workflows to continue.",
     "viewOnGitHub": "View",
     "approveWorkflow": "Approve",
-    "approveAllWorkflows": "Approve All Workflows"
+    "approveAllWorkflows": "Approve All Workflows",
+    "postCleanReview": "Post Clean Review",
+    "postingCleanReview": "Posting...",
+    "cleanReviewPosted": "Clean review posted"
   },
   "downloads": {
     "toggleExpand": "Toggle download details",

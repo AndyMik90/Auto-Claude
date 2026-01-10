@@ -293,7 +293,10 @@
     "workflowsAwaitingDescription": "Cette PR provient d'un fork et nécessite l'approbation des workflows avant que les vérifications CI puissent s'exécuter. Approuvez les workflows pour continuer.",
     "viewOnGitHub": "Voir",
     "approveWorkflow": "Approuver",
-    "approveAllWorkflows": "Approuver tous les workflows"
+    "approveAllWorkflows": "Approuver tous les workflows",
+    "postCleanReview": "Publier révision propre",
+    "postingCleanReview": "Publication...",
+    "cleanReviewPosted": "Révision propre publiée"
   },
   "downloads": {
     "toggleExpand": "Afficher/masquer les détails",
