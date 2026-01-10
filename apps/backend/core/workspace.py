@@ -530,6 +530,7 @@ def _try_smart_merge_inner(
                 )
 
                 resolved_files = []
+                skipped_files = []  # Track files that failed to copy
                 files_to_stage = []
                 for file_path, status in changed_files:
                     if _is_auto_claude_file(file_path):
@@ -564,6 +565,7 @@ def _try_smart_merge_inner(
                                         success(f"    ✓ {file_path} ({status_label})")
                                     )
                                 else:
+                                    skipped_files.append(file_path)
                                     debug_warning(
                                         MODULE,
                                         f"Could not retrieve binary content for {file_path}",
@@ -583,12 +585,14 @@ def _try_smart_merge_inner(
                                         success(f"    ✓ {file_path} ({status_label})")
                                     )
                                 else:
+                                    skipped_files.append(file_path)
                                     debug_warning(
                                         MODULE,
                                         f"Could not retrieve content for {file_path}",
                                     )
 
                     except Exception as e:
+                        skipped_files.append(file_path)
                         debug_warning(MODULE, f"Could not copy {file_path}: {e}")
 
                 # Stage all files in a single git add call for efficiency
@@ -612,8 +616,9 @@ def _try_smart_merge_inner(
                             "resolved_files": [],
                         }
 
-                return {
-                    "success": True,
+                # Build result - check for skipped files to detect partial merges
+                result = {
+                    "success": len(skipped_files) == 0,
                     "resolved_files": resolved_files,
                     "stats": {
                         "files_merged": len(resolved_files),
@@ -621,8 +626,22 @@ def _try_smart_merge_inner(
                         "ai_assisted": 0,
                         "auto_merged": len(resolved_files),
                         "direct_copy": True,  # Flag indicating direct copy was used
+                        "skipped_count": len(skipped_files),
                     },
                 }
+                if skipped_files:
+                    result["skipped_files"] = skipped_files
+                    result["partial_success"] = len(resolved_files) > 0
+                    print()
+                    print(
+                        warning(
+                            f"  ⚠ {len(skipped_files)} file(s) could not be retrieved:"
+                        )
+                    )
+                    for skipped_file in skipped_files:
+                        print(muted(f"    - {skipped_file}"))
+                    print(muted("  These files may need manual review."))
+                return result
             else:
                 # merge-base failed - branches may not share history
                 debug_warning(

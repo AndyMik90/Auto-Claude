@@ -535,7 +535,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
       if (task && task.status !== newStatus) {
         // Persist status change to file and update local state
-        handleStatusChange(activeTaskId, newStatus, task);
+        handleStatusChange(activeTaskId, newStatus, task).catch((err) =>
+          console.error('[KanbanBoard] Status change failed:', err)
+        );
       }
       return;
     }
@@ -546,7 +548,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       const task = tasks.find((t) => t.id === activeTaskId);
       if (task && task.status !== overTask.status) {
         // Persist status change to file and update local state
-        handleStatusChange(activeTaskId, overTask.status, task);
+        handleStatusChange(activeTaskId, overTask.status, task).catch((err) =>
+          console.error('[KanbanBoard] Status change failed:', err)
+        );
       }
     }
   };

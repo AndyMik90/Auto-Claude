@@ -6,7 +6,7 @@
  * Unit tests for useXterm keyboard handlers
  * Tests terminal copy/paste keyboard shortcuts and platform detection
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import type { Mock } from 'vitest';
 import { renderHook, act, render } from '@testing-library/react';
 import React from 'react';
@@ -61,10 +61,9 @@ vi.mock('../../../../lib/terminal-buffer-manager', () => ({
 // Mock navigator.platform for platform detection
 const originalNavigatorPlatform = navigator.platform;
 
-// Mock requestAnimationFrame for jsdom environment (not provided by default)
-// This mock persists through test lifecycle and handles cleanup properly
-global.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => setTimeout(cb, 0) as unknown as number);
-global.cancelAnimationFrame = vi.fn((id: number) => clearTimeout(id));
+// Store original requestAnimationFrame for restoration after tests
+const originalRequestAnimationFrame = global.requestAnimationFrame;
+const originalCancelAnimationFrame = global.cancelAnimationFrame;
 
 /**
  * Helper function to set up XTerm mocks and render the hook
@@ -153,6 +152,18 @@ describe('useXterm keyboard handlers', () => {
     writeText: ReturnType<typeof vi.fn>;
     readText: ReturnType<typeof vi.fn>;
   };
+
+  // Mock requestAnimationFrame for jsdom environment (not provided by default)
+  // Isolated to this test file to prevent affecting other tests
+  beforeAll(() => {
+    global.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => setTimeout(cb, 0) as unknown as number);
+    global.cancelAnimationFrame = vi.fn((id: number) => clearTimeout(id));
+  });
+
+  afterAll(() => {
+    global.requestAnimationFrame = originalRequestAnimationFrame;
+    global.cancelAnimationFrame = originalCancelAnimationFrame;
+  });
 
   beforeEach(() => {
     // Use fake timers to control async behavior and prevent timer leaks
