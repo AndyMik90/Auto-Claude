@@ -34,11 +34,22 @@ import type { TerminalProcess, WindowGetter, RateLimitEvent, OAuthTokenEvent } f
  * On Unix platforms, always returns true (bash is assumed to be available).
  * On Windows, checks if bash command can be found.
  *
+ * Result is cached to avoid redundant execSync calls.
+ *
  * @returns true if bash is available, false otherwise
  */
+// Cache result at module level - result doesn't change during app lifetime
+let bashAvailableCache: boolean | undefined;
+
 function isBashAvailable(): boolean {
+  // Return cached result if available
+  if (bashAvailableCache !== undefined) {
+    return bashAvailableCache;
+  }
+
   if (process.platform !== "win32") {
-    return true; // Unix systems always have bash
+    bashAvailableCache = true; // Unix systems always have bash
+    return true;
   }
 
   // On Windows, check if bash is in PATH by trying common locations
@@ -51,12 +62,18 @@ function isBashAvailable(): boolean {
 
   // Check if bash exists in common locations or via PATH
   try {
-    require("child_process").execSync("bash --version", { stdio: "ignore" });
+    require("child_process").execSync("bash --version", {
+      stdio: "ignore",
+      timeout: 1000, // Add timeout to prevent blocking
+    });
+    bashAvailableCache = true;
     return true;
   } catch {
     // bash not found in PATH, check common installation locations
     const fs = require("fs");
-    return commonBashPaths.some((bashPath) => fs.existsSync(bashPath));
+    const result = commonBashPaths.some((bashPath) => fs.existsSync(bashPath));
+    bashAvailableCache = result;
+    return result;
   }
 }
 
