@@ -10,10 +10,10 @@ import '@testing-library/jest-dom/vitest';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../../../../../shared/i18n';
 import { PRDetail } from '../PRDetail';
-import type { PRData } from '../../hooks/useGitHubPRs';
+import type { PRData, PRReviewResult } from '../../hooks/useGitHubPRs';
 
 // Mock window.electronAPI
-const mockOnPostComment = vi.fn();
+const mockOnPostComment = vi.fn() as ReturnType<typeof vi.fn>;
 const mockOnPostReview = vi.fn();
 const mockOnRunReview = vi.fn();
 const mockOnRunFollowupReview = vi.fn();
