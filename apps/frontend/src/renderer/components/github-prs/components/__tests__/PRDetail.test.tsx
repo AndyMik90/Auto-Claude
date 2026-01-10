@@ -13,8 +13,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useState } from 'react';
+// @ts-ignore - vitest resolves this correctly
 import type { PRData, PRReviewResult, PRReviewProgress } from '../../../hooks/useGitHubPRs';
-import type { NewCommitsCheck } from '../../../../../../preload/api/modules/github-api';
+import type { NewCommitsCheck } from '@preload/api/modules/github-api';
 
 /**
  * Factory function to create a mock PR data object
@@ -206,7 +207,7 @@ function computePRStatus(params: {
     };
   }
 
-  const unpostedFindings = reviewResult.findings.filter((f) => !allPostedIds.has(f.id));
+  const unpostedFindings = reviewResult.findings.filter((f: { id: string }) => !allPostedIds.has(f.id));
   const hasUnpostedBlockers = unpostedFindings.some(
     (f: { severity: string }) => f.severity === 'critical' || f.severity === 'high'
   );
