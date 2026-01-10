@@ -1,3 +1,8 @@
+## 2.7.3 - Architectural Improvements
+### ✨ New Features
+- Implemented Centralized Agent Architecture (Configuration moved to `~/.config/claude/agents`)
+- Added Sub-agent Delegation support for Cleaner Agent Context
+
 ## 2.7.2 - Stability & Performance Enhancements
 
 ### ✨ New Features
