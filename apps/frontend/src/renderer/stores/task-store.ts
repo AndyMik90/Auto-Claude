@@ -503,9 +503,10 @@ export async function persistTaskStatus(
 /**
  * Force complete a task by cleaning up its worktree
  * Used when user confirms they want to delete the worktree and mark as done
+ * Returns full result including error details for better UX
  */
-export async function forceCompleteTask(taskId: string): Promise<boolean> {
-  return (await persistTaskStatus(taskId, 'done', { forceCleanup: true })).success;
+export async function forceCompleteTask(taskId: string): Promise<PersistStatusResult> {
+  return persistTaskStatus(taskId, 'done', { forceCleanup: true });
 }
 
 /**

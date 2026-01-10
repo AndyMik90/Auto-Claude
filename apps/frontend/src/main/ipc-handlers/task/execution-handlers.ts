@@ -468,10 +468,11 @@ export function registerTaskExecutionHandlers(
         if (hasWorktree) {
           if (options?.forceCleanup) {
             // User confirmed cleanup - delete worktree and branch
-            console.log(`[TASK_UPDATE_STATUS] Cleaning up worktree for task ${taskId} (user confirmed)`);
+            console.warn(`[TASK_UPDATE_STATUS] Cleaning up worktree for task ${taskId} (user confirmed)`);
             try {
               // Get the branch name before removing the worktree
               let branch = '';
+              let usingFallbackBranch = false;
               try {
                 branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
                   cwd: worktreePath,
@@ -481,7 +482,8 @@ export function registerTaskExecutionHandlers(
               } catch (branchError) {
                 // If we can't get branch name, use the default pattern
                 branch = `auto-claude/${task.specId}`;
-                console.log(`[TASK_UPDATE_STATUS] Could not get branch name, using fallback pattern: ${branch}`, branchError);
+                usingFallbackBranch = true;
+                console.warn(`[TASK_UPDATE_STATUS] Could not get branch name, using fallback pattern: ${branch}`, branchError);
               }
 
               // Remove the worktree
@@ -490,7 +492,7 @@ export function registerTaskExecutionHandlers(
                 encoding: 'utf-8',
                 timeout: 30000
               });
-              console.log(`[TASK_UPDATE_STATUS] Worktree removed: ${worktreePath}`);
+              console.warn(`[TASK_UPDATE_STATUS] Worktree removed: ${worktreePath}`);
 
               // Delete the branch (ignore errors if branch doesn't exist)
               try {
@@ -499,13 +501,18 @@ export function registerTaskExecutionHandlers(
                   encoding: 'utf-8',
                   timeout: 30000
                 });
-                console.log(`[TASK_UPDATE_STATUS] Branch deleted: ${branch}`);
-              } catch {
-                // Branch may not exist or may be the current branch, ignore
-                console.log(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist)`);
+                console.warn(`[TASK_UPDATE_STATUS] Branch deleted: ${branch}`);
+              } catch (branchDeleteError) {
+                // Branch may not exist or may be the current branch
+                if (usingFallbackBranch) {
+                  // More concerning - fallback pattern didn't match actual branch
+                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
+                } else {
+                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`);
+                }
               }
 
-              console.log(`[TASK_UPDATE_STATUS] Worktree cleanup completed successfully`);
+              console.warn(`[TASK_UPDATE_STATUS] Worktree cleanup completed successfully`);
             } catch (cleanupError) {
               console.error(`[TASK_UPDATE_STATUS] Failed to cleanup worktree:`, cleanupError);
               return {

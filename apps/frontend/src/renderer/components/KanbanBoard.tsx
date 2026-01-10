@@ -497,9 +497,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
     setWorktreeCleanupDialog(prev => ({ ...prev, isProcessing: true, error: undefined }));
 
-    const success = await forceCompleteTask(worktreeCleanupDialog.taskId);
+    const result = await forceCompleteTask(worktreeCleanupDialog.taskId);
 
-    if (success) {
+    if (result.success) {
       setWorktreeCleanupDialog({
         open: false,
         taskId: null,
@@ -509,11 +509,11 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         error: undefined
       });
     } else {
-      // Keep dialog open with error state for retry
+      // Keep dialog open with error state for retry - show actual error if available
       setWorktreeCleanupDialog(prev => ({
         ...prev,
         isProcessing: false,
-        error: t('dialogs:worktreeCleanup.errorDescription')
+        error: result.error || t('dialogs:worktreeCleanup.errorDescription')
       }));
     }
   };
