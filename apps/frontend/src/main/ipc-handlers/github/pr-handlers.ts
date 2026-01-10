@@ -925,6 +925,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
   debugLog("Registering PR handlers");
 
   // List open PRs with pagination support
+  // Note: GitHub's list PRs endpoint doesn't include additions/deletions/changed_files,
+  // so we fetch each PR individually in parallel to get those stats.
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_PR_LIST,
     async (_, projectId: string, page: number = 1): Promise<PRData[]> => {
@@ -949,17 +951,47 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             user: { login: string };
             head: { ref: string };
             base: { ref: string };
-            additions: number;
-            deletions: number;
-            changed_files: number;
             assignees?: Array<{ login: string }>;
             created_at: string;
             updated_at: string;
             html_url: string;
           }>;
 
-          debugLog("Fetched PRs", { count: prs.length, page, samplePr: prs[0] });
-          return prs.map((pr) => ({
+          debugLog("Fetched PRs list", { count: prs.length, page });
+
+          // Fetch each PR individually in parallel to get additions/deletions/changed_files
+          // GitHub's list endpoint doesn't include these stats
+          const prsWithStats = await Promise.all(
+            prs.map(async (pr) => {
+              try {
+                const prDetails = (await githubFetch(
+                  config.token,
+                  `/repos/${config.repo}/pulls/${pr.number}`
+                )) as {
+                  additions: number;
+                  deletions: number;
+                  changed_files: number;
+                };
+                return {
+                  ...pr,
+                  additions: prDetails.additions ?? 0,
+                  deletions: prDetails.deletions ?? 0,
+                  changed_files: prDetails.changed_files ?? 0,
+                };
+              } catch (error) {
+                debugLog(`Failed to fetch stats for PR #${pr.number}`, { error });
+                return {
+                  ...pr,
+                  additions: 0,
+                  deletions: 0,
+                  changed_files: 0,
+                };
+              }
+            })
+          );
+
+          debugLog("Fetched PR stats", { count: prsWithStats.length });
+          return prsWithStats.map((pr) => ({
             number: pr.number,
             title: pr.title,
             body: pr.body ?? "",
@@ -967,9 +999,9 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             author: { login: pr.user.login },
             headRefName: pr.head.ref,
             baseRefName: pr.base.ref,
-            additions: pr.additions ?? 0,
-            deletions: pr.deletions ?? 0,
-            changedFiles: pr.changed_files ?? 0,
+            additions: pr.additions,
+            deletions: pr.deletions,
+            changedFiles: pr.changed_files,
             assignees: pr.assignees?.map((a: { login: string }) => ({ login: a.login })) ?? [],
             files: [],
             createdAt: pr.created_at,
