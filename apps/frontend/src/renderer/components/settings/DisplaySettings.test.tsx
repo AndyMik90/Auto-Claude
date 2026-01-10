@@ -27,6 +27,7 @@ vi.mock('react-i18next', () => ({
         'sections.display.description': 'Adjust the size of UI elements',
         'font.label': 'Terminal Font',
         'font.description': 'Choose a monospace font for terminal and code display',
+        'font.ligatures': 'Ligatures',
         'scale.presets': 'Scale Presets',
         'scale.presetsDescription': 'Quick scale options for common preferences',
         'scale.fineTune': 'Fine-tune Scale',

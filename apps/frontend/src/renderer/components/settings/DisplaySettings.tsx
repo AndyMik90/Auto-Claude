@@ -124,10 +124,10 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
         <div className="space-y-3">
           <Label className="text-sm font-medium text-foreground flex items-center gap-2">
             <Type className="h-4 w-4" />
-            {t('font.label', 'Terminal Font')}
+            {t('font.label')}
           </Label>
           <p className="text-sm text-muted-foreground">
-            {t('font.description', 'Choose a monospace font for terminal and code display')}
+            {t('font.description')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
             {TERMINAL_FONTS.map((font) => {
@@ -148,11 +148,11 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
                   <div className="w-full">
                     <div className="text-sm font-medium flex items-center justify-between">
                       <span>{font.name}</span>
-                      {font.hasLigatures && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                          {t('font.ligatures', 'Ligatures')}
-                        </span>
-                      )}
+                    {font.hasLigatures && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                        {t('font.ligatures')}
+                      </span>
+                    )}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">{font.description}</div>
                     <div 
