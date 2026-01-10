@@ -6,10 +6,19 @@
 import { getClaudeProfileManager } from './claude-profile-manager';
 
 /**
- * Regex pattern to detect Claude Code rate limit messages
- * Matches: "Limit reached · resets Dec 17 at 6am (Europe/Oslo)"
+ * Regex patterns to detect Claude Code rate limit messages
+ * Matches various formats:
+ * - "Limit reached · resets Dec 17 at 6am (Europe/Oslo)"
+ * - "You're out of extra usage · resets 6pm (America/New_York)"
  */
-const RATE_LIMIT_PATTERN = /Limit reached\s*[·•]\s*resets\s+(.+?)(?:\s*$|\n)/im;
+const RATE_LIMIT_PATTERNS = [
+  /Limit reached\s*[·•]\s*resets\s+(.+?)(?:\s*$|\n)/im,
+  /out of (?:extra )?usage\s*[·•]\s*resets\s+(.+?)(?:\s*$|\n)/im,
+  /You're out of\s+(?:extra\s+)?usage\s*[·•]\s*resets\s+(.+?)(?:\s*$|\n)/im,
+];
+
+// Keep legacy pattern for backwards compatibility
+const RATE_LIMIT_PATTERN = RATE_LIMIT_PATTERNS[0];
 
 /**
  * Additional patterns that might indicate rate limiting
@@ -98,37 +107,38 @@ export function detectRateLimit(
   output: string,
   profileId?: string
 ): RateLimitDetectionResult {
-  // Check for the primary rate limit pattern
-  const match = output.match(RATE_LIMIT_PATTERN);
+  // Check for rate limit patterns (primary patterns with reset time)
+  for (const pattern of RATE_LIMIT_PATTERNS) {
+    const match = output.match(pattern);
+    if (match) {
+      const resetTime = match[1].trim();
+      const limitType = classifyLimitType(resetTime);
 
-  if (match) {
-    const resetTime = match[1].trim();
-    const limitType = classifyLimitType(resetTime);
+      // Record the rate limit event in the profile manager
+      const profileManager = getClaudeProfileManager();
+      const effectiveProfileId = profileId || profileManager.getActiveProfile().id;
 
-    // Record the rate limit event in the profile manager
-    const profileManager = getClaudeProfileManager();
-    const effectiveProfileId = profileId || profileManager.getActiveProfile().id;
+      try {
+        profileManager.recordRateLimitEvent(effectiveProfileId, resetTime);
+      } catch (err) {
+        console.error('[RateLimitDetector] Failed to record rate limit event:', err);
+      }
 
-    try {
-      profileManager.recordRateLimitEvent(effectiveProfileId, resetTime);
-    } catch (err) {
-      console.error('[RateLimitDetector] Failed to record rate limit event:', err);
+      // Find best alternative profile
+      const bestProfile = profileManager.getBestAvailableProfile(effectiveProfileId);
+
+      return {
+        isRateLimited: true,
+        resetTime,
+        limitType,
+        profileId: effectiveProfileId,
+        suggestedProfile: bestProfile ? {
+          id: bestProfile.id,
+          name: bestProfile.name
+        } : undefined,
+        originalError: output
+      };
     }
-
-    // Find best alternative profile
-    const bestProfile = profileManager.getBestAvailableProfile(effectiveProfileId);
-
-    return {
-      isRateLimited: true,
-      resetTime,
-      limitType,
-      profileId: effectiveProfileId,
-      suggestedProfile: bestProfile ? {
-        id: bestProfile.id,
-        name: bestProfile.name
-      } : undefined,
-      originalError: output
-    };
   }
 
   // Check for secondary rate limit indicators
@@ -162,10 +172,16 @@ export function isRateLimitError(output: string): boolean {
 
 /**
  * Extract reset time from rate limit message
+ * Checks all rate limit patterns for various message formats
  */
 export function extractResetTime(output: string): string | null {
-  const match = output.match(RATE_LIMIT_PATTERN);
-  return match ? match[1].trim() : null;
+  for (const pattern of RATE_LIMIT_PATTERNS) {
+    const match = output.match(pattern);
+    if (match) {
+      return match[1].trim();
+    }
+  }
+  return null;
 }
 
 /**
