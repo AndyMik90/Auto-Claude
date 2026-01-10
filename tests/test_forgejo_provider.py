@@ -177,21 +177,20 @@ class TestForgejoProviderProtocol:
             token="test-token"
         )
 
-        # Check required methods exist
+        # Check required methods exist (from GitProvider protocol)
         required_methods = [
-            'list_prs',
-            'get_pr',
-            'create_pr',
+            'fetch_prs',
+            'fetch_pr',
             'merge_pr',
             'close_pr',
-            'list_issues',
-            'get_issue',
+            'fetch_issues',
+            'fetch_issue',
             'create_issue',
             'close_issue',
-            'add_labels',
+            'apply_labels',
             'remove_labels',
             'add_comment',
-            'get_repo',
+            'get_repository_info',
         ]
 
         for method in required_methods:
