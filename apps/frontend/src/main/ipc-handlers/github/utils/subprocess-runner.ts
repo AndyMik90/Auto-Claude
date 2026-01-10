@@ -362,20 +362,27 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
     return result;
   }
 
-  // 3. Check gh authentication
+  // 3. Check gh authentication (with timeout to prevent hanging on network issues)
   try {
-    await execAsync('gh auth status 2>&1');
+    // Use a timeout to prevent hanging on slow network connections
+    // gh auth status can hang on Windows if there are network issues
+    const authCheckPromise = execAsync('gh auth status');
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('gh auth status timeout')), 10000)
+    );
+    await Promise.race([authCheckPromise, timeoutPromise]);
     result.ghAuthenticated = true;
   } catch (error: any) {
     // gh auth status returns non-zero when not authenticated
     // Check the output to determine if it's an auth issue
-    const output = error.stdout || error.stderr || '';
+    const output = error.stdout || error.stderr || error.message || '';
     if (output.includes('not logged in') || output.includes('not authenticated')) {
       result.ghAuthenticated = false;
       result.error = 'GitHub CLI is not authenticated. Run:\n  gh auth login';
       return result;
     }
-    // If it's some other error, still consider it authenticated (might be network issue)
+    // Timeout or other error - assume authenticated and let the review fail later if not
+    // This prevents blocking the UI on slow network connections
     result.ghAuthenticated = true;
   }
 
