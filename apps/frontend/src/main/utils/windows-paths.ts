@@ -8,12 +8,12 @@
  * Follows the same pattern as homebrew-python.ts for platform-specific detection.
  */
 
-import { existsSync } from 'fs';
-import { access, constants } from 'fs/promises';
-import { execFileSync, execFile } from 'child_process';
-import { promisify } from 'util';
-import path from 'path';
-import os from 'os';
+import { existsSync } from "fs";
+import { access, constants } from "fs/promises";
+import { execFileSync, execFile } from "child_process";
+import { promisify } from "util";
+import path from "path";
+import os from "os";
 
 const execFileAsync = promisify(execFile);
 
@@ -24,26 +24,29 @@ export interface WindowsToolPaths {
 }
 
 export const WINDOWS_GIT_PATHS: WindowsToolPaths = {
-  toolName: 'Git',
-  executable: 'git.exe',
+  toolName: "Git",
+  executable: "git.exe",
   patterns: [
-    '%PROGRAMFILES%\\Git\\cmd',
-    '%PROGRAMFILES(X86)%\\Git\\cmd',
-    '%LOCALAPPDATA%\\Programs\\Git\\cmd',
-    '%USERPROFILE%\\scoop\\apps\\git\\current\\cmd',
-    '%PROGRAMFILES%\\Git\\bin',
-    '%PROGRAMFILES(X86)%\\Git\\bin',
-    '%PROGRAMFILES%\\Git\\mingw64\\bin',
+    "%PROGRAMFILES%\\Git\\cmd",
+    "%PROGRAMFILES(X86)%\\Git\\cmd",
+    "%LOCALAPPDATA%\\Programs\\Git\\cmd",
+    "%USERPROFILE%\\scoop\\apps\\git\\current\\cmd",
+    "%PROGRAMFILES%\\Git\\bin",
+    "%PROGRAMFILES(X86)%\\Git\\bin",
+    "%PROGRAMFILES%\\Git\\mingw64\\bin",
   ],
 };
 
 export function isSecurePath(pathStr: string): boolean {
   const dangerousPatterns = [
-    /[;&|`${}[\]<>!"^]/,  // Shell metacharacters (parentheses removed - safe when quoted)
-    /%[^%]+%/,              // Windows environment variable expansion (e.g., %PATH%)
-    /\.\.\//,               // Unix directory traversal
-    /\.\.\\/,               // Windows directory traversal
-    /[\r\n]/,               // Newlines (command injection)
+    // Shell metacharacters that are NOT safe even in quoted paths
+    // Note: & and | are safe when properly quoted (prepareShellCommand handles this)
+    // Note: () are safe when quoted (removed from this check)
+    /[;`${}[\]<>!"^]/,
+    /%[^%]+%/, // Windows environment variable expansion (e.g., %PATH%)
+    /\.\.\//, // Unix directory traversal
+    /\.\.\\/, // Windows directory traversal
+    /[\r\n]/, // Newlines (command injection)
   ];
 
   for (const pattern of dangerousPatterns) {
@@ -57,11 +60,11 @@ export function isSecurePath(pathStr: string): boolean {
 
 export function expandWindowsPath(pathPattern: string): string | null {
   const envVars: Record<string, string | undefined> = {
-    '%PROGRAMFILES%': process.env.ProgramFiles || 'C:\\Program Files',
-    '%PROGRAMFILES(X86)%': process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)',
-    '%LOCALAPPDATA%': process.env.LOCALAPPDATA,
-    '%APPDATA%': process.env.APPDATA,
-    '%USERPROFILE%': process.env.USERPROFILE || os.homedir(),
+    "%PROGRAMFILES%": process.env.ProgramFiles || "C:\\Program Files",
+    "%PROGRAMFILES(X86)%": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+    "%LOCALAPPDATA%": process.env.LOCALAPPDATA,
+    "%APPDATA%": process.env.APPDATA,
+    "%USERPROFILE%": process.env.USERPROFILE || os.homedir(),
   };
 
   let expandedPath = pathPattern;
@@ -86,10 +89,10 @@ export function expandWindowsPath(pathPattern: string): string | null {
 
 export function getWindowsExecutablePaths(
   toolPaths: WindowsToolPaths,
-  logPrefix: string = '[Windows Paths]'
+  logPrefix: string = "[Windows Paths]"
 ): string[] {
   // Only run on Windows
-  if (process.platform !== 'win32') {
+  if (process.platform !== "win32") {
     return [];
   }
 
@@ -134,9 +137,9 @@ export function getWindowsExecutablePaths(
  */
 export function findWindowsExecutableViaWhere(
   executable: string,
-  logPrefix: string = '[Windows Where]'
+  logPrefix: string = "[Windows Where]"
 ): string | null {
-  if (process.platform !== 'win32') {
+  if (process.platform !== "win32") {
     return null;
   }
 
@@ -149,19 +152,19 @@ export function findWindowsExecutableViaWhere(
   try {
     // Use 'where' command to find the executable
     // where.exe is a built-in Windows command that finds executables
-    const result = execFileSync('where.exe', [executable], {
-      encoding: 'utf-8',
+    const result = execFileSync("where.exe", [executable], {
+      encoding: "utf-8",
       timeout: 5000,
       windowsHide: true,
     }).trim();
 
     // 'where' returns multiple paths separated by newlines if found in multiple locations
     // Prefer paths with .cmd or .exe extensions (executable files)
-    const paths = result.split(/\r?\n/).filter(p => p.trim());
+    const paths = result.split(/\r?\n/).filter((p) => p.trim());
 
     if (paths.length > 0) {
       // Prefer .cmd, .bat, or .exe extensions, otherwise take first path
-      const foundPath = (paths.find(p => /\.(cmd|bat|exe)$/i.test(p)) || paths[0]).trim();
+      const foundPath = (paths.find((p) => /\.(cmd|bat|exe)$/i.test(p)) || paths[0]).trim();
 
       // Validate the path exists and is secure
       if (existsSync(foundPath) && isSecurePath(foundPath)) {
@@ -183,10 +186,10 @@ export function findWindowsExecutableViaWhere(
  */
 export async function getWindowsExecutablePathsAsync(
   toolPaths: WindowsToolPaths,
-  logPrefix: string = '[Windows Paths]'
+  logPrefix: string = "[Windows Paths]"
 ): Promise<string[]> {
   // Only run on Windows
-  if (process.platform !== 'win32') {
+  if (process.platform !== "win32") {
     return [];
   }
 
@@ -237,9 +240,9 @@ export async function getWindowsExecutablePathsAsync(
  */
 export async function findWindowsExecutableViaWhereAsync(
   executable: string,
-  logPrefix: string = '[Windows Where]'
+  logPrefix: string = "[Windows Where]"
 ): Promise<string | null> {
-  if (process.platform !== 'win32') {
+  if (process.platform !== "win32") {
     return null;
   }
 
@@ -252,19 +255,22 @@ export async function findWindowsExecutableViaWhereAsync(
   try {
     // Use 'where' command to find the executable
     // where.exe is a built-in Windows command that finds executables
-    const { stdout } = await execFileAsync('where.exe', [executable], {
-      encoding: 'utf-8',
+    const { stdout } = await execFileAsync("where.exe", [executable], {
+      encoding: "utf-8",
       timeout: 5000,
       windowsHide: true,
     });
 
     // 'where' returns multiple paths separated by newlines if found in multiple locations
     // Prefer paths with .cmd, .bat, or .exe extensions (executable files)
-    const paths = stdout.trim().split(/\r?\n/).filter(p => p.trim());
+    const paths = stdout
+      .trim()
+      .split(/\r?\n/)
+      .filter((p) => p.trim());
 
     if (paths.length > 0) {
       // Prefer .cmd, .bat, or .exe extensions, otherwise take first path
-      const foundPath = (paths.find(p => /\.(cmd|bat|exe)$/i.test(p)) || paths[0]).trim();
+      const foundPath = (paths.find((p) => /\.(cmd|bat|exe)$/i.test(p)) || paths[0]).trim();
 
       // Validate the path exists and is secure
       try {
