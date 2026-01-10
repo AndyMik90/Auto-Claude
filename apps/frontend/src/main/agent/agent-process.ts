@@ -142,18 +142,19 @@ export class AgentProcessManager {
       const settings = readSettingsFile();
       const language = settings?.language;
 
-      // Only set language env vars if language is a non-empty string
+      // Validate against allowlist (AVAILABLE_LANGUAGES) to prevent prompt injection
+      // Only set env vars if the language is in our supported list
       if (typeof language === 'string' && language.trim()) {
-        languageEnv['AUTO_CLAUDE_USER_LANGUAGE'] = language;
-
-        // Also pass the language display name so backend doesn't need to maintain a mapping
-        // This makes frontend (i18n.ts) the single source of truth for language names
         const langConfig = AVAILABLE_LANGUAGES.find(l => l.value === language);
-        if (langConfig) {
-          languageEnv['AUTO_CLAUDE_USER_LANGUAGE_NAME'] = langConfig.label;
-        }
 
-        console.log('[AgentProcess] Setting AUTO_CLAUDE_USER_LANGUAGE:', language, langConfig?.label);
+        // Only pass to backend if language is in the allowlist
+        if (langConfig) {
+          languageEnv['AUTO_CLAUDE_USER_LANGUAGE'] = langConfig.value;  // Use validated value
+          languageEnv['AUTO_CLAUDE_USER_LANGUAGE_NAME'] = langConfig.label;  // Use validated label
+          console.log('[AgentProcess] Setting AUTO_CLAUDE_USER_LANGUAGE:', langConfig.value, langConfig.label);
+        } else {
+          console.warn('[AgentProcess] Unsupported language in settings.json:', language, '- ignoring');
+        }
       }
     } catch (error) {
       console.warn('[AgentProcess] Failed to read language setting:', error);

@@ -22,24 +22,40 @@ def get_user_language_instruction() -> str:
     Get language instruction based on user's language preference.
 
     Reads from environment variables:
-    - AUTO_CLAUDE_USER_LANGUAGE: language code (e.g., 'fr', 'ko')
-    - AUTO_CLAUDE_USER_LANGUAGE_NAME: display name (e.g., 'French', 'Korean')
+    - AUTO_CLAUDE_USER_LANGUAGE: language code (e.g., 'fr')
+    - AUTO_CLAUDE_USER_LANGUAGE_NAME: display name (e.g., 'French', 'Français')
 
-    The frontend is the single source of truth for language names,
-    so no mapping is needed here.
+    The frontend validates against AVAILABLE_LANGUAGES before passing to backend,
+    but we validate again here for defense in depth.
 
     Returns:
         Language instruction string to prepend to prompts, or empty string if English
     """
-    user_lang = os.environ.get("AUTO_CLAUDE_USER_LANGUAGE", "en").lower()
+    import re
 
-    # English is the default - no special instruction needed
-    if user_lang == "en":
+    user_lang = os.environ.get("AUTO_CLAUDE_USER_LANGUAGE", "en").lower().strip()
+
+    # Validate against allowlist to prevent prompt injection
+    # IMPORTANT: Keep this in sync with apps/frontend/src/shared/constants/i18n.ts
+    SUPPORTED_LANGUAGES = {"en", "fr"}
+
+    if user_lang not in SUPPORTED_LANGUAGES or user_lang == "en":
+        # English is the default - no special instruction needed
+        # Also returns empty string for unsupported languages (security fallback)
         return ""
 
     # Get language name from environment (frontend passes it)
-    # Fallback to the language code itself if not provided
+    # Sanitize to prevent prompt injection via lang_name
     lang_name = os.environ.get("AUTO_CLAUDE_USER_LANGUAGE_NAME", user_lang)
+
+    # Remove potentially dangerous characters (keep only alphanumeric, spaces, hyphens, common accents)
+    # This allows "Français" but blocks prompt injection attempts
+    lang_name = re.sub(r"[^\w\s\-àâäèéêëîïôùûüÿçœæ]", "", lang_name, flags=re.UNICODE)
+    lang_name = lang_name.strip()[:50]  # Limit length to 50 characters
+
+    # Final safety check - if sanitization left nothing, use the language code
+    if not lang_name:
+        lang_name = user_lang
 
     return f"""## LANGUAGE PREFERENCE
 
