@@ -223,7 +223,10 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Auto Claude"
+      "shortcutName": "Auto Claude",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "differentialPackage": true
     },
     "linux": {
       "icon": "resources/icons",
