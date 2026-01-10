@@ -16,7 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { ReviewStatusTree, type ReviewStatus } from '../ReviewStatusTree';
-// @ts-ignore - vitest resolves this correctly
+// @ts-expect-error - vitest resolves this correctly
 import type { PRReviewResult } from '../../../hooks/useGitHubPRs';
 import type { NewCommitsCheck } from '@preload/api/modules/github-api';
 import i18n from '@shared/i18n';

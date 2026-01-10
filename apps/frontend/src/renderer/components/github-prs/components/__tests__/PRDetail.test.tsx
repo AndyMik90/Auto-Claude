@@ -10,10 +10,8 @@
  * - Reviewing status has correct label, icon, and color
  * - All other status computations remain unaffected
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useState } from 'react';
-// @ts-ignore - vitest resolves this correctly
+import { describe, it, expect } from 'vitest';
+// @ts-expect-error - vitest resolves this correctly
 import type { PRData, PRReviewResult, PRReviewProgress } from '../../../hooks/useGitHubPRs';
 import type { NewCommitsCheck } from '@preload/api/modules/github-api';
 
