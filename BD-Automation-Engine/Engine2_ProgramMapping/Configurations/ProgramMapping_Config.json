@@ -1,0 +1,92 @@
+{
+  "mapping_settings": {
+    "name": "Program Mapping Engine",
+    "version": "1.0.0",
+    "description": "Maps job postings to DoD programs using keywords and semantic matching"
+  },
+  "programKeywords": {
+    "GBSD Sentinel": [
+      "GBSD",
+      "Ground Based Strategic Deterrent",
+      "Sentinel",
+      "ICBM modernization",
+      "Minuteman replacement"
+    ],
+    "F-35 Lightning II": [
+      "F-35",
+      "JSF",
+      "Joint Strike Fighter",
+      "Lightning II",
+      "F35"
+    ],
+    "GPS III": [
+      "GPS III",
+      "GPS 3",
+      "Navigation Warfare",
+      "NAVWAR"
+    ],
+    "Next Generation OPIR": [
+      "OPIR",
+      "Next Gen OPIR",
+      "missile warning",
+      "infrared"
+    ],
+    "JADC2": [
+      "JADC2",
+      "Joint All-Domain Command",
+      "ABMS",
+      "Advanced Battle Management"
+    ],
+    "EXAMPLE_PROGRAM": [
+      "keyword1",
+      "keyword2",
+      "abbreviation"
+    ]
+  },
+  "primeContractorMapping": {
+    "Northrop Grumman": ["NGC", "NGIS", "Northrop"],
+    "Lockheed Martin": ["LM", "LMT", "Lockheed"],
+    "Raytheon": ["RTX", "Raytheon Technologies"],
+    "General Dynamics": ["GD", "GDIT"],
+    "BAE Systems": ["BAE"],
+    "Leidos": ["LDOS"],
+    "SAIC": ["Science Applications"],
+    "Booz Allen Hamilton": ["BAH", "Booz Allen"]
+  },
+  "locationSignals": {
+    "Huntsville": ["MDA", "Missile Defense", "Army"],
+    "Colorado Springs": ["Space Force", "NORAD", "NORTHCOM"],
+    "San Diego": ["Navy", "NAVAIR"],
+    "Ft Meade": ["NSA", "Cyber Command"],
+    "Pentagon": ["OSD", "Joint Staff"],
+    "Patuxent River": ["NAVAIR", "Naval Aviation"]
+  },
+  "clearanceMapping": {
+    "TS/SCI with Poly": ["Intel Community", "NSA", "CIA", "NRO"],
+    "TS/SCI": ["DoD", "Intelligence"],
+    "Top Secret": ["DoD", "Contractor"],
+    "Secret": ["General Defense"]
+  },
+  "scoring": {
+    "directProgramMatch": 10,
+    "primeContractorMatch": 5,
+    "locationMatch": 3,
+    "clearanceMatch": 2,
+    "technicalKeywordMatch": 1
+  },
+  "thresholds": {
+    "highConfidence": 0.8,
+    "mediumConfidence": 0.5,
+    "lowConfidence": 0.3
+  },
+  "unmappedTag": "Unmatched",
+  "semanticSearch": {
+    "enabled": true,
+    "model": "text-embedding-ada-002",
+    "topK": 3,
+    "minSimilarity": 0.7
+  },
+  "output": {
+    "path": "Engine2_ProgramMapping/data/Enriched_Jobs.json"
+  }
+}

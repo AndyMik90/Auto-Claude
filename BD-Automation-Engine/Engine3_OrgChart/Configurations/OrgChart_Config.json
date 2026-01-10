@@ -1,0 +1,92 @@
+{
+  "orgchart_settings": {
+    "name": "Org Chart & Contact Mapping Engine",
+    "version": "1.0.0",
+    "description": "Maps contacts and organizational structures for programs"
+  },
+  "targets": [
+    {
+      "program": "GBSD Sentinel",
+      "company": "Northrop Grumman",
+      "roles": [
+        "Program Manager",
+        "Technical Lead",
+        "Engineering Director",
+        "Capture Manager",
+        "Business Development Director"
+      ]
+    },
+    {
+      "program": "F-35 Lightning II",
+      "company": "Lockheed Martin",
+      "roles": [
+        "Program Manager",
+        "Chief Engineer",
+        "Operations Director"
+      ]
+    }
+  ],
+  "priorityRoles": [
+    "Program Manager",
+    "Vice President",
+    "Director",
+    "Senior Manager",
+    "Technical Lead",
+    "Capture Manager",
+    "Business Development",
+    "Recruiter",
+    "Contracting Officer"
+  ],
+  "dataSources": {
+    "internal": {
+      "enabled": true,
+      "files": [
+        "Contacts.csv",
+        "GDIT_PTS_Contacts.csv",
+        "DCGS_Contacts_Full.csv"
+      ]
+    },
+    "linkedin": {
+      "enabled": true,
+      "actorId": "apify/linkedin-profile-scraper",
+      "searchActorId": "apify/linkedin-people-search"
+    },
+    "bullhorn": {
+      "enabled": false,
+      "apiEndpoint": "${BULLHORN_API_URL}",
+      "clientId": "${BULLHORN_CLIENT_ID}"
+    }
+  },
+  "searchStrategies": [
+    {
+      "name": "Direct Program Search",
+      "query": "{program} {role} {company}",
+      "priority": 1
+    },
+    {
+      "name": "Company Role Search",
+      "query": "{company} {role} defense",
+      "priority": 2
+    },
+    {
+      "name": "Agency Search",
+      "query": "{agency} {role} contracting",
+      "priority": 3
+    }
+  ],
+  "output": {
+    "format": "markdown",
+    "path": "Engine3_OrgChart/OrgCharts/",
+    "template": "org_chart_template.md"
+  },
+  "contactFields": [
+    "name",
+    "title",
+    "company",
+    "program",
+    "email",
+    "linkedinUrl",
+    "phone",
+    "notes"
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "scoring_settings": {
+    "name": "BD Scoring Engine",
+    "version": "1.0.0",
+    "description": "Scores and prioritizes BD opportunities"
+  },
+  "weights": {
+    "hiringDemand": 0.25,
+    "painLevel": 0.20,
+    "contractValue": 0.20,
+    "companyFit": 0.20,
+    "competitiveIntensity": 0.15
+  },
+  "factors": {
+    "hiringDemand": {
+      "description": "Number of open roles and urgency",
+      "scoring": {
+        "highDemand": 100,
+        "mediumDemand": 60,
+        "lowDemand": 30
+      }
+    },
+    "painLevel": {
+      "description": "Clearance difficulty and skill rarity",
+      "clearanceScores": {
+        "TS/SCI with Poly": 100,
+        "TS/SCI": 80,
+        "Top Secret": 60,
+        "Secret": 40,
+        "None": 20
+      }
+    },
+    "contractValue": {
+      "description": "Program/contract monetary value",
+      "thresholds": {
+        "over100M": 100,
+        "50Mto100M": 80,
+        "10Mto50M": 60,
+        "under10M": 40
+      }
+    },
+    "companyFit": {
+      "description": "Alignment with company capabilities",
+      "keywords": [
+        "engineer",
+        "developer",
+        "analyst",
+        "cyber",
+        "software",
+        "cloud",
+        "data",
+        "IT"
+      ],
+      "matchScore": 100,
+      "noMatchScore": 30
+    },
+    "competitiveIntensity": {
+      "description": "Competition level for the opportunity",
+      "lowCompetitionLocations": [
+        "Huntsville",
+        "Colorado Springs",
+        "Augusta",
+        "Hawaii",
+        "Alaska"
+      ],
+      "lowCompScore": 100,
+      "highCompScore": 40
+    }
+  },
+  "priorityLevels": {
+    "hot": {
+      "minScore": 80,
+      "label": "Hot",
+      "color": "red",
+      "actions": ["generatePlaybook", "notifyTeam"]
+    },
+    "warm": {
+      "minScore": 50,
+      "label": "Warm",
+      "color": "orange",
+      "actions": ["addToWatchlist"]
+    },
+    "cold": {
+      "minScore": 0,
+      "label": "Cold",
+      "color": "blue",
+      "actions": ["archive"]
+    }
+  },
+  "top20Programs": {
+    "enabled": true,
+    "boostAmount": 10,
+    "programs": [
+      "GBSD Sentinel",
+      "F-35 Lightning II",
+      "GPS III",
+      "Next Generation OPIR",
+      "JADC2"
+    ]
+  },
+  "output": {
+    "path": "Engine5_Scoring/data/Scored_Opportunities.json",
+    "notionSync": true
+  }
+}

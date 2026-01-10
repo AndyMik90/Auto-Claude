@@ -1,0 +1,72 @@
+{
+  "playbook_settings": {
+    "name": "BD Playbook Generator",
+    "version": "1.0.0",
+    "description": "Generates customized outreach materials and BD briefings"
+  },
+  "outputs": {
+    "introemail": {
+      "enabled": true,
+      "template": "intro_email_template.md"
+    },
+    "callScript": {
+      "enabled": true,
+      "template": "call_script_template.md"
+    },
+    "talkingPoints": {
+      "enabled": true,
+      "template": "talking_points_template.md"
+    },
+    "briefingDoc": {
+      "enabled": true,
+      "template": "briefing_template.md"
+    }
+  },
+  "aiSettings": {
+    "model": "gpt-4",
+    "temperature": 0.5,
+    "maxTokens": 2000
+  },
+  "briefingSections": [
+    "Opportunity Overview",
+    "Program Background",
+    "Key Details",
+    "Org Chart/Contacts",
+    "Business Signals",
+    "Competitive Landscape",
+    "BD Recommendations"
+  ],
+  "companyInfo": {
+    "name": "Your Company Name",
+    "capabilities": [
+      "IT Services",
+      "Cybersecurity",
+      "Software Development",
+      "Cloud Solutions",
+      "Data Analytics"
+    ],
+    "differentiators": [
+      "Cleared workforce",
+      "Agile methodology",
+      "Past performance on similar programs"
+    ]
+  },
+  "triggerConditions": {
+    "generateFor": "Hot",
+    "confidenceThreshold": 0.7
+  },
+  "delivery": {
+    "email": {
+      "enabled": true,
+      "recipients": ["bd-team@company.com"]
+    },
+    "notion": {
+      "enabled": true,
+      "databaseId": "${NOTION_BRIEFINGS_DB_ID}"
+    },
+    "file": {
+      "enabled": true,
+      "path": "outputs/BD_Briefings/"
+    }
+  }
+}

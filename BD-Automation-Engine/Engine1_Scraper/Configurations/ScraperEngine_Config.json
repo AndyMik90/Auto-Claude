@@ -1,0 +1,88 @@
+{
+  "scraper_settings": {
+    "name": "BD Job Scraper",
+    "version": "1.0.0",
+    "schedule": "0 6 * * *",
+    "description": "Daily job scraper for BD intelligence"
+  },
+  "sources": [
+    {
+      "name": "ClearanceJobs",
+      "type": "apify_actor",
+      "actorId": "apify/clearance-jobs-scraper",
+      "enabled": true,
+      "config": {
+        "searchTerms": ["TS/SCI", "Top Secret", "Security Clearance"],
+        "locations": ["Washington DC", "Virginia", "Maryland", "Colorado Springs"],
+        "maxResults": 100
+      }
+    },
+    {
+      "name": "LinkedIn",
+      "type": "apify_actor",
+      "actorId": "apify/linkedin-jobs-scraper",
+      "enabled": true,
+      "config": {
+        "query": "security clearance defense contractor",
+        "locations": ["United States"],
+        "maxResults": 50
+      }
+    },
+    {
+      "name": "CompetitorSites",
+      "type": "custom_scraper",
+      "enabled": true,
+      "config": {
+        "urlListFile": "Competitor_Job_Board_URLs.xlsx",
+        "competitors": [
+          "Northrop Grumman",
+          "Lockheed Martin",
+          "Raytheon",
+          "General Dynamics",
+          "BAE Systems",
+          "Leidos",
+          "SAIC",
+          "Booz Allen Hamilton"
+        ]
+      }
+    },
+    {
+      "name": "SAM.gov",
+      "type": "api",
+      "enabled": false,
+      "config": {
+        "endpoint": "https://api.sam.gov/opportunities/v2/search",
+        "filters": {
+          "naicsCode": ["541512", "541519"],
+          "setAside": ["8(a)", "HUBZone", "SDVOSB"]
+        }
+      }
+    }
+  ],
+  "output": {
+    "format": "json",
+    "path": "Engine1_Scraper/data/JobsDataset.json",
+    "fields": [
+      "jobId",
+      "title",
+      "company",
+      "location",
+      "clearanceLevel",
+      "description",
+      "postedDate",
+      "url",
+      "source",
+      "technologies"
+    ]
+  },
+  "deduplication": {
+    "enabled": true,
+    "fields": ["company", "title", "location"],
+    "timeWindowDays": 7
+  },
+  "rateLimit": {
+    "requestsPerMinute": 10,
+    "delayBetweenRequests": 2000
+  },
+  "apifyToken": "${APIFY_API_TOKEN}"
+}
