@@ -200,18 +200,6 @@ describe("Terminal copy/paste integration", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    // Re-apply global mocks (they get cleared by vi.restoreAllMocks)
-    global.requestAnimationFrame = vi.fn(
-      (cb: FrameRequestCallback) => setTimeout(cb, 0) as unknown as number
-    );
-    global.cancelAnimationFrame = vi.fn((id: unknown) => clearTimeout(id as number));
-    global.ResizeObserver = vi.fn().mockImplementation(function () {
-      return {
-        observe: vi.fn(),
-        unobserve: vi.fn(),
-        disconnect: vi.fn(),
-      };
-    });
   });
 
   afterAll(() => {

@@ -8,6 +8,7 @@ import * as fs from "fs";
 import { promises as fsPromises } from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
+import { execSync } from "child_process";
 import { IPC_CHANNELS } from "../../shared/constants";
 import { getClaudeProfileManager, initializeClaudeProfileManager } from "../claude-profile-manager";
 import * as OutputParser from "./output-parser";
@@ -69,7 +70,7 @@ function getBashPath(): string | null {
 
   // Check if bash is in PATH (returns "bash" if found via PATH)
   try {
-    require("child_process").execSync("bash --version", {
+    execSync("bash --version", {
       stdio: "ignore",
       timeout: 1000, // Add timeout to prevent blocking
     });
@@ -577,51 +578,68 @@ export function invokeClaude(
       const nonce = crypto.randomBytes(8).toString("hex");
       const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
 
-      debugLog("[ClaudeIntegration:invokeClaude] Writing token to temp file:", tempFile);
-      // Write token file with Unix-only POSIX file permissions - mode 0o600 (owner read/write only)
-      // is a POSIX-specific permission bit that is not applicable on Windows; Node.js on Windows
-      // ignores POSIX mode flags, so we only set writeOptions.mode when process.platform !== "win32"
-      const writeOptions: fs.WriteFileOptions = {};
-      if (process.platform !== "win32") {
-        writeOptions.mode = 0o600;
-      }
-      fs.writeFileSync(
-        tempFile,
-        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        writeOptions
-      );
+      try {
+        debugLog("[ClaudeIntegration:invokeClaude] Writing token to temp file:", tempFile);
+        // Write token file with Unix-only POSIX file permissions - mode 0o600 (owner read/write only)
+        // is a POSIX-specific permission bit that is not applicable on Windows; Node.js on Windows
+        // ignores POSIX mode flags, so we only set writeOptions.mode when process.platform !== "win32"
+        const writeOptions: fs.WriteFileOptions = {};
+        if (process.platform !== "win32") {
+          writeOptions.mode = 0o600;
+        }
+        fs.writeFileSync(
+          tempFile,
+          `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
+          writeOptions
+        );
 
-      // Build shell-specific command for temp file method using shared helper
-      const command = buildProfileCommandString({
-        shellType,
-        cwdCommand,
-        pathPrefix,
-        claudeCmd,
-        token,
-        tempFile,
-      });
+        // Build shell-specific command for temp file method using shared helper
+        const command = buildProfileCommandString({
+          shellType,
+          cwdCommand,
+          pathPrefix,
+          claudeCmd,
+          token,
+          tempFile,
+        });
 
-      if (command) {
-        debugLog(
-          "[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)"
-        );
-        terminal.pty.write(command);
-        profileManager.markProfileUsed(activeProfile.id);
-        finalizeClaudeInvoke(
-          terminal,
-          activeProfile,
-          projectPath,
-          startTime,
-          getWindow,
-          onSessionCapture
-        );
-        debugLog(
-          "[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (temp file) =========="
-        );
-        return;
+        if (command) {
+          debugLog(
+            "[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)"
+          );
+          terminal.pty.write(command);
+          profileManager.markProfileUsed(activeProfile.id);
+          finalizeClaudeInvoke(
+            terminal,
+            activeProfile,
+            projectPath,
+            startTime,
+            getWindow,
+            onSessionCapture
+          );
+          debugLog(
+            "[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (temp file) =========="
+          );
+          return;
+        }
+        // If command is null, fall through to default method
+      } finally {
+        // Always clean up the temp file, even if an error occurs
+        try {
+          if (fs.existsSync(tempFile)) {
+            fs.unlinkSync(tempFile);
+            debugLog("[ClaudeIntegration:invokeClaude] Cleaned up temp file:", tempFile);
+          }
+        } catch (cleanupError) {
+          debugError(
+            "[ClaudeIntegration:invokeClaude] Failed to clean up temp file:",
+            cleanupError
+          );
+        }
       }
-      // If command is null, fall through to default method
-    } else if (activeProfile.configDir) {
+    }
+    // If no token, check for configDir
+    else if (activeProfile.configDir) {
       // For profiles with custom config dir
       const command = buildProfileCommandString({
         shellType,
@@ -820,51 +838,64 @@ export async function invokeClaudeAsync(
       const nonce = crypto.randomBytes(8).toString("hex");
       const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
 
-      debugLog("[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:", tempFile);
-      // Build options object - mode 0o600 is a Unix-only POSIX file permission flag
-      // that is ignored/unsupported on Windows; Node.js on Windows ignores POSIX mode flags,
-      // so we only set writeOptions.mode when process.platform !== "win32" to avoid errors
-      const writeOptions: fs.WriteFileOptions = {};
-      if (process.platform !== "win32") {
-        writeOptions.mode = 0o600;
-      }
-      await fsPromises.writeFile(
-        tempFile,
-        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        writeOptions
-      );
+      try {
+        debugLog("[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:", tempFile);
+        // Build options object - mode 0o600 is a Unix-only POSIX file permission flag
+        // that is ignored/unsupported on Windows; Node.js on Windows ignores POSIX mode flags,
+        // so we only set writeOptions.mode when process.platform !== "win32" to avoid errors
+        const writeOptions: fs.WriteFileOptions = {};
+        if (process.platform !== "win32") {
+          writeOptions.mode = 0o600;
+        }
+        await fsPromises.writeFile(
+          tempFile,
+          `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
+          writeOptions
+        );
 
-      // Build shell-specific command for temp file method using shared helper
-      const command = buildProfileCommandString({
-        shellType,
-        cwdCommand,
-        pathPrefix,
-        claudeCmd,
-        token,
-        tempFile,
-      });
+        // Build shell-specific command for temp file method using shared helper
+        const command = buildProfileCommandString({
+          shellType,
+          cwdCommand,
+          pathPrefix,
+          claudeCmd,
+          token,
+          tempFile,
+        });
 
-      if (command) {
-        debugLog(
-          "[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)"
-        );
-        terminal.pty.write(command);
-        profileManager.markProfileUsed(activeProfile.id);
-        finalizeClaudeInvoke(
-          terminal,
-          activeProfile,
-          projectPath,
-          startTime,
-          getWindow,
-          onSessionCapture
-        );
-        debugLog(
-          "[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) =========="
-        );
-        return;
+        if (command) {
+          debugLog(
+            "[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)"
+          );
+          terminal.pty.write(command);
+          profileManager.markProfileUsed(activeProfile.id);
+          finalizeClaudeInvoke(
+            terminal,
+            activeProfile,
+            projectPath,
+            startTime,
+            getWindow,
+            onSessionCapture
+          );
+          debugLog(
+            "[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) =========="
+          );
+          return;
+        }
+        // If command is null, fall through to default method
+      } finally {
+        // Always clean up the temp file, even if an error occurs
+        try {
+          await fsPromises.access(tempFile, fs.constants.F_OK);
+          await fsPromises.unlink(tempFile);
+          debugLog("[ClaudeIntegration:invokeClaudeAsync] Cleaned up temp file:", tempFile);
+        } catch {
+          // File doesn't exist or already cleaned up, ignore
+        }
       }
-      // If command is null, fall through to default method
-    } else if (activeProfile.configDir) {
+    }
+    // If no token, check for configDir
+    else if (activeProfile.configDir) {
       // For profiles with custom config dir
       const command = buildProfileCommandString({
         shellType,
