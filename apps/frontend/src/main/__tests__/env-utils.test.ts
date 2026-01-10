@@ -276,6 +276,21 @@ describe('getSpawnCommand', () => {
       const cmd = getSpawnCommand('"C:\\Users\\First Last\\npm\\claude.cmd"');
       expect(cmd).toBe('"C:\\Users\\First Last\\npm\\claude.cmd"');
     });
+
+    it('should strip quotes from .exe files (defensive: no quotes with shell:false)', () => {
+      const cmd = getSpawnCommand('"C:\\Program Files\\Git\\cmd\\git.exe"');
+      expect(cmd).toBe('C:\\Program Files\\Git\\cmd\\git.exe');
+    });
+
+    it('should strip quotes from extensionless files (defensive: no quotes with shell:false)', () => {
+      const cmd = getSpawnCommand('"D:\\Git\\bin\\bash"');
+      expect(cmd).toBe('D:\\Git\\bin\\bash');
+    });
+
+    it('should strip quotes and trim whitespace from .exe files', () => {
+      const cmd = getSpawnCommand('  "C:\\Program Files\\Git\\cmd\\git.exe"  ');
+      expect(cmd).toBe('C:\\Program Files\\Git\\cmd\\git.exe');
+    });
   });
 
   describe('Non-Windows platforms', () => {

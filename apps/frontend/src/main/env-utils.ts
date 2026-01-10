@@ -540,5 +540,9 @@ export function getSpawnCommand(command: string): string {
     }
     return `"${trimmed}"`;
   }
+  // For non-.cmd/.bat files, strip quotes if present (defensive: no double quotes with shell:false)
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1);
+  }
   return trimmed;
 }
