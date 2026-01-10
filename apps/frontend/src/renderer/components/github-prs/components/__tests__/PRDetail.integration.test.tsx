@@ -5,12 +5,12 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../../../../../shared/i18n';
 import { PRDetail } from '../PRDetail';
-import type { PRData, PRReviewResult } from '../../hooks/useGitHubPRs';
+import type { PRData } from '../../hooks/useGitHubPRs';
 
 // Mock window.electronAPI
 const mockOnPostComment = vi.fn();
@@ -82,6 +82,38 @@ function I18nWrapper({ children }: { children: React.ReactNode }) {
 describe('PRDetail - Clean Review State Reset Integration', () => {
   const mockProjectId = 'test-project-id';
 
+  // Helper function to render PRDetail with common default props
+  function renderPRDetail(overrides: {
+    pr?: PRData;
+    reviewResult?: PRReviewResult;
+    onPostComment?: ReturnType<typeof vi.fn>;
+  } = {}) {
+    const defaultPR = createMockPR({ number: 123 });
+    const defaultReviewResult = createMockCleanReviewResult();
+
+    return render(
+      <I18nWrapper>
+        <PRDetail
+          pr={overrides.pr ?? defaultPR}
+          projectId={mockProjectId}
+          reviewResult={overrides.reviewResult ?? defaultReviewResult}
+          previousReviewResult={null}
+          reviewProgress={null}
+          isReviewing={false}
+          onRunReview={mockOnRunReview}
+          onRunFollowupReview={mockOnRunFollowupReview}
+          onCheckNewCommits={mockOnCheckNewCommits}
+          onCancelReview={mockOnCancelReview}
+          onPostReview={mockOnPostReview}
+          onPostComment={overrides.onPostComment ?? mockOnPostComment}
+          onMergePR={mockOnMergePR}
+          onAssignPR={mockOnAssignPR}
+          onGetLogs={mockOnGetLogs}
+        />
+      </I18nWrapper>
+    );
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -92,48 +124,36 @@ describe('PRDetail - Clean Review State Reset Integration', () => {
       hasCommitsAfterPosting: false,
       newCommitCount: 0
     });
+    // Resolve successfully by default
+    mockOnPostComment.mockResolvedValue(undefined);
   });
 
   it('should reset cleanReviewPosted state when pr.number changes', async () => {
-    // Initial PR with number 123
     const initialPR = createMockPR({ number: 123 });
     const cleanReviewResult = createMockCleanReviewResult();
 
-    const { rerender, unmount } = render(
-      <I18nWrapper>
-        <PRDetail
-          pr={initialPR}
-          projectId={mockProjectId}
-          reviewResult={cleanReviewResult}
-          previousReviewResult={null}
-          reviewProgress={null}
-          isReviewing={false}
-          onRunReview={mockOnRunReview}
-          onRunFollowupReview={mockOnRunFollowupReview}
-          onCheckNewCommits={mockOnCheckNewCommits}
-          onCancelReview={mockOnCancelReview}
-          onPostReview={mockOnPostReview}
-          onPostComment={mockOnPostComment}
-          onMergePR={mockOnMergePR}
-          onAssignPR={mockOnAssignPR}
-          onGetLogs={mockOnGetLogs}
-        />
-      </I18nWrapper>
-    );
+    const { rerender, unmount } = renderPRDetail({
+      pr: initialPR,
+      reviewResult: cleanReviewResult
+    });
 
     // The "Post Clean Review" button should be visible initially
-    // (because review is clean and no findings selected)
-    const postCleanReviewButton = screen.queryByRole('button', { name: /post clean review/i });
+    const postCleanReviewButton = screen.getByRole('button', { name: /post clean review/i });
     expect(postCleanReviewButton).toBeInTheDocument();
 
-    // Simulate posting a clean review by clicking the button
-    // This would trigger handlePostCleanReview which sets cleanReviewPosted to true
-    // However, we can't directly test the internal state, so we verify the button
-    // behavior changes after rerendering with a different PR
+    // Click the button to post clean review
+    fireEvent.click(postCleanReviewButton);
+
+    // Wait for success message to appear (confirms cleanReviewPosted is true)
+    await waitFor(() => {
+      expect(screen.getByText(/clean review posted/i)).toBeInTheDocument();
+    });
+
+    // Button should be hidden after posting
+    expect(screen.queryByRole('button', { name: /post clean review/i })).not.toBeInTheDocument();
 
     // Rerender with a different PR (number 456)
     const differentPR = createMockPR({ number: 456 });
-
     rerender(
       <I18nWrapper>
         <PRDetail
@@ -156,39 +176,15 @@ describe('PRDetail - Clean Review State Reset Integration', () => {
       </I18nWrapper>
     );
 
-    // After PR change, the "Post Clean Review" button should still be visible
-    // (because cleanReviewPosted state was reset by useEffect when pr.number changed)
+    // After PR change, the "Post Clean Review" button should be visible again
+    // because cleanReviewPosted state was reset by useEffect when pr.number changed
     const postCleanReviewButtonAfterChange = screen.queryByRole('button', { name: /post clean review/i });
     expect(postCleanReviewButtonAfterChange).toBeInTheDocument();
-
     unmount();
   });
 
   it('should show clean review success message after posting clean review', async () => {
-    const initialPR = createMockPR({ number: 123 });
-    const cleanReviewResult = createMockCleanReviewResult();
-
-    const { unmount } = render(
-      <I18nWrapper>
-        <PRDetail
-          pr={initialPR}
-          projectId={mockProjectId}
-          reviewResult={cleanReviewResult}
-          previousReviewResult={null}
-          reviewProgress={null}
-          isReviewing={false}
-          onRunReview={mockOnRunReview}
-          onRunFollowupReview={mockOnRunFollowupReview}
-          onCheckNewCommits={mockOnCheckNewCommits}
-          onCancelReview={mockOnCancelReview}
-          onPostReview={mockOnPostReview}
-          onPostComment={mockOnPostComment}
-          onMergePR={mockOnMergePR}
-          onAssignPR={mockOnAssignPR}
-          onGetLogs={mockOnGetLogs}
-        />
-      </I18nWrapper>
-    );
+    const { unmount } = renderPRDetail();
 
     // Initially, the success message should not be present
     const successMessage = screen.queryByText(/clean review posted/i);
@@ -202,7 +198,6 @@ describe('PRDetail - Clean Review State Reset Integration', () => {
   });
 
   it('should not show Post Clean Review button when review has HIGH severity findings', async () => {
-    const initialPR = createMockPR({ number: 123 });
     const reviewWithHighFindings: PRReviewResult = {
       prNumber: 123,
       repo: 'test/repo',
@@ -225,27 +220,7 @@ describe('PRDetail - Clean Review State Reset Integration', () => {
       reviewedCommitSha: 'abc123'
     };
 
-    const { unmount } = render(
-      <I18nWrapper>
-        <PRDetail
-          pr={initialPR}
-          projectId={mockProjectId}
-          reviewResult={reviewWithHighFindings}
-          previousReviewResult={null}
-          reviewProgress={null}
-          isReviewing={false}
-          onRunReview={mockOnRunReview}
-          onRunFollowupReview={mockOnRunFollowupReview}
-          onCheckNewCommits={mockOnCheckNewCommits}
-          onCancelReview={mockOnCancelReview}
-          onPostReview={mockOnPostReview}
-          onPostComment={mockOnPostComment}
-          onMergePR={mockOnMergePR}
-          onAssignPR={mockOnAssignPR}
-          onGetLogs={mockOnGetLogs}
-        />
-      </I18nWrapper>
-    );
+    const { unmount } = renderPRDetail({ reviewResult: reviewWithHighFindings });
 
     // The "Post Clean Review" button should NOT be visible for dirty reviews
     const postCleanReviewButton = screen.queryByRole('button', { name: /post clean review/i });
@@ -255,32 +230,14 @@ describe('PRDetail - Clean Review State Reset Integration', () => {
   });
 
   it('should show correct button state based on review cleanliness', async () => {
+    const cleanReviewResult = createMockCleanReviewResult();
     const initialPR = createMockPR({ number: 123 });
 
     // Test 1: Clean review (no findings)
-    const cleanReviewResult = createMockCleanReviewResult();
-
-    const { rerender, unmount } = render(
-      <I18nWrapper>
-        <PRDetail
-          pr={initialPR}
-          projectId={mockProjectId}
-          reviewResult={cleanReviewResult}
-          previousReviewResult={null}
-          reviewProgress={null}
-          isReviewing={false}
-          onRunReview={mockOnRunReview}
-          onRunFollowupReview={mockOnRunFollowupReview}
-          onCheckNewCommits={mockOnCheckNewCommits}
-          onCancelReview={mockOnCancelReview}
-          onPostReview={mockOnPostReview}
-          onPostComment={mockOnPostComment}
-          onMergePR={mockOnMergePR}
-          onAssignPR={mockOnAssignPR}
-          onGetLogs={mockOnGetLogs}
-        />
-      </I18nWrapper>
-    );
+    const { rerender, unmount } = renderPRDetail({
+      pr: initialPR,
+      reviewResult: cleanReviewResult
+    });
 
     // Clean review: Post Clean Review button should be visible
     const postCleanReviewButton = screen.queryByRole('button', { name: /post clean review/i });
@@ -334,6 +291,36 @@ describe('PRDetail - Clean Review State Reset Integration', () => {
     // Dirty review: Post Clean Review button should NOT be visible
     const postCleanReviewButtonDirty = screen.queryByRole('button', { name: /post clean review/i });
     expect(postCleanReviewButtonDirty).not.toBeInTheDocument();
+
+    unmount();
+  });
+
+  it('should show error message when posting clean review fails', async () => {
+    // Mock onPostComment to reject
+    const testError = new Error('Failed to post comment: Rate limit exceeded');
+    mockOnPostComment.mockRejectedValue(testError);
+
+    const { unmount } = renderPRDetail({
+      onPostComment: mockOnPostComment
+    });
+
+    // The "Post Clean Review" button should be visible initially
+    const postCleanReviewButton = screen.getByRole('button', { name: /post clean review/i });
+    expect(postCleanReviewButton).toBeInTheDocument();
+
+    // Click the button to attempt posting clean review
+    fireEvent.click(postCleanReviewButton);
+
+    // Wait for error message to appear
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to post comment: Rate limit exceeded/i)).toBeInTheDocument();
+    });
+
+    // Button should still be visible for retry after error
+    expect(screen.queryByRole('button', { name: /post clean review/i })).toBeInTheDocument();
+
+    // Success message should NOT be shown
+    expect(screen.queryByText(/clean review posted/i)).not.toBeInTheDocument();
 
     unmount();
   });
