@@ -23,6 +23,7 @@ import { Input } from './ui/input';
 import { useRateLimitStore } from '../stores/rate-limit-store';
 import { useClaudeProfileStore, loadClaudeProfiles } from '../stores/claude-profile-store';
 import { useToast } from '../hooks/use-toast';
+import { debugError } from '../../shared/utils/debug-logger';
 import type { SDKRateLimitInfo } from '../../shared/types';
 
 const CLAUDE_UPGRADE_URL = 'https://claude.ai/upgrade';
@@ -112,7 +113,7 @@ export function SDKRateLimitModal() {
         setAutoSwitchEnabled(result.data.autoSwitchOnRateLimit);
       }
     } catch (err) {
-      console.error('Failed to load auto-switch settings:', err);
+      debugError('[SDKRateLimitModal] Failed to load auto-switch settings:', err);
     }
   };
 
@@ -125,7 +126,7 @@ export function SDKRateLimitModal() {
       });
       setAutoSwitchEnabled(enabled);
     } catch (err) {
-      console.error('Failed to update auto-switch settings:', err);
+      debugError('[SDKRateLimitModal] Failed to update auto-switch settings:', err);
     } finally {
       setIsLoadingSettings(false);
     }
@@ -178,7 +179,7 @@ export function SDKRateLimitModal() {
         }
       }
     } catch (err) {
-      console.error('Failed to add profile:', err);
+      debugError('[SDKRateLimitModal] Failed to add profile:', err);
       toast({
         variant: 'destructive',
         title: t('rateLimit.toast.addProfileFailed'),
@@ -212,7 +213,7 @@ export function SDKRateLimitModal() {
         clearPendingRateLimit();
       }
     } catch (err) {
-      console.error('Failed to retry with profile:', err);
+      debugError('[SDKRateLimitModal] Failed to retry with profile:', err);
     } finally {
       setIsRetrying(false);
       setSwitching(false);

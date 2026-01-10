@@ -161,58 +161,88 @@ const CHUNKED_WRITE_THRESHOLD = 1000;
 const CHUNK_SIZE = 100;
 
 /**
+ * Write queue per terminal to prevent interleaving of concurrent writes.
+ * Maps terminal ID to the last write Promise in the queue.
+ */
+const pendingWrites = new Map<string, Promise<void>>();
+
+/**
+ * Internal function to perform the actual write (chunked or direct)
+ * Returns a Promise that resolves when the write is complete
+ */
+function performWrite(terminal: TerminalProcess, data: string): Promise<void> {
+  return new Promise((resolve) => {
+    // For large commands, write in chunks to prevent blocking
+    if (data.length > CHUNKED_WRITE_THRESHOLD) {
+      debugLog('[PtyManager:writeToPty] Large write detected, using chunked write');
+      let offset = 0;
+      let chunkNum = 0;
+
+      const writeChunk = () => {
+        // Check if terminal is still valid before writing
+        if (!terminal.pty) {
+          debugError('[PtyManager:writeToPty] Terminal PTY no longer valid, aborting chunked write');
+          resolve();
+          return;
+        }
+
+        if (offset >= data.length) {
+          debugLog('[PtyManager:writeToPty] Chunked write completed, total chunks:', chunkNum);
+          resolve();
+          return;
+        }
+
+        const chunk = data.slice(offset, offset + CHUNK_SIZE);
+        chunkNum++;
+        try {
+          terminal.pty.write(chunk);
+          offset += CHUNK_SIZE;
+          // Use setImmediate to yield to the event loop between chunks
+          setImmediate(writeChunk);
+        } catch (error) {
+          debugError('[PtyManager:writeToPty] Chunked write FAILED at chunk', chunkNum, ':', error);
+          resolve(); // Resolve anyway - fire-and-forget semantics
+        }
+      };
+
+      // Start the chunked write after yielding
+      setImmediate(writeChunk);
+    } else {
+      try {
+        terminal.pty.write(data);
+        debugLog('[PtyManager:writeToPty] Write completed successfully');
+      } catch (error) {
+        debugError('[PtyManager:writeToPty] Write FAILED:', error);
+      }
+      resolve();
+    }
+  });
+}
+
+/**
  * Write data to a PTY process
- * Uses setImmediate to prevent blocking the event loop on large writes
+ * Uses setImmediate to prevent blocking the event loop on large writes.
+ * Serializes writes per terminal to prevent interleaving of concurrent writes.
  */
 export function writeToPty(terminal: TerminalProcess, data: string): void {
   debugLog('[PtyManager:writeToPty] About to write to pty, data length:', data.length);
 
-  // For large commands, write in chunks to prevent blocking
-  if (data.length > CHUNKED_WRITE_THRESHOLD) {
-    debugLog('[PtyManager:writeToPty] Large write detected, using chunked write');
-    let offset = 0;
-    let chunkNum = 0;
+  // Get the previous write Promise for this terminal (if any)
+  const previousWrite = pendingWrites.get(terminal.id) || Promise.resolve();
 
-    const writeChunk = () => {
-      // Check if terminal is still valid before writing
-      if (!terminal.pty) {
-        debugError('[PtyManager:writeToPty] Terminal PTY no longer valid, aborting chunked write');
-        return;
-      }
+  // Chain this write after the previous one completes
+  const currentWrite = previousWrite.then(() => performWrite(terminal, data));
 
-      if (offset >= data.length) {
-        debugLog('[PtyManager:writeToPty] Chunked write completed, total chunks:', chunkNum);
-        return;
-      }
+  // Update the pending write for this terminal
+  pendingWrites.set(terminal.id, currentWrite);
 
-      const chunk = data.slice(offset, offset + CHUNK_SIZE);
-      chunkNum++;
-      debugLog('[PtyManager:writeToPty] Writing chunk', chunkNum, 'offset:', offset, 'size:', chunk.length);
-      try {
-        terminal.pty.write(chunk);
-        debugLog('[PtyManager:writeToPty] Chunk', chunkNum, 'written');
-        offset += CHUNK_SIZE;
-        // Use setImmediate to yield to the event loop between chunks
-        setImmediate(writeChunk);
-      } catch (error) {
-        debugError('[PtyManager:writeToPty] Chunked write FAILED at chunk', chunkNum, 'offset', offset, ':', error);
-        // Don't rethrow - match non-chunked behavior for consistency (fire-and-forget semantics)
-      }
-    };
-
-    // Start the chunked write after yielding
-    debugLog('[PtyManager:writeToPty] Scheduling first chunk...');
-    setImmediate(writeChunk);
-    debugLog('[PtyManager:writeToPty] First chunk scheduled, returning');
-  } else {
-    try {
-      terminal.pty.write(data);
-      debugLog('[PtyManager:writeToPty] Write completed successfully');
-    } catch (error) {
-      debugError('[PtyManager:writeToPty] Write FAILED:', error);
-      // Don't rethrow - fire-and-forget terminal write semantics
+  // Clean up the Map entry when done to prevent memory leaks
+  currentWrite.finally(() => {
+    // Only clean up if this is still the latest write
+    if (pendingWrites.get(terminal.id) === currentWrite) {
+      pendingWrites.delete(terminal.id);
     }
-  }
+  });
 }
 
 /**

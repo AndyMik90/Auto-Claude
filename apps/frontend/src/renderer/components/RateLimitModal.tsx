@@ -23,6 +23,7 @@ import { Input } from './ui/input';
 import { useRateLimitStore } from '../stores/rate-limit-store';
 import { useClaudeProfileStore, loadClaudeProfiles, switchTerminalToProfile } from '../stores/claude-profile-store';
 import { useToast } from '../hooks/use-toast';
+import { debugError } from '../../shared/utils/debug-logger';
 
 const CLAUDE_UPGRADE_URL = 'https://claude.ai/upgrade';
 
@@ -66,7 +67,7 @@ export function RateLimitModal() {
         setAutoSwitchEnabled(result.data.autoSwitchOnRateLimit);
       }
     } catch (err) {
-      console.error('Failed to load auto-switch settings:', err);
+      debugError('[RateLimitModal] Failed to load auto-switch settings:', err);
     }
   };
 
@@ -79,7 +80,7 @@ export function RateLimitModal() {
       });
       setAutoSwitchEnabled(enabled);
     } catch (err) {
-      console.error('Failed to update auto-switch settings:', err);
+      debugError('[RateLimitModal] Failed to update auto-switch settings:', err);
     } finally {
       setIsLoadingSettings(false);
     }
@@ -132,7 +133,7 @@ export function RateLimitModal() {
         }
       }
     } catch (err) {
-      console.error('Failed to add profile:', err);
+      debugError('[RateLimitModal] Failed to add profile:', err);
       toast({
         variant: 'destructive',
         title: t('rateLimit.toast.addProfileFailed'),

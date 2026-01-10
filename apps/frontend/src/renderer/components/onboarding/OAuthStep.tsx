@@ -113,7 +113,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
     });
 
     return unsubscribe;
-  }, [toast]);
+  }, [t, toast]);
 
   // Profile management handlers - following patterns from IntegrationSettings.tsx
   const handleAddProfile = async () => {

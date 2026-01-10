@@ -30,7 +30,7 @@ import { SettingsSection } from './SettingsSection';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
 import { useClaudeLoginTerminal } from '../../hooks/useClaudeLoginTerminal';
 import { useToast } from '../../hooks/use-toast';
-import { debugLog } from '../../../shared/utils/debug-logger';
+import { debugLog, debugError } from '../../../shared/utils/debug-logger';
 import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings } from '../../../shared/types';
 
 interface IntegrationSettingsProps {
@@ -108,7 +108,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         await loadGlobalClaudeProfiles();
       }
     } catch (err) {
-      console.error('Failed to load Claude profiles:', err);
+      debugError('[IntegrationSettings] Failed to load Claude profiles:', err);
     } finally {
       setIsLoadingProfiles(false);
     }
@@ -149,7 +149,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         }
       }
     } catch (err) {
-      console.error('Failed to add profile:', err);
+      debugError('[IntegrationSettings] Failed to add profile:', err);
       toast({
         variant: 'destructive',
         title: t('integrations.toast.addProfileFailed'),
@@ -168,7 +168,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         await loadClaudeProfiles();
       }
     } catch (err) {
-      console.error('Failed to delete profile:', err);
+      debugError('[IntegrationSettings] Failed to delete profile:', err);
     } finally {
       setDeletingProfileId(null);
     }
@@ -193,7 +193,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         await loadClaudeProfiles();
       }
     } catch (err) {
-      console.error('Failed to rename profile:', err);
+      debugError('[IntegrationSettings] Failed to rename profile:', err);
     } finally {
       setEditingProfileId(null);
       setEditingProfileName('');
@@ -208,7 +208,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         await loadGlobalClaudeProfiles();
       }
     } catch (err) {
-      console.error('Failed to set active profile:', err);
+      debugError('[IntegrationSettings] Failed to set active profile:', err);
     }
   };
 
@@ -229,7 +229,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       // Note: If successful, the terminal is now visible in the UI via the onTerminalAuthCreated event
       // Users can see the 'claude setup-token' output and complete OAuth flow directly
     } catch (err) {
-      console.error('[IntegrationSettings] Failed to authenticate profile:', err);
+      debugError('[IntegrationSettings] Failed to authenticate profile:', err);
       toast({
         variant: 'destructive',
         title: t('integrations.toast.authStartFailed'),
@@ -283,7 +283,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         });
       }
     } catch (err) {
-      console.error('Failed to save token:', err);
+      debugError('[IntegrationSettings] Failed to save token:', err);
       toast({
         variant: 'destructive',
         title: t('integrations.toast.tokenSaveFailed'),
@@ -303,7 +303,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         setAutoSwitchSettings(result.data);
       }
     } catch (err) {
-      console.error('Failed to load auto-switch settings:', err);
+      debugError('[IntegrationSettings] Failed to load auto-switch settings:', err);
     } finally {
       setIsLoadingAutoSwitch(false);
     }
@@ -324,7 +324,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         });
       }
     } catch (err) {
-      console.error('Failed to update auto-switch settings:', err);
+      debugError('[IntegrationSettings] Failed to update auto-switch settings:', err);
       toast({
         variant: 'destructive',
         title: t('integrations.toast.settingsUpdateFailed'),
