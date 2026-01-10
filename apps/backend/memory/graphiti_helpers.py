@@ -10,9 +10,12 @@ Handles checking if Graphiti is available and managing async operations.
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from graphiti_memory import GraphitiMemory
 
 
 def is_graphiti_memory_enabled() -> bool:
@@ -34,7 +37,9 @@ def is_graphiti_memory_enabled() -> bool:
         return False
 
 
-def get_graphiti_memory(spec_dir: Path, project_dir: Path | None = None):
+def get_graphiti_memory(
+    spec_dir: Path, project_dir: Path | None = None
+) -> "GraphitiMemory | None":
     """
     Get a GraphitiMemory instance if available.
 

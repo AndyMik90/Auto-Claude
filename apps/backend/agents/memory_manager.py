@@ -230,9 +230,12 @@ async def get_graphiti_context(
             debug_error("memory", "Graphiti context retrieval failed", error=str(e))
         return None
     finally:
-        # Always close the memory connection
+        # Always close the memory connection (swallow exceptions to avoid overriding)
         if memory is not None:
-            await memory.close()
+            try:
+                await memory.close()
+            except Exception:
+                pass  # Close failures should not override the main result
 
 
 async def save_session_memory(
@@ -334,7 +337,7 @@ async def save_session_memory(
                         group_id=getattr(memory, "group_id", "unknown"),
                     )
 
-            if memory and memory.is_enabled:
+            if memory is not None and memory.is_enabled:
                 if is_debug_enabled():
                     debug("memory", "Saving to Graphiti...")
 
@@ -371,23 +374,30 @@ async def save_session_memory(
                         debug_warning(
                             "memory", "Graphiti save returned False, using FALLBACK"
                         )
-            else:
-                logger.warning(
-                    "Graphiti memory not enabled, falling back to file-based"
-                )
+            elif memory is None:
                 if is_debug_enabled():
                     debug_warning(
-                        "memory", "GraphitiMemory.is_enabled=False, using FALLBACK"
+                        "memory", "GraphitiMemory not available, using FALLBACK"
                     )
+            else:
+                # memory is not None but memory.is_enabled is False
+                logger.warning(
+                    "GraphitiMemory.is_enabled=False, falling back to file-based"
+                )
+                if is_debug_enabled():
+                    debug_warning("memory", "GraphitiMemory disabled, using FALLBACK")
 
         except Exception as e:
             logger.warning(f"Graphiti save failed: {e}, falling back to file-based")
             if is_debug_enabled():
                 debug_error("memory", "Graphiti save failed", error=str(e))
         finally:
-            # Always close the memory connection
+            # Always close the memory connection (swallow exceptions to avoid overriding)
             if memory is not None:
-                await memory.close()
+                try:
+                    await memory.close()
+                except Exception:
+                    pass  # Close failures should not override the main result
     else:
         if is_debug_enabled():
             debug("memory", "Graphiti not enabled, skipping to FALLBACK")
