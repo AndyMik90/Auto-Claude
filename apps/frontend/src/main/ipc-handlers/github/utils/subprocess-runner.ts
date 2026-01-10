@@ -12,6 +12,7 @@ import path from 'path';
 import fs from 'fs';
 import type { Project } from '../../../../shared/types';
 import { parsePythonCommand } from '../../../python-detector';
+import { pythonEnvManager } from '../../../python-env-manager';
 
 const execAsync = promisify(exec);
 
@@ -122,7 +123,8 @@ export function runPythonSubprocess<T = unknown>(
       const text = data.toString();
       stdout += text;
 
-      const lines = text.split('\n');
+      // Split by newline and normalize Windows line endings (remove trailing \r)
+      const lines = text.split('\n').map(l => l.replace(/\r$/, ''));
       for (const line of lines) {
         if (line.trim()) {
           // Call custom stdout handler
@@ -143,7 +145,8 @@ export function runPythonSubprocess<T = unknown>(
       const text = data.toString();
       stderr += text;
 
-      const lines = text.split('\n');
+      // Split by newline and normalize Windows line endings (remove trailing \r)
+      const lines = text.split('\n').map(l => l.replace(/\r$/, ''));
       for (const line of lines) {
         if (line.trim()) {
           options.onStderr?.(line);
@@ -386,12 +389,19 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
     result.ghAuthenticated = true;
   }
 
-  // 4. Check Python virtual environment (cross-platform)
-  const venvPath = getPythonPath(backendPath);
-  result.pythonEnvValid = fs.existsSync(venvPath);
+  // 4. Check Python environment is ready (uses pythonEnvManager for correct path detection)
+  // In dev mode or when project IS the Auto-Claude repo, the venv might be in a different location
+  // than the backendPath. pythonEnvManager handles this correctly.
+  const pythonPath = pythonEnvManager.getPythonPath();
+  result.pythonEnvValid = pythonEnvManager.isEnvReady() && pythonPath !== null && fs.existsSync(pythonPath);
 
   if (!result.pythonEnvValid) {
-    result.error = `Python virtual environment not found. Run setup:\n  cd ${backendPath}\n  uv venv && uv pip install -r requirements.txt`;
+    // Provide helpful error message based on the situation
+    if (!pythonEnvManager.isEnvReady()) {
+      result.error = 'Python environment is still initializing. Please wait a moment and try again.';
+    } else {
+      result.error = `Python virtual environment not found. Run setup:\n  cd ${backendPath}\n  uv venv && uv pip install -r requirements.txt`;
+    }
     return result;
   }
 

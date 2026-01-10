@@ -29,11 +29,11 @@ import { createIPCCommunicators } from "./utils/ipc-communicator";
 import { getRunnerEnv } from "./utils/runner-env";
 import {
   runPythonSubprocess,
-  getPythonPath,
   getRunnerPath,
   validateGitHubModule,
   buildRunnerArgs,
 } from "./utils/subprocess-runner";
+import { pythonEnvManager } from "../../python-env-manager";
 
 /**
  * Sanitize network data before writing to file
@@ -856,8 +856,14 @@ async function runPRReview(
   // Build environment with project settings
   const subprocessEnv = await getRunnerEnv(getClaudeMdEnv(project));
 
+  // Get Python path from pythonEnvManager (handles dev/prod paths correctly)
+  const pythonPath = pythonEnvManager.getPythonPath();
+  if (!pythonPath) {
+    throw new Error("Python environment not ready. Please wait for initialization to complete.");
+  }
+
   const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
-    pythonPath: getPythonPath(backendPath),
+    pythonPath,
     args,
     cwd: backendPath,
     env: subprocessEnv,
@@ -2028,8 +2034,14 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           // Build environment with project settings
           const followupEnv = await getRunnerEnv(getClaudeMdEnv(project));
 
+          // Get Python path from pythonEnvManager (handles dev/prod paths correctly)
+          const followupPythonPath = pythonEnvManager.getPythonPath();
+          if (!followupPythonPath) {
+            throw new Error("Python environment not ready. Please wait for initialization to complete.");
+          }
+
           const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
-            pythonPath: getPythonPath(backendPath),
+            pythonPath: followupPythonPath,
             args,
             cwd: backendPath,
             env: followupEnv,
