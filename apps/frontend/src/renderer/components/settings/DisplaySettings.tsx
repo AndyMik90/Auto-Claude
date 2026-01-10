@@ -107,8 +107,8 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
     } catch (error) {
       console.error('Failed to save terminal font setting:', error);
       toast({
-        title: t('font.saveFailed', 'Failed to save font'),
-        description: error instanceof Error ? error.message : t('font.saveFailedDescription', 'Could not persist font setting to disk'),
+        title: t('font.saveFailed'),
+        description: error instanceof Error ? error.message : t('font.saveFailedDescription'),
         variant: 'destructive',
       });
     }

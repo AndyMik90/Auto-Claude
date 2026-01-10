@@ -188,7 +188,6 @@
   "font": {
     "label": "Police du terminal",
     "description": "Choisissez une police à chasse fixe pour le terminal et l'affichage du code",
-    "preview": "Aperçu",
     "ligatures": "Ligatures",
     "saveFailed": "Échec de la sauvegarde de la police",
     "saveFailedDescription": "Impossible de conserver le paramètre de police sur le disque"
