@@ -1,5 +1,14 @@
 #!/bin/sh
 
+# Preserve git worktree context - prevent HEAD corruption in worktrees
+if [ -f ".git" ]; then
+  WORKTREE_GIT_DIR=$(cat .git | sed 's/gitdir: //')
+  if [ -n "$WORKTREE_GIT_DIR" ]; then
+    export GIT_DIR="$WORKTREE_GIT_DIR"
+    export GIT_WORK_TREE="$(pwd)"
+  fi
+fi
+
 echo "Running pre-commit checks..."
 
 # =============================================================================
