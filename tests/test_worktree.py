@@ -171,6 +171,31 @@ class TestWorktreeCommitAndMerge:
         subprocess.run(["git", "checkout", manager.base_branch], cwd=temp_git_repo, capture_output=True)
         assert (temp_git_repo / "worker-file.txt").exists()
 
+    def test_merge_worktree_already_on_target_branch(self, temp_git_repo: Path):
+        """merge_worktree succeeds when already on target branch (ACS-174)."""
+        manager = WorktreeManager(temp_git_repo)
+        manager.setup()
+
+        # Ensure we're on the base branch
+        subprocess.run(["git", "checkout", manager.base_branch], cwd=temp_git_repo, capture_output=True)
+
+        # Create a worktree with changes
+        worker_info = manager.create_worktree("worker-spec")
+        (worker_info.path / "worker-file.txt").write_text("worker content")
+        subprocess.run(["git", "add", "."], cwd=worker_info.path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Worker commit"],
+            cwd=worker_info.path, capture_output=True
+        )
+
+        # Already on target branch, should skip checkout and still merge successfully
+        result = manager.merge_worktree("worker-spec", delete_after=False)
+
+        assert result is True
+
+        # Verify file is in main branch
+        assert (temp_git_repo / "worker-file.txt").exists()
+
 
 class TestChangeTracking:
     """Tests for tracking changes in worktrees."""
