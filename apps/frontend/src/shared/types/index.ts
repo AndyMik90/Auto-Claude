@@ -14,6 +14,7 @@ export * from './settings';
 export * from './changelog';
 export * from './insights';
 export * from './roadmap';
+export * from './persona';
 export * from './integrations';
 export * from './app-update';
 export * from './cli';
