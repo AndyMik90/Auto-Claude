@@ -414,12 +414,17 @@ class GHClient:
 
         Returns:
             Review ID (currently 0, as gh CLI doesn't return ID)
+
+        Note:
+            If attempting to "request_changes" on your own PR, GitHub will reject it.
+            This method automatically falls back to posting as a "comment" in that case.
         """
         args = ["pr", "review", str(pr_number)]
 
-        if event.lower() == "approve":
+        original_event = event.lower()
+        if original_event == "approve":
             args.append("--approve")
-        elif event.lower() in ["request-changes", "request_changes"]:
+        elif original_event in ["request-changes", "request_changes"]:
             args.append("--request-changes")
         else:
             args.append("--comment")
@@ -427,7 +432,27 @@ class GHClient:
         args.extend(["--body", body])
         args = self._add_repo_flag(args)
 
-        await self.run(args)
+        try:
+            await self.run(args)
+        except GHCommandError as e:
+            # GitHub doesn't allow requesting changes on your own PR
+            # Fall back to posting as a comment instead
+            if (
+                "Can not request changes on your own pull request" in str(e)
+                and original_event in ["request-changes", "request_changes"]
+            ):
+                # Prepend a note that this would have been "request changes"
+                fallback_body = (
+                    "> **Note:** This review would request changes, but GitHub doesn't allow "
+                    "requesting changes on your own PR. Posting as comment instead.\n\n"
+                    + body
+                )
+                args = ["pr", "review", str(pr_number), "--comment", "--body", fallback_body]
+                args = self._add_repo_flag(args)
+                await self.run(args)
+            else:
+                raise
+
         return 0  # gh CLI doesn't return review ID
 
     async def issue_list(
