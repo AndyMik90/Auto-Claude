@@ -13,7 +13,6 @@ Tests the workspace.py module functionality including:
 import subprocess
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from workspace import (
     WorkspaceMode,

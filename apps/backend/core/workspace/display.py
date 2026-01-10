@@ -188,7 +188,9 @@ def print_conflict_info(result: dict) -> None:
 
             # Add severity indicator
             severity_icon = ""
-            if severity == "high":
+            if severity == "critical":
+                severity_icon = "⛔"
+            elif severity == "high":
                 severity_icon = "🔴"
             elif severity == "medium":
                 severity_icon = "🟡"

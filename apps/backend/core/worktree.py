@@ -632,9 +632,7 @@ class WorktreeManager:
                     )
                 else:
                     # Actual checkout failure
-                    stderr_msg = (
-                        result.stderr if result.stderr is not None else "<no stderr>"
-                    )
+                    stderr_msg = result.stderr[:100] if result.stderr else "<no stderr>"
                     print(f"Error: Could not checkout base branch: {stderr_msg}")
                     return False
 

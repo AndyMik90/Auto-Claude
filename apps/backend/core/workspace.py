@@ -1462,6 +1462,12 @@ CRITICAL RULES:
 - Never output error messages like "I need more context" - always provide a best-effort merge
 - Ensure the output is complete and syntactically valid code"""
 
+# Model constants for AI merge two-tier strategy (ACS-194)
+MERGE_FAST_MODEL = "claude-haiku-4-5-20251001"  # Fast model for simple merges
+MERGE_CAPABLE_MODEL = "claude-sonnet-4-5-20250929"  # Capable model for complex merges
+MERGE_FAST_THINKING = 1024  # Lower thinking for fast/simple merges
+MERGE_COMPLEX_THINKING = 16000  # Higher thinking for complex merges
+
 
 def _infer_language_from_path(file_path: str) -> str:
     """Infer programming language from file extension."""
@@ -1597,8 +1603,8 @@ def _strip_code_fences(content: str) -> str:
 async def _attempt_ai_merge(
     task: "ParallelMergeTask",
     prompt: str,
-    model: str = "claude-haiku-4-5-20251001",
-    max_thinking: int = 1024,
+    model: str = MERGE_FAST_MODEL,
+    max_thinking_tokens: int = MERGE_FAST_THINKING,
 ) -> tuple[bool, str | None, str]:
     """
     Attempt an AI merge with a specific model.
@@ -1607,7 +1613,7 @@ async def _attempt_ai_merge(
         task: The merge task with file contents
         prompt: The merge prompt
         model: Model to use for merge
-        max_thinking: Max thinking tokens for the model
+        max_thinking_tokens: Max thinking tokens for the model
 
     Returns:
         Tuple of (success, merged_content, error_message)
@@ -1621,7 +1627,7 @@ async def _attempt_ai_merge(
         agent_type="merge_resolver",
         model=model,
         system_prompt=AI_MERGE_SYSTEM_PROMPT,
-        max_thinking_tokens=max_thinking,
+        max_thinking_tokens=max_thinking_tokens,
     )
 
     response_text = ""
@@ -1640,6 +1646,8 @@ async def _attempt_ai_merge(
         merged_content = _strip_code_fences(response_text.strip())
 
         # Check if AI returned natural language instead of code (case-insensitive)
+        # More robust detection: (1) Check if patterns are at START of line, (2) Check for
+        # absence of code patterns like imports, function definitions, braces, etc.
         natural_language_patterns = [
             "i need to",
             "let me",
@@ -1650,9 +1658,36 @@ async def _attempt_ai_merge(
             "unfortunately",
             "i apologize",
         ]
+
         first_line = merged_content.split("\n")[0] if merged_content else ""
-        first_line_lower = first_line.lower()
-        if any(pattern in first_line_lower for pattern in natural_language_patterns):
+        first_line_stripped = first_line.lstrip()
+        first_line_lower = first_line_stripped.lower()
+
+        # Check if first line STARTS with natural language pattern (not just contains it)
+        starts_with_prose = any(
+            first_line_lower.startswith(pattern)
+            for pattern in natural_language_patterns
+        )
+
+        # Also check for absence of common code patterns to reduce false positives
+        has_code_patterns = any(
+            pattern in merged_content[:500]  # Check first 500 chars for code patterns
+            for pattern in [
+                "import ",  # Python/JS/TypeScript imports
+                "from ",  # Python imports
+                "def ",  # Python functions
+                "function ",  # JavaScript functions
+                "const ",  # JavaScript/TypeScript const
+                "class ",  # Class definitions
+                "{",  # Braces indicate code
+                "}",  # Braces indicate code
+                "#!",  # Shebang
+                "<!--",  # HTML comment
+            ]
+        )
+
+        # Only reject if it starts with prose AND lacks code patterns
+        if starts_with_prose and not has_code_patterns:
             return (
                 False,
                 None,
@@ -1736,8 +1771,8 @@ async def _merge_file_with_ai_async(
             success, merged_content, error = await _attempt_ai_merge(
                 task,
                 prompt,
-                model="claude-haiku-4-5-20251001",
-                max_thinking=1024,
+                model=MERGE_FAST_MODEL,
+                max_thinking_tokens=MERGE_FAST_THINKING,
             )
 
             if success and merged_content:
@@ -1758,8 +1793,8 @@ async def _merge_file_with_ai_async(
             success, merged_content, error = await _attempt_ai_merge(
                 task,
                 prompt,
-                model="claude-sonnet-4-5-20250929",
-                max_thinking=16000,  # Higher thinking for complex merges
+                model=MERGE_CAPABLE_MODEL,
+                max_thinking_tokens=MERGE_COMPLEX_THINKING,
             )
 
             if success and merged_content:
