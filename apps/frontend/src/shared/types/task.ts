@@ -3,7 +3,7 @@
  */
 
 import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from './settings';
-import type { ExecutionPhase as ExecutionPhaseType } from '../constants/phase-protocol';
+import type { ExecutionPhase as ExecutionPhaseType, CompletablePhase } from '../constants/phase-protocol';
 
 export type TaskStatus = 'backlog' | 'in_progress' | 'ai_review' | 'human_review' | 'pr_created' | 'done';
 
@@ -30,7 +30,7 @@ export interface ExecutionProgress {
   // FIX (ACS-203): Track completed phases to prevent phase overlaps
   // When a phase completes, it's added to this array before transitioning to the next phase
   // This ensures that planning is marked complete before coding starts, etc.
-  completedPhases?: ExecutionPhase[];  // Phases that have successfully completed
+  completedPhases?: CompletablePhase[];  // Phases that have successfully completed
 }
 
 export interface Subtask {

@@ -6,6 +6,7 @@ import { EventEmitter } from 'events';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { ProcessType, ExecutionProgressData } from './types';
+import type { CompletablePhase } from '../../shared/constants/phase-protocol';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv, detectAuthFailure } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { projectStore } from '../project-store';
@@ -456,7 +457,7 @@ export class AgentProcessManager {
     let sequenceNumber = 0;
     // FIX (ACS-203): Track completed phases to prevent phase overlaps
     // When a phase completes, it's added to this array before transitioning to the next phase
-    let completedPhases: Array<'planning' | 'coding' | 'qa_review' | 'qa_fixing'> = [];
+    let completedPhases: CompletablePhase[] = [];
 
     this.emitter.emit('execution-progress', taskId, {
       phase: currentPhase,
@@ -493,9 +494,12 @@ export class AgentProcessManager {
         // FIX (ACS-203): Manage completedPhases when phases transition
         // When leaving a non-terminal phase (not complete/failed), add it to completedPhases
         if (phaseChanged && currentPhase !== 'idle' && currentPhase !== phaseUpdate.phase) {
-          const completablePhases: Array<ExecutionProgressData['phase']> = ['planning', 'coding', 'qa_review', 'qa_fixing'];
-          if (completablePhases.includes(currentPhase) && !completedPhases.includes(currentPhase as any)) {
-            completedPhases.push(currentPhase as any);
+          // Type guard to narrow currentPhase to CompletablePhase
+          const isCompletablePhase = (phase: ExecutionProgressData['phase']): phase is CompletablePhase => {
+            return ['planning', 'coding', 'qa_review', 'qa_fixing'].includes(phase);
+          };
+          if (isCompletablePhase(currentPhase) && !completedPhases.includes(currentPhase)) {
+            completedPhases.push(currentPhase);
             if (isDebug) {
               console.log(`[PhaseDebug:${taskId}] Marked phase as completed:`, { phase: currentPhase, completedPhases });
             }

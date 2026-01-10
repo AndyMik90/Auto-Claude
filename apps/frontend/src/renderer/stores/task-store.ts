@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Task, TaskStatus, SubtaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
+import { isTerminalPhase } from '../../shared/constants/phase-protocol';
 
 interface TaskState {
   tasks: Task[];
@@ -217,8 +218,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
           // FIX (Flip-Flop Bug): Terminal phases should NOT trigger status recalculation
           // When phase is 'complete' or 'failed', the task has finished and status should be stable
-          const terminalPhases: ExecutionPhase[] = ['complete', 'failed'];
-          const isInTerminalPhase = t.executionProgress?.phase && terminalPhases.includes(t.executionProgress.phase);
+          const isInTerminalPhase = t.executionProgress?.phase && isTerminalPhase(t.executionProgress.phase);
 
           // FIX (Flip-Flop Bug): Respect explicit human_review status from plan file
           // When the plan explicitly says 'human_review', don't override it with calculated status
@@ -240,6 +240,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             if (terminalStatuses.includes(newStatus) || newStatus === 'ai_review') {
               // For ai_review, all subtasks must be completed
               if (newStatus === 'ai_review' && (!allCompleted || !hasSubtasks)) {
+                return true;
+              }
+              // For done and pr_created, all subtasks must be completed
+              if ((newStatus === 'done' || newStatus === 'pr_created') && (!allCompleted || !hasSubtasks)) {
                 return true;
               }
               // For human_review with 'completed' reason, all subtasks must be done
@@ -276,11 +280,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // This catches cases where the logic above would set a terminal status
           // but the subtask state doesn't support it (e.g., empty subtasks array)
           if (shouldBlockTerminalTransition(status)) {
+            // Capture attempted status before reassignment for accurate logging
+            const attemptedStatus = status;
             // Keep current status instead of transitioning to invalid terminal state
             status = t.status;
             debugLog('[updateTaskFromPlan] Blocked invalid terminal transition:', {
               taskId,
-              attemptedStatus: status,
+              attemptedStatus,
               currentStatus: t.status,
               hasSubtasks,
               allCompleted,

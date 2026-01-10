@@ -2,7 +2,7 @@ import type { BrowserWindow } from 'electron';
 import path from 'path';
 import { existsSync } from 'fs';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../shared/constants';
-import { wouldPhaseRegress, isTerminalPhase, isValidExecutionPhase, isValidPhaseTransition, getExpectedPreviousPhase, type ExecutionPhase } from '../../shared/constants/phase-protocol';
+import { wouldPhaseRegress, isTerminalPhase, isValidExecutionPhase, isValidPhaseTransition, type ExecutionPhase } from '../../shared/constants/phase-protocol';
 import type {
   SDKRateLimitInfo,
   Task,

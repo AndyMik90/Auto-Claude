@@ -49,6 +49,12 @@ export type ExecutionPhase = (typeof EXECUTION_PHASES)[number];
 export type BackendPhase = (typeof BACKEND_PHASES)[number];
 
 /**
+ * Phases that can be completed and tracked in completedPhases array.
+ * Excludes 'idle', 'complete', and 'failed' which are not completable workflow phases.
+ */
+export type CompletablePhase = 'planning' | 'coding' | 'qa_review' | 'qa_fixing';
+
+/**
  * Phase ordering index for regression detection.
  * Higher index = later in the pipeline.
  * Used to prevent fallback text matching from regressing phases.
@@ -133,7 +139,7 @@ export function isValidExecutionPhase(value: string): value is ExecutionPhase {
 export function isValidPhaseTransition(
   currentPhase: ExecutionPhase,
   newPhase: ExecutionPhase,
-  completedPhases: ExecutionPhase[] = []
+  completedPhases: CompletablePhase[] = []
 ): boolean {
   // Terminal phases can't transition to anything else
   if (isTerminalPhase(currentPhase)) {
@@ -151,7 +157,7 @@ export function isValidPhaseTransition(
   }
 
   // Define expected previous phases for each transition
-  const phasePrerequisites: Record<ExecutionPhase, ExecutionPhase[]> = {
+  const phasePrerequisites: Record<ExecutionPhase, CompletablePhase[]> = {
     idle: [],
     planning: [],
     coding: ['planning'],
