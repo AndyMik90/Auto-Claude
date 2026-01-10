@@ -16,7 +16,7 @@ from typing import Any
 # Import from parent package or direct import
 try:
     from ..forgejo_client import ForgejoClient, ForgejoConfig
-except (ImportError, ValueError, SystemError):
+except ImportError:
     from forgejo_client import ForgejoClient, ForgejoConfig
 
 from .protocol import (
