@@ -605,7 +605,7 @@ describe("useXterm keyboard handlers", () => {
 
       await act(async () => {
         const event = new KeyboardEvent("keydown", {
-          key: "v",
+          key: "V",
           ctrlKey: true,
           shiftKey: true,
         });

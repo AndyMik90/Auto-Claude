@@ -6,7 +6,7 @@
  * Integration tests for terminal copy/paste functionality
  * Tests xterm.js selection API integration with clipboard operations
  */
-import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
 import { render, act } from "@testing-library/react";
 import React from "react";
 import type { Mock } from "vitest";
@@ -163,6 +163,24 @@ describe("Terminal copy/paste integration", () => {
     readText: Mock;
   };
 
+  beforeAll(() => {
+    // Set up global mocks once for all tests
+    // These persist across tests but are not affected by vi.clearAllMocks()
+    global.requestAnimationFrame = vi.fn(
+      (cb: FrameRequestCallback) => setTimeout(cb, 0) as unknown as number
+    );
+    global.cancelAnimationFrame = vi.fn((id: unknown) => clearTimeout(id as number));
+
+    // Mock ResizeObserver
+    global.ResizeObserver = vi.fn().mockImplementation(function () {
+      return {
+        observe: vi.fn(),
+        unobserve: vi.fn(),
+        disconnect: vi.fn(),
+      };
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -200,13 +218,29 @@ describe("Terminal copy/paste integration", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+
+    // Re-apply global mocks for pending async callbacks (setTimeout, etc.)
+    // vi.restoreAllMocks() restores the original undefined values, but pending
+    // callbacks from the component (e.g., performInitialFit via setTimeout) may
+    // still need these mocks after the test completes.
+    global.requestAnimationFrame = vi.fn(
+      (cb: FrameRequestCallback) => setTimeout(cb, 0) as unknown as number
+    );
+    global.cancelAnimationFrame = vi.fn((id: unknown) => clearTimeout(id as number));
+    global.ResizeObserver = vi.fn().mockImplementation(function () {
+      return {
+        observe: vi.fn(),
+        unobserve: vi.fn(),
+        disconnect: vi.fn(),
+      };
+    });
   });
 
   afterAll(() => {
-    // Restore original global shims after all tests complete
-    global.requestAnimationFrame = origRequestAnimationFrame;
-    global.cancelAnimationFrame = origCancelAnimationFrame;
-    global.ResizeObserver = origResizeObserver;
+    // Note: We intentionally do NOT restore the original global shims (origRequestAnimationFrame, etc.)
+    // because jsdom doesn't provide these APIs anyway, and pending setTimeout callbacks from
+    // the component (e.g., performInitialFit) may still fire after all tests complete.
+    // The mocks are harmless and will be cleaned up when the test process exits.
   });
 
   describe("xterm.js selection API integration with clipboard write", () => {
