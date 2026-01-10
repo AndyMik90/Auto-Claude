@@ -70,7 +70,6 @@ function isBashAvailable(): boolean {
     return true;
   } catch {
     // bash not found in PATH, check common installation locations
-    const fs = require("fs");
     const result = commonBashPaths.some((bashPath) => fs.existsSync(bashPath));
     bashAvailableCache = result;
     return result;
@@ -491,15 +490,17 @@ export function invokeClaude(
           // For native Windows shells, we need to create a different temp file format
           // and set the token as an environment variable directly
           if (shellType === "powershell") {
-            // PowerShell: set environment variable and invoke claude
+            // PowerShell: set environment variable, invoke claude, then remove temp file
             const escapedToken = escapePowerShellArg(token);
             const escapedClaude = escapePowerShellArg(claudeCmd);
-            command = `clear && ${cwdCommand}$env:CLAUDE_CODE_OAUTH_TOKEN=${escapedToken}; ${pathPrefix}${escapedClaude}\r`;
+            const escapedTempFile = escapePowerShellArg(tempFile);
+            command = `clear && ${cwdCommand}$env:CLAUDE_CODE_OAUTH_TOKEN=${escapedToken}; ${pathPrefix}${escapedClaude}; Remove-Item -Force ${escapedTempFile}\r`;
           } else {
-            // cmd.exe: set environment variable and invoke claude
+            // cmd.exe: set environment variable, invoke claude, then remove temp file
             const escapedToken = escapeShellArgWindows(token);
             const escapedClaudeCmdWin = escapeShellArgWindows(claudeCmd);
-            command = `clear && ${cwdCommand}set "CLAUDE_CODE_OAUTH_TOKEN=${escapedToken}" && ${pathPrefix}"${escapedClaudeCmdWin}"\r`;
+            const escapedTempFileWin = escapeShellArgWindows(tempFile);
+            command = `clear && ${cwdCommand}set "CLAUDE_CODE_OAUTH_TOKEN=${escapedToken}" && ${pathPrefix}"${escapedClaudeCmdWin}" && del /f "${escapedTempFileWin}"\r`;
           }
         }
       } else {
@@ -732,26 +733,54 @@ export async function invokeClaudeAsync(
       const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
 
       debugLog("[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:", tempFile);
+      // Build options object - mode 0o600 is Unix-only (not supported on Windows)
+      const writeOptions: fs.WriteFileOptions = {};
+      if (process.platform !== "win32") {
+        writeOptions.mode = 0o600;
+      }
       await fsPromises.writeFile(
         tempFile,
         `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        { mode: 0o600 }
+        writeOptions
       );
 
       // Build shell-specific command for temp file method
       let command: string;
       if (shellType === "powershell" || shellType === "cmd") {
-        // On Windows, use bash-style temp file but invoke through bash if available
-        const tempFileBash = tempFile.replace(/\\/g, "/");
-        const bashClaudeCmd = claudeCmd.replace(/\\/g, "/");
-        const escapedClaudeBash = escapeShellArg(bashClaudeCmd);
-        const escapedTempFileBash = escapeShellArg(tempFileBash);
+        // On Windows, check if bash is available
+        if (isBashAvailable()) {
+          // Use bash-style temp file with bash -c wrapper
+          const tempFileBash = tempFile.replace(/\\/g, "/");
+          const bashClaudeCmd = claudeCmd.replace(/\\/g, "/");
+          const escapedClaudeBash = escapeShellArg(bashClaudeCmd);
+          const escapedTempFileBash = escapeShellArg(tempFileBash);
 
-        if (shellType === "powershell") {
-          command = `${cwdCommand}${pathPrefix}bash -c "source ${escapedTempFileBash} && rm -f ${escapedTempFileBash} && exec ${escapedClaudeBash}"\r`;
+          if (shellType === "powershell") {
+            command = `${cwdCommand}${pathPrefix}bash -c "source ${escapedTempFileBash} && rm -f ${escapedTempFileBash} && exec ${escapedClaudeBash}"\r`;
+          } else {
+            // cmd.exe - similar approach
+            command = `${cwdCommand}${pathPrefix}bash -c "source ${escapedTempFileBash} && rm -f ${escapedTempFileBash} && exec ${escapedClaudeBash}"\r`;
+          }
         } else {
-          // cmd.exe - similar approach
-          command = `${cwdCommand}${pathPrefix}bash -c "source ${escapedTempFileBash} && rm -f ${escapedTempFileBash} && exec ${escapedClaudeBash}"\r`;
+          // Bash not available - use native PowerShell/cmd syntax
+          debugLog(
+            "[ClaudeIntegration:invokeClaudeAsync] Bash not found on Windows, using native shell syntax for OAuth token"
+          );
+          // For native Windows shells, we need to create a different temp file format
+          // and set the token as an environment variable directly
+          if (shellType === "powershell") {
+            // PowerShell: set environment variable, invoke claude, then remove temp file
+            const escapedToken = escapePowerShellArg(token);
+            const escapedClaude = escapePowerShellArg(claudeCmd);
+            const escapedTempFile = escapePowerShellArg(tempFile);
+            command = `clear && ${cwdCommand}$env:CLAUDE_CODE_OAUTH_TOKEN=${escapedToken}; ${pathPrefix}${escapedClaude}; Remove-Item -Force ${escapedTempFile}\r`;
+          } else {
+            // cmd.exe: set environment variable, invoke claude, then remove temp file
+            const escapedToken = escapeShellArgWindows(token);
+            const escapedClaudeCmdWin = escapeShellArgWindows(claudeCmd);
+            const escapedTempFileWin = escapeShellArgWindows(tempFile);
+            command = `clear && ${cwdCommand}set "CLAUDE_CODE_OAUTH_TOKEN=${escapedToken}" && ${pathPrefix}"${escapedClaudeCmdWin}" && del /f "${escapedTempFileWin}"\r`;
+          }
         }
       } else {
         // Unix shells - use existing temp file method
@@ -920,13 +949,14 @@ interface WaitForExitResult {
 
 /**
  * Shell prompt patterns that indicate Claude has exited and shell is ready
- * These patterns match common shell prompts across bash, zsh, fish, etc.
+ * These patterns match common shell prompts across bash, zsh, fish, PowerShell, etc.
  */
 const SHELL_PROMPT_PATTERNS = [
   /[$%#>❯]\s*$/m, // Common prompt endings: $, %, #, >, ❯
   /\w+@[\w.-]+[:\s]/, // user@hostname: format
   /^\s*\S+\s*[$%#>❯]\s*$/m, // hostname/path followed by prompt char
   /\(.*\)\s*[$%#>❯]\s*$/m, // (venv) or (branch) followed by prompt
+  /^PS\s+[^\r\n>]+>\s*$/m, // PowerShell prompt: PS C:\path> or PS>
 ];
 
 /**
