@@ -13,7 +13,52 @@ This approach:
 """
 
 import json
+import os
 from pathlib import Path
+
+
+def get_user_language_instruction() -> str:
+    """
+    Get language instruction based on user's language preference.
+
+    Reads from environment variables:
+    - AUTO_CLAUDE_USER_LANGUAGE: language code (e.g., 'fr', 'ko')
+    - AUTO_CLAUDE_USER_LANGUAGE_NAME: display name (e.g., 'French', 'Korean')
+
+    The frontend is the single source of truth for language names,
+    so no mapping is needed here.
+
+    Returns:
+        Language instruction string to prepend to prompts, or empty string if English
+    """
+    user_lang = os.environ.get("AUTO_CLAUDE_USER_LANGUAGE", "en").lower()
+
+    # English is the default - no special instruction needed
+    if user_lang == "en":
+        return ""
+
+    # Get language name from environment (frontend passes it)
+    # Fallback to the language code itself if not provided
+    lang_name = os.environ.get("AUTO_CLAUDE_USER_LANGUAGE_NAME", user_lang)
+
+    return f"""## LANGUAGE PREFERENCE
+
+**IMPORTANT:** The user prefers to receive responses in **{lang_name}**.
+
+Please provide all explanations, comments, commit messages, and user-facing text in {lang_name}.
+Code, variable names, function names, and technical identifiers should remain in English.
+
+Examples:
+- ✅ Code comments: in {lang_name}
+- ✅ Commit messages: in {lang_name}
+- ✅ Error messages: in {lang_name}
+- ✅ Documentation: in {lang_name}
+- ❌ Variable/function names: keep in English
+- ❌ Code syntax: keep in English
+
+---
+
+"""
 
 
 def get_relative_spec_path(spec_dir: Path, project_dir: Path) -> str:
@@ -54,7 +99,10 @@ def generate_environment_context(project_dir: Path, spec_dir: Path) -> str:
     """
     relative_spec = get_relative_spec_path(spec_dir, project_dir)
 
-    return f"""## YOUR ENVIRONMENT
+    # Get language instruction first
+    language_instruction = get_user_language_instruction()
+
+    return f"""{language_instruction}## YOUR ENVIRONMENT
 
 **Working Directory:** `{project_dir}`
 **Spec Location:** `{relative_spec}/`

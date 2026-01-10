@@ -18,6 +18,7 @@ import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo } from '../cli-tool-manager';
+import { AVAILABLE_LANGUAGES } from '../../shared/constants/i18n';
 
 
 function deriveGitBashPath(gitExePath: string): string | null {
@@ -134,9 +135,31 @@ export class AgentProcessManager {
       }
     }
 
+    // Read user's language preference from settings and pass to backend
+    // This allows AI agents to respond in the user's preferred language
+    const languageEnv: Record<string, string> = {};
+    try {
+      const settings = readSettingsFile();
+      if (settings?.language) {
+        languageEnv['AUTO_CLAUDE_USER_LANGUAGE'] = settings.language;
+
+        // Also pass the language display name so backend doesn't need to maintain a mapping
+        // This makes frontend (i18n.ts) the single source of truth for language names
+        const langConfig = AVAILABLE_LANGUAGES.find(l => l.value === settings.language);
+        if (langConfig) {
+          languageEnv['AUTO_CLAUDE_USER_LANGUAGE_NAME'] = langConfig.label;
+        }
+
+        console.log('[AgentProcess] Setting AUTO_CLAUDE_USER_LANGUAGE:', settings.language, langConfig?.label);
+      }
+    } catch (error) {
+      console.warn('[AgentProcess] Failed to read language setting:', error);
+    }
+
     return {
       ...augmentedEnv,
       ...gitBashEnv,
+      ...languageEnv,
       ...extraEnv,
       ...profileEnv,
       PYTHONUNBUFFERED: '1',
