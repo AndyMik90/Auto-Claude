@@ -7,9 +7,12 @@ for custom API endpoints.
 """
 
 import json
+import logging
 import os
 import platform
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 # Priority order for auth token resolution
 # NOTE: We intentionally do NOT fall back to ANTHROPIC_API_KEY.
@@ -38,7 +41,98 @@ SDK_ENV_VARS = [
     "API_TIMEOUT_MS",
     # Windows-specific: Git Bash path for Claude Code CLI
     "CLAUDE_CODE_GIT_BASH_PATH",
+    # AWS Bedrock configuration
+    "CLAUDE_CODE_USE_BEDROCK",
+    "AWS_REGION",
+    "AWS_PROFILE",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_BEARER_TOKEN_BEDROCK",
+    "ANTHROPIC_SMALL_FAST_MODEL",
+    "ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION",
+    "DISABLE_PROMPT_CACHING",
 ]
+
+
+def is_bedrock_enabled() -> bool:
+    """
+    Check if AWS Bedrock authentication is enabled.
+
+    Returns:
+        True if CLAUDE_CODE_USE_BEDROCK environment variable is set to a truthy value
+        (1, true, yes, on - case insensitive)
+    """
+    value = os.environ.get("CLAUDE_CODE_USE_BEDROCK", "").lower().strip()
+    return value in ("1", "true", "yes", "on")
+
+
+def validate_bedrock_config() -> None:
+    """
+    Validate AWS Bedrock configuration.
+
+    Checks that required environment variables are set when Bedrock is enabled:
+    - AWS_REGION is required
+    - Access key credentials must be complete (both key ID and secret)
+
+    Raises:
+        ValueError: If configuration is invalid (missing region or partial credentials)
+    """
+    if not is_bedrock_enabled():
+        return
+
+    if not os.environ.get("AWS_REGION"):
+        raise ValueError(
+            "AWS Bedrock is enabled but AWS_REGION is not set.\n\n"
+            "AWS_REGION is required when using Bedrock. Example:\n"
+            "  AWS_REGION=us-east-1\n\n"
+            "Check available regions: aws bedrock list-inference-profiles --region <region>"
+        )
+
+    has_profile = bool(os.environ.get("AWS_PROFILE"))
+    has_access_key_id = bool(os.environ.get("AWS_ACCESS_KEY_ID"))
+    has_secret_key = bool(os.environ.get("AWS_SECRET_ACCESS_KEY"))
+    has_bedrock_key = bool(os.environ.get("AWS_BEARER_TOKEN_BEDROCK"))
+
+    if has_access_key_id and not has_secret_key:
+        raise ValueError(
+            "AWS_ACCESS_KEY_ID is set but AWS_SECRET_ACCESS_KEY is missing.\n\n"
+            "Both are required when using access key authentication."
+        )
+
+    if has_secret_key and not has_access_key_id:
+        raise ValueError(
+            "AWS_SECRET_ACCESS_KEY is set but AWS_ACCESS_KEY_ID is missing.\n\n"
+            "Both are required when using access key authentication."
+        )
+
+    if not (has_profile or has_access_key_id or has_bedrock_key):
+        logger.warning(
+            "AWS Bedrock is enabled but no explicit credentials configured. "
+            "Will attempt to use default AWS credential chain (instance profile, etc.)"
+        )
+
+
+def require_claude_auth() -> str | None:
+    """
+    Get authentication credentials, supporting both Bedrock and OAuth paths.
+
+    This is the primary authentication entry point. When Bedrock is enabled,
+    validates AWS config and returns None (SDK will use AWS credentials).
+    Otherwise, requires and returns an OAuth token.
+
+    Returns:
+        OAuth token string if using OAuth authentication, None if using Bedrock
+
+    Raises:
+        ValueError: If Bedrock config is invalid or OAuth token is missing
+    """
+    if is_bedrock_enabled():
+        validate_bedrock_config()
+        logger.info("Bedrock mode enabled, using AWS credentials for authentication")
+        return None
+
+    return require_auth_token()
 
 
 def get_token_from_keychain() -> str | None:
@@ -189,6 +283,10 @@ def require_auth_token() -> str:
             "No OAuth token found.\n\n"
             "Auto Claude requires Claude Code OAuth authentication.\n"
             "Direct API keys (ANTHROPIC_API_KEY) are not supported.\n\n"
+            "Alternatively, you can use AWS Bedrock:\n"
+            "  1. Set CLAUDE_CODE_USE_BEDROCK=1 in your .env file\n"
+            "  2. Set AWS_REGION=us-east-1 (or your region)\n"
+            "  3. Configure AWS credentials (SSO profile, access keys, or Bedrock API key)\n\n"
         )
         # Provide platform-specific guidance
         system = platform.system()
@@ -203,14 +301,14 @@ def require_auth_token() -> str:
             error_msg += (
                 "To authenticate:\n"
                 "  1. Run: claude setup-token\n"
-                "  2. The token should be saved to Windows Credential Manager\n\n"
+                "  2. The token will be saved to Windows Credential Manager\n\n"
                 "If auto-detection fails, set CLAUDE_CODE_OAUTH_TOKEN in your .env file.\n"
                 "Check: %LOCALAPPDATA%\\Claude\\credentials.json"
             )
         else:
             error_msg += (
                 "To authenticate:\n"
-                "  1. Run: claude setup-token\n"
+                " 1. Run: claude setup-token\n"
                 "  2. Set CLAUDE_CODE_OAUTH_TOKEN in your .env file"
             )
         raise ValueError(error_msg)
@@ -327,10 +425,10 @@ def get_sdk_env_vars() -> dict[str, str]:
 def ensure_claude_code_oauth_token() -> None:
     """
     Ensure CLAUDE_CODE_OAUTH_TOKEN is set (for SDK compatibility).
-
-    If not set but other auth tokens are available, copies the value
-    to CLAUDE_CODE_OAUTH_TOKEN so the underlying SDK can use it.
     """
+    if is_bedrock_enabled():
+        return
+
     if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
         return
 

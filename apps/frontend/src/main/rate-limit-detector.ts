@@ -4,6 +4,9 @@
  */
 
 import { getClaudeProfileManager } from './claude-profile-manager';
+import { readSettingsFile } from './settings-utils';
+import { decryptBedrockSecrets } from './bedrock-encryption';
+import type { AppSettings, BedrockConfig } from '../shared/types';
 
 /**
  * Regex pattern to detect Claude Code rate limit messages
@@ -247,8 +250,21 @@ export function isAuthFailureError(output: string): boolean {
  * Uses OAuth token (CLAUDE_CODE_OAUTH_TOKEN) if available, otherwise falls back to CLAUDE_CONFIG_DIR.
  * OAuth tokens are preferred as they provide instant, reliable profile switching.
  * Note: Tokens are decrypted automatically by the profile manager.
+ * 
+ * If Bedrock is enabled in global settings, Bedrock env vars take priority over OAuth.
  */
 export function getProfileEnv(profileId?: string): Record<string, string> {
+  const settings = readSettingsFile() as AppSettings | undefined;
+  
+  if (settings?.bedrockEnabled && settings?.bedrockConfig) {
+    const decryptedConfig = decryptBedrockSecrets(settings.bedrockConfig);
+    const bedrockEnv = getBedrockEnvVars(decryptedConfig);
+    if (Object.keys(bedrockEnv).length > 0) {
+      console.warn('[getProfileEnv] Using Bedrock authentication (global settings)');
+      return bedrockEnv;
+    }
+  }
+  
   const profileManager = getClaudeProfileManager();
   const profile = profileId
     ? profileManager.getProfile(profileId)
@@ -302,6 +318,31 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
 
   console.warn('[getProfileEnv] Profile has no auth method configured');
   return {};
+}
+
+function getBedrockEnvVars(config: BedrockConfig): Record<string, string> {
+  const env: Record<string, string> = {
+    CLAUDE_CODE_USE_BEDROCK: '1'
+  };
+  
+  if (config.awsRegion) {
+    env.AWS_REGION = config.awsRegion;
+  }
+  
+  if (config.authMethod === 'sso_profile' && config.awsProfile) {
+    env.AWS_PROFILE = config.awsProfile;
+  } else if (config.authMethod === 'access_keys') {
+    if (config.awsAccessKeyId) env.AWS_ACCESS_KEY_ID = config.awsAccessKeyId;
+    if (config.awsSecretAccessKey) env.AWS_SECRET_ACCESS_KEY = config.awsSecretAccessKey;
+    if (config.awsSessionToken) env.AWS_SESSION_TOKEN = config.awsSessionToken;
+  } else if (config.authMethod === 'api_key' && config.awsBearerTokenBedrock) {
+    env.AWS_BEARER_TOKEN_BEDROCK = config.awsBearerTokenBedrock;
+  }
+  
+  if (config.anthropicModel) env.ANTHROPIC_MODEL = config.anthropicModel;
+  if (config.anthropicSmallFastModel) env.ANTHROPIC_SMALL_FAST_MODEL = config.anthropicSmallFastModel;
+  
+  return env;
 }
 
 /**

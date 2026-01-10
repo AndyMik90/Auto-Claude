@@ -96,9 +96,10 @@ def resolve_model_id(model: str) -> str:
     If the model is already a full ID, return it unchanged.
 
     Priority:
-    1. Environment variable override (from API Profile)
-    2. Hardcoded MODEL_ID_MAP
-    3. Pass through unchanged (assume full model ID)
+    1. ANTHROPIC_MODEL env var (global override, e.g., for Bedrock)
+    2. Model-specific env var override (from API Profile)
+    3. Hardcoded MODEL_ID_MAP
+    4. Pass through unchanged (assume full model ID)
 
     Args:
         model: Model shorthand or full ID
@@ -106,7 +107,10 @@ def resolve_model_id(model: str) -> str:
     Returns:
         Full Claude model ID
     """
-    # Check for environment variable override (from API Profile custom model mappings)
+    global_override = os.environ.get("ANTHROPIC_MODEL")
+    if global_override:
+        return global_override
+
     if model in MODEL_ID_MAP:
         env_var_map = {
             "haiku": "ANTHROPIC_DEFAULT_HAIKU_MODEL",
@@ -119,10 +123,8 @@ def resolve_model_id(model: str) -> str:
             if env_value:
                 return env_value
 
-        # Fall back to hardcoded mapping
         return MODEL_ID_MAP[model]
 
-    # Already a full model ID or unknown shorthand
     return model
 
 

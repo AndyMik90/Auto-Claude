@@ -6,7 +6,7 @@ import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
-import type { IdeationConfig, Idea } from '../../shared/types';
+import type { IdeationConfig, Idea, AppSettings } from '../../shared/types';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { getOAuthModeClearVars } from './env-utils';
@@ -16,6 +16,50 @@ import { pythonEnvManager } from '../python-env-manager';
 import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ipc-handlers/ideation/transformers';
 import { transformRoadmapFromSnakeCase } from '../ipc-handlers/roadmap/transformers';
 import type { RawIdea } from '../ipc-handlers/ideation/types';
+import { readSettingsFile } from '../settings-utils';
+
+/**
+ * Build the final environment variables for spawned Python processes.
+ * Handles proper precedence for Bedrock vs OAuth authentication modes.
+ *
+ * @param baseEnv - Base environment from process.env
+ * @param pythonEnv - Python-specific environment (PYTHONPATH for bundled packages)
+ * @param combinedEnv - Project-specific environment (.env file vars)
+ * @param oauthModeClearVars - Vars to clear stale ANTHROPIC_* in OAuth mode
+ * @param profileEnv - Profile environment (includes Bedrock vars when enabled)
+ * @param apiProfileEnv - API profile environment variables
+ * @param pythonPath - Combined PYTHONPATH value
+ * @returns Final environment object with proper precedence
+ */
+function buildSpawnEnv(
+  baseEnv: NodeJS.ProcessEnv,
+  pythonEnv: Record<string, string>,
+  combinedEnv: Record<string, string>,
+  oauthModeClearVars: Record<string, string>,
+  profileEnv: Record<string, string>,
+  apiProfileEnv: Record<string, string>,
+  pythonPath: string
+): Record<string, string | undefined> {
+  // Check if Bedrock is enabled - if so, Bedrock env vars should override API Profile
+  const settings = readSettingsFile() as AppSettings | undefined;
+  const isBedrockEnabled = settings?.bedrockEnabled && settings?.bedrockConfig;
+
+  // Build final environment with proper precedence:
+  // When Bedrock enabled: profileEnv (with Bedrock vars) has highest priority
+  // When OAuth: apiProfileEnv has highest priority for ANTHROPIC_* vars
+  return {
+    ...baseEnv,
+    ...pythonEnv,
+    ...combinedEnv,
+    ...oauthModeClearVars,
+    ...(isBedrockEnabled ? {} : profileEnv),
+    ...apiProfileEnv,
+    ...(isBedrockEnabled ? profileEnv : {}),
+    PYTHONPATH: pythonPath,
+    PYTHONUNBUFFERED: '1',
+    PYTHONUTF8: '1'
+  };
+}
 
 /**
  * Queue management for ideation and roadmap generation
@@ -277,25 +321,15 @@ export class AgentQueueManager {
     }
     const combinedPythonPath = pythonPathParts.join(process.platform === 'win32' ? ';' : ':');
 
-    // Build final environment with proper precedence:
-    // 1. process.env (system)
-    // 2. pythonEnv (bundled packages environment)
-    // 3. combinedEnv (auto-claude/.env for CLI usage)
-    // 4. oauthModeClearVars (clear stale ANTHROPIC_* vars when in OAuth mode)
-    // 5. profileEnv (Electron app OAuth token)
-    // 6. apiProfileEnv (Active API profile config - highest priority for ANTHROPIC_* vars)
-    // 7. Our specific overrides
-    const finalEnv = {
-      ...process.env,
-      ...pythonEnv,
-      ...combinedEnv,
-      ...oauthModeClearVars,
-      ...profileEnv,
-      ...apiProfileEnv,
-      PYTHONPATH: combinedPythonPath,
-      PYTHONUNBUFFERED: '1',
-      PYTHONUTF8: '1'
-    };
+    const finalEnv = buildSpawnEnv(
+      process.env,
+      pythonEnv,
+      combinedEnv,
+      oauthModeClearVars,
+      profileEnv,
+      apiProfileEnv,
+      combinedPythonPath
+    );
 
     // Debug: Show OAuth token source (token values intentionally omitted for security - AC4)
     const tokenSource = profileEnv['CLAUDE_CODE_OAUTH_TOKEN']
@@ -604,25 +638,15 @@ export class AgentQueueManager {
     }
     const combinedPythonPath = pythonPathParts.join(process.platform === 'win32' ? ';' : ':');
 
-    // Build final environment with proper precedence:
-    // 1. process.env (system)
-    // 2. pythonEnv (bundled packages environment)
-    // 3. combinedEnv (auto-claude/.env for CLI usage)
-    // 4. oauthModeClearVars (clear stale ANTHROPIC_* vars when in OAuth mode)
-    // 5. profileEnv (Electron app OAuth token)
-    // 6. apiProfileEnv (Active API profile config - highest priority for ANTHROPIC_* vars)
-    // 7. Our specific overrides
-    const finalEnv = {
-      ...process.env,
-      ...pythonEnv,
-      ...combinedEnv,
-      ...oauthModeClearVars,
-      ...profileEnv,
-      ...apiProfileEnv,
-      PYTHONPATH: combinedPythonPath,
-      PYTHONUNBUFFERED: '1',
-      PYTHONUTF8: '1'
-    };
+    const finalEnv = buildSpawnEnv(
+      process.env,
+      pythonEnv,
+      combinedEnv,
+      oauthModeClearVars,
+      profileEnv,
+      apiProfileEnv,
+      combinedPythonPath
+    );
 
     // Debug: Show OAuth token source (token values intentionally omitted for security - AC4)
     const tokenSource = profileEnv['CLAUDE_CODE_OAUTH_TOKEN']

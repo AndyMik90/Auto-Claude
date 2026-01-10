@@ -14,7 +14,7 @@ _PARENT_DIR = Path(__file__).parent.parent
 if str(_PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(_PARENT_DIR))
 
-from core.auth import get_auth_token, get_auth_token_source
+from core.auth import get_auth_token, get_auth_token_source, is_bedrock_enabled
 from core.dependency_validator import validate_platform_dependencies
 
 
@@ -160,19 +160,23 @@ def validate_environment(spec_dir: Path) -> bool:
 
     valid = True
 
-    # Check for OAuth token (API keys are not supported)
-    if not get_auth_token():
+    if not get_auth_token() and not is_bedrock_enabled():
         print("Error: No OAuth token found")
         print("\nAuto Claude requires Claude Code OAuth authentication.")
         print("Direct API keys (ANTHROPIC_API_KEY) are not supported.")
-        print("\nTo authenticate, run:")
+        print("\nAlternatively, use AWS Bedrock:")
+        print("  Set CLAUDE_CODE_USE_BEDROCK=1 and AWS_REGION")
+        print("\nTo authenticate with OAuth, run:")
         print("  claude setup-token")
         valid = False
     else:
-        # Show which auth source is being used
-        source = get_auth_token_source()
-        if source:
-            print(f"Auth: {source}")
+        if is_bedrock_enabled():
+            region = os.environ.get("AWS_REGION", "not set")
+            print(f"Auth: AWS Bedrock (region: {region})")
+        else:
+            source = get_auth_token_source()
+            if source:
+                print(f"Auth: {source}")
 
         # Show custom base URL if set
         base_url = os.environ.get("ANTHROPIC_BASE_URL")

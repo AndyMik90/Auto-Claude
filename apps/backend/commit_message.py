@@ -186,21 +186,38 @@ Fixes #N (if applicable)"""
     return prompt
 
 
-async def _call_claude(prompt: str) -> str:
-    """Call Claude for commit message generation.
+def _extract_text_from_message(msg) -> str:
+    """Extract text content from an AssistantMessage."""
+    try:
+        from claude_agent_sdk.types import AssistantMessage, TextBlock
+    except ImportError:
+        return ""
 
-    Reads model/thinking settings from environment variables:
-    - UTILITY_MODEL_ID: Full model ID (e.g., "claude-haiku-4-5-20251001")
-    - UTILITY_THINKING_BUDGET: Thinking budget tokens (e.g., "1024")
-    """
-    from core.auth import ensure_claude_code_oauth_token, get_auth_token
+    if not isinstance(msg, AssistantMessage) or not hasattr(msg, "content"):
+        return ""
+
+    text_parts = []
+    for block in msg.content:
+        if isinstance(block, TextBlock) and hasattr(block, "text"):
+            text_parts.append(block.text)
+    return "".join(text_parts)
+
+
+async def _call_claude(prompt: str) -> str:
+    """Call Claude API to generate commit message."""
+    from core.auth import (
+        ensure_claude_code_oauth_token,
+        get_auth_token,
+        is_bedrock_enabled,
+    )
     from core.model_config import get_utility_model_config
 
-    if not get_auth_token():
+    if not get_auth_token() and not is_bedrock_enabled():
         logger.warning("No authentication token found")
         return ""
 
-    ensure_claude_code_oauth_token()
+    if not is_bedrock_enabled():
+        ensure_claude_code_oauth_token()
 
     try:
         from core.simple_client import create_simple_client
@@ -208,7 +225,6 @@ async def _call_claude(prompt: str) -> str:
         logger.warning("core.simple_client not available")
         return ""
 
-    # Get model settings from environment (passed from frontend)
     model, thinking_budget = get_utility_model_config()
 
     logger.info(
@@ -226,16 +242,11 @@ async def _call_claude(prompt: str) -> str:
         async with client:
             await client.query(prompt)
 
-            response_text = ""
+            response_parts = []
             async for msg in client.receive_response():
-                msg_type = type(msg).__name__
-                if msg_type == "AssistantMessage" and hasattr(msg, "content"):
-                    for block in msg.content:
-                        # Must check block type - only TextBlock has .text attribute
-                        block_type = type(block).__name__
-                        if block_type == "TextBlock" and hasattr(block, "text"):
-                            response_text += block.text
+                response_parts.append(_extract_text_from_message(msg))
 
+            response_text = "".join(response_parts)
             logger.info(f"Generated commit message: {len(response_text)} chars")
             return response_text.strip()
 

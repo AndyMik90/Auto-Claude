@@ -312,7 +312,22 @@
       "title": "Général",
       "description": "Auto-Build et configuration de l'agent",
       "useClaudeMd": "Utiliser CLAUDE.md",
-      "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
+      "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent",
+      "authentication": "Authentification",
+      "autoBuildIntegration": "Intégration Auto-Build",
+      "notInitialized": "Non initialisé",
+      "initializeDescription": "Initialisez Auto-Build pour activer la création de tâches et les workflows d'agents.",
+      "initializing": "Initialisation...",
+      "initialize": "Initialiser Auto-Build",
+      "initialized": "Initialisé",
+      "checkingStatus": "Vérification du statut...",
+      "agentConfiguration": "Configuration de l'agent",
+      "model": "Modèle",
+      "notificationsTitle": "Notifications",
+      "notifyOnTaskComplete": "Tâche terminée",
+      "notifyOnTaskFailed": "Échec de la tâche",
+      "notifyOnReviewNeeded": "Révision requise",
+      "notifySound": "Son"
     },
     "claude": {
       "title": "Auth Claude",
@@ -345,6 +360,110 @@
       "integrationTitle": "Mémoire",
       "integrationDescription": "Configurer la mémoire persistante inter-sessions pour les agents",
       "syncDescription": "Configurer la mémoire persistante"
+    }
+  },
+  "bedrock": {
+    "title": "AWS Bedrock",
+    "description": "Utiliser AWS Bedrock pour l'accès API Claude",
+    "enableToggle": "Activer AWS Bedrock",
+    "enableDescription": "Lorsqu'activé, les identifiants AWS sont utilisés à la place d'OAuth.",
+    "mutualExclusiveWarning": "Bedrock a priorité sur OAuth lorsqu'il est activé.",
+    "status": {
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "configured": "Configuré",
+      "notConfigured": "Non configuré",
+      "missingRegion": "Région manquante",
+      "missingCredentials": "Identifiants manquants"
+    },
+    "region": {
+      "label": "Région AWS",
+      "description": "Sélectionnez la région AWS où Bedrock est activé pour votre compte",
+      "placeholder": "Sélectionner la région AWS"
+    },
+    "regions": {
+      "us-east-1": "US Est (Virginie du Nord)",
+      "us-west-2": "US Ouest (Oregon)",
+      "eu-west-1": "Europe (Irlande)",
+      "eu-west-3": "Europe (Paris)",
+      "eu-central-1": "Europe (Francfort)",
+      "ap-northeast-1": "Asie-Pacifique (Tokyo)",
+      "ap-southeast-1": "Asie-Pacifique (Singapour)",
+      "ap-southeast-2": "Asie-Pacifique (Sydney)"
+    },
+    "authMethod": {
+      "label": "Méthode d'authentification",
+      "description": "Choisissez comment vous authentifier avec AWS Bedrock"
+    },
+    "authMethods": {
+      "sso_profile": {
+        "title": "Profil AWS SSO",
+        "description": "Utiliser un profil AWS SSO de ~/.aws/config. Exécutez 'aws sso login --profile <nom>'."
+      },
+      "access_keys": {
+        "title": "Clés d'accès",
+        "description": "Utiliser l'ID de clé d'accès AWS et la clé d'accès secrète. Adapté aux environnements CI/CD."
+      },
+      "api_key": {
+        "title": "Clé API Bedrock",
+        "description": "Utiliser une clé API spécifique à Bedrock. Option la plus simple pour une configuration rapide."
+      }
+    },
+    "fields": {
+      "ssoProfile": {
+        "label": "Nom du profil SSO",
+        "placeholder": "nom-de-votre-profil-sso",
+        "hint": "Le nom du profil de votre fichier ~/.aws/config"
+      },
+      "accessKeyId": {
+        "label": "ID de clé d'accès",
+        "placeholder": "AKIA...",
+        "hint": "Votre ID de clé d'accès AWS"
+      },
+      "secretAccessKey": {
+        "label": "Clé d'accès secrète",
+        "placeholder": "Entrez votre clé d'accès secrète",
+        "hint": "Votre clé d'accès secrète AWS"
+      },
+      "sessionToken": {
+        "label": "Jeton de session",
+        "placeholder": "Optionnel - pour les identifiants temporaires",
+        "hint": "Requis uniquement pour les identifiants temporaires/rôles assumés"
+      },
+      "bedrockApiKey": {
+        "label": "Clé API Bedrock",
+        "placeholder": "Entrez votre clé API Bedrock",
+        "hint": "Clé API de la console AWS Bedrock"
+      }
+    },
+    "modelOverrides": {
+      "title": "Remplacement de modèles",
+      "description": "Remplacez optionnellement les identifiants de modèles Bedrock par défaut",
+      "primaryModel": {
+        "label": "Modèle principal",
+        "placeholder": "us.anthropic.claude-sonnet-4-5-20250514-v1:0",
+        "hint": "ID du modèle pour les opérations Claude principales"
+      },
+      "fastModel": {
+        "label": "Modèle rapide (Haiku)",
+        "placeholder": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+        "hint": "ID du modèle pour les opérations rapides/légères"
+      }
+    },
+    "actions": {
+      "viewDocs": "Voir la documentation AWS Bedrock"
+    },
+    "errors": {
+      "regionRequired": "La région AWS est requise",
+      "authRequired": "Veuillez configurer au moins une méthode d'authentification",
+      "profileRequired": "Le nom du profil SSO est requis",
+      "accessKeyRequired": "L'ID de clé d'accès est requis",
+      "secretKeyRequired": "La clé d'accès secrète est requise",
+      "apiKeyRequired": "La clé API Bedrock est requise"
+    },
+    "securityWarning": {
+      "title": "Note de sécurité",
+      "accessKeysWarning": "Évitez de stocker des clés d'accès AWS longue durée. Utilisez des profils AWS SSO lorsque possible, ou des jetons de session courts pour CI/CD."
     }
   },
   "agentProfile": {

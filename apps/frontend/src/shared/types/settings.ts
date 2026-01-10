@@ -2,7 +2,7 @@
  * Application settings types
  */
 
-import type { NotificationSettings, GraphitiEmbeddingProvider } from './project';
+import type { NotificationSettings, GraphitiEmbeddingProvider, BedrockConfig } from './project';
 import type { ChangelogFormat, ChangelogAudience, ChangelogEmojiLevel } from './changelog';
 import type { SupportedLanguage } from '../constants/i18n';
 
@@ -281,6 +281,9 @@ export interface AppSettings {
   customTerminalPath?: string; // For 'custom' terminal
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
   sentryEnabled?: boolean;
+  // AWS Bedrock authentication (global, alternative to OAuth)
+  bedrockEnabled?: boolean;
+  bedrockConfig?: BedrockConfig;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

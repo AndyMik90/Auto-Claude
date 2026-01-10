@@ -16,6 +16,11 @@ import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-upd
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
 import { parseEnvFile } from './utils';
+import {
+  encryptBedrockSecrets,
+  decryptBedrockSecrets,
+  hasPlaintextBedrockSecrets
+} from '../bedrock-encryption';
 
 const settingsPath = getSettingsPath();
 
@@ -145,10 +150,13 @@ export function registerSettingsHandlers(
         }
       }
 
-      // If no manual autoBuildPath is set, try to auto-detect
-      if (!settings.autoBuildPath) {
+      const shouldAutoDetect = is.dev || !settings.autoBuildPath;
+      if (shouldAutoDetect) {
         const detectedPath = detectAutoBuildSourcePath();
         if (detectedPath) {
+          if (is.dev && settings.autoBuildPath && settings.autoBuildPath !== detectedPath) {
+            console.warn(`[SETTINGS_GET] Dev mode: using local source "${detectedPath}" instead of saved "${settings.autoBuildPath}"`);
+          }
           settings.autoBuildPath = detectedPath;
         }
       }
@@ -160,6 +168,29 @@ export function registerSettingsHandlers(
         } catch (error) {
           console.error('[SETTINGS_GET] Failed to persist migration:', error);
           // Continue anyway - settings will be migrated in-memory for this session
+        }
+      }
+
+      // Migration: Encrypt any existing plaintext Bedrock secrets
+      if (settings.bedrockConfig && hasPlaintextBedrockSecrets(settings.bedrockConfig)) {
+        console.warn('[SETTINGS_GET] Migrating plaintext Bedrock secrets to encrypted storage');
+        try {
+          settings.bedrockConfig = encryptBedrockSecrets(settings.bedrockConfig);
+          writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        } catch (error) {
+          console.error('[SETTINGS_GET] Failed to encrypt/persist Bedrock secrets:', error);
+          // Continue with plaintext secrets if encryption fails
+        }
+      }
+
+      // Decrypt Bedrock secrets for use in memory (they're stored encrypted on disk)
+      if (settings.bedrockConfig) {
+        try {
+          settings.bedrockConfig = decryptBedrockSecrets(settings.bedrockConfig);
+        } catch (error) {
+          console.error('[SETTINGS_GET] Failed to decrypt Bedrock secrets:', error);
+          settings.bedrockConfig = undefined;
+          settings.bedrockEnabled = false;
         }
       }
 
@@ -194,6 +225,16 @@ export function registerSettingsHandlers(
           const profile = DEFAULT_AGENT_PROFILES.find(p => p.id === settings.selectedAgentProfile);
           if (profile) {
             newSettings.defaultModel = profile.model;
+          }
+        }
+
+        // Encrypt Bedrock secrets before writing to disk
+        if (newSettings.bedrockConfig) {
+          try {
+            newSettings.bedrockConfig = encryptBedrockSecrets(newSettings.bedrockConfig);
+          } catch (error) {
+            console.error('[SETTINGS_SAVE] Failed to encrypt Bedrock secrets:', error);
+            return { success: false, error: 'Failed to encrypt Bedrock secrets' };
           }
         }
 

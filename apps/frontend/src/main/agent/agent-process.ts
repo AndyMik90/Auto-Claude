@@ -111,13 +111,8 @@ export class AgentProcessManager {
   private setupProcessEnvironment(
     extraEnv: Record<string, string>
   ): NodeJS.ProcessEnv {
-    const profileEnv = getProfileEnv();
-    // Use getAugmentedEnv() to ensure common tool paths (dotnet, homebrew, etc.)
-    // are available even when app is launched from Finder/Dock
     const augmentedEnv = getAugmentedEnv();
 
-    // On Windows, detect and pass git-bash path for Claude Code CLI
-    // Electron can detect git via where.exe, but Python subprocess may not have the same PATH
     const gitBashEnv: Record<string, string> = {};
     if (process.platform === 'win32' && !process.env.CLAUDE_CODE_GIT_BASH_PATH) {
       try {
@@ -138,7 +133,6 @@ export class AgentProcessManager {
       ...augmentedEnv,
       ...gitBashEnv,
       ...extraEnv,
-      ...profileEnv,
       PYTHONUNBUFFERED: '1',
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1'
@@ -429,13 +423,23 @@ export class AgentProcessManager {
 
     // Parse Python commandto handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
+    
+    // Check if Bedrock is enabled - if so, Bedrock env vars should override API Profile
+    const appSettings = readSettingsFile() as AppSettings | undefined;
+    const isBedrockEnabled = appSettings?.bedrockEnabled && appSettings?.bedrockConfig;
+    
+    // Get profileEnv separately to control precedence
+    const profileEnv = getProfileEnv();
+    
     const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
       cwd,
       env: {
-        ...env, // Already includes process.env, extraEnv, profileEnv, PYTHONUNBUFFERED, PYTHONUTF8
+        ...env, // Already includes process.env, extraEnv, PYTHONUNBUFFERED, PYTHONUTF8
         ...pythonEnv, // Include Python environment (PYTHONPATH for bundled packages)
         ...oauthModeClearVars, // Clear stale ANTHROPIC_* vars when in OAuth mode
-        ...apiProfileEnv // Include active API profile config (highest priority for ANTHROPIC_* vars)
+        ...(isBedrockEnabled ? {} : profileEnv), // OAuth: profileEnv before apiProfileEnv
+        ...apiProfileEnv, // API profile config
+        ...(isBedrockEnabled ? profileEnv : {}) // Bedrock: profileEnv after apiProfileEnv (highest priority)
       }
     });
 

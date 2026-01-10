@@ -55,18 +55,21 @@ export function getUpdateCachePath(): string {
  * Get the effective source path (considers override from updates and settings)
  */
 export function getEffectiveSourcePath(): string {
-  // First, check user settings for configured autoBuildPath
+  const isDev = !app.isPackaged;
+  
+  if (isDev) {
+    return getBundledSourcePath();
+  }
+
   try {
     const settingsPath = path.join(app.getPath('userData'), 'settings.json');
     if (existsSync(settingsPath)) {
       const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
       if (settings.autoBuildPath && existsSync(settings.autoBuildPath)) {
-        // Validate it's a proper backend source (must have runners/spec_runner.py)
         const markerPath = path.join(settings.autoBuildPath, 'runners', 'spec_runner.py');
         if (existsSync(markerPath)) {
           return settings.autoBuildPath;
         }
-        // Invalid path - log warning and fall through to auto-detection
         console.warn(
           `[path-resolver] Configured autoBuildPath "${settings.autoBuildPath}" is missing runners/spec_runner.py, falling back to bundled source`
         );
@@ -76,13 +79,10 @@ export function getEffectiveSourcePath(): string {
     // Ignore settings read errors
   }
 
-  if (app.isPackaged) {
-    // Check for user-updated source first
-    const overridePath = path.join(app.getPath('userData'), 'backend-source');
-    const overrideMarker = path.join(overridePath, 'runners', 'spec_runner.py');
-    if (existsSync(overridePath) && existsSync(overrideMarker)) {
-      return overridePath;
-    }
+  const overridePath = path.join(app.getPath('userData'), 'backend-source');
+  const overrideMarker = path.join(overridePath, 'runners', 'spec_runner.py');
+  if (existsSync(overridePath) && existsSync(overrideMarker)) {
+    return overridePath;
   }
 
   return getBundledSourcePath();

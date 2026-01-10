@@ -29,6 +29,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { SettingsSection } from './SettingsSection';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
 import { useClaudeLoginTerminal } from '../../hooks/useClaudeLoginTerminal';
+import { BedrockSettings } from './BedrockSettings';
 import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings } from '../../../shared/types';
 
 interface IntegrationSettingsProps {
@@ -760,6 +761,8 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
             <Key className="h-4 w-4 text-muted-foreground" />
             <h4 className="text-sm font-semibold text-foreground">{t('integrations.apiKeys')}</h4>
           </div>
+
+          <BedrockSettings settings={settings} onSettingsChange={onSettingsChange} />
 
           <div className="rounded-lg bg-info/10 border border-info/30 p-3">
             <div className="flex items-start gap-2">
