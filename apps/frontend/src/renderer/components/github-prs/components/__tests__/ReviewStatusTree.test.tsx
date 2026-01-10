@@ -86,6 +86,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -105,6 +106,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={false}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -125,6 +127,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={false}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -147,6 +150,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={false}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -169,6 +173,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -191,6 +196,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -209,6 +215,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -229,6 +236,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -270,6 +278,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={previousResult}
           postedCount={0}
@@ -298,6 +307,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={createMockReviewResult({ isFollowupReview: true })}
           previousReviewResult={null}
           postedCount={0}
@@ -325,6 +335,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -345,6 +356,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="ready_to_merge"
           isReviewing={false}
+          startedAt={null}
           reviewResult={createMockReviewResult({ overallStatus: 'approve' })}
           previousReviewResult={null}
           postedCount={1}
@@ -372,6 +384,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -400,6 +413,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
           <ReviewStatusTree
             status={status as ReviewStatus}
             isReviewing={false}
+            startedAt={null}
             reviewResult={createMockReviewResult()}
             previousReviewResult={null}
             postedCount={0}
@@ -421,6 +435,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="ready_to_merge"
           isReviewing={false}
+          startedAt={null}
           reviewResult={createMockReviewResult({
             overallStatus: 'approve',
             findings: [],
@@ -442,6 +457,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="ready_for_followup"
           isReviewing={false}
+          startedAt={null}
           reviewResult={createMockReviewResult({
             postedFindingIds: ['finding-1'],
             hasPostedFindings: true,
@@ -477,6 +493,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
           <ReviewStatusTree
             status="not_reviewed"
             isReviewing={true}
+            startedAt={null}
             reviewResult={null}
             previousReviewResult={null}
             postedCount={0}
@@ -499,6 +516,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
           <ReviewStatusTree
             status="not_reviewed"
             isReviewing={true}
+            startedAt={null}
             reviewResult={null}
             previousReviewResult={null}
             postedCount={0}
@@ -516,6 +534,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
           <ReviewStatusTree
             status="reviewed_pending_post"
             isReviewing={false}
+            startedAt={null}
             reviewResult={createMockReviewResult({
               findings: [
                 {
@@ -551,6 +570,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={null}
           previousReviewResult={null}
           postedCount={0}
@@ -570,6 +590,7 @@ describe('ReviewStatusTree - Reviewing Status (ACS-200)', () => {
         <ReviewStatusTree
           status="not_reviewed"
           isReviewing={true}
+          startedAt={null}
           reviewResult={createMockReviewResult({ isFollowupReview: true })}
           previousReviewResult={createMockReviewResult({
             findings: [{ id: 'f1', severity: 'high', category: 'security', title: 'Issue', description: 'Fix', file: 'test.ts', line: 1, fixable: true }],

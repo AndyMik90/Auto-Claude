@@ -21,6 +21,7 @@ export type ReviewStatus =
 export interface ReviewStatusTreeProps {
   status: ReviewStatus;
   isReviewing: boolean;
+  startedAt: string | null;
   reviewResult: PRReviewResult | null;
   previousReviewResult: PRReviewResult | null;
   postedCount: number;
@@ -38,6 +39,7 @@ export interface ReviewStatusTreeProps {
 export function ReviewStatusTree({
   status,
   isReviewing,
+  startedAt,
   reviewResult,
   previousReviewResult,
   postedCount,
@@ -128,7 +130,7 @@ export function ReviewStatusTree({
       id: 'start',
       label: t('prReview.reviewStarted'),
       status: 'completed',
-      date: reviewResult?.reviewedAt || new Date().toISOString()
+      date: startedAt || reviewResult?.reviewedAt || new Date().toISOString()
     });
 
     // Step 2: AI Analysis

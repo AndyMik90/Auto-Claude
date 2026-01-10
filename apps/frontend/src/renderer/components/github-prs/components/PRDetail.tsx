@@ -39,6 +39,7 @@ interface PRDetailProps {
   reviewResult: PRReviewResult | null;
   previousReviewResult: PRReviewResult | null;
   reviewProgress: PRReviewProgress | null;
+  startedAt: string | null;
   isReviewing: boolean;
   initialNewCommitsCheck?: NewCommitsCheck | null;
   isActive?: boolean;
@@ -71,6 +72,7 @@ export function PRDetail({
   reviewResult,
   previousReviewResult,
   reviewProgress,
+  startedAt,
   isReviewing,
   initialNewCommitsCheck,
   isActive: _isActive = false,
@@ -645,6 +647,7 @@ export function PRDetail({
         <ReviewStatusTree
           status={prStatus.status}
           isReviewing={isReviewing}
+          startedAt={startedAt}
           reviewResult={reviewResult}
           previousReviewResult={previousReviewResult}
           postedCount={new Set([...postedFindingIds, ...(reviewResult?.postedFindingIds ?? [])]).size}
