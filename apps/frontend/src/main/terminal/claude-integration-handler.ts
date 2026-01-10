@@ -155,8 +155,19 @@ function buildProfileCommandString(params: BuildProfileCommandParams): string | 
         return `${cwdCommand}${pathPrefix}${bashExe} -c "source ${escapedTempFileBash} && rm -f ${escapedTempFileBash} && exec ${escapedClaudeBash}"\r`;
       } else {
         // Bash not available - use native PowerShell/cmd syntax
-        // For native Windows shells, we need to create a different temp file format
-        // and set the token as an environment variable directly
+        //
+        // SECURITY TRADE-OFF: When bash is unavailable, the OAuth token is embedded
+        // directly in the shell command string (e.g., `$env:CLAUDE_CODE_OAUTH_TOKEN=...`
+        // or `set "CLAUDE_CODE_OAUTH_TOKEN=..."`). This means the token may be visible
+        // in process listings (e.g., Task Manager, Process Explorer, ps.exe) during
+        // command execution. The token is NOT written to shell history files.
+        //
+        // This is an acceptable fallback for Windows systems without bash because:
+        // 1. Process listings are transient (cleared on process exit)
+        // 2. The exposure window is brief (command executes immediately)
+        // 3. Alternative approaches (e.g., temp script files) have their own trade-offs
+        //
+        // For better security, users should install Git for Windows or WSL to provide bash.
         if (shellType === "powershell") {
           // PowerShell: set environment variable, invoke claude, then remove temp file
           const escapedToken = escapePowerShellArg(token);
@@ -1204,19 +1215,42 @@ export async function switchClaudeProfile(
     terminal.pty.write("/exit\r");
 
     // Wait for Claude to actually exit by monitoring for shell prompt
-    const exitResult = await waitForClaudeExit(terminal, { timeout: 5000, pollInterval: 100 });
+    // Use retry logic with fallback for when Claude doesn't exit cleanly
+    const maxRetries = 2;
+    let exitResult = await waitForClaudeExit(terminal, { timeout: 5000, pollInterval: 100 });
+    let retryCount = 0;
 
-    if (exitResult.timedOut) {
+    while (exitResult.timedOut && retryCount < maxRetries) {
+      retryCount++;
       console.warn(
-        "[ClaudeIntegration:switchClaudeProfile] Timed out waiting for Claude to exit, proceeding with caution"
+        "[ClaudeIntegration:switchClaudeProfile] Timeout waiting for Claude to exit, retry",
+        retryCount,
+        "of",
+        maxRetries
       );
       debugLog(
-        "[ClaudeIntegration:switchClaudeProfile] Exit timeout - terminal may be in inconsistent state"
+        "[ClaudeIntegration:switchClaudeProfile] Retry",
+        retryCount,
+        "- sending another Ctrl+C and /exit"
       );
 
-      // Even on timeout, we'll try to proceed but log the warning
-      // The alternative would be to abort, but that could leave users stuck
-      // If this becomes a problem, we could add retry logic or abort option
+      // Send another Ctrl+C and /exit for retry attempt
+      terminal.pty.write("\x03");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      terminal.pty.write("/exit\r");
+
+      exitResult = await waitForClaudeExit(terminal, { timeout: 5000, pollInterval: 100 });
+    }
+
+    if (exitResult.timedOut) {
+      console.error(
+        "[ClaudeIntegration:switchClaudeProfile] Failed to exit Claude after",
+        maxRetries + 1,
+        "attempts - terminal may be in inconsistent state"
+      );
+      debugError(
+        "[ClaudeIntegration:switchClaudeProfile] All exit attempts timed out - proceeding with profile switch but terminal state is uncertain"
+      );
     } else if (!exitResult.success) {
       console.error(
         "[ClaudeIntegration:switchClaudeProfile] Failed to exit Claude:",

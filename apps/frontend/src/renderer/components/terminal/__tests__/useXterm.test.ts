@@ -233,10 +233,10 @@ describe("useXterm keyboard handlers", () => {
   });
 
   afterAll(() => {
-    // Restore original global shims after all tests complete
-    global.requestAnimationFrame = origRequestAnimationFrame;
-    global.cancelAnimationFrame = origCancelAnimationFrame;
-    global.ResizeObserver = origResizeObserver;
+    // Note: We intentionally do NOT restore the original global shims (origRequestAnimationFrame, etc.)
+    // because jsdom doesn't provide these APIs anyway, and pending setTimeout callbacks from
+    // the component (e.g., performInitialFit) may still fire after all tests complete.
+    // The mocks are harmless and will be cleaned up when the test process exits.
   });
 
   describe("Platform detection", () => {
