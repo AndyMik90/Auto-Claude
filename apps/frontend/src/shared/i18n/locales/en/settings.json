@@ -189,7 +189,9 @@
     "label": "Terminal Font",
     "description": "Choose a monospace font for terminal and code display",
     "preview": "Preview",
-    "ligatures": "Ligatures"
+    "ligatures": "Ligatures",
+    "saveFailed": "Failed to save font",
+    "saveFailedDescription": "Could not persist font setting to disk"
   },
   "general": {
     "otherAgentSettings": "Other Agent Settings",

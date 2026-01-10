@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils';
 import { Label } from '../ui/label';
 import { SettingsSection } from './SettingsSection';
 import { useSettingsStore } from '../../stores/settings-store';
+import { useToast } from '../../hooks/use-toast';
 import { UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT, UI_SCALE_STEP, TERMINAL_FONTS, TERMINAL_FONT_DEFAULT } from '../../../shared/constants';
 import type { AppSettings, TerminalFont } from '../../../shared/types';
 
@@ -20,6 +21,9 @@ const SCALE_PRESETS = [
   { value: 150, label: '150%', descriptionKey: 'scale.large' }
 ] as const;
 
+// Code sample for font preview (not translatable - it's code)
+const FONT_PREVIEW_CODE = 'const hello = () => "world";';
+
 /**
  * Display settings section for UI scale/zoom control
  * Provides preset buttons (100%, 125%, 150%) and a fine-tune slider (75-200%)
@@ -27,6 +31,7 @@ const SCALE_PRESETS = [
  */
 export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsProps) {
   const { t } = useTranslation('settings');
+  const { toast } = useToast();
   const updateStoreSettings = useSettingsStore((state) => state.updateSettings);
 
   const currentScale = settings.uiScale ?? UI_SCALE_DEFAULT;
@@ -101,7 +106,11 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
       await window.electronAPI.saveSettings({ terminalFont: newFont });
     } catch (error) {
       console.error('Failed to save terminal font setting:', error);
-      // TODO: Show user notification (toast) when error handling system is implemented
+      toast({
+        title: t('font.saveFailed', 'Failed to save font'),
+        description: error instanceof Error ? error.message : t('font.saveFailedDescription', 'Could not persist font setting to disk'),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -150,7 +159,7 @@ export function DisplaySettings({ settings, onSettingsChange }: DisplaySettingsP
                       className="text-xs mt-2 p-1.5 rounded bg-muted/50"
                       style={{ fontFamily: font.cssFamily }}
                     >
-                      {'const hello = () => "world";'}
+                      {FONT_PREVIEW_CODE}
                     </div>
                   </div>
                 </button>
