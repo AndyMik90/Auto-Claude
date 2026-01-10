@@ -231,7 +231,7 @@ async def get_graphiti_context(
         return None
     finally:
         # Always close the memory connection
-        if memory:
+        if memory is not None:
             await memory.close()
 
 
