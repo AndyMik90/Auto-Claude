@@ -75,11 +75,15 @@ Examples:
 
 Prerequisites:
   1. Create a spec first: claude /spec
-  2. Run 'claude setup-token' and set CLAUDE_CODE_OAUTH_TOKEN
+  2. Authenticate with Claude Code:
+     - OAuth: run 'claude setup-token' and set CLAUDE_CODE_OAUTH_TOKEN
+     - Bedrock: set CLAUDE_CODE_USE_BEDROCK=1 and AWS_REGION
 
 Environment Variables:
-  CLAUDE_CODE_OAUTH_TOKEN  Your Claude Code OAuth token (required)
+  CLAUDE_CODE_OAUTH_TOKEN  OAuth token (required unless Bedrock enabled)
                            Get it by running: claude setup-token
+  CLAUDE_CODE_USE_BEDROCK  Enable Bedrock auth (optional)
+  AWS_REGION               Required when Bedrock enabled
   AUTO_BUILD_MODEL         Override default model (optional)
         """,
     )

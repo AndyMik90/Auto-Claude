@@ -59,6 +59,9 @@ cd apps/frontend && npm install
 # Set up OAuth token
 claude setup-token
 # Add to apps/backend/.env: CLAUDE_CODE_OAUTH_TOKEN=your-token
+# Or use AWS Bedrock instead:
+# CLAUDE_CODE_USE_BEDROCK=1
+# AWS_REGION=us-east-1
 ```
 
 ### Creating and Running Specs

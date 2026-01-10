@@ -30,7 +30,7 @@ except ImportError:
     ClaudeAgentOptions = None
     ClaudeSDKClient = None
 
-from core.auth import ensure_claude_code_oauth_token, get_auth_token
+from core.auth import ensure_claude_code_oauth_token, get_auth_token, is_bedrock_enabled
 
 # Default model for insight extraction (fast and cheap)
 DEFAULT_EXTRACTION_MODEL = "claude-3-5-haiku-latest"
@@ -352,12 +352,12 @@ async def run_insight_extraction(
         logger.warning("Claude SDK not available, skipping insight extraction")
         return None
 
-    if not get_auth_token():
+    if not get_auth_token() and not is_bedrock_enabled():
         logger.warning("No authentication token found, skipping insight extraction")
         return None
 
-    # Ensure SDK can find the token
-    ensure_claude_code_oauth_token()
+    if not is_bedrock_enabled():
+        ensure_claude_code_oauth_token()
 
     model = get_extraction_model()
     prompt = _build_extraction_prompt(inputs)

@@ -10,8 +10,17 @@ import sys
 from pathlib import Path
 from pprint import pprint
 
+import pytest
+from dotenv import load_dotenv
+
+# Load .env from backend directory
+_backend_dir = Path(__file__).parent.parent / "apps" / "backend"
+load_dotenv(_backend_dir / ".env")
+
 # Add backend to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
+sys.path.insert(0, str(_backend_dir))
+
+from core.auth import is_bedrock_enabled, validate_bedrock_config
 
 # Add pydantic_models path
 _pydantic_models_path = (
@@ -40,10 +49,13 @@ class SimpleReviewResponse(BaseModel):
 async def test_structured_output():
     """Test the SDK's structured output functionality."""
 
-    # OAuth token must be set in environment (CLAUDE_CODE_OAUTH_TOKEN)
-    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
-        print("ERROR: CLAUDE_CODE_OAUTH_TOKEN environment variable not set")
-        return
+    if is_bedrock_enabled():
+        try:
+            validate_bedrock_config()
+        except ValueError as exc:
+            pytest.skip(str(exc))
+    elif not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        pytest.skip("CLAUDE_CODE_OAUTH_TOKEN not set and Bedrock disabled")
 
     from claude_agent_sdk import query, ClaudeAgentOptions
 

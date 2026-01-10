@@ -33,7 +33,7 @@ except ImportError:
     ClaudeAgentOptions = None
     ClaudeSDKClient = None
 
-from core.auth import ensure_claude_code_oauth_token, get_auth_token
+from core.auth import ensure_claude_code_oauth_token, get_auth_token, is_bedrock_enabled
 from debug import (
     debug,
     debug_detailed,
@@ -144,7 +144,7 @@ async def run_with_sdk(
         run_simple(project_dir, message, history)
         return
 
-    if not get_auth_token():
+    if not get_auth_token() and not is_bedrock_enabled():
         print(
             "No authentication token found, falling back to simple mode",
             file=sys.stderr,
@@ -152,8 +152,8 @@ async def run_with_sdk(
         run_simple(project_dir, message, history)
         return
 
-    # Ensure SDK can find the token
-    ensure_claude_code_oauth_token()
+    if not is_bedrock_enabled():
+        ensure_claude_code_oauth_token()
 
     system_prompt = build_system_prompt(project_dir)
     project_path = Path(project_dir).resolve()

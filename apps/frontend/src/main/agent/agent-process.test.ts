@@ -97,7 +97,8 @@ vi.mock('../python-detector', () => ({
 
 vi.mock('electron', () => ({
   app: {
-    getAppPath: vi.fn(() => '/fake/app/path')
+    getAppPath: vi.fn(() => '/fake/app/path'),
+    getPath: vi.fn(() => '/fake/user/data')
   }
 }));
 

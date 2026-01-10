@@ -37,6 +37,12 @@ interface SectionRouterProps {
   isCheckingLinear: boolean;
   handleInitialize: () => Promise<void>;
   onOpenLinearImport: () => void;
+  // Auth Props
+  expandedSections: Record<string, boolean>;
+  toggleSection: (section: string) => void;
+  isCheckingClaudeAuth: boolean;
+  claudeAuthStatus: 'checking' | 'authenticated' | 'not_authenticated' | 'error';
+  handleClaudeSetup: () => Promise<void>;
 }
 
 /**
@@ -70,7 +76,12 @@ export function SectionRouter({
   linearConnectionStatus,
   isCheckingLinear,
   handleInitialize,
-  onOpenLinearImport
+  onOpenLinearImport,
+  expandedSections,
+  toggleSection,
+  isCheckingClaudeAuth,
+  claudeAuthStatus,
+  handleClaudeSetup
 }: SectionRouterProps) {
   const { t } = useTranslation('settings');
 
@@ -89,6 +100,15 @@ export function SectionRouter({
             isCheckingVersion={isCheckingVersion}
             isUpdating={isUpdating}
             handleInitialize={handleInitialize}
+            envConfig={envConfig}
+            isLoadingEnv={isLoadingEnv}
+            envError={envError}
+            updateEnvConfig={updateEnvConfig}
+            expandedSections={expandedSections}
+            toggleSection={toggleSection}
+            isCheckingClaudeAuth={isCheckingClaudeAuth}
+            claudeAuthStatus={claudeAuthStatus}
+            handleClaudeSetup={handleClaudeSetup}
           />
         </SettingsSection>
       );

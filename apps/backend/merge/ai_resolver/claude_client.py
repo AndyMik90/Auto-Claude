@@ -34,17 +34,21 @@ def create_claude_resolver() -> AIResolver:
         Configured AIResolver instance
     """
     # Import here to avoid circular dependency
-    from core.auth import ensure_claude_code_oauth_token, get_auth_token
+    from core.auth import (
+        ensure_claude_code_oauth_token,
+        get_auth_token,
+        is_bedrock_enabled,
+    )
     from core.model_config import get_utility_model_config
 
     from .resolver import AIResolver
 
-    if not get_auth_token():
+    if not get_auth_token() and not is_bedrock_enabled():
         logger.warning("No authentication token found, AI resolution unavailable")
         return AIResolver()
 
-    # Ensure SDK can find the token
-    ensure_claude_code_oauth_token()
+    if not is_bedrock_enabled():
+        ensure_claude_code_oauth_token()
 
     try:
         from core.simple_client import create_simple_client

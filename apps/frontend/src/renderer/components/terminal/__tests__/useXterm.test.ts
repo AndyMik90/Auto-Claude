@@ -62,7 +62,9 @@ vi.mock('../../../../lib/terminal-buffer-manager', () => ({
 const originalNavigatorPlatform = navigator.platform;
 
 // Mock requestAnimationFrame for jsdom environment (not provided by default)
+const originalRAF = global.requestAnimationFrame;
 global.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => setTimeout(cb, 0) as unknown as number);
+global.cancelAnimationFrame = vi.fn((id: number) => clearTimeout(id));
 
 /**
  * Helper function to set up XTerm mocks and render the hook
@@ -182,8 +184,10 @@ describe('useXterm keyboard handlers', () => {
     };
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
+    // Flush any pending timers to prevent unhandled errors after test cleanup
+    await vi.runAllTimersAsync().catch(() => {});
     // Reset navigator.platform to original value
     Object.defineProperty(navigator, 'platform', {
       value: originalNavigatorPlatform,

@@ -286,6 +286,20 @@ export interface ProjectContextData {
   error?: string;
 }
 
+export type BedrockAuthMethod = 'sso_profile' | 'access_keys' | 'api_key';
+
+export interface BedrockConfig {
+  authMethod: BedrockAuthMethod;
+  awsRegion: string;
+  awsProfile?: string;
+  awsAccessKeyId?: string;
+  awsSecretAccessKey?: string;
+  awsSessionToken?: string;
+  awsBearerTokenBedrock?: string;
+  anthropicModel?: string;
+  anthropicSmallFastModel?: string;
+}
+
 // Environment Configuration for project .env files
 export interface ProjectEnvConfig {
   // Claude Authentication
@@ -293,6 +307,8 @@ export interface ProjectEnvConfig {
   claudeAuthStatus: 'authenticated' | 'token_set' | 'not_configured';
   // Indicates if the Claude token is from global settings (not project-specific)
   claudeTokenIsGlobal?: boolean;
+  bedrockEnabled?: boolean;
+  bedrockConfig?: BedrockConfig;
 
   // Model Override
   autoBuildModel?: string;

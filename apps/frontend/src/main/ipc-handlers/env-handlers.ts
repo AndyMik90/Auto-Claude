@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
-import type { IPCResult, ProjectEnvConfig, ClaudeAuthResult, AppSettings } from '../../shared/types';
+import type { IPCResult, ProjectEnvConfig, ClaudeAuthResult, AppSettings, BedrockAuthMethod } from '../../shared/types';
 import path from 'path';
 import { app } from 'electron';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
@@ -19,6 +19,20 @@ const GITLAB_ENV_KEYS = {
   INSTANCE_URL: 'GITLAB_INSTANCE_URL',
   PROJECT: 'GITLAB_PROJECT',
   AUTO_SYNC: 'GITLAB_AUTO_SYNC'
+} as const;
+
+const BEDROCK_ENV_KEYS = {
+  ENABLED: 'CLAUDE_CODE_USE_BEDROCK',
+  REGION: 'AWS_REGION',
+  PROFILE: 'AWS_PROFILE',
+  ACCESS_KEY_ID: 'AWS_ACCESS_KEY_ID',
+  SECRET_ACCESS_KEY: 'AWS_SECRET_ACCESS_KEY',
+  SESSION_TOKEN: 'AWS_SESSION_TOKEN',
+  BEARER_TOKEN: 'AWS_BEARER_TOKEN_BEDROCK',
+  MODEL: 'ANTHROPIC_MODEL',
+  SMALL_MODEL: 'ANTHROPIC_SMALL_FAST_MODEL',
+  SMALL_MODEL_REGION: 'ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION',
+  DISABLE_CACHING: 'DISABLE_PROMPT_CACHING'
 } as const;
 
 /**
@@ -134,6 +148,38 @@ export function registerEnvHandlers(
     if (config.gitlabAutoSync !== undefined) {
       existingVars[GITLAB_ENV_KEYS.AUTO_SYNC] = config.gitlabAutoSync ? 'true' : 'false';
     }
+    if (config.bedrockEnabled !== undefined) {
+      existingVars[BEDROCK_ENV_KEYS.ENABLED] = config.bedrockEnabled ? '1' : '';
+    }
+    if (config.bedrockConfig) {
+      const bc = config.bedrockConfig;
+      if (bc.awsRegion) existingVars[BEDROCK_ENV_KEYS.REGION] = bc.awsRegion;
+
+      if (bc.authMethod === 'sso_profile') {
+        if (bc.awsProfile) existingVars[BEDROCK_ENV_KEYS.PROFILE] = bc.awsProfile;
+        delete existingVars[BEDROCK_ENV_KEYS.ACCESS_KEY_ID];
+        delete existingVars[BEDROCK_ENV_KEYS.SECRET_ACCESS_KEY];
+        delete existingVars[BEDROCK_ENV_KEYS.SESSION_TOKEN];
+        delete existingVars[BEDROCK_ENV_KEYS.BEARER_TOKEN];
+      } else if (bc.authMethod === 'access_keys') {
+        if (bc.awsAccessKeyId) existingVars[BEDROCK_ENV_KEYS.ACCESS_KEY_ID] = bc.awsAccessKeyId;
+        if (bc.awsSecretAccessKey) existingVars[BEDROCK_ENV_KEYS.SECRET_ACCESS_KEY] = bc.awsSecretAccessKey;
+        if (bc.awsSessionToken) existingVars[BEDROCK_ENV_KEYS.SESSION_TOKEN] = bc.awsSessionToken;
+        delete existingVars[BEDROCK_ENV_KEYS.PROFILE];
+        delete existingVars[BEDROCK_ENV_KEYS.BEARER_TOKEN];
+      } else if (bc.authMethod === 'api_key') {
+        if (bc.awsBearerTokenBedrock) existingVars[BEDROCK_ENV_KEYS.BEARER_TOKEN] = bc.awsBearerTokenBedrock;
+        delete existingVars[BEDROCK_ENV_KEYS.PROFILE];
+        delete existingVars[BEDROCK_ENV_KEYS.ACCESS_KEY_ID];
+        delete existingVars[BEDROCK_ENV_KEYS.SECRET_ACCESS_KEY];
+        delete existingVars[BEDROCK_ENV_KEYS.SESSION_TOKEN];
+      }
+
+      if (bc.anthropicModel) existingVars[BEDROCK_ENV_KEYS.MODEL] = bc.anthropicModel;
+      if (bc.anthropicSmallFastModel) {
+        existingVars[BEDROCK_ENV_KEYS.SMALL_MODEL] = bc.anthropicSmallFastModel;
+      }
+    }
     // Git/Worktree Settings
     if (config.defaultBranch !== undefined) {
       existingVars['DEFAULT_BRANCH'] = config.defaultBranch;
@@ -227,15 +273,35 @@ export function registerEnvHandlers(
       }
     }
 
+    const bedrockEnabled = existingVars[BEDROCK_ENV_KEYS.ENABLED] === '1';
+    const existingOAuthToken = existingVars['CLAUDE_CODE_OAUTH_TOKEN'] || '';
+    const oauthLine = bedrockEnabled
+      ? `# Claude Code OAuth Token (currently INACTIVE - Bedrock is enabled)\n# CLAUDE_CODE_OAUTH_TOKEN=${existingOAuthToken}`
+      : `# Claude Code OAuth Token (REQUIRED unless using Bedrock)\nCLAUDE_CODE_OAUTH_TOKEN=${existingOAuthToken}`;
+
     // Generate content with sections
     const content = `# Auto Claude Framework Environment Variables
 # Managed by Auto Claude UI
 
-# Claude Code OAuth Token (REQUIRED)
-CLAUDE_CODE_OAUTH_TOKEN=${existingVars['CLAUDE_CODE_OAUTH_TOKEN'] || ''}
+${oauthLine}
 
 # Model override (OPTIONAL)
 ${existingVars['AUTO_BUILD_MODEL'] ? `AUTO_BUILD_MODEL=${existingVars['AUTO_BUILD_MODEL']}` : '# AUTO_BUILD_MODEL=claude-opus-4-5-20251101'}
+
+# =============================================================================
+# AWS BEDROCK INTEGRATION (OPTIONAL)
+# =============================================================================
+${existingVars[BEDROCK_ENV_KEYS.ENABLED] === '1' ? `${BEDROCK_ENV_KEYS.ENABLED}=1` : `# ${BEDROCK_ENV_KEYS.ENABLED}=1`}
+${envLine(existingVars, BEDROCK_ENV_KEYS.REGION, 'us-east-1')}
+${envLine(existingVars, BEDROCK_ENV_KEYS.PROFILE, 'your-sso-profile')}
+${envLine(existingVars, BEDROCK_ENV_KEYS.ACCESS_KEY_ID, 'AKIA...')}
+${envLine(existingVars, BEDROCK_ENV_KEYS.SECRET_ACCESS_KEY)}
+${envLine(existingVars, BEDROCK_ENV_KEYS.SESSION_TOKEN)}
+${envLine(existingVars, BEDROCK_ENV_KEYS.BEARER_TOKEN)}
+${envLine(existingVars, BEDROCK_ENV_KEYS.MODEL)}
+${envLine(existingVars, BEDROCK_ENV_KEYS.SMALL_MODEL)}
+${envLine(existingVars, BEDROCK_ENV_KEYS.SMALL_MODEL_REGION)}
+${envLine(existingVars, BEDROCK_ENV_KEYS.DISABLE_CACHING)}
 
 # =============================================================================
 # LINEAR INTEGRATION (OPTIONAL)
@@ -399,6 +465,43 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         config.claudeOAuthToken = globalSettings.globalClaudeOAuthToken;
         config.claudeAuthStatus = 'token_set';
         config.claudeTokenIsGlobal = true;
+      }
+
+      const bedrockEnabled = vars[BEDROCK_ENV_KEYS.ENABLED] === '1';
+      if (bedrockEnabled) {
+        config.bedrockEnabled = true;
+
+        let authMethod: BedrockAuthMethod = 'sso_profile';
+        if (vars[BEDROCK_ENV_KEYS.BEARER_TOKEN]) {
+          authMethod = 'api_key';
+        } else if (vars[BEDROCK_ENV_KEYS.ACCESS_KEY_ID]) {
+          authMethod = 'access_keys';
+        }
+
+        config.bedrockConfig = {
+          authMethod,
+          awsRegion: vars[BEDROCK_ENV_KEYS.REGION] || 'us-east-1',
+          awsProfile: vars[BEDROCK_ENV_KEYS.PROFILE],
+          awsAccessKeyId: vars[BEDROCK_ENV_KEYS.ACCESS_KEY_ID],
+          awsSecretAccessKey: vars[BEDROCK_ENV_KEYS.SECRET_ACCESS_KEY],
+          awsSessionToken: vars[BEDROCK_ENV_KEYS.SESSION_TOKEN],
+          awsBearerTokenBedrock: vars[BEDROCK_ENV_KEYS.BEARER_TOKEN],
+          anthropicModel: vars[BEDROCK_ENV_KEYS.MODEL],
+          anthropicSmallFastModel: vars[BEDROCK_ENV_KEYS.SMALL_MODEL]
+        };
+
+        const hasBedrockCreds = Boolean(
+          vars[BEDROCK_ENV_KEYS.PROFILE] ||
+          vars[BEDROCK_ENV_KEYS.ACCESS_KEY_ID] ||
+          vars[BEDROCK_ENV_KEYS.BEARER_TOKEN]
+        );
+        const hasRegion = Boolean(vars[BEDROCK_ENV_KEYS.REGION]);
+
+        if (hasRegion && hasBedrockCreds) {
+          config.claudeAuthStatus = 'authenticated';
+        } else if (hasRegion || hasBedrockCreds) {
+          config.claudeAuthStatus = 'token_set';
+        }
       }
 
       if (vars['AUTO_BUILD_MODEL']) {

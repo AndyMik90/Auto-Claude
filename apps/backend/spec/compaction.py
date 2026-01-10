@@ -9,7 +9,7 @@ summarized and passed as context to subsequent phases.
 
 from pathlib import Path
 
-from core.auth import require_auth_token
+from core.auth import require_claude_auth
 from core.simple_client import create_simple_client
 
 
@@ -34,7 +34,7 @@ async def summarize_phase_output(
         Concise summary of key findings, decisions, and insights from the phase
     """
     # Validate auth token
-    require_auth_token()
+    require_claude_auth()
 
     # Limit input size to avoid token overflow
     max_input_chars = 15000

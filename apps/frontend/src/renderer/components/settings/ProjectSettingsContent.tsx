@@ -90,8 +90,6 @@ function ProjectSettingsContentInner({
     setShowOpenAIKey,
     showGitHubToken,
     setShowGitHubToken,
-    expandedSections: _expandedSections,
-    toggleSection: _toggleSection,
     gitHubConnectionStatus,
     isCheckingGitHub,
     showGitLabToken,
@@ -103,7 +101,13 @@ function ProjectSettingsContentInner({
     linearConnectionStatus,
     isCheckingLinear,
     handleInitialize,
-    error
+    error,
+    // Auth
+    expandedSections,
+    toggleSection,
+    isCheckingClaudeAuth,
+    claudeAuthStatus,
+    handleClaudeSetup
   } = hook;
 
   // Expose hook to parent for save coordination - only once when dialog opens
@@ -148,6 +152,11 @@ function ProjectSettingsContentInner({
         isCheckingLinear={isCheckingLinear}
         handleInitialize={handleInitialize}
         onOpenLinearImport={() => setShowLinearImportModal(true)}
+        expandedSections={expandedSections}
+        toggleSection={toggleSection}
+        isCheckingClaudeAuth={isCheckingClaudeAuth}
+        claudeAuthStatus={claudeAuthStatus}
+        handleClaudeSetup={handleClaudeSetup}
       />
 
       <ErrorDisplay error={error} envError={envError} />

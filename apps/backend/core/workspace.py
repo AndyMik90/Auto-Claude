@@ -1429,9 +1429,13 @@ async def _merge_file_with_ai_async(
             debug(MODULE, f"Using AI to merge {task.file_path}")
 
             # Import auth utilities
-            from core.auth import ensure_claude_code_oauth_token, get_auth_token
+            from core.auth import (
+                ensure_claude_code_oauth_token,
+                get_auth_token,
+                is_bedrock_enabled,
+            )
 
-            if not get_auth_token():
+            if not get_auth_token() and not is_bedrock_enabled():
                 return ParallelMergeResult(
                     file_path=task.file_path,
                     merged_content=None,
@@ -1439,7 +1443,8 @@ async def _merge_file_with_ai_async(
                     error="No authentication token available",
                 )
 
-            ensure_claude_code_oauth_token()
+            if not is_bedrock_enabled():
+                ensure_claude_code_oauth_token()
 
             # Build prompt
             prompt = _build_merge_prompt(

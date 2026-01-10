@@ -35,13 +35,13 @@ class ClaudeAnalysisClient:
             )
 
         self.project_dir = project_dir
-        self._validate_oauth_token()
+        self._validate_authentication()
 
-    def _validate_oauth_token(self) -> None:
-        """Validate that an authentication token is available."""
-        from core.auth import require_auth_token
+    def _validate_authentication(self) -> None:
+        """Validate that authentication is available (OAuth or Bedrock)."""
+        from core.auth import require_claude_auth
 
-        require_auth_token()  # Raises ValueError if no token found
+        require_claude_auth()
 
     async def run_analysis_query(self, prompt: str) -> str:
         """

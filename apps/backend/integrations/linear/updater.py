@@ -116,11 +116,11 @@ def _create_linear_client() -> ClaudeSDKClient:
     from core.auth import (
         ensure_claude_code_oauth_token,
         get_sdk_env_vars,
-        require_auth_token,
+        require_claude_auth,
     )
     from phase_config import resolve_model_id
 
-    require_auth_token()  # Raises ValueError if no token found
+    require_claude_auth()
     ensure_claude_code_oauth_token()
 
     linear_api_key = get_linear_api_key()

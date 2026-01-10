@@ -58,11 +58,13 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 ```bash
 cp .env.example .env
 
-# Get your OAuth token
+# Option A: OAuth
 claude setup-token
-
-# Add the token to apps/backend/.env
 # CLAUDE_CODE_OAUTH_TOKEN=your-token-here
+
+# Option B: AWS Bedrock
+# CLAUDE_CODE_USE_BEDROCK=1
+# AWS_REGION=us-east-1
 ```
 
 ## Creating Specs
@@ -193,6 +195,8 @@ cp .env.example .env
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `CLAUDE_CODE_OAUTH_TOKEN` | Yes | OAuth token from `claude setup-token` |
+| `CLAUDE_CODE_USE_BEDROCK` | No | Enable AWS Bedrock auth (set to 1) |
+| `AWS_REGION` | Conditional | Required when Bedrock is enabled |
 | `AUTO_BUILD_MODEL` | No | Model override (default: claude-opus-4-5-20251101) |
 | `DEFAULT_BRANCH` | No | Base branch for worktrees (auto-detects main/master) |
 | `DEBUG` | No | Enable debug logging (default: false) |

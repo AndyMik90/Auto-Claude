@@ -23,9 +23,11 @@ Usage:
     python auto-claude/run.py --spec 001 --discard   # Delete build (requires confirmation)
 
 Prerequisites:
-    - CLAUDE_CODE_OAUTH_TOKEN environment variable set (run: claude setup-token)
     - Spec created via: claude /spec
     - Claude Code CLI installed
+    - Authentication (choose one):
+      - OAuth: set CLAUDE_CODE_OAUTH_TOKEN (run: claude setup-token)
+      - Bedrock: set CLAUDE_CODE_USE_BEDROCK=1 and AWS_REGION
 """
 
 import sys
