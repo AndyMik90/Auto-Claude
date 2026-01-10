@@ -96,13 +96,14 @@ class TestForgejoConfig:
             assert config.full_repo == 'owner/repo'
 
     def test_config_from_env_missing_url(self):
-        """Test ForgejoConfig raises when URL is missing."""
+        """Test ForgejoConfig returns empty string when URL is missing."""
         with patch.dict(os.environ, {
             'FORGEJO_TOKEN': 'test-token',
             'FORGEJO_REPO': 'owner/repo'
         }, clear=True):
             config = ForgejoConfig.from_env()
-            assert config.instance_url is None
+            assert config.instance_url == ''
+            assert config.is_valid() is False
 
     def test_config_strips_trailing_slash(self):
         """Test that trailing slashes are stripped from instance URL."""
