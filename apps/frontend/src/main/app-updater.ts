@@ -32,8 +32,10 @@ const GITHUB_REPO = 'Auto-Claude';
 const DEBUG_UPDATER = process.env.DEBUG_UPDATER === 'true' || process.env.NODE_ENV === 'development';
 
 // Configure electron-updater
-autoUpdater.autoDownload = true;  // Automatically download updates when available
-autoUpdater.autoInstallOnAppQuit = true;  // Automatically install on app quit
+// IMPORTANT: Disabled auto-download to prevent silent updates that can wipe the install folder
+// Users must explicitly confirm updates to prevent data loss on NSIS oneClick updates
+autoUpdater.autoDownload = false;  // Require user to confirm before downloading
+autoUpdater.autoInstallOnAppQuit = false;  // Require explicit install action
 
 // Update channels: 'latest' for stable, 'beta' for pre-release
 type UpdateChannel = 'latest' | 'beta';
