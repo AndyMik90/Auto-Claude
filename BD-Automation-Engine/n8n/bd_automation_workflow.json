@@ -1,0 +1,456 @@
+{
+  "name": "BD Automation Pipeline",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Apify Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "path": "job-data-intake",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "2",
+      "name": "Fetch Apify Dataset",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/datasets/{{ $json.datasetId }}/items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $credentials.apifyToken }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "Validate & Clean Jobs",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "parameters": {
+        "functionCode": "// Validate and clean incoming job data\nconst jobs = $input.all();\nconst validJobs = [];\nconst invalidJobs = [];\n\nfor (const item of jobs) {\n  const job = item.json;\n  \n  // Required fields check\n  const requiredFields = ['title', 'company', 'location'];\n  const missingFields = requiredFields.filter(f => !job[f]);\n  \n  if (missingFields.length === 0) {\n    // Clean and normalize\n    job.title = job.title.trim();\n    job.company = job.company.trim();\n    job.location = job.location.trim();\n    job.status = 'raw_import';\n    job.importedAt = new Date().toISOString();\n    \n    validJobs.push({ json: job });\n  } else {\n    job.validationErrors = missingFields;\n    invalidJobs.push({ json: job });\n  }\n}\n\n// Store invalid jobs for review\nif (invalidJobs.length > 0) {\n  $execution.setMetadata('invalidJobs', invalidJobs);\n}\n\nreturn validJobs;"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Deduplicate Jobs",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "parameters": {
+        "functionCode": "// Deduplicate based on title + company + location hash\nconst jobs = $input.all();\nconst seen = new Set();\nconst uniqueJobs = [];\n\nfor (const item of jobs) {\n  const job = item.json;\n  const hash = `${job.title}|${job.company}|${job.location}`.toLowerCase();\n  \n  if (!seen.has(hash)) {\n    seen.add(hash);\n    uniqueJobs.push(item);\n  }\n}\n\nconsole.log(`Deduplicated: ${jobs.length} -> ${uniqueJobs.length} jobs`);\nreturn uniqueJobs;"
+      }
+    },
+    {
+      "id": "5",
+      "name": "Create Notion Records",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1050, 300],
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": "={{ $env.NOTION_DB_PROGRAM_MAPPING_HUB }}",
+        "properties": {
+          "propertyValues": [
+            {
+              "key": "Job Title",
+              "type": "title",
+              "title": "={{ $json.title }}"
+            },
+            {
+              "key": "Company",
+              "type": "richText",
+              "richText": "={{ $json.company }}"
+            },
+            {
+              "key": "Location",
+              "type": "richText",
+              "richText": "={{ $json.location }}"
+            },
+            {
+              "key": "Status",
+              "type": "select",
+              "select": "raw_import"
+            },
+            {
+              "key": "Source URL",
+              "type": "url",
+              "url": "={{ $json.url }}"
+            },
+            {
+              "key": "Source",
+              "type": "select",
+              "select": "={{ $json.source }}"
+            },
+            {
+              "key": "Date Posted",
+              "type": "date",
+              "date": "={{ $json.datePosted }}"
+            },
+            {
+              "key": "Security Clearance",
+              "type": "select",
+              "select": "={{ $json.clearance }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "Split Into Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [1250, 300],
+      "parameters": {
+        "batchSize": 10
+      }
+    },
+    {
+      "id": "7",
+      "name": "Wait Between Batches",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1450, 300],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "8",
+      "name": "Update Status to Pending",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1650, 300],
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": "={{ $json.id }}",
+        "properties": {
+          "propertyValues": [
+            {
+              "key": "Status",
+              "type": "select",
+              "select": "pending_enrichment"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "9",
+      "name": "Enrichment Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 500],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "10",
+      "name": "Query Pending Jobs",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 500],
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "={{ $env.NOTION_DB_PROGRAM_MAPPING_HUB }}",
+        "filterType": "formula",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Status",
+              "condition": "equals",
+              "value": "pending_enrichment"
+            }
+          ]
+        },
+        "limit": 10
+      }
+    },
+    {
+      "id": "11",
+      "name": "Call Program Mapping API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PROGRAM_MAPPING_API_URL }}/map",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "job",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "12",
+      "name": "Update with Enrichment",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [850, 500],
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": "={{ $json.pageId }}",
+        "properties": {
+          "propertyValues": [
+            {
+              "key": "Program",
+              "type": "select",
+              "select": "={{ $json.mapping.program_name }}"
+            },
+            {
+              "key": "Match Confidence",
+              "type": "number",
+              "number": "={{ $json.mapping.match_confidence }}"
+            },
+            {
+              "key": "BD Priority Score",
+              "type": "number",
+              "number": "={{ $json.mapping.bd_priority_score }}"
+            },
+            {
+              "key": "Priority Tier",
+              "type": "select",
+              "select": "={{ $json.mapping.priority_tier }}"
+            },
+            {
+              "key": "Status",
+              "type": "select",
+              "select": "enriched"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "13",
+      "name": "Filter Hot Leads",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [1050, 500],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.mapping.bd_priority_score }}",
+              "operation": "largerEqual",
+              "value2": 80
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "14",
+      "name": "Send Hot Lead Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1250, 500],
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_USER }}",
+        "toEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+        "subject": "=🔥 Hot BD Lead: {{ $json.title }} at {{ $json.company }}",
+        "text": "=A new hot lead has been identified:\n\nJob Title: {{ $json.title }}\nCompany: {{ $json.company }}\nLocation: {{ $json.location }}\nProgram: {{ $json.mapping.program_name }}\nBD Score: {{ $json.mapping.bd_priority_score }}\nClearance: {{ $json.clearance }}\n\nView in Notion: {{ $json.notionUrl }}"
+      }
+    },
+    {
+      "id": "15",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 700],
+      "parameters": {
+        "functionCode": "// Log errors and update status\nconst error = $input.first().json.error;\nconst pageId = $input.first().json.pageId;\n\n// You could update Notion with error status here\n// or send alert notification\n\nreturn [\n  {\n    json: {\n      pageId,\n      error: error.message,\n      timestamp: new Date().toISOString(),\n      status: 'error'\n    }\n  }\n];"
+      }
+    }
+  ],
+  "connections": {
+    "Apify Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Apify Dataset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Apify Dataset": {
+      "main": [
+        [
+          {
+            "node": "Validate & Clean Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Clean Jobs": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate Jobs": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Notion Records": {
+      "main": [
+        [
+          {
+            "node": "Split Into Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Into Batches": {
+      "main": [
+        [
+          {
+            "node": "Wait Between Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Between Batches": {
+      "main": [
+        [
+          {
+            "node": "Update Status to Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichment Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query Pending Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Pending Jobs": {
+      "main": [
+        [
+          {
+            "node": "Call Program Mapping API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Program Mapping API": {
+      "main": [
+        [
+          {
+            "node": "Update with Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update with Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Filter Hot Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Hot Leads": {
+      "main": [
+        [
+          {
+            "node": "Send Hot Lead Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "error-handler-workflow"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "BD Automation"
+    },
+    {
+      "name": "Job Scraping"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

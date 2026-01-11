@@ -1,0 +1,38 @@
+# BD Automation Engine - Python Dependencies
+
+# Core
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# AI/LLM
+anthropic>=0.18.0
+openai>=1.12.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Notion Integration
+notion-client>=2.2.0
+
+# Embeddings & Vector Search
+tiktoken>=0.5.0
+scipy>=1.11.0
+
+# Web Scraping Support
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# JSON Schema Validation
+jsonschema>=4.17.0
+
+# CLI Tools
+click>=8.1.0
+tqdm>=4.65.0
+
+# Testing
+pytest>=7.4.0
+
+# Optional: For local development
+# ipython>=8.12.0
+# jupyter>=1.0.0

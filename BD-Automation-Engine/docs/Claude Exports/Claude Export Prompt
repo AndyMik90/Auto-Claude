@@ -1,0 +1,82 @@
+Here's a prompt you can paste into each of your Claude conversations to extract structured documentation:
+
+Copy this entire prompt:
+
+I need you to create a comprehensive export document summarizing everything we've discussed and built in this conversation. Format it as a structured markdown document that can be added to a codebase repository.
+
+## Output Format
+
+Create a document with the following sections:
+
+### 1. CONVERSATION SUMMARY
+- **Topic/Focus Area**: (e.g., Job Scraper, Notion Integration, n8n Workflow, etc.)
+- **Date Range**: (approximate dates if known)
+- **Primary Objective**: What were we trying to accomplish?
+
+### 2. TECHNICAL DECISIONS MADE
+List each significant decision with:
+- Decision
+- Reasoning
+- Alternatives considered (if any)
+
+### 3. ARCHITECTURE & DATA FLOW
+- Describe any systems, pipelines, or integrations we designed
+- Include data flow direction (e.g., Apify → n8n → Notion)
+- Note any API connections or webhooks
+
+### 4. CODE & CONFIGURATIONS
+For each piece of code, script, or configuration we created:
+
+File/Component Name: [name]
+Purpose: [what it does]
+Code/Config:
+[paste the actual code or JSON]
+
+
+### 5. NOTION DATABASE SCHEMAS
+If we discussed Notion databases, document:
+- Database name
+- Properties (name, type, options)
+- Relations to other databases
+- Formulas or rollups
+
+### 6. N8N WORKFLOWS
+If we built n8n workflows:
+- Workflow name and purpose
+- Node sequence (trigger → processing → output)
+- Key configurations for each node
+- Webhook URLs or credentials needed
+
+### 7. APIFY ACTORS & SCRAPERS
+If we discussed Apify:
+- Actor names/IDs used
+- Input configurations
+- Output schemas
+- Rate limiting or scheduling settings
+
+### 8. PROBLEMS SOLVED
+List issues we encountered and how we fixed them:
+- Problem description
+- Root cause
+- Solution implemented
+
+### 9. PENDING ITEMS / NEXT STEPS
+What was left incomplete or planned for future work?
+
+### 10. KEY INSIGHTS & GOTCHAS
+Important learnings, warnings, or "watch out for this" notes that would help someone else (or future me) working on this system.
+
+---
+
+Please be thorough and include ALL code snippets, configurations, and technical details from our conversation. If we iterated on something multiple times, include the FINAL working version. Use exact values, not placeholders, wherever possible.
+
+Title the document: `[TOPIC]_Claude_Export_[DATE].md`
+
+Once you have those export files, drop them into the BD-Automation-Engine/ folder (maybe create a docs/claude-exports/ subfolder) and I'll analyze them to:
+
+Update configurations with your actual settings
+Add missing components to the folder structure
+Create any additional code or scripts you've developed
+Refine the architecture based on what you've actually built
+Ready to continue with the next steps when you have those exports.
+

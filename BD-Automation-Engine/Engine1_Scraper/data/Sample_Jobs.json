@@ -1,0 +1,72 @@
+[
+  {
+    "id": "sample-001",
+    "title": "Senior Network Engineer - DCGS",
+    "company": "BAE Systems",
+    "location": "San Diego, CA",
+    "description": "Support the Air Force Distributed Common Ground System (DCGS) program in a senior network engineering role. Responsible for designing, implementing, and maintaining network infrastructure supporting ISR operations. Work with cross-functional teams to ensure 24/7 network availability.",
+    "clearance": "TS/SCI",
+    "technologies": ["Cisco", "Juniper", "VMware NSX", "Linux"],
+    "url": "https://example.com/job/sample-001",
+    "datePosted": "2025-01-10",
+    "source": "clearancejobs",
+    "scrapedAt": "2025-01-11T06:00:00Z",
+    "jobType": "Contract"
+  },
+  {
+    "id": "sample-002",
+    "title": "Intelligence Analyst",
+    "company": "GDIT",
+    "location": "Hampton, VA",
+    "description": "Provide intelligence analysis support to the 480th ISR Wing at Langley AFB. Conduct all-source analysis, prepare intelligence products, and brief senior leadership. Support ISR mission planning and execution.",
+    "clearance": "TS/SCI with CI Polygraph",
+    "technologies": ["DCGS", "Analyst Notebook", "Palantir"],
+    "url": "https://example.com/job/sample-002",
+    "datePosted": "2025-01-08",
+    "source": "clearancejobs",
+    "scrapedAt": "2025-01-11T06:00:00Z",
+    "jobType": "Contract"
+  },
+  {
+    "id": "sample-003",
+    "title": "DevSecOps Engineer",
+    "company": "Leidos",
+    "location": "Dayton, OH",
+    "description": "Join our team supporting NASIC at Wright-Patterson AFB. Implement DevSecOps pipelines, automate testing and deployment, and maintain CI/CD infrastructure. Experience with Platform One and DoD software factories preferred.",
+    "clearance": "Top Secret",
+    "technologies": ["Kubernetes", "GitLab", "Terraform", "Ansible"],
+    "url": "https://example.com/job/sample-003",
+    "datePosted": "2025-01-05",
+    "source": "linkedin",
+    "scrapedAt": "2025-01-11T06:00:00Z",
+    "jobType": "Permanent"
+  },
+  {
+    "id": "sample-004",
+    "title": "Program Manager",
+    "company": "SAIC",
+    "location": "Fort Belvoir, VA",
+    "description": "Lead program management activities for Army intelligence systems. Manage cost, schedule, and technical performance. Interface with government customers and coordinate across contractor teams.",
+    "clearance": "TS/SCI",
+    "technologies": [],
+    "url": "https://example.com/job/sample-004",
+    "datePosted": "2025-01-03",
+    "source": "indeed",
+    "scrapedAt": "2025-01-11T06:00:00Z",
+    "jobType": "Permanent"
+  },
+  {
+    "id": "sample-005",
+    "title": "Cyber Security Engineer",
+    "company": "ManTech",
+    "location": "Fort Meade, MD",
+    "description": "Support NSA cyber operations in a security engineering role. Design and implement security controls, conduct vulnerability assessments, and support accreditation activities.",
+    "clearance": "TS/SCI with Full Scope Polygraph",
+    "technologies": ["SIEM", "IDS/IPS", "Splunk", "Python"],
+    "url": "https://example.com/job/sample-005",
+    "datePosted": "2025-01-01",
+    "source": "clearancejobs",
+    "scrapedAt": "2025-01-11T06:00:00Z",
+    "jobType": "Contract"
+  }
+]

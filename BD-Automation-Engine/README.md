@@ -1,197 +1,239 @@
 # BD Automation Engine
 
-End-to-end Business Development automation pipeline composed of five "engines" that work together to automate BD intelligence gathering.
+End-to-end Business Development automation pipeline for federal defense programs, specifically optimized for the DCGS portfolio (~$950M).
 
 ## Project Overview
 
 This system automates the following workflow every 24 hours:
-1. **Scrape** new job postings from various sources
-2. **Enrich** jobs with program information
-3. **Map** contacts and org charts
-4. **Generate** BD playbook insights
-5. **Score** and prioritize opportunities
 
-## Folder Structure
+1. **Scrape** new job postings from ClearanceJobs, LinkedIn, and competitor portals
+2. **Standardize** raw data into 11-field schema using LLM extraction
+3. **Map** jobs to federal programs using location intelligence and keyword matching
+4. **Classify** contacts into 6-tier hierarchy with BD priority assignment
+5. **Score** opportunities and generate actionable BD intelligence
 
-```
-BD-Automation-Engine/
-├── Engine1_Scraper/           # Job data collection
-│   ├── Configurations/        # Scraper settings
-│   ├── data/                  # Scraped job data
-│   └── scripts/               # Scraping scripts
-│
-├── Engine2_ProgramMapping/    # Job-to-Program tagging
-│   ├── Configurations/        # Mapping rules & keywords
-│   ├── data/                  # Program knowledge base
-│   └── scripts/               # Mapping logic
-│
-├── Engine3_OrgChart/          # Contact & org mapping
-│   ├── Configurations/        # Contact lookup settings
-│   ├── data/                  # Contact databases
-│   └── OrgCharts/             # Generated org charts
-│
-├── Engine4_Playbook/          # BD content generation
-│   ├── Configurations/        # Playbook settings
-│   ├── Templates/             # Email/call templates
-│   └── Outputs/               # Generated playbooks
-│
-├── Engine5_Scoring/           # Opportunity scoring
-│   ├── Configurations/        # Scoring weights
-│   └── scripts/               # Scoring logic
-│
-├── agents/                    # Custom sub-agent definitions
-├── prompts/                   # Prompt templates
-├── outputs/                   # Final outputs
-│   ├── BD_Briefings/          # Generated briefing docs
-│   └── Logs/                  # Processing logs
-│
-└── .env.example               # Environment variables template
-```
+## Target Portfolio
+
+| Program | Value | Prime | GDIT Role |
+|---------|-------|-------|-----------|
+| AF DCGS | ~$500M | BAE Systems | Subcontractor |
+| Army DCGS-A | ~$300M | GDIT | Prime |
+| Navy DCGS-N | ~$150M | GDIT | Prime |
 
 ## Quick Start
 
 ### 1. Install Dependencies
 
 ```bash
-# From BD-Automation-Engine directory
+cd BD-Automation-Engine
 pip install -r requirements.txt
 ```
 
 ### 2. Configure Environment
 
 ```bash
-# Copy and edit environment file
 cp .env.example .env
-# Fill in your API keys
+# Edit .env with your API keys
 ```
 
-### 3. Prepare Data
+### 3. Export Required Data
 
-1. Export your Notion Programs database to `Engine2_ProgramMapping/data/Programs_KB.csv`
-2. Add contact data to `Engine3_OrgChart/data/Contacts.csv`
-3. Configure scraper sources in `Engine1_Scraper/Configurations/ScraperEngine_Config.json`
+See [REQUIRED_EXPORTS.md](./REQUIRED_EXPORTS.md) for the complete list of Notion database exports needed.
 
-### 4. Run Initial Setup
+### 4. Run Initial Test
 
 ```bash
-# Build keyword dictionary and embeddings
-python Engine2_ProgramMapping/scripts/program_kb_setup.py
-
-# Test with sample data
-python Engine2_ProgramMapping/scripts/job_mapping.py --test
+# Test program mapping with sample data
+python Engine2_ProgramMapping/scripts/program_mapper.py \
+  --input Engine1_Scraper/data/Sample_Jobs.json \
+  --output outputs/test_mapping.json \
+  --test
 ```
 
-### 5. Create Tasks in Auto Claude
+### 5. Follow Setup Guide
 
-Load the task definitions from `TASKS.md` into Auto Claude's Kanban board.
+See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for complete setup instructions.
 
-## Configuration Files
+## Folder Structure
 
-### Engine 1: Scraper
+```
+BD-Automation-Engine/
+├── .env.example                    # Environment template with Notion IDs
+├── README.md                       # This file
+├── SETUP_GUIDE.md                  # Comprehensive setup instructions
+├── REQUIRED_EXPORTS.md             # Data export checklist
+├── TASKS.md                        # Auto Claude task definitions
+├── requirements.txt                # Python dependencies
+│
+├── Engine1_Scraper/                # Job data collection
+│   ├── Configurations/             # Apify actor settings
+│   ├── data/                       # Scraped job data
+│   └── scripts/                    # Scraping scripts
+│
+├── Engine2_ProgramMapping/         # Job-to-Program tagging
+│   ├── Configurations/             # DCGS-focused mapping config
+│   ├── data/                       # Program KB, templates
+│   └── scripts/                    # job_standardizer.py, program_mapper.py
+│
+├── Engine3_OrgChart/               # Contact & org mapping
+│   ├── Configurations/             # Classification settings
+│   ├── data/                       # Contact databases
+│   └── scripts/                    # contact_classifier.py
+│
+├── Engine4_Playbook/               # BD content generation
+│   ├── Configurations/             # Playbook settings
+│   ├── Templates/                  # Message templates
+│   └── Outputs/                    # Generated content
+│
+├── Engine5_Scoring/                # Opportunity scoring
+│   ├── Configurations/             # Scoring weights
+│   └── scripts/                    # bd_scoring.py
+│
+├── docs/
+│   ├── Claude Skills/              # 10 Claude skills suite
+│   └── Claude Exports/             # Conversation exports
+│
+├── n8n/                            # Workflow automation
+│   └── bd_automation_workflow.json
+│
+├── prompts/                        # Prompt templates
+└── outputs/                        # Generated outputs
+    ├── BD_Briefings/
+    └── Logs/
+```
 
-`Engine1_Scraper/Configurations/ScraperEngine_Config.json`:
-- Define scraping sources
-- Set search terms and filters
-- Configure output format
+## Claude Skills Suite
 
-### Engine 2: Program Mapping
+The `docs/Claude Skills/` folder contains 10 specialized skills:
 
-`Engine2_ProgramMapping/Configurations/ProgramMapping_Config.json`:
-- Program keywords dictionary
-- Matching thresholds
-- Confidence settings
+| Skill | Purpose |
+|-------|---------|
+| job-standardization | Parse raw jobs to 11-field schema |
+| program-mapping | Map jobs to DCGS programs |
+| contact-classification | 6-tier hierarchy classification |
+| bd-outreach-messaging | Personalized outreach generation |
+| humint-intelligence | Intelligence gathering methodology |
+| federal-defense-programs | Program intelligence reference |
+| notion-bd-operations | Database operation patterns |
+| apify-job-scraping | Scraper configuration |
+| bd-call-sheet | Call list generation |
+| bd-playbook | Strategic playbook creation |
 
-### Engine 3: Org Chart
+## Notion Database Integration
 
-`Engine3_OrgChart/Configurations/OrgChart_Config.json`:
-- Target roles to find
-- Contact lookup priorities
-- LinkedIn search parameters
+Pre-configured database IDs (verify in your workspace):
 
-### Engine 4: Playbook
+```bash
+DCGS Contacts Full:     2ccdef65-baa5-8087-a53b-000ba596128e
+GDIT Other Contacts:    70ea1c94-211d-40e6-a994-e8d7c4807434
+GDIT Jobs:              2ccdef65-baa5-80b0-9a80-000bd2745f63
+Program Mapping Hub:    f57792c1-605b-424c-8830-23ab41c47137
+Federal Programs:       06cd9b22-5d6b-4d37-b0d3-ba99da4971fa
+BD Opportunities:       2bcdef65-baa5-80ed-bd95-000b2f898e17
+Contractors:            3a259041-22bf-4262-a94a-7d33467a1752
+Contract Vehicles:      0f09543e-9932-44f2-b0ab-7b4c070afb81
+```
 
-`Engine4_Playbook/Configurations/Playbook_Config.json`:
-- Template preferences
-- Output format
-- AI model settings
+## Python Scripts
 
-### Engine 5: Scoring
+### Job Standardization
+```bash
+python Engine2_ProgramMapping/scripts/job_standardizer.py \
+  --input raw_jobs.json \
+  --output standardized_jobs.json
+```
 
-`Engine5_Scoring/Configurations/Scoring_Config.json`:
-- Scoring weights
-- Priority thresholds
-- Custom factors
+### Program Mapping
+```bash
+python Engine2_ProgramMapping/scripts/program_mapper.py \
+  --input jobs.json \
+  --output enriched_jobs.json
+```
 
-## Integration with n8n
+### Contact Classification
+```bash
+python Engine3_OrgChart/scripts/contact_classifier.py \
+  --input contacts.csv \
+  --output classified_contacts.json
+```
 
-The engines can be orchestrated via n8n workflows:
+### BD Scoring
+```bash
+python Engine5_Scoring/scripts/bd_scoring.py \
+  --input enriched_jobs.json \
+  --output scored_jobs.json \
+  --report scoring_report.json
+```
 
-1. **Trigger**: Daily schedule (e.g., 6 AM)
-2. **Scrape**: Call Apify actors or custom scrapers
-3. **Process**: Run mapping and scoring scripts
-4. **Update**: Write to Notion databases
-5. **Notify**: Send summary emails
+## Priority System
 
-See `n8n_workflow_template.json` for the complete workflow.
+### BD Priority Tiers
 
-## Integration with Notion
+| Score | Tier | Emoji | Action |
+|-------|------|-------|--------|
+| 80-100 | Hot | Fire | Immediate outreach |
+| 50-79 | Warm | Yellow | Weekly follow-up |
+| 0-49 | Cold | Snowflake | Pipeline tracking |
 
-Required Notion Databases:
-- **Programs DB**: Master list of DoD programs
-- **Jobs DB**: Scraped job postings
-- **Contacts DB**: (Optional) Key people
+### Contact Hierarchy
 
-## Auto Claude Tasks
+| Tier | Role | Priority |
+|------|------|----------|
+| 1 | Executive | Critical |
+| 2 | Director | Critical |
+| 3 | Program Leadership | High |
+| 4 | Management | High |
+| 5 | Senior IC | Medium |
+| 6 | Individual Contributor | Standard |
 
-The following tasks are defined for building this system:
+## Auto Claude Integration
 
-1. **Task 1**: New Job Ingestion & Deduplication Pipeline
-2. **Task 2**: Program Knowledge Base Prep (Keywords & Embeddings)
-3. **Task 3**: Job→Program Mapping Engine (Enrichment Logic)
-4. **Task 4**: Update Notion with Enrichment Results
-5. **Task 5**: Org Chart Contact Extraction
-6. **Task 6**: BD Briefing Document Generation
-7. **Task 7**: Workflow Orchestration & Sequencing
-8. **Task 8**: Quality Assurance & Feedback Loop
+Load task definitions from `TASKS.md` into Auto Claude:
 
-See `TASKS.md` for detailed task definitions.
+1. Task 1: New Job Ingestion & Deduplication Pipeline
+2. Task 2: Program Knowledge Base Prep
+3. Task 3: Job→Program Mapping Engine
+4. Task 4: Update Notion with Enrichment Results
+5. Task 5: Org Chart Contact Extraction
+6. Task 6: BD Briefing Document Generation
+7. Task 7: Workflow Orchestration & Sequencing
+8. Task 8: Quality Assurance & Feedback Loop
+
+## n8n Workflow
+
+Import `n8n/bd_automation_workflow.json` for:
+
+- Webhook trigger from Apify
+- Job validation and deduplication
+- Notion record creation
+- Enrichment processing
+- Hot lead alerts
 
 ## Maintenance
 
-### Daily Checks
-- Review summary email
+### Daily
+- Review hot lead alerts
 - Check Notion "Needs Review" queue
-- Verify scraper ran successfully
+- Verify scrapers ran successfully
 
 ### Weekly
 - Update program keywords
 - Review unmatched jobs
-- Adjust scoring weights
+- Gather HUMINT and update pain points
 
 ### Monthly
-- Refresh contact data
-- Update program database
+- Refresh contact databases
+- Update competitive intelligence
 - Review and archive old data
-
-## Troubleshooting
-
-### Scraper Issues
-- Check Apify actor logs
-- Verify API tokens are valid
-- Review rate limits
-
-### Mapping Issues
-- Expand keyword lists
-- Lower confidence thresholds
-- Check program database completeness
-
-### Notion Sync Issues
-- Verify API token permissions
-- Check database IDs
-- Review property mappings
 
 ## Resources
 
+- [Comprehensive Setup Guide](./SETUP_GUIDE.md)
+- [Required Data Exports](./REQUIRED_EXPORTS.md)
+- [Auto Claude Tasks](./TASKS.md)
+- [Claude Skills Documentation](./docs/Claude%20Skills/README.md)
 - [Auto Claude Setup Guide](../AUTO_CLAUDE_SETUP_GUIDE.md)
-- [Building End-to-End BD Automation Engine (PDF)](../Building%20Your%20End-to-End%20BD%20Automation%20Engine%20(Step-by-Step%20Guide).pdf)
-- [Folder Setup Instructions (PDF)](../📁%20Folder_File%20Setup%20Instructions.pdf)
+
+## License
+
+Private - Prime Technical Services BD Intelligence System

@@ -1,92 +1,243 @@
 {
   "mapping_settings": {
-    "name": "Program Mapping Engine",
-    "version": "1.0.0",
-    "description": "Maps job postings to DoD programs using keywords and semantic matching"
+    "name": "PTS BD Program Mapping Engine",
+    "version": "2.0.0",
+    "description": "Maps job postings to DCGS and federal defense programs using location intelligence, keyword matching, and clearance alignment",
+    "target_portfolio": "DCGS (~$950M)",
+    "primary_focus": ["AF DCGS", "Army DCGS-A", "Navy DCGS-N"]
   },
+
+  "dcgs_locations": {
+    "_comment": "DCGS Site-to-Program Mapping (Critical Priority)",
+
+    "AF DCGS - PACAF": {
+      "locations": ["San Diego", "La Mesa"],
+      "priority": "critical",
+      "notes": "Understaffed, acting site lead"
+    },
+    "AF DCGS - Langley": {
+      "locations": ["Hampton", "Newport News", "Langley", "Yorktown"],
+      "priority": "high",
+      "notes": "DGS-1, high ISR volume"
+    },
+    "AF DCGS - Wright-Patt": {
+      "locations": ["Dayton", "Beavercreek", "Fairborn"],
+      "priority": "high",
+      "notes": "NASIC, radar engineer vacancy"
+    },
+    "Navy DCGS-N": {
+      "locations": ["Norfolk", "Suffolk", "Tracy"],
+      "priority": "medium"
+    },
+    "Army DCGS-A": {
+      "locations": ["Fort Belvoir", "Fort Detrick", "Aberdeen"],
+      "priority": "medium"
+    },
+    "Corporate HQ": {
+      "locations": ["Herndon", "Falls Church", "Reston"],
+      "priority": "standard"
+    }
+  },
+
+  "ic_dod_locations": {
+    "_comment": "IC/DoD Site Mapping",
+
+    "NSA/USCYBERCOM Programs": {
+      "locations": ["Fort Meade", "Fort George G. Meade"],
+      "clearance": "TS/SCI w/ Poly"
+    },
+    "Space Force/MDA Programs": {
+      "locations": ["Colorado Springs"],
+      "clearance": "TS/SCI"
+    },
+    "SOCOM Programs": {
+      "locations": ["Tampa", "MacDill"],
+      "clearance": "TS/SCI"
+    },
+    "NGA Programs": {
+      "locations": ["Springfield"],
+      "clearance": "TS/SCI"
+    },
+    "IC Corporate": {
+      "locations": ["McLean"],
+      "clearance": "TS/SCI"
+    },
+    "NRO/IC Programs": {
+      "locations": ["Chantilly"],
+      "clearance": "TS/SCI w/ Poly"
+    }
+  },
+
   "programKeywords": {
-    "GBSD Sentinel": [
-      "GBSD",
-      "Ground Based Strategic Deterrent",
-      "Sentinel",
-      "ICBM modernization",
-      "Minuteman replacement"
-    ],
-    "F-35 Lightning II": [
-      "F-35",
-      "JSF",
-      "Joint Strike Fighter",
-      "Lightning II",
-      "F35"
-    ],
-    "GPS III": [
-      "GPS III",
-      "GPS 3",
-      "Navigation Warfare",
-      "NAVWAR"
-    ],
-    "Next Generation OPIR": [
-      "OPIR",
-      "Next Gen OPIR",
-      "missile warning",
-      "infrared"
-    ],
-    "JADC2": [
-      "JADC2",
-      "Joint All-Domain Command",
-      "ABMS",
-      "Advanced Battle Management"
-    ],
-    "EXAMPLE_PROGRAM": [
-      "keyword1",
-      "keyword2",
-      "abbreviation"
-    ]
+    "_comment": "Program-specific keyword signals",
+
+    "AF DCGS": ["dcgs", "distributed common ground", "isr", "480th", "dgs-1", "dgs-2", "nasic", "pacaf", "beale", "langley", "intelligence surveillance reconnaissance"],
+    "Army DCGS-A": ["dcgs-a", "inscom", "g2", "army intelligence", "army dcgs"],
+    "Navy DCGS-N": ["dcgs-n", "n2", "naval intelligence", "navy dcgs"],
+    "NSA Programs": ["sigint", "nsa", "uscybercom", "cnss", "fort meade", "signals intelligence"],
+    "DIA Programs": ["dia", "humint", "j2", "defense intelligence"],
+    "NGA Programs": ["geoint", "nga", "imagery", "geospatial"],
+    "NRO Programs": ["nro", "reconnaissance", "satellite"],
+    "Space Force": ["ussf", "spacecom", "space force", "space delta"]
   },
+
   "primeContractorMapping": {
-    "Northrop Grumman": ["NGC", "NGIS", "Northrop"],
-    "Lockheed Martin": ["LM", "LMT", "Lockheed"],
-    "Raytheon": ["RTX", "Raytheon Technologies"],
-    "General Dynamics": ["GD", "GDIT"],
-    "BAE Systems": ["BAE"],
-    "Leidos": ["LDOS"],
-    "SAIC": ["Science Applications"],
-    "Booz Allen Hamilton": ["BAH", "Booz Allen"]
+    "_comment": "Prime contractor identification for DCGS portfolio",
+
+    "BAE Systems": {
+      "aliases": ["BAE", "BAE Systems Inc"],
+      "role": "AF DCGS Prime",
+      "programs": ["AF DCGS"]
+    },
+    "GDIT": {
+      "aliases": ["General Dynamics IT", "General Dynamics Information Technology", "GD IT"],
+      "role": "Multiple",
+      "programs": ["Army DCGS-A (Prime)", "Navy DCGS-N (Prime)", "AF DCGS (Sub)"]
+    },
+    "Leidos": {
+      "aliases": ["LDOS", "Leidos Holdings"],
+      "role": "Competitor/Partner",
+      "programs": ["DIA", "NSA"]
+    },
+    "SAIC": {
+      "aliases": ["Science Applications", "SAIC Inc"],
+      "role": "Competitor",
+      "programs": ["Army programs"]
+    },
+    "Northrop Grumman": {
+      "aliases": ["NGC", "NGIS", "Northrop"],
+      "role": "Teaming partner",
+      "programs": ["NRO", "Space Force"]
+    },
+    "Booz Allen Hamilton": {
+      "aliases": ["BAH", "Booz Allen"],
+      "role": "Competitor",
+      "programs": ["IC programs"]
+    },
+    "Peraton": {
+      "aliases": ["Peraton Inc"],
+      "role": "Competitor",
+      "programs": ["NRO", "NGA"]
+    },
+    "CACI": {
+      "aliases": ["CACI International"],
+      "role": "Competitor",
+      "programs": ["Army MI"]
+    },
+    "ManTech": {
+      "aliases": ["ManTech International"],
+      "role": "Competitor",
+      "programs": ["NSA", "FBI"]
+    }
   },
-  "locationSignals": {
-    "Huntsville": ["MDA", "Missile Defense", "Army"],
-    "Colorado Springs": ["Space Force", "NORAD", "NORTHCOM"],
-    "San Diego": ["Navy", "NAVAIR"],
-    "Ft Meade": ["NSA", "Cyber Command"],
-    "Pentagon": ["OSD", "Joint Staff"],
-    "Patuxent River": ["NAVAIR", "Naval Aviation"]
-  },
+
   "clearanceMapping": {
-    "TS/SCI with Poly": ["Intel Community", "NSA", "CIA", "NRO"],
-    "TS/SCI": ["DoD", "Intelligence"],
-    "Top Secret": ["DoD", "Contractor"],
-    "Secret": ["General Defense"]
+    "_comment": "Clearance requirements by program type",
+
+    "TS/SCI w/ Poly": {
+      "aliases": ["TS/SCI with Polygraph", "TS/SCI w/ CI Poly", "TS/SCI w/ Full Scope"],
+      "programs": ["NSA", "CIA", "NRO"],
+      "bd_boost": 35
+    },
+    "TS/SCI": {
+      "aliases": ["Top Secret SCI", "TS SCI"],
+      "programs": ["DIA", "NGA", "AF ISR", "DCGS"],
+      "bd_boost": 25
+    },
+    "Top Secret": {
+      "aliases": ["TS", "Top Secret Clearance"],
+      "programs": ["DoD general"],
+      "bd_boost": 15
+    },
+    "Secret": {
+      "aliases": ["DOD Secret", "Secret Clearance"],
+      "programs": ["General Defense"],
+      "bd_boost": 5
+    }
   },
+
   "scoring": {
-    "directProgramMatch": 10,
-    "primeContractorMatch": 5,
-    "locationMatch": 3,
-    "clearanceMatch": 2,
-    "technicalKeywordMatch": 1
+    "_comment": "Multi-signal scoring weights from program-mapping-skill",
+
+    "programNameInTitle": 50,
+    "programNameInDescription": 20,
+    "acronymMatch": 40,
+    "locationMatchExact": 20,
+    "locationMatchRegion": 10,
+    "technologyKeyword": 15,
+    "roleTypeMatch": 10,
+    "clearanceAlignment": 5,
+    "clearanceMismatch": -20,
+    "dcgsSpecificKeyword": 10
   },
+
   "thresholds": {
-    "highConfidence": 0.8,
-    "mediumConfidence": 0.5,
-    "lowConfidence": 0.3
+    "_comment": "Confidence thresholds for match types",
+
+    "direct": {
+      "min": 0.70,
+      "action": "auto-map"
+    },
+    "fuzzy": {
+      "min": 0.50,
+      "max": 0.69,
+      "action": "flag-for-review"
+    },
+    "inferred": {
+      "max": 0.49,
+      "action": "manual-review-required"
+    }
   },
-  "unmappedTag": "Unmatched",
+
+  "bdPriorityTiers": {
+    "_comment": "BD Priority Score to Tier mapping",
+
+    "hot": {
+      "min": 80,
+      "max": 100,
+      "color": "red",
+      "emoji": "fire",
+      "action": "immediate-outreach"
+    },
+    "warm": {
+      "min": 50,
+      "max": 79,
+      "color": "yellow",
+      "emoji": "yellow_circle",
+      "action": "weekly-follow-up"
+    },
+    "cold": {
+      "min": 0,
+      "max": 49,
+      "color": "blue",
+      "emoji": "snowflake",
+      "action": "pipeline-tracking"
+    }
+  },
+
   "semanticSearch": {
     "enabled": true,
     "model": "text-embedding-ada-002",
     "topK": 3,
-    "minSimilarity": 0.7
+    "minSimilarity": 0.7,
+    "embeddingsFile": "data/program_embeddings.json"
   },
+
+  "statusFlow": {
+    "_comment": "Job processing status transitions",
+    "stages": ["raw_import", "pending_enrichment", "enriching", "enriched", "validated", "error"],
+    "transitions": {
+      "raw_import": ["pending_enrichment"],
+      "pending_enrichment": ["enriching"],
+      "enriching": ["enriched", "error"],
+      "enriched": ["validated", "error"],
+      "error": ["pending_enrichment"]
+    }
+  },
+
   "output": {
-    "path": "Engine2_ProgramMapping/data/Enriched_Jobs.json"
+    "enrichedJobsPath": "Engine2_ProgramMapping/data/Enriched_Jobs.json",
+    "mappingLogPath": "outputs/Logs/program_mapping.log",
+    "unmatchedJobsPath": "Engine2_ProgramMapping/data/Unmatched_Jobs.json"
   }
 }
