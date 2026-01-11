@@ -446,7 +446,10 @@ def get_next_subtask(spec_dir: Path) -> dict | None:
                     subtask_out = dict(subtask)
                     if "id" not in subtask_out and "subtask_id" in subtask_out:
                         subtask_out["id"] = str(subtask_out.get("subtask_id"))
-                    if "description" not in subtask_out and "title" in subtask_out:
+                    if (
+                        "description" not in subtask_out
+                        or not subtask_out.get("description")
+                    ) and "title" in subtask_out:
                         subtask_out["description"] = subtask_out.get("title")
                     subtask_out["status"] = "pending"
                     return {

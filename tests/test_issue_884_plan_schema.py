@@ -54,6 +54,34 @@ def test_get_next_subtask_accepts_not_started_and_alias_fields(spec_dir: Path):
     assert next_task.get("status") == "pending"
 
 
+def test_get_next_subtask_populates_description_from_title_when_empty(spec_dir: Path):
+    plan = {
+        "spec_id": "002-add-upstream-connection-test",
+        "phases": [
+            {
+                "phase_id": "1",
+                "title": "Research & Design",
+                "status": "not_started",
+                "subtasks": [
+                    {
+                        "subtask_id": "1.1",
+                        "title": "Research provider-specific test endpoints",
+                        "description": "",
+                        "status": "not_started",
+                    }
+                ],
+            }
+        ],
+    }
+    _write_plan(spec_dir / "implementation_plan.json", plan)
+
+    next_task = get_next_subtask(spec_dir)
+    assert next_task is not None
+    assert next_task.get("id") == "1.1"
+    assert next_task.get("description") == "Research provider-specific test endpoints"
+    assert next_task.get("status") == "pending"
+
+
 def test_auto_fix_plan_normalizes_nonstandard_schema_and_validates(spec_dir: Path):
     plan = {
         "spec_id": "002-add-upstream-connection-test",
