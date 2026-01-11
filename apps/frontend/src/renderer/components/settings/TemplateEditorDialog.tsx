@@ -17,7 +17,6 @@ interface TemplateEditorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template: Template | null;
-  apiKey: string | null;
 }
 
 interface Message {
@@ -31,7 +30,7 @@ interface Message {
   }[];
 }
 
-export function TemplateEditorDialog({ open, onOpenChange, template, apiKey }: TemplateEditorDialogProps) {
+export function TemplateEditorDialog({ open, onOpenChange, template }: TemplateEditorDialogProps) {
   const { t } = useTranslation('settings');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -48,10 +47,10 @@ export function TemplateEditorDialog({ open, onOpenChange, template, apiKey }: T
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, currentStreamChunk]);
 
-  // Initialize template editor when dialog opens, reset when closed
+  // Check if API profile/key is available when dialog opens, reset when closed
   useEffect(() => {
-    if (open && template && apiKey && !isInitialized) {
-      initializeEditor();
+    if (open && template && !isInitialized) {
+      checkAvailability();
     } else if (!open) {
       // Reset state when dialog closes
       setIsInitialized(false);
@@ -62,7 +61,7 @@ export function TemplateEditorDialog({ open, onOpenChange, template, apiKey }: T
       setStatus(null);
       setInput('');
     }
-  }, [open, template, apiKey]);
+  }, [open, template]);
 
   // Set up event listeners
   useEffect(() => {
@@ -116,19 +115,21 @@ export function TemplateEditorDialog({ open, onOpenChange, template, apiKey }: T
     };
   }, [open, template, currentStreamChunk, currentToolUse]);
 
-  const initializeEditor = async () => {
-    if (!apiKey || !template) return;
+  const checkAvailability = async () => {
+    if (!template) return;
 
     try {
-      const result = await window.electronAPI.initializeTemplateEditor(apiKey);
-      if (result.success) {
+      const result = await window.electronAPI.checkTemplateEditorInitialized();
+      if (result.success && result.data) {
         setIsInitialized(true);
         setError('');
       } else {
-        setError(result.error || 'Failed to initialize template editor');
+        setError('No API profile configured. Please set up an API profile or add your Anthropic API key in settings.');
+        setIsInitialized(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize');
+      setError(err instanceof Error ? err.message : 'Failed to check availability');
+      setIsInitialized(false);
     }
   };
 
@@ -187,7 +188,8 @@ export function TemplateEditorDialog({ open, onOpenChange, template, apiKey }: T
     }
   };
 
-  if (!apiKey) {
+  // Show configuration required message if no profile/API key is available
+  if (!isInitialized && error && open) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[600px]">
@@ -197,13 +199,17 @@ export function TemplateEditorDialog({ open, onOpenChange, template, apiKey }: T
               AI Template Editor
             </DialogTitle>
             <DialogDescription>
-              Configure your Anthropic API key in settings to use the AI template editor
+              Configure an API profile or add your Anthropic API key to use the AI template editor
             </DialogDescription>
           </DialogHeader>
           <div className="py-6 text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-sm text-muted-foreground">
-              Go to Settings → API Keys to add your Anthropic API key
+            <p className="text-sm text-muted-foreground mb-2">
+              No API configuration found
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Go to Settings → API Profiles to configure a custom API endpoint,<br />
+              or Settings → API Keys to add your Anthropic API key
             </p>
           </div>
         </DialogContent>

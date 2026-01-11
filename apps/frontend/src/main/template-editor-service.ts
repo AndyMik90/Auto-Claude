@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
+import type { APIProfile } from '../shared/types/profile';
 
 const SYSTEM_PROMPT = `You are a template editing assistant that helps users inject dynamic parameters into project template files.
 
@@ -65,10 +66,13 @@ export class TemplateEditorService extends EventEmitter {
   }
 
   /**
-   * Initialize the Anthropic client with API key
+   * Initialize the Anthropic client with API profile
    */
-  initialize(apiKey: string): void {
-    this.anthropic = new Anthropic({ apiKey });
+  initialize(profile: APIProfile): void {
+    this.anthropic = new Anthropic({
+      apiKey: profile.apiKey,
+      baseURL: profile.baseUrl
+    });
   }
 
   /**

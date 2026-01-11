@@ -383,7 +383,6 @@ export function TemplatesSettings() {
           open={isEditorDialogOpen}
           onOpenChange={setIsEditorDialogOpen}
           template={aiEditingTemplate}
-          apiKey={settings?.globalAnthropicApiKey || null}
         />
 
         {/* Parameter Guide Dialog */}

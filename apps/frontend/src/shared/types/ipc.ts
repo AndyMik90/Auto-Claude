@@ -129,6 +129,7 @@ import type {
   GitLabNewCommitsCheck
 } from './integrations';
 import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
+import type { TemplateEditorStatus, TemplateEditorStreamChunk } from './template-editor';
 
 // Electron API exposed via contextBridge
 // Tab state interface (persisted in main process)
@@ -813,6 +814,17 @@ export interface ElectronAPI {
   // MCP Server health check operations
   checkMcpHealth: (server: CustomMcpServer) => Promise<IPCResult<McpHealthCheckResult>>;
   testMcpConnection: (server: CustomMcpServer) => Promise<IPCResult<McpTestConnectionResult>>;
+
+  // Template Editor operations (AI-powered template editing)
+  // Auto-initializes with active API profile or global Anthropic API key
+  checkTemplateEditorInitialized: () => Promise<IPCResult<boolean>>;
+  sendTemplateEditorMessage: (templateId: string, templatePath: string, message: string) => Promise<IPCResult>;
+  clearTemplateEditorHistory: (templateId: string) => Promise<IPCResult>;
+
+  // Template Editor event listeners
+  onTemplateEditorStatus: (callback: (templateId: string, status: TemplateEditorStatus) => void) => () => void;
+  onTemplateEditorStreamChunk: (callback: (templateId: string, chunk: TemplateEditorStreamChunk) => void) => () => void;
+  onTemplateEditorError: (callback: (templateId: string, error: string) => void) => () => void;
 }
 
 declare global {

@@ -1,8 +1,41 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
-import type { IPCResult } from '../../shared/types';
+import type { IPCResult, APIProfile } from '../../shared/types';
 import { templateEditorService } from '../template-editor-service';
+import { loadProfilesFile } from '../utils/profile-manager';
+import { settingsStore } from '../settings-store';
+
+/**
+ * Get the active API profile or create one from global settings
+ * Returns null if no profile or API key is available
+ */
+async function getActiveProfile(): Promise<APIProfile | null> {
+  // Try to get active API profile
+  const profilesFile = await loadProfilesFile();
+  if (profilesFile.activeProfileId) {
+    const activeProfile = profilesFile.profiles.find(p => p.id === profilesFile.activeProfileId);
+    if (activeProfile) {
+      return activeProfile;
+    }
+  }
+
+  // Fallback to global Anthropic API key from settings
+  const settings = settingsStore.getSettings();
+  if (settings.globalAnthropicApiKey) {
+    // Create a temporary profile from global settings
+    return {
+      id: 'temp-anthropic',
+      name: 'Default Anthropic',
+      baseUrl: 'https://api.anthropic.com',
+      apiKey: settings.globalAnthropicApiKey,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+  }
+
+  return null;
+}
 
 /**
  * Register all template editor IPC handlers
@@ -30,29 +63,14 @@ export function registerTemplateEditorHandlers(getMainWindow: () => BrowserWindo
     }
   });
 
-  // Initialize template editor with API key
-  ipcMain.handle(
-    'template-editor:initialize',
-    async (_, apiKey: string): Promise<IPCResult> => {
-      try {
-        templateEditorService.initialize(apiKey);
-        return { success: true };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to initialize template editor'
-        };
-      }
-    }
-  );
-
-  // Check if template editor is initialized
+  // Check if API profile or API key is available
   ipcMain.handle(
     'template-editor:check-initialized',
     async (): Promise<IPCResult<boolean>> => {
+      const profile = await getActiveProfile();
       return {
         success: true,
-        data: templateEditorService.isInitialized()
+        data: profile !== null
       };
     }
   );
@@ -67,11 +85,16 @@ export function registerTemplateEditorHandlers(getMainWindow: () => BrowserWindo
       message: string
     ): Promise<IPCResult> => {
       try {
+        // Auto-initialize with active profile if not already initialized
         if (!templateEditorService.isInitialized()) {
-          return {
-            success: false,
-            error: 'Template editor not initialized. Please configure your Anthropic API key in settings.'
-          };
+          const profile = await getActiveProfile();
+          if (!profile) {
+            return {
+              success: false,
+              error: 'No API profile configured. Please set up an API profile or add your Anthropic API key in settings.'
+            };
+          }
+          templateEditorService.initialize(profile);
         }
 
         await templateEditorService.sendMessage(templateId, templatePath, message);
