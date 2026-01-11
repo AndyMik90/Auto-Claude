@@ -5,15 +5,38 @@
 import type { BrowserWindow } from "electron";
 
 /**
- * Track recently warned channels to prevent log spam
- * When a renderer frame is disposed, we log once per channel instead of flooding logs
+ * Track last-warn timestamps per channel to prevent log spam.
+ * When a renderer frame is disposed, we log once per channel within cooldown period.
+ * Uses timestamp-based approach instead of setInterval to avoid timer leaks.
  */
-const recentlyWarnedChannels = new Set<string>();
-const WARN_COOLDOWN_MS = 5000; // Clear warnings every 5 seconds
+const warnTimestamps = new Map<string, number>();
+const WARN_COOLDOWN_MS = 5000; // 5 seconds between warnings per channel
 
-setInterval(() => {
-  recentlyWarnedChannels.clear();
-}, WARN_COOLDOWN_MS);
+/**
+ * Check if a channel is within the warning cooldown period.
+ * @returns true if within cooldown (should skip warning), false if cooldown expired
+ */
+function isWithinCooldown(channel: string): boolean {
+  const lastWarn = warnTimestamps.get(channel) ?? 0;
+  return Date.now() - lastWarn < WARN_COOLDOWN_MS;
+}
+
+/**
+ * Record a warning timestamp for a channel.
+ */
+function recordWarning(channel: string): void {
+  warnTimestamps.set(channel, Date.now());
+
+  // Optionally prune old entries to free memory (prune if more than 100 entries)
+  if (warnTimestamps.size > 100) {
+    const now = Date.now();
+    for (const [ch, ts] of warnTimestamps.entries()) {
+      if (now - ts >= WARN_COOLDOWN_MS) {
+        warnTimestamps.delete(ch);
+      }
+    }
+  }
+}
 
 /**
  * Safely send IPC message to renderer with frame disposal checks
@@ -52,18 +75,18 @@ export function safeSendToRenderer(
     // Check if window or webContents is destroyed
     // isDestroyed() returns true if the window has been closed and destroyed
     if (mainWindow.isDestroyed()) {
-      if (!recentlyWarnedChannels.has(channel)) {
+      if (!isWithinCooldown(channel)) {
         console.warn(`[safeSendToRenderer] Skipping send to destroyed window: ${channel}`);
-        recentlyWarnedChannels.add(channel);
+        recordWarning(channel);
       }
       return false;
     }
 
     // Check if webContents is destroyed (can happen independently of window)
     if (!mainWindow.webContents || mainWindow.webContents.isDestroyed()) {
-      if (!recentlyWarnedChannels.has(channel)) {
+      if (!isWithinCooldown(channel)) {
         console.warn(`[safeSendToRenderer] Skipping send to destroyed webContents: ${channel}`);
-        recentlyWarnedChannels.add(channel);
+        recordWarning(channel);
       }
       return false;
     }
@@ -77,9 +100,9 @@ export function safeSendToRenderer(
 
     // Only log disposal errors once per channel to avoid log spam
     if (errorMessage.includes("disposed") || errorMessage.includes("destroyed")) {
-      if (!recentlyWarnedChannels.has(channel)) {
+      if (!isWithinCooldown(channel)) {
         console.warn(`[safeSendToRenderer] Frame disposed, skipping send: ${channel}`);
-        recentlyWarnedChannels.add(channel);
+        recordWarning(channel);
       }
     } else {
       console.error(`[safeSendToRenderer] Error sending to renderer:`, error);
@@ -93,7 +116,8 @@ export function safeSendToRenderer(
  */
 export function parseEnvFile(content: string): Record<string, string> {
   const result: Record<string, string> = {};
-  const lines = content.split("\n");
+  // Use /\r?\n/ to handle both \n (Unix) and \r\n (Windows) line endings
+  const lines = content.split(/\r?\n/);
 
   for (const line of lines) {
     const trimmed = line.trim();
