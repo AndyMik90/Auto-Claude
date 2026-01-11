@@ -1,0 +1,247 @@
+{
+  "name": "PTS BD - WF3 Hub to BD Opportunities",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        240,
+        304
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        240,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/f57792c1-605b-424c-8830-23ab41c47137/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"filter\": {\n    \"and\": [\n      { \"property\": \"Status\", \"select\": { \"equals\": \"enriched\" } },\n      { \"property\": \"Priority Score\", \"number\": { \"greater_than_or_equal_to\": 70 } }\n    ]\n  },\n  \"page_size\": 20\n}",
+        "options": {}
+      },
+      "id": "fetch-hot-jobs",
+      "name": "Fetch High-Priority Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        480,
+        400
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-results",
+              "leftValue": "={{ $json.results.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-results",
+      "name": "Has Hot Leads?",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        704,
+        400
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first();\nconst results = (inputData && inputData.json && inputData.json.results) ? inputData.json.results : [];\nconst leads = [];\n\nfor (const page of results) {\n  const props = page.properties || {};\n  \n  function getTitle(p) {\n    if (!p || !p.title || !p.title[0]) return '';\n    return p.title[0].plain_text || '';\n  }\n  function getText(p) {\n    if (!p || !p.rich_text || !p.rich_text[0]) return '';\n    return p.rich_text[0].plain_text || '';\n  }\n  function getNumber(p) {\n    if (!p) return 0;\n    return p.number || 0;\n  }\n  \n  const score = getNumber(props['Priority Score']);\n  let priorityLevel = 'Cold';\n  if (score >= 80) priorityLevel = 'Hot';\n  else if (score >= 50) priorityLevel = 'Warm';\n  \n  const oppId = 'BD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6).toUpperCase();\n  \n  leads.push({\n    json: {\n      hubPageId: page.id,\n      opportunityId: oppId,\n      jobTitle: getTitle(props['Job Title']),\n      company: getText(props['Company']),\n      program: getText(props['Program Name']),\n      priorityScore: score,\n      priorityLevel: priorityLevel\n    }\n  });\n}\n\nreturn leads.length > 0 ? leads : [{ json: { noLeads: true } }];"
+      },
+      "id": "extract-lead-data",
+      "name": "Extract Lead Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        928,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"parent\": { \"database_id\": \"2bcdef65-baa5-80ed-bd95-000b2f898e17\" },\n  \"properties\": {\n    \"Opportunity ID\": { \"title\": [{ \"text\": { \"content\": \"{{ $json.opportunityId }}\" } }] },\n    \"Source Job Title\": { \"rich_text\": [{ \"text\": { \"content\": \"{{ $json.jobTitle }}\" } }] },\n    \"Source Company\": { \"rich_text\": [{ \"text\": { \"content\": \"{{ $json.company }}\" } }] },\n    \"Matched Program\": { \"rich_text\": [{ \"text\": { \"content\": \"{{ $json.program }}\" } }] },\n    \"Priority Score\": { \"number\": {{ $json.priorityScore }} },\n    \"Priority Level\": { \"select\": { \"name\": \"{{ $json.priorityLevel }}\" } },\n    \"Status\": { \"select\": { \"name\": \"New\" } },\n    \"Source Hub Record\": { \"relation\": [{ \"id\": \"{{ $json.hubPageId }}\" }] }\n  }\n}",
+        "options": {}
+      },
+      "id": "create-bd-opp",
+      "name": "Create BD Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1152,
+        400
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 0.35
+      },
+      "id": "rate-limit",
+      "name": "Rate Limit",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        1360,
+        400
+      ],
+      "typeVersion": 1.1,
+      "webhookId": "a7993ec2-ece3-45b7-b573-9366fd1e8d53"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch High-Priority Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch High-Priority Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch High-Priority Jobs": {
+      "main": [
+        [
+          {
+            "node": "Has Hot Leads?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Hot Leads?": {
+      "main": [
+        [
+          {
+            "node": "Extract Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Create BD Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create BD Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "b8208653-625e-4dd5-94c2-34849987fc70",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "Ae2ZaSTMwyHK2hUm",
+  "tags": []
+}

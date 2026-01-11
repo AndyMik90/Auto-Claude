@@ -1,0 +1,249 @@
+{
+  "name": "PTS BD - WF6 Weekly Summary Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "monday-trigger",
+      "name": "Monday 7AM Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        240,
+        304
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        240,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/f57792c1-605b-424c-8830-23ab41c47137/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"filter\": {\n    \"property\": \"Status\",\n    \"select\": { \"is_not_empty\": true }\n  },\n  \"page_size\": 100\n}",
+        "options": {}
+      },
+      "id": "fetch-week-jobs",
+      "name": "Fetch Week Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        512,
+        304
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/2bcdef65-baa5-80ed-bd95-000b2f898e17/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"page_size\": 100\n}",
+        "options": {}
+      },
+      "id": "fetch-week-opps",
+      "name": "Fetch Week Opportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        512,
+        512
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const jobsData = $('Fetch Week Jobs').first();\nconst oppsData = $('Fetch Week Opportunities').first();\n\nconst jobs = (jobsData && jobsData.json && jobsData.json.results) ? jobsData.json.results : [];\nconst opps = (oppsData && oppsData.json && oppsData.json.results) ? oppsData.json.results : [];\n\n// Count job statuses\nconst statusCounts = { raw_import: 0, pending_enrichment: 0, enriched: 0, validated: 0, error: 0 };\nconst clearanceCounts = {};\nconst programCounts = {};\n\nfor (const job of jobs) {\n  const props = job.properties || {};\n  const status = (props['Status'] && props['Status'].select) ? props['Status'].select.name : 'unknown';\n  statusCounts[status] = (statusCounts[status] || 0) + 1;\n  \n  const clearance = (props['Clearance Level'] && props['Clearance Level'].select) ? props['Clearance Level'].select.name : 'Unknown';\n  clearanceCounts[clearance] = (clearanceCounts[clearance] || 0) + 1;\n  \n  const program = (props['Program Name'] && props['Program Name'].rich_text && props['Program Name'].rich_text[0]) ? props['Program Name'].rich_text[0].plain_text : '';\n  if (program) {\n    programCounts[program] = (programCounts[program] || 0) + 1;\n  }\n}\n\n// Count opportunity priorities\nconst priorityCounts = { Hot: 0, Warm: 0, Cool: 0, Cold: 0 };\nconst topOpps = [];\n\nfor (const opp of opps) {\n  const props = opp.properties || {};\n  const priority = (props['Priority Level'] && props['Priority Level'].select) ? props['Priority Level'].select.name : 'Cold';\n  priorityCounts[priority] = (priorityCounts[priority] || 0) + 1;\n  \n  const score = (props['Priority Score']) ? props['Priority Score'].number || 0 : 0;\n  const oppId = (props['Opportunity ID'] && props['Opportunity ID'].title && props['Opportunity ID'].title[0]) ? props['Opportunity ID'].title[0].plain_text : '';\n  const program = (props['Matched Program'] && props['Matched Program'].rich_text && props['Matched Program'].rich_text[0]) ? props['Matched Program'].rich_text[0].plain_text : '';\n  \n  topOpps.push({ id: oppId, program: program, score: score, priority: priority });\n}\n\ntopOpps.sort(function(a, b) { return b.score - a.score; });\nconst top10 = topOpps.slice(0, 10);\n\n// Top 5 programs\nconst programArray = [];\nfor (var prog in programCounts) {\n  programArray.push({ name: prog, count: programCounts[prog] });\n}\nprogramArray.sort(function(a, b) { return b.count - a.count; });\nconst top5Programs = programArray.slice(0, 5);\n\nreturn [{\n  json: {\n    totalJobs: jobs.length,\n    statusCounts: statusCounts,\n    clearanceCounts: clearanceCounts,\n    priorityCounts: priorityCounts,\n    totalOpportunities: opps.length,\n    hotLeads: priorityCounts.Hot || 0,\n    topOpportunities: top10,\n    topPrograms: top5Programs,\n    weekEnding: new Date().toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "compile-metrics",
+      "name": "Compile Weekly Metrics",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        768,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst weekEnding = data.weekEnding;\nconst totalJobs = data.totalJobs || 0;\nconst totalOpps = data.totalOpportunities || 0;\nconst hotLeads = data.hotLeads || 0;\nconst statusCounts = data.statusCounts || {};\nconst priorityCounts = data.priorityCounts || {};\nconst topOpps = data.topOpportunities || [];\nconst topPrograms = data.topPrograms || [];\n\n// Build top opportunities table\nlet oppsTable = '';\nfor (var i = 0; i < topOpps.length; i++) {\n  var opp = topOpps[i];\n  oppsTable = oppsTable + '<tr><td style=\"padding:8px;border-bottom:1px solid #eee;\">' + opp.id + '</td>';\n  oppsTable = oppsTable + '<td style=\"padding:8px;border-bottom:1px solid #eee;\">' + opp.program + '</td>';\n  oppsTable = oppsTable + '<td style=\"padding:8px;border-bottom:1px solid #eee;font-weight:bold;\">' + opp.score + '</td>';\n  oppsTable = oppsTable + '<td style=\"padding:8px;border-bottom:1px solid #eee;\">' + opp.priority + '</td></tr>';\n}\n\n// Build programs list\nlet progList = '';\nfor (var j = 0; j < topPrograms.length; j++) {\n  var prog = topPrograms[j];\n  progList = progList + '<span style=\"display:inline-block;background:#e3f2fd;color:#1565c0;padding:4px 12px;border-radius:16px;margin:4px;\">' + prog.name + ' (' + prog.count + ')</span>';\n}\n\nvar html = '<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head>'\n  + '<body style=\"font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;\">'\n  + '<div style=\"max-width:900px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);\">'\n  + '<div style=\"background:linear-gradient(135deg,#1a237e,#283593);padding:30px;color:white;\">'\n  + '<h1 style=\"margin:0;font-size:28px;\">📊 Weekly BD Intelligence Report</h1>'\n  + '<p style=\"margin:10px 0 0;opacity:0.9;\">Week Ending: ' + weekEnding + '</p>'\n  + '</div>'\n  + '<div style=\"padding:30px;\">'\n  + '<div style=\"display:flex;gap:20px;margin-bottom:30px;\">'\n  + '<div style=\"flex:1;background:#e8f5e9;padding:20px;border-radius:8px;text-align:center;\"><div style=\"font-size:36px;font-weight:bold;color:#2e7d32;\">' + totalJobs + '</div><div style=\"color:#666;\">Total Jobs</div></div>'\n  + '<div style=\"flex:1;background:#fff3e0;padding:20px;border-radius:8px;text-align:center;\"><div style=\"font-size:36px;font-weight:bold;color:#ef6c00;\">' + totalOpps + '</div><div style=\"color:#666;\">Opportunities</div></div>'\n  + '<div style=\"flex:1;background:#ffebee;padding:20px;border-radius:8px;text-align:center;\"><div style=\"font-size:36px;font-weight:bold;color:#c62828;\">' + hotLeads + '</div><div style=\"color:#666;\">Hot Leads</div></div>'\n  + '</div>'\n  + '<h2 style=\"color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:10px;\">Priority Distribution</h2>'\n  + '<div style=\"margin-bottom:30px;\">'\n  + '<span style=\"display:inline-block;background:#d32f2f;color:white;padding:8px 16px;border-radius:4px;margin:4px;\">Hot: ' + (priorityCounts.Hot || 0) + '</span>'\n  + '<span style=\"display:inline-block;background:#ff9800;color:white;padding:8px 16px;border-radius:4px;margin:4px;\">Warm: ' + (priorityCounts.Warm || 0) + '</span>'\n  + '<span style=\"display:inline-block;background:#2196f3;color:white;padding:8px 16px;border-radius:4px;margin:4px;\">Cool: ' + (priorityCounts.Cool || 0) + '</span>'\n  + '<span style=\"display:inline-block;background:#9e9e9e;color:white;padding:8px 16px;border-radius:4px;margin:4px;\">Cold: ' + (priorityCounts.Cold || 0) + '</span>'\n  + '</div>'\n  + '<h2 style=\"color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:10px;\">Top Programs</h2>'\n  + '<div style=\"margin-bottom:30px;\">' + progList + '</div>'\n  + '<h2 style=\"color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:10px;\">Top 10 Opportunities</h2>'\n  + '<table style=\"width:100%;border-collapse:collapse;\">'\n  + '<thead><tr style=\"background:#f5f5f5;\">'\n  + '<th style=\"padding:12px;text-align:left;\">ID</th>'\n  + '<th style=\"padding:12px;text-align:left;\">Program</th>'\n  + '<th style=\"padding:12px;text-align:left;\">Score</th>'\n  + '<th style=\"padding:12px;text-align:left;\">Priority</th>'\n  + '</tr></thead>'\n  + '<tbody>' + oppsTable + '</tbody>'\n  + '</table>'\n  + '</div>'\n  + '<div style=\"background:#f5f5f5;padding:20px;text-align:center;color:#666;font-size:12px;\">'\n  + 'Prime Technical Services BD Intelligence System | Auto-generated Report'\n  + '</div>'\n  + '</div></body></html>';\n\nreturn [{ json: { html: html, hotLeads: hotLeads, weekEnding: weekEnding, subject: '📊 Weekly BD Report: ' + hotLeads + ' Hot Leads - Week of ' + weekEnding } }];"
+      },
+      "id": "build-html-report",
+      "name": "Build HTML Report",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1008,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "fromEmail": "bd-reports@prime-ts.com",
+        "toEmail": "Gmaranville@prime-ts.com",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "send-report",
+      "name": "Send Report Email",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [
+        1248,
+        400
+      ],
+      "typeVersion": 2.1,
+      "webhookId": "31931a36-fa6b-4e6a-8f4a-0c5619ef59cd",
+      "credentials": {
+        "smtp": {
+          "id": "knh7NFxZJw45izKU",
+          "name": "SMTP - Gmail"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Monday 7AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Week Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Week Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Week Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Week Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Week Jobs": {
+      "main": [
+        [
+          {
+            "node": "Compile Weekly Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Week Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Compile Weekly Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Weekly Metrics": {
+      "main": [
+        [
+          {
+            "node": "Build HTML Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML Report": {
+      "main": [
+        [
+          {
+            "node": "Send Report Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "7060f5cf-7481-4281-82ff-c5e410a7fbb2",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "F39P6WBUSYPRmxsu",
+  "tags": []
+}

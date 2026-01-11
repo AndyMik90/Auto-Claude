@@ -1,0 +1,986 @@
+{
+  "name": "Prime TS BD Intelligence System v2.1",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "9c894885-3299-4fc6-a8d4-45de67c02af2",
+      "name": "Daily 6 AM EST Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2656,
+        -80
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f83af074-ad27-41a6-b9e0-1a417bd96873",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2656,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bd-intelligence",
+        "options": {}
+      },
+      "id": "38afbc7c-ca91-40c7-af3f-b5d62f94f127",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2656,
+        336
+      ],
+      "webhookId": "bd-intelligence-webhook"
+    },
+    {
+      "parameters": {},
+      "id": "9ff53a33-e3c3-47be-a20e-6b2ecc503533",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -2448,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "config-apify-token",
+              "name": "apifyToken",
+              "value": "apify_api_n32KFOBo74tTXNi1nEH8nuaMMgrmRc15XrzS",
+              "type": "string"
+            },
+            {
+              "id": "config-max-jobs",
+              "name": "maxJobsPerBoard",
+              "value": 100,
+              "type": "number"
+            },
+            {
+              "id": "config-run-timestamp",
+              "name": "runTimestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "config-programs-db",
+              "name": "programsDbId",
+              "value": "2bcdef65-baa5-80a1-b342-d49a1838f39e",
+              "type": "string"
+            },
+            {
+              "id": "config-jobs-db",
+              "name": "jobsDbId",
+              "value": "5ab80c40-31f0-48b5-ba1d-c4dae1af6fc6",
+              "type": "string"
+            },
+            {
+              "id": "config-bd-db",
+              "name": "bdOpportunitiesDbId",
+              "value": "2bcdef65-baa5-8015-bf09-c01813f24b0a",
+              "type": "string"
+            },
+            {
+              "id": "config-notification-email",
+              "name": "notificationEmail",
+              "value": "Gmaranville@prime-ts.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bf775bb1-e578-4393-a5d7-9a6975f78ffd",
+      "name": "Set Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2224,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~puppeteer-scraper/runs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.apifyToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"startUrls\": [{\"url\": \"https://jobs.insightglobal.com/search?q=security+clearance\"}],\n  \"pageFunction\": \"async function pageFunction(context) {\\n  const { page, request, log } = context;\\n  log.info('Scraping Insight Global jobs...');\\n  await page.waitForTimeout(3000);\\n  const jobs = await page.evaluate(() => {\\n    const results = [];\\n    const cards = document.querySelectorAll('[class*=\\\"job\\\"], [class*=\\\"Job\\\"], [class*=\\\"card\\\"], [class*=\\\"Card\\\"], article, .result');\\n    cards.forEach((card, index) => {\\n      if (index >= 50) return;\\n      const titleEl = card.querySelector('h1, h2, h3, h4, [class*=\\\"title\\\"], [class*=\\\"Title\\\"], a');\\n      const locationEl = card.querySelector('[class*=\\\"location\\\"], [class*=\\\"Location\\\"], [class*=\\\"city\\\"], [class*=\\\"City\\\"]');\\n      const linkEl = card.querySelector('a[href*=\\\"job\\\"], a[href*=\\\"career\\\"], a');\\n      const text = card.innerText || '';\\n      const clearanceMatch = text.match(/(TS\\\\/SCI|TS\\\\/SCI with Poly|Top Secret\\\\/SCI|Top Secret|TS|Secret|Public Trust|Polygraph)/i);\\n      if (titleEl && titleEl.innerText.trim()) {\\n        results.push({\\n          title: titleEl.innerText.trim().substring(0, 200),\\n          company: 'Insight Global',\\n          location: locationEl ? locationEl.innerText.trim() : '',\\n          url: linkEl ? linkEl.href : '',\\n          clearance: clearanceMatch ? clearanceMatch[0] : 'Unknown',\\n          scraped_at: new Date().toISOString(),\\n          source: 'Insight Global'\\n        });\\n      }\\n    });\\n    return results;\\n  });\\n  return jobs;\\n}\",\n  \"maxPagesPerCrawl\": 5,\n  \"maxConcurrency\": 3,\n  \"pageLoadTimeoutSecs\": 60,\n  \"pageFunctionTimeoutSecs\": 60,\n  \"proxyConfiguration\": {\"useApifyProxy\": true}\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "21938244-aace-47fb-b413-54874b87d8ca",
+      "name": "Scrape Insight Global",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2000,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 90
+      },
+      "id": "7c045c76-efc7-4cfb-aa65-39f269377b88",
+      "name": "Wait Insight Global",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1776,
+        -80
+      ],
+      "webhookId": "dc382dcd-2cb5-4a3a-95d2-07893d504d14"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/actor-runs/{{ $json.data.id }}/dataset/items?token={{ $('Set Configuration').item.json.apifyToken }}",
+        "options": {}
+      },
+      "id": "a34c77a0-aedd-4f9d-a85e-05d1bce15cd2",
+      "name": "Get Insight Global Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1568,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~puppeteer-scraper/runs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.apifyToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"startUrls\": [{\"url\": \"https://www.teksystems.com/en/careers/search-results?searchPhrase=security+clearance\"}],\n  \"pageFunction\": \"async function pageFunction(context) {\\n  const { page, request, log } = context;\\n  log.info('Scraping TEKsystems jobs...');\\n  await page.waitForTimeout(3000);\\n  const jobs = await page.evaluate(() => {\\n    const results = [];\\n    const cards = document.querySelectorAll('[class*=\\\"job\\\"], [class*=\\\"Job\\\"], [class*=\\\"card\\\"], [class*=\\\"Card\\\"], article, .result, [class*=\\\"posting\\\"]');\\n    cards.forEach((card, index) => {\\n      if (index >= 50) return;\\n      const titleEl = card.querySelector('h1, h2, h3, h4, [class*=\\\"title\\\"], [class*=\\\"Title\\\"], a');\\n      const locationEl = card.querySelector('[class*=\\\"location\\\"], [class*=\\\"Location\\\"], [class*=\\\"city\\\"], [class*=\\\"City\\\"]');\\n      const linkEl = card.querySelector('a[href*=\\\"job\\\"], a[href*=\\\"career\\\"], a');\\n      const text = card.innerText || '';\\n      const clearanceMatch = text.match(/(TS\\\\/SCI|TS\\\\/SCI with Poly|Top Secret\\\\/SCI|Top Secret|TS|Secret|Public Trust|Polygraph)/i);\\n      if (titleEl && titleEl.innerText.trim()) {\\n        results.push({\\n          title: titleEl.innerText.trim().substring(0, 200),\\n          company: 'TEKsystems',\\n          location: locationEl ? locationEl.innerText.trim() : '',\\n          url: linkEl ? linkEl.href : '',\\n          clearance: clearanceMatch ? clearanceMatch[0] : 'Unknown',\\n          scraped_at: new Date().toISOString(),\\n          source: 'TEKsystems'\\n        });\\n      }\\n    });\\n    return results;\\n  });\\n  return jobs;\\n}\",\n  \"maxPagesPerCrawl\": 5,\n  \"maxConcurrency\": 3,\n  \"pageLoadTimeoutSecs\": 60,\n  \"pageFunctionTimeoutSecs\": 60,\n  \"proxyConfiguration\": {\"useApifyProxy\": true}\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "8a02ffc0-0eb5-48dd-bb1c-026cbf15aa1e",
+      "name": "Scrape TEKsystems",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2000,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 90
+      },
+      "id": "8b94f947-0d3d-4a9e-a0d5-64bc943baac1",
+      "name": "Wait TEKsystems",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1776,
+        128
+      ],
+      "webhookId": "be5e8210-9f97-499a-b913-7bceb45942cb",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/actor-runs/{{ $json.data.id }}/dataset/items?token={{ $('Set Configuration').item.json.apifyToken }}",
+        "options": {}
+      },
+      "id": "cfbd9211-1d75-43a4-bd4f-835e6593e3e1",
+      "name": "Get TEKsystems Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1568,
+        128
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~puppeteer-scraper/runs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.apifyToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"startUrls\": [{\"url\": \"https://www.clearancejobs.com/jobs?clearance=top-secret-sci\"}],\n  \"pageFunction\": \"async function pageFunction(context) {\\n  const { page, request, log } = context;\\n  log.info('Scraping ClearanceJobs...');\\n  await page.waitForTimeout(3000);\\n  const jobs = await page.evaluate(() => {\\n    const results = [];\\n    const cards = document.querySelectorAll('[class*=\\\"job\\\"], [class*=\\\"Job\\\"], [class*=\\\"card\\\"], [class*=\\\"Card\\\"], article, .result, [class*=\\\"posting\\\"], [class*=\\\"listing\\\"]');\\n    cards.forEach((card, index) => {\\n      if (index >= 50) return;\\n      const titleEl = card.querySelector('h1, h2, h3, h4, [class*=\\\"title\\\"], [class*=\\\"Title\\\"], a');\\n      const companyEl = card.querySelector('[class*=\\\"company\\\"], [class*=\\\"Company\\\"], [class*=\\\"employer\\\"], [class*=\\\"Employer\\\"]');\\n      const locationEl = card.querySelector('[class*=\\\"location\\\"], [class*=\\\"Location\\\"], [class*=\\\"city\\\"], [class*=\\\"City\\\"]');\\n      const linkEl = card.querySelector('a[href*=\\\"job\\\"], a[href*=\\\"career\\\"], a');\\n      const text = card.innerText || '';\\n      const clearanceMatch = text.match(/(TS\\\\/SCI|TS\\\\/SCI with Poly|Top Secret\\\\/SCI|Top Secret|TS|Secret|Public Trust|Polygraph)/i);\\n      if (titleEl && titleEl.innerText.trim()) {\\n        results.push({\\n          title: titleEl.innerText.trim().substring(0, 200),\\n          company: companyEl ? companyEl.innerText.trim() : 'ClearanceJobs Employer',\\n          location: locationEl ? locationEl.innerText.trim() : '',\\n          url: linkEl ? linkEl.href : '',\\n          clearance: clearanceMatch ? clearanceMatch[0] : 'TS/SCI',\\n          scraped_at: new Date().toISOString(),\\n          source: 'ClearanceJobs'\\n        });\\n      }\\n    });\\n    return results;\\n  });\\n  return jobs;\\n}\",\n  \"maxPagesPerCrawl\": 5,\n  \"maxConcurrency\": 3,\n  \"pageLoadTimeoutSecs\": 60,\n  \"pageFunctionTimeoutSecs\": 60,\n  \"proxyConfiguration\": {\"useApifyProxy\": true}\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "26755a01-4158-443f-b647-1e2c0efaf021",
+      "name": "Scrape ClearanceJobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2000,
+        336
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "amount": 90
+      },
+      "id": "0375887e-b67f-415e-8c23-fed2cf37b9b5",
+      "name": "Wait ClearanceJobs",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1776,
+        336
+      ],
+      "webhookId": "bd5582e8-c8a1-45a1-8217-98aec799f20f"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/actor-runs/{{ $json.data.id }}/dataset/items?token={{ $('Set Configuration').item.json.apifyToken }}",
+        "options": {}
+      },
+      "id": "5d88a5e3-673d-470f-9886-8532a64f02cd",
+      "name": "Get ClearanceJobs Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1568,
+        336
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "35e8725e-9ef7-4f22-9eaa-e41e30c408df",
+      "name": "Merge All Jobs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1344,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "title,company,location",
+        "options": {}
+      },
+      "id": "af4ea6c9-2ea1-4108-b53f-d39c281af936",
+      "name": "Remove Duplicates",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        224
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Standardize all job data to consistent format\nconst allItems = $input.all();\n\nconst clearanceMap = {\n  'ts/sci with poly': 'TS/SCI w/ Poly',\n  'ts/sci': 'TS/SCI',\n  'top secret/sci': 'TS/SCI',\n  'top secret': 'TS',\n  'ts': 'TS',\n  'secret': 'Secret',\n  'public trust': 'Public Trust',\n  'polygraph': 'TS/SCI w/ Poly',\n  'sci': 'TS/SCI',\n  'unknown': 'Unknown'\n};\n\nconst jobs = allItems.map((item, index) => {\n  const job = item.json;\n  \n  // Normalize clearance level\n  const rawClearance = (job.clearance || 'unknown').toLowerCase().trim();\n  let normalizedClearance = 'Unknown';\n  for (const [key, value] of Object.entries(clearanceMap)) {\n    if (rawClearance.includes(key)) {\n      normalizedClearance = value;\n      break;\n    }\n  }\n  \n  // Extract location components\n  const locationStr = job.location || '';\n  const locationParts = locationStr.split(',').map(s => s.trim());\n  const city = locationParts[0] || '';\n  const state = locationParts[1] || '';\n  \n  // Generate unique job ID\n  const jobId = `JOB-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 6)}`;\n  \n  // Generate deduplication key\n  const dedupeKey = `${(job.title || '').toLowerCase()}-${(job.company || '').toLowerCase()}-${city.toLowerCase()}`.replace(/[^a-z0-9-]/g, '');\n  \n  return {\n    json: {\n      jobId: jobId,\n      title: (job.title || '').substring(0, 200),\n      company: job.company || job.source || 'Unknown',\n      location: locationStr,\n      city: city,\n      state: state,\n      clearanceLevel: normalizedClearance,\n      url: job.url || '',\n      scrapedAt: job.scraped_at || new Date().toISOString(),\n      source: job.source || job.company || 'Unknown',\n      deduplicationKey: dedupeKey,\n      status: 'New',\n      matchedProgram: '',\n      matchConfidence: 0,\n      bdScore: 0,\n      priorityLevel: 'Cold'\n    }\n  };\n});\n\nreturn jobs;"
+      },
+      "id": "acc044bb-070c-4d2c-892a-014cfbf7e1f1",
+      "name": "Standardize Job Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "2bcdef65-baa5-80a1-b342-d49a1838f39e"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "75a3ffcd-d86f-4105-b0b4-d95946ed7cec",
+      "name": "Fetch Programs Database",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -688,
+        -80
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare data for AI matching - batch jobs with programs context\nconst jobItems = $('Standardize Job Data').all();\nconst programItems = $('Fetch Programs Database').all();\n\n// Extract program data for AI context\nconst programs = programItems.map(p => {\n  const props = p.json.properties || p.json;\n  \n  // Handle Notion property formats\n  const getPropValue = (prop) => {\n    if (!prop) return '';\n    if (prop.title) return prop.title.map(t => t.plain_text).join('');\n    if (prop.rich_text) return prop.rich_text.map(t => t.plain_text).join('');\n    if (prop.select) return prop.select.name || '';\n    if (prop.multi_select) return prop.multi_select.map(s => s.name).join(', ');\n    if (prop.number) return prop.number;\n    if (typeof prop === 'string') return prop;\n    return '';\n  };\n  \n  return {\n    name: getPropValue(props['program name'] || props['Program Name'] || props['Name']),\n    acronym: getPropValue(props['acronym'] || props['Acronym']),\n    agency: getPropValue(props['customer agency'] || props['Customer Agency']),\n    prime: getPropValue(props['prime contractor'] || props['Prime Contractor']),\n    locations: getPropValue(props['key locations'] || props['Key Locations']),\n    clearance: getPropValue(props['clearance requirements'] || props['Clearance Requirements']),\n    roles: getPropValue(props['typical roles'] || props['Typical Roles']),\n    keywords: getPropValue(props['keywords/signals'] || props['Keywords/Signals'] || props['keywords'] || props['Keywords']),\n    programType: getPropValue(props['program type'] || props['Program Type'])\n  };\n}).filter(p => p.name);\n\n// Create condensed program list (limit for token management)\nconst programsSummary = programs.slice(0, 100).map(p => \n  `${p.name}${p.acronym ? ' (' + p.acronym + ')' : ''} | Agency: ${p.agency || 'N/A'} | Prime: ${p.prime || 'N/A'} | Locations: ${p.locations || 'N/A'} | Clearance: ${p.clearance || 'N/A'} | Roles: ${p.roles || 'N/A'}`\n).join('\\n');\n\n// Prepare each job with AI prompt\nconst results = jobItems.map(jobItem => {\n  const job = jobItem.json;\n  \n  return {\n    json: {\n      ...job,\n      programsContext: programsSummary,\n      programsCount: programs.length\n    }\n  };\n});\n\nreturn results;"
+      },
+      "id": "19fd7949-17ee-40b1-b6ea-21f6679e4da5",
+      "name": "Prepare AI Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a DoD/IC program matching expert. Your job is to match job postings to the most relevant defense/intelligence program. Always respond with ONLY valid JSON, no markdown formatting, no code blocks."
+            },
+            {
+              "content": "=Match this job to the best program from the list.\n\nJOB:\n- Title: {{ $json.title }}\n- Company: {{ $json.company }}\n- Location: {{ $json.location }}\n- Clearance: {{ $json.clearanceLevel }}\n\nPROGRAMS DATABASE ({{ $json.programsCount }} total):\n{{ $json.programsContext }}\n\nMATCH CRITERIA:\n1. Location alignment (job location matches program locations)\n2. Job title matches typical roles\n3. Clearance level compatibility\n4. Prime contractor alignment\n5. Technology/keyword relevance\n\nRespond with ONLY this JSON (no markdown, no code blocks):\n{\"matched_program\": \"Program Name or NO_MATCH\", \"confidence_score\": 0-100, \"match_reasons\": [\"reason1\", \"reason2\"], \"suggested_prime\": \"Prime contractor name\", \"program_type\": \"IT/Cyber/C5ISR/Space/Missile/Other\"}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 500,
+          "temperature": 0.3
+        }
+      },
+      "id": "01f906c8-a90f-4a0c-bb86-8c001482181c",
+      "name": "AI Program Matching",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -464,
+        128
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "lZeQTKtsKzyQqo7e",
+          "name": "OpenAI - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse AI response and merge with job data\nconst job = $('Prepare AI Context').item.json;\nconst aiResponse = $input.item.json;\n\nlet matchData;\ntry {\n  // Get the response text\n  let responseText = '';\n  \n  if (typeof aiResponse.text === 'string') {\n    responseText = aiResponse.text;\n  } else if (aiResponse.message?.content) {\n    responseText = aiResponse.message.content;\n  } else if (aiResponse.choices?.[0]?.message?.content) {\n    responseText = aiResponse.choices[0].message.content;\n  } else if (typeof aiResponse.content === 'string') {\n    responseText = aiResponse.content;\n  } else if (typeof aiResponse === 'string') {\n    responseText = aiResponse;\n  } else {\n    responseText = JSON.stringify(aiResponse);\n  }\n  \n  // Clean markdown formatting\n  responseText = responseText.replace(/```json\\n?/gi, '').replace(/```\\n?/gi, '').trim();\n  \n  // Try to extract JSON from the response\n  const jsonMatch = responseText.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    matchData = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error('No JSON found in response');\n  }\n} catch (e) {\n  matchData = {\n    matched_program: 'PARSE_ERROR',\n    confidence_score: 0,\n    match_reasons: ['AI response parsing failed: ' + e.message],\n    suggested_prime: 'Unknown',\n    program_type: 'Unknown'\n  };\n}\n\nreturn {\n  json: {\n    jobId: job.jobId,\n    title: job.title,\n    company: job.company,\n    location: job.location,\n    city: job.city,\n    state: job.state,\n    clearanceLevel: job.clearanceLevel,\n    url: job.url,\n    scrapedAt: job.scrapedAt,\n    source: job.source,\n    deduplicationKey: job.deduplicationKey,\n    matchedProgram: matchData.matched_program || 'NO_MATCH',\n    matchConfidence: matchData.confidence_score || 0,\n    matchReasons: matchData.match_reasons || [],\n    suggestedPrime: matchData.suggested_prime || 'Unknown',\n    programType: matchData.program_type || 'Unknown',\n    status: (matchData.confidence_score || 0) >= 50 ? 'Matched' : 'Unmatched'\n  }\n};"
+      },
+      "id": "f98337e2-cb54-46ae-807f-4db26d268e86",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// BD Opportunity Score Calculation\n// Formula: Score = (Hiring_Demand × 25%) + (Pain_Level × 20%) + (Contract_Value × 20%) + (Company_Fit × 20%) + (Competitive_Intensity × 15%)\n\nconst job = $input.item.json;\n\n// Hiring Demand Score (based on clearance - higher clearance = higher demand)\nfunction calculateHiringDemand(clearance) {\n  const scores = {\n    'TS/SCI w/ Poly': 100,\n    'TS/SCI': 90,\n    'TS': 75,\n    'Secret': 50,\n    'Public Trust': 30,\n    'Unknown': 20\n  };\n  return scores[clearance] || 20;\n}\n\n// Pain Level Score (hard-to-fill indicators)\nfunction calculatePainLevel(job) {\n  let score = 50;\n  \n  const highDemandLocations = ['fort meade', 'fort liberty', 'fort bragg', 'lackland', 'colorado springs', 'huntsville', 'san antonio', 'augusta', 'hawaii', 'anchorage', 'tampa', 'macdill'];\n  const location = (job.location || '').toLowerCase();\n  if (highDemandLocations.some(loc => location.includes(loc))) {\n    score += 25;\n  }\n  \n  if (job.clearanceLevel === 'TS/SCI w/ Poly') score += 25;\n  else if (job.clearanceLevel === 'TS/SCI') score += 15;\n  else if (job.clearanceLevel === 'TS') score += 10;\n  \n  return Math.min(score, 100);\n}\n\n// Contract Value Score (based on program match and type)\nfunction calculateContractValue(job) {\n  let score = job.matchConfidence || 50;\n  \n  const highValueTypes = ['Missile', 'Space', 'C5ISR', 'Cyber', 'Nuclear'];\n  if (highValueTypes.some(t => (job.programType || '').includes(t))) {\n    score += 15;\n  }\n  \n  return Math.min(score, 100);\n}\n\n// Company Fit Score (PTS specialty alignment)\nfunction calculateCompanyFit(job) {\n  let score = 60;\n  \n  if (['TS', 'TS/SCI', 'TS/SCI w/ Poly'].includes(job.clearanceLevel)) {\n    score += 20;\n  }\n  \n  const title = (job.title || '').toLowerCase();\n  const itRoles = ['systems', 'network', 'cyber', 'security', 'analyst', 'engineer', 'administrator', 'developer', 'architect', 'technician', 'specialist'];\n  if (itRoles.some(role => title.includes(role))) {\n    score += 20;\n  }\n  \n  return Math.min(score, 100);\n}\n\n// Competitive Intensity Score (lower competition = higher score)\nfunction calculateCompetitiveIntensity(job) {\n  let score = 70;\n  \n  if (job.clearanceLevel === 'TS/SCI w/ Poly') score += 20;\n  else if (job.clearanceLevel === 'TS/SCI') score += 10;\n  \n  const lowCompLocations = ['huntsville', 'colorado springs', 'san antonio', 'augusta', 'hawaii', 'anchorage'];\n  const location = (job.location || '').toLowerCase();\n  if (lowCompLocations.some(loc => location.includes(loc))) {\n    score += 10;\n  }\n  \n  return Math.min(score, 100);\n}\n\n// Calculate all component scores\nconst hiringDemand = calculateHiringDemand(job.clearanceLevel);\nconst painLevel = calculatePainLevel(job);\nconst contractValue = calculateContractValue(job);\nconst companyFit = calculateCompanyFit(job);\nconst competitiveIntensity = calculateCompetitiveIntensity(job);\n\n// Weighted BD Score\nconst bdScore = Math.round(\n  (hiringDemand * 0.25) +\n  (painLevel * 0.20) +\n  (contractValue * 0.20) +\n  (companyFit * 0.20) +\n  (competitiveIntensity * 0.15)\n);\n\n// Priority Classification\nlet priorityLevel;\nif (bdScore >= 80) priorityLevel = 'Hot';\nelse if (bdScore >= 50) priorityLevel = 'Warm';\nelse priorityLevel = 'Cold';\n\nreturn {\n  json: {\n    ...job,\n    bdScore: bdScore,\n    priorityLevel: priorityLevel,\n    scoringBreakdown: {\n      hiringDemand: hiringDemand,\n      painLevel: painLevel,\n      contractValue: contractValue,\n      companyFit: companyFit,\n      competitiveIntensity: competitiveIntensity\n    }\n  }\n};"
+      },
+      "id": "d1223c5f-0caf-485e-a633-4eb095dba6ce",
+      "name": "Calculate BD Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5ab80c40-31f0-48b5-ba1d-c4dae1af6fc6"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Job Title|title",
+              "title": "={{ $json.title }}"
+            },
+            {
+              "key": "Company|select",
+              "selectValue": "={{ $json.company }}"
+            },
+            {
+              "key": "Location|rich_text",
+              "textContent": "={{ $json.location }}"
+            },
+            {
+              "key": "Clearance Level|select",
+              "selectValue": "={{ $json.clearanceLevel }}"
+            },
+            {
+              "key": "Job URL|url",
+              "urlValue": "={{ $json.url }}"
+            },
+            {
+              "key": "Scraped Date|date",
+              "date": "={{ $json.scrapedAt }}"
+            },
+            {
+              "key": "Matched Program|rich_text",
+              "textContent": "={{ $json.matchedProgram }}"
+            },
+            {
+              "key": "Match Confidence|number",
+              "numberValue": "={{ $json.matchConfidence }}"
+            },
+            {
+              "key": "Status|select",
+              "selectValue": "={{ $json.status }}"
+            },
+            {
+              "key": "BD Score|number",
+              "numberValue": "={{ $json.bdScore }}"
+            },
+            {
+              "key": "Priority Level|select",
+              "selectValue": "={{ $json.priorityLevel }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6598f476-e025-40e9-a6fc-6a44e1d279e9",
+      "name": "Save Job to Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        128
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "filter-hot",
+              "leftValue": "={{ $json.priorityLevel }}",
+              "rightValue": "Hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "bbc637a7-83b6-44ff-89f5-f595d6b21d8d",
+      "name": "Filter Hot Leads",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.1,
+      "position": [
+        432,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "2bcdef65-baa5-8015-bf09-c01813f24b0a"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Name|title",
+              "title": "=BD-{{ $json.jobId }}"
+            },
+            {
+              "key": "Company|rich_text",
+              "textContent": "={{ $json.company }}"
+            },
+            {
+              "key": "Value|number",
+              "numberValue": "={{ $json.bdScore }}"
+            },
+            {
+              "key": "Status|select",
+              "selectValue": "New"
+            },
+            {
+              "key": "Next Follow Up|date",
+              "date": "={{ $now.plus({days: 3}).toISO() }}"
+            },
+            {
+              "key": "Notes|rich_text",
+              "textContent": "=Hot Lead: {{ $json.title }} at {{ $json.company }}\\nProgram: {{ $json.matchedProgram }}\\nLocation: {{ $json.location }}\\nClearance: {{ $json.clearanceLevel }}\\nBD Score: {{ $json.bdScore }}\\nMatch Confidence: {{ $json.matchConfidence }}%"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4e9ad032-e350-46a6-8d4a-b3624716f773",
+      "name": "Create BD Opportunity",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        32
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "allJobs",
+        "options": {}
+      },
+      "id": "307a06c0-ddd4-4d63-916c-7ad2bad7e3cd",
+      "name": "Aggregate for Summary",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        432,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create daily summary report\nconst input = $input.all();\nlet allJobs = [];\n\ninput.forEach(item => {\n  if (item.json.allJobs && Array.isArray(item.json.allJobs)) {\n    allJobs = allJobs.concat(item.json.allJobs);\n  }\n});\n\nconst today = new Date().toISOString().split('T')[0];\n\nconst summary = {\n  date: today,\n  totalJobs: allJobs.length,\n  bySource: {},\n  byClearance: {},\n  byPriority: { Hot: 0, Warm: 0, Cold: 0 },\n  matched: 0,\n  unmatched: 0,\n  averageScore: 0,\n  hotLeads: [],\n  topPrograms: {}\n};\n\nlet totalScore = 0;\n\nallJobs.forEach(job => {\n  // By source\n  const source = job.source || 'Unknown';\n  summary.bySource[source] = (summary.bySource[source] || 0) + 1;\n  \n  // By clearance\n  const clearance = job.clearanceLevel || 'Unknown';\n  summary.byClearance[clearance] = (summary.byClearance[clearance] || 0) + 1;\n  \n  // By priority\n  const priority = job.priorityLevel || 'Cold';\n  summary.byPriority[priority] = (summary.byPriority[priority] || 0) + 1;\n  \n  // Matched vs unmatched\n  if (job.matchConfidence >= 50) {\n    summary.matched++;\n    const program = job.matchedProgram || 'Unknown';\n    if (program !== 'NO_MATCH' && program !== 'PARSE_ERROR') {\n      summary.topPrograms[program] = (summary.topPrograms[program] || 0) + 1;\n    }\n  } else {\n    summary.unmatched++;\n  }\n  \n  // Hot leads\n  if (priority === 'Hot') {\n    summary.hotLeads.push({\n      title: job.title,\n      company: job.company,\n      program: job.matchedProgram,\n      score: job.bdScore,\n      clearance: job.clearanceLevel,\n      location: job.location\n    });\n  }\n  \n  totalScore += job.bdScore || 0;\n});\n\nsummary.averageScore = allJobs.length > 0 ? Math.round(totalScore / allJobs.length) : 0;\nsummary.hotLeads.sort((a, b) => b.score - a.score);\n\nreturn [{ json: { summary } }];"
+      },
+      "id": "70c6e29a-b41b-4deb-9402-a8ca7cd79885",
+      "name": "Create Summary Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "George@nurisees.com",
+        "toEmail": "Gmaranville@prime-ts.com",
+        "subject": "=🎯 Prime TS BD Intelligence Report - {{ $now.format('yyyy-MM-dd') }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }\n    .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n    h1 { color: #1a365d; border-bottom: 3px solid #3182ce; padding-bottom: 15px; margin-top: 0; }\n    h2 { color: #2c5282; margin-top: 30px; }\n    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }\n    .stat-box { background: #ebf8ff; padding: 20px; border-radius: 8px; text-align: center; }\n    .stat-number { font-size: 32px; font-weight: bold; color: #2b6cb0; }\n    .stat-label { color: #4a5568; margin-top: 5px; }\n    .hot { background: #fed7d7; }\n    .hot .stat-number { color: #c53030; }\n    .warm { background: #feebc8; }\n    .warm .stat-number { color: #dd6b20; }\n    table { width: 100%; border-collapse: collapse; margin: 15px 0; }\n    th { background: #2c5282; color: white; padding: 12px; text-align: left; }\n    td { padding: 10px; border-bottom: 1px solid #e2e8f0; }\n    tr:nth-child(even) { background: #f7fafc; }\n    .footer { margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0; color: #718096; font-size: 12px; text-align: center; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <h1>🎯 Prime TS BD Intelligence Report</h1>\n    <p><strong>Date:</strong> {{ $json.summary.date }} | <strong>Generated:</strong> {{ $now.format('HH:mm:ss') }} EST</p>\n    \n    <div class=\"summary-grid\">\n      <div class=\"stat-box\">\n        <div class=\"stat-number\">{{ $json.summary.totalJobs }}</div>\n        <div class=\"stat-label\">Total Jobs Scraped</div>\n      </div>\n      <div class=\"stat-box\">\n        <div class=\"stat-number\">{{ $json.summary.matched }}</div>\n        <div class=\"stat-label\">Matched to Programs</div>\n      </div>\n      <div class=\"stat-box\">\n        <div class=\"stat-number\">{{ $json.summary.averageScore }}</div>\n        <div class=\"stat-label\">Average BD Score</div>\n      </div>\n      <div class=\"stat-box hot\">\n        <div class=\"stat-number\">{{ $json.summary.byPriority.Hot || 0 }}</div>\n        <div class=\"stat-label\">🔴 Hot Leads</div>\n      </div>\n      <div class=\"stat-box warm\">\n        <div class=\"stat-number\">{{ $json.summary.byPriority.Warm || 0 }}</div>\n        <div class=\"stat-label\">🟡 Warm Leads</div>\n      </div>\n      <div class=\"stat-box\">\n        <div class=\"stat-number\">{{ $json.summary.byPriority.Cold || 0 }}</div>\n        <div class=\"stat-label\">🟢 Cold Leads</div>\n      </div>\n    </div>\n    \n    <h2>🔴 Top Hot Leads</h2>\n    <table>\n      <tr><th>Job Title</th><th>Company</th><th>Program</th><th>Clearance</th><th>Score</th></tr>\n      {{ $json.summary.hotLeads.slice(0, 10).map(l => '<tr><td>' + l.title + '</td><td>' + l.company + '</td><td>' + (l.program || 'N/A') + '</td><td>' + l.clearance + '</td><td><strong>' + l.score + '</strong></td></tr>').join('') }}\n    </table>\n    \n    <h2>📊 Jobs by Source</h2>\n    <table>\n      <tr><th>Source</th><th>Count</th></tr>\n      {{ Object.entries($json.summary.bySource).map(([k, v]) => '<tr><td>' + k + '</td><td>' + v + '</td></tr>').join('') }}\n    </table>\n    \n    <h2>🔒 Jobs by Clearance Level</h2>\n    <table>\n      <tr><th>Clearance</th><th>Count</th></tr>\n      {{ Object.entries($json.summary.byClearance).map(([k, v]) => '<tr><td>' + k + '</td><td>' + v + '</td></tr>').join('') }}\n    </table>\n    \n    <div class=\"footer\">\n      <p>Generated by Prime TS BD Intelligence System v2.1</p>\n      <p>This is an automated report. Reply to this email for support.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "e5f1f507-bc93-4881-a65e-057e155f33d3",
+      "name": "Send Daily Summary",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        864,
+        240
+      ],
+      "webhookId": "358d0f21-842a-4e62-925a-c5d517eea2a6",
+      "credentials": {
+        "smtp": {
+          "id": "knh7NFxZJw45izKU",
+          "name": "SMTP - Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# 🎯 PRIME TS BD INTELLIGENCE SYSTEM v2.1\n\n## Overview\nAutomated competitor job scraping with AI-powered program matching and BD opportunity scoring.\n\n## Workflow Flow\n1. **Triggers** → Schedule (6AM) / Manual / Webhook\n2. **Scrapers** → 3 job boards via Apify\n3. **Processing** → Merge, Dedupe, Standardize\n4. **AI Matching** → GPT-4o-mini program matching\n5. **Scoring** → 5-factor weighted BD score\n6. **Storage** → Save to Notion databases\n7. **Alerts** → Hot leads + Daily summary email\n\n## BD Score Formula\n- Hiring Demand: 25%\n- Pain Level: 20%\n- Contract Value: 20%\n- Company Fit: 20%\n- Competitive Intensity: 15%\n\n## Priority Levels\n🔴 Hot: Score ≥ 80\n🟡 Warm: Score 50-79\n🟢 Cold: Score < 50\n\n## Configuration Required\n1. Set Notion credential\n2. Set OpenAI credential\n3. Set SMTP credential\n4. Verify database IDs",
+        "height": 580,
+        "width": 340
+      },
+      "id": "78742848-9038-41ef-a4f4-668e2485c43e",
+      "name": "Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2944,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -576,
+        -96
+      ],
+      "id": "841e0dad-d97a-457f-b764-405dce34e875",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wngygaWcgXDzwHXh",
+          "name": "Header Auth account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 6 AM EST Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Set Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Configuration": {
+      "main": [
+        [
+          {
+            "node": "Scrape Insight Global",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Scrape TEKsystems",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Scrape ClearanceJobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Insight Global": {
+      "main": [
+        [
+          {
+            "node": "Wait Insight Global",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Insight Global": {
+      "main": [
+        [
+          {
+            "node": "Get Insight Global Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Insight Global Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape TEKsystems": {
+      "main": [
+        [
+          {
+            "node": "Wait TEKsystems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait TEKsystems": {
+      "main": [
+        [
+          {
+            "node": "Get TEKsystems Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get TEKsystems Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All Jobs",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Scrape ClearanceJobs": {
+      "main": [
+        [
+          {
+            "node": "Wait ClearanceJobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait ClearanceJobs": {
+      "main": [
+        [
+          {
+            "node": "Get ClearanceJobs Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Jobs": {
+      "main": [
+        [
+          {
+            "node": "Standardize Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        []
+      ]
+    },
+    "Standardize Job Data": {
+      "main": [
+        [
+          {
+            "node": "Fetch Programs Database",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Programs Database": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Context": {
+      "main": [
+        [
+          {
+            "node": "AI Program Matching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Program Matching": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Calculate BD Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate BD Score": {
+      "main": [
+        []
+      ]
+    },
+    "Save Job to Notion": {
+      "main": [
+        [
+          {
+            "node": "Filter Hot Leads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Aggregate for Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Hot Leads": {
+      "main": [
+        [
+          {
+            "node": "Create BD Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate for Summary": {
+      "main": [
+        [
+          {
+            "node": "Create Summary Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Summary Report": {
+      "main": [
+        [
+          {
+            "node": "Send Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cdc45684-00c2-4872-afb3-1ec8e1de84c5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "jYihwcJ5BG04QKVC",
+  "tags": []
+}

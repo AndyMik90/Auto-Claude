@@ -1,0 +1,201 @@
+{
+  "name": "Federal Programs Data Fix - Budget & Contract Vehicle",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "739bb11d-ddcd-42cb-bed5-1495c36ba711",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "databaseId": {
+          "__rl": true,
+          "value": "9db40fce-0781-42b9-902c-d4b0263b1e23",
+          "mode": "list",
+          "cachedResultName": "Federal Programs",
+          "cachedResultUrl": "https://www.notion.so/9db40fce078142b9902cd4b0263b1e23"
+        }
+      },
+      "id": "a52fba97-ce29-4ace-b818-b7976bdbdd73",
+      "name": "Get All Federal Programs",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        112,
+        -80
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform Federal Programs data\n// n8n Notion node returns properties with 'property_' prefix and snake_case names\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const pageId = data.id;\n  \n  // Get values using the actual flattened property names from Notion node\n  const contractValueText = data.property_contract_value || '';\n  const contractVehicleText = data.property_contract_vehicle_type || '';\n  const programType1Text = data.property_program_type_1 || '';\n  const confidenceLevel = data.property_confidence_level || '';\n  const programName = data.property_program_name || data.name || '';\n  \n  // Parse Contract Value to number\n  let budgetNumber = null;\n  if (contractValueText && contractValueText.trim()) {\n    const upperVal = contractValueText.toUpperCase();\n    \n    if (upperVal.includes('MULTI-$B') || upperVal.includes('MULTI-B') || upperVal.includes('MULTI $B')) {\n      budgetNumber = 2000000000;\n    } else if (upperVal.includes('MULTI-$M') || upperVal.includes('MULTI-M') || upperVal.includes('MULTI $M')) {\n      budgetNumber = 500000000;\n    } else {\n      const match = contractValueText.match(/\\$?([\\d.]+)\\s*(B|M|K)?/i);\n      if (match) {\n        const num = parseFloat(match[1]);\n        const mult = (match[2] || '').toUpperCase();\n        \n        if (mult === 'B') budgetNumber = num * 1000000000;\n        else if (mult === 'M') budgetNumber = num * 1000000;\n        else if (mult === 'K') budgetNumber = num * 1000;\n        else if (num > 0) budgetNumber = num;\n      }\n    }\n  }\n  \n  // Map Contract Vehicle/Type to select option\n  let contractVehicleSelect = null;\n  if (contractVehicleText && contractVehicleText.trim()) {\n    const upperCV = contractVehicleText.toUpperCase();\n    \n    if (upperCV.includes('IDIQ')) contractVehicleSelect = 'IDIQ';\n    else if (upperCV === 'SERVICES' || upperCV.startsWith('SERVICE')) contractVehicleSelect = 'Services';\n    else if (upperCV === 'PROGRAM' || upperCV === 'PROGRAMS') contractVehicleSelect = 'Program';\n    else if (upperCV.includes('SINGLE AWARD') || upperCV.includes('SINGLE')) contractVehicleSelect = 'Single Award';\n    else if (upperCV.includes('TASK ORDER') || upperCV.includes('TASK')) contractVehicleSelect = 'Task Order';\n    else if (upperCV.includes('R&D') || upperCV.includes('RESEARCH')) contractVehicleSelect = 'R&D';\n    else if (upperCV.includes('GWAC')) contractVehicleSelect = 'GWAC';\n    else if (upperCV.includes('RECOMPETE')) contractVehicleSelect = 'Recompete';\n    else if (upperCV.includes('PRODUCTION') || upperCV.includes('PROD')) contractVehicleSelect = 'Production';\n    else if (upperCV.includes('BOA')) contractVehicleSelect = 'BOA';\n    else if (upperCV.includes('OTA')) contractVehicleSelect = 'OTA';\n    else if (upperCV.includes('BPA') || upperCV.includes('BLANKET')) contractVehicleSelect = 'BPA';\n    else if (upperCV.includes('MULTI-YEAR') || upperCV.includes('MULTIYEAR')) contractVehicleSelect = 'Multi-Year';\n    else if (upperCV.includes('SUSTAINMENT') || upperCV.includes('O&M')) contractVehicleSelect = 'Sustainment';\n    else if (upperCV.includes('FFP') || upperCV.includes('FIRM FIXED')) contractVehicleSelect = 'FFP';\n    else if (upperCV.includes('ONGOING')) contractVehicleSelect = 'Program';\n    else contractVehicleSelect = 'Other';\n  }\n  \n  // Map Program Type 1 text to select option\n  let programTypeSelect = null;\n  if (programType1Text && programType1Text.trim()) {\n    const validOptions = ['IT', 'IT Ops', 'Professional Services', 'R&D', 'Engineering', 'Intel', 'Cyber', 'C5ISR', 'Weapon Systems', 'Space', 'Network', 'Logistics', 'Data', 'Health IT', 'Security', 'Sustainment', 'BOS', 'Consulting', 'EW', 'Event'];\n    const match = validOptions.find(opt => opt.toLowerCase() === programType1Text.trim().toLowerCase());\n    if (match) programTypeSelect = match;\n  }\n  \n  // Build update object - only include fields that have values\n  let hasUpdates = false;\n  const updateData = {\n    pageId: pageId,\n    programName: programName\n  };\n  \n  if (budgetNumber !== null) {\n    updateData.budgetNumber = budgetNumber;\n    hasUpdates = true;\n  }\n  \n  if (contractVehicleSelect) {\n    updateData.contractVehicleSelect = contractVehicleSelect;\n    hasUpdates = true;\n  }\n  \n  if (programTypeSelect) {\n    updateData.programTypeSelect = programTypeSelect;\n    hasUpdates = true;\n  }\n  \n  if (confidenceLevel) {\n    updateData.priorityLevel = confidenceLevel;\n    hasUpdates = true;\n  }\n  \n  // Debug info\n  updateData._debug = {\n    originalContractValue: contractValueText,\n    originalContractVehicle: contractVehicleText,\n    originalProgramType1: programType1Text,\n    originalConfidence: confidenceLevel\n  };\n  \n  if (hasUpdates) {\n    results.push({ json: updateData });\n  }\n}\n\nconsole.log(`Processed ${items.length} items, ${results.length} have updates`);\nreturn results;"
+      },
+      "id": "4ad98bdb-991d-41ab-adb4-469100671a3f",
+      "name": "Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "51e9528c-ba47-4d7c-b9c6-11eba1014d90",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        560,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.notion.com/v1/pages/{{ $json.pageId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ properties: Object.assign({}, $json.budgetNumber !== undefined && $json.budgetNumber !== null ? { Budget: { number: $json.budgetNumber } } : {}, $json.contractVehicleSelect ? { 'Contract Vehicle': { select: { name: $json.contractVehicleSelect } } } : {}, $json.programTypeSelect ? { 'Program Type': { select: { name: $json.programTypeSelect } } } : {}, $json.priorityLevel ? { 'Priority Level': { select: { name: $json.priorityLevel } } } : {}) }) }}",
+        "options": {}
+      },
+      "id": "e1d1530c-0f17-4f8a-b81e-825122198003",
+      "name": "Update Notion Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        768,
+        -80
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 0.35
+      },
+      "id": "1dea24d3-85e7-4717-b2e7-1a4262753779",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        992,
+        -80
+      ],
+      "webhookId": "ac1ac393-a147-4828-8b32-e2ab699b466d"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get All Federal Programs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Federal Programs": {
+      "main": [
+        [
+          {
+            "node": "Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Update Notion Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Notion Page": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "a132f96a-5d95-41f2-947a-b5eb62ee98c5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "S5ZNab8nkGoDRVHG",
+  "tags": []
+}

@@ -1,0 +1,401 @@
+{
+  "name": "PTS BD - WF2 AI Enrichment Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        240,
+        304
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        240,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/f57792c1-605b-424c-8830-23ab41c47137/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"filter\": {\n    \"or\": [\n      { \"property\": \"Status\", \"select\": { \"equals\": \"raw_import\" } },\n      { \"property\": \"Status\", \"select\": { \"equals\": \"pending_enrichment\" } }\n    ]\n  },\n  \"page_size\": 10\n}",
+        "options": {}
+      },
+      "id": "fetch-pending-jobs",
+      "name": "Fetch Pending Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        480,
+        400
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-results",
+              "leftValue": "={{ $json.results.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-has-jobs",
+      "name": "Has Pending Jobs?",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        704,
+        400
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first();\nconst results = (inputData && inputData.json && inputData.json.results) ? inputData.json.results : [];\nconst jobs = [];\n\nfor (const page of results) {\n  const props = page.properties || {};\n  \n  function getTitle(p) {\n    if (!p || !p.title || !p.title[0]) return '';\n    return p.title[0].plain_text || '';\n  }\n  function getText(p) {\n    if (!p || !p.rich_text || !p.rich_text[0]) return '';\n    return p.rich_text[0].plain_text || '';\n  }\n  function getSelect(p) {\n    if (!p || !p.select) return '';\n    return p.select.name || '';\n  }\n  \n  jobs.push({\n    json: {\n      pageId: page.id,\n      title: getTitle(props['Job Title']),\n      company: getText(props['Company']),\n      location: getText(props['Location']),\n      clearance: getSelect(props['Clearance Level']),\n      url: props['Source URL'] ? props['Source URL'].url : ''\n    }\n  });\n}\n\nreturn jobs.length > 0 ? jobs : [{ json: { noJobs: true } }];"
+      },
+      "id": "extract-job-data",
+      "name": "Extract Job Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        928,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/06cd9b22-5d6b-4d37-b0d3-ba99da4971fa/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"page_size\": 100 }",
+        "options": {}
+      },
+      "id": "fetch-programs",
+      "name": "Fetch Programs Reference",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        480,
+        608
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const jobItems = $('Extract Job Data').all();\nconst programsResponse = $('Fetch Programs Reference').first();\nconst programsData = (programsResponse && programsResponse.json && programsResponse.json.results) ? programsResponse.json.results : [];\n\nconst programsList = [];\nfor (let i = 0; i < Math.min(programsData.length, 50); i++) {\n  const p = programsData[i];\n  const props = p.properties || {};\n  \n  function getTitle(prop) {\n    if (!prop || !prop.title || !prop.title[0]) return '';\n    return prop.title[0].plain_text || '';\n  }\n  function getSelect(prop) {\n    if (!prop || !prop.select) return '';\n    return prop.select.name || '';\n  }\n  \n  const programName = getTitle(props['Program Name']);\n  const agency = getSelect(props['Agency Owner']);\n  \n  if (programName) {\n    programsList.push(programName + ' | Agency: ' + agency);\n  }\n}\n\nconst programsContext = programsList.join('\\n');\n\nconst results = [];\nfor (const item of jobItems) {\n  if (item.json.noJobs) continue;\n  results.push({\n    json: {\n      pageId: item.json.pageId,\n      title: item.json.title,\n      company: item.json.company,\n      location: item.json.location,\n      clearance: item.json.clearance,\n      url: item.json.url,\n      programsContext: programsContext\n    }\n  });\n}\n\nreturn results.length > 0 ? results : [{ json: { noData: true } }];"
+      },
+      "id": "prepare-ai-context",
+      "name": "Prepare AI Context",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1152,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a DoD/IC program matching expert. Match job postings to federal programs. Respond with ONLY valid JSON, no markdown."
+            },
+            {
+              "content": "=Match this job to the best program.\n\nJOB:\n- Title: {{ $json.title }}\n- Company: {{ $json.company }}\n- Location: {{ $json.location }}\n- Clearance: {{ $json.clearance }}\n\nPROGRAMS:\n{{ $json.programsContext }}\n\nRespond with JSON only:\n{\"matched_program\": \"Program Name or NO_MATCH\", \"confidence_score\": 0-100, \"program_type\": \"IT/Cyber/Intel/Other\"}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 300,
+          "temperature": 0.2
+        }
+      },
+      "id": "ai-enrichment",
+      "name": "GPT-4o-mini Enrichment",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        1360,
+        400
+      ],
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "lZeQTKtsKzyQqo7e",
+          "name": "OpenAI - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const contextItem = $('Prepare AI Context').item;\nconst job = contextItem ? contextItem.json : {};\nconst aiResponse = $input.item.json;\n\nlet matchData;\ntry {\n  let text = aiResponse.text || '';\n  text = text.replace(/```json\\n?/gi, '').replace(/```\\n?/gi, '').trim();\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    matchData = JSON.parse(jsonMatch[0]);\n  } else {\n    matchData = { matched_program: 'PARSE_ERROR', confidence_score: 0 };\n  }\n} catch (e) {\n  matchData = { matched_program: 'PARSE_ERROR', confidence_score: 0 };\n}\n\nconst clearanceScores = { 'TS/SCI w/ Poly': 100, 'TS/SCI': 90, 'TS': 75, 'Secret': 50, 'Public Trust': 30 };\nconst hiringDemand = clearanceScores[job.clearance] || 20;\nconst contractValue = matchData.confidence_score || 50;\n\nconst bdScore = Math.round((hiringDemand * 0.4) + (contractValue * 0.4) + 20);\n\nlet priorityLevel = 'Cold';\nif (bdScore >= 80) priorityLevel = 'Hot';\nelse if (bdScore >= 50) priorityLevel = 'Warm';\n\nreturn {\n  json: {\n    pageId: job.pageId,\n    matchedProgram: matchData.matched_program || 'NO_MATCH',\n    matchConfidence: matchData.confidence_score || 0,\n    programType: matchData.program_type || 'Unknown',\n    bdScore: bdScore,\n    priorityLevel: priorityLevel\n  }\n};"
+      },
+      "id": "parse-calculate-score",
+      "name": "Parse AI & Calculate Score",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1584,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.notion.com/v1/pages/{{ $json.pageId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"Program Name\": { \"rich_text\": [{ \"text\": { \"content\": \"{{ $json.matchedProgram }}\" } }] },\n    \"AI Confidence Score\": { \"number\": {{ $json.matchConfidence }} },\n    \"Priority Score\": { \"number\": {{ $json.bdScore }} },\n    \"Status\": { \"select\": { \"name\": \"enriched\" } }\n  }\n}",
+        "options": {}
+      },
+      "id": "update-notion-page",
+      "name": "Update Hub Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1808,
+        400
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 0.5
+      },
+      "id": "rate-limit",
+      "name": "Rate Limit",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        2032,
+        400
+      ],
+      "typeVersion": 1.1,
+      "webhookId": "6595017d-ffb6-4108-a8f8-bd30c8fc6392"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Programs Reference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Programs Reference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Jobs": {
+      "main": [
+        [
+          {
+            "node": "Has Pending Jobs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Pending Jobs?": {
+      "main": [
+        [
+          {
+            "node": "Extract Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Job Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Programs Reference": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Context": {
+      "main": [
+        [
+          {
+            "node": "GPT-4o-mini Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-4o-mini Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Parse AI & Calculate Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI & Calculate Score": {
+      "main": [
+        [
+          {
+            "node": "Update Hub Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Hub Record": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "98e19784-c70d-4d7a-a15d-6362a6e29b17",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "pdzM84gixhnOXEOp",
+  "tags": []
+}

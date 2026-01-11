@@ -1,0 +1,16 @@
+{
+  "name": "Hub to BD opportunities piepline",
+  "nodes": [],
+  "pinData": {},
+  "connections": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "40baf1ae-1e28-444b-98d7-cb525a4bfedc",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "KtkyEI5ycnCuh591",
+  "tags": []
+}

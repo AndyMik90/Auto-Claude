@@ -1,0 +1,321 @@
+{
+  "name": "PTS BD - WF4 Contact Classification",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        240,
+        304
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        240,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/2ccdef65-baa5-8087-a53b-000ba596128e/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"filter\": {\n    \"property\": \"BD Priority\",\n    \"select\": { \"is_empty\": true }\n  },\n  \"page_size\": 10\n}",
+        "options": {}
+      },
+      "id": "fetch-contacts",
+      "name": "Fetch Unclassified Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        480,
+        400
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-results",
+              "leftValue": "={{ $json.results.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-contacts",
+      "name": "Has Contacts?",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        704,
+        400
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first();\nconst results = (inputData && inputData.json && inputData.json.results) ? inputData.json.results : [];\nconst contacts = [];\n\nfor (const page of results) {\n  const props = page.properties || {};\n  \n  function getTitle(p) {\n    if (!p || !p.title || !p.title[0]) return '';\n    return p.title[0].plain_text || '';\n  }\n  function getText(p) {\n    if (!p || !p.rich_text || !p.rich_text[0]) return '';\n    return p.rich_text[0].plain_text || '';\n  }\n  function getSelect(p) {\n    if (!p || !p.select) return '';\n    return p.select.name || '';\n  }\n  \n  contacts.push({\n    json: {\n      pageId: page.id,\n      lastName: getTitle(props['Name']),\n      firstName: getText(props['First Name']),\n      jobTitle: getText(props['Job Title']),\n      program: getSelect(props['Program']),\n      locationHub: getSelect(props['Location Hub'])\n    }\n  });\n}\n\nreturn contacts.length > 0 ? contacts : [{ json: { noContacts: true } }];"
+      },
+      "id": "extract-contact-data",
+      "name": "Extract Contact Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        928,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a BD contact classifier for defense contracting. Respond with JSON only, no markdown."
+            },
+            {
+              "content": "=Classify this contact for BD priority.\n\nContact:\n- Name: {{ $json.firstName }} {{ $json.lastName }}\n- Title: {{ $json.jobTitle }}\n- Program: {{ $json.program }}\n- Location: {{ $json.locationHub }}\n\nRespond with JSON:\n{\"bd_priority\": \"Critical/High/Medium/Standard\", \"hierarchy_tier\": \"Tier 1-6\", \"functional_areas\": [\"Program Management\", \"Network Engineering\", etc]}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 200,
+          "temperature": 0.2
+        }
+      },
+      "id": "ai-classification",
+      "name": "AI Classification",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        1152,
+        400
+      ],
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "lZeQTKtsKzyQqo7e",
+          "name": "OpenAI - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const contactItem = $('Extract Contact Data').item;\nconst contact = contactItem ? contactItem.json : {};\nconst aiResponse = $input.item.json;\n\nlet classData;\ntry {\n  let text = aiResponse.text || '';\n  text = text.replace(/```json\\n?/gi, '').replace(/```\\n?/gi, '').trim();\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    classData = JSON.parse(jsonMatch[0]);\n  } else {\n    classData = { bd_priority: 'Standard', hierarchy_tier: 'Tier 6 - Individual Contributor' };\n  }\n} catch (e) {\n  classData = { bd_priority: 'Standard', hierarchy_tier: 'Tier 6 - Individual Contributor' };\n}\n\nconst priorityMap = {\n  'Critical': '🔴 Critical',\n  'High': '🟠 High',\n  'Medium': '🟡 Medium',\n  'Standard': '⚪ Standard'\n};\n\nconst tierMap = {\n  'Tier 1': 'Tier 1 - Executive',\n  'Tier 2': 'Tier 2 - Director',\n  'Tier 3': 'Tier 3 - Program Leadership',\n  'Tier 4': 'Tier 4 - Management',\n  'Tier 5': 'Tier 5 - Senior IC',\n  'Tier 6': 'Tier 6 - Individual Contributor'\n};\n\nlet bdPriority = priorityMap[classData.bd_priority] || '⚪ Standard';\nlet hierarchyTier = classData.hierarchy_tier || 'Tier 6 - Individual Contributor';\nfor (const [key, value] of Object.entries(tierMap)) {\n  if (hierarchyTier.indexOf(key) !== -1) {\n    hierarchyTier = value;\n    break;\n  }\n}\n\nreturn {\n  json: {\n    pageId: contact.pageId,\n    bdPriority: bdPriority,\n    hierarchyTier: hierarchyTier\n  }\n};"
+      },
+      "id": "parse-classification",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1360,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.notion.com/v1/pages/{{ $json.pageId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"BD Priority\": { \"select\": { \"name\": \"{{ $json.bdPriority }}\" } },\n    \"Hierarchy Tier\": { \"select\": { \"name\": \"{{ $json.hierarchyTier }}\" } }\n  }\n}",
+        "options": {}
+      },
+      "id": "update-contact",
+      "name": "Update Contact Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1584,
+        400
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 0.5
+      },
+      "id": "rate-limit",
+      "name": "Rate Limit",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        1808,
+        400
+      ],
+      "typeVersion": 1.1,
+      "webhookId": "44f79532-871c-49a1-b284-2aedffa5388b"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unclassified Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unclassified Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Unclassified Contacts": {
+      "main": [
+        [
+          {
+            "node": "Has Contacts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Contacts?": {
+      "main": [
+        [
+          {
+            "node": "Extract Contact Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Contact Data": {
+      "main": [
+        [
+          {
+            "node": "AI Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Classification": {
+      "main": [
+        [
+          {
+            "node": "Parse Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Classification": {
+      "main": [
+        [
+          {
+            "node": "Update Contact Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact Record": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "164ab852-f5fb-432e-ba42-267c399a97d7",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "oBm1uAznir4nRkVx",
+  "tags": []
+}

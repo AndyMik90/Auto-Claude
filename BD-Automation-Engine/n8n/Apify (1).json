@@ -1,0 +1,175 @@
+{
+  "name": "Apify",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://api.apify.com/v2/acts/compass~google-maps-extractor/runs/last/dataset/items?token=YOUR API KEY",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1184,
+        80
+      ],
+      "id": "ef82a730-7ee7-46e0-9977-5e12c9ea2178",
+      "name": "Get Results",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~puppeteer-scraper/run-sync-get-dataset-items?token=apify_api_n32KFOBo74tTXNi1nEH8nuaMMgrmRc15XrzS",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}\n\n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"startUrls\": [\n    { \"url\": \"https://insightglobal.com/jobs/find_a_job/\" }\n  ],\n  \"useChrome\": true,\n  \"headless\": true,\n  \"waitUntil\": [\"networkidle2\"],\n  \"proxyConfiguration\": { \"useApifyProxy\": true },\n  \"respectRobotsTxtFile\": false,\n  \"downloadCss\": false,\n  \"downloadMedia\": false,\n  \"pageLoadTimeoutSecs\": 60,\n  \"pageFunctionTimeoutSecs\": 600,\n  \"maxConcurrency\": 1,\n  \"customData\": {\n    \"locations\": [\n      \"Fort Meade, MD\",\n      \"Washington, DC\",\n      \"Huntsville, AL\",\n      \"Hill AFB, UT\",\n      \"Roy, UT\",\n      \"Ogden, UT\",\n      \"Promontory, UT\",\n      \"Omaha, NE\",\n      \"Colorado Springs, CO\",\n      \"Denver, CO\",\n      \"Los Angeles, CA\",\n      \"San Diego, CA\",\n      \"San Francisco, CA\",\n      \"Seattle, WA\",\n      \"Dallas, TX\",\n      \"Houston, TX\",\n      \"Nashville, TN\",\n      \"Chicago, IL\",\n      \"St. Louis, MO\",\n      \"Minneapolis, MN\",\n      \"Detroit, MI\",\n      \"Charlotte, NC\",\n      \"Atlanta, GA\",\n      \"Tampa, FL\",\n      \"Miami, FL\",\n      \"New York, NY\",\n      \"Boston, MA\",\n      \"Hawaii\"\n    ],\n    \"keywords\": [\n      \"Secret\",\n      \"Top Secret\",\n      \"TS\",\n      \"SCI\",\n      \"TS/SCI\",\n      \"TSSCI\",\n      \"POLY\",\n      \"Polygraph\"\n    ]\n  },\n  \"pageFunction\": \"async function pageFunction(context) { const { page, customData } = context; const sleep = (ms) => new Promise(r => setTimeout(r, ms)); async function waitForJobs(timeout = 30000) { await page.waitForFunction(() => Array.from(document.querySelectorAll('a[href*=\\\"/job-\\\"]')).some(a => /\\\\/job-\\\\d+\\\\//.test(a.getAttribute('href'))), { timeout }); } async function collectForLocationAndKeyword(loc, kw) { const base = 'https://insightglobal.com/jobs/find_a_job/'; const url = base + '?remote=false&zip=' + encodeURIComponent(loc) + '&miles=False&srch=' + encodeURIComponent(kw); const seen = new Set(); const out = []; await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 }); try { await waitForJobs(); } catch(e) { return out; } for (let i = 0; i < 50; i++) { const here = await page.$$eval('a[href*=\\\"/job-\\\"]', els => els.map(e => ({ title: e.innerText.trim(), url: e.href })).filter(x => /\\\\/job-\\\\d+\\\\//.test(x.url))); for (const rec of here) { if (!seen.has(rec.url)) { seen.add(rec.url); out.push({ keyword: kw, location: loc, title: rec.title, url: rec.url }); } } const nextHref = await page.evaluate(() => document.querySelector('a.page-link[title=\\\"Page Forward\\\"]')?.href || null); if (!nextHref) break; await page.goto(nextHref, { waitUntil: 'networkidle2', timeout: 45000 }); await sleep(150); try { await waitForJobs(); } catch(e) { break; } } return out; } const all = []; const locations = (customData && Array.isArray(customData.locations)) ? customData.locations : ['Fort Meade, MD']; const keywords = (customData && Array.isArray(customData.keywords)) ? customData.keywords : ['Secret']; for (const loc of locations) { for (const kw of keywords) { const chunk = await collectForLocationAndKeyword(loc, kw); all.push(...chunk); } } return all; }\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        624,
+        80
+      ],
+      "id": "c8a6a32f-3c34-4ce4-a560-0295544da6bc",
+      "name": "Google Maps Actor",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "content": "# Start Actor",
+        "height": 260,
+        "width": 260,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        544,
+        0
+      ],
+      "id": "4a02c6ff-3692-4ad5-9289-11ee4371ee9a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# Grab Results",
+        "height": 260,
+        "width": 260,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "a95cfe75-fad7-4af6-b91f-9154056b60d7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/compass~google-maps-extractor/run-sync?token=apify_api_8tZJaGxvs9ZkkfFXV5eaqEOCDHpGln2TnJno",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"language\": \"en\",\n    \"locationQuery\": \"New York, USA\",\n    \"maxCrawledPlacesPerSearch\": 50,\n    \"searchStringsArray\": [\n        \"plumbers\"\n    ],\n    \"skipClosedPlaces\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        624,
+        368
+      ],
+      "id": "ae36d667-3649-4751-ae54-799c08c12fb3",
+      "name": "Sync Run",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "amount": 25
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        128
+      ],
+      "id": "eee82927-f15e-4e9f-938a-fd93745f551c",
+      "name": "Wait",
+      "webhookId": "426f22d5-31db-4344-ae7a-13dedfc46bf4"
+    },
+    {
+      "parameters": {
+        "content": "# Wait\nSet this to an appropriate wait time",
+        "height": 260,
+        "width": 260,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "850ac2d1-31ee-43aa-9284-5a71abacb7c8",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# Sync Run\n",
+        "height": 260,
+        "width": 260,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        544,
+        288
+      ],
+      "id": "20c4f4d9-ab84-4983-a9ba-c436aaecbbff",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "# 🛠️ Setup Guide  \n**Author:** [Nate Herk](https://www.youtube.com/@nateherk)\n---\n\n### Steps to Get Started with Apify\n\n1. **Sign Up for Apify**  \n   Go to [Apify](https://www.apify.com/?fpr=nate) and create an account.\n\n2. **Claim Your Discount**  \n   Use the code `30NATEHERK` to get **30% off Apify credits**.\n\n3. **Find the Actor You Need**  \n   Browse Apify's actor library and select the actor that fits your use case.\n\n4. **Integrate in n8n**  \n   Copy the appropriate actor endpoints into the designated HTTP Request nodes, as demonstrated in the YouTube tutorial.\n\n---\n📺 Watch the full guide here: [YouTube - Nate Herk](https://www.youtube.com/@nateherk)\n",
+        "height": 540,
+        "width": 520
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8714df08-6917-4b2e-b74b-0a3efe99bfa7",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ef8a8000-5c74-4510-af53-c24c60e7877d",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "6tMYMXtk9d2YWxXo",
+  "tags": []
+}

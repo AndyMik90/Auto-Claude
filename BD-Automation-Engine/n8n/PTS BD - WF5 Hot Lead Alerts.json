@@ -1,0 +1,236 @@
+{
+  "name": "PTS BD - WF5 Hot Lead Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-trigger",
+      "name": "Daily 8AM Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        240,
+        304
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        240,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/2bcdef65-baa5-80ed-bd95-000b2f898e17/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"filter\": {\n    \"and\": [\n      { \"property\": \"Priority Level\", \"select\": { \"equals\": \"Hot\" } },\n      { \"property\": \"Status\", \"select\": { \"does_not_equal\": \"Won\" } },\n      { \"property\": \"Status\", \"select\": { \"does_not_equal\": \"Lost\" } }\n    ]\n  },\n  \"sorts\": [{ \"property\": \"Priority Score\", \"direction\": \"descending\" }],\n  \"page_size\": 20\n}",
+        "options": {}
+      },
+      "id": "fetch-hot-opps",
+      "name": "Fetch Hot Opportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        480,
+        400
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-results",
+              "leftValue": "={{ $json.results.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-hot",
+      "name": "Has Hot Leads?",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        704,
+        400
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first();\nconst results = (inputData && inputData.json && inputData.json.results) ? inputData.json.results : [];\nconst leads = [];\n\nfor (const page of results) {\n  const props = page.properties || {};\n  \n  function getTitle(p) {\n    if (!p || !p.title || !p.title[0]) return '';\n    return p.title[0].plain_text || '';\n  }\n  function getText(p) {\n    if (!p || !p.rich_text || !p.rich_text[0]) return '';\n    return p.rich_text[0].plain_text || '';\n  }\n  function getNumber(p) {\n    if (!p) return 0;\n    return p.number || 0;\n  }\n  function getSelect(p) {\n    if (!p || !p.select) return '';\n    return p.select.name || '';\n  }\n  \n  leads.push({\n    id: getTitle(props['Opportunity ID']),\n    jobTitle: getText(props['Source Job Title']),\n    company: getText(props['Source Company']),\n    program: getText(props['Matched Program']),\n    score: getNumber(props['Priority Score']),\n    status: getSelect(props['Status']),\n    pageUrl: 'https://notion.so/' + page.id.replace(/-/g, '')\n  });\n}\n\nreturn [{ json: { leads: leads, count: leads.length, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "build-alert-data",
+      "name": "Build Alert Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        928,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst leads = data.leads || [];\nconst count = data.count || 0;\nconst date = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\n\nlet tableRows = '';\nfor (const lead of leads) {\n  tableRows = tableRows + '<tr>';\n  tableRows = tableRows + '<td style=\"padding:10px;border-bottom:1px solid #eee;\">' + lead.id + '</td>';\n  tableRows = tableRows + '<td style=\"padding:10px;border-bottom:1px solid #eee;\">' + lead.jobTitle + '</td>';\n  tableRows = tableRows + '<td style=\"padding:10px;border-bottom:1px solid #eee;\">' + lead.company + '</td>';\n  tableRows = tableRows + '<td style=\"padding:10px;border-bottom:1px solid #eee;\">' + lead.program + '</td>';\n  tableRows = tableRows + '<td style=\"padding:10px;border-bottom:1px solid #eee;font-weight:bold;color:#d32f2f;\">' + lead.score + '</td>';\n  tableRows = tableRows + '<td style=\"padding:10px;border-bottom:1px solid #eee;\"><a href=\"' + lead.pageUrl + '\" style=\"color:#1976d2;\">View</a></td>';\n  tableRows = tableRows + '</tr>';\n}\n\nconst html = '<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body style=\"font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;\">'\n  + '<div style=\"max-width:800px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);\">'\n  + '<div style=\"background:linear-gradient(135deg,#1a237e,#283593);padding:30px;color:white;\">'\n  + '<h1 style=\"margin:0;font-size:24px;\">🔥 Hot Lead Alert</h1>'\n  + '<p style=\"margin:10px 0 0;opacity:0.9;\">' + date + '</p>'\n  + '</div>'\n  + '<div style=\"padding:30px;\">'\n  + '<p style=\"font-size:18px;color:#333;margin:0 0 20px;\">You have <strong style=\"color:#d32f2f;\">' + count + '</strong> hot opportunities requiring attention.</p>'\n  + '<table style=\"width:100%;border-collapse:collapse;\">'\n  + '<thead><tr style=\"background:#f5f5f5;\">'\n  + '<th style=\"padding:12px;text-align:left;border-bottom:2px solid #1a237e;\">ID</th>'\n  + '<th style=\"padding:12px;text-align:left;border-bottom:2px solid #1a237e;\">Job Title</th>'\n  + '<th style=\"padding:12px;text-align:left;border-bottom:2px solid #1a237e;\">Company</th>'\n  + '<th style=\"padding:12px;text-align:left;border-bottom:2px solid #1a237e;\">Program</th>'\n  + '<th style=\"padding:12px;text-align:left;border-bottom:2px solid #1a237e;\">Score</th>'\n  + '<th style=\"padding:12px;text-align:left;border-bottom:2px solid #1a237e;\">Link</th>'\n  + '</tr></thead>'\n  + '<tbody>' + tableRows + '</tbody>'\n  + '</table>'\n  + '</div>'\n  + '<div style=\"background:#f5f5f5;padding:20px;text-align:center;color:#666;font-size:12px;\">'\n  + 'Prime Technical Services BD Intelligence System'\n  + '</div>'\n  + '</div></body></html>';\n\nreturn [{ json: { html: html, count: count, subject: '🔥 Hot Lead Alert: ' + count + ' Opportunities - ' + date } }];"
+      },
+      "id": "build-email-html",
+      "name": "Build Email HTML",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1152,
+        400
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "fromEmail": "bd-alerts@prime-ts.com",
+        "toEmail": "Gmaranville@prime-ts.com",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [
+        1360,
+        400
+      ],
+      "typeVersion": 2.1,
+      "webhookId": "98c9a2c2-e52d-4d09-b361-dc647ac8daa1",
+      "credentials": {
+        "smtp": {
+          "id": "knh7NFxZJw45izKU",
+          "name": "SMTP - Gmail"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 8AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Hot Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Hot Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Hot Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Has Hot Leads?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Hot Leads?": {
+      "main": [
+        [
+          {
+            "node": "Build Alert Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Alert Data": {
+      "main": [
+        [
+          {
+            "node": "Build Email HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email HTML": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "6d508919-2861-44b1-93e5-fffa37698907",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "gbVtJiUif29JaIHs",
+  "tags": []
+}

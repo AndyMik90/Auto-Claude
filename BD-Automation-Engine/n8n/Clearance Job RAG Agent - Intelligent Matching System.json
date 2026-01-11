@@ -1,0 +1,479 @@
+{
+  "name": "Clearance Job RAG Agent - Intelligent Matching System",
+  "nodes": [
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "httpMethod": [
+          "POST"
+        ],
+        "path": "https://api.apify.com/v2/acts/apify~puppeteer-scraper/run-sync-get-dataset-items?token=apify_api_n32KFOBo74tTXNi1nEH8nuaMMgrmRc15XrzS",
+        "authentication": "headerAuth",
+        "options": {
+          "responseData": "allEntries"
+        }
+      },
+      "id": "ffe93fb0-13fc-4407-aaa8-01c22954905c",
+      "name": "Apify Job Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -1808,
+        64
+      ],
+      "typeVersion": 1,
+      "webhookId": "clearance-job-webhook",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wngygaWcgXDzwHXh",
+          "name": "Header Auth account"
+        }
+      },
+      "notes": "Receives job posting data from Apify Puppeteer scraper"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{$json}}",
+        "options": {}
+      },
+      "id": "cb034803-c293-468c-b4c3-892ade324477",
+      "name": "Extract Job Data",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -1600,
+        64
+      ],
+      "typeVersion": 3,
+      "notes": "Normalize job data from Apify"
+    },
+    {
+      "parameters": {
+        "text": "=Analyze this job posting and extract structured data:\n\nJob Title: {{$json.jobTitle}}\nCompany: {{$json.company}}\nLocation: {{$json.location}}\nDescription: {{$json.description}}\n\nExtract and return as JSON:\n1. Clearance Level Required (Secret/TS/TS-SCI/Poly)\n2. Prime or Subcontractor\n3. Defense Program Name (if identifiable)\n4. Team/Department\n5. Technology Stack (list all technologies mentioned)\n6. Seniority Level (Junior/Mid/Senior/Lead/Principal)\n7. Key Requirements (top 5)\n8. Contract Type (if mentioned)\n9. Remote/Onsite/Hybrid\n10. Any specific certifications required\n\nAlso identify any program acronyms or defense-specific terminology.",
+        "options": {}
+      },
+      "id": "8181d666-b80e-457d-a7e8-196b4191973d",
+      "name": "AI Agent - Job Analysis",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -1408,
+        64
+      ],
+      "typeVersion": 1,
+      "notes": "OpenAI agent analyzes job posting to extract structured data"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "search"
+      },
+      "id": "31571e17-7d2e-456a-9b76-70ea217b30cb",
+      "name": "Search Past Performance",
+      "type": "n8n-nodes-base.notion",
+      "position": [
+        -1200,
+        64
+      ],
+      "typeVersion": 2.1,
+      "notes": "Search Notion Past Performance DB for similar jobs"
+    },
+    {
+      "parameters": {
+        "text": "=Analyze the match between this new job posting and our past performance:\n\nNEW JOB:\n{{$node['AI Agent - Job Analysis'].json}}\n\nPAST PERFORMANCE MATCHES:\n{{$json}}\n\nProvide a detailed analysis including:\n1. Match Score (0-100)\n2. Relevant past projects we've done\n3. Similar positions we've filled\n4. Competitive advantages we have\n5. Gaps in our experience\n6. Recommended team members to assign\n7. Suggested proposal points\n8. Risk assessment\n9. Probability of win\n10. Strategic importance rating\n\nReturn as structured JSON for database storage.",
+        "options": {}
+      },
+      "id": "2b48738e-e509-4b54-b7be-0ba5ac15321f",
+      "name": "AI Agent - Matching Analysis",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -1008,
+        64
+      ],
+      "typeVersion": 1,
+      "notes": "AI agent performs deep analysis matching job to past performance"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Scoring Engine Implementation\nconst job = $input.first().json;\n\n// Scoring weights\nconst weights = {\n  demand: 0.30,        // Job posting frequency/urgency\n  painLevel: 0.20,     // How long position has been open\n  fundingValue: 0.20,  // Contract value/salary range\n  pastPerformance: 0.20, // Our experience match\n  competition: 0.10    // Competition intensity\n};\n\n// Calculate individual scores\nconst scores = {\n  demand: calculateDemandScore(job),\n  painLevel: calculatePainScore(job),\n  fundingValue: calculateFundingScore(job),\n  pastPerformance: job.matchScore || 0,\n  competition: calculateCompetitionScore(job)\n};\n\n// Calculate weighted total\nlet totalScore = 0;\nfor (const [key, weight] of Object.entries(weights)) {\n  totalScore += scores[key] * weight;\n}\n\n// Determine priority tier\nlet priorityTier;\nif (totalScore >= 80) priorityTier = 'CRITICAL';\nelse if (totalScore >= 60) priorityTier = 'HIGH';\nelse if (totalScore >= 40) priorityTier = 'MEDIUM';\nelse priorityTier = 'LOW';\n\n// Helper functions\nfunction calculateDemandScore(job) {\n  // Score based on clearance level and tech stack rarity\n  let score = 50;\n  if (job.clearanceLevel?.includes('TS/SCI')) score += 30;\n  if (job.clearanceLevel?.includes('Poly')) score += 20;\n  return Math.min(score, 100);\n}\n\nfunction calculatePainScore(job) {\n  // Score based on how long job has been posted\n  const daysOpen = job.jobPostingAge || 0;\n  if (daysOpen > 60) return 100;\n  if (daysOpen > 30) return 70;\n  if (daysOpen > 14) return 40;\n  return 20;\n}\n\nfunction calculateFundingScore(job) {\n  // Score based on salary/contract value\n  const salary = parseInt(job.salary?.replace(/[^0-9]/g, '')) || 0;\n  if (salary > 200000) return 100;\n  if (salary > 150000) return 70;\n  if (salary > 100000) return 40;\n  return 20;\n}\n\nfunction calculateCompetitionScore(job) {\n  // Inverse score - less competition = higher score\n  // This would connect to competitive intel\n  return 50; // Default moderate competition\n}\n\nreturn {\n  ...job,\n  priorityScore: Math.round(totalScore),\n  priorityTier,\n  scoreBreakdown: scores,\n  scoringWeights: weights,\n  scoredAt: new Date().toISOString()\n};"
+      },
+      "id": "b0ef76e3-9b1b-4da6-97a4-f5b408fa5f65",
+      "name": "Scoring Engine",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -800,
+        64
+      ],
+      "typeVersion": 2,
+      "notes": "Calculate priority score based on multiple factors"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": "={{ $env.NOTION_JOB_POSTINGS_DB_ID }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Job_Title",
+              "title": "={{$json.jobTitle}}"
+            },
+            {
+              "key": "Company",
+              "title": "={{$json.company}}"
+            },
+            {
+              "key": "Location",
+              "richText": "={{$json.location}}"
+            },
+            {
+              "key": "Clearance_Required"
+            },
+            {
+              "key": "Program",
+              "richText": "={{$json.program}}"
+            },
+            {
+              "key": "Prime_Sub"
+            },
+            {
+              "key": "Technology_Stack"
+            },
+            {
+              "key": "Priority_Score"
+            },
+            {
+              "key": "Priority_Tier"
+            },
+            {
+              "key": "Match_Score"
+            },
+            {
+              "key": "Analysis",
+              "richText": "={{JSON.stringify($json.analysis)}}"
+            },
+            {
+              "key": "Source_URL"
+            },
+            {
+              "key": "Scraped_Date",
+              "date": "={{$json.scrapedAt}}"
+            },
+            {
+              "key": "Job_Description",
+              "richText": "={{$json.description}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6d205a4c-5fdd-40d3-8e99-714d6b00013d",
+      "name": "Update Notion Job Posting",
+      "type": "n8n-nodes-base.notion",
+      "position": [
+        -608,
+        64
+      ],
+      "typeVersion": 2.1,
+      "notes": "Create or update job posting in Notion with all enriched data"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": "={{ $env.NOTION_INTELLIGENCE_REPORTS_DB_ID }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Report_Title",
+              "title": "=Intel Report: {{$json.jobTitle}} at {{$json.company}}"
+            },
+            {
+              "key": "Report_Type"
+            },
+            {
+              "key": "Priority"
+            },
+            {
+              "key": "Executive_Summary",
+              "richText": "=New {{$json.clearanceLevel}} opportunity identified at {{$json.company}} for {{$json.program || 'Unknown Program'}}. Match score: {{$json.matchScore}}%. Priority score: {{$json.priorityScore}}. {{$json.analysis.competitiveAdvantages}}"
+            },
+            {
+              "key": "Key_Findings",
+              "richText": "={{JSON.stringify($json.analysis.keyFindings)}}"
+            },
+            {
+              "key": "Recommendations",
+              "richText": "={{JSON.stringify($json.analysis.recommendations)}}"
+            },
+            {
+              "key": "Related_Job_ID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c5910b58-d69f-4346-859e-0923cdde292c",
+      "name": "Generate Intelligence Report",
+      "type": "n8n-nodes-base.notion",
+      "position": [
+        -400,
+        64
+      ],
+      "typeVersion": 2.1,
+      "notes": "Create intelligence report in Notion for high-priority opportunities"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.priorityTier}}",
+              "operation": "contains",
+              "value2": "CRITICAL,HIGH"
+            }
+          ]
+        }
+      },
+      "id": "8203603d-4990-4a1a-9333-8d772db5241c",
+      "name": "High Priority Filter",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -208,
+        64
+      ],
+      "typeVersion": 1,
+      "notes": "Only notify team for high priority opportunities"
+    },
+    {
+      "parameters": {
+        "operation": "send"
+      },
+      "id": "53c85473-2e48-4d69-a3aa-b91c2b7e774d",
+      "name": "Notify BD Team",
+      "type": "n8n-nodes-base.slack",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 2.1,
+      "webhookId": "38549fa4-ee5b-42d6-91f3-602c6897f224",
+      "notes": "Send high-priority opportunities to Slack BD channel"
+    },
+    {
+      "parameters": {
+        "subject": "=🎯 High Priority Opportunity: {{$json.jobTitle}} at {{$json.company}}",
+        "options": {
+          "attachments": "={{[$json.analysis.fullReport]}}"
+        }
+      },
+      "id": "4da4c6d2-c9be-49bb-ae9a-d43b6eb88290",
+      "name": "Email BD Team",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [
+        0,
+        112
+      ],
+      "typeVersion": 2.1,
+      "webhookId": "62969915-7233-4e8d-8c7e-54d68dde6983",
+      "notes": "Send detailed email for high-priority opportunities"
+    },
+    {
+      "parameters": {},
+      "id": "4747ea4d-f92c-4637-8482-909758c2640a",
+      "name": "Check Apify Results",
+      "type": "n8n-nodes-base.schedule",
+      "position": [
+        -1808,
+        256
+      ],
+      "typeVersion": 1,
+      "notes": "Alternative: Poll Apify for new results every 15 minutes"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/actor-runs?token={{$env.APIFY_TOKEN}}&status=SUCCEEDED",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "cab4104f-d5fb-4993-be56-1202d0d9b44d",
+      "name": "Get Apify Runs",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -1600,
+        256
+      ],
+      "typeVersion": 4.1,
+      "notes": "Fetch completed Apify runs"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.apify.com/v2/datasets/{{$json.defaultDatasetId}}/items?token={{$env.APIFY_TOKEN}}",
+        "options": {}
+      },
+      "id": "6d16c692-0db6-42b5-b93b-9141e3c1854f",
+      "name": "Get Dataset Items",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -1408,
+        256
+      ],
+      "typeVersion": 4.1,
+      "notes": "Fetch job postings from Apify dataset"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Apify Job Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Extract Job Data": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Job Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Job Analysis": {
+      "main": [
+        [
+          {
+            "node": "Search Past Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Past Performance": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Matching Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Matching Analysis": {
+      "main": [
+        [
+          {
+            "node": "Scoring Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scoring Engine": {
+      "main": [
+        [
+          {
+            "node": "Update Notion Job Posting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Notion Job Posting": {
+      "main": [
+        [
+          {
+            "node": "Generate Intelligence Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Intelligence Report": {
+      "main": [
+        [
+          {
+            "node": "High Priority Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Priority Filter": {
+      "main": [
+        [
+          {
+            "node": "Notify BD Team",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email BD Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Apify Runs": {
+      "main": [
+        [
+          {
+            "node": "Get Dataset Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Dataset Items": {
+      "main": [
+        [
+          {
+            "node": "Extract Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dad18932-de98-406a-9b3c-e4a2e288678c",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "NrrRAihA4vChAlmk",
+  "tags": [
+    {
+      "updatedAt": "2025-10-24T15:07:17.840Z",
+      "createdAt": "2025-10-24T15:07:17.840Z",
+      "id": "ApXKNZ6yYzXAq0zd",
+      "name": "Intelligence"
+    },
+    {
+      "updatedAt": "2025-10-24T15:07:17.859Z",
+      "createdAt": "2025-10-24T15:07:17.859Z",
+      "id": "U1gKXmDYSuW8JCdl",
+      "name": "RAG Agent"
+    },
+    {
+      "updatedAt": "2025-10-24T15:07:17.789Z",
+      "createdAt": "2025-10-24T15:07:17.789Z",
+      "id": "kXrI6igpb9oR4TG1",
+      "name": "Job Matching"
+    }
+  ]
+}

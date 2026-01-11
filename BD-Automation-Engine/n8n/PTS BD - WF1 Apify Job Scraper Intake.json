@@ -1,0 +1,217 @@
+{
+  "name": "PTS BD - WF1 Apify Job Scraper Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "apify-job-intake",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Apify Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        304
+      ],
+      "webhookId": "9e99c7e2-96d6-4764-b05c-efe9344c53c9"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate and transform incoming Apify payload\nconst input = $input.all();\nconst results = [];\n\nfor (const item of input) {\n  const data = item.json;\n  \n  // Handle different Apify payload formats\n  let jobs = [];\n  if (Array.isArray(data)) {\n    jobs = data;\n  } else if (data.jobs && Array.isArray(data.jobs)) {\n    jobs = data.jobs;\n  } else if (data.title) {\n    jobs = [data];\n  }\n  \n  for (const job of jobs) {\n    if (!job.title) continue;\n    \n    // Normalize clearance level\n    const clearanceMap = {\n      'ts/sci with poly': 'TS/SCI w/ Poly',\n      'ts/sci with polygraph': 'TS/SCI w/ Poly',\n      'ts/sci': 'TS/SCI',\n      'top secret/sci': 'TS/SCI',\n      'top secret': 'Top Secret',\n      'ts': 'Top Secret',\n      'secret': 'Secret',\n      'public trust': 'Public Trust'\n    };\n    \n    const rawClearance = (job.detected_clearance || job.clearance || 'Unknown').toLowerCase().trim();\n    let normalizedClearance = 'Unknown';\n    for (const [key, value] of Object.entries(clearanceMap)) {\n      if (rawClearance.includes(key)) {\n        normalizedClearance = value;\n        break;\n      }\n    }\n    \n    // Parse location\n    const locationStr = job.location || '';\n    const locationParts = locationStr.split(',').map(s => s.trim());\n    const city = locationParts[0] || '';\n    const state = locationParts[1] || '';\n    \n    // Generate unique ID\n    const jobId = 'JOB-' + Date.now() + '-' + Math.random().toString(36).substr(2, 8);\n    const dedupeKey = (job.title.toLowerCase() + '-' + (job.company || '').toLowerCase() + '-' + city.toLowerCase()).replace(/[^a-z0-9-]/g, '');\n    \n    results.push({\n      json: {\n        jobId: jobId,\n        title: job.title.substring(0, 200),\n        company: job.company || 'Unknown',\n        location: locationStr,\n        city: city,\n        state: state,\n        clearanceLevel: normalizedClearance,\n        url: job.url || '',\n        scrapedAt: job.scraped_at || new Date().toISOString(),\n        source: job.source || job.company || 'Apify Scrape',\n        deduplicationKey: dedupeKey,\n        primaryKeyword: job.primary_keyword || '',\n        status: 'raw_import'\n      }\n    });\n  }\n}\n\nif (results.length === 0) {\n  return [{ json: { error: 'No valid jobs found in payload', itemCount: 0 } }];\n}\n\nreturn results;"
+      },
+      "id": "transform-payload",
+      "name": "Transform & Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "batch-processor",
+      "name": "Batch Processor",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        688,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"parent\": { \"database_id\": \"f57792c1-605b-424c-8830-23ab41c47137\" },\n  \"properties\": {\n    \"Job Title\": { \"title\": [{ \"text\": { \"content\": \"{{ $json.title }}\" } }] },\n    \"Company\": { \"rich_text\": [{ \"text\": { \"content\": \"{{ $json.company }}\" } }] },\n    \"Location\": { \"rich_text\": [{ \"text\": { \"content\": \"{{ $json.location }}\" } }] },\n    \"Clearance Level\": { \"select\": { \"name\": \"{{ $json.clearanceLevel }}\" } },\n    \"Source URL\": { \"url\": \"{{ $json.url }}\" },\n    \"Source Program\": { \"select\": { \"name\": \"{{ $json.source }}\" } },\n    \"Status\": { \"select\": { \"name\": \"raw_import\" } }\n  }\n}",
+        "options": {}
+      },
+      "id": "create-notion-page",
+      "name": "Create Job in Hub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        912,
+        304
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "WrAqBcxNV9pskdOG",
+          "name": "Notion - Prime TS BD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 0.35
+      },
+      "id": "rate-limit-delay",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        304
+      ],
+      "webhookId": "f1a71cdf-8222-4561-9316-16c2ce680a6d"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "processedJobs",
+        "options": {}
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create summary of import\nconst firstItem = $input.first();\nconst jobs = (firstItem && firstItem.json && firstItem.json.processedJobs) ? firstItem.json.processedJobs : [];\nconst timestamp = new Date().toISOString();\n\nconst sourcesSet = new Set();\nconst clearanceCounts = {};\n\nfor (const job of jobs) {\n  if (job.source) sourcesSet.add(job.source);\n  const cl = job.clearanceLevel || 'Unknown';\n  clearanceCounts[cl] = (clearanceCounts[cl] || 0) + 1;\n}\n\nreturn [{\n  json: {\n    summary: {\n      totalImported: jobs.length,\n      timestamp: timestamp,\n      sources: Array.from(sourcesSet),\n      clearanceLevels: clearanceCounts\n    }\n  }\n}];"
+      },
+      "id": "create-summary",
+      "name": "Create Import Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        304
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Apify Webhook": {
+      "main": [
+        [
+          {
+            "node": "Transform & Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform & Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "Batch Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Processor": {
+      "main": [
+        [
+          {
+            "node": "Create Job in Hub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Job in Hub": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Batch Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Create Import Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "2546797d-1ec9-4f1b-9fa1-c735b68ff88a",
+  "meta": {
+    "instanceId": "2a27a1c85e3dc2186000109e6e48c628e99f58e377f77155cfdb3e70ee4f7e27"
+  },
+  "id": "GVkcFmllJFxScJYW",
+  "tags": []
+}
