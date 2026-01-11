@@ -62,27 +62,6 @@ export function CleanProjectDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load preview when dialog opens
-  useEffect(() => {
-    if (open && projectPath) {
-      loadPreview();
-    }
-  }, [open, projectPath, loadPreview]);
-
-  // Reset state when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setTimeout(() => {
-        setStep('preview');
-        setPreview(null);
-        setSelectedMode('archive');
-        setConfirmText('');
-        setResult(null);
-        setError(null);
-      }, 200);
-    }
-  }, [open]);
-
   const loadPreview = useCallback(async () => {
     if (!projectPath) return;
 
@@ -104,6 +83,27 @@ export function CleanProjectDialog({
       setLoading(false);
     }
   }, [projectPath]);
+
+  // Load preview when dialog opens
+  useEffect(() => {
+    if (open && projectPath) {
+      loadPreview();
+    }
+  }, [open, projectPath, loadPreview]);
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setTimeout(() => {
+        setStep('preview');
+        setPreview(null);
+        setSelectedMode('archive');
+        setConfirmText('');
+        setResult(null);
+        setError(null);
+      }, 200);
+    }
+  }, [open]);
 
   const executeCleanup = useCallback(async () => {
     if (!projectPath || !preview) return;

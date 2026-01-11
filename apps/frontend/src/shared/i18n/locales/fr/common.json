@@ -40,7 +40,7 @@
       "archive": "Archiver et nettoyer",
       "archiveDesc": "Déplace les données vers l'archive (récupérable)",
       "delete": "Suppression définitive",
-      "deleteDesc": "Supprime les données définitivement (ne peut pas être récupéré)"
+      "deleteDesc": "Supprime les données définitivement (ne peuvent pas être récupérées)"
     },
     "results": {
       "archived": "{{count}} éléments archivés ({{size}})",
