@@ -424,7 +424,10 @@ def get_next_subtask(spec_dir: Path) -> dict | None:
         # Build a map of phase completion
         phase_complete: dict[str, bool] = {}
         for phase in phases:
-            phase_id_raw = phase.get("id") or phase.get("phase")
+            phase_id_value = phase.get("id")
+            phase_id_raw = (
+                phase_id_value if phase_id_value is not None else phase.get("phase")
+            )
             phase_id_key = str(phase_id_raw) if phase_id_raw is not None else "unknown"
             subtasks = phase.get("subtasks", phase.get("chunks", []))
             phase_complete[phase_id_key] = all(
@@ -433,7 +436,10 @@ def get_next_subtask(spec_dir: Path) -> dict | None:
 
         # Find next available subtask
         for phase in phases:
-            phase_id = phase.get("id") or phase.get("phase")
+            phase_id_value = phase.get("id")
+            phase_id = (
+                phase_id_value if phase_id_value is not None else phase.get("phase")
+            )
             depends_on_raw = phase.get("depends_on", [])
             if isinstance(depends_on_raw, list):
                 depends_on = [str(d) for d in depends_on_raw if d is not None]
