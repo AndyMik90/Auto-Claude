@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Folder, Trash2, Pencil, Key, ArrowLeft, HelpCircle, Code2, Search, ExternalLink } from 'lucide-react';
+import { Plus, Folder, Trash2, Pencil, Key, ArrowLeft, HelpCircle, Code2, Search, ExternalLink, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
@@ -14,6 +14,7 @@ import {
 import { SettingsSection } from './SettingsSection';
 import type { Template, AppSettings } from '../../../shared/types';
 import { AddTemplateDialog } from './AddTemplateDialog';
+import { TemplateEditorDialog } from './TemplateEditorDialog';
 import { SecretsManager } from './SecretsManager';
 import { useToast } from '../../hooks/use-toast';
 
@@ -29,6 +30,8 @@ export function TemplatesSettings() {
   const [searchQuery, setSearchQuery] = useState('');
   const [paramCounts, setParamCounts] = useState<Record<string, number>>({});
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isEditorDialogOpen, setIsEditorDialogOpen] = useState(false);
+  const [aiEditingTemplate, setAiEditingTemplate] = useState<Template | null>(null);
   const { toast } = useToast();
 
   const loadTemplates = async () => {
@@ -143,6 +146,11 @@ export function TemplatesSettings() {
         variant: 'destructive'
       });
     }
+  };
+
+  const handleAIEdit = (template: Template) => {
+    setAiEditingTemplate(template);
+    setIsEditorDialogOpen(true);
   };
 
   // Filter templates based on search query
@@ -322,6 +330,15 @@ export function TemplatesSettings() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleAIEdit(template)}
+                        className="gap-1"
+                        title="AI Edit"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleOpenInIDE(template)}
                         className="gap-1"
                         title="Open in IDE"
@@ -359,6 +376,14 @@ export function TemplatesSettings() {
           onOpenChange={setIsAddDialogOpen}
           template={editingTemplate}
           onSaved={handleTemplateSaved}
+        />
+
+        {/* AI Template Editor Dialog */}
+        <TemplateEditorDialog
+          open={isEditorDialogOpen}
+          onOpenChange={setIsEditorDialogOpen}
+          template={aiEditingTemplate}
+          apiKey={settings?.globalAnthropicApiKey || null}
         />
 
         {/* Parameter Guide Dialog */}
