@@ -246,11 +246,11 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
           </div>
         ) : (
           <ScrollArea className="flex-1">
-            <div className="space-y-6 py-4 pr-4">
+            <div className="space-y-6 py-4">
               {Array.from(groupedByFile.entries()).map(([filePath, fileParams]) => (
                 <div key={filePath} className="space-y-4">
                   {/* File header */}
-                  <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-3 -mx-4 px-4">
+                  <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-3">
                     <h3 className="text-sm font-medium flex items-center gap-2">
                       <FileEdit className="h-4 w-4" />
                       {filePath.split('/').pop()}
