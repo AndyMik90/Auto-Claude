@@ -23,16 +23,31 @@ function isWithinCooldown(channel: string): boolean {
 
 /**
  * Record a warning timestamp for a channel.
+ * Enforces a hard cap of 100 entries to prevent unbounded memory growth.
  */
 function recordWarning(channel: string): void {
   warnTimestamps.set(channel, Date.now());
 
-  // Optionally prune old entries to free memory (prune if more than 100 entries)
+  // Prune if more than 100 entries to free memory
   if (warnTimestamps.size > 100) {
     const now = Date.now();
+
+    // First, remove expired entries
     for (const [ch, ts] of warnTimestamps.entries()) {
       if (now - ts >= WARN_COOLDOWN_MS) {
         warnTimestamps.delete(ch);
+      }
+    }
+
+    // If still over 100 entries, remove oldest (Map preserves insertion order)
+    if (warnTimestamps.size > 100) {
+      const entriesToRemove = warnTimestamps.size - 100;
+      let removed = 0;
+      for (const ch of warnTimestamps.keys()) {
+        warnTimestamps.delete(ch);
+        if (++removed >= entriesToRemove) {
+          break;
+        }
       }
     }
   }
