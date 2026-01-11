@@ -76,7 +76,11 @@ async def _save_to_graphiti_async(
                 result = False
             return result
         finally:
-            await memory.close()
+            # Always close the memory connection (swallow exceptions to avoid overriding)
+            try:
+                await memory.close()
+            except Exception:
+                pass  # Close failures should not override the main result
 
     except Exception as e:
         logger.warning(f"Failed to save to Graphiti: {e}")
