@@ -473,6 +473,34 @@
       "updateFailed": "Échec de la mise à jour du modèle",
       "createFailed": "Échec de la création du modèle",
       "generic": "Une erreur s'est produite"
+    },
+    "parameterEditor": {
+      "title": "Modifier les paramètres du modèle",
+      "description": "Modifier les paramètres dynamiques et mettre à jour les fichiers du modèle",
+      "loading": "Chargement des paramètres...",
+      "noParameters": "Aucun paramètre dynamique trouvé dans ce modèle",
+      "fields": {
+        "title": "Titre du paramètre",
+        "type": "Type",
+        "defaultValue": "Valeur par défaut (optionnel)",
+        "options": "Options",
+        "addOption": "Ajouter une option",
+        "secretGroup": "Groupe de secrets",
+        "secretKey": "Clé secrète"
+      },
+      "types": {
+        "text": "Texte",
+        "dropdown": "Liste déroulante",
+        "secret": "Secret"
+      },
+      "badges": {
+        "modified": "Modifié"
+      },
+      "actions": {
+        "save": "Enregistrer les modifications",
+        "saving": "Enregistrement...",
+        "cancel": "Annuler"
+      }
     }
   },
   "secrets": {

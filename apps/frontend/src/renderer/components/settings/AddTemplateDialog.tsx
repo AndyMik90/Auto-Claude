@@ -65,7 +65,7 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
 
   const handleSelectImage = async () => {
     try {
-      const path = await window.electronAPI.selectDirectory();
+      const path = await window.electronAPI.selectFile();
       if (path) {
         setImagePath(path);
       }

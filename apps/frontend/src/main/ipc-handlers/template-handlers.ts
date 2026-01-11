@@ -438,7 +438,7 @@ export function registerTemplateHandlers(): void {
           return { success: false, error: 'Template folder does not exist' };
         }
 
-        const parsed = parseTemplateDirectory(template.folderPath);
+        const parsed = await parseTemplateDirectory(template.folderPath);
         console.log('[TEMPLATES] Parse result:', {
           totalFiles: parsed.totalFiles,
           filesWithParameters: parsed.filesWithParameters,
@@ -540,7 +540,7 @@ export function registerTemplateHandlers(): void {
           cpSync(template.folderPath, targetPath, { recursive: true });
 
           // Parse parameters to get file paths and placeholders
-          const parsed = parseTemplateDirectory(template.folderPath);
+          const parsed = await parseTemplateDirectory(template.folderPath);
 
           // Create replacement map (placeholder -> value)
           const replacements = new Map<string, string>();
@@ -557,9 +557,12 @@ export function registerTemplateHandlers(): void {
             const relativePath = path.relative(template.folderPath, param.filePath);
             const targetFilePath = path.join(targetPath, relativePath);
 
+            // Normalize path to ensure consistent deduplication
+            const resolvedTargetPath = path.resolve(targetFilePath);
+
             // Only process each file once
-            if (!filesProcessed.has(targetFilePath)) {
-              filesProcessed.add(targetFilePath);
+            if (!filesProcessed.has(resolvedTargetPath)) {
+              filesProcessed.add(resolvedTargetPath);
               const newContent = replaceTemplateParameters(targetFilePath, replacements);
               writeFileSync(targetFilePath, newContent, 'utf-8');
             }

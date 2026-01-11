@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { ipcRenderer, IpcRendererEvent } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { Template, IPCResult, ParsedTemplate, TemplateEditorStatus, TemplateEditorStreamChunk } from '../../shared/types';
 
@@ -11,6 +11,10 @@ export interface TemplateAPI {
   copyTemplateWithName: (templateId: string, destinationPath: string, customName: string) => Promise<IPCResult<{ path: string }>>;
   parseTemplateParameters: (templateId: string) => Promise<IPCResult<ParsedTemplate>>;
   copyTemplateWithParameters: (templateId: string, destinationPath: string, customName: string, parameterValues: Record<string, string>) => Promise<IPCResult<{ path: string }>>;
+
+  // File operations (for template parameter editor)
+  readFile: (filePath: string) => Promise<IPCResult<string>>;
+  writeFile: (filePath: string, content: string) => Promise<IPCResult>;
 
   // Template Editor (AI-powered)
   // Auto-initializes with active API profile or global Anthropic API key
@@ -65,7 +69,7 @@ export const createTemplateAPI = (): TemplateAPI => ({
     ipcRenderer.invoke(IPC_CHANNELS.TEMPLATE_EDITOR_CLEAR_HISTORY, templateId),
 
   onTemplateEditorStatus: (callback: (templateId: string, status: TemplateEditorStatus) => void): (() => void) => {
-    const listener = (_event: any, templateId: string, status: TemplateEditorStatus) => {
+    const listener = (_event: IpcRendererEvent, templateId: string, status: TemplateEditorStatus) => {
       callback(templateId, status);
     };
     ipcRenderer.on(IPC_CHANNELS.TEMPLATE_EDITOR_STATUS, listener);
@@ -73,7 +77,7 @@ export const createTemplateAPI = (): TemplateAPI => ({
   },
 
   onTemplateEditorStreamChunk: (callback: (templateId: string, chunk: TemplateEditorStreamChunk) => void): (() => void) => {
-    const listener = (_event: any, templateId: string, chunk: TemplateEditorStreamChunk) => {
+    const listener = (_event: IpcRendererEvent, templateId: string, chunk: TemplateEditorStreamChunk) => {
       callback(templateId, chunk);
     };
     ipcRenderer.on(IPC_CHANNELS.TEMPLATE_EDITOR_STREAM_CHUNK, listener);
@@ -81,7 +85,7 @@ export const createTemplateAPI = (): TemplateAPI => ({
   },
 
   onTemplateEditorError: (callback: (templateId: string, error: string) => void): (() => void) => {
-    const listener = (_event: any, templateId: string, error: string) => {
+    const listener = (_event: IpcRendererEvent, templateId: string, error: string) => {
       callback(templateId, error);
     };
     ipcRenderer.on(IPC_CHANNELS.TEMPLATE_EDITOR_ERROR, listener);

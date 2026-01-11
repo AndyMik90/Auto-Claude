@@ -240,22 +240,22 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileEdit className="h-5 w-5" />
-            Edit Template Parameters
+            {t('templates.parameterEditor.title')}
             <span className="text-sm font-normal text-muted-foreground">- {template.name}</span>
           </DialogTitle>
           <DialogDescription>
-            Modify dynamic parameters and update template files
+            {t('templates.parameterEditor.description')}
           </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">Loading parameters...</p>
+            <p className="text-sm text-muted-foreground">{t('templates.parameterEditor.loading')}</p>
           </div>
         ) : parameters.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-8">
             <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-sm text-muted-foreground">No dynamic parameters found in this template</p>
+            <p className="text-sm text-muted-foreground">{t('templates.parameterEditor.noParameters')}</p>
           </div>
         ) : (
           <ScrollArea className="flex-1">
@@ -279,7 +279,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                     <div key={param.key} className="border rounded-lg p-4 space-y-3">
                       {/* Title */}
                       <div className="space-y-1">
-                        <Label htmlFor={`${param.key}-title`}>Parameter Title</Label>
+                        <Label htmlFor={`${param.key}-title`}>{t('templates.parameterEditor.fields.title')}</Label>
                         <Input
                           id={`${param.key}-title`}
                           value={param.title}
@@ -290,7 +290,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
 
                       {/* Type */}
                       <div className="space-y-1">
-                        <Label htmlFor={`${param.key}-type`}>Type</Label>
+                        <Label htmlFor={`${param.key}-type`}>{t('templates.parameterEditor.fields.type')}</Label>
                         <Select
                           value={param.type}
                           onValueChange={(value: 'text' | 'dropdown' | 'secret') =>
@@ -301,9 +301,9 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="text">Text</SelectItem>
-                            <SelectItem value="dropdown">Dropdown</SelectItem>
-                            <SelectItem value="secret">Secret</SelectItem>
+                            <SelectItem value="text">{t('templates.parameterEditor.types.text')}</SelectItem>
+                            <SelectItem value="dropdown">{t('templates.parameterEditor.types.dropdown')}</SelectItem>
+                            <SelectItem value="secret">{t('templates.parameterEditor.types.secret')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -311,7 +311,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                       {/* Default Value */}
                       {param.type !== 'secret' && (
                         <div className="space-y-1">
-                          <Label htmlFor={`${param.key}-default`}>Default Value (optional)</Label>
+                          <Label htmlFor={`${param.key}-default`}>{t('templates.parameterEditor.fields.defaultValue')}</Label>
                           <Input
                             id={`${param.key}-default`}
                             value={param.default || ''}
@@ -325,7 +325,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                       {param.type === 'dropdown' && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label>Options</Label>
+                            <Label>{t('templates.parameterEditor.fields.options')}</Label>
                             <Button
                               variant="outline"
                               size="sm"
@@ -333,7 +333,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                               className="h-7 gap-1"
                             >
                               <Plus className="h-3 w-3" />
-                              Add Option
+                              {t('templates.parameterEditor.fields.addOption')}
                             </Button>
                           </div>
                           <div className="space-y-2">
@@ -363,7 +363,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                       {param.type === 'secret' && (
                         <>
                           <div className="space-y-1">
-                            <Label htmlFor={`${param.key}-group`}>Secret Group</Label>
+                            <Label htmlFor={`${param.key}-group`}>{t('templates.parameterEditor.fields.secretGroup')}</Label>
                             <Input
                               id={`${param.key}-group`}
                               value={param.group || ''}
@@ -372,7 +372,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label htmlFor={`${param.key}-secretKey`}>Secret Key</Label>
+                            <Label htmlFor={`${param.key}-secretKey`}>{t('templates.parameterEditor.fields.secretKey')}</Label>
                             <Input
                               id={`${param.key}-secretKey`}
                               value={param.secretKey || ''}
@@ -385,7 +385,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
 
                       {param.modified && (
                         <Badge variant="secondary" className="text-xs">
-                          Modified
+                          {t('templates.parameterEditor.badges.modified')}
                         </Badge>
                       )}
                     </div>
@@ -406,7 +406,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
         {/* Footer */}
         <DialogFooter className="flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
-            Cancel
+            {t('templates.parameterEditor.actions.cancel')}
           </Button>
           <Button
             onClick={handleSave}
@@ -414,7 +414,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
             className="gap-2"
           >
             <Save className="h-4 w-4" />
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            {isSaving ? t('templates.parameterEditor.actions.saving') : t('templates.parameterEditor.actions.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

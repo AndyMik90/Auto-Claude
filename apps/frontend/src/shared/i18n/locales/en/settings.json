@@ -473,6 +473,34 @@
       "updateFailed": "Failed to update template",
       "createFailed": "Failed to create template",
       "generic": "An error occurred"
+    },
+    "parameterEditor": {
+      "title": "Edit Template Parameters",
+      "description": "Modify dynamic parameters and update template files",
+      "loading": "Loading parameters...",
+      "noParameters": "No dynamic parameters found in this template",
+      "fields": {
+        "title": "Parameter Title",
+        "type": "Type",
+        "defaultValue": "Default Value (optional)",
+        "options": "Options",
+        "addOption": "Add Option",
+        "secretGroup": "Secret Group",
+        "secretKey": "Secret Key"
+      },
+      "types": {
+        "text": "Text",
+        "dropdown": "Dropdown",
+        "secret": "Secret"
+      },
+      "badges": {
+        "modified": "Modified"
+      },
+      "actions": {
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "cancel": "Cancel"
+      }
     }
   },
   "secrets": {

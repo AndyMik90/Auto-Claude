@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync } from 'fs';
+import { readdir, stat } from 'fs/promises';
 import path from 'path';
 
 export interface TemplateParameter {
@@ -109,21 +110,21 @@ function parseParameterString(paramStr: string): Omit<TemplateParameter, 'key' |
 /**
  * Recursively scan a directory for files (excluding certain directories)
  */
-function scanDirectory(dirPath: string, excludeDirs: string[] = ['.git', 'node_modules', '.next', 'dist', 'build']): string[] {
+async function scanDirectory(dirPath: string, excludeDirs: string[] = ['.git', 'node_modules', '.next', 'dist', 'build']): Promise<string[]> {
   const files: string[] = [];
 
-  function scan(currentPath: string) {
+  async function scan(currentPath: string): Promise<void> {
     try {
-      const items = readdirSync(currentPath);
+      const items = await readdir(currentPath);
 
       for (const item of items) {
         const fullPath = path.join(currentPath, item);
-        const stats = statSync(fullPath);
+        const stats = await stat(fullPath);
 
         if (stats.isDirectory()) {
           // Skip excluded directories
           if (!excludeDirs.includes(item)) {
-            scan(fullPath);
+            await scan(fullPath);
           }
         } else if (stats.isFile()) {
           // Only process text files (exclude binary files)
@@ -148,22 +149,23 @@ function scanDirectory(dirPath: string, excludeDirs: string[] = ['.git', 'node_m
     }
   }
 
-  scan(dirPath);
+  await scan(dirPath);
   return files;
 }
 
 /**
  * Parse a template directory and extract all dynamic parameters
  */
-export function parseTemplateDirectory(templatePath: string): ParsedTemplate {
+export async function parseTemplateDirectory(templatePath: string): Promise<ParsedTemplate> {
   console.log('[TEMPLATE_PARSER] Starting parse for:', templatePath);
   const parameters: TemplateParameter[] = [];
-  const files = scanDirectory(templatePath);
+  const files = await scanDirectory(templatePath);
   console.log('[TEMPLATE_PARSER] Found', files.length, 'files to scan');
   let filesWithParameters = 0;
   let paramCounter = 0;
 
-  const paramRegex = /\{\{[^}]+\}\}/g;
+  // Bounded quantifier to prevent ReDoS attacks
+  const paramRegex = /\{\{[^}]{1,500}\}\}/g;
 
   for (const filePath of files) {
     try {

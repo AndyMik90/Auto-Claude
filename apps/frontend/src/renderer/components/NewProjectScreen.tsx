@@ -414,6 +414,7 @@ export function NewProjectScreen({
                         {recentProjects.map((project) => (
                           <button
                             key={project.id}
+                            type="button"
                             onClick={() => onSelectRecentProject(project.id)}
                             className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-accent/50 group"
                           >
