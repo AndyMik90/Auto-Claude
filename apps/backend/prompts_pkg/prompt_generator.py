@@ -253,12 +253,13 @@ def generate_planner_prompt(spec_dir: Path, project_dir: Path | None = None) -> 
     Returns:
         Planner prompt string
     """
-    # Load the full planner prompt from file
-    prompts_dir = Path(__file__).parent / "prompts"
+    # Load the full planner prompt from file.
+    # prompts/ is a sibling directory of prompts_pkg/, so go up one level first.
+    prompts_dir = Path(__file__).parent.parent / "prompts"
     planner_file = prompts_dir / "planner.md"
 
     if planner_file.exists():
-        prompt = planner_file.read_text()
+        prompt = planner_file.read_text(encoding="utf-8")
     else:
         prompt = (
             "Read spec.md and create implementation_plan.json with phases and subtasks."

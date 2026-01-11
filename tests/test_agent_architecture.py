@@ -59,7 +59,7 @@ class TestCLIInterface:
     def test_no_parallel_flag(self):
         """CLI should not have --parallel argument."""
         run_py_path = Path(__file__).parent.parent / "apps" / "backend" / "run.py"
-        content = run_py_path.read_text()
+        content = run_py_path.read_text(encoding="utf-8")
 
         # Check that --parallel is not defined as an argument
         assert '"--parallel"' not in content, (
@@ -74,7 +74,7 @@ class TestCLIInterface:
     def test_no_parallel_examples_in_docs(self):
         """CLI documentation should not mention parallel mode."""
         run_py_path = Path(__file__).parent.parent / "apps" / "backend" / "run.py"
-        content = run_py_path.read_text()
+        content = run_py_path.read_text(encoding="utf-8")
 
         # The docstring should not have --parallel examples
         assert "--parallel" not in content[:2000], (
@@ -126,7 +126,7 @@ class TestAgentPrompt:
     def test_mentions_subagents(self):
         """Agent prompt mentions subagent capability."""
         coder_prompt_path = Path(__file__).parent.parent / "apps" / "backend" / "prompts" / "coder.md"
-        content = coder_prompt_path.read_text()
+        content = coder_prompt_path.read_text(encoding="utf-8")
 
         assert "subagent" in content.lower(), (
             "Agent prompt should document subagent capability for parallel work."
@@ -135,7 +135,7 @@ class TestAgentPrompt:
     def test_mentions_parallel_capability(self):
         """Agent prompt mentions parallel/concurrent capability."""
         coder_prompt_path = Path(__file__).parent.parent / "apps" / "backend" / "prompts" / "coder.md"
-        content = coder_prompt_path.read_text()
+        content = coder_prompt_path.read_text(encoding="utf-8")
 
         has_task_tool = "task tool" in content.lower() or "Task tool" in content
         has_parallel = "parallel" in content.lower()
@@ -159,7 +159,7 @@ class TestModuleIntegrity:
     def test_run_module_valid_syntax(self):
         """Run module has valid Python syntax."""
         run_py_path = Path(__file__).parent.parent / "apps" / "backend" / "run.py"
-        content = run_py_path.read_text()
+        content = run_py_path.read_text(encoding="utf-8")
 
         try:
             ast.parse(content)
@@ -170,7 +170,7 @@ class TestModuleIntegrity:
         """Core modules don't import coordinator."""
         for filename in ["run.py", "core/agent.py"]:
             filepath = Path(__file__).parent.parent / "apps" / "backend" / filename
-            content = filepath.read_text()
+            content = filepath.read_text(encoding="utf-8")
 
             assert "from coordinator import" not in content, (
                 f"{filename} should not import coordinator"
@@ -183,7 +183,7 @@ class TestModuleIntegrity:
         """Core modules don't import task_tool."""
         for filename in ["run.py", "core/agent.py"]:
             filepath = Path(__file__).parent.parent / "apps" / "backend" / filename
-            content = filepath.read_text()
+            content = filepath.read_text(encoding="utf-8")
 
             assert "from task_tool import" not in content, (
                 f"{filename} should not import task_tool"

@@ -379,7 +379,7 @@ def get_current_phase(spec_dir: Path) -> dict | None:
             plan = json.load(f)
 
         for phase in plan.get("phases", []):
-            subtasks = phase.get("subtasks", [])
+            subtasks = phase.get("subtasks", phase.get("chunks", []))
             # Phase is current if it has incomplete subtasks and dependencies are met
             has_incomplete = any(s.get("status") != "completed" for s in subtasks)
             if has_incomplete:
@@ -424,7 +424,7 @@ def get_next_subtask(spec_dir: Path) -> dict | None:
         phase_complete = {}
         for phase in phases:
             phase_id = phase.get("id") or phase.get("phase")
-            subtasks = phase.get("subtasks", [])
+            subtasks = phase.get("subtasks", phase.get("chunks", []))
             phase_complete[phase_id] = all(
                 s.get("status") == "completed" for s in subtasks
             )
@@ -440,13 +440,20 @@ def get_next_subtask(spec_dir: Path) -> dict | None:
                 continue
 
             # Find first pending subtask in this phase
-            for subtask in phase.get("subtasks", []):
-                if subtask.get("status") == "pending":
+            for subtask in phase.get("subtasks", phase.get("chunks", [])):
+                status = subtask.get("status", "pending")
+                if status in {"pending", "not_started", "not started"}:
+                    subtask_out = dict(subtask)
+                    if "id" not in subtask_out and "subtask_id" in subtask_out:
+                        subtask_out["id"] = str(subtask_out.get("subtask_id"))
+                    if "description" not in subtask_out and "title" in subtask_out:
+                        subtask_out["description"] = subtask_out.get("title")
+                    subtask_out["status"] = "pending"
                     return {
                         "phase_id": phase_id,
                         "phase_name": phase.get("name"),
                         "phase_num": phase.get("phase"),
-                        **subtask,
+                        **subtask_out,
                     }
 
         return None
