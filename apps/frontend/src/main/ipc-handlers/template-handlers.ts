@@ -83,7 +83,29 @@ const readTemplatesFile = (): TemplateStore => {
 
   try {
     const data = readFileSync(templatesPath, 'utf-8');
-    return JSON.parse(data) as TemplateStore;
+    const store = JSON.parse(data) as TemplateStore;
+
+    // Migration: Ensure all templates have a version field
+    let needsWrite = false;
+    store.templates = store.templates.map(template => {
+      if (typeof template.version !== 'number') {
+        console.log('[TEMPLATES] Migrating template to add version field:', template.id);
+        needsWrite = true;
+        return {
+          ...template,
+          version: 1 // Initialize version for existing templates
+        };
+      }
+      return template;
+    });
+
+    // Write back if migration was needed
+    if (needsWrite) {
+      console.log('[TEMPLATES] Writing migrated templates file');
+      writeFileSync(templatesPath, JSON.stringify(store, null, 2), 'utf-8');
+    }
+
+    return store;
   } catch (error) {
     console.error('[TEMPLATES] Failed to read templates file:', error);
     return { templates: [] };
@@ -102,6 +124,7 @@ export function registerTemplateHandlers(): void {
     async (): Promise<IPCResult<Template[]>> => {
       try {
         const store = readTemplatesFile();
+        console.log('[TEMPLATES_GET] Loaded templates:', store.templates.map(t => ({ id: t.id, name: t.name, version: t.version })));
         return { success: true, data: store.templates };
       } catch (error) {
         return {
@@ -206,6 +229,8 @@ export function registerTemplateHandlers(): void {
       expectedVersion: number
     ): Promise<IPCResult<Template>> => {
       try {
+        console.log('[TEMPLATES_UPDATE] Received params:', { templateId, expectedVersion, expectedVersionType: typeof expectedVersion });
+
         // Security: Validate templateId
         if (!templateId || typeof templateId !== 'string') {
           return { success: false, error: 'Template ID is required' };
@@ -213,6 +238,7 @@ export function registerTemplateHandlers(): void {
 
         // Security: Validate expectedVersion
         if (typeof expectedVersion !== 'number' || !Number.isInteger(expectedVersion) || expectedVersion < 1) {
+          console.error('[TEMPLATES_UPDATE] Invalid version:', { expectedVersion, type: typeof expectedVersion });
           return { success: false, error: 'Expected version must be a positive integer' };
         }
 

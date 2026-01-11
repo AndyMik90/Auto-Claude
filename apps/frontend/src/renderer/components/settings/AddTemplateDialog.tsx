@@ -95,6 +95,7 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
     try {
       if (template) {
         // Update existing template with optimistic locking
+        console.log('[AddTemplateDialog] Updating template:', { id: template.id, version: template.version });
         const result = await window.electronAPI.updateTemplate(
           template.id,
           {
@@ -104,6 +105,7 @@ export function AddTemplateDialog({ open, onOpenChange, template, onSaved }: Add
           },
           template.version // Optimistic locking: pass current version
         );
+        console.log('[AddTemplateDialog] Update result:', result.success ? 'Success' : result.error);
 
         if (!result.success) {
           setError(result.error || t('templates.errors.updateFailed'));

@@ -56,13 +56,16 @@ export function NewProjectScreen({
   const [secretGroups, setSecretGroups] = useState<SecretGroup[]>([]);
   const [selectedSecretAccounts, setSelectedSecretAccounts] = useState<Record<string, string>>({});
 
-  // Load templates on mount
+  // Load templates when dialog opens
   useEffect(() => {
+    if (!open) return;
+
     const loadTemplates = async () => {
       setIsLoadingTemplates(true);
       try {
         const result = await window.electronAPI.getTemplates();
         if (result.success && result.data) {
+          console.log('[NewProjectScreen] Loaded templates:', result.data.map(t => ({ id: t.id, name: t.name })));
           setTemplates(result.data);
         }
       } catch (error) {
@@ -72,7 +75,7 @@ export function NewProjectScreen({
       }
     };
     loadTemplates();
-  }, []);
+  }, [open]);
 
   // Filter templates based on search query
   const filteredTemplates = templates.filter((template) =>
@@ -141,6 +144,7 @@ export function NewProjectScreen({
   };
 
   const handleOpenCreateFromTemplate = async (template: Template) => {
+    console.log('[NewProjectScreen] Opening create dialog for template:', { id: template.id, name: template.name });
     setSelectedTemplate(template);
     setProjectName('');
     setCreateTemplateError('');
@@ -177,7 +181,9 @@ export function NewProjectScreen({
 
     // Parse template parameters immediately
     try {
+      console.log('[NewProjectScreen] Parsing parameters for template ID:', template.id);
       const parseResult = await window.electronAPI.parseTemplateParameters(template.id);
+      console.log('[NewProjectScreen] Parse result:', parseResult.success ? `${parseResult.data?.parameters.length || 0} parameters` : parseResult.error);
 
       if (parseResult.success && parseResult.data && parseResult.data.parameters.length > 0) {
         setTemplateParameters(parseResult.data);
@@ -238,6 +244,7 @@ export function NewProjectScreen({
   const createProjectFromTemplate = async () => {
     if (!selectedTemplate || !projectName.trim()) return;
 
+    console.log('[NewProjectScreen] Creating project from template:', { id: selectedTemplate.id, name: selectedTemplate.name });
     setIsCreatingFromTemplate(true);
     setCreateTemplateError('');
 
@@ -284,6 +291,7 @@ export function NewProjectScreen({
           }
         }
 
+        console.log('[NewProjectScreen] Calling copyTemplateWithParameters with template ID:', selectedTemplate.id);
         result = await window.electronAPI.copyTemplateWithParameters(
           selectedTemplate.id,
           defaultLocation,
@@ -291,12 +299,14 @@ export function NewProjectScreen({
           allParameterValues
         );
       } else {
+        console.log('[NewProjectScreen] Calling copyTemplateWithName with template ID:', selectedTemplate.id);
         result = await window.electronAPI.copyTemplateWithName(
           selectedTemplate.id,
           defaultLocation,
           projectName.trim()
         );
       }
+      console.log('[NewProjectScreen] Copy result:', result.success ? 'Success' : result.error);
 
       if (!result.success || !result.data) {
         setCreateTemplateError(result.error || 'Failed to copy template');

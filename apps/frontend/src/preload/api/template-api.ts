@@ -6,7 +6,7 @@ export interface TemplateAPI {
   getTemplates: () => Promise<IPCResult<Template[]>>;
   saveTemplate: (template: Omit<Template, 'id' | 'createdAt' | 'updatedAt'>) => Promise<IPCResult<Template>>;
   deleteTemplate: (templateId: string) => Promise<IPCResult>;
-  updateTemplate: (templateId: string, updates: Partial<Omit<Template, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<IPCResult<Template>>;
+  updateTemplate: (templateId: string, updates: Partial<Omit<Template, 'id' | 'createdAt' | 'updatedAt'>>, expectedVersion: number) => Promise<IPCResult<Template>>;
   copyTemplate: (templateId: string, destinationPath: string) => Promise<IPCResult<{ path: string }>>;
   copyTemplateWithName: (templateId: string, destinationPath: string, customName: string) => Promise<IPCResult<{ path: string }>>;
   parseTemplateParameters: (templateId: string) => Promise<IPCResult<ParsedTemplate>>;
@@ -32,8 +32,8 @@ export const createTemplateAPI = (): TemplateAPI => ({
   deleteTemplate: (templateId: string): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.TEMPLATES_DELETE, templateId),
 
-  updateTemplate: (templateId: string, updates: Partial<Omit<Template, 'id' | 'createdAt' | 'updatedAt'>>): Promise<IPCResult<Template>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.TEMPLATES_UPDATE, templateId, updates),
+  updateTemplate: (templateId: string, updates: Partial<Omit<Template, 'id' | 'createdAt' | 'updatedAt'>>, expectedVersion: number): Promise<IPCResult<Template>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TEMPLATES_UPDATE, templateId, updates, expectedVersion),
 
   copyTemplate: (templateId: string, destinationPath: string): Promise<IPCResult<{ path: string }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TEMPLATES_COPY, templateId, destinationPath),
