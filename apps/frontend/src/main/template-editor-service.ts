@@ -155,7 +155,7 @@ export class TemplateEditorService extends EventEmitter {
   }
 
   /**
-   * Send a message to Claude and get a streaming response
+   * Send a message to Claude and get a streaming response with agentic loop
    */
   async sendMessage(
     templateId: string,
@@ -220,70 +220,81 @@ export class TemplateEditorService extends EventEmitter {
     try {
       this.emit('status', templateId, 'thinking');
 
-      let assistantMessage = '';
-      let currentToolUse: { id: string; name: string; input: any } | null = null;
+      // Agentic loop: continue until Claude doesn't use tools
+      let continueLoop = true;
+      const maxIterations = 10; // Prevent infinite loops
+      let iteration = 0;
 
-      // Create message with tool use
-      const stream = await this.anthropic.messages.stream({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        messages: history.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        })),
-        tools
-      });
+      while (continueLoop && iteration < maxIterations) {
+        iteration++;
 
-      // Handle streaming response
-      for await (const event of stream) {
-        if (event.type === 'content_block_start' && event.content_block.type === 'text') {
-          this.emit('stream-chunk', templateId, { type: 'text', text: '' });
-        } else if (event.type === 'content_block_delta') {
-          if (event.delta.type === 'text_delta') {
-            assistantMessage += event.delta.text;
-            this.emit('stream-chunk', templateId, { type: 'text', text: event.delta.text });
+        const toolResults: Anthropic.MessageParam[] = [];
+        let assistantContent: Anthropic.ContentBlock[] = [];
+
+        // Create message with tool use
+        const response = await this.anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
+          messages: history.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          tools
+        });
+
+        // Process response content
+        assistantContent = response.content;
+
+        // Stream text content to UI
+        for (const block of response.content) {
+          if (block.type === 'text') {
+            this.emit('stream-chunk', templateId, { type: 'text', text: block.text });
+          } else if (block.type === 'tool_use') {
+            // Execute tool and emit progress
+            const result = await this.executeTool(
+              templatePath,
+              block.name,
+              block.input
+            );
+
+            this.emit('stream-chunk', templateId, {
+              type: 'tool_use',
+              name: block.name,
+              input: block.input,
+              result
+            });
+
+            // Add tool result to continue conversation
+            toolResults.push({
+              role: 'user',
+              content: [{
+                type: 'tool_result',
+                tool_use_id: block.id,
+                content: result
+              }]
+            });
           }
-        } else if (event.type === 'content_block_start' && event.content_block.type === 'tool_use') {
-          currentToolUse = {
-            id: event.content_block.id,
-            name: event.content_block.name,
-            input: {}
-          };
-        } else if (event.type === 'content_block_delta' && event.delta.type === 'input_json_delta') {
-          if (currentToolUse) {
-            // Accumulate tool input
-            try {
-              Object.assign(currentToolUse.input, JSON.parse(event.delta.partial_json));
-            } catch {
-              // Partial JSON, will complete in next delta
-            }
-          }
-        } else if (event.type === 'content_block_stop' && currentToolUse) {
-          // Execute tool
-          const result = await this.executeTool(
-            templatePath,
-            currentToolUse.name,
-            currentToolUse.input
-          );
+        }
 
-          this.emit('stream-chunk', templateId, {
-            type: 'tool_use',
-            name: currentToolUse.name,
-            input: currentToolUse.input,
-            result
-          });
+        // Add assistant message to history
+        history.push({
+          role: 'assistant',
+          content: JSON.stringify(assistantContent)
+        });
 
-          currentToolUse = null;
+        // If there were tool uses, continue the loop with results
+        if (toolResults.length > 0) {
+          history.push(...toolResults);
+          this.conversationHistory.set(templateId, history);
+          // Continue loop to get Claude's response to the tool results
+        } else {
+          // No tool use, conversation is complete
+          continueLoop = false;
         }
       }
 
-      // Add assistant response to history
-      if (assistantMessage) {
-        history.push({ role: 'assistant', content: assistantMessage });
-        this.conversationHistory.set(templateId, history);
-      }
-
+      this.conversationHistory.set(templateId, history);
       this.emit('status', templateId, 'complete');
     } catch (error) {
       this.emit('error', templateId, error instanceof Error ? error.message : 'Unknown error');
