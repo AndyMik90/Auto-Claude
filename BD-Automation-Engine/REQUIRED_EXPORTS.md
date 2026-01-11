@@ -1,291 +1,212 @@
 # Required Data Exports
 
-This document lists all files and data exports you need to provide to complete the BD Automation Engine setup.
+This document lists all files and data exports needed for the BD Automation Engine. Updated after January 2026 data import.
 
 ## Status Checklist
 
 Use this checklist to track what you've exported:
 
-- [ ] **Federal Programs Database** (CSV)
-- [ ] **DCGS Contacts Database** (CSV)
-- [ ] **GDIT Other Contacts Database** (CSV)
-- [ ] **Contractors Database** (CSV)
-- [ ] **Contract Vehicles Database** (CSV)
-- [ ] **Existing n8n Workflows** (JSON) - if applicable
-- [ ] **Claude Conversation Exports** (Markdown) - optional but recommended
+### Core Databases
+- [x] **Federal Programs Database** (CSV) - `Programs_KB.csv` ADDED
+- [x] **DCGS Contacts Full Database** (CSV) - `DCGS_Contacts.csv` ADDED (6,288 contacts)
+- [x] **DCGS Contacts Sorted** (CSV) - `DCGS Contact Sorted.csv` ADDED
+- [x] **GDIT Other Contacts Database** (CSV) - `GDIT_Other_Contacts.csv` ADDED
+- [x] **GDIT PTS Contacts** (CSV) - `GDIT PTS Contacts.csv` ADDED
+- [x] **Contractors Database** (CSV) - `Contractors.csv` ADDED
+- [x] **Contract Vehicles Database** (CSV) - `Contract_Vehicles.csv` ADDED
+
+### Additional Contact Databases
+- [x] **GBSD Contact Chart** (CSV) - `GBSD Contact Chart Updated 9 4.csv` ADDED
+- [x] **Lockheed Martin Contacts** (CSV) - `Lockheed Contact.csv` ADDED
+
+### Job Data
+- [x] **GDIT Jobs** (CSV) - `GDIT Jobs 2.csv` ADDED
+- [x] **Insight Global Jobs - Program Mapped** (CSV) - ADDED
+- [x] **Program Mapping Intelligence Hub** (CSV) - ADDED
+- [x] **BD Opportunities** (CSV) - ADDED
+
+### n8n Workflows
+- [x] **17 n8n Workflows** (JSON) - ALL ADDED including:
+  - PTS BD WF1-WF6 (Job Intake, Enrichment, BD Ops, Classification, Alerts, Reports)
+  - Prime TS BD Intelligence System v2.1
+  - AI Agent workflow, Agent Logger, Error Logging
+  - Clearance Job RAG Agent, Firecrawl Search Agent
+  - Federal Programs Data Fix, Apify Integration
+
+### Claude Conversation Exports
+- [x] **20+ Claude Exports** (Markdown) - ALL ADDED including:
+  - DCGS BD Intelligence System conversations
+  - Apify MCP Server Audit
+  - Job Scraper Engine Optimization
+  - Program Mapping Engine exports
+  - PTS BD Skills Master Audit
+  - Notion MCP Integration Documentation
+
+### Scraper Data
+- [x] **Apify Input Configurations** (JSON) - 3 variants ADDED
+- [x] **Puppeteer Scraper Outputs** (JSON/CSV) - 10 dataset files ADDED
 
 ---
 
-## 1. Federal Programs Database Export
+## Current Data Inventory
 
-**Source:** Notion - Federal Programs Database
-**Collection ID:** `06cd9b22-5d6b-4d37-b0d3-ba99da4971fa`
-**Destination:** `Engine2_ProgramMapping/data/Programs_KB.csv`
+### Engine 1: Scraper Data
+| File | Records | Date | Source |
+|------|---------|------|--------|
+| dataset_puppeteer-scraper_2025-12-17.csv | 176 | Dec 2025 | ClearanceJobs |
+| dataset_puppeteer-scraper_2026-01-05.json | 325 | Jan 5 | Insight Global |
+| dataset_puppeteer-scraper_2026-01-06.json | 1,209 | Jan 6 | Apex Systems |
+| dataset_puppeteer-scraper_2026-01-08_*.json | 650-1,105 | Jan 8 | Multiple (5 files) |
 
-### Required Columns
+### Engine 2: Program Mapping Data
+| File | Records | Description |
+|------|---------|-------------|
+| Programs_KB.csv | 402 lines | Federal Programs database |
+| Contractors.csv | 16 lines | Contractor companies |
+| Contract_Vehicles.csv | 10 lines | Contract vehicles |
+| GDIT Jobs 2.csv | 701 lines | GDIT job postings |
+| Program Mapping Intelligence Hub.csv | 568 lines | Enriched job data |
+| BD Opportunities.csv | 4 lines | BD pipeline |
 
-| Column | Type | Description | Example |
-|--------|------|-------------|---------|
-| Program Name | Text | Full program name | AF DCGS |
-| Acronym | Text | Common abbreviation | DCGS |
-| Agency Owner | Select | Owning agency | USAF/ACC |
-| Prime Contractor | Select | Primary contractor | BAE Systems |
-| Known Subcontractors | Multi-select | List of subs | GDIT, Leidos, SAIC |
-| Contract Value | Number | Estimated value | ~500M |
-| Contract Vehicle | Text | Vehicle name | AFLCMC SOF GLSS |
-| Key Locations | Multi-select | Work locations | Langley VA, San Diego CA |
-| Clearance Requirements | Select | Required clearance | TS/SCI |
-| Typical Roles | Multi-select | Common positions | Intelligence Analysts, Network Engineers |
-| Keywords | Text | Search keywords | dcgs, isr, 480th |
-| PTS Involvement | Select | Current status | Current Subcontractor |
-| Priority Level | Select | BD priority | Critical |
-| Pain Points | Text | Known issues | PACAF understaffed |
-| Notes | Text | Additional info | Option Year 2 |
-
-### How to Export
-
-1. Open Federal Programs database in Notion
-2. Click `...` menu > **Export**
-3. Select **CSV** format
-4. Download and rename to `Programs_KB.csv`
-5. Place in `Engine2_ProgramMapping/data/`
+### Engine 3: Contact Data
+| File | Records | Description |
+|------|---------|-------------|
+| DCGS_Contacts.csv | 6,288 lines | Full DCGS contacts |
+| DCGS Contact Sorted.csv | 1,199 lines | Filtered/sorted view |
+| GDIT_Other_Contacts.csv | 1,053 lines | Other GDIT contacts |
+| GDIT PTS Contacts.csv | 343 lines | PTS-specific contacts |
+| GBSD Contact Chart.csv | 73 lines | GBSD program contacts |
+| Lockheed Contact.csv | 1,641 lines | Lockheed Martin contacts |
 
 ---
 
-## 2. DCGS Contacts Database Export
+## File Locations
 
-**Source:** Notion - DCGS Contacts Full Database
-**Collection ID:** `2ccdef65-baa5-8087-a53b-000ba596128e`
-**Destination:** `Engine3_OrgChart/data/DCGS_Contacts.csv`
-
-### Required Columns
-
-| Column | Type | Description | Example |
-|--------|------|-------------|---------|
-| Name | Title | Full name | John Smith |
-| Job Title | Text | Current title | Program Manager |
-| Email Address | Email | Work email | john.smith@bae.com |
-| Phone | Phone | Work phone | 555-123-4567 |
-| LinkedIn URL | URL | Profile link | linkedin.com/in/... |
-| Company | Select | Employer | BAE Systems |
-| Program | Select | Primary program | AF DCGS - Langley |
-| Location | Text | Work location | Hampton, VA |
-| Clearance | Select | Clearance level | TS/SCI |
-| Hierarchy Tier | Select | Classification | Tier 3 - Program Leadership |
-| BD Priority | Select | Outreach priority | High |
-| Location Hub | Select | Geographic hub | Hampton Roads |
-| Functional Area | Multi-select | Job function | Program Management |
-| Last Contact Date | Date | Last interaction | 2025-01-01 |
-| Notes | Text | Intel/context | Key decision maker |
-| Source | Select | How identified | LinkedIn |
-
-### How to Export
-
-1. Open DCGS Contacts Full database in Notion
-2. Filter to active contacts if desired
-3. Click `...` menu > **Export** > **CSV**
-4. Download and rename to `DCGS_Contacts.csv`
-5. Place in `Engine3_OrgChart/data/`
-
----
-
-## 3. GDIT Other Contacts Database Export
-
-**Source:** Notion - GDIT Other Contacts Database
-**Collection ID:** `70ea1c94-211d-40e6-a994-e8d7c4807434`
-**Destination:** `Engine3_OrgChart/data/GDIT_Other_Contacts.csv`
-
-### Required Columns
-
-Same schema as DCGS Contacts above.
-
-### How to Export
-
-Same process as DCGS Contacts.
-
----
-
-## 4. Contractors Database Export
-
-**Source:** Notion - Contractors Database
-**Collection ID:** `3a259041-22bf-4262-a94a-7d33467a1752`
-**Destination:** `Engine2_ProgramMapping/data/Contractors.csv`
-
-### Required Columns
-
-| Column | Type | Description | Example |
-|--------|------|-------------|---------|
-| Company Name | Title | Legal name | BAE Systems |
-| Aliases | Text | Other names | BAE, BAE Systems Inc |
-| Primary Focus | Multi-select | Core capabilities | ISR, EW, Cyber |
-| Key Programs | Relation | Programs involved | AF DCGS |
-| GDIT Relationship | Select | Teaming status | Sub to BAE |
-| Strengths | Text | Competitive advantages | ISR market leader |
-| Weaknesses | Text | Known gaps | Limited Army presence |
-| Key Contacts | Relation | Linked contacts | (relation) |
-| Notes | Text | Additional intel | Primary competitor for... |
-
-### How to Export
-
-1. Open Contractors database in Notion
-2. Click `...` menu > **Export** > **CSV**
-3. Download and place in `Engine2_ProgramMapping/data/`
-
----
-
-## 5. Contract Vehicles Database Export
-
-**Source:** Notion - Contract Vehicles Database
-**Collection ID:** `0f09543e-9932-44f2-b0ab-7b4c070afb81`
-**Destination:** `Engine2_ProgramMapping/data/Contract_Vehicles.csv`
-
-### Required Columns
-
-| Column | Type | Description | Example |
-|--------|------|-------------|---------|
-| Vehicle Name | Title | Official name | ALLIANT 2 |
-| Acronym | Text | Short name | A2 |
-| Agency | Select | Owning agency | GSA |
-| Focus Area | Multi-select | Service types | IT Services |
-| Term End Date | Date | Expiration | 2028-12-31 |
-| Status | Select | Current status | Active |
-| Relevant Programs | Relation | Associated programs | (relation) |
-| PTS Position | Select | Our status | Holder |
-| Notes | Text | Additional info | GWAC vehicle |
-
-### How to Export
-
-1. Open Contract Vehicles database in Notion
-2. Click `...` menu > **Export** > **CSV**
-3. Download and place in `Engine2_ProgramMapping/data/`
-
----
-
-## 6. Existing n8n Workflows (If Applicable)
-
-**Source:** n8n Dashboard
-**Destination:** `n8n/` folder
-
-If you have existing n8n workflows for:
-- Job data import
-- Notion updates
-- Alert notifications
-
-### How to Export
-
-1. Open n8n Dashboard
-2. Navigate to each workflow
-3. Click `...` menu > **Download**
-4. Save JSON files to `n8n/` folder
-
----
-
-## 7. Claude Conversation Exports (Optional)
-
-**Source:** Claude.ai Conversations
-**Destination:** `docs/Claude Exports/`
-
-Export any Claude conversations that contain:
-- Development decisions
-- Architecture discussions
-- Code implementations
-- Configuration details
-
-### How to Export
-
-1. Open the Claude conversation
-2. Click conversation menu > **Export**
-3. Select Markdown format
-4. Save to `docs/Claude Exports/`
-
-Use this prompt in the conversation first to structure the export:
+### Contacts (Engine 3)
+All contact databases are now correctly located in:
 ```
-Please provide a structured summary of our conversation including:
-1. Key decisions made
-2. Code implementations
-3. Configuration values
-4. Architecture patterns
-5. Next steps discussed
+Engine3_OrgChart/data/
+├── DCGS_Contacts.csv
+├── DCGS_ContactsAll.csv
+├── DCGS Contact Sorted.csv
+├── DCGS Contact SortedAll.csv
+├── GDIT_Other_Contacts.csv
+├── GDIT Other ContactsAll.csv
+├── GDIT PTS Contacts.csv
+├── GDIT PTS Contacts All.csv
+├── GBSD Contact Chart Updated 9 4.csv
+├── GBSD Contact Chart Updated 9 4 All.csv
+├── Lockheed Contact.csv
+└── Lockheed ContactAll.csv
+```
+
+### Programs & Jobs (Engine 2)
+Program, contractor, and job data in:
+```
+Engine2_ProgramMapping/data/
+├── Programs_KB.csv
+├── Contractors.csv
+├── Contract_Vehicles.csv
+├── GDIT Jobs 2.csv
+├── Program Mapping Intelligence Hub.csv
+├── BD Opportunities.csv
+└── Insight Global Jobs - Program Mapped (Dec 2025).csv
+```
+
+### n8n Workflows
+All 17 workflows in:
+```
+n8n/
+├── PTS_BD_WF1_Apify_Job_Scraper_Intake.json
+├── PTS_BD_WF2_AI_Enrichment_Processor.json
+├── PTS_BD_WF3_Hub_to_BD_Opportunities.json
+├── PTS_BD_WF4_Contact_Classification.json
+├── PTS_BD_WF5_Hot_Lead_Alerts.json
+├── PTS_BD_WF6_Weekly_Summary_Report.json
+├── Prime_TS_BD_Intelligence_System_v2.1.json
+└── ... (10 more utility workflows)
+```
+
+### Claude Exports
+All 20+ exports in:
+```
+docs/Claude Exports/
+├── DCGS_BD_Intelligence_System_*.md
+├── Apify_MCP_Server_Audit_*.md
+├── Job_Scraper_Engine_Optimization_*.md
+├── ProgramMappingEngine_*.md
+├── PTS_BD_Skills_Master_Audit_*.md
+└── ... (15+ more exports)
 ```
 
 ---
 
-## File Placement Summary
+## Data Schema Reference
 
-After all exports, your folder structure should look like:
+### Notion Collection IDs (Verified)
+```bash
+# Contact Databases
+DCGS Contacts Full:     2ccdef65-baa5-8087-a53b-000ba596128e
+GDIT Other Contacts:    70ea1c94-211d-40e6-a994-e8d7c4807434
 
-```
-BD-Automation-Engine/
-├── Engine1_Scraper/
-│   └── data/
-│       └── Sample_Jobs.json (provided)
-│
-├── Engine2_ProgramMapping/
-│   └── data/
-│       ├── Programs_KB.csv          ← YOUR EXPORT
-│       ├── Programs_KB_TEMPLATE.csv (provided)
-│       ├── Contractors.csv          ← YOUR EXPORT
-│       └── Contract_Vehicles.csv    ← YOUR EXPORT
-│
-├── Engine3_OrgChart/
-│   └── data/
-│       ├── DCGS_Contacts.csv        ← YOUR EXPORT
-│       ├── GDIT_Other_Contacts.csv  ← YOUR EXPORT
-│       └── Contacts_TEMPLATE.csv (provided)
-│
-├── n8n/
-│   ├── bd_automation_workflow.json (provided)
-│   └── [your-existing-workflows].json  ← YOUR EXPORTS
-│
-└── docs/
-    └── Claude Exports/
-        └── [conversation-exports].md    ← YOUR EXPORTS
+# Job & Opportunity Tracking
+GDIT Jobs:              2ccdef65-baa5-80b0-9a80-000bd2745f63
+Program Mapping Hub:    f57792c1-605b-424c-8830-23ab41c47137
+BD Opportunities:       2bcdef65-baa5-80ed-bd95-000b2f898e17
+
+# Reference Databases
+Federal Programs:       06cd9b22-5d6b-4d37-b0d3-ba99da4971fa
+Contractors:            3a259041-22bf-4262-a94a-7d33467a1752
+Contract Vehicles:      0f09543e-9932-44f2-b0ab-7b4c070afb81
 ```
 
 ---
 
-## Data Validation Checklist
+## Still Needed (Optional)
 
-After placing your exports, verify:
+The following are optional enhancements:
 
-### Programs Data
-- [ ] All programs have unique names
-- [ ] Keywords are comma-separated in text field
-- [ ] Contract values include "~" prefix for estimates
-- [ ] Priority levels use: Critical, High, Medium, Low
-
-### Contacts Data
-- [ ] Email addresses are valid format
-- [ ] LinkedIn URLs are full paths (linkedin.com/in/...)
-- [ ] Hierarchy Tiers use exact format: "Tier X - Name"
-- [ ] BD Priority uses emoji prefix: "Critical", "High", "Medium", "Standard"
-- [ ] Location Hub matches: Hampton Roads, San Diego Metro, DC Metro, etc.
-
-### Contractors Data
-- [ ] Company names are consistent with contacts
-- [ ] Aliases include all known variations
-- [ ] GDIT Relationship is accurate
-
-### Contract Vehicles Data
-- [ ] Term end dates are future or clearly marked expired
-- [ ] PTS Position is accurate (Holder, Not Holder, Pursuing)
+- [ ] **ZoomInfo Contact Exports** - For contact enrichment
+- [ ] **LinkedIn Sales Navigator Exports** - For relationship mapping
+- [ ] **Bullhorn CRM Export** - If using CRM integration
+- [ ] **Additional Apify Actor Results** - For expanded job coverage
 
 ---
 
-## Next Steps After Export
+## Data Quality Notes
 
-1. Run validation script (coming soon):
-   ```bash
-   python scripts/validate_data.py
-   ```
+### Contact Data Quality
+- DCGS Contacts: 6,288 entries with hierarchy tiers assigned
+- GDIT Other: 1,053 entries with location mapping
+- Lockheed: 1,641 entries (needs hierarchy classification)
 
-2. Test with sample processing:
+### Program Data Quality
+- Federal Programs: 402 entries with DCGS focus
+- Contractors: 16 major contractors mapped
+- Contract Vehicles: 10 vehicles tracked
+
+### Job Data Quality
+- Multiple scraper runs from Dec 2025 - Jan 2026
+- Insight Global and Apex Systems data included
+- Program mapping partially complete
+
+---
+
+## Next Steps
+
+1. **Verify API Keys** - Add to `.env` file:
+   - ANTHROPIC_API_KEY
+   - OPENAI_API_KEY
+   - APIFY_API_TOKEN
+   - NOTION_TOKEN
+
+2. **Test Pipeline** - Run with sample data:
    ```bash
    python Engine2_ProgramMapping/scripts/program_mapper.py --test
    ```
 
-3. Verify Notion sync:
-   - Check that Collection IDs match your workspace
-   - Test API connection with a simple read operation
+3. **Import n8n Workflows** - Load the 6 core PTS BD workflows
 
-4. Continue with [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Engine Setup section
+4. **Configure Apify Actors** - Use the input JSON files as templates
+
+See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for complete instructions.
