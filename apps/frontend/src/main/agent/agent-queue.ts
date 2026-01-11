@@ -11,6 +11,7 @@ import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-
 import { getAPIProfileEnv } from '../services/profile';
 import { getOAuthModeClearVars } from './env-utils';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
+import { stripAnsiCodes } from '../../shared/utils/ansi-sanitizer';
 import { parsePythonCommand } from '../python-detector';
 import { pythonEnvManager } from '../python-env-manager';
 import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ipc-handlers/ideation/transformers';
@@ -423,7 +424,7 @@ export class AgentQueueManager {
       progressPercent = progressUpdate.progress;
 
       // Emit progress update with a clean message for the status bar
-      const statusMessage = log.trim().split('\n')[0].substring(0, 200);
+      const statusMessage = stripAnsiCodes(log.trim()).split('\n')[0].substring(0, 200);
       this.emitter.emit('ideation-progress', projectId, {
         phase: progressPhase,
         progress: progressPercent,
@@ -442,7 +443,7 @@ export class AgentQueueManager {
       this.emitter.emit('ideation-progress', projectId, {
         phase: progressPhase,
         progress: progressPercent,
-        message: log.trim().split('\n')[0].substring(0, 200)
+        message: stripAnsiCodes(log.trim()).split('\n')[0].substring(0, 200)
       });
     });
 
@@ -685,7 +686,7 @@ export class AgentQueueManager {
       this.emitter.emit('roadmap-progress', projectId, {
         phase: progressPhase,
         progress: progressPercent,
-        message: log.trim().substring(0, 200) // Truncate long messages
+        message: stripAnsiCodes(log.trim()).substring(0, 200) // Truncate long messages
       });
     });
 
@@ -699,7 +700,7 @@ export class AgentQueueManager {
       this.emitter.emit('roadmap-progress', projectId, {
         phase: progressPhase,
         progress: progressPercent,
-        message: log.trim().substring(0, 200)
+        message: stripAnsiCodes(log.trim()).substring(0, 200)
       });
     });
 
