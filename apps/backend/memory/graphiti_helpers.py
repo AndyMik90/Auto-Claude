@@ -132,6 +132,9 @@ async def save_to_graphiti_async(
         logger.warning(f"Failed to save to Graphiti: {e}")
         return False
     finally:
-        # Always close the graphiti connection
+        # Always close the graphiti connection (swallow exceptions to avoid overriding)
         if graphiti is not None:
-            await graphiti.close()
+            try:
+                await graphiti.close()
+            except Exception:
+                pass  # Close failures should not override the main result
