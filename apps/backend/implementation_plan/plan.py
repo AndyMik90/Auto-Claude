@@ -7,10 +7,13 @@ Defines the complete implementation plan for a feature/task with progress
 tracking, status management, and follow-up capabilities.
 """
 
+import asyncio
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+from core.file_utils import write_json_atomic
 
 from .enums import PhaseType, SubtaskStatus, WorkflowType
 from .phase import Phase
@@ -99,7 +102,7 @@ class ImplementationPlan:
         )
 
     def save(self, path: Path):
-        """Save plan to JSON file."""
+        """Save plan to JSON file using atomic write to prevent corruption."""
         self.updated_at = datetime.now().isoformat()
         if not self.created_at:
             self.created_at = self.updated_at
@@ -107,9 +110,32 @@ class ImplementationPlan:
         # Auto-update status based on subtask completion
         self.update_status_from_subtasks()
 
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
+        # Use atomic write to prevent corruption on crash/interrupt
+        write_json_atomic(path, self.to_dict(), indent=2, ensure_ascii=False)
+
+    async def async_save(self, path: Path):
+        """
+        Async version of save() - runs file I/O in thread pool to avoid blocking event loop.
+
+        Use this from async contexts (like agent sessions) to prevent blocking.
+        """
+        self.updated_at = datetime.now().isoformat()
+        if not self.created_at:
+            self.created_at = self.updated_at
+
+        # Auto-update status based on subtask completion
+        self.update_status_from_subtasks()
+
+        # Run sync write in thread pool to avoid blocking event loop
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            write_json_atomic,
+            path,
+            self.to_dict(),
+            2,  # indent
+            False,  # ensure_ascii
+        )
 
     def update_status_from_subtasks(self):
         """Update overall status and planStatus based on subtask completion state.

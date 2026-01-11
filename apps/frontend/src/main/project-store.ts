@@ -384,6 +384,7 @@ export class ProjectStore {
 
         // Try to read implementation plan
         let plan: ImplementationPlan | null = null;
+        let parseError: string | null = null;
         if (existsSync(planPath)) {
           console.warn(`[ProjectStore] Loading implementation_plan.json for spec: ${dir.name} from ${location}`);
           try {
@@ -397,7 +398,9 @@ export class ProjectStore {
               subtaskCount: plan?.phases?.flatMap(p => p.subtasks || []).length || 0
             });
           } catch (err) {
-            console.error(`[ProjectStore] Failed to parse implementation_plan.json for ${dir.name}:`, err);
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            parseError = `Failed to parse implementation_plan.json: ${errorMessage}`;
+            console.error(`[ProjectStore] ${parseError} for ${dir.name}`);
           }
         } else {
           console.warn(`[ProjectStore] No implementation_plan.json found for spec: ${dir.name} at ${planPath}`);
@@ -455,7 +458,20 @@ export class ProjectStore {
         }
 
         // Determine task status and review reason from plan
-        const { status, reviewReason } = this.determineTaskStatusAndReason(plan, specPath, metadata);
+        // If there's a parse error, override to error status
+        let finalStatus: TaskStatus;
+        let finalDescription = description;
+        let finalReviewReason: ReviewReason | undefined = undefined;
+
+        if (parseError) {
+          finalStatus = 'error';
+          finalDescription = parseError;
+          console.error(`[ProjectStore] Creating error task for ${dir.name}:`, parseError);
+        } else {
+          const { status, reviewReason } = this.determineTaskStatusAndReason(plan, specPath, metadata);
+          finalStatus = status;
+          finalReviewReason = reviewReason;
+        }
 
         // Extract subtasks from plan (handle both 'subtasks' and 'chunks' naming)
         const subtasks = plan?.phases?.flatMap((phase) => {
@@ -498,9 +514,9 @@ export class ProjectStore {
           specId: dir.name,
           projectId,
           title,
-          description,
-          status,
-          reviewReason,
+          description: finalDescription,
+          status: finalStatus,
+          reviewReason: finalReviewReason,
           subtasks,
           logs: [],
           metadata,

@@ -255,3 +255,18 @@ def get_project_dir(provided_dir: Path | None) -> Path:
         project_dir = project_dir.parent.parent
 
     return project_dir
+
+
+def find_specs_dir(project_dir: Path) -> Path | None:
+    """
+    Find the specs directory for a project.
+
+    Checks both '.auto-claude/specs' and 'auto-claude/specs' locations.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Path to specs directory, or None if not found
+    """
+    return get_specs_dir(project_dir)
