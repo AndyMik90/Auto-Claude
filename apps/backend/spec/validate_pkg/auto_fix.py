@@ -49,7 +49,7 @@ def auto_fix_plan(spec_dir: Path) -> bool:
     try:
         with open(plan_file, encoding="utf-8") as f:
             plan = json.load(f)
-    except json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
         return False
 
     fixed = False
@@ -170,8 +170,11 @@ def auto_fix_plan(spec_dir: Path) -> bool:
                     fixed = True
 
     if fixed:
-        with open(plan_file, "w", encoding="utf-8") as f:
-            json.dump(plan, f, indent=2, ensure_ascii=False)
+        try:
+            with open(plan_file, "w", encoding="utf-8") as f:
+                json.dump(plan, f, indent=2, ensure_ascii=False)
+        except OSError:
+            return False
         print(f"Auto-fixed: {plan_file}")
 
     return fixed
