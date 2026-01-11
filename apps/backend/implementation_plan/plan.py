@@ -113,7 +113,7 @@ class ImplementationPlan:
             self.created_at = self.updated_at
         self.update_status_from_subtasks()
 
-    def save(self, path: Path):
+    def save(self, path: Path) -> None:
         """Save plan to JSON file using atomic write to prevent corruption."""
         self._update_timestamps_and_status()
         # Use atomic write to prevent corruption on crash/interrupt

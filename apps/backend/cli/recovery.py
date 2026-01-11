@@ -7,8 +7,8 @@ Detects and repairs corrupted JSON files in specs directories.
 
 Usage:
     python -m cli.recovery --project-dir /path/to/project --detect
-    python -m cli.recovery --project-dir /path/to/project --fix
     python -m cli.recovery --project-dir /path/to/project --spec-id 004-feature --delete
+    python -m cli.recovery --project-dir /path/to/project --all --delete
 """
 
 import argparse
@@ -61,12 +61,15 @@ def detect_corrupted_files(specs_dir: Path) -> list[tuple[Path, str]]:
     return corrupted
 
 
-def delete_corrupted_file(filepath: Path) -> bool:
+def backup_corrupted_file(filepath: Path) -> bool:
     """
-    Delete a corrupted file.
+    Backup a corrupted file by renaming it with a .corrupted suffix.
+
+    Args:
+        filepath: Path to the corrupted file
 
     Returns:
-        True if deleted, False otherwise
+        True if backed up successfully, False otherwise
     """
     try:
         # Create backup before deleting
@@ -75,7 +78,7 @@ def delete_corrupted_file(filepath: Path) -> bool:
         print(f"  [BACKUP] Moved corrupted file to: {backup_path}")
         return True
     except Exception as e:
-        print(f"  [ERROR] Failed to delete file: {e}")
+        print(f"  [ERROR] Failed to backup file: {e}")
         return False
 
 
@@ -161,7 +164,7 @@ def main() -> None:
                 is_valid, error = check_json_file(json_file)
                 if not is_valid:
                     print(f"  [CORRUPTED] {json_file.name}")
-                    delete_corrupted_file(json_file)
+                    backup_corrupted_file(json_file)
 
         elif args.all:
             # Delete all corrupted files
@@ -173,7 +176,7 @@ def main() -> None:
             print(f"\n[INFO] Deleting {len(corrupted)} corrupted file(s):\n")
             for filepath, _ in corrupted:
                 print(f"  [DELETE] {filepath.relative_to(specs_dir.parent)}")
-                delete_corrupted_file(filepath)
+                backup_corrupted_file(filepath)
 
         else:
             print("[ERROR] Must specify --spec-id or --all with --delete")
