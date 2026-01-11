@@ -66,7 +66,7 @@ export async function createTerminal(
       effectiveCwd = projectPath || os.homedir();
     }
 
-    const ptyProcess = PtyManager.spawnPtyProcess(
+    const { pty: ptyProcess, initCommand } = PtyManager.spawnPtyProcess(
       effectiveCwd || os.homedir(),
       cols,
       rows,
@@ -95,6 +95,13 @@ export async function createTerminal(
       (term, data) => dataHandler(term, data),
       (term) => handleTerminalExit(term, terminals)
     );
+
+    // Send conda activation command if provided
+    if (initCommand) {
+      setTimeout(() => {
+        ptyProcess.write(initCommand);
+      }, 100);
+    }
 
     if (projectPath) {
       SessionHandler.persistSession(terminal);

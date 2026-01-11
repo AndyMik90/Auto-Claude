@@ -222,6 +222,7 @@ export interface AppSettings {
   defaultModel: string;
   agentFramework: string;
   pythonPath?: string;
+  pythonActivationScript?: string;
   gitPath?: string;
   githubCLIPath?: string;
   claudePath?: string;

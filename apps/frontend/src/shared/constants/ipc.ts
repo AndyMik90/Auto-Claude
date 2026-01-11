@@ -124,6 +124,12 @@ export const IPC_CHANNELS = {
   SETTINGS_SAVE: 'settings:save',
   SETTINGS_GET_CLI_TOOLS_INFO: 'settings:getCliToolsInfo',
 
+  // Python environment validation
+  PYTHON_VALIDATE_PACKAGES: 'python:validatePackages',
+  PYTHON_VALIDATION_PROGRESS: 'python:validationProgress',
+  PYTHON_INSTALL_REQUIREMENTS: 'python:installRequirements',
+  PYTHON_INSTALL_PROGRESS: 'python:installProgress',
+
   // API Profile management (custom Anthropic-compatible endpoints)
   PROFILES_GET: 'profiles:get',
   PROFILES_SAVE: 'profiles:save',
@@ -137,6 +143,7 @@ export const IPC_CHANNELS = {
 
   // Dialogs
   DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',
+  DIALOG_SELECT_FILE: 'dialog:selectFile',
   DIALOG_CREATE_PROJECT_FOLDER: 'dialog:createProjectFolder',
   DIALOG_GET_DEFAULT_PROJECT_LOCATION: 'dialog:getDefaultProjectLocation',
 

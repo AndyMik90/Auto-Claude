@@ -1,5 +1,5 @@
 import { spawn, execSync, ChildProcess } from 'child_process';
-import { existsSync, readdirSync } from 'fs';
+import { existsSync, readdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
@@ -753,4 +753,200 @@ export function getConfiguredPythonPath(): string {
 
   // Fall back to system/bundled Python
   return findPythonCommand() || 'python';
+}
+
+/**
+ * Get requirements.txt path (bundled in packaged app, or dev mode)
+ */
+function getRequirementsTxtPath(): string | null {
+  if (app.isPackaged) {
+    const bundled = path.join(process.resourcesPath, 'backend', 'requirements.txt');
+    if (existsSync(bundled)) return bundled;
+  }
+  const dev = path.join(__dirname, '..', '..', '..', 'backend', 'requirements.txt');
+  if (existsSync(dev)) return dev;
+  return null;
+}
+
+/**
+ * Build shell command that activates conda then runs Python
+ */
+function buildPythonCommandWithActivation(
+  pythonPath: string,
+  activationScript?: string
+): string {
+  if (!activationScript || !existsSync(activationScript)) {
+    return pythonPath;
+  }
+
+  if (process.platform === 'win32') {
+    // Check if it's a PowerShell script (.ps1)
+    if (activationScript.toLowerCase().endsWith('.ps1')) {
+      // PowerShell: & "script.ps1"; python
+      return `powershell -NoProfile -Command "& '${activationScript}'; & '${pythonPath}'"`;
+    } else {
+      // Batch file: call activate.bat && python
+      return `call "${activationScript}" && "${pythonPath}"`;
+    }
+  } else {
+    return `source "${activationScript}" && "${pythonPath}"`;
+  }
+}
+
+/**
+ * Parse requirements.txt and extract package names
+ */
+function parseRequirementsTxt(requirementsPath: string): string[] {
+  const content = readFileSync(requirementsPath, 'utf-8');
+  const packages: string[] = [];
+
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    // Skip comments and empty lines
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    // Skip packages with environment markers that won't be installed
+    // For example: tomli>=2.0.0; python_version < "3.11" won't be installed on Python 3.12
+    if (trimmed.includes('python_version < "3.11"') || trimmed.includes("python_version < '3.11'")) {
+      continue; // Skip packages only for Python < 3.11
+    }
+
+    // Extract package name (before version specifier or semicolon)
+    const match = trimmed.match(/^([a-zA-Z0-9._-]+)/);
+    if (match) {
+      packages.push(match[1]);
+    }
+  }
+
+  return packages;
+}
+
+/**
+ * Get Python installation location (where packages will be installed)
+ */
+export async function getPythonInstallLocation(
+  pythonPath: string,
+  activationScript?: string
+): Promise<string> {
+  // Use Python directly without activation for location detection
+  const pythonCmd = pythonPath;
+
+  try {
+    const result = execSync(`"${pythonCmd}" -c "import sys; print(sys.prefix)"`, {
+      stdio: 'pipe',
+      timeout: 5000,
+      shell: true
+    }).toString().trim();
+    return result;
+  } catch (error) {
+    throw new Error(`Failed to get Python installation location: ${error}`);
+  }
+}
+
+/**
+ * Validate if Python packages are installed
+ * Uses pip list to check all packages from requirements.txt efficiently
+ */
+export async function validatePythonPackages(
+  pythonPath: string,
+  activationScript?: string,
+  onProgress?: (current: number, total: number, packageName: string) => void
+): Promise<{ allInstalled: boolean; missingPackages: string[]; installLocation: string }> {
+  const requirementsPath = getRequirementsTxtPath();
+  if (!requirementsPath) {
+    throw new Error('requirements.txt not found');
+  }
+
+  // For validation/installation, use the Python executable directly
+  // without activation script. If pointing to a conda env's python.exe,
+  // it already knows its packages. Activation scripts are only needed
+  // for interactive terminals.
+  const pythonCmd = pythonPath;
+
+  // Get installation location
+  let installLocation = '';
+  try {
+    installLocation = await getPythonInstallLocation(pythonPath, activationScript);
+    console.log('[validatePythonPackages] Install location:', installLocation);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[validatePythonPackages] Failed to get install location:', errorMsg);
+    installLocation = `Unknown location (${errorMsg})`;
+  }
+
+  // Get list of installed packages
+  onProgress?.(1, 2, 'Getting installed packages');
+  let installedPackages: Set<string>;
+  try {
+    const pipList = execSync(`"${pythonCmd}" -m pip list --format=freeze`, {
+      stdio: 'pipe',
+      timeout: 30000,
+      shell: true
+    }).toString();
+
+    // Parse pip list output (format: package-name==version)
+    installedPackages = new Set(
+      pipList
+        .split('\n')
+        .map(line => line.split('==')[0].toLowerCase().trim())
+        .filter(Boolean)
+    );
+  } catch (error) {
+    throw new Error(`Failed to get installed packages: ${error}`);
+  }
+
+  // Parse requirements.txt to get required packages
+  onProgress?.(2, 2, 'Checking requirements');
+  const requiredPackages = parseRequirementsTxt(requirementsPath);
+  const missingPackages: string[] = [];
+
+  for (const pkg of requiredPackages) {
+    const normalizedPkg = pkg.toLowerCase();
+    if (!installedPackages.has(normalizedPkg)) {
+      missingPackages.push(pkg);
+    }
+  }
+
+  return {
+    allInstalled: missingPackages.length === 0,
+    missingPackages,
+    installLocation
+  };
+}
+
+/**
+ * Install Python requirements from requirements.txt
+ */
+export async function installPythonRequirements(
+  pythonPath: string,
+  activationScript?: string,
+  onProgress?: (message: string) => void
+): Promise<void> {
+  const requirementsPath = getRequirementsTxtPath();
+  if (!requirementsPath) {
+    throw new Error('requirements.txt not found');
+  }
+
+  onProgress?.('Installing Python dependencies...');
+
+  return new Promise((resolve, reject) => {
+    // Use Python directly without shell to avoid quote issues
+    const proc = spawn(pythonPath, ['-m', 'pip', 'install', '-r', requirementsPath], {
+      stdio: 'pipe'
+    });
+
+    proc.stdout?.on('data', (data) => onProgress?.(data.toString()));
+    proc.stderr?.on('data', (data) => onProgress?.(data.toString()));
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        onProgress?.('Installation complete');
+        resolve();
+      } else {
+        reject(new Error(`pip install failed with code ${code}`));
+      }
+    });
+
+    proc.on('error', reject);
+  });
 }

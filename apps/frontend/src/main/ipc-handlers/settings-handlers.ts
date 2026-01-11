@@ -16,6 +16,7 @@ import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-upd
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
 import { parseEnvFile } from './utils';
+import { validatePythonPackages, installPythonRequirements } from '../python-env-manager';
 
 const settingsPath = getSettingsPath();
 
@@ -276,6 +277,62 @@ export function registerSettingsHandlers(
   );
 
   // ============================================
+  // Python Environment Validation
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.PYTHON_VALIDATE_PACKAGES,
+    async (event, { pythonPath, activationScript }: { pythonPath: string; activationScript?: string }): Promise<IPCResult<{
+      allInstalled: boolean;
+      missingPackages: string[];
+      installLocation: string;
+    }>> => {
+      try {
+        console.log('[PYTHON_VALIDATE_PACKAGES] Starting validation...');
+        const validation = await validatePythonPackages(
+          pythonPath,
+          activationScript,
+          (current, total, packageName) => {
+            console.log(`[PYTHON_VALIDATE_PACKAGES] Progress: ${current}/${total} - ${packageName}`);
+            // Send progress updates to renderer
+            event.sender.send(IPC_CHANNELS.PYTHON_VALIDATION_PROGRESS, {
+              current,
+              total,
+              packageName
+            });
+          }
+        );
+        console.log('[PYTHON_VALIDATE_PACKAGES] Validation complete:', validation);
+        return { success: true, data: validation };
+      } catch (error) {
+        console.error('[PYTHON_VALIDATE_PACKAGES] Error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to validate packages'
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PYTHON_INSTALL_REQUIREMENTS,
+    async (event, { pythonPath, activationScript }: { pythonPath: string; activationScript?: string }): Promise<IPCResult> => {
+      try {
+        await installPythonRequirements(pythonPath, activationScript, (progress) => {
+          event.sender.send(IPC_CHANNELS.PYTHON_INSTALL_PROGRESS, progress);
+        });
+        return { success: true };
+      } catch (error) {
+        console.error('[PYTHON_INSTALL_REQUIREMENTS] Error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to install requirements'
+        };
+      }
+    }
+  );
+
+  // ============================================
   // Dialog Operations
   // ============================================
 
@@ -288,6 +345,26 @@ export function registerSettingsHandlers(
       const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openDirectory'],
         title: 'Select Project Directory'
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+
+      return result.filePaths[0];
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DIALOG_SELECT_FILE,
+    async (_, options?: { title?: string; filters?: { name: string; extensions: string[] }[] }): Promise<string | null> => {
+      const mainWindow = getMainWindow();
+      if (!mainWindow) return null;
+
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        title: options?.title || 'Select File',
+        filters: options?.filters || []
       });
 
       if (result.canceled || result.filePaths.length === 0) {

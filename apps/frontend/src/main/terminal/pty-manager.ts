@@ -73,7 +73,7 @@ export function spawnPtyProcess(
   cols: number,
   rows: number,
   profileEnv?: Record<string, string>
-): pty.IPty {
+): { pty: pty.IPty; initCommand?: string } {
   // Read user's preferred terminal setting
   const settings = readSettingsFile();
   const preferredTerminal = settings?.preferredTerminal as SupportedTerminal | undefined;
@@ -94,7 +94,7 @@ export function spawnPtyProcess(
   // show "Claude API" instead of "Claude Max" when ANTHROPIC_API_KEY is set.
   const { DEBUG: _DEBUG, ANTHROPIC_API_KEY: _ANTHROPIC_API_KEY, ...cleanEnv } = process.env;
 
-  return pty.spawn(shell, shellArgs, {
+  const ptyProcess = pty.spawn(shell, shellArgs, {
     name: 'xterm-256color',
     cols,
     rows,
@@ -106,6 +106,43 @@ export function spawnPtyProcess(
       COLORTERM: 'truecolor',
     },
   });
+
+  // Read activation script from settings
+  const activationScript = settings?.pythonActivationScript;
+
+  let initCommand: string | undefined;
+  if (activationScript && existsSync(activationScript)) {
+    // Detect if the spawned shell is bash-type (Git Bash, Cygwin, MSYS2)
+    const isBashShell = shell.toLowerCase().includes('bash.exe');
+
+    if (process.platform === 'win32') {
+      if (isBashShell) {
+        // For bash shells on Windows, skip PowerShell .ps1 scripts
+        // They can't execute .ps1 files. Only .bat files might work via cmd /c
+        if (!activationScript.toLowerCase().endsWith('.ps1')) {
+          // Try to execute .bat file via cmd
+          initCommand = `cmd.exe /c "${activationScript}"\r`;
+        } else {
+          // Skip .ps1 activation for bash terminals
+          console.warn('[PtyManager] Skipping PowerShell activation script for bash shell:', shell);
+        }
+      } else {
+        // For cmd/PowerShell terminals
+        if (activationScript.toLowerCase().endsWith('.ps1')) {
+          // PowerShell script
+          initCommand = `powershell -NoProfile -Command "& '${activationScript}'"\r`;
+        } else {
+          // Batch file
+          initCommand = `call "${activationScript}"\r`;
+        }
+      }
+    } else {
+      // Unix-like systems
+      initCommand = `source "${activationScript}"\n`;
+    }
+  }
+
+  return { pty: ptyProcess, initCommand };
 }
 
 /**

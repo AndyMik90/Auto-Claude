@@ -2,10 +2,13 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
+import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { SettingsSection } from './SettingsSection';
 import { AgentProfileSettings } from './AgentProfileSettings';
+import { PythonPackageValidator } from './PythonPackageValidator';
+import { FolderOpen } from 'lucide-react';
 import {
   AVAILABLE_MODELS,
   THINKING_LEVELS,
@@ -254,13 +257,35 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
         <div className="space-y-3">
           <Label htmlFor="pythonPath" className="text-sm font-medium text-foreground">{t('general.pythonPath')}</Label>
           <p className="text-sm text-muted-foreground">{t('general.pythonPathDescription')}</p>
-          <Input
-            id="pythonPath"
-            placeholder={t('general.pythonPathPlaceholder')}
-            className="w-full max-w-lg"
-            value={settings.pythonPath || ''}
-            onChange={(e) => onSettingsChange({ ...settings, pythonPath: e.target.value })}
-          />
+          <div className="flex gap-2 w-full max-w-lg">
+            <Input
+              id="pythonPath"
+              placeholder={t('general.pythonPathPlaceholder')}
+              className="flex-1"
+              value={settings.pythonPath || ''}
+              onChange={(e) => onSettingsChange({ ...settings, pythonPath: e.target.value })}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              onClick={async () => {
+                const isWindows = navigator.userAgent.includes('Windows');
+                const filePath = await window.electronAPI.selectFile({
+                  title: 'Select Python Executable',
+                  filters: isWindows
+                    ? [{ name: 'Python Executable', extensions: ['exe'] }]
+                    : []
+                });
+                if (filePath) {
+                  onSettingsChange({ ...settings, pythonPath: filePath });
+                }
+              }}
+            >
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Browse
+            </Button>
+          </div>
           {!settings.pythonPath && (
             <ToolDetectionDisplay
               info={toolsInfo?.python || null}
@@ -269,6 +294,71 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
             />
           )}
         </div>
+
+        {/* Python Activation Script */}
+        <div className="space-y-3">
+          <Label htmlFor="pythonActivationScript" className="text-sm font-medium text-foreground">
+            {t('general.pythonActivationScript')}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t('general.pythonActivationScriptDescription')}
+          </p>
+          <div className="flex gap-2 w-full max-w-lg">
+            <Input
+              id="pythonActivationScript"
+              placeholder={t('general.pythonActivationScriptPlaceholder')}
+              className="flex-1"
+              value={settings.pythonActivationScript || ''}
+              onChange={(e) => onSettingsChange({ ...settings, pythonActivationScript: e.target.value })}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              onClick={async () => {
+                const isWindows = navigator.userAgent.includes('Windows');
+                const filePath = await window.electronAPI.selectFile({
+                  title: 'Select Activation Script',
+                  filters: isWindows
+                    ? [
+                        { name: 'Activation Scripts', extensions: ['bat', 'cmd', 'ps1'] },
+                        { name: 'All Files', extensions: ['*'] }
+                      ]
+                    : [{ name: 'All Files', extensions: ['*'] }]
+                });
+                if (filePath) {
+                  onSettingsChange({ ...settings, pythonActivationScript: filePath });
+                }
+              }}
+            >
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Browse
+            </Button>
+          </div>
+          {settings.pythonActivationScript && (
+            <div className="text-xs text-muted-foreground mt-1">
+              <span className="font-medium">{t('general.activationScriptSet')}:</span>{' '}
+              <code className="bg-muted px-1 py-0.5 rounded">{settings.pythonActivationScript}</code>
+            </div>
+          )}
+        </div>
+
+        {/* Package Validation (only show if pythonPath is set) */}
+        {settings.pythonPath && (
+          <div className="space-y-3 p-4 border border-border rounded-md bg-muted/50">
+            <Label className="text-sm font-medium text-foreground">
+              {t('general.pythonPackageValidation')}
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              {t('general.pythonPackageValidationDescription')}
+            </p>
+            <PythonPackageValidator
+              pythonPath={settings.pythonPath}
+              activationScript={settings.pythonActivationScript}
+            />
+          </div>
+        )}
+
         <div className="space-y-3">
           <Label htmlFor="gitPath" className="text-sm font-medium text-foreground">{t('general.gitPath')}</Label>
           <p className="text-sm text-muted-foreground">{t('general.gitPathDescription')}</p>
