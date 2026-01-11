@@ -26,6 +26,7 @@ import path from 'path';
 import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
+import semver from 'semver';
 import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync, getSpawnCommand } from './env-utils';
 import type { ToolDetectionResult } from '../shared/types';
 
@@ -696,60 +697,67 @@ class CLIToolManager {
    *
    * @returns Detection result for Claude CLI
    */
+  /**
+   * Detect Claude CLI with multi-level priority
+   *
+   * Scans ALL possible locations (User Config, Homebrew, System PATH, NVM, etc.)
+   * and selects the one with the highest version number.
+   *
+   * @returns Detection result for Claude CLI (best available version)
+   */
   private detectClaude(): ToolDetectionResult {
     const homeDir = os.homedir();
     const paths = getClaudeDetectionPaths(homeDir);
+    const candidates: ToolDetectionResult[] = [];
+
+    // Helper to add candidate if valid
+    const addCandidate = (pathStr: string, source: ToolDetectionResult['source'], msgPrefix: string) => {
+      // Avoid duplicates
+      if (candidates.some(c => c.path === pathStr)) return;
+
+      if (existsSync(pathStr)) {
+        if (isWrongPlatformPath(pathStr)) return;
+        if (process.platform === 'win32' && !isSecurePath(pathStr)) return;
+
+        const validation = this.validateClaude(pathStr);
+        const result = buildClaudeDetectionResult(pathStr, validation, source, msgPrefix);
+        if (result) {
+          candidates.push(result);
+        }
+      }
+    };
 
     // 1. User configuration
     if (this.userConfig.claudePath) {
-      if (isWrongPlatformPath(this.userConfig.claudePath)) {
-        console.warn(
-          `[Claude CLI] User-configured path is from different platform, ignoring: ${this.userConfig.claudePath}`
-        );
-      } else if (process.platform === 'win32' && !isSecurePath(this.userConfig.claudePath)) {
-        console.warn(
-          `[Claude CLI] User-configured path failed security validation, ignoring: ${this.userConfig.claudePath}`
-        );
-      } else {
-        const validation = this.validateClaude(this.userConfig.claudePath);
-        const result = buildClaudeDetectionResult(
-          this.userConfig.claudePath, validation, 'user-config', 'Using user-configured Claude CLI'
-        );
-        if (result) return result;
-        console.warn(`[Claude CLI] User-configured path invalid: ${validation.message}`);
-      }
+      addCandidate(
+        this.userConfig.claudePath, 
+        'user-config', 
+        'Using user-configured Claude CLI'
+      );
     }
 
     // 2. Homebrew (macOS)
     if (process.platform === 'darwin') {
       for (const claudePath of paths.homebrewPaths) {
-        if (existsSync(claudePath)) {
-          const validation = this.validateClaude(claudePath);
-          const result = buildClaudeDetectionResult(claudePath, validation, 'homebrew', 'Using Homebrew Claude CLI');
-          if (result) return result;
-        }
+        addCandidate(claudePath, 'homebrew', 'Using Homebrew Claude CLI');
       }
     }
 
     // 3. System PATH (augmented)
     const systemClaudePath = findExecutable('claude');
     if (systemClaudePath) {
-      const validation = this.validateClaude(systemClaudePath);
-      const result = buildClaudeDetectionResult(systemClaudePath, validation, 'system-path', 'Using system Claude CLI');
-      if (result) return result;
+      addCandidate(systemClaudePath, 'system-path', 'Using system Claude CLI');
     }
 
-    // 4. Windows where.exe detection (Windows only - most reliable for custom installs)
+    // 4. Windows where.exe detection
     if (process.platform === 'win32') {
       const whereClaudePath = findWindowsExecutableViaWhere('claude', '[Claude CLI]');
       if (whereClaudePath) {
-        const validation = this.validateClaude(whereClaudePath);
-        const result = buildClaudeDetectionResult(whereClaudePath, validation, 'system-path', 'Using Windows Claude CLI');
-        if (result) return result;
+        addCandidate(whereClaudePath, 'system-path', 'Using Windows Claude CLI');
       }
     }
 
-    // 5. NVM paths (Unix only) - check before platform paths for better Node.js integration
+    // 5. NVM paths (Unix only)
     if (process.platform !== 'win32') {
       try {
         if (existsSync(paths.nvmVersionsDir)) {
@@ -758,11 +766,7 @@ class CLIToolManager {
 
           for (const versionName of versionNames) {
             const nvmClaudePath = path.join(paths.nvmVersionsDir, versionName, 'bin', 'claude');
-            if (existsSync(nvmClaudePath)) {
-              const validation = this.validateClaude(nvmClaudePath);
-              const result = buildClaudeDetectionResult(nvmClaudePath, validation, 'nvm', 'Using NVM Claude CLI');
-              if (result) return result;
-            }
+            addCandidate(nvmClaudePath, 'nvm', 'Using NVM Claude CLI');
           }
         }
       } catch (error) {
@@ -772,19 +776,42 @@ class CLIToolManager {
 
     // 6. Platform-specific standard locations
     for (const claudePath of paths.platformPaths) {
-      if (existsSync(claudePath)) {
-        const validation = this.validateClaude(claudePath);
-        const result = buildClaudeDetectionResult(claudePath, validation, 'system-path', 'Using Claude CLI');
-        if (result) return result;
-      }
+      addCandidate(claudePath, 'system-path', 'Using Claude CLI');
     }
 
-    // 7. Not found
-    return {
-      found: false,
-      source: 'fallback',
-      message: 'Claude CLI not found. Install from https://claude.ai/download',
-    };
+    // If no candidates found
+    if (candidates.length === 0) {
+      return {
+        found: false,
+        source: 'fallback',
+        message: 'Claude CLI not found. Install from https://claude.ai/download',
+      };
+    }
+
+    // Sort candidates by version (descending)
+    candidates.sort((a, b) => {
+      // Handle missing versions (shouldn't happen for valid candidates, but safe fallback)
+      if (!a.version && !b.version) return 0;
+      if (!a.version) return 1;
+      if (!b.version) return -1;
+      
+      // Remove 'v' prefix if present for semver parsing
+      const vA = a.version.replace(/^v/, '');
+      const vB = b.version.replace(/^v/, '');
+      
+      try {
+        if (semver.gt(vA, vB)) return -1;
+        if (semver.lt(vA, vB)) return 1;
+        return 0;
+      } catch {
+        // Fallback to string comparison if semver fails
+        return b.version.localeCompare(a.version);
+      }
+    });
+
+    const best = candidates[0];
+    console.log(`[Claude CLI] Selected best version: ${best.version} at ${best.path} (from ${candidates.length} candidates)`);
+    return best;
   }
 
   /**
@@ -1211,60 +1238,66 @@ class CLIToolManager {
    *
    * @returns Promise resolving to detection result
    */
+  /**
+   * Detect Claude CLI asynchronously (non-blocking)
+   *
+   * Scans ALL possible locations and selects the one with the highest version number.
+   *
+   * @returns Promise resolving to detection result (best available version)
+   */
   private async detectClaudeAsync(): Promise<ToolDetectionResult> {
     const homeDir = os.homedir();
     const paths = getClaudeDetectionPaths(homeDir);
+    const candidates: ToolDetectionResult[] = [];
+
+    // Helper to add candidate if valid
+    const addCandidateAsync = async (pathStr: string, source: ToolDetectionResult['source'], msgPrefix: string) => {
+      // Avoid duplicates
+      if (candidates.some(c => c.path === pathStr)) return;
+
+      if (await existsAsync(pathStr)) {
+        if (isWrongPlatformPath(pathStr)) return;
+        if (process.platform === 'win32' && !isSecurePath(pathStr)) return;
+
+        const validation = await this.validateClaudeAsync(pathStr);
+        const result = buildClaudeDetectionResult(pathStr, validation, source, msgPrefix);
+        if (result) {
+          candidates.push(result);
+        }
+      }
+    };
 
     // 1. User configuration
     if (this.userConfig.claudePath) {
-      if (isWrongPlatformPath(this.userConfig.claudePath)) {
-        console.warn(
-          `[Claude CLI] User-configured path is from different platform, ignoring: ${this.userConfig.claudePath}`
-        );
-      } else if (process.platform === 'win32' && !isSecurePath(this.userConfig.claudePath)) {
-        console.warn(
-          `[Claude CLI] User-configured path failed security validation, ignoring: ${this.userConfig.claudePath}`
-        );
-      } else {
-        const validation = await this.validateClaudeAsync(this.userConfig.claudePath);
-        const result = buildClaudeDetectionResult(
-          this.userConfig.claudePath, validation, 'user-config', 'Using user-configured Claude CLI'
-        );
-        if (result) return result;
-        console.warn(`[Claude CLI] User-configured path invalid: ${validation.message}`);
-      }
+      await addCandidateAsync(
+        this.userConfig.claudePath,
+        'user-config',
+        'Using user-configured Claude CLI'
+      );
     }
 
     // 2. Homebrew (macOS)
     if (process.platform === 'darwin') {
       for (const claudePath of paths.homebrewPaths) {
-        if (await existsAsync(claudePath)) {
-          const validation = await this.validateClaudeAsync(claudePath);
-          const result = buildClaudeDetectionResult(claudePath, validation, 'homebrew', 'Using Homebrew Claude CLI');
-          if (result) return result;
-        }
+        await addCandidateAsync(claudePath, 'homebrew', 'Using Homebrew Claude CLI');
       }
     }
 
-    // 3. System PATH (augmented) - using async findExecutable
+    // 3. System PATH (augmented)
     const systemClaudePath = await findExecutableAsync('claude');
     if (systemClaudePath) {
-      const validation = await this.validateClaudeAsync(systemClaudePath);
-      const result = buildClaudeDetectionResult(systemClaudePath, validation, 'system-path', 'Using system Claude CLI');
-      if (result) return result;
+      await addCandidateAsync(systemClaudePath, 'system-path', 'Using system Claude CLI');
     }
 
-    // 4. Windows where.exe detection (async, non-blocking)
+    // 4. Windows where.exe detection
     if (process.platform === 'win32') {
       const whereClaudePath = await findWindowsExecutableViaWhereAsync('claude', '[Claude CLI]');
       if (whereClaudePath) {
-        const validation = await this.validateClaudeAsync(whereClaudePath);
-        const result = buildClaudeDetectionResult(whereClaudePath, validation, 'system-path', 'Using Windows Claude CLI');
-        if (result) return result;
+        await addCandidateAsync(whereClaudePath, 'system-path', 'Using Windows Claude CLI');
       }
     }
 
-    // 5. NVM paths (Unix only) - check before platform paths for better Node.js integration
+    // 5. NVM paths (Unix only)
     if (process.platform !== 'win32') {
       try {
         if (await existsAsync(paths.nvmVersionsDir)) {
@@ -1273,11 +1306,7 @@ class CLIToolManager {
 
           for (const versionName of versionNames) {
             const nvmClaudePath = path.join(paths.nvmVersionsDir, versionName, 'bin', 'claude');
-            if (await existsAsync(nvmClaudePath)) {
-              const validation = await this.validateClaudeAsync(nvmClaudePath);
-              const result = buildClaudeDetectionResult(nvmClaudePath, validation, 'nvm', 'Using NVM Claude CLI');
-              if (result) return result;
-            }
+            await addCandidateAsync(nvmClaudePath, 'nvm', 'Using NVM Claude CLI');
           }
         }
       } catch (error) {
@@ -1287,19 +1316,41 @@ class CLIToolManager {
 
     // 6. Platform-specific standard locations
     for (const claudePath of paths.platformPaths) {
-      if (await existsAsync(claudePath)) {
-        const validation = await this.validateClaudeAsync(claudePath);
-        const result = buildClaudeDetectionResult(claudePath, validation, 'system-path', 'Using Claude CLI');
-        if (result) return result;
-      }
+      await addCandidateAsync(claudePath, 'system-path', 'Using Claude CLI');
     }
 
-    // 7. Not found
-    return {
-      found: false,
-      source: 'fallback',
-      message: 'Claude CLI not found. Install from https://claude.ai/download',
-    };
+    // If no candidates found
+    if (candidates.length === 0) {
+      return {
+        found: false,
+        source: 'fallback',
+        message: 'Claude CLI not found. Install from https://claude.ai/download',
+      };
+    }
+
+    // Sort candidates by version (descending)
+    candidates.sort((a, b) => {
+      // Handle missing versions
+      if (!a.version && !b.version) return 0;
+      if (!a.version) return 1;
+      if (!b.version) return -1;
+      
+      // Remove 'v' prefix
+      const vA = a.version.replace(/^v/, '');
+      const vB = b.version.replace(/^v/, '');
+      
+      try {
+        if (semver.gt(vA, vB)) return -1;
+        if (semver.lt(vA, vB)) return 1;
+        return 0;
+      } catch {
+        return b.version.localeCompare(a.version);
+      }
+    });
+
+    const best = candidates[0];
+    console.log(`[Claude CLI] Selected best version: ${best.version} at ${best.path} (from ${candidates.length} candidates)`);
+    return best;
   }
 
   /**
