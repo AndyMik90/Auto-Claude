@@ -37,9 +37,10 @@ function parseParameterString(paramStr: string): Omit<TemplateParameter, 'key' |
     const content = match[1];
     console.log('[PARSER] Extracted content:', content);
 
-    // Parse key-value pairs (handle quoted values)
+    // Parse key-value pairs (handle quoted values with escape sequences)
     const pairs: Record<string, string> = {};
-    const regex = /(\w+)\s*=\s*(?:"([^"]*)"|([^,}\s]+))/g;
+    // Updated regex to support escaped quotes (\" and \\) inside quoted values
+    const regex = /(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^,}\s]+))/g;
     let pairMatch;
 
     while ((pairMatch = regex.exec(content)) !== null) {
@@ -52,6 +53,14 @@ function parseParameterString(paramStr: string): Omit<TemplateParameter, 'key' |
       });
       let value = pairMatch[2] !== undefined ? pairMatch[2] : pairMatch[3]; // Use quoted value or unquoted
       console.log('[PARSER] Initial value:', JSON.stringify(value));
+
+      // Unescape escape sequences (\" -> " and \\ -> \)
+      if (value && pairMatch[2] !== undefined) {
+        // Only unescape for quoted values
+        value = value.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        console.log('[PARSER] After unescape:', JSON.stringify(value));
+      }
+
       // Strip any remaining quotes from the value (both straight and smart quotes using Unicode)
       if (value) {
         // Remove straight quotes: ' "
