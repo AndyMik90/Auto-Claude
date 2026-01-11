@@ -33,6 +33,16 @@ export interface SettingsAPI {
   notifySentryStateChanged: (enabled: boolean) => void;
   getSentryDsn: () => Promise<string>;
   getSentryConfig: () => Promise<{ dsn: string; tracesSampleRate: number; profilesSampleRate: number }>;
+
+  // Python package validation
+  validatePythonPackages: (params: { pythonPath: string; activationScript?: string }) => Promise<IPCResult<{
+    allInstalled: boolean;
+    missingPackages: string[];
+    installLocation: string;
+  }>>;
+  onPythonValidationProgress: (callback: (progress: { current: number; total: number; packageName: string }) => void) => () => void;
+  installPythonRequirements: (params: { pythonPath: string; activationScript?: string }) => Promise<IPCResult>;
+  onPythonInstallProgress: (callback: (progress: string) => void) => () => void;
 }
 
 export const createSettingsAPI = (): SettingsAPI => ({
@@ -76,5 +86,27 @@ export const createSettingsAPI = (): SettingsAPI => ({
 
   // Get full Sentry config from main process (DSN + sample rates)
   getSentryConfig: (): Promise<{ dsn: string; tracesSampleRate: number; profilesSampleRate: number }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.GET_SENTRY_CONFIG)
+    ipcRenderer.invoke(IPC_CHANNELS.GET_SENTRY_CONFIG),
+
+  // Python package validation
+  validatePythonPackages: (params): Promise<IPCResult<{
+    allInstalled: boolean;
+    missingPackages: string[];
+  }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_VALIDATE_PACKAGES, params),
+
+  onPythonValidationProgress: (callback): (() => void) => {
+    const listener = (_: any, progress: { current: number; total: number; packageName: string }) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.PYTHON_VALIDATION_PROGRESS, listener);
+    return () => ipcRenderer.off(IPC_CHANNELS.PYTHON_VALIDATION_PROGRESS, listener);
+  },
+
+  installPythonRequirements: (params): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_INSTALL_REQUIREMENTS, params),
+
+  onPythonInstallProgress: (callback): (() => void) => {
+    const listener = (_: any, progress: string) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.PYTHON_INSTALL_PROGRESS, listener);
+    return () => ipcRenderer.off(IPC_CHANNELS.PYTHON_INSTALL_PROGRESS, listener);
+  }
 });

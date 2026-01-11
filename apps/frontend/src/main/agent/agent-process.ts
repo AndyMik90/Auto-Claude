@@ -428,9 +428,48 @@ export class AgentProcessManager {
     // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
 
+    // Get activation script from settings
+    const settings = readSettingsFile();
+    const activationScript = settings?.pythonActivationScript;
+
     // Parse Python commandto handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
-    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
+
+    let finalCommand: string;
+    let finalArgs: string[];
+
+    if (activationScript && existsSync(activationScript)) {
+      // Build command with conda activation
+      if (process.platform === 'win32') {
+        const pythonWithArgs = [pythonCommand, ...pythonBaseArgs, ...args]
+          .map(arg => arg.includes(' ') ? `"${arg}"` : arg)
+          .join(' ');
+
+        // Check if it's a PowerShell script (.ps1)
+        if (activationScript.toLowerCase().endsWith('.ps1')) {
+          // PowerShell: powershell -NoProfile -Command "& script.ps1; & python args"
+          finalCommand = 'powershell';
+          finalArgs = ['-NoProfile', '-Command', `& '${activationScript}'; & ${pythonWithArgs}`];
+        } else {
+          // Batch file: cmd /c "call activate.bat && python args"
+          finalCommand = process.env.COMSPEC || 'cmd.exe';
+          finalArgs = ['/c', `call "${activationScript}" && ${pythonWithArgs}`];
+        }
+      } else {
+        // Unix: bash -c "source activate && python args"
+        finalCommand = process.env.SHELL || '/bin/bash';
+        const pythonWithArgs = [pythonCommand, ...pythonBaseArgs, ...args]
+          .map(arg => arg.includes(' ') ? `"${arg}"` : arg)
+          .join(' ');
+        finalArgs = ['-c', `source "${activationScript}" && ${pythonWithArgs}`];
+      }
+    } else {
+      // No activation - use Python directly
+      finalCommand = pythonCommand;
+      finalArgs = [...pythonBaseArgs, ...args];
+    }
+
+    const childProcess = spawn(finalCommand, finalArgs, {
       cwd,
       env: {
         ...env, // Already includes process.env, extraEnv, profileEnv, PYTHONUNBUFFERED, PYTHONUTF8
