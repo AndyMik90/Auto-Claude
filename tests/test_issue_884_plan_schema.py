@@ -10,6 +10,8 @@ execution to get stuck because no "pending" subtasks are detected.
 import json
 from pathlib import Path
 
+import pytest
+
 from core.progress import get_next_subtask
 from prompt_generator import generate_planner_prompt
 from spec.validate_pkg import SpecValidator, auto_fix_plan
@@ -93,3 +95,88 @@ def test_auto_fix_plan_normalizes_nonstandard_schema_and_validates(spec_dir: Pat
     result = SpecValidator(spec_dir).validate_implementation_plan()
     assert result.valid is True
 
+
+@pytest.mark.asyncio
+async def test_worktree_planning_to_coding_sync_updates_source_phase_status(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    In worktree mode, planning logs are preferred from the main spec dir.
+    Ensure planning is marked completed in the source spec BEFORE the first coding session starts.
+    """
+    from agents.coder import run_autonomous_agent
+    from task_logger import LogPhase
+
+    worktree_spec_dir = temp_git_repo / ".worktrees" / "001-test" / "specs" / "001-test"
+    source_spec_dir = temp_git_repo / ".auto-claude" / "specs" / "001-test"
+    worktree_spec_dir.mkdir(parents=True, exist_ok=True)
+    source_spec_dir.mkdir(parents=True, exist_ok=True)
+
+    class DummyClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_create_client(*_args, **_kwargs):
+        return DummyClient()
+
+    async def fake_get_graphiti_context(*_args, **_kwargs):
+        return None
+
+    async def fake_post_session_processing(*_args, **_kwargs):
+        return True
+
+    async def fake_run_agent_session(
+        _client,
+        _message: str,
+        spec_dir: Path,
+        _verbose: bool = False,
+        phase: LogPhase = LogPhase.CODING,
+    ) -> tuple[str, str]:
+        if phase == LogPhase.PLANNING:
+            plan = {
+                "feature": "Test feature",
+                "workflow_type": "feature",
+                "phases": [
+                    {
+                        "id": "1",
+                        "name": "Phase 1",
+                        "subtasks": [
+                            {
+                                "id": "1.1",
+                                "description": "Do thing",
+                                "status": "pending",
+                            }
+                        ],
+                    }
+                ],
+            }
+            (spec_dir / "implementation_plan.json").write_text(
+                json.dumps(plan, indent=2),
+                encoding="utf-8",
+            )
+            return "continue", "planned"
+
+        # First coding session should see planning already completed in source spec logs
+        logs = json.loads((source_spec_dir / "task_logs.json").read_text(encoding="utf-8"))
+        assert logs["phases"]["planning"]["status"] == "completed"
+        assert logs["phases"]["coding"]["status"] == "active"
+        return "complete", "done"
+
+    monkeypatch.setattr("agents.coder.create_client", fake_create_client)
+    monkeypatch.setattr("agents.coder.get_graphiti_context", fake_get_graphiti_context)
+    monkeypatch.setattr("agents.coder.post_session_processing", fake_post_session_processing)
+    monkeypatch.setattr("agents.coder.run_agent_session", fake_run_agent_session)
+    monkeypatch.setattr("agents.coder.AUTO_CONTINUE_DELAY_SECONDS", 0)
+    monkeypatch.setattr("agents.coder.load_subtask_context", lambda *_a, **_k: {})
+
+    await run_autonomous_agent(
+        project_dir=temp_git_repo,
+        spec_dir=worktree_spec_dir,
+        model="test-model",
+        max_iterations=2,
+        verbose=False,
+        source_spec_dir=source_spec_dir,
+    )

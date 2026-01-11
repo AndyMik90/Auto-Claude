@@ -329,9 +329,11 @@ async def run_autonomous_agent(
                         success=True,
                         message="Implementation plan created",
                     )
-                    task_logger.start_phase(
-                        LogPhase.CODING, "Starting implementation..."
-                    )
+                    task_logger.start_phase(LogPhase.CODING, "Starting implementation...")
+                # In worktree mode, the UI prefers planning logs from the main spec dir.
+                # Ensure the planning->coding transition is immediately reflected there.
+                if sync_spec_to_source(spec_dir, source_spec_dir):
+                    print_status("Phase transition synced to main project", "success")
 
             if not next_subtask:
                 print("No pending subtasks found - build may be complete!")
