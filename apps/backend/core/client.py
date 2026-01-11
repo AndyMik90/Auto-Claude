@@ -126,6 +126,7 @@ from agents.tools_pkg import (
     ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
     LINEAR_TOOLS,
+    PLAYWRIGHT_TOOLS,
     PUPPETEER_TOOLS,
     create_auto_claude_mcp_server,
     get_allowed_tools,
@@ -539,6 +540,8 @@ def create_client(
         browser_tools_permissions = ELECTRON_TOOLS
     elif "puppeteer" in required_servers:
         browser_tools_permissions = PUPPETEER_TOOLS
+    elif "playwright" in required_servers:
+        browser_tools_permissions = PLAYWRIGHT_TOOLS
 
     # Create comprehensive security settings
     # Note: Using both relative paths ("./**") and absolute paths to handle
@@ -780,6 +783,14 @@ def create_client(
         print("   - CLAUDE.md: disabled by project settings")
     print()
 
+    # Add Playwright custom tools if required (built-in, not MCP)
+    custom_tools = []
+    if "playwright" in required_servers:
+        from integrations.playwright import get_playwright_custom_tools
+
+        custom_tools = get_playwright_custom_tools()
+        logger.info("Playwright custom tools added (native Python, not MCP)")
+
     # Build options dict, conditionally including output_format
     options_kwargs = {
         "model": model,
@@ -803,6 +814,10 @@ def create_client(
         # This prevents "File has not been read yet" errors in recovery sessions
         "enable_file_checkpointing": True,
     }
+
+    # Add custom tools if available (Playwright, etc.)
+    if custom_tools:
+        options_kwargs["custom_tools"] = custom_tools
 
     # Add structured output format if specified
     # See: https://platform.claude.com/docs/en/agent-sdk/structured-outputs
