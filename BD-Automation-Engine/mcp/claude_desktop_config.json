@@ -1,0 +1,45 @@
+{
+  "mcpServers": {
+    "notion": {
+      "command": "npx",
+      "args": ["-y", "@notionhq/notion-mcp-server"],
+      "env": {
+        "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer ntn_R48446747822wNuLRcByvXQQDsGQy1K13e58Wcp4w4waRH\", \"Notion-Version\": \"2022-06-28\"}"
+      }
+    },
+    "apify": {
+      "command": "npx",
+      "args": ["-y", "@apify/mcp-server-apify"],
+      "env": {
+        "APIFY_API_TOKEN": "apify_api_Dn5VKCgHLqfT8L3zgdaBFPKUUNnryQ1qkJj6"
+      }
+    },
+    "n8n-mcp": {
+      "command": "npx",
+      "args": ["-y", "n8n-mcp"],
+      "env": {
+        "N8N_API_KEY": "YOUR_N8N_API_KEY",
+        "N8N_API_URL": "https://your-n8n-instance.com/api/v1"
+      }
+    },
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"]
+    },
+    "computer-control": {
+      "command": "uvx",
+      "args": ["computer-control-mcp@latest"],
+      "env": {
+        "COMPUTER_CONTROL_MCP_WGC_PATTERNS": "chrome,edge,firefox,electron,auto-claude"
+      }
+    },
+    "desktop-commander": {
+      "command": "npx",
+      "args": ["-y", "@wonderwhy-er/desktop-commander"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    }
+  }
+}
