@@ -607,7 +607,8 @@ export class ProjectStore {
         'human_review': 'human_review',
         'ai_review': 'ai_review',
         'pr_created': 'pr_created', // PR has been created for this task
-        'backlog': 'backlog'
+        'backlog': 'backlog',
+        'error': 'error' // Preserves error status from JSON parse failures
       };
       const storedStatus = statusMap[plan.status];
 
@@ -619,6 +620,11 @@ export class ProjectStore {
       // If task has a PR created, always respect that status
       if (storedStatus === 'pr_created') {
         return { status: 'pr_created' };
+      }
+
+      // If task has an error status, always respect that (from JSON parse failures)
+      if (storedStatus === 'error') {
+        return { status: 'error' };
       }
 
       // For other stored statuses, validate against calculated status

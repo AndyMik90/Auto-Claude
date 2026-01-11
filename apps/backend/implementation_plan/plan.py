@@ -124,19 +124,33 @@ class ImplementationPlan:
         Async version of save() - runs file I/O in thread pool to avoid blocking event loop.
 
         Use this from async contexts (like agent sessions) to prevent blocking.
+        Restores in-memory state if the write fails.
         """
+        # Capture current timestamps for potential rollback
+        old_updated_at = self.updated_at
+        old_created_at = self.created_at
+
+        # Update state and capture dict
         self._update_timestamps_and_status()
+        data = self.to_dict()
 
         # Run sync write in thread pool to avoid blocking event loop
         loop = asyncio.get_running_loop()
         partial_write = functools.partial(
             write_json_atomic,
             path,
-            self.to_dict(),
+            data,
             indent=2,
             ensure_ascii=False,
         )
-        await loop.run_in_executor(None, partial_write)
+
+        try:
+            await loop.run_in_executor(None, partial_write)
+        except Exception:
+            # Restore state on write failure so in-memory object matches file
+            self.updated_at = old_updated_at
+            self.created_at = old_created_at
+            raise
 
     def update_status_from_subtasks(self):
         """Update overall status and planStatus based on subtask completion state.

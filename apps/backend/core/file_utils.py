@@ -25,18 +25,21 @@ from typing import IO, Any
 
 @contextmanager
 def atomic_write(
-    filepath: str | Path, mode: str = "w", encoding: str = "utf-8"
-) -> Iterator[IO[str]]:
+    filepath: str | Path, mode: str = "w", encoding: str | None = "utf-8"
+) -> Iterator[IO]:
     """
     Atomic file write using temp file and rename.
 
     Writes to .tmp file first, then atomically replaces target file
     using os.replace() which is atomic on POSIX systems and same-volume Windows.
 
+    Note: This function supports both text and binary modes. For binary modes
+    (mode containing 'b'), encoding must be None.
+
     Args:
         filepath: Target file path
-        mode: File open mode (default: "w")
-        encoding: File encoding (default: "utf-8")
+        mode: File open mode (default: "w", text mode only)
+        encoding: File encoding for text modes, None for binary (default: "utf-8")
 
     Example:
         with atomic_write("/path/to/file.json") as f:
@@ -48,6 +51,9 @@ def atomic_write(
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
 
+    # Binary modes require encoding=None
+    actual_encoding = None if "b" in mode else encoding
+
     # Create temp file in same directory for atomic rename
     fd, tmp_path = tempfile.mkstemp(
         dir=filepath.parent, prefix=f".{filepath.name}.tmp.", suffix=""
@@ -55,7 +61,7 @@ def atomic_write(
 
     try:
         # Open temp file with requested mode
-        with os.fdopen(fd, mode, encoding=encoding) as f:
+        with os.fdopen(fd, mode, encoding=actual_encoding) as f:
             yield f
 
         # Atomic replace - succeeds or fails completely
