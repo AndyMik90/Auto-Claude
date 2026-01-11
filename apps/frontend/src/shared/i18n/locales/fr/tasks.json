@@ -52,6 +52,7 @@
     "description": "Créez votre première tâche pour commencer"
   },
   "columns": {
+    "error": "Erreur",
     "backlog": "Planification",
     "in_progress": "En cours",
     "ai_review": "Révision IA",

@@ -52,6 +52,7 @@
     "description": "Create your first task to get started"
   },
   "columns": {
+    "error": "Error",
     "backlog": "Planning",
     "in_progress": "In Progress",
     "ai_review": "AI Review",
