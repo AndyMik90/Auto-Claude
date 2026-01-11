@@ -18,6 +18,11 @@ describe("safeSendToRenderer", () => {
   beforeEach(async () => {
     mockSend = vi.fn();
 
+    // Clear module-level state before each test to ensure clean state
+    // This is especially important for the warnTimestamps Map which is shared across tests
+    const { _clearWarnTimestampsForTest } = await import("../ipc-handlers/utils");
+    _clearWarnTimestampsForTest();
+
     // Create a mock window with valid webContents
     mockWindow = {
       isDestroyed: vi.fn(() => false),
@@ -210,6 +215,55 @@ describe("safeSendToRenderer", () => {
       expect(mockSend).not.toHaveBeenCalled();
     });
 
+    it("logs console.warn only once for multiple consecutive calls to same channel", () => {
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      mockWindow = {
+        isDestroyed: vi.fn(() => true),
+        webContents: {
+          isDestroyed: vi.fn(() => false),
+          send: mockSend,
+        },
+      } as unknown as BrowserWindow;
+      getMainWindow = () => mockWindow;
+
+      // Multiple calls to same channel - should warn only once
+      safeSendToRenderer(getMainWindow, "test-channel", "data1");
+      safeSendToRenderer(getMainWindow, "test-channel", "data2");
+      safeSendToRenderer(getMainWindow, "test-channel", "data3");
+
+      // console.warn should be called exactly once
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping send to destroyed window: test-channel")
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it("logs console.warn separately for different channels", () => {
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      mockWindow = {
+        isDestroyed: vi.fn(() => true),
+        webContents: {
+          isDestroyed: vi.fn(() => false),
+          send: mockSend,
+        },
+      } as unknown as BrowserWindow;
+      getMainWindow = () => mockWindow;
+
+      // Different channels - each should warn once
+      safeSendToRenderer(getMainWindow, "channel-a", "data");
+      safeSendToRenderer(getMainWindow, "channel-b", "data");
+      safeSendToRenderer(getMainWindow, "channel-c", "data");
+
+      // console.warn should be called once per channel (3 times total)
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(3);
+
+      consoleWarnSpy.mockRestore();
+    });
+
     it("handles different channels independently", () => {
       mockWindow = {
         isDestroyed: vi.fn(() => true),
@@ -248,6 +302,178 @@ describe("safeSendToRenderer", () => {
       // Second call throws disposal error but is caught
       const result2 = safeSendToRenderer(getMainWindow, "test-channel", "data2");
       expect(result2).toBe(false);
+    });
+  });
+
+  describe("warning pruning logic - 100-entry hard cap", () => {
+    it("enforces 100-entry cap by removing oldest entries when exceeded", async () => {
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      mockWindow = {
+        isDestroyed: vi.fn(() => true),
+        webContents: {
+          isDestroyed: vi.fn(() => false),
+          send: mockSend,
+        },
+      } as unknown as BrowserWindow;
+      getMainWindow = () => mockWindow;
+
+      // Add 105 unique channels - this triggers pruning
+      for (let i = 0; i < 105; i++) {
+        safeSendToRenderer(getMainWindow, `channel-${i}`, `data-${i}`);
+      }
+
+      // Should have warned for all 105 unique channels
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(105);
+
+      // Verify that calling the same channel multiple times within cooldown period
+      // only warns once (test the cooldown mechanism)
+      consoleWarnSpy.mockClear();
+      safeSendToRenderer(getMainWindow, "channel-0", "data-again");
+      safeSendToRenderer(getMainWindow, "channel-0", "data-again");
+      safeSendToRenderer(getMainWindow, "channel-0", "data-again");
+
+      // Should only warn once due to cooldown
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it("handles many unique channels without throwing errors", async () => {
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      mockWindow = {
+        isDestroyed: vi.fn(() => true),
+        webContents: {
+          isDestroyed: vi.fn(() => false),
+          send: mockSend,
+        },
+      } as unknown as BrowserWindow;
+      getMainWindow = () => mockWindow;
+
+      // Add 200 unique channels - should trigger pruning multiple times
+      // This tests that the pruning logic doesn't throw errors
+      expect(() => {
+        for (let i = 0; i < 200; i++) {
+          safeSendToRenderer(getMainWindow, `channel-${i}`, `data-${i}`);
+        }
+      }).not.toThrow();
+
+      // Should have warned for all 200 unique channels
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(200);
+
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
+  describe("parseEnvFile", () => {
+    it("parses Unix line endings (LF)", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "KEY1=value1\nKEY2=value2\nKEY3=value3";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({
+        KEY1: "value1",
+        KEY2: "value2",
+        KEY3: "value3",
+      });
+    });
+
+    it("parses Windows line endings (CRLF)", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "KEY1=value1\r\nKEY2=value2\r\nKEY3=value3";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({
+        KEY1: "value1",
+        KEY2: "value2",
+        KEY3: "value3",
+      });
+    });
+
+    it("parses mixed line endings", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "KEY1=value1\nKEY2=value2\r\nKEY3=value3\nKEY4=value4";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({
+        KEY1: "value1",
+        KEY2: "value2",
+        KEY3: "value3",
+        KEY4: "value4",
+      });
+    });
+
+    it("handles empty lines", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "KEY1=value1\n\nKEY2=value2\r\n\r\nKEY3=value3";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({
+        KEY1: "value1",
+        KEY2: "value2",
+        KEY3: "value3",
+      });
+    });
+
+    it("handles comments", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "# This is a comment\nKEY1=value1\n# Another comment\nKEY2=value2";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({
+        KEY1: "value1",
+        KEY2: "value2",
+      });
+    });
+
+    it("handles quoted values", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "KEY1=\"value with spaces\"\nKEY2='single quotes'\nKEY3=unquoted";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({
+        KEY1: "value with spaces",
+        KEY2: "single quotes",
+        KEY3: "unquoted",
+      });
+    });
+
+    it("handles values with equals signs", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "KEY1=value=with=equals\nKEY2=simple";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({
+        KEY1: "value=with=equals",
+        KEY2: "simple",
+      });
+    });
+
+    it("handles empty input", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const result = parseEnvFile("");
+
+      expect(result).toEqual({});
+    });
+
+    it("handles only comments and empty lines", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "# Comment 1\n# Comment 2\n\n\n";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({});
+    });
+
+    it("trims whitespace from keys and values", async () => {
+      const { parseEnvFile } = await import("../ipc-handlers/utils");
+      const content = "  KEY1  =  value1  \nKEY2=value2";
+      const result = parseEnvFile(content);
+
+      expect(result).toEqual({
+        KEY1: "value1",
+        KEY2: "value2",
+      });
     });
   });
 });

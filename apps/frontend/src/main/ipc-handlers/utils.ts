@@ -127,6 +127,13 @@ export function safeSendToRenderer(
 }
 
 /**
+ * Clear the warning timestamps Map (for testing only)
+ */
+export function _clearWarnTimestampsForTest(): void {
+  warnTimestamps.clear();
+}
+
+/**
  * Parse .env file into key-value object
  */
 export function parseEnvFile(content: string): Record<string, string> {
