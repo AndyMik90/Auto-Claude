@@ -126,9 +126,11 @@ class ImplementationPlan:
         Use this from async contexts (like agent sessions) to prevent blocking.
         Restores in-memory state if the write fails.
         """
-        # Capture current timestamps for potential rollback
+        # Capture current state for potential rollback
         old_updated_at = self.updated_at
         old_created_at = self.created_at
+        old_status = self.status
+        old_planStatus = self.planStatus
 
         # Update state and capture dict
         self._update_timestamps_and_status()
@@ -150,6 +152,8 @@ class ImplementationPlan:
             # Restore state on write failure so in-memory object matches file
             self.updated_at = old_updated_at
             self.created_at = old_created_at
+            self.status = old_status
+            self.planStatus = old_planStatus
             raise
 
     def update_status_from_subtasks(self):

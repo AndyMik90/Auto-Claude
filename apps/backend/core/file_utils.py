@@ -20,12 +20,14 @@ import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, Literal
 
 
 @contextmanager
 def atomic_write(
-    filepath: str | Path, mode: str = "w", encoding: str | None = "utf-8"
+    filepath: str | Path,
+    mode: Literal["w", "wb", "wt"] = "w",
+    encoding: str | None = "utf-8",
 ) -> Iterator[IO]:
     """
     Atomic file write using temp file and rename.

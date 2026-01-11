@@ -14,6 +14,7 @@ Usage:
 import argparse
 import json
 import sys
+import uuid
 from pathlib import Path
 
 from cli.utils import find_specs_dir
@@ -38,7 +39,7 @@ def check_json_file(filepath: Path) -> tuple[bool, str | None]:
 
 def detect_corrupted_files(specs_dir: Path) -> list[tuple[Path, str]]:
     """
-    Scan specs directory for corrupted JSON files.
+    Scan specs directory recursively for corrupted JSON files.
 
     Returns:
         List of (filepath, error_message) tuples
@@ -48,15 +49,11 @@ def detect_corrupted_files(specs_dir: Path) -> list[tuple[Path, str]]:
     if not specs_dir.exists():
         return corrupted
 
-    for spec_dir in specs_dir.iterdir():
-        if not spec_dir.is_dir():
-            continue
-
-        # Check all JSON files in spec directory
-        for json_file in spec_dir.glob("*.json"):
-            is_valid, error = check_json_file(json_file)
-            if not is_valid:
-                corrupted.append((json_file, error))
+    # Recursively scan for JSON files (includes nested files like memory/*.json)
+    for json_file in specs_dir.rglob("*.json"):
+        is_valid, error = check_json_file(json_file)
+        if not is_valid:
+            corrupted.append((json_file, error))
 
     return corrupted
 
@@ -71,18 +68,17 @@ def backup_corrupted_file(filepath: Path) -> bool:
     Returns:
         True if backed up successfully, False otherwise
     """
-    import time
-
     try:
         # Create backup before deleting
         base_backup_path = filepath.with_suffix(f"{filepath.suffix}.corrupted")
         backup_path = base_backup_path
 
-        # Handle existing backup files by appending a timestamp
+        # Handle existing backup files by generating unique name with UUID
         if backup_path.exists():
-            timestamp = int(time.time())
+            # Use UUID for unique naming to avoid races
+            unique_suffix = uuid.uuid4().hex[:8]
             backup_path = filepath.with_suffix(
-                f"{filepath.suffix}.corrupted.{timestamp}"
+                f"{filepath.suffix}.corrupted.{unique_suffix}"
             )
 
         filepath.rename(backup_path)
@@ -139,10 +135,11 @@ def main() -> None:
 
     print(f"[INFO] Scanning specs directory: {specs_dir}")
 
-    # Detect corrupted files
-    if args.detect or not args.delete:
-        corrupted = detect_corrupted_files(specs_dir)
+    # Detect corrupted files (dry-run when detect-only, otherwise for deletion)
+    corrupted = detect_corrupted_files(specs_dir)
 
+    # Detect-only mode: show results and exit
+    if args.detect and not args.delete:
         if not corrupted:
             print("[OK] No corrupted JSON files found")
             sys.exit(0)
@@ -179,14 +176,16 @@ def main() -> None:
 
         elif args.all:
             # Delete all corrupted files
-            corrupted = detect_corrupted_files(specs_dir)
+            # Use the already-detected corrupted list, or re-scan if needed
+            if not corrupted:
+                corrupted = detect_corrupted_files(specs_dir)
             if not corrupted:
                 print("[OK] No corrupted files to delete")
                 sys.exit(0)
 
             print(f"\n[INFO] Backing up {len(corrupted)} corrupted file(s):\n")
             for filepath, _ in corrupted:
-                print(f"  [BACKUP] {filepath.relative_to(specs_dir.parent)}")
+                # backup_corrupted_file prints its own [BACKUP] message
                 backup_corrupted_file(filepath)
 
         else:
