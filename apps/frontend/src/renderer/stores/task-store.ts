@@ -231,7 +231,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // 1. Subtasks array is properly populated (not empty)
           // 2. All subtasks are actually completed (for 'done' and 'ai_review' statuses)
           const hasSubtasks = subtasks.length > 0;
-          const terminalStatuses: TaskStatus[] = ['human_review', 'pr_created', 'done'];
+          const terminalStatuses: TaskStatus[] = ['human_review', 'pr_created', 'done', 'error'];
 
           // If task is currently in a terminal status, validate subtasks before allowing downgrade
           // This prevents flip-flop when plan file is written with incomplete data

@@ -145,7 +145,13 @@ def main() -> None:
     if args.delete:
         if args.spec_id:
             # Delete specific spec
-            spec_dir = specs_dir / args.spec_id
+            spec_dir = (specs_dir / args.spec_id).resolve()
+            specs_dir_resolved = specs_dir.resolve()
+            # Validate path doesn't escape specs directory
+            if not str(spec_dir).startswith(str(specs_dir_resolved)):
+                print("[ERROR] Invalid spec ID: path traversal detected")
+                sys.exit(1)
+
             if not spec_dir.exists():
                 print(f"[ERROR] Spec directory not found: {spec_dir}")
                 sys.exit(1)
