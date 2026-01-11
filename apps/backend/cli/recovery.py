@@ -136,7 +136,7 @@ def main() -> None:
         print(f"\n[FOUND] {len(corrupted)} corrupted file(s):\n")
         for filepath, error in corrupted:
             print(f"  - {filepath.relative_to(specs_dir.parent)}")
-            print(f"    Error: {error[:100]}...")
+            print(f"    Error: {error}")
         print()
         # Exit with error code when corrupted files are found
         sys.exit(1)

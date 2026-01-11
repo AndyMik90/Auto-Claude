@@ -102,15 +102,20 @@ class ImplementationPlan:
             qa_signoff=data.get("qa_signoff"),
         )
 
-    def save(self, path: Path):
-        """Save plan to JSON file using atomic write to prevent corruption."""
+    def _update_timestamps_and_status(self) -> None:
+        """Update timestamps and status before saving.
+
+        Sets updated_at to now, initializes created_at if needed, and updates
+        status based on subtask completion.
+        """
         self.updated_at = datetime.now().isoformat()
         if not self.created_at:
             self.created_at = self.updated_at
-
-        # Auto-update status based on subtask completion
         self.update_status_from_subtasks()
 
+    def save(self, path: Path):
+        """Save plan to JSON file using atomic write to prevent corruption."""
+        self._update_timestamps_and_status()
         # Use atomic write to prevent corruption on crash/interrupt
         write_json_atomic(path, self.to_dict(), indent=2, ensure_ascii=False)
 
@@ -120,12 +125,7 @@ class ImplementationPlan:
 
         Use this from async contexts (like agent sessions) to prevent blocking.
         """
-        self.updated_at = datetime.now().isoformat()
-        if not self.created_at:
-            self.created_at = self.updated_at
-
-        # Auto-update status based on subtask completion
-        self.update_status_from_subtasks()
+        self._update_timestamps_and_status()
 
         # Run sync write in thread pool to avoid blocking event loop
         loop = asyncio.get_running_loop()

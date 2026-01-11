@@ -387,6 +387,7 @@ const { t } = useTranslation(['navigation', 'common']);
 ```
 
 **Error messages with substitution:**
+
 ```tsx
 // For error messages with dynamic content, use interpolation
 const { t } = useTranslation(['errors']);
