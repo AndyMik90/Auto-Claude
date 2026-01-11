@@ -1,0 +1,16 @@
+# CODEOWNERS file - automatycznie dodaje reviewerów do PR
+# Więcej info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+* @aleksanderem
+
+# Backend code
+/apps/backend/ @aleksanderem
+
+# Critical configuration files
+/.github/ @aleksanderem
+/apps/backend/core/ @aleksanderem
+/apps/backend/agents/ @aleksanderem
+
+# Documentation
+*.md @aleksanderem
