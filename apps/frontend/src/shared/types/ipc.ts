@@ -306,6 +306,10 @@ export interface ElectronAPI {
   parseTemplateParameters: (templateId: string) => Promise<IPCResult<import('./template').ParsedTemplate>>;
   copyTemplateWithParameters: (templateId: string, destinationPath: string, customName: string, parameterValues: Record<string, string>) => Promise<IPCResult<{ path: string }>>;
 
+  // File operations (for template parameter editor)
+  readFile: (filePath: string) => Promise<IPCResult<string>>;
+  writeFile: (filePath: string, content: string) => Promise<IPCResult>;
+
   // Secrets operations (Encrypted storage - Group/Account model)
   checkSecretsEncryption: () => Promise<IPCResult<boolean>>;
   getSecretGroups: () => Promise<IPCResult<import('./secrets').SecretGroup[]>>;

@@ -47,6 +47,13 @@ export const createTemplateAPI = (): TemplateAPI => ({
   copyTemplateWithParameters: (templateId: string, destinationPath: string, customName: string, parameterValues: Record<string, string>): Promise<IPCResult<{ path: string }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TEMPLATES_COPY_WITH_PARAMETERS, templateId, destinationPath, customName, parameterValues),
 
+  // File operations (for template parameter editor)
+  readFile: (filePath: string): Promise<IPCResult<string>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILE_READ, filePath),
+
+  writeFile: (filePath: string, content: string): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILE_WRITE, filePath, content),
+
   // Template Editor (AI-powered)
   checkTemplateEditorInitialized: (): Promise<IPCResult<boolean>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TEMPLATE_EDITOR_CHECK_INITIALIZED),

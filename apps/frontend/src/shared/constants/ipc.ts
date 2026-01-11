@@ -488,6 +488,10 @@ export const IPC_CHANNELS = {
   FILE_EXPLORER_LIST: 'fileExplorer:list',
   FILE_EXPLORER_READ: 'fileExplorer:read',
 
+  // File operations (for template parameter editor)
+  FILE_READ: 'file:read',
+  FILE_WRITE: 'file:write',
+
   // Git operations
   GIT_GET_BRANCHES: 'git:getBranches',
   GIT_GET_CURRENT_BRANCH: 'git:getCurrentBranch',

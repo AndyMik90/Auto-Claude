@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Folder, Trash2, Pencil, Key, ArrowLeft, HelpCircle, Code2, Search, ExternalLink, Sparkles } from 'lucide-react';
+import { Plus, Folder, Trash2, Pencil, Key, ArrowLeft, HelpCircle, Code2, Search, ExternalLink, Sparkles, FileEdit } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
@@ -15,6 +15,7 @@ import { SettingsSection } from './SettingsSection';
 import type { Template, AppSettings } from '../../../shared/types';
 import { AddTemplateDialog } from './AddTemplateDialog';
 import { TemplateEditorDialog } from './TemplateEditorDialog';
+import { TemplateParameterEditor } from './TemplateParameterEditor';
 import { SecretsManager } from './SecretsManager';
 import { useToast } from '../../hooks/use-toast';
 
@@ -32,6 +33,8 @@ export function TemplatesSettings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isEditorDialogOpen, setIsEditorDialogOpen] = useState(false);
   const [aiEditingTemplate, setAiEditingTemplate] = useState<Template | null>(null);
+  const [isParamEditorOpen, setIsParamEditorOpen] = useState(false);
+  const [paramEditingTemplate, setParamEditingTemplate] = useState<Template | null>(null);
   const { toast } = useToast();
 
   const loadTemplates = async () => {
@@ -151,6 +154,20 @@ export function TemplatesSettings() {
   const handleAIEdit = (template: Template) => {
     setAiEditingTemplate(template);
     setIsEditorDialogOpen(true);
+  };
+
+  const handleParamEdit = (template: Template) => {
+    setParamEditingTemplate(template);
+    setIsParamEditorOpen(true);
+  };
+
+  const handleParamEditorSaved = () => {
+    // Reload parameter counts after editing
+    loadTemplates();
+    toast({
+      title: 'Parameters updated',
+      description: 'Template parameters have been saved successfully'
+    });
   };
 
   // Filter templates based on search query
@@ -336,6 +353,17 @@ export function TemplatesSettings() {
                       >
                         <Sparkles className="h-3 w-3" />
                       </Button>
+                      {paramCounts[template.id] !== undefined && paramCounts[template.id] > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleParamEdit(template)}
+                          className="gap-1"
+                          title="Edit Parameters"
+                        >
+                          <FileEdit className="h-3 w-3" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -383,6 +411,14 @@ export function TemplatesSettings() {
           open={isEditorDialogOpen}
           onOpenChange={setIsEditorDialogOpen}
           template={aiEditingTemplate}
+        />
+
+        {/* Visual Parameter Editor Dialog */}
+        <TemplateParameterEditor
+          open={isParamEditorOpen}
+          onOpenChange={setIsParamEditorOpen}
+          template={paramEditingTemplate}
+          onSaved={handleParamEditorSaved}
         />
 
         {/* Parameter Guide Dialog */}

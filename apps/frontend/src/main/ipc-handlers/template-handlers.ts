@@ -557,4 +557,67 @@ export function registerTemplateHandlers(): void {
       }
     }
   );
+
+  // Read file content (for template parameter editor)
+  ipcMain.handle(
+    IPC_CHANNELS.FILE_READ,
+    async (_, filePath: string): Promise<IPCResult<string>> => {
+      try {
+        // Security: Validate file path
+        if (!filePath || typeof filePath !== 'string') {
+          return { success: false, error: 'File path is required' };
+        }
+
+        // Security: Ensure file exists
+        if (!existsSync(filePath)) {
+          return { success: false, error: 'File does not exist' };
+        }
+
+        // Read file content
+        const content = readFileSync(filePath, 'utf-8');
+        return { success: true, data: content };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to read file'
+        };
+      }
+    }
+  );
+
+  // Write file content (for template parameter editor)
+  ipcMain.handle(
+    IPC_CHANNELS.FILE_WRITE,
+    async (_, filePath: string, content: string): Promise<IPCResult> => {
+      try {
+        // Security: Validate file path
+        if (!filePath || typeof filePath !== 'string') {
+          return { success: false, error: 'File path is required' };
+        }
+
+        // Security: Validate content
+        if (content === undefined || content === null) {
+          return { success: false, error: 'Content is required' };
+        }
+
+        if (typeof content !== 'string') {
+          return { success: false, error: 'Content must be a string' };
+        }
+
+        // Security: Ensure file exists before overwriting
+        if (!existsSync(filePath)) {
+          return { success: false, error: 'File does not exist' };
+        }
+
+        // Write file content
+        writeFileSync(filePath, content, 'utf-8');
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to write file'
+        };
+      }
+    }
+  );
 }
