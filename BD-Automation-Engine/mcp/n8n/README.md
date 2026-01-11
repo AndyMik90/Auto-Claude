@@ -19,12 +19,14 @@ Add to `claude_desktop_config.json`:
       "args": ["-y", "n8n-mcp"],
       "env": {
         "N8N_API_KEY": "YOUR_N8N_API_KEY",
-        "N8N_API_URL": "https://your-n8n-instance.com/api/v1"
+        "N8N_API_URL": "https://primetech.app.n8n.cloud/api/v1"
       }
     }
   }
 }
 ```
+
+**PTS Instance**: `https://primetech.app.n8n.cloud`
 
 ## Features
 
