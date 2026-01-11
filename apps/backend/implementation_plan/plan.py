@@ -114,7 +114,7 @@ class ImplementationPlan:
         # Use atomic write to prevent corruption on crash/interrupt
         write_json_atomic(path, self.to_dict(), indent=2, ensure_ascii=False)
 
-    async def async_save(self, path: Path):
+    async def async_save(self, path: Path) -> None:
         """
         Async version of save() - runs file I/O in thread pool to avoid blocking event loop.
 

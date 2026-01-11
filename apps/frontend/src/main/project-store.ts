@@ -399,7 +399,13 @@ export class ProjectStore {
             });
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : String(err);
-            parseError = { key: 'errors:task.parseImplementationPlan', meta: { error: errorMessage } };
+            parseError = {
+              key: 'errors:task.parseImplementationPlan',
+              meta: {
+                specId: dir.name,
+                error: errorMessage.slice(0, 500)
+              }
+            };
             console.error(`[ProjectStore] Failed to parse implementation_plan.json for ${dir.name}:`, errorMessage);
           }
         } else {
@@ -517,11 +523,11 @@ export class ProjectStore {
           title,
           description: finalDescription,
           status: finalStatus,
-          reviewReason: finalReviewReason,
           subtasks,
           logs: [],
           metadata,
-          errorInfo: finalErrorInfo,
+          ...(finalReviewReason !== undefined && { reviewReason: finalReviewReason }),
+          ...(finalErrorInfo !== undefined && { errorInfo: finalErrorInfo }),
           stagedInMainProject,
           stagedAt,
           location, // Add location metadata (main vs worktree)

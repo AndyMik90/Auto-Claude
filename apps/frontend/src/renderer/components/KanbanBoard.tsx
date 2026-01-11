@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw } from 'lucide-react';
+import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, AlertCircle } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -144,6 +144,12 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
         icon: <CheckCircle2 className="h-6 w-6 text-muted-foreground/50" />,
         message: t('kanban.emptyDone'),
         subtext: t('kanban.emptyDoneHint')
+      };
+    case 'error':
+      return {
+        icon: <AlertCircle className="h-6 w-6 text-destructive/50" />,
+        message: t('kanban.emptyError'),
+        subtext: t('kanban.emptyErrorHint')
       };
     default:
       return {
@@ -569,7 +575,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
             className="gap-2 text-muted-foreground hover:text-foreground"
           >
             <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh Tasks'}
+            {isRefreshing ? t('common:buttons.refreshing') : t('tasks:refreshTasks')}
           </Button>
         </div>
       )}

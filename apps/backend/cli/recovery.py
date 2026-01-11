@@ -79,7 +79,7 @@ def delete_corrupted_file(filepath: Path) -> bool:
         return False
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Detect and repair corrupted JSON files in specs directories"
     )
@@ -138,6 +138,8 @@ def main():
             print(f"  - {filepath.relative_to(specs_dir.parent)}")
             print(f"    Error: {error[:100]}...")
         print()
+        # Exit with error code when corrupted files are found
+        sys.exit(1)
 
     # Delete corrupted files
     if args.delete:

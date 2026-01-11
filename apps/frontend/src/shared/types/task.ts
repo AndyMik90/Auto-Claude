@@ -239,7 +239,7 @@ export interface TaskMetadata {
 // Structured error information for tasks with parse errors
 export interface TaskErrorInfo {
   key: string;  // Translation key (e.g., 'errors:task.parseImplementationPlan')
-  meta?: { error?: string };  // Error message for substitution in translation
+  meta?: { specId?: string; error?: string };  // Error context for substitution in translation
 }
 
 export interface Task {
