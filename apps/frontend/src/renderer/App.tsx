@@ -64,6 +64,7 @@ import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../s
 import type { Task, Project, ColorTheme } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
 import { AddProjectModal } from './components/AddProjectModal';
+import { ProjectWindowHeader } from './components/ProjectWindowHeader';
 import { ViewStateProvider } from './contexts/ViewStateContext';
 
 // Wrapper component for ProjectTabBar with drag detection
@@ -211,6 +212,14 @@ export function App() {
       cleanupDownloadListener();
     };
   }, []);
+
+  // For project windows, set the active project to the window's project
+  useEffect(() => {
+    if (windowContext?.type === 'project' && windowContext.projectId) {
+      console.log('[App] Project window detected, setting active project:', windowContext.projectId);
+      setActiveProject(windowContext.projectId);
+    }
+  }, [windowContext, setActiveProject]);
 
   // Restore tab state and open tabs for loaded projects
   useEffect(() => {
@@ -724,21 +733,114 @@ export function App() {
     }
   };
 
+  // Check if this is a project window (detached single-project window)
+  const isProjectWindow = windowContext?.type === 'project';
+  const projectWindowId = windowContext?.projectId;
+
   return (
     <ViewStateProvider>
       <TooltipProvider>
         <ProactiveSwapListener />
       <div className="flex h-screen bg-background">
-        {/* Sidebar */}
-        <Sidebar
-          onSettingsClick={() => setIsSettingsDialogOpen(true)}
-          onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
-          activeView={activeView}
-          onViewChange={setActiveView}
-        />
+        {/* Project Window: Simplified UI showing only one project */}
+        {isProjectWindow && projectWindowId ? (
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {/* Project window header with reattach button */}
+            <ProjectWindowHeader projectId={projectWindowId} />
 
-        {/* Main content */}
-        <div className="flex flex-1 flex-col overflow-hidden">
+            {/* Main content area */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Sidebar for project window */}
+              <Sidebar
+                onSettingsClick={() => setIsSettingsDialogOpen(true)}
+                onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
+                activeView={activeView}
+                onViewChange={setActiveView}
+              />
+
+              {/* Content area */}
+              <div className="flex-1 overflow-auto">
+                {activeView === 'kanban' && (
+                  <KanbanBoard
+                    tasks={tasks}
+                    onTaskClick={handleTaskClick}
+                    onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
+                    onRefresh={handleRefreshTasks}
+                    isRefreshing={isRefreshingTasks}
+                  />
+                )}
+                <div className={activeView === 'terminals' ? 'h-full' : 'hidden'}>
+                  <TerminalGrid
+                    projectPath={selectedProject?.path}
+                    onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
+                    isActive={activeView === 'terminals'}
+                  />
+                </div>
+                {activeView === 'roadmap' && projectWindowId && (
+                  <Roadmap projectId={projectWindowId} onGoToTask={handleGoToTask} />
+                )}
+                {activeView === 'context' && projectWindowId && (
+                  <Context projectId={projectWindowId} />
+                )}
+                {activeView === 'ideation' && projectWindowId && (
+                  <Ideation projectId={projectWindowId} onGoToTask={handleGoToTask} />
+                )}
+                {activeView === 'insights' && projectWindowId && (
+                  <Insights projectId={projectWindowId} />
+                )}
+                {activeView === 'github-issues' && projectWindowId && (
+                  <GitHubIssues
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('github');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                    onNavigateToTask={handleGoToTask}
+                  />
+                )}
+                {activeView === 'gitlab-issues' && projectWindowId && (
+                  <GitLabIssues
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('gitlab');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                    onNavigateToTask={handleGoToTask}
+                  />
+                )}
+                {projectWindowId && (
+                  <div className={activeView === 'github-prs' ? 'h-full' : 'hidden'}>
+                    <GitHubPRs projectId={projectWindowId} />
+                  </div>
+                )}
+                {projectWindowId && (
+                  <div className={activeView === 'gitlab-merge-requests' ? 'h-full' : 'hidden'}>
+                    <GitLabMergeRequests projectId={projectWindowId} />
+                  </div>
+                )}
+                {activeView === 'changelog' && projectWindowId && (
+                  <Changelog projectId={projectWindowId} onGoToTask={handleGoToTask} />
+                )}
+                {activeView === 'worktrees' && projectWindowId && (
+                  <Worktrees projectId={projectWindowId} />
+                )}
+                {activeView === 'agent-tools' && projectWindowId && (
+                  <AgentTools projectId={projectWindowId} />
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Main Window: Full UI with sidebar and tabs */
+          <>
+            {/* Sidebar */}
+            <Sidebar
+              onSettingsClick={() => setIsSettingsDialogOpen(true)}
+              onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
+              activeView={activeView}
+              onViewChange={setActiveView}
+            />
+
+            {/* Main content */}
+            <div className="flex flex-1 flex-col overflow-hidden">
           {/* Project Tabs */}
           {projectTabs.length > 0 && (
             <DndContext
@@ -886,6 +988,8 @@ export function App() {
             )}
           </main>
         </div>
+          </>
+        )}
 
         {/* Task detail modal */}
         <TaskDetailModal
