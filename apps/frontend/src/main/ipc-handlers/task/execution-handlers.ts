@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
+import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir, BASE_BRANCHES } from '../../../shared/constants';
 import type { IPCResult, TaskStartOptions, TaskStatus, ImageAttachment } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, mkdirSync, rmSync } from 'fs';
@@ -41,8 +41,7 @@ function getWorktreeBranch(worktreePath: string): string | null {
     // Skip if on a base branch (orphaned after GitHub merge)
     // Allow any feature branch pattern (auto-claude/*, feature/*, etc.)
     // Use case-insensitive comparison for robustness
-    const baseBranches = ['main', 'master', 'develop', 'head'];
-    if (baseBranches.includes(branch.toLowerCase())) {
+    if (BASE_BRANCHES.includes(branch.toLowerCase() as typeof BASE_BRANCHES[number])) {
       return null;
     }
     return branch;

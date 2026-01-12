@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow, shell, app } from 'electron';
-import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir } from '../../../shared/constants';
+import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir, BASE_BRANCHES } from '../../../shared/constants';
 import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
@@ -2681,8 +2681,8 @@ export function registerWorktreeHandlers(
             // Skip if HEAD is detached or pointing to a main/base branch
             // (this can happen if worktree is orphaned after GitHub merge)
             // But allow any feature branch pattern (auto-claude/*, feature/*, etc.)
-            const baseBranches = ['main', 'master', 'develop', 'HEAD'];
-            if (baseBranches.includes(branch)) {
+            // Use case-insensitive comparison for robustness
+            if (BASE_BRANCHES.includes(branch.toLowerCase() as typeof BASE_BRANCHES[number])) {
               console.warn(`[TASK_LIST_WORKTREES] Skipping worktree ${entry} - on base branch: ${branch}`);
               return; // Skip - likely orphaned or misconfigured
             }

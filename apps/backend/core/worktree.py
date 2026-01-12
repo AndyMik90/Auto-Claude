@@ -647,29 +647,7 @@ class WorktreeManager:
         result = self._run_git(merge_args)
 
         if result.returncode != 0:
-            # Check if it's "already up to date" - not an error
-            output = (result.stdout + result.stderr).lower()
-            if "already up to date" in output or "already up-to-date" in output:
-                print(f"Branch {info.branch} is already up to date.")
-                if no_commit:
-                    print("No changes to stage.")
-                if delete_after:
-                    self.remove_worktree(spec_name, delete_branch=True)
-                return True
-            # Check for actual conflicts
-            if "conflict" in output:
-                print("Merge conflict! Aborting merge...")
-                self._run_git(["merge", "--abort"])
-                return False
-            # Other error - show details
-            stderr_msg = (
-                result.stderr[:200]
-                if result.stderr
-                else result.stdout[:200]
-                if result.stdout
-                else "<no output>"
-            )
-            print(f"Merge failed: {stderr_msg}")
+            print("Merge conflict! Aborting merge...")
             self._run_git(["merge", "--abort"])
             return False
 
@@ -715,14 +693,16 @@ class WorktreeManager:
         seen_specs = set()
         # Skip worktrees on base branches (orphaned after GitHub merge)
         # But allow any feature branch pattern (auto-claude/*, feature/*, etc.)
-        base_branches = {"main", "master", "develop", "HEAD"}
+        # Use case-insensitive comparison for robustness
+        # NOTE: Keep in sync with BASE_BRANCHES in apps/frontend/src/shared/constants/git.ts
+        base_branches = {"main", "master", "develop", "head"}
 
         # Check new location first
         if self.worktrees_dir.exists():
             for item in self.worktrees_dir.iterdir():
                 if item.is_dir():
                     info = self.get_worktree_info(item.name)
-                    if info and info.branch not in base_branches:
+                    if info and info.branch.lower() not in base_branches:
                         worktrees.append(info)
                         seen_specs.add(item.name)
 
@@ -732,7 +712,7 @@ class WorktreeManager:
             for item in legacy_dir.iterdir():
                 if item.is_dir() and item.name not in seen_specs:
                     info = self.get_worktree_info(item.name)
-                    if info and info.branch not in base_branches:
+                    if info and info.branch.lower() not in base_branches:
                         worktrees.append(info)
 
         return worktrees
