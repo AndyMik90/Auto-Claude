@@ -43,24 +43,31 @@ def load_qa_fixer_prompt() -> str:
     return prompt_file.read_text()
 
 
-def load_qa_feedback_screenshots(spec_dir: Path) -> list[dict]:
+def load_qa_feedback_screenshots(spec_dir: Path) -> tuple[str, list[dict]]:
     """
     Load user feedback screenshots from QA_FIX_REQUEST.md.
 
-    Returns a list of image content blocks for Claude to see.
+    Returns:
+        Tuple of (feedback_text, image_content_blocks)
     """
     fix_request_file = spec_dir / "QA_FIX_REQUEST.md"
     if not fix_request_file.exists():
-        return []
+        return "", []
 
     content = fix_request_file.read_text()
+
+    # Extract feedback text (between "## Feedback" and "## Screenshots" or end)
+    feedback_match = re.search(
+        r"## Feedback\s*\n\n(.*?)(?:\n## |$)", content, re.DOTALL
+    )
+    feedback_text = feedback_match.group(1).strip() if feedback_match else ""
 
     # Find screenshot paths in the markdown (format: - `qa-feedback-screenshots/filename.png`)
     screenshot_pattern = r"`(qa-feedback-screenshots/[^`]+)`"
     screenshot_paths = re.findall(screenshot_pattern, content)
 
     if not screenshot_paths:
-        return []
+        return feedback_text, []
 
     image_blocks = []
     for rel_path in screenshot_paths:
@@ -114,7 +121,7 @@ def load_qa_feedback_screenshots(spec_dir: Path) -> list[dict]:
             except Exception as e:
                 debug_error("qa_fixer", f"Failed to load screenshot {rel_path}: {e}")
 
-    return image_blocks
+    return feedback_text, image_blocks
 
 
 # =============================================================================
@@ -200,20 +207,23 @@ async def run_qa_fixer_session(
     prompt += f"The fix request file is at: `{spec_dir}/QA_FIX_REQUEST.md`\n"
 
     # Load user feedback screenshots if they exist
-    screenshot_blocks = load_qa_feedback_screenshots(spec_dir)
+    feedback_text, screenshot_blocks = load_qa_feedback_screenshots(spec_dir)
 
     try:
         debug("qa_fixer", "Sending query to Claude SDK...")
 
-        # If screenshots exist, send as multimodal content blocks
+        # If screenshots exist, send as multimodal content blocks with feedback context
         if screenshot_blocks:
-            prompt += "\n\n---\n\n## User Feedback Screenshots\n\nThe user provided the following screenshots showing the issues that need to be fixed. **ANALYZE THESE SCREENSHOTS CAREFULLY** to understand the visual problems before making changes:\n\n"
+            prompt += "\n\n---\n\n## User Feedback\n\n"
+            prompt += f"**User's text feedback:**\n{feedback_text or 'No text feedback provided'}\n\n"
+            prompt += f"**User provided {len(screenshot_blocks)} screenshot(s) showing the issues:**\n\n"
+            prompt += "**IMPORTANT:** The screenshots below show the actual visual problems the user is reporting. Analyze each screenshot carefully to understand what needs to be fixed before making changes.\n\n"
 
             content_blocks = [{"type": "text", "text": prompt}] + screenshot_blocks
             await client.query(content_blocks)
             debug_success(
                 "qa_fixer",
-                f"Query sent with {len(screenshot_blocks)} screenshot(s)",
+                f"Query sent with feedback text and {len(screenshot_blocks)} screenshot(s)",
             )
         else:
             # No screenshots, send text-only prompt
