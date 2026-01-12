@@ -1,7 +1,7 @@
-# Environment files (DISABLED FOR TESTING)
-# .env
-# .env.local
-# .env.*.local
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
 
 # Keep .env.example as template
 !.env.example
@@ -66,8 +66,11 @@ temp/
 *.sqlite
 *.sqlite3
 
-# Credentials and keys (DISABLED FOR TESTING)
-# *.pem
-# *.key
-# credentials.json
-# token.json
+# Credentials and keys
+*.pem
+*.key
+credentials.json
+token.json
+
+# Auto Claude data directory
+.auto-claude/

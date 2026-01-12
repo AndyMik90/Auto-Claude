@@ -239,5 +239,37 @@
     "enrichedJobsPath": "Engine2_ProgramMapping/data/Enriched_Jobs.json",
     "mappingLogPath": "outputs/Logs/program_mapping.log",
     "unmatchedJobsPath": "Engine2_ProgramMapping/data/Unmatched_Jobs.json"
+  },
+
+  "export": {
+    "_comment": "Export paths for pipeline v2.0",
+    "notion_output_path": "outputs/notion",
+    "n8n_output_path": "outputs/n8n",
+    "formats": {
+      "notion_csv": {
+        "enabled": true,
+        "columns": 27,
+        "description": "Notion-compatible CSV with 27 columns for database import"
+      },
+      "n8n_json": {
+        "enabled": true,
+        "description": "n8n webhook-compatible JSON payload with _mapping and _scoring"
+      }
+    }
+  },
+
+  "pipeline": {
+    "_comment": "Pipeline v2.0 configuration",
+    "use_federal_programs_db": true,
+    "federal_programs_path": "Engine2_ProgramMapping/data/Federal Programs.csv",
+    "use_llm_standardization": false,
+    "stages": [
+      {"name": "ingest", "description": "Load raw JSON from scraper"},
+      {"name": "parse", "description": "Parse raw job data"},
+      {"name": "standardize", "description": "Extract standardized fields"},
+      {"name": "match", "description": "Map to federal programs"},
+      {"name": "score", "description": "Calculate BD priority scores"},
+      {"name": "export", "description": "Export to Notion CSV and n8n JSON"}
+    ]
   }
 }
