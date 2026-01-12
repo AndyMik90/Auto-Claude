@@ -430,7 +430,7 @@ export class AgentProcessManager {
 
     // Get activation script from settings
     const settings = readSettingsFile();
-    const activationScript = settings?.pythonActivationScript;
+    const activationScript = typeof settings?.pythonActivationScript === 'string' ? settings.pythonActivationScript : undefined;
 
     // Parse Python commandto handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
@@ -438,13 +438,14 @@ export class AgentProcessManager {
     let finalCommand: string;
     let finalArgs: string[];
 
+    // Build Python command with arguments (quote args with spaces)
+    const pythonWithArgs = [pythonCommand, ...pythonBaseArgs, ...args]
+      .map(arg => arg.includes(' ') ? `"${arg}"` : arg)
+      .join(' ');
+
     if (activationScript && existsSync(activationScript)) {
       // Build command with conda activation
       if (process.platform === 'win32') {
-        const pythonWithArgs = [pythonCommand, ...pythonBaseArgs, ...args]
-          .map(arg => arg.includes(' ') ? `"${arg}"` : arg)
-          .join(' ');
-
         // Check if it's a PowerShell script (.ps1)
         if (activationScript.toLowerCase().endsWith('.ps1')) {
           // PowerShell: powershell -NoProfile -Command "& script.ps1; & python args"
@@ -458,9 +459,6 @@ export class AgentProcessManager {
       } else {
         // Unix: bash -c "source activate && python args"
         finalCommand = process.env.SHELL || '/bin/bash';
-        const pythonWithArgs = [pythonCommand, ...pythonBaseArgs, ...args]
-          .map(arg => arg.includes(' ') ? `"${arg}"` : arg)
-          .join(' ');
         finalArgs = ['-c', `source "${activationScript}" && ${pythonWithArgs}`];
       }
     } else {
