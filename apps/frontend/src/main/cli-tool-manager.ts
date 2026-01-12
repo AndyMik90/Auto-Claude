@@ -34,8 +34,6 @@ import {
   shouldUseShell,
   existsAsync,
   getSpawnCommand,
-  parseRegOutput,
-  expandWindowsEnvVars,
   getWindowsRegistryPath,
   getWindowsRegistryPathAsync,
 } from './env-utils';
