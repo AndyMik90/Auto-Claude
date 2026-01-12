@@ -787,7 +787,21 @@ def _rebase_spec_branch(
     original_branch_result = run_git(
         ["rev-parse", "--abbrev-ref", "HEAD"], cwd=project_dir
     )
+    # Check returncode and validate stdout before using original_branch
+    if original_branch_result.returncode != 0:
+        debug_error(
+            MODULE,
+            "Could not get current branch name",
+            stderr=original_branch_result.stderr,
+        )
+        return False
     original_branch = original_branch_result.stdout.strip()
+    if not original_branch or original_branch == "HEAD":
+        debug_error(
+            MODULE,
+            "Could not determine current branch (detached HEAD state)",
+        )
+        return False
 
     # Save current state for recovery
     # Get the current commit of spec_branch before rebase
@@ -836,7 +850,7 @@ def _rebase_spec_branch(
             # Git status --porcelain uses two-character status codes:
             # UU = both modified, AA = both added, DD = both deleted, etc.
             has_unmerged = any(
-                line[:2] in ("UU", "AA", "DD", "AU", "UA", "DU", "UD", "UD")
+                line[:2] in ("UU", "AA", "DD", "AU", "UA", "DU", "UD")
                 for line in status_result.stdout.splitlines()
                 if len(line) >= 2
             )
@@ -898,13 +912,15 @@ def _rebase_spec_branch(
         return False
     finally:
         # HIGH: Always restore original branch, even on error/exception
-        restore_result = run_git(["checkout", original_branch], cwd=project_dir)
-        if restore_result.returncode != 0:
-            debug_error(
-                MODULE,
-                f"Failed to restore original branch '{original_branch}'",
-                stderr=restore_result.stderr,
-            )
+        # Only attempt restoration if original_branch is valid
+        if original_branch:
+            restore_result = run_git(["checkout", original_branch], cwd=project_dir)
+            if restore_result.returncode != 0:
+                debug_error(
+                    MODULE,
+                    f"Failed to restore original branch '{original_branch}'",
+                    stderr=restore_result.stderr,
+                )
 
 
 def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
@@ -976,11 +992,9 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
 
         # Check if spec branch is behind base branch (needs rebase)
         # Count commits that are in base branch but not in spec branch
-        rev_list_result = subprocess.run(
-            ["git", "rev-list", "--count", f"{spec_commit}..{main_commit}"],
+        rev_list_result = run_git(
+            ["rev-list", "--count", f"{spec_commit}..{main_commit}"],
             cwd=project_dir,
-            capture_output=True,
-            text=True,
         )
         if rev_list_result.returncode == 0:
             commits_behind = int(rev_list_result.stdout.strip())
@@ -993,6 +1007,12 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
                     base_branch=result["base_branch"],
                     spec_branch=spec_branch,
                 )
+        else:
+            debug_warning(
+                MODULE,
+                "Could not count commits behind",
+                stderr=rev_list_result.stderr,
+            )
 
         # Use git merge-tree to check for conflicts WITHOUT touching working directory
         # Note: --write-tree mode only accepts 2 branches (it auto-finds the merge base)

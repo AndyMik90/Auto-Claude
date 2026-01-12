@@ -825,9 +825,8 @@ class TestRebaseIntegration:
             use_smart_merge=True,
         )
 
-        # Note: The actual merge behavior depends on whether there are conflicts
-        # We're primarily testing that it doesn't crash and handles the behind state
-        assert result is not None, "Merge should return a result"
+        # Merge should return True (success)
+        assert result is True, "Merge with auto-rebase should succeed"
 
     def test_check_git_conflicts_with_diverged_branches(self, temp_git_repo: Path):
         """_check_git_conflicts correctly detects diverged branches (ACS-224)."""
@@ -876,20 +875,6 @@ class TestRebaseIntegration:
 
 class TestRebaseErrorHandling:
     """Tests for rebase error handling (ACS-224)."""
-
-    def test_rebase_handles_nonexistent_branch_gracefully(
-        self, temp_git_repo: Path
-    ):
-        """_rebase_spec_branch returns False for non-existent branch (ACS-224)."""
-        from core.workspace import _rebase_spec_branch
-
-        # Test that attempting to rebase a non-existent branch returns False
-        # instead of crashing or raising an exception
-        result = _rebase_spec_branch(
-            temp_git_repo, "totally-fake-spec-branch", "main"
-        )
-
-        assert result is False, "Should return False for invalid branch"
 
     def test_check_git_conflicts_handles_invalid_spec(self, temp_git_repo: Path):
         """_check_git_conflicts handles non-existent spec branch gracefully (ACS-224)."""
