@@ -57,13 +57,21 @@ export function escapeShellArgPowerShell(arg: string): string {
  * Inside double quotes in cmd.exe:
  * - Special chars &|<>^ are treated as literals (no escaping needed)
  * - % must be escaped as %% to prevent variable expansion
- * - " cannot be reliably escaped inside double quotes in cmd.exe;
- *   we assume paths don't contain double quotes (extremely rare)
+ * - " cannot be reliably escaped inside double quotes in cmd.exe
  *
  * @param arg - The argument to escape
  * @returns The escaped argument safe for use inside double quotes in cmd.exe
+ * @throws Error if the argument contains double quotes (cannot be safely escaped in cmd.exe)
  */
 export function escapeShellArgWindows(arg: string): string {
+  // Double quotes cannot be reliably escaped inside double-quoted strings in cmd.exe.
+  // Reject arguments containing double quotes to prevent command injection.
+  // This is extremely rare in practice (paths almost never contain double quotes),
+  // but we must be defensive.
+  if (arg.includes('"')) {
+    throw new Error('Path contains double quote character which cannot be safely escaped for cmd.exe');
+  }
+
   // Only % needs escaping inside double quotes - it prevents variable expansion
   // Characters like &|<>^ are treated as literals inside double quotes
   return arg.replace(/%/g, '%%');

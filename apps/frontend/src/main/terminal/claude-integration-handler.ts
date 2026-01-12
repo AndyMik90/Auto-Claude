@@ -54,12 +54,28 @@ function getClearCommand(shellType: ShellType): string {
 }
 
 /**
+ * Check if shell type supports bash-like features (source, export, bash -c)
+ * Used for OAuth token injection methods that require bash syntax.
+ *
+ * @param shellType - The shell type to check
+ * @returns true if shell supports bash-like features
+ */
+export function isBashCompatibleShell(shellType: ShellType): boolean {
+  return shellType === 'bash' || shellType === 'zsh';
+}
+
+/**
  * Build the shell command for invoking Claude CLI.
  *
  * Generates the appropriate command string based on the invocation method:
- * - 'default': Simple command execution with screen clear
- * - 'temp-file': Sources OAuth token from temp file, then removes it (bash only)
- * - 'config-dir': Sets CLAUDE_CONFIG_DIR for custom profile location (bash only)
+ * - 'default': Simple command execution with screen clear (all shells)
+ * - 'temp-file': Sources OAuth token from temp file, then removes it (bash/zsh only)
+ * - 'config-dir': Sets CLAUDE_CONFIG_DIR for custom profile location (bash/zsh only)
+ *
+ * IMPORTANT: The 'temp-file' and 'config-dir' methods use bash-specific syntax
+ * (source, export, bash -c, exec) and require a bash-compatible shell (bash or zsh).
+ * On Windows with PowerShell or cmd.exe, use Git Bash or WSL for these methods.
+ * The caller should check isBashCompatibleShell() before using these methods.
  *
  * All non-default methods include history-safe prefixes (HISTFILE=, HISTCONTROL=)
  * to prevent sensitive data from appearing in shell history.
@@ -71,11 +87,11 @@ function getClearCommand(shellType: ShellType): string {
  * @returns Complete shell command string ready for terminal.pty.write()
  *
  * @example
- * // Default method
+ * // Default method (works with all shells)
  * buildClaudeShellCommand('cd /path && ', 'PATH=/bin ', 'claude', { method: 'default', shellType: 'bash' });
  * // Returns: 'clear && cd /path && PATH=/bin claude\r'
  *
- * // Temp file method
+ * // Temp file method (bash/zsh only - check isBashCompatibleShell() first)
  * buildClaudeShellCommand('', '', 'claude', { method: 'temp-file', escapedTempFile: '/tmp/token' });
  * // Returns: 'clear && HISTFILE= HISTCONTROL=ignorespace bash -c "source /tmp/token && rm -f /tmp/token && exec claude"\r'
  */
@@ -87,9 +103,13 @@ export function buildClaudeShellCommand(
 ): string {
   switch (config.method) {
     case 'temp-file':
+      // NOTE: This method requires bash-compatible shell (bash or zsh).
+      // Uses bash-specific features: source, export, bash -c, exec
       return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace ${pathPrefix}bash -c "source ${config.escapedTempFile} && rm -f ${config.escapedTempFile} && exec ${escapedClaudeCmd}"\r`;
 
     case 'config-dir':
+      // NOTE: This method requires bash-compatible shell (bash or zsh).
+      // Uses bash-specific features: CLAUDE_CONFIG_DIR env var, bash -c, exec
       return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CLAUDE_CONFIG_DIR=${config.escapedConfigDir} ${pathPrefix}bash -c "exec ${escapedClaudeCmd}"\r`;
 
     default: {
@@ -384,7 +404,8 @@ export function invokeClaude(
   });
 
   // Use shell-aware command generation based on terminal's shell type
-  const shellType = terminal.shellType || 'bash';
+  // Platform-aware fallback: 'cmd' on Windows, 'bash' on Unix
+  const shellType = terminal.shellType || (process.platform === 'win32' ? 'cmd' : 'bash');
   const cwdCommand = buildCdCommandForShell(cwd, shellType);
   const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
   const escapedClaudeCmd = escapeCommandForShell(claudeCmd, shellType);
@@ -407,32 +428,46 @@ export function invokeClaude(
     });
 
     if (token) {
-      const nonce = crypto.randomBytes(8).toString('hex');
-      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
-      const escapedTempFile = escapeShellArg(tempFile);
-      debugLog('[ClaudeIntegration:invokeClaude] Writing token to temp file:', tempFile);
-      fs.writeFileSync(
-        tempFile,
-        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        { mode: 0o600 }
-      );
+      // Check if shell supports bash-like features required for temp-file method
+      if (!isBashCompatibleShell(shellType)) {
+        console.warn('[ClaudeIntegration:invokeClaude] WARNING: temp-file method requires bash-compatible shell. Current shell:', shellType);
+        debugLog('[ClaudeIntegration:invokeClaude] Falling back to default method for non-bash shell');
+        // Fall through to default method
+      } else {
+        const nonce = crypto.randomBytes(8).toString('hex');
+        const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
+        const escapedTempFile = escapeShellArg(tempFile);
+        debugLog('[ClaudeIntegration:invokeClaude] Writing token to temp file:', tempFile);
+        fs.writeFileSync(
+          tempFile,
+          `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
+          { mode: 0o600 }
+        );
 
-      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile });
-      debugLog('[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)');
-      terminal.pty.write(command);
-      profileManager.markProfileUsed(activeProfile.id);
-      finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
-      debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
-      return;
+        const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile });
+        debugLog('[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)');
+        terminal.pty.write(command);
+        profileManager.markProfileUsed(activeProfile.id);
+        finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+        debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
+        return;
+      }
     } else if (activeProfile.configDir) {
-      const escapedConfigDir = escapeShellArg(activeProfile.configDir);
-      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir });
-      debugLog('[ClaudeIntegration:invokeClaude] Executing command (configDir method, history-safe)');
-      terminal.pty.write(command);
-      profileManager.markProfileUsed(activeProfile.id);
-      finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
-      debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
-      return;
+      // Check if shell supports bash-like features required for config-dir method
+      if (!isBashCompatibleShell(shellType)) {
+        console.warn('[ClaudeIntegration:invokeClaude] WARNING: config-dir method requires bash-compatible shell. Current shell:', shellType);
+        debugLog('[ClaudeIntegration:invokeClaude] Falling back to default method for non-bash shell');
+        // Fall through to default method
+      } else {
+        const escapedConfigDir = escapeShellArg(activeProfile.configDir);
+        const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir });
+        debugLog('[ClaudeIntegration:invokeClaude] Executing command (configDir method, history-safe)');
+        terminal.pty.write(command);
+        profileManager.markProfileUsed(activeProfile.id);
+        finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+        debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
+        return;
+      }
     } else {
       debugLog('[ClaudeIntegration:invokeClaude] WARNING: No token or configDir available for non-default profile');
     }
@@ -474,7 +509,7 @@ export function resumeClaude(
   SessionHandler.releaseSessionId(terminal.id);
 
   // Use shell-aware command generation
-  const shellType = terminal.shellType || 'bash';
+  const shellType = terminal.shellType || (process.platform === 'win32' ? 'cmd' : 'bash');
   const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
   const escapedClaudeCmd = escapeCommandForShell(claudeCmd, shellType);
   const pathPrefix = claudeEnv.PATH
@@ -558,7 +593,7 @@ export async function invokeClaudeAsync(
   });
 
   // Async CLI invocation - non-blocking, shell-aware command generation
-  const shellType = terminal.shellType || 'bash';
+  const shellType = terminal.shellType || (process.platform === 'win32' ? 'cmd' : 'bash');
   const cwdCommand = buildCdCommandForShell(cwd, shellType);
   const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
   const escapedClaudeCmd = escapeCommandForShell(claudeCmd, shellType);
@@ -581,32 +616,46 @@ export async function invokeClaudeAsync(
     });
 
     if (token) {
-      const nonce = crypto.randomBytes(8).toString('hex');
-      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
-      const escapedTempFile = escapeShellArg(tempFile);
-      debugLog('[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:', tempFile);
-      await fsPromises.writeFile(
-        tempFile,
-        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        { mode: 0o600 }
-      );
+      // Check if shell supports bash-like features required for temp-file method
+      if (!isBashCompatibleShell(shellType)) {
+        console.warn('[ClaudeIntegration:invokeClaudeAsync] WARNING: temp-file method requires bash-compatible shell. Current shell:', shellType);
+        debugLog('[ClaudeIntegration:invokeClaudeAsync] Falling back to default method for non-bash shell');
+        // Fall through to default method
+      } else {
+        const nonce = crypto.randomBytes(8).toString('hex');
+        const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
+        const escapedTempFile = escapeShellArg(tempFile);
+        debugLog('[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:', tempFile);
+        await fsPromises.writeFile(
+          tempFile,
+          `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
+          { mode: 0o600 }
+        );
 
-      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile });
-      debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
-      terminal.pty.write(command);
-      profileManager.markProfileUsed(activeProfile.id);
-      finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
-      debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
-      return;
+        const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile });
+        debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
+        terminal.pty.write(command);
+        profileManager.markProfileUsed(activeProfile.id);
+        finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+        debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
+        return;
+      }
     } else if (activeProfile.configDir) {
-      const escapedConfigDir = escapeShellArg(activeProfile.configDir);
-      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir });
-      debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
-      terminal.pty.write(command);
-      profileManager.markProfileUsed(activeProfile.id);
-      finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
-      debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
-      return;
+      // Check if shell supports bash-like features required for config-dir method
+      if (!isBashCompatibleShell(shellType)) {
+        console.warn('[ClaudeIntegration:invokeClaudeAsync] WARNING: config-dir method requires bash-compatible shell. Current shell:', shellType);
+        debugLog('[ClaudeIntegration:invokeClaudeAsync] Falling back to default method for non-bash shell');
+        // Fall through to default method
+      } else {
+        const escapedConfigDir = escapeShellArg(activeProfile.configDir);
+        const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir });
+        debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
+        terminal.pty.write(command);
+        profileManager.markProfileUsed(activeProfile.id);
+        finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+        debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
+        return;
+      }
     } else {
       debugLog('[ClaudeIntegration:invokeClaudeAsync] WARNING: No token or configDir available for non-default profile');
     }
@@ -643,7 +692,7 @@ export async function resumeClaudeAsync(
   SessionHandler.releaseSessionId(terminal.id);
 
   // Async CLI invocation - non-blocking, shell-aware command generation
-  const shellType = terminal.shellType || 'bash';
+  const shellType = terminal.shellType || (process.platform === 'win32' ? 'cmd' : 'bash');
   const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
   const escapedClaudeCmd = escapeCommandForShell(claudeCmd, shellType);
   const pathPrefix = claudeEnv.PATH

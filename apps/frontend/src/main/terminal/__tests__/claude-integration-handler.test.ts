@@ -622,4 +622,66 @@ describe('claude-integration-handler - Helper Functions', () => {
       }).not.toThrow();
     });
   });
+
+  describe('isBashCompatibleShell', () => {
+    it('should return true for bash', async () => {
+      const { isBashCompatibleShell } = await import('../claude-integration-handler');
+      expect(isBashCompatibleShell('bash')).toBe(true);
+    });
+
+    it('should return true for zsh', async () => {
+      const { isBashCompatibleShell } = await import('../claude-integration-handler');
+      expect(isBashCompatibleShell('zsh')).toBe(true);
+    });
+
+    it('should return false for powershell', async () => {
+      const { isBashCompatibleShell } = await import('../claude-integration-handler');
+      expect(isBashCompatibleShell('powershell')).toBe(false);
+    });
+
+    it('should return false for pwsh', async () => {
+      const { isBashCompatibleShell } = await import('../claude-integration-handler');
+      expect(isBashCompatibleShell('pwsh')).toBe(false);
+    });
+
+    it('should return false for cmd', async () => {
+      const { isBashCompatibleShell } = await import('../claude-integration-handler');
+      expect(isBashCompatibleShell('cmd')).toBe(false);
+    });
+
+    it('should return false for unknown', async () => {
+      const { isBashCompatibleShell } = await import('../claude-integration-handler');
+      expect(isBashCompatibleShell('unknown')).toBe(false);
+    });
+  });
+
+  describe('buildClaudeShellCommand - shell type variations', () => {
+    it('should use cls for cmd shell', async () => {
+      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+      const result = buildClaudeShellCommand('', '', '"claude"', { method: 'default', shellType: 'cmd' });
+
+      expect(result).toBe('cls && "claude"\r');
+    });
+
+    it('should use cls; for pwsh shell', async () => {
+      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+      const result = buildClaudeShellCommand('', '', "& 'claude'", { method: 'default', shellType: 'pwsh' });
+
+      expect(result).toBe("cls; & 'claude'\r");
+    });
+
+    it('should use clear && for zsh shell', async () => {
+      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+      const result = buildClaudeShellCommand('', '', "'claude'", { method: 'default', shellType: 'zsh' });
+
+      expect(result).toBe("clear && 'claude'\r");
+    });
+
+    it('should use clear && for unknown shell (default)', async () => {
+      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+      const result = buildClaudeShellCommand('', '', "'claude'", { method: 'default', shellType: 'unknown' });
+
+      expect(result).toBe("clear && 'claude'\r");
+    });
+  });
 });

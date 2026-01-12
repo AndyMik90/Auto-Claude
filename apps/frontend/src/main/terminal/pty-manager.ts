@@ -21,21 +21,52 @@ export interface SpawnResult {
 }
 
 /**
- * Detect shell type from executable path
+ * Detect shell type from executable path.
+ *
+ * Uses precise matching to avoid false positives (e.g., a path containing 'cmd'
+ * as a substring should not match as cmd.exe).
+ *
+ * @param shellPath - The path to the shell executable
+ * @returns The detected shell type
  */
 export function detectShellType(shellPath: string): ShellType {
   const normalized = shellPath.toLowerCase();
 
   // Check for PowerShell Core (pwsh) first - more specific match
-  if (normalized.includes('pwsh')) return 'pwsh';
+  // Matches: pwsh.exe, pwsh, /usr/bin/pwsh
+  if (normalized.endsWith('pwsh.exe') || normalized.endsWith('pwsh') || normalized.includes('/pwsh')) {
+    return 'pwsh';
+  }
+
   // Check for Windows PowerShell
-  if (normalized.includes('powershell')) return 'powershell';
-  // Check for cmd.exe
-  if (normalized.includes('cmd')) return 'cmd';
+  // Matches: powershell.exe, /powershell
+  if (normalized.endsWith('powershell.exe') || normalized.includes('/powershell')) {
+    return 'powershell';
+  }
+
+  // Check for cmd.exe - use precise matching to avoid false positives
+  // A path like 'C:\Documents\mycmdtool\bash.exe' should NOT match as cmd
+  // Only match: cmd.exe, \cmd.exe, /cmd.exe, or just 'cmd'
+  if (
+    normalized.endsWith('cmd.exe') ||
+    normalized.endsWith('\\cmd') ||
+    normalized.endsWith('/cmd') ||
+    normalized === 'cmd'
+  ) {
+    return 'cmd';
+  }
+
   // Check for bash (includes Git Bash, Cygwin, MSYS2)
-  if (normalized.includes('bash')) return 'bash';
+  // Matches: bash.exe, bash, /bin/bash, /usr/bin/bash
+  if (normalized.endsWith('bash.exe') || normalized.endsWith('bash') || normalized.includes('/bash')) {
+    return 'bash';
+  }
+
   // Check for zsh
-  if (normalized.includes('zsh')) return 'zsh';
+  // Matches: zsh, /bin/zsh, /usr/bin/zsh
+  if (normalized.endsWith('zsh') || normalized.includes('/zsh')) {
+    return 'zsh';
+  }
 
   // Unix fallback based on platform
   if (process.platform !== 'win32') return 'bash';
