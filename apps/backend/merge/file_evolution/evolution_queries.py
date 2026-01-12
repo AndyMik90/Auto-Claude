@@ -102,7 +102,14 @@ class EvolutionQueries:
         modifications = []
         for file_path, evolution in evolutions.items():
             snapshot = evolution.get_task_snapshot(task_id)
-            if snapshot and snapshot.semantic_changes:
+            # Check for actual file changes via content hash, not just semantic analysis.
+            # The semantic analyzer only detects certain change types (imports, function
+            # additions/removals) and may return empty changes for files with significant
+            # modifications to existing code (function body changes, class changes, etc.)
+            if snapshot and (
+                snapshot.semantic_changes
+                or snapshot.content_hash_before != snapshot.content_hash_after
+            ):
                 modifications.append((file_path, snapshot))
         return modifications
 
@@ -125,7 +132,15 @@ class EvolutionQueries:
 
         for file_path, evolution in evolutions.items():
             for snapshot in evolution.task_snapshots:
-                if snapshot.task_id in task_ids and snapshot.semantic_changes:
+                # Check for actual file changes via content hash, not just semantic analysis.
+                # The semantic analyzer only detects certain change types (imports, function
+                # additions/removals) and may return empty changes for files with significant
+                # modifications to existing code (function body changes, class changes, etc.)
+                file_was_modified = (
+                    snapshot.semantic_changes
+                    or snapshot.content_hash_before != snapshot.content_hash_after
+                )
+                if snapshot.task_id in task_ids and file_was_modified:
                     if file_path not in file_tasks:
                         file_tasks[file_path] = []
                     file_tasks[file_path].append(snapshot.task_id)
