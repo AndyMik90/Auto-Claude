@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useDndMonitor, DragEndEvent, DragMoveEvent } from '@dnd-kit/core';
 
 /**
@@ -36,10 +36,15 @@ export function useCrossWindowDrag(
   const activeProjectId = useRef<string | null>(null);
   const DETACH_THRESHOLD = 100; // pixels downward
 
+  useEffect(() => {
+    console.log('[useCrossWindowDrag] Hook initialized for window type:', windowType);
+  }, [windowType]);
+
   useDndMonitor({
     onDragStart(event) {
       // Only track pointer events (mouse/touch)
       if (!event.activatorEvent || !('clientX' in event.activatorEvent)) {
+        console.log('[useCrossWindowDrag] Drag start skipped - no pointer event');
         return;
       }
 
@@ -57,6 +62,13 @@ export function useCrossWindowDrag(
 
       // Reset accumulated distance
       accumulatedDistance.current = { x: 0, y: 0 };
+
+      console.log('[useCrossWindowDrag] Drag started', {
+        windowType,
+        projectId: activeProjectId.current,
+        startPos: dragStartPos.current,
+        activeId: event.active.id
+      });
 
       setDragState({
         isDetachThresholdCrossed: false,
@@ -82,8 +94,15 @@ export function useCrossWindowDrag(
       // Check if dragged down past threshold (main window only)
       const thresholdCrossed = windowType === 'main' && distance.y > DETACH_THRESHOLD;
 
-      if (windowType === 'main' && Math.abs(distance.y) > 10) {
-        console.log('[useCrossWindowDrag] Drag distance Y:', distance.y, 'Threshold:', DETACH_THRESHOLD, 'Crossed:', thresholdCrossed);
+      // Log drag movement every 20px or when threshold is crossed
+      if (windowType === 'main' && (Math.abs(distance.y) % 20 < 5 || thresholdCrossed)) {
+        console.log('[useCrossWindowDrag] Dragging:', {
+          windowType,
+          delta: event.delta,
+          accumulated: distance,
+          threshold: DETACH_THRESHOLD,
+          thresholdCrossed
+        });
       }
 
       // Check if dragging over main window (project window only)
@@ -123,7 +142,17 @@ export function useCrossWindowDrag(
 
     onDragEnd(event: DragEndEvent) {
       const projectId = activeProjectId.current;
+
+      console.log('[useCrossWindowDrag] Drag ended', {
+        windowType,
+        projectId,
+        dragState,
+        accumulatedDistance: accumulatedDistance.current,
+        hasActivatorEvent: !!event.activatorEvent
+      });
+
       if (!projectId || !event.activatorEvent || !('clientX' in event.activatorEvent)) {
+        console.log('[useCrossWindowDrag] Drag end skipped - missing projectId or activatorEvent');
         resetDragState();
         return;
       }
@@ -135,6 +164,12 @@ export function useCrossWindowDrag(
         // Get the current open tabs count from the window
         const tabsContainer = document.querySelector('[role="tablist"]');
         const tabCount = tabsContainer?.querySelectorAll('[role="tab"]').length || 0;
+
+        console.log('[useCrossWindowDrag] Detach attempt', {
+          projectId,
+          tabCount,
+          thresholdCrossed: dragState.isDetachThresholdCrossed
+        });
 
         if (tabCount <= 1) {
           console.warn('[useCrossWindowDrag] Cannot detach the last project tab');
@@ -150,11 +185,13 @@ export function useCrossWindowDrag(
             }
           : { x: 100, y: 100 };
 
+        console.log('[useCrossWindowDrag] Detaching project to new window', { projectId, position });
         onDetach(projectId, position);
       }
 
       // Project window: reattach if over main window
       if (windowType === 'project' && dragState.isOverMainWindow) {
+        console.log('[useCrossWindowDrag] Reattaching project to main window', { projectId });
         onReattach(projectId);
       }
 
@@ -162,6 +199,7 @@ export function useCrossWindowDrag(
     },
 
     onDragCancel() {
+      console.log('[useCrossWindowDrag] Drag cancelled');
       resetDragState();
     }
   });
