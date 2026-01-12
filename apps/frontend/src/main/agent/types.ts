@@ -6,7 +6,7 @@ import type { CompletablePhase } from '../../shared/constants/phase-protocol';
  * Agent-specific types for process and state management
  */
 
-export type QueueProcessType = 'ideation' | 'roadmap';
+export type QueueProcessType = 'ideation' | 'roadmap' | 'continuous-roadmap';
 
 export interface AgentProcess {
   taskId: string;
