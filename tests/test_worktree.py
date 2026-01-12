@@ -307,13 +307,22 @@ class TestWorktreeCommitAndMerge:
         result = manager.merge_worktree("worker-spec", delete_after=False)
         assert result is False
 
-        # Verify merge was aborted (no merge in progress)
+        # Verify merge was aborted (no merge state exists)
+        # Check that MERGE_HEAD does not exist
+        merge_head_result = subprocess.run(
+            ["git", "rev-parse", "--verify", "MERGE_HEAD"],
+            cwd=temp_git_repo, capture_output=True
+        )
+        assert merge_head_result.returncode != 0, "MERGE_HEAD should not exist after abort"
+
+        # Verify git status shows no unmerged/conflict status codes
         git_status = subprocess.run(
             ["git", "status", "--porcelain"],
             cwd=temp_git_repo, capture_output=True, text=True
         )
-        # Should not have MERGE_STATE file or conflict markers
-        assert "CONFLICT" not in git_status.stdout
+        # Should have no output (clean working directory)
+        assert git_status.returncode == 0
+        assert not git_status.stdout.strip(), f"Expected clean status, got: {git_status.stdout}"
 
     def test_merge_worktree_conflict_with_no_commit(self, temp_git_repo: Path):
         """merge_worktree with no_commit=True handles conflicts correctly."""
@@ -349,12 +358,21 @@ class TestWorktreeCommitAndMerge:
         result = manager.merge_worktree("worker-spec", no_commit=True, delete_after=False)
         assert result is False
 
-        # Verify merge was aborted
+        # Verify merge was aborted (no merge state exists)
+        # Check that MERGE_HEAD does not exist
+        merge_head_result = subprocess.run(
+            ["git", "rev-parse", "--verify", "MERGE_HEAD"],
+            cwd=temp_git_repo, capture_output=True
+        )
+        assert merge_head_result.returncode != 0, "MERGE_HEAD should not exist after abort"
+
+        # Verify git status shows no staged/unstaged changes
         git_status = subprocess.run(
             ["git", "status", "--porcelain"],
             cwd=temp_git_repo, capture_output=True, text=True
         )
-        assert "CONFLICT" not in git_status.stdout
+        assert git_status.returncode == 0
+        assert not git_status.stdout.strip(), f"Expected clean status, got: {git_status.stdout}"
 
 
 class TestChangeTracking:
