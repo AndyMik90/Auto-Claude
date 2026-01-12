@@ -110,6 +110,9 @@ export function QueueSettingsDialog({
       } else {
         setSaveError(t('tasks:queue.settings.saveFailed'));
       }
+    } catch (error) {
+      setSaveError(t('tasks:queue.settings.saveFailed'));
+      console.error('[QueueSettingsDialog] Failed to save queue config:', error);
     } finally {
       setIsSaving(false);
     }
@@ -197,7 +200,7 @@ export function QueueSettingsDialog({
                 {/* Slider with preset buttons */}
                 <div className="space-y-3 pt-1">
                   {/* Preset buttons */}
-                  <div className={`grid grid-cols-${CONCURRENT_PRESETS.length} gap-2`}>
+                  <div className="grid grid-cols-3 gap-2">
                     {CONCURRENT_PRESETS.map((value) => (
                       <button
                         key={value}
