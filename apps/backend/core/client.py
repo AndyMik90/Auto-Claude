@@ -331,6 +331,8 @@ def load_project_mcp_config(project_dir: Path) -> dict:
         "LINEAR_MCP_ENABLED",
         "ELECTRON_MCP_ENABLED",
         "PUPPETEER_MCP_ENABLED",
+        "PLAYWRIGHT_HEADLESS",
+        "PLAYWRIGHT_MCP_ENABLED",
     }
 
     try:
@@ -612,6 +614,22 @@ def create_client(
                 f"Read({spec_path_str}/**)",
                 f"Write({spec_path_str}/**)",
                 f"Edit({spec_path_str}/**)",
+                # Explicit permissions for spec/QA files (belt-and-suspenders approach)
+                # These supplement the wildcard permissions above for SDK compatibility
+                f"Write({spec_path_str}/qa_report.md)",
+                f"Edit({spec_path_str}/qa_report.md)",
+                f"Write({spec_path_str}/QA_FIX_REQUEST.md)",
+                f"Edit({spec_path_str}/QA_FIX_REQUEST.md)",
+                f"Write({spec_path_str}/QA_ESCALATION.md)",
+                f"Write({spec_path_str}/MANUAL_TEST_PLAN.md)",
+                f"Write({spec_path_str}/implementation_plan.json)",
+                f"Edit({spec_path_str}/implementation_plan.json)",
+                f"Write({spec_path_str}/build-progress.txt)",
+                f"Edit({spec_path_str}/build-progress.txt)",
+                f"Write({spec_path_str}/test_discovery.json)",
+                # Allow QA feedback screenshot directory
+                f"Read({spec_path_str}/qa-feedback-screenshots/**)",
+                f"Write({spec_path_str}/qa-feedback-screenshots/**)",
                 # Allow original project's .auto-claude/ and .worktrees/ directories
                 # when running in a worktree (fixes issue #385 - permission errors)
                 *original_project_permissions,
@@ -653,6 +671,15 @@ def create_client(
     print(f"   - Filesystem restricted to: {project_dir.resolve()}")
     if original_project_permissions:
         print("   - Worktree permissions: granted for original project directories")
+
+    # Debug: Log security permissions for troubleshooting worktree write issues
+    logger.info(f"Security permissions debug for agent_type={agent_type}:")
+    logger.info(f"  project_dir: {project_path_str}")
+    logger.info(f"  spec_dir: {spec_path_str}")
+    logger.info(f"  Worktree permissions: {len(original_project_permissions)} items")
+    if original_project_permissions:
+        logger.info(f"    Sample: {original_project_permissions[0]}")
+
     print("   - Bash commands restricted to allowlist")
     if max_thinking_tokens:
         print(f"   - Extended thinking: {max_thinking_tokens:,} tokens")
