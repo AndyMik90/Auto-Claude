@@ -280,7 +280,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
           'C:\\Program Files\\Git\\git-bash.exe',
           'C:\\Program Files (x86)\\Git\\git-bash.exe',
         ];
-        let gitBashPath = gitBashPaths.find(p => existsSync(p));
+        const gitBashPath = gitBashPaths.find(p => existsSync(p));
         if (gitBashPath) {
           await runWindowsCommand(`"${gitBashPath}" -c "${escapedBashCommand}"`);
         } else {

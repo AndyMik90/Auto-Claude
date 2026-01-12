@@ -1,6 +1,6 @@
-import { useState, useMemo, memo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useViewState } from '../contexts/ViewStateContext';
+import { useState, useMemo, memo } from "react";
+import { useTranslation } from "react-i18next";
+import { useViewState } from "../contexts/ViewStateContext";
 import {
   DndContext,
   DragOverlay,
@@ -12,29 +12,46 @@ import {
   useDroppable,
   type DragStartEvent,
   type DragEndEvent,
-  type DragOverEvent
-} from '@dnd-kit/core';
+  type DragOverEvent,
+} from "@dnd-kit/core";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy
-} from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw } from 'lucide-react';
-import { ScrollArea } from './ui/scroll-area';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { TaskCard } from './TaskCard';
-import { SortableTaskCard } from './SortableTaskCard';
-import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
-import { cn } from '../lib/utils';
-import { persistTaskStatus, forceCompleteTask, archiveTasks } from '../stores/task-store';
-import { useToast } from '../hooks/use-toast';
-import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
-import type { Task, TaskStatus } from '../../shared/types';
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  Plus,
+  Inbox,
+  Loader2,
+  Eye,
+  CheckCircle2,
+  Archive,
+  RefreshCw,
+} from "lucide-react";
+import { ScrollArea } from "./ui/scroll-area";
+import { Button } from "./ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { TaskCard } from "./TaskCard";
+import { SortableTaskCard } from "./SortableTaskCard";
+import {
+  TASK_STATUS_COLUMNS,
+  TASK_STATUS_LABELS,
+} from "../../shared/constants";
+import { cn } from "../lib/utils";
+import {
+  persistTaskStatus,
+  forceCompleteTask,
+  archiveTasks,
+} from "../stores/task-store";
+import { useToast } from "../hooks/use-toast";
+import { WorktreeCleanupDialog } from "./WorktreeCleanupDialog";
+import type { Task, TaskStatus } from "../../shared/types";
 
 // Type guard for valid drop column targets - preserves literal type from TASK_STATUS_COLUMNS
 const VALID_DROP_COLUMNS = new Set<string>(TASK_STATUS_COLUMNS);
-function isValidDropColumn(id: string): id is typeof TASK_STATUS_COLUMNS[number] {
+function isValidDropColumn(
+  id: string
+): id is (typeof TASK_STATUS_COLUMNS)[number] {
   return VALID_DROP_COLUMNS.has(id);
 }
 
@@ -106,57 +123,73 @@ function droppableColumnPropsAreEqual(
 
   // Only log when re-rendering (reduces noise)
   if (window.DEBUG && !tasksEqual) {
-    console.log(`[DroppableColumn] Re-render: ${nextProps.status} column (${nextProps.tasks.length} tasks)`);
+    console.log(
+      `[DroppableColumn] Re-render: ${nextProps.status} column (${nextProps.tasks.length} tasks)`
+    );
   }
 
   return tasksEqual;
 }
 
 // Empty state content for each column
-const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): { icon: React.ReactNode; message: string; subtext?: string } => {
+const getEmptyStateContent = (
+  status: TaskStatus,
+  t: (key: string) => string
+): { icon: React.ReactNode; message: string; subtext?: string } => {
   switch (status) {
-    case 'backlog':
+    case "backlog":
       return {
         icon: <Inbox className="h-6 w-6 text-muted-foreground/50" />,
-        message: t('kanban.emptyBacklog'),
-        subtext: t('kanban.emptyBacklogHint')
+        message: t("kanban.emptyBacklog"),
+        subtext: t("kanban.emptyBacklogHint"),
       };
-    case 'in_progress':
+    case "in_progress":
       return {
         icon: <Loader2 className="h-6 w-6 text-muted-foreground/50" />,
-        message: t('kanban.emptyInProgress'),
-        subtext: t('kanban.emptyInProgressHint')
+        message: t("kanban.emptyInProgress"),
+        subtext: t("kanban.emptyInProgressHint"),
       };
-    case 'ai_review':
+    case "ai_review":
       return {
         icon: <Eye className="h-6 w-6 text-muted-foreground/50" />,
-        message: t('kanban.emptyAiReview'),
-        subtext: t('kanban.emptyAiReviewHint')
+        message: t("kanban.emptyAiReview"),
+        subtext: t("kanban.emptyAiReviewHint"),
       };
-    case 'human_review':
+    case "human_review":
       return {
         icon: <Eye className="h-6 w-6 text-muted-foreground/50" />,
-        message: t('kanban.emptyHumanReview'),
-        subtext: t('kanban.emptyHumanReviewHint')
+        message: t("kanban.emptyHumanReview"),
+        subtext: t("kanban.emptyHumanReviewHint"),
       };
-    case 'done':
+    case "done":
       return {
         icon: <CheckCircle2 className="h-6 w-6 text-muted-foreground/50" />,
-        message: t('kanban.emptyDone'),
-        subtext: t('kanban.emptyDoneHint')
+        message: t("kanban.emptyDone"),
+        subtext: t("kanban.emptyDoneHint"),
       };
     default:
       return {
         icon: <Inbox className="h-6 w-6 text-muted-foreground/50" />,
-        message: t('kanban.emptyDefault')
+        message: t("kanban.emptyDefault"),
       };
   }
 };
 
-const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, archivedCount, showArchived, onToggleArchived }: DroppableColumnProps) {
-  const { t } = useTranslation(['tasks', 'common']);
+const DroppableColumn = memo(function DroppableColumn({
+  status,
+  tasks,
+  onTaskClick,
+  onStatusChange,
+  isOver,
+  onAddClick,
+  onArchiveAll,
+  archivedCount,
+  showArchived,
+  onToggleArchived,
+}: DroppableColumnProps) {
+  const { t } = useTranslation(["tasks", "common"]);
   const { setNodeRef } = useDroppable({
-    id: status
+    id: status,
   });
 
   // Memoize taskIds to prevent SortableContext from re-rendering unnecessarily
@@ -175,7 +208,9 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
   const onStatusChangeHandlers = useMemo(() => {
     const handlers = new Map<string, (newStatus: TaskStatus) => unknown>();
     tasks.forEach((task) => {
-      handlers.set(task.id, (newStatus: TaskStatus) => onStatusChange(task.id, newStatus));
+      handlers.set(task.id, (newStatus: TaskStatus) =>
+        onStatusChange(task.id, newStatus)
+      );
     });
     return handlers;
   }, [tasks, onStatusChange]);
@@ -195,18 +230,18 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
 
   const getColumnBorderColor = (): string => {
     switch (status) {
-      case 'backlog':
-        return 'column-backlog';
-      case 'in_progress':
-        return 'column-in-progress';
-      case 'ai_review':
-        return 'column-ai-review';
-      case 'human_review':
-        return 'column-human-review';
-      case 'done':
-        return 'column-done';
+      case "backlog":
+        return "column-backlog";
+      case "in_progress":
+        return "column-in-progress";
+      case "ai_review":
+        return "column-ai-review";
+      case "human_review":
+        return "column-human-review";
+      case "done":
+        return "column-done";
       default:
-        return 'border-t-muted-foreground/30';
+        return "border-t-muted-foreground/30";
     }
   };
 
@@ -216,10 +251,10 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
     <div
       ref={setNodeRef}
       className={cn(
-        'flex min-w-72 max-w-[30rem] flex-1 flex-col rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200',
+        "flex min-w-72 max-w-[30rem] flex-1 flex-col rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200",
         getColumnBorderColor(),
-        'border-t-2',
-        isOver && 'drop-zone-highlight'
+        "border-t-2",
+        isOver && "drop-zone-highlight"
       )}
     >
       {/* Column header - enhanced styling */}
@@ -228,60 +263,67 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
           <h2 className="font-semibold text-sm text-foreground">
             {t(TASK_STATUS_LABELS[status])}
           </h2>
-          <span className="column-count-badge">
-            {tasks.length}
-          </span>
+          <span className="column-count-badge">{tasks.length}</span>
         </div>
         <div className="flex items-center gap-1">
-          {status === 'backlog' && onAddClick && (
+          {status === "backlog" && onAddClick && (
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7 hover:bg-primary/10 hover:text-primary transition-colors"
               onClick={onAddClick}
-              aria-label={t('kanban.addTaskAriaLabel')}
+              aria-label={t("kanban.addTaskAriaLabel")}
             >
               <Plus className="h-4 w-4" />
             </Button>
           )}
-          {status === 'done' && onArchiveAll && tasks.length > 0 && !showArchived && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 hover:bg-muted-foreground/10 hover:text-muted-foreground transition-colors"
-              onClick={onArchiveAll}
-              aria-label={t('tooltips.archiveAllDone')}
-            >
-              <Archive className="h-4 w-4" />
-            </Button>
-          )}
-          {status === 'done' && archivedCount !== undefined && archivedCount > 0 && onToggleArchived && (
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    'h-7 w-7 transition-colors relative',
-                    showArchived
-                      ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                      : 'hover:bg-muted-foreground/10 hover:text-muted-foreground'
-                  )}
-                  onClick={onToggleArchived}
-                  aria-pressed={showArchived}
-                  aria-label={t('common:accessibility.toggleShowArchivedAriaLabel')}
-                >
-                  <Archive className="h-4 w-4" />
-                  <span className="absolute -top-1 -right-1 text-[10px] font-medium bg-muted rounded-full min-w-[14px] h-[14px] flex items-center justify-center">
-                    {archivedCount}
-                  </span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {showArchived ? t('common:projectTab.hideArchived') : t('common:projectTab.showArchived')}
-              </TooltipContent>
-            </Tooltip>
-          )}
+          {status === "done" &&
+            onArchiveAll &&
+            tasks.length > 0 &&
+            !showArchived && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 hover:bg-muted-foreground/10 hover:text-muted-foreground transition-colors"
+                onClick={onArchiveAll}
+                aria-label={t("tooltips.archiveAllDone")}
+              >
+                <Archive className="h-4 w-4" />
+              </Button>
+            )}
+          {status === "done" &&
+            archivedCount !== undefined &&
+            onToggleArchived && (
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-7 w-7 transition-colors relative",
+                      showArchived
+                        ? "text-primary bg-primary/10 hover:bg-primary/20"
+                        : "hover:bg-muted-foreground/10 hover:text-muted-foreground"
+                    )}
+                    onClick={onToggleArchived}
+                    aria-pressed={showArchived}
+                    aria-label={t(
+                      "common:accessibility.toggleShowArchivedAriaLabel"
+                    )}
+                  >
+                    <Archive className="h-4 w-4" />
+                    <span className="absolute -top-1 -right-1 text-[10px] font-medium bg-muted rounded-full min-w-[14px] h-[14px] flex items-center justify-center">
+                      {archivedCount}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {showArchived
+                    ? t("common:projectTab.hideArchived")
+                    : t("common:projectTab.showArchived")}
+                </TooltipContent>
+              </Tooltip>
+            )}
         </div>
       </div>
 
@@ -296,8 +338,8 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
               {tasks.length === 0 ? (
                 <div
                   className={cn(
-                    'empty-column-dropzone flex flex-col items-center justify-center py-6',
-                    isOver && 'active'
+                    "empty-column-dropzone flex flex-col items-center justify-center py-6",
+                    isOver && "active"
                   )}
                 >
                   {isOver ? (
@@ -305,7 +347,9 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
                       <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mb-2">
                         <Plus className="h-4 w-4 text-primary" />
                       </div>
-                      <span className="text-sm font-medium text-primary">{t('kanban.dropHere')}</span>
+                      <span className="text-sm font-medium text-primary">
+                        {t("kanban.dropHere")}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -330,10 +374,17 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
       </div>
     </div>
   );
-}, droppableColumnPropsAreEqual);
+},
+droppableColumnPropsAreEqual);
 
-export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isRefreshing }: KanbanBoardProps) {
-  const { t } = useTranslation(['tasks', 'dialogs', 'common']);
+export function KanbanBoard({
+  tasks,
+  onTaskClick,
+  onNewTaskClick,
+  onRefresh,
+  isRefreshing,
+}: KanbanBoardProps) {
+  const { t } = useTranslation(["tasks", "dialogs", "common"]);
   const { toast } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
@@ -350,15 +401,15 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   }>({
     open: false,
     taskId: null,
-    taskTitle: '',
+    taskTitle: "",
     worktreePath: undefined,
     isProcessing: false,
-    error: undefined
+    error: undefined,
   });
 
   // Calculate archived count for Done column button
-  const archivedCount = useMemo(() =>
-    tasks.filter(t => t.metadata?.archivedAt).length,
+  const archivedCount = useMemo(
+    () => tasks.filter((t) => t.metadata?.archivedAt).length,
     [tasks]
   );
 
@@ -373,27 +424,27 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8 // 8px movement required before drag starts
-      }
+        distance: 8, // 8px movement required before drag starts
+      },
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
   const tasksByStatus = useMemo(() => {
     // Note: pr_created tasks are shown in the 'done' column since they're essentially complete
-    const grouped: Record<typeof TASK_STATUS_COLUMNS[number], Task[]> = {
+    const grouped: Record<(typeof TASK_STATUS_COLUMNS)[number], Task[]> = {
       backlog: [],
       in_progress: [],
       ai_review: [],
       human_review: [],
-      done: []
+      done: [],
     };
 
     filteredTasks.forEach((task) => {
       // Map pr_created tasks to the done column
-      const targetColumn = task.status === 'pr_created' ? 'done' : task.status;
+      const targetColumn = task.status === "pr_created" ? "done" : task.status;
       if (grouped[targetColumn]) {
         grouped[targetColumn].push(task);
       }
@@ -401,7 +452,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
     // Sort tasks within each column by createdAt (newest first)
     Object.keys(grouped).forEach((status) => {
-      grouped[status as typeof TASK_STATUS_COLUMNS[number]].sort((a, b) => {
+      grouped[status as (typeof TASK_STATUS_COLUMNS)[number]].sort((a, b) => {
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA; // Descending order (newest first)
@@ -415,7 +466,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     // Get projectId from the first task (all tasks should have the same projectId)
     const projectId = tasks[0]?.projectId;
     if (!projectId) {
-      console.error('[KanbanBoard] No projectId found');
+      console.error("[KanbanBoard] No projectId found");
       return;
     }
 
@@ -424,7 +475,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
     const result = await archiveTasks(projectId, doneTaskIds);
     if (!result.success) {
-      console.error('[KanbanBoard] Failed to archive tasks:', result.error);
+      console.error("[KanbanBoard] Failed to archive tasks:", result.error);
     }
   };
 
@@ -463,8 +514,12 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
    * Handle status change with worktree cleanup dialog support
    * Consolidated handler that accepts an optional task object for the dialog title
    */
-  const handleStatusChange = async (taskId: string, newStatus: TaskStatus, providedTask?: Task) => {
-    const task = providedTask || tasks.find(t => t.id === taskId);
+  const handleStatusChange = async (
+    taskId: string,
+    newStatus: TaskStatus,
+    providedTask?: Task
+  ) => {
+    const task = providedTask || tasks.find((t) => t.id === taskId);
     const result = await persistTaskStatus(taskId, newStatus);
 
     if (!result.success) {
@@ -473,17 +528,17 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         setWorktreeCleanupDialog({
           open: true,
           taskId: taskId,
-          taskTitle: task?.title || t('tasks:untitled'),
+          taskTitle: task?.title || t("tasks:untitled"),
           worktreePath: result.worktreePath,
           isProcessing: false,
-          error: undefined
+          error: undefined,
         });
       } else {
         // Show error toast for other failures
         toast({
-          title: t('common:errors.operationFailed'),
-          description: result.error || t('common:errors.unknownError'),
-          variant: 'destructive'
+          title: t("common:errors.operationFailed"),
+          description: result.error || t("common:errors.unknownError"),
+          variant: "destructive",
         });
       }
     }
@@ -495,7 +550,11 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const handleWorktreeCleanupConfirm = async () => {
     if (!worktreeCleanupDialog.taskId) return;
 
-    setWorktreeCleanupDialog(prev => ({ ...prev, isProcessing: true, error: undefined }));
+    setWorktreeCleanupDialog((prev) => ({
+      ...prev,
+      isProcessing: true,
+      error: undefined,
+    }));
 
     const result = await forceCompleteTask(worktreeCleanupDialog.taskId);
 
@@ -503,17 +562,17 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       setWorktreeCleanupDialog({
         open: false,
         taskId: null,
-        taskTitle: '',
+        taskTitle: "",
         worktreePath: undefined,
         isProcessing: false,
-        error: undefined
+        error: undefined,
       });
     } else {
       // Keep dialog open with error state for retry - show actual error if available
-      setWorktreeCleanupDialog(prev => ({
+      setWorktreeCleanupDialog((prev) => ({
         ...prev,
         isProcessing: false,
-        error: result.error || t('dialogs:worktreeCleanup.errorDescription')
+        error: result.error || t("dialogs:worktreeCleanup.errorDescription"),
       }));
     }
   };
@@ -536,7 +595,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       if (task && task.status !== newStatus) {
         // Persist status change to file and update local state
         handleStatusChange(activeTaskId, newStatus, task).catch((err) =>
-          console.error('[KanbanBoard] Status change failed:', err)
+          console.error("[KanbanBoard] Status change failed:", err)
         );
       }
       return;
@@ -549,7 +608,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       if (task && task.status !== overTask.status) {
         // Persist status change to file and update local state
         handleStatusChange(activeTaskId, overTask.status, task).catch((err) =>
-          console.error('[KanbanBoard] Status change failed:', err)
+          console.error("[KanbanBoard] Status change failed:", err)
         );
       }
     }
@@ -567,8 +626,10 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
             disabled={isRefreshing}
             className="gap-2 text-muted-foreground hover:text-foreground"
           >
-            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh Tasks'}
+            <RefreshCw
+              className={cn("h-4 w-4", isRefreshing && "animate-spin")}
+            />
+            {isRefreshing ? "Refreshing..." : "Refresh Tasks"}
           </Button>
         </div>
       )}
@@ -589,11 +650,13 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               onTaskClick={onTaskClick}
               onStatusChange={handleStatusChange}
               isOver={overColumnId === status}
-              onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
-              onArchiveAll={status === 'done' ? handleArchiveAll : undefined}
-              archivedCount={status === 'done' ? archivedCount : undefined}
-              showArchived={status === 'done' ? showArchived : undefined}
-              onToggleArchived={status === 'done' ? toggleShowArchived : undefined}
+              onAddClick={status === "backlog" ? onNewTaskClick : undefined}
+              onArchiveAll={status === "done" ? handleArchiveAll : undefined}
+              archivedCount={status === "done" ? archivedCount : undefined}
+              showArchived={status === "done" ? showArchived : undefined}
+              onToggleArchived={
+                status === "done" ? toggleShowArchived : undefined
+              }
             />
           ))}
         </div>
@@ -617,7 +680,11 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         error={worktreeCleanupDialog.error}
         onOpenChange={(open) => {
           if (!open && !worktreeCleanupDialog.isProcessing) {
-            setWorktreeCleanupDialog(prev => ({ ...prev, open: false, error: undefined }));
+            setWorktreeCleanupDialog((prev) => ({
+              ...prev,
+              open: false,
+              error: undefined,
+            }));
           }
         }}
         onConfirm={handleWorktreeCleanupConfirm}

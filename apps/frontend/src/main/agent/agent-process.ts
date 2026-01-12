@@ -457,7 +457,7 @@ export class AgentProcessManager {
     let sequenceNumber = 0;
     // FIX (ACS-203): Track completed phases to prevent phase overlaps
     // When a phase completes, it's added to this array before transitioning to the next phase
-    let completedPhases: CompletablePhase[] = [];
+    const completedPhases: CompletablePhase[] = [];
 
     this.emitter.emit('execution-progress', taskId, {
       phase: currentPhase,
