@@ -70,6 +70,16 @@ export const workspaceMock = {
     }
   }),
 
+  getMergeStrategyRecommendation: async () => ({
+    success: true,
+    data: {
+      strategy: 'merge' as const,
+      reason: 'Default recommendation',
+      commitCount: 1,
+      hasWipCommits: false
+    }
+  }),
+
   clearStagedState: async () => ({
     success: true,
     data: { cleared: true }
