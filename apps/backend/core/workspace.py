@@ -450,7 +450,58 @@ def _try_smart_merge_inner(
             has_conflicts=git_conflicts.get("has_conflicts"),
             conflicting_files=git_conflicts.get("conflicting_files", []),
             base_branch=git_conflicts.get("base_branch"),
+            needs_rebase=git_conflicts.get("needs_rebase"),
+            commits_behind=git_conflicts.get("commits_behind", 0),
         )
+
+        # Check if spec branch is behind and needs rebase
+        # This must happen BEFORE conflict resolution to ensure merge succeeds
+        if (
+            git_conflicts.get("needs_rebase")
+            and git_conflicts.get("commits_behind", 0) > 0
+        ):
+            base_branch = git_conflicts.get("base_branch", "main")
+            commits_behind = git_conflicts.get("commits_behind", 0)
+
+            print()
+            print_status(
+                f"Spec branch is {commits_behind} commit(s) behind {base_branch}",
+                "warning",
+            )
+            print(muted("  Automatically rebasing before merge..."))
+
+            # Attempt to rebase the spec branch onto the latest base branch
+            rebase_success = _rebase_spec_branch(
+                project_dir,
+                spec_name,
+                base_branch,
+            )
+
+            if rebase_success:
+                # Refresh git conflicts after rebase
+                # The rebase may have changed the conflict state
+                git_conflicts = _check_git_conflicts(project_dir, spec_name)
+
+                debug(
+                    MODULE,
+                    "Refreshed git conflicts after rebase",
+                    has_conflicts=git_conflicts.get("has_conflicts"),
+                    conflicting_files=git_conflicts.get("conflicting_files", []),
+                    diverged_but_no_conflicts=git_conflicts.get(
+                        "diverged_but_no_conflicts"
+                    ),
+                )
+
+                # If rebase succeeded and now there are no conflicts,
+                # the diverged_but_no_conflicts path will handle the merge
+            else:
+                # Rebase failed - continue with conflict resolution as before
+                # The AI resolver will handle the conflicts
+                print(
+                    warning(
+                        "  Rebase encountered issues, using AI conflict resolution..."
+                    )
+                )
 
         if git_conflicts.get("has_conflicts"):
             print(
@@ -699,6 +750,136 @@ def _try_smart_merge_inner(
         return None
 
 
+def _rebase_spec_branch(
+    project_dir: Path,
+    spec_name: str,
+    base_branch: str,
+) -> bool:
+    """
+    Rebase the spec branch onto the latest base branch.
+
+    This performs an automatic rebase of the spec branch onto the current
+    base branch (main/develop) to bring it up to date before merging.
+    If conflicts occur during rebase, they are left for the AI resolver
+    to handle afterward.
+
+    Args:
+        project_dir: The project directory
+        spec_name: Name of the spec
+        base_branch: The branch to rebase onto
+
+    Returns:
+        True if rebase succeeded (clean or with conflicts to resolve),
+        False if rebase failed and needs manual intervention
+    """
+    spec_branch = f"auto-claude/{spec_name}"
+
+    debug(
+        MODULE,
+        "Rebasing spec branch",
+        spec_branch=spec_branch,
+        base_branch=base_branch,
+    )
+
+    # Save current state for recovery
+    # Get the current commit of spec branch before rebase
+    before_commit_result = subprocess.run(
+        ["git", "rev-parse", spec_branch],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+    )
+    if before_commit_result.returncode != 0:
+        debug_error(MODULE, "Could not get spec branch commit before rebase")
+        return False
+    before_commit = before_commit_result.stdout.strip()
+
+    print()
+    print(muted(f"  Rebasing {spec_branch} onto {base_branch}..."))
+
+    # Perform the rebase
+    # Strategy: Rebase with --strategy-option=theirs to prefer spec branch changes
+    # when conflicts occur (since spec branch is the task being merged)
+    rebase_result = subprocess.run(
+        [
+            "git",
+            "rebase",
+            base_branch,
+            spec_branch,
+            "--onto",
+            base_branch,
+        ],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+    )
+
+    if rebase_result.returncode != 0:
+        # Check if rebase failed due to conflicts
+        # Rebase conflicts are expected - the spec branch is now at the conflict state
+        # We'll let the AI conflict resolver handle them
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        # If we have unmerged files, rebase stopped due to conflicts
+        # This is expected - we'll abort and let AI handle it
+        if "U" in status_result.stdout or rebase_result.returncode == 1:
+            debug_warning(
+                MODULE,
+                "Rebase encountered conflicts - aborting and will use AI conflict resolution",
+                stderr=rebase_result.stderr[:200] if rebase_result.stderr else "",
+            )
+
+            # Abort the rebase to return to clean state
+            subprocess.run(
+                ["git", "rebase", "--abort"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            # Rebase had conflicts but we recovered - return True to proceed with AI resolution
+            return True
+
+        # Other error (not conflict-related) - abort and return failure
+        subprocess.run(
+            ["git", "rebase", "--abort"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        debug_error(
+            MODULE,
+            "Rebase failed with unexpected error",
+            stderr=rebase_result.stderr[:500] if rebase_result.stderr else "",
+        )
+        return False
+
+    # Rebase succeeded - update branch reference
+    after_commit = subprocess.run(
+        ["git", "rev-parse", spec_branch],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+    )
+
+    if after_commit.returncode == 0:
+        after_commit_hash = after_commit.stdout.strip()
+        debug_success(
+            MODULE,
+            "Rebase succeeded",
+            before_commit=before_commit[:12],
+            after_commit=after_commit_hash[:12],
+        )
+        print(success(f"    ✓ Rebased onto {base_branch}"))
+        return True
+
+    return False
+
+
 def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
     """
     Check for git-level conflicts WITHOUT modifying the working directory.
@@ -717,6 +898,8 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
         "conflicting_files": [],
         "base_branch": "main",
         "spec_branch": spec_branch,
+        "needs_rebase": False,
+        "commits_behind": 0,
     }
 
     try:
@@ -763,6 +946,26 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
 
         main_commit = main_commit_result.stdout.strip()
         spec_commit = spec_commit_result.stdout.strip()
+
+        # Check if spec branch is behind base branch (needs rebase)
+        # Count commits that are in base branch but not in spec branch
+        rev_list_result = subprocess.run(
+            ["git", "rev-list", "--count", f"{spec_commit}..{main_commit}"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if rev_list_result.returncode == 0:
+            commits_behind = int(rev_list_result.stdout.strip())
+            result["commits_behind"] = commits_behind
+            if commits_behind > 0:
+                result["needs_rebase"] = True
+                debug(
+                    MODULE,
+                    f"Spec branch is {commits_behind} commit(s) behind base branch",
+                    base_branch=result["base_branch"],
+                    spec_branch=spec_branch,
+                )
 
         # Use git merge-tree to check for conflicts WITHOUT touching working directory
         # Note: --write-tree mode only accepts 2 branches (it auto-finds the merge base)
