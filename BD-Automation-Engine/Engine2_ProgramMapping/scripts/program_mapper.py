@@ -41,6 +41,9 @@ _FEDERAL_PROGRAMS_CACHE: Optional[pd.DataFrame] = None
 # Global cache for keyword index (keyword -> list of program names)
 _KEYWORD_INDEX_CACHE: Optional[Dict[str, List[str]]] = None
 
+# Global cache for location index (location -> list of program names)
+_LOCATION_INDEX_CACHE: Optional[Dict[str, List[str]]] = None
+
 
 @dataclass
 class FederalProgram:
@@ -386,6 +389,61 @@ def build_location_index(df: Optional[pd.DataFrame] = None) -> Dict[str, List[st
     return location_index
 
 
+def get_location_index(force_reload: bool = False) -> Dict[str, List[str]]:
+    """
+    Get the location index, using cache if available.
+
+    This function provides a cached location index for efficient lookups
+    during location signal extraction. It maps normalized location strings
+    (city names, base names, etc.) to the programs that operate in those areas.
+
+    Args:
+        force_reload: If True, rebuild the index from the CSV.
+
+    Returns:
+        Dict mapping lowercase location strings to list of program names.
+    """
+    global _LOCATION_INDEX_CACHE
+
+    if _LOCATION_INDEX_CACHE is None or force_reload:
+        _LOCATION_INDEX_CACHE = build_location_index()
+
+    return _LOCATION_INDEX_CACHE
+
+
+def normalize_location_for_matching(location: str) -> str:
+    """
+    Normalize a location string for matching.
+
+    Handles common variations like:
+    - "Ft. Meade" -> "fort meade"
+    - "AFB" -> "air force base"
+    - Removes parenthetical notes
+
+    Args:
+        location: Raw location string from job posting.
+
+    Returns:
+        Normalized lowercase location string.
+    """
+    if not location:
+        return ""
+
+    loc = location.lower().strip()
+
+    # Remove parenthetical notes like "(DGS-1)" or "(test & evaluation)"
+    loc = re.sub(r'\([^)]*\)', '', loc).strip()
+
+    # Normalize common abbreviations
+    loc = re.sub(r'\bft\.?\s+', 'fort ', loc)
+    loc = re.sub(r'\bafb\b', 'air force base', loc)
+    loc = re.sub(r'\bjba\b', 'joint base andrews', loc)
+    loc = re.sub(r'\bjblm\b', 'joint base lewis-mcchord', loc)
+    loc = re.sub(r'\bjbsa\b', 'joint base san antonio', loc)
+
+    return loc.strip()
+
+
 # ============================================
 # DCGS LOCATION MAPPING
 # ============================================
@@ -509,24 +567,122 @@ class MappingResult:
 # MATCHING FUNCTIONS
 # ============================================
 
-def extract_location_signal(job: Dict) -> Tuple[Optional[str], int]:
+def extract_location_signal(
+    job: Dict,
+    use_dynamic_locations: bool = True
+) -> Tuple[Optional[str], int, List[Tuple[str, int, str]]]:
     """
     Extract program signal from job location.
 
+    This function searches job locations against both hardcoded DCGS/IC location
+    mappings and dynamic location data from the Federal Programs CSV database.
+
     Args:
         job: Job dictionary with 'location' field
+        use_dynamic_locations: If True, also use locations from Federal Programs CSV.
+                               If False or CSV unavailable, use only hardcoded locations.
 
     Returns:
-        Tuple of (program_name, score)
+        Tuple of (best_program_name, best_score, all_location_signals)
+        - best_program_name: The highest-scoring matched program (or None)
+        - best_score: The score for the best match
+        - all_location_signals: List of (program_name, score, signal_description) tuples
+          for all location matches found (useful for secondary candidates)
     """
     location = job.get('location', '') or job.get('Location', '')
+    if not location:
+        return None, 0, []
 
-    # Check exact matches
+    location_lower = location.lower()
+    normalized_location = normalize_location_for_matching(location)
+
+    all_signals: List[Tuple[str, int, str]] = []
+    program_scores: Dict[str, Tuple[int, str]] = {}
+
+    # Check hardcoded DCGS/IC locations first (exact matches)
     for loc_key, program in ALL_LOCATIONS.items():
-        if loc_key.lower() in location.lower():
-            return program, SCORING_WEIGHTS['location_match_exact']
+        if loc_key.lower() in location_lower:
+            score = SCORING_WEIGHTS['location_match_exact']
+            signal_desc = f"Location match: {loc_key} -> {program}"
 
-    return None, 0
+            # Keep highest score per program
+            if program not in program_scores or program_scores[program][0] < score:
+                program_scores[program] = (score, signal_desc)
+
+    # Try dynamic locations from Federal Programs CSV
+    location_index = None
+    if use_dynamic_locations and HAS_PANDAS:
+        try:
+            location_index = get_location_index()
+        except (FileNotFoundError, ImportError):
+            location_index = None
+
+    if location_index:
+        # Check for matches in the dynamic location index
+        for csv_location, program_list in location_index.items():
+            csv_loc_lower = csv_location.lower()
+
+            # Skip very short location strings to avoid false positives
+            if len(csv_loc_lower) < 3:
+                continue
+
+            # Try multiple matching strategies
+            match_found = False
+            match_type = ""
+
+            # Strategy 1: Direct substring match
+            if csv_loc_lower in location_lower or csv_loc_lower in normalized_location:
+                match_found = True
+                match_type = "exact"
+
+            # Strategy 2: Location substring appears in CSV location
+            # (e.g., job has "Colorado Springs" and CSV has "Colorado Springs CO")
+            if not match_found:
+                # Extract city/base names from job location
+                for word in location_lower.split(','):
+                    word = word.strip()
+                    if len(word) >= 4 and word in csv_loc_lower:
+                        match_found = True
+                        match_type = "partial"
+                        break
+
+            # Strategy 3: State-based region matching (weaker signal)
+            if not match_found:
+                # Check for state abbreviations
+                state_pattern = r'\b([A-Z]{2})\b'
+                job_states = set(re.findall(state_pattern, location))
+                csv_states = set(re.findall(state_pattern, csv_location))
+                if job_states & csv_states:  # Intersection
+                    match_found = True
+                    match_type = "region"
+
+            if match_found:
+                # Determine score based on match type
+                if match_type == "exact":
+                    score = SCORING_WEIGHTS['location_match_exact']
+                elif match_type == "partial":
+                    score = SCORING_WEIGHTS['location_match_region'] + 5
+                else:  # region
+                    score = SCORING_WEIGHTS['location_match_region']
+
+                for program_name in program_list:
+                    signal_desc = f"Location match ({match_type}): {location} -> {program_name} via '{csv_location}'"
+
+                    # Keep highest score per program
+                    if program_name not in program_scores or program_scores[program_name][0] < score:
+                        program_scores[program_name] = (score, signal_desc)
+
+    # Convert to signals list
+    for program_name, (score, signal_desc) in program_scores.items():
+        all_signals.append((program_name, score, signal_desc))
+
+    # Find best match
+    if program_scores:
+        best_program = max(program_scores.keys(), key=lambda p: program_scores[p][0])
+        best_score = program_scores[best_program][0]
+        return best_program, best_score, all_signals
+
+    return None, 0, []
 
 
 def extract_keyword_signals(
@@ -727,11 +883,11 @@ def map_job_to_program(job: Dict) -> MappingResult:
     all_signals = []
     program_scores = {}
 
-    # Get location signal
-    loc_program, loc_score = extract_location_signal(job)
-    if loc_program:
-        all_signals.append(f"Location match: {loc_program}")
-        program_scores[loc_program] = program_scores.get(loc_program, 0) + loc_score
+    # Get location signals (now returns all matching programs)
+    loc_program, loc_score, location_signals = extract_location_signal(job)
+    for program, score, signal_desc in location_signals:
+        all_signals.append(signal_desc)
+        program_scores[program] = program_scores.get(program, 0) + score
 
     # Get keyword signals
     keyword_signals = extract_keyword_signals(job)
