@@ -100,7 +100,7 @@ function ProjectTabBarWithContext({
   );
 
   // Update parent component's drag state
-  React.useEffect(() => {
+  useEffect(() => {
     onDragStateChange(dragState);
   }, [dragState, onDragStateChange]);
 
