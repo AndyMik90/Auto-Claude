@@ -589,7 +589,11 @@ class WorktreeManager:
         self._run_git(["worktree", "prune"])
 
     def merge_worktree(
-        self, spec_name: str, delete_after: bool = False, no_commit: bool = False
+        self,
+        spec_name: str,
+        delete_after: bool = False,
+        no_commit: bool = False,
+        strategy: str = "merge",
     ) -> bool:
         """
         Merge a spec's worktree branch back to base branch.
@@ -598,6 +602,8 @@ class WorktreeManager:
             spec_name: The spec folder name
             delete_after: Whether to remove worktree and branch after merge
             no_commit: If True, merge changes but don't commit (stage only for review)
+            strategy: Merge strategy - "merge" for regular merge preserving history,
+                     "squash" to combine all commits into one
 
         Returns:
             True if merge succeeded
@@ -607,12 +613,10 @@ class WorktreeManager:
             print(f"No worktree found for spec: {spec_name}")
             return False
 
-        if no_commit:
-            print(
-                f"Merging {info.branch} into {self.base_branch} (staged, not committed)..."
-            )
-        else:
-            print(f"Merging {info.branch} into {self.base_branch}...")
+        # Build status message based on strategy and options
+        strategy_label = "squash merging" if strategy == "squash" else "merging"
+        staged_label = " (staged, not committed)" if no_commit or strategy == "squash" else ""
+        print(f"{strategy_label.capitalize()} {info.branch} into {self.base_branch}{staged_label}...")
 
         # Switch to base branch in main project, but skip if already on it
         # This avoids triggering git hooks unnecessarily
@@ -636,13 +640,19 @@ class WorktreeManager:
                     print(f"Error: Could not checkout base branch: {stderr_msg}")
                     return False
 
-        # Merge the spec branch
-        merge_args = ["merge", "--no-ff", info.branch]
-        if no_commit:
-            # --no-commit stages the merge but doesn't create the commit
-            merge_args.append("--no-commit")
+        # Build merge arguments based on strategy
+        if strategy == "squash":
+            # Squash merge: combines all commits into staged changes
+            # Always results in staged changes that user must commit
+            merge_args = ["merge", "--squash", info.branch]
         else:
-            merge_args.extend(["-m", f"auto-claude: Merge {info.branch}"])
+            # Regular merge: preserves commit history with merge commit
+            merge_args = ["merge", "--no-ff", info.branch]
+            if no_commit:
+                # --no-commit stages the merge but doesn't create the commit
+                merge_args.append("--no-commit")
+            else:
+                merge_args.extend(["-m", f"auto-claude: Merge {info.branch}"])
 
         result = self._run_git(merge_args)
 
@@ -651,13 +661,16 @@ class WorktreeManager:
             self._run_git(["merge", "--abort"])
             return False
 
-        if no_commit:
+        # Handle post-merge messaging based on strategy
+        if strategy == "squash" or no_commit:
             # Unstage any files that are gitignored in the main branch
             # These get staged during merge because they exist in the worktree branch
             self._unstage_gitignored_files()
             print(
                 f"Changes from {info.branch} are now staged in your working directory."
             )
+            if strategy == "squash":
+                print("All commits have been squashed into staged changes.")
             print("Review the changes, then commit when ready:")
             print("  git commit -m 'your commit message'")
         else:
@@ -667,6 +680,107 @@ class WorktreeManager:
             self.remove_worktree(spec_name, delete_branch=True)
 
         return True
+
+    def recommend_merge_strategy(self, spec_name: str) -> dict:
+        """
+        Recommend a merge strategy based on commit analysis.
+
+        Analyzes the worktree's commit history to suggest whether to use
+        regular merge (preserves history) or squash merge (combines commits).
+
+        Args:
+            spec_name: The spec folder name
+
+        Returns:
+            Dictionary with:
+                - strategy: "merge" or "squash"
+                - reason: Human-readable explanation
+                - commitCount: Number of commits in the worktree
+                - hasWipCommits: Whether WIP/fixup commits were detected
+        """
+        info = self.get_worktree_info(spec_name)
+        if not info:
+            return {
+                "strategy": "merge",
+                "reason": "No worktree found - using default",
+                "commitCount": 0,
+                "hasWipCommits": False,
+            }
+
+        worktree_path = self.get_worktree_path(spec_name)
+        if not worktree_path.exists():
+            return {
+                "strategy": "merge",
+                "reason": "Worktree path not found - using default",
+                "commitCount": 0,
+                "hasWipCommits": False,
+            }
+
+        # Get commit messages from the worktree branch
+        result = self._run_git(
+            ["log", "--oneline", f"{self.base_branch}..HEAD"],
+            cwd=worktree_path,
+        )
+        commits = []
+        if result.returncode == 0 and result.stdout.strip():
+            commits = [c.strip() for c in result.stdout.strip().split("\n") if c.strip()]
+
+        commit_count = len(commits)
+
+        # Detect WIP/fixup/temporary commits that suggest squashing
+        wip_patterns = [
+            "wip",
+            "fixup",
+            "squash",
+            "temp",
+            "xxx",
+            "todo",
+            "fix typo",
+            "oops",
+            "revert",
+            "undo",
+        ]
+        has_wip = any(
+            any(pattern in commit.lower() for pattern in wip_patterns)
+            for commit in commits
+        )
+
+        # Decision logic
+        if commit_count == 0:
+            return {
+                "strategy": "merge",
+                "reason": "No commits to merge",
+                "commitCount": 0,
+                "hasWipCommits": False,
+            }
+        elif commit_count == 1:
+            return {
+                "strategy": "merge",
+                "reason": "Single commit - merge preserves clean history",
+                "commitCount": 1,
+                "hasWipCommits": False,
+            }
+        elif has_wip:
+            return {
+                "strategy": "squash",
+                "reason": f"{commit_count} commits with WIP/fixup - squash for clean history",
+                "commitCount": commit_count,
+                "hasWipCommits": True,
+            }
+        elif commit_count > 10:
+            return {
+                "strategy": "squash",
+                "reason": f"{commit_count} commits - consider squashing for cleaner history",
+                "commitCount": commit_count,
+                "hasWipCommits": False,
+            }
+        else:
+            return {
+                "strategy": "merge",
+                "reason": f"{commit_count} meaningful commits - merge preserves history",
+                "commitCount": commit_count,
+                "hasWipCommits": False,
+            }
 
     def commit_in_worktree(self, spec_name: str, message: str) -> bool:
         """Commit all changes in a spec's worktree."""

@@ -1,4 +1,4 @@
-import type { Task, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo, WorktreeCreatePRResult } from '../../../shared/types';
+import type { Task, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo, WorktreeCreatePRResult, MergeStrategy, MergeStrategyRecommendation } from '../../../shared/types';
 import {
   StagedSuccessMessage,
   WorkspaceStatus,
@@ -25,6 +25,9 @@ interface TaskReviewProps {
   showDiffDialog: boolean;
   workspaceError: string | null;
   stageOnly: boolean;
+  mergeStrategy: MergeStrategy;
+  mergeStrategyRecommendation?: MergeStrategyRecommendation | null;
+  onMergeStrategyChange: (strategy: MergeStrategy) => void;
   stagedSuccess: string | null;
   stagedProjectPath: string | undefined;
   suggestedCommitMessage: string | undefined;
@@ -73,6 +76,9 @@ export function TaskReview({
   showDiffDialog,
   workspaceError,
   stageOnly,
+  mergeStrategy,
+  mergeStrategyRecommendation,
+  onMergeStrategyChange,
   stagedSuccess,
   stagedProjectPath,
   suggestedCommitMessage,
@@ -131,6 +137,8 @@ export function TaskReview({
           worktreeStatus={worktreeStatus}
           workspaceError={workspaceError}
           stageOnly={stageOnly}
+          mergeStrategy={mergeStrategy}
+          mergeStrategyRecommendation={mergeStrategyRecommendation}
           mergePreview={mergePreview}
           isLoadingPreview={isLoadingPreview}
           isMerging={isMerging}
@@ -141,6 +149,7 @@ export function TaskReview({
           onShowConflictDialog={onShowConflictDialog}
           onLoadMergePreview={onLoadMergePreview}
           onStageOnlyChange={onStageOnlyChange}
+          onMergeStrategyChange={onMergeStrategyChange}
           onMerge={onMerge}
           onShowPRDialog={onShowPRDialog}
           onClose={onClose}

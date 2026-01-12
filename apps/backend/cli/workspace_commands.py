@@ -371,6 +371,7 @@ def handle_merge_command(
     spec_name: str,
     no_commit: bool = False,
     base_branch: str | None = None,
+    strategy: str = "merge",
 ) -> bool:
     """
     Handle the --merge command.
@@ -380,16 +381,21 @@ def handle_merge_command(
         spec_name: Name of the spec
         no_commit: If True, stage changes but don't commit
         base_branch: Branch to compare against (default: auto-detect)
+        strategy: Merge strategy - "merge" for regular merge, "squash" to combine commits
 
     Returns:
         True if merge succeeded, False otherwise
     """
     success = merge_existing_build(
-        project_dir, spec_name, no_commit=no_commit, base_branch=base_branch
+        project_dir,
+        spec_name,
+        no_commit=no_commit,
+        base_branch=base_branch,
+        strategy=strategy,
     )
 
-    # Generate commit message suggestion if staging succeeded (no_commit mode)
-    if success and no_commit:
+    # Generate commit message suggestion if staging succeeded (no_commit mode or squash)
+    if success and (no_commit or strategy == "squash"):
         _generate_and_save_commit_message(project_dir, spec_name)
 
     return success

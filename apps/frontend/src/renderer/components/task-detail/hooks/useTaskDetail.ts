@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
 import { checkTaskRunning, isIncompleteHumanReview, getTaskProgress, useTaskStore, loadTasks } from '../../../stores/task-store';
-import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo } from '../../../../shared/types';
+import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo, MergeStrategy, MergeStrategyRecommendation } from '../../../../shared/types';
 
 /**
  * Validates task subtasks structure to prevent infinite loops during resume.
@@ -90,6 +90,10 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [showPRDialog, setShowPRDialog] = useState(false);
   const [isCreatingPR, setIsCreatingPR] = useState(false);
+
+  // Merge strategy state
+  const [mergeStrategy, setMergeStrategy] = useState<MergeStrategy>('merge');
+  const [mergeStrategyRecommendation, setMergeStrategyRecommendation] = useState<MergeStrategyRecommendation | null>(null);
 
   const selectedProject = useProjectStore((state) => state.getSelectedProject());
   const isRunning = task.status === 'in_progress';
@@ -266,13 +270,31 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     }
   }, [task.id]);
 
-  // Load merge preview (conflict detection)
+  // Load merge preview (conflict detection) and strategy recommendation
   const loadMergePreview = useCallback(async () => {
     setIsLoadingPreview(true);
     try {
-      const result = await window.electronAPI.mergeWorktreePreview(task.id);
-      if (result.success && result.data?.preview) {
-        setMergePreview(result.data.preview);
+      // Load merge preview and strategy recommendation in parallel
+      const [previewResult, recommendationResult] = await Promise.all([
+        window.electronAPI.mergeWorktreePreview(task.id),
+        window.electronAPI.getMergeStrategyRecommendation(task.id)
+      ]);
+
+      if (previewResult.success && previewResult.data?.preview) {
+        setMergePreview(previewResult.data.preview);
+      }
+
+      if (recommendationResult.success && recommendationResult.data) {
+        setMergeStrategyRecommendation(recommendationResult.data);
+        // Set the merge strategy based on project settings
+        const projectDefault = selectedProject?.settings?.defaultMergeStrategy;
+        if (projectDefault === 'merge' || projectDefault === 'squash') {
+          // Project has a fixed default strategy - use it
+          setMergeStrategy(projectDefault);
+        } else {
+          // 'recommended' or not set - use AI recommendation
+          setMergeStrategy(recommendationResult.data.strategy);
+        }
       }
     } catch (err) {
       console.error('[useTaskDetail] Failed to load merge preview:', err);
@@ -280,7 +302,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
       hasLoadedPreviewRef.current = task.id;
       setIsLoadingPreview(false);
     }
-  }, [task.id]);
+  }, [task.id, selectedProject?.settings?.defaultMergeStrategy]);
 
   // Handle "Review Again" - clears staged state and reloads worktree info
   const handleReviewAgain = useCallback(async () => {
@@ -444,6 +466,8 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     showPRDialog,
     isCreatingPR,
     isLoadingPlan,
+    mergeStrategy,
+    mergeStrategyRecommendation,
 
     // Setters
     setFeedback,
@@ -477,6 +501,8 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     setShowConflictDialog,
     setShowPRDialog,
     setIsCreatingPR,
+    setMergeStrategy,
+    setMergeStrategyRecommendation,
 
     // Handlers
     handleLogsScroll,

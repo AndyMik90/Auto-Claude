@@ -383,6 +383,31 @@ export interface MergeStats {
   pathMappedAIMergeCount?: number;
 }
 
+/**
+ * Merge strategy for combining worktree changes
+ * - "merge": Regular merge that preserves commit history
+ * - "squash": Squash merge that combines all commits into one
+ */
+export type MergeStrategy = 'merge' | 'squash';
+
+/**
+ * Recommendation for which merge strategy to use
+ */
+export interface MergeStrategyRecommendation {
+  strategy: MergeStrategy;
+  reason: string;
+  commitCount: number;
+  hasWipCommits: boolean;
+}
+
+/**
+ * Options for merging a worktree
+ */
+export interface WorktreeMergeOptions {
+  noCommit?: boolean;
+  strategy?: MergeStrategy;
+}
+
 export interface WorktreeMergeResult {
   success: boolean;
   message: string;
