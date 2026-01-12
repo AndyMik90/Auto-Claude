@@ -9,20 +9,20 @@ ehthumbs.db
 Desktop.ini
 
 # ===========================
-# Security - Environment & Secrets
+# Security - Environment & Secrets (DISABLED FOR TESTING)
 # ===========================
-.env
-.env.*
+# .env
+# .env.*
 !.env.example
-/config.json
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-.secrets
-secrets/
-credentials/
+# /config.json
+# *.pem
+# *.key
+# *.crt
+# *.p12
+# *.pfx
+# .secrets
+# secrets/
+# credentials/
 
 # ===========================
 # IDE & Editors
