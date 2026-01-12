@@ -135,13 +135,13 @@ export function ProjectIndexTab({
                   <CardContent className="pt-6">
                     <div className="grid gap-4 sm:grid-cols-2">
                       {projectIndex.infrastructure.docker_compose && (
-                        <InfoItem label="Docker Compose" value={projectIndex.infrastructure.docker_compose} />
+                        <InfoItem label={t('common:projectIndex.dockerCompose')} value={projectIndex.infrastructure.docker_compose} />
                       )}
                       {projectIndex.infrastructure.ci && (
-                        <InfoItem label="CI/CD" value={projectIndex.infrastructure.ci} />
+                        <InfoItem label={t('common:projectIndex.ciCd')} value={projectIndex.infrastructure.ci} />
                       )}
                       {projectIndex.infrastructure.deployment && (
-                        <InfoItem label="Deployment" value={projectIndex.infrastructure.deployment} />
+                        <InfoItem label={t('common:projectIndex.deployment')} value={projectIndex.infrastructure.deployment} />
                       )}
                       {projectIndex.infrastructure.docker_services &&
                         projectIndex.infrastructure.docker_services.length > 0 && (

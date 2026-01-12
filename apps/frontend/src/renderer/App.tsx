@@ -676,14 +676,14 @@ export function App() {
       } else {
         // Initialization failed - show error but keep dialog open
         console.log('[InitDialog] Initialization failed, showing error');
-        const errorMessage = result?.error || 'Failed to initialize Auto Claude. Please try again.';
+        const errorMessage = result?.error || t('common:errors.initializationFailed');
         setInitError(errorMessage);
         setIsInitializing(false);
       }
     } catch (error) {
       // Unexpected error occurred
       console.error('[InitDialog] Unexpected error during initialization:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      const errorMessage = error instanceof Error ? error.message : t('common:errors.unexpected');
       setInitError(errorMessage);
       setIsInitializing(false);
     }

@@ -523,7 +523,7 @@ export function EnvConfigModal({
                         type={showToken ? 'text' : 'password'}
                         value={token}
                         onChange={(e) => setToken(e.target.value)}
-                        placeholder="Enter your token..."
+                        placeholder={t('common:envConfig.tokenPlaceholder')}
                         className="pr-10 font-mono text-sm"
                         disabled={isSaving || isAuthenticating}
                       />

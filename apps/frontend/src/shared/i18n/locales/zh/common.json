@@ -108,7 +108,21 @@
     "unknownError": "发生未知错误",
     "networkError": "网络错误",
     "notFound": "未找到",
-    "unauthorized": "未授权"
+    "unauthorized": "未授权",
+    "initializationFailed": "初始化 Auto Claude 失败。请重试。",
+    "unexpected": "发生意外错误",
+    "failedToLoad": "加载失败",
+    "failedToSave": "保存失败",
+    "failedToCreate": "创建失败",
+    "failedToUpdate": "更新失败",
+    "failedToDelete": "删除失败",
+    "failedToInitialize": "初始化失败",
+    "failedToConnect": "连接失败",
+    "failedToDiscover": "发现失败",
+    "failedToRun": "运行失败",
+    "failedToImport": "导入失败",
+    "failedToRefresh": "刷新失败",
+    "failedToRecover": "恢复失败"
   },
   "notification": {
     "accountSwitched": "账户已切换",
@@ -364,5 +378,23 @@
   "errorBoundary": {
     "title": "出错了",
     "description": "渲染此内容时发生错误。"
+  },
+  "addProject": {
+    "failedToCreateFolder": "创建项目文件夹失败"
+  },
+  "projectIndex": {
+    "dockerCompose": "Docker Compose",
+    "ciCd": "CI/CD",
+    "deployment": "部署"
+  },
+  "memory": {
+    "database": "数据库",
+    "path": "路径"
+  },
+  "insights": {
+    "askPlaceholder": "询问关于代码库的问题..."
+  },
+  "envConfig": {
+    "tokenPlaceholder": "输入您的令牌..."
   }
 }

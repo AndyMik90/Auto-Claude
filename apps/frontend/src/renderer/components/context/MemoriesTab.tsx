@@ -145,8 +145,8 @@ export function MemoriesTab({
             {memoryStatus?.available ? (
               <>
                 <div className="grid gap-3 sm:grid-cols-2 text-sm">
-                  <InfoItem label="Database" value={memoryStatus.database || 'auto_claude_memory'} />
-                  <InfoItem label="Path" value={memoryStatus.dbPath || '~/.auto-claude/memories'} />
+                  <InfoItem label={t('common:memory.database')} value={memoryStatus.database || 'auto_claude_memory'} />
+                  <InfoItem label={t('common:memory.path')} value={memoryStatus.dbPath || '~/.auto-claude/memories'} />
                 </div>
 
                 {/* Memory Stats Summary */}

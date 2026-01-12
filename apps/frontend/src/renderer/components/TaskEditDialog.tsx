@@ -478,7 +478,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
             <Textarea
               ref={descriptionRef}
               id="edit-description"
-              placeholder="Describe the feature, bug fix, or improvement. Be as specific as possible about requirements, constraints, and expected behavior."
+              placeholder={t('wizard.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onPaste={handlePaste}
@@ -505,7 +505,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
             </Label>
             <Input
               id="edit-title"
-              placeholder="Leave empty to auto-generate from description"
+              placeholder={t('wizard.titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isSaving}
@@ -577,7 +577,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
                     disabled={isSaving}
                   >
                     <SelectTrigger id="edit-category" className="h-9">
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder={t('wizard.selectCategory')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_CATEGORY_LABELS).map(([value, label]) => (
@@ -600,7 +600,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
                     disabled={isSaving}
                   >
                     <SelectTrigger id="edit-priority" className="h-9">
-                      <SelectValue placeholder="Select priority" />
+                      <SelectValue placeholder={t('wizard.selectPriority')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
@@ -623,7 +623,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
                     disabled={isSaving}
                   >
                     <SelectTrigger id="edit-complexity" className="h-9">
-                      <SelectValue placeholder="Select complexity" />
+                      <SelectValue placeholder={t('wizard.selectComplexity')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_COMPLEXITY_LABELS).map(([value, label]) => (
@@ -646,7 +646,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
                     disabled={isSaving}
                   >
                     <SelectTrigger id="edit-impact" className="h-9">
-                      <SelectValue placeholder="Select impact" />
+                      <SelectValue placeholder={t('wizard.selectImpact')} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TASK_IMPACT_LABELS).map(([value, label]) => (

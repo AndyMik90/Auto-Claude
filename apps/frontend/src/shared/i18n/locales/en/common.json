@@ -108,7 +108,21 @@
     "unknownError": "An unknown error occurred",
     "networkError": "Network error",
     "notFound": "Not found",
-    "unauthorized": "Unauthorized"
+    "unauthorized": "Unauthorized",
+    "initializationFailed": "Failed to initialize Auto Claude. Please try again.",
+    "unexpected": "An unexpected error occurred",
+    "failedToLoad": "Failed to load",
+    "failedToSave": "Failed to save",
+    "failedToCreate": "Failed to create",
+    "failedToUpdate": "Failed to update",
+    "failedToDelete": "Failed to delete",
+    "failedToInitialize": "Failed to initialize",
+    "failedToConnect": "Failed to connect",
+    "failedToDiscover": "Failed to discover",
+    "failedToRun": "Failed to run",
+    "failedToImport": "Failed to import",
+    "failedToRefresh": "Failed to refresh",
+    "failedToRecover": "Failed to recover"
   },
   "notification": {
     "accountSwitched": "Account Switched",
@@ -361,5 +375,23 @@
   "errorBoundary": {
     "title": "Something went wrong",
     "description": "An error occurred while rendering this content."
+  },
+  "addProject": {
+    "failedToCreateFolder": "Failed to create project folder"
+  },
+  "projectIndex": {
+    "dockerCompose": "Docker Compose",
+    "ciCd": "CI/CD",
+    "deployment": "Deployment"
+  },
+  "memory": {
+    "database": "Database",
+    "path": "Path"
+  },
+  "insights": {
+    "askPlaceholder": "Ask about your codebase..."
+  },
+  "envConfig": {
+    "tokenPlaceholder": "Enter your token..."
   }
 }

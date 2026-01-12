@@ -366,7 +366,7 @@ export function Insights({ projectId }: InsightsProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about your codebase..."
+            placeholder={t('insights.askPlaceholder')}
             className="min-h-[80px] resize-none"
             disabled={isLoading}
           />
