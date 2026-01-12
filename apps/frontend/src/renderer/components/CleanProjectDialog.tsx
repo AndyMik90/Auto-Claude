@@ -141,10 +141,21 @@ export function CleanProjectDialog({
   }, [projectPath, preview, selectedMode, t]);
 
   const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    // Handle edge cases
+    if (!Number.isFinite(bytes) || bytes < 0) {
+      return '0 B';
+    }
+    if (bytes === 0) {
+      return '0 B';
+    }
+
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+
+    // Clamp index to valid range
+    const index = Math.max(0, Math.min(i, units.length - 1));
+
+    return `${(bytes / Math.pow(1024, index)).toFixed(1)} ${units[index]}`;
   };
 
   const getItemDisplayName = (item: CleanupItem): string => {
@@ -379,7 +390,7 @@ export function CleanProjectDialog({
 
         <p className="text-sm text-center text-muted-foreground">
           {t('common:cleanProject.results.duration', {
-            seconds: result.duration.toFixed(1),
+            seconds: (result.duration ?? 0).toFixed(1),
           })}
         </p>
       </div>

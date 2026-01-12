@@ -82,11 +82,11 @@ function parseCleanupPreview(output: string): CleanupPreview | null {
 
           // Extract spec count
           const specMatch = details.match(/(\d+)\s+specs/);
-          const specCount = specMatch ? parseInt(specMatch[1]) : undefined;
+          const specCount = specMatch ? parseInt(specMatch[1], 10) : undefined;
 
           // Extract worktree count
           const worktreeMatch = details.match(/(\d+)\s+worktrees/);
-          const worktreeCount = worktreeMatch ? parseInt(worktreeMatch[1]) : undefined;
+          const worktreeCount = worktreeMatch ? parseInt(worktreeMatch[1], 10) : undefined;
 
           items.push({
             name,
@@ -150,12 +150,14 @@ function parseCleanupResult(output: string): { count: number; size: number; dura
     let count = 0;
     let size = 0;
     let duration = 0;
+    let foundAnyData = false;
 
     for (const line of lines) {
       // Parse archived/deleted count and size
       const countMatch = line.match(/(Archived|Deleted)\s+(\d+)\s+items?\s+\(([^\)]+)\)/);
       if (countMatch) {
-        count = parseInt(countMatch[2]);
+        foundAnyData = true;
+        count = parseInt(countMatch[2], 10);
         const sizeStr = countMatch[3];
         const sizeMatch = sizeStr.match(/(\d+\.?\d*)\s+(B|KB|MB|GB|TB)/);
         if (sizeMatch) {
@@ -166,8 +168,14 @@ function parseCleanupResult(output: string): { count: number; size: number; dura
       // Parse duration
       const durationMatch = line.match(/Cleanup completed in\s+(\d+\.?\d*)\s+seconds/);
       if (durationMatch) {
+        foundAnyData = true;
         duration = parseFloat(durationMatch[1]);
       }
+    }
+
+    // Only return data if we found at least one match
+    if (!foundAnyData) {
+      return null;
     }
 
     return { count, size, duration };
@@ -176,6 +184,10 @@ function parseCleanupResult(output: string): { count: number; size: number; dura
     return null;
   }
 }
+
+// Timeout constants for cleanup operations
+const CLEANUP_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for actual cleanup
+const PREVIEW_TIMEOUT_MS = 30 * 1000; // 30 seconds for preview
 
 /**
  * Run Python cleanup command
@@ -255,6 +267,17 @@ async function runCleanupCommand(
       },
     });
 
+    // Set timeout to prevent indefinite hangs
+    const timeoutMs = dryRun ? PREVIEW_TIMEOUT_MS : CLEANUP_TIMEOUT_MS;
+    const timeoutId = setTimeout(() => {
+      cleanupProcess.kill('SIGTERM');
+      resolve({
+        output: '',
+        error: `Cleanup process timed out after ${timeoutMs / 1000} seconds`,
+        exitCode: 1,
+      });
+    }, timeoutMs);
+
     cleanupProcess.stdout.on('data', (data) => {
       output += data.toString();
     });
@@ -264,6 +287,7 @@ async function runCleanupCommand(
     });
 
     cleanupProcess.on('close', (code) => {
+      clearTimeout(timeoutId);
       resolve({
         output,
         error: errorOutput,
@@ -272,6 +296,7 @@ async function runCleanupCommand(
     });
 
     cleanupProcess.on('error', (err) => {
+      clearTimeout(timeoutId);
       resolve({
         output: '',
         error: err.message,
@@ -377,9 +402,9 @@ export function registerCleanupHandlers(pythonEnvManager: PythonEnvManager): voi
         console.log(`[IPC] CLEANUP_EXECUTE completed: ${result.count} items, ${result.size} bytes`);
         return {
           success: true,
-          count: result.count,
-          size: result.size,
-          duration: result.duration,
+          count: result.count ?? 0,
+          size: result.size ?? 0,
+          duration: result.duration ?? 0,
         };
       } catch (error) {
         console.error('[IPC] CLEANUP_EXECUTE error:', error);
