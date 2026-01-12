@@ -161,10 +161,19 @@ playwright/.cache/
 dev/
 _bmad/
 _bmad-output/
-.claude/
 /docs
 OPUS_ANALYSIS_AND_IDEAS.md
 /.github/agents
+
+# ===========================
+# Claude Code (.claude/)
+# ===========================
+# Note: .claude/ directory IS committed
+# Only local overrides are gitignored
+.claude/settings.local.json
+.claude/hooks/hooks.log
+.claude/hooks/__pycache__/
+.claude/hooks/**/__pycache__/
 
 # Auto Claude generated files
 .security-key
