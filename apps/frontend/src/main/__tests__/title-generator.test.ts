@@ -242,7 +242,7 @@ describe('TitleGenerator', () => {
       
       expect(result).not.toBeNull();
       // Should use default haiku model from MODEL_ID_MAP
-      expect(result?.haikuModel).toBeDefined();
+      expect(result?.haikuModel).toBe('claude-haiku-4-5-20251001');
     });
 
     it('should return null on file load error', async () => {
