@@ -56,6 +56,9 @@ export const IPC_CHANNELS = {
   TASK_STATUS_CHANGE: 'task:statusChange',
   TASK_EXECUTION_PROGRESS: 'task:executionProgress',
 
+  // Queue events (main -> renderer)
+  QUEUE_STATUS_UPDATE: 'queue:statusUpdate',
+
   // Task phase logs (persistent, collapsible logs by phase)
   TASK_LOGS_GET: 'task:logsGet',           // Load logs from spec dir
   TASK_LOGS_WATCH: 'task:logsWatch',       // Start watching for log changes

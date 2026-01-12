@@ -10,6 +10,7 @@ export interface QueueAPI {
   getQueueConfig: (projectId: string) => Promise<{ success: boolean; data?: QueueConfig; error?: string }>;
   setQueueConfig: (projectId: string, config: QueueConfig) => Promise<{ success: boolean; error?: string }>;
   getQueueStatus: (projectId: string) => Promise<{ success: boolean; data?: QueueStatus; error?: string }>;
+  onQueueStatusUpdate: (callback: (projectId: string, status: QueueStatus) => void) => () => void;
 }
 
 export const createQueueAPI = (): QueueAPI => ({
@@ -18,5 +19,13 @@ export const createQueueAPI = (): QueueAPI => ({
   setQueueConfig: (projectId: string, config: QueueConfig) =>
     ipcRenderer.invoke(IPC_CHANNELS.QUEUE_SET_CONFIG, projectId, config),
 
-  getQueueStatus: (projectId: string) => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_GET_STATUS, projectId)
+  getQueueStatus: (projectId: string) => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_GET_STATUS, projectId),
+
+  onQueueStatusUpdate: (callback: (projectId: string, status: QueueStatus) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, projectId: string, status: QueueStatus) => {
+      callback(projectId, status);
+    };
+    ipcRenderer.on(IPC_CHANNELS.QUEUE_STATUS_UPDATE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.QUEUE_STATUS_UPDATE, handler);
+  }
 });

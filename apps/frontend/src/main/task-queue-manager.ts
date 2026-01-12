@@ -190,7 +190,7 @@ export class TaskQueueManager {
     });
 
     // Update the chain (removes the completed promise to prevent memory leak)
-    processingPromise.then(() => {
+    processingPromise.finally(() => {
       // Only remove if it's still the current chain
       if (this.processingQueue.get(projectId) === processingPromise) {
         this.processingQueue.delete(projectId);
@@ -307,7 +307,7 @@ export class TaskQueueManager {
     });
 
     // Update the chain (removes the completed promise to prevent memory leak)
-    processingPromise.then(() => {
+    processingPromise.finally(() => {
       // Only remove if it's still the current chain
       if (this.processingQueue.get(projectId) === processingPromise) {
         this.processingQueue.delete(projectId);

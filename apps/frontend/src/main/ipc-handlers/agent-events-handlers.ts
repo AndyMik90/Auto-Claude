@@ -345,4 +345,15 @@ export function registerAgenteventsHandlers(
       mainWindow.webContents.send(IPC_CHANNELS.TASK_ERROR, taskId, error, project?.id);
     }
   });
+
+  // ============================================
+  // Queue Events → Renderer
+  // ============================================
+
+  agentManager.on('queue-status-update', (projectId: string, status: { enabled: boolean; maxConcurrent: number; runningCount: number; backlogCount: number }) => {
+    const mainWindow = getMainWindow();
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.QUEUE_STATUS_UPDATE, projectId, status);
+    }
+  });
 }
