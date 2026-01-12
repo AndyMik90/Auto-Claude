@@ -13,8 +13,7 @@ Tests the worktree.py module functionality including:
 """
 
 import subprocess
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import pytest
