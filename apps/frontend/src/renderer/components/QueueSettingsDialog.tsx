@@ -48,6 +48,7 @@ import { saveQueueConfig } from '../stores/queue-store';
 import type { QueueConfig } from '../../shared/types';
 import { QUEUE_MIN_CONCURRENT, QUEUE_MAX_CONCURRENT } from '../../shared/constants/task';
 import { cn } from '../lib/utils';
+import { debugError } from '../../shared/utils/debug-logger';
 
 interface QueueSettingsDialogProps {
   /** Project ID for the queue settings */
@@ -132,7 +133,7 @@ export function QueueSettingsDialog({
       if (isMountedRef.current) {
         setSaveError(t('tasks:queue.settings.saveFailed'));
       }
-      console.error('[QueueSettingsDialog] Unexpected error saving queue config:', error);
+      debugError('[QueueSettingsDialog] Unexpected error saving queue config:', error);
     } finally {
       if (isMountedRef.current) {
         setIsSaving(false);

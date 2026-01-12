@@ -28,7 +28,7 @@ export function registerQueueHandlers(taskQueueManager: TaskQueueManager): void 
       if (!project?.settings.queueConfig) {
         return {
           success: true,
-          data: { enabled: false, maxConcurrent: QUEUE_MIN_CONCURRENT }
+          data: { enabled: false, maxConcurrent: QUEUE_MIN_CONCURRENT as 1 | 2 | 3 }
         };
       }
       return {

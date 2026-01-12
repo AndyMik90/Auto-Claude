@@ -23,6 +23,7 @@ import { projectStore } from './project-store';
 import { debugLog, debugError } from '../shared/utils/debug-logger';
 import { QUEUE_MIN_CONCURRENT, QUEUE_MAX_CONCURRENT } from '../shared/constants/task';
 import type { AgentManager } from './agent/agent-manager';
+import { findTaskAndProject } from './ipc-handlers/task/shared';
 
 /**
  * Priority weight for sorting tasks (higher = more important)
@@ -71,8 +72,6 @@ export class TaskQueueManager {
   private processingQueue = new Map<string, Promise<void>>();
   /** Bound handler for cleanup */
   private boundHandleTaskExit: (taskId: string, exitCode: number | null) => Promise<void>;
-  /** Fast lookup cache: taskId -> { task, project, projectId } */
-  private taskIndex = new Map<string, { task: Task; project: Project; projectId: string }>();
 
   constructor(agentManager: AgentManager, emitter: EventEmitter) {
     this.agentManager = agentManager;
@@ -160,7 +159,7 @@ export class TaskQueueManager {
     debugLog('[TaskQueueManager] Task exit:', { taskId, exitCode });
 
     // Find the project for this task
-    const { task, project } = this.findTaskAndProject(taskId);
+    const { task, project } = findTaskAndProject(taskId);
     if (!task || !project) {
       debugLog('[TaskQueueManager] Task or project not found, skipping queue check');
       return;
@@ -200,7 +199,7 @@ export class TaskQueueManager {
         debugError('[TaskQueueManager] Error in handleTaskExit promise chain:', error);
         // Emit queue status update even on error to keep state consistent
         this.emitQueueStatusUpdate(projectId);
-        throw error; // Re-throw for upstream handlers
+        // Don't re-throw since this is an event handler and would cause unhandled rejection
       }
     });
 
@@ -220,8 +219,9 @@ export class TaskQueueManager {
 
   /**
    * Trigger the next task from backlog for a project
+   * Private method to ensure it's only called through the promise chain
    */
-  async triggerNextTask(projectId: string): Promise<boolean> {
+  private async triggerNextTask(projectId: string): Promise<boolean> {
     const project = projectStore.getProject(projectId);
     if (!project) {
       debugError('[TaskQueueManager] Project not found:', projectId);
@@ -316,19 +316,19 @@ export class TaskQueueManager {
         }
 
         // Start tasks until we reach max concurrent or run out of backlog
-        const status = this.getQueueStatus(projectId);
-        const tasksToStart = Math.min(freshConfig.maxConcurrent - status.runningCount, status.backlogCount);
-
-        debugLog('[TaskQueueManager] Will start', tasksToStart, 'tasks from backlog');
-
-        for (let i = 0; i < tasksToStart; i++) {
+        // Re-check canStartMoreTasks() before each iteration to handle status updates
+        let startedCount = 0;
+        while (this.canStartMoreTasks(projectId)) {
           const started = await this.triggerNextTask(projectId);
           if (!started) {
             break; // Stop if we can't start more tasks
           }
+          startedCount++;
           // Small delay between starts to avoid overwhelming the system
           await new Promise(resolve => setTimeout(resolve, 100));
         }
+
+        debugLog('[TaskQueueManager] Started', startedCount, 'tasks from backlog');
 
         // Emit queue status update
         this.emitQueueStatusUpdate(projectId);
@@ -360,49 +360,5 @@ export class TaskQueueManager {
   private emitQueueStatusUpdate(projectId: string): void {
     const status = this.getQueueStatus(projectId);
     this.emitter.emit('queue-status-update', projectId, status);
-  }
-
-  /**
-   * Helper to find task and project by taskId
-   *
-   * Always rebuilds the index before lookup to ensure fresh data.
-   * This is O(n) but only occurs on task exit events (infrequent).
-   *
-   * Note: The cache is always rebuilt rather than invalidated because
-   * task changes can happen through multiple paths (IPC, events, direct
-   * store mutations) and tracking all invalidation points would be
-   * complex and error-prone. Since lookups only occur on task exit,
-   * the rebuild cost is acceptable for correctness and simplicity.
-   */
-  private findTaskAndProject(taskId: string): { task: Task | undefined; project: Project | undefined } {
-    // Always rebuild to ensure we have the latest task data
-    this.rebuildTaskIndex();
-
-    const cached = this.taskIndex.get(taskId);
-    if (cached) {
-      return { task: cached.task, project: cached.project };
-    }
-
-    return { task: undefined, project: undefined };
-  }
-
-  /**
-   * Rebuild the task index from current project store data.
-   * Called before each lookup to ensure fresh data.
-   */
-  private rebuildTaskIndex(): void {
-    this.taskIndex.clear();
-    const projects = projectStore.getProjects();
-
-    for (const project of projects) {
-      const tasks = projectStore.getTasks(project.id);
-      for (const task of tasks) {
-        // Index by both task.id and task.specId for lookup flexibility
-        this.taskIndex.set(task.id, { task, project, projectId: project.id });
-        if (task.specId) {
-          this.taskIndex.set(task.specId, { task, project, projectId: project.id });
-        }
-      }
-    }
   }
 }
