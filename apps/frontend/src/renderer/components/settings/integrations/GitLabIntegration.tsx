@@ -232,10 +232,14 @@ export function GitLabIntegration({
   };
 
   const handleStartOAuth = async () => {
+    console.log('[GitLabIntegration] handleStartOAuth called');
     const hostname = envConfig?.gitlabInstanceUrl?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    console.log('[GitLabIntegration] Calling startGitLabAuth with hostname:', hostname);
     const result = await window.electronAPI.startGitLabAuth(hostname);
+    console.log('[GitLabIntegration] startGitLabAuth result:', result);
 
     if (result.success) {
+      console.log('[GitLabIntegration] Auth started successfully, polling for completion...');
       // Poll for auth completion
       const checkAuth = async () => {
         const authResult = await window.electronAPI.checkGitLabAuth(hostname);
@@ -247,6 +251,8 @@ export function GitLabIntegration({
         }
       };
       setTimeout(checkAuth, 3000);
+    } else {
+      console.error('[GitLabIntegration] startGitLabAuth failed:', result.error);
     }
   };
 
@@ -273,10 +279,21 @@ export function GitLabIntegration({
       debugLog('installGitLabCli result:', result);
       if (result.success) {
         setGlabInstallSuccess(true);
-        // Re-check after 5 seconds to give user time to complete installation
+        // Re-check after 5 seconds to verify installation completed
         setTimeout(async () => {
           await handleRefreshGlab();
           setIsInstallingGlab(false);
+
+          // After refresh, check if glab was successfully installed
+          const checkResult = await window.electronAPI.checkGitLabCli();
+          debugLog('Post-install glab check:', checkResult);
+
+          if (checkResult.success && checkResult.data?.installed) {
+            debugLog('glab installed successfully, auto-triggering OAuth authentication');
+            // Automatically switch to OAuth mode and start authentication
+            setAuthMode('oauth');
+            await handleStartOAuth();
+          }
         }, 5000);
       } else {
         setIsInstallingGlab(false);
