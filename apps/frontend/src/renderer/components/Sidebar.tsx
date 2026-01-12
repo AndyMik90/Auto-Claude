@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
@@ -116,25 +116,39 @@ export function Sidebar({
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   // Load env config when project changes to check GitHub/GitLab enabled state
-  useEffect(() => {
-    const loadEnvConfig = async () => {
-      if (selectedProject?.autoBuildPath) {
-        try {
-          const result = await window.electronAPI.getProjectEnv(selectedProject.id);
-          if (result.success && result.data) {
-            setEnvConfig(result.data);
-          } else {
-            setEnvConfig(null);
-          }
-        } catch {
+  const loadEnvConfig = useCallback(async () => {
+    if (selectedProject?.autoBuildPath && selectedProject?.id) {
+      try {
+        const result = await window.electronAPI.getProjectEnv(selectedProject.id);
+        if (result.success && result.data) {
+          setEnvConfig(result.data);
+        } else {
           setEnvConfig(null);
         }
-      } else {
+      } catch {
         setEnvConfig(null);
       }
-    };
-    loadEnvConfig();
+    } else {
+      setEnvConfig(null);
+    }
   }, [selectedProject?.id, selectedProject?.autoBuildPath]);
+
+  useEffect(() => {
+    loadEnvConfig();
+  }, [loadEnvConfig]);
+
+  // Reload env config when settings change
+  // Listen for a custom event that fires when env config is updated
+  useEffect(() => {
+    const handleEnvConfigUpdate = () => {
+      loadEnvConfig();
+    };
+
+    window.addEventListener('env-config-updated', handleEnvConfigUpdate);
+    return () => {
+      window.removeEventListener('env-config-updated', handleEnvConfigUpdate);
+    };
+  }, [loadEnvConfig]);
 
   // Compute visible nav items based on GitHub/GitLab enabled state
   const visibleNavItems = useMemo(() => {

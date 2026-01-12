@@ -363,12 +363,17 @@ export function useProjectSettings(
   const updateEnvConfig = async (updates: Partial<ProjectEnvConfig>) => {
     if (envConfig) {
       const newConfig = { ...envConfig, ...updates };
+      console.log('[useProjectSettings.updateEnvConfig] Updating config:', updates);
 
       // Save to backend FIRST so disk is updated before effects run
       try {
         const result = await window.electronAPI.updateProjectEnv(project.id, newConfig);
         if (!result.success) {
           console.error('[useProjectSettings] Failed to auto-save env config:', result.error);
+        } else {
+          console.log('[useProjectSettings.updateEnvConfig] Successfully saved to backend');
+          // Notify other components (like Sidebar) that env config changed
+          window.dispatchEvent(new CustomEvent('env-config-updated'));
         }
       } catch (err) {
         console.error('[useProjectSettings] Error auto-saving env config:', err);
