@@ -458,12 +458,10 @@ def _try_smart_merge_inner(
 
         # Check if spec branch is behind and needs rebase
         # This must happen BEFORE conflict resolution to ensure merge succeeds
-        if (
-            git_conflicts.get("needs_rebase")
-            and git_conflicts.get("commits_behind", 0) > 0
-        ):
+        # Extract commits_behind once to avoid duplicate get() call (LOW: code deduplication)
+        commits_behind = git_conflicts.get("commits_behind", 0)
+        if git_conflicts.get("needs_rebase") and commits_behind > 0:
             base_branch = git_conflicts.get("base_branch", "main")
-            commits_behind = git_conflicts.get("commits_behind", 0)
 
             print()
             print_status(
@@ -765,9 +763,7 @@ def _rebase_spec_branch(
     If conflicts occur during rebase, the function aborts and returns False
     so that the caller can fall back to AI conflict resolution.
 
-    The rebase is performed from the spec branch worktree using:
-    1. Checkout the spec branch
-    2. Run: git rebase --strategy-option=theirs base_branch
+    The function preserves the current HEAD by restoring it after completion.
 
     Args:
         project_dir: The project directory
@@ -775,7 +771,7 @@ def _rebase_spec_branch(
         base_branch: The branch to rebase onto
 
     Returns:
-        True if rebase succeeded cleanly (spec branch moved forward),
+        True if rebase succeeded cleanly or branch was already up-to-date,
         False if rebase failed due to conflicts or other errors (aborted, no ref movement)
     """
     spec_branch = f"auto-claude/{spec_name}"
@@ -787,6 +783,12 @@ def _rebase_spec_branch(
         base_branch=base_branch,
     )
 
+    # Save original branch to restore after rebase (HIGH: prevents leaving repo on spec branch)
+    original_branch_result = run_git(
+        ["rev-parse", "--abbrev-ref", "HEAD"], cwd=project_dir
+    )
+    original_branch = original_branch_result.stdout.strip()
+
     # Save current state for recovery
     # Get the current commit of spec_branch before rebase
     before_commit_result = run_git(["rev-parse", spec_branch], cwd=project_dir)
@@ -796,87 +798,113 @@ def _rebase_spec_branch(
             "Could not get spec branch commit before rebase",
             stderr=before_commit_result.stderr,
         )
+        # Restore original branch before returning
+        run_git(["checkout", original_branch], cwd=project_dir)
         return False
     before_commit = before_commit_result.stdout.strip()
 
     print()
     print(muted(f"  Rebasing {spec_branch} onto {base_branch}..."))
 
-    # Perform the rebase using safe/standard invocation:
-    # 1. Checkout the spec branch first
-    # 2. Run standard rebase (no strategy options - let conflicts stop the rebase)
-    # If conflicts occur, we'll abort and let AI handle them during merge
-    checkout_result = run_git(["checkout", spec_branch], cwd=project_dir)
-    if checkout_result.returncode != 0:
-        debug_error(
-            MODULE,
-            "Could not checkout spec branch for rebase",
-            stderr=checkout_result.stderr,
-        )
-        return False
-
-    # Run standard rebase - will stop on conflicts so we can detect them
-    # Git syntax: git rebase [options] <upstream>
-    # where <upstream> is the branch to rebase onto
-    rebase_result = run_git(
-        ["rebase", base_branch],
-        cwd=project_dir,
-    )
-
-    if rebase_result.returncode != 0:
-        # Rebase failed - check if it was due to conflicts
-        status_result = run_git(["status", "--porcelain"], cwd=project_dir)
-
-        # Check for unmerged files (conflict markers)
-        has_unmerged = "U" in status_result.stdout
-
-        # Abort the rebase to return to clean state
-        run_git(["rebase", "--abort"], cwd=project_dir)
-
-        if has_unmerged:
-            # Rebase failed due to conflicts - we aborted, so no ref movement happened
-            debug_warning(
+    try:
+        # Perform the rebase using safe/standard invocation:
+        # 1. Checkout the spec branch first
+        # 2. Run standard rebase (no strategy options - let conflicts stop the rebase)
+        # If conflicts occur, we'll abort and let AI handle them during merge
+        checkout_result = run_git(["checkout", spec_branch], cwd=project_dir)
+        if checkout_result.returncode != 0:
+            debug_error(
                 MODULE,
-                "Rebase encountered conflicts - aborted, will use AI conflict resolution",
-                stderr=rebase_result.stderr[:200] if rebase_result.stderr else "",
+                "Could not checkout spec branch for rebase",
+                stderr=checkout_result.stderr,
             )
-            # Return False since we aborted - no rebase occurred, caller should use AI
             return False
 
-        # Other error (not conflict-related)
-        debug_error(
-            MODULE,
-            "Rebase failed with unexpected error",
-            stderr=rebase_result.stderr[:500] if rebase_result.stderr else "",
+        # Run standard rebase - will stop on conflicts so we can detect them
+        # Git syntax: git rebase [options] <upstream>
+        # where <upstream> is the branch to rebase onto
+        rebase_result = run_git(
+            ["rebase", base_branch],
+            cwd=project_dir,
         )
-        return False
 
-    # Rebase succeeded - verify spec_branch moved forward
-    after_commit_result = run_git(["rev-parse", spec_branch], cwd=project_dir)
+        if rebase_result.returncode != 0:
+            # Rebase failed - check if it was due to conflicts
+            status_result = run_git(["status", "--porcelain"], cwd=project_dir)
 
-    if after_commit_result.returncode == 0:
-        after_commit_hash = after_commit_result.stdout.strip()
+            # MEDIUM: Properly parse git status output for conflict markers
+            # Git status --porcelain uses two-character status codes:
+            # UU = both modified, AA = both added, DD = both deleted, etc.
+            has_unmerged = any(
+                line[:2] in ("UU", "AA", "DD", "AU", "UA", "DU", "UD", "UD")
+                for line in status_result.stdout.splitlines()
+                if len(line) >= 2
+            )
 
-        # Verify the branch actually moved (commit changed)
-        if before_commit == after_commit_hash:
-            debug_warning(
+            # Abort the rebase to return to clean state
+            # MEDIUM: Check abort result to detect inconsistent state
+            abort_result = run_git(["rebase", "--abort"], cwd=project_dir)
+            if abort_result.returncode != 0:
+                debug_error(
+                    MODULE,
+                    "Failed to abort rebase - repo may be in inconsistent state",
+                    stderr=abort_result.stderr,
+                )
+
+            if has_unmerged:
+                # Rebase failed due to conflicts - we aborted, so no ref movement happened
+                debug_warning(
+                    MODULE,
+                    "Rebase encountered conflicts - aborted, will use AI conflict resolution",
+                    stderr=rebase_result.stderr[:200] if rebase_result.stderr else "",
+                )
+                # Return False since we aborted - no rebase occurred, caller should use AI
+                return False
+
+            # Other error (not conflict-related)
+            debug_error(
                 MODULE,
-                "Rebase completed but spec branch commit unchanged",
+                "Rebase failed with unexpected error",
+                stderr=rebase_result.stderr[:500] if rebase_result.stderr else "",
+            )
+            return False
+
+        # Rebase succeeded - verify spec_branch moved forward
+        after_commit_result = run_git(["rev-parse", spec_branch], cwd=project_dir)
+
+        if after_commit_result.returncode == 0:
+            after_commit_hash = after_commit_result.stdout.strip()
+
+            # Verify the branch actually moved (commit changed)
+            if before_commit == after_commit_hash:
+                # MEDIUM: Branch already up-to-date is a success condition, not failure
+                debug(
+                    MODULE,
+                    "Branch already up-to-date, no rebase needed",
+                    before_commit=before_commit[:12],
+                )
+                return True
+
+            debug_success(
+                MODULE,
+                "Rebase succeeded",
                 before_commit=before_commit[:12],
+                after_commit=after_commit_hash[:12],
             )
-            return False
+            print(success(f"    ✓ Rebased onto {base_branch}"))
+            return True
 
-        debug_success(
-            MODULE,
-            "Rebase succeeded",
-            before_commit=before_commit[:12],
-            after_commit=after_commit_hash[:12],
-        )
-        print(success(f"    ✓ Rebased onto {base_branch}"))
-        return True
-
-    debug_error(MODULE, "Could not verify spec branch commit after rebase")
-    return False
+        debug_error(MODULE, "Could not verify spec branch commit after rebase")
+        return False
+    finally:
+        # HIGH: Always restore original branch, even on error/exception
+        restore_result = run_git(["checkout", original_branch], cwd=project_dir)
+        if restore_result.returncode != 0:
+            debug_error(
+                MODULE,
+                f"Failed to restore original branch '{original_branch}'",
+                stderr=restore_result.stderr,
+            )
 
 
 def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:

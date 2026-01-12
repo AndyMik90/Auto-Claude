@@ -877,19 +877,14 @@ class TestRebaseIntegration:
 class TestRebaseErrorHandling:
     """Tests for rebase error handling (ACS-224)."""
 
-    def test_rebase_handles_corrupt_repo_gracefully(self, temp_git_repo: Path):
-        """_rebase_spec_branch handles repository errors gracefully (ACS-224)."""
+    def test_rebase_handles_nonexistent_branch_gracefully(
+        self, temp_git_repo: Path
+    ):
+        """_rebase_spec_branch returns False for non-existent branch (ACS-224)."""
         from core.workspace import _rebase_spec_branch
 
-        # This test verifies the function doesn't crash on git errors
-        # The actual rebase will fail but should return False, not raise
-
-        # Create an invalid scenario by deleting the .git directory temporarily
-        git_dir = temp_git_repo / ".git"
-        git_backup = temp_git_repo / ".git.backup"
-
-        # Don't actually do this - it would break the test fixture
-        # Instead, test with a non-existent branch which is safer
+        # Test that attempting to rebase a non-existent branch returns False
+        # instead of crashing or raising an exception
         result = _rebase_spec_branch(
             temp_git_repo, "totally-fake-spec-branch", "main"
         )
