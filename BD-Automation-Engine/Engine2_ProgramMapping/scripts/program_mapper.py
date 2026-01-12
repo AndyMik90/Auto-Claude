@@ -9,9 +9,16 @@ Based on: program-mapping-skill.md
 import json
 import re
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import os
+
+# Try to import pandas for CSV loading
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
 
 # Try to import OpenAI for embeddings
 try:
@@ -19,6 +26,340 @@ try:
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
+
+
+# ============================================
+# FEDERAL PROGRAMS DATABASE
+# ============================================
+
+# Default path to Federal Programs CSV
+DEFAULT_FEDERAL_PROGRAMS_CSV = Path(__file__).parent.parent / "data" / "Federal Programs.csv"
+
+# Global cache for loaded programs database
+_FEDERAL_PROGRAMS_CACHE: Optional[pd.DataFrame] = None
+
+
+@dataclass
+class FederalProgram:
+    """Represents a federal program from the database."""
+    program_name: str
+    acronym: str = ""
+    agency_owner: str = ""
+    program_type: str = ""
+    key_locations: List[str] = field(default_factory=list)
+    keywords: List[str] = field(default_factory=list)
+    clearance_requirements: str = ""
+    prime_contractor: str = ""
+    priority_level: str = ""
+    typical_roles: List[str] = field(default_factory=list)
+
+
+def load_federal_programs(
+    csv_path: Optional[str] = None,
+    force_reload: bool = False
+) -> pd.DataFrame:
+    """
+    Load the Federal Programs database from CSV.
+
+    Args:
+        csv_path: Path to the Federal Programs CSV file. Uses default path if None.
+        force_reload: If True, reload from file even if cached.
+
+    Returns:
+        DataFrame containing federal programs data.
+
+    Raises:
+        ImportError: If pandas is not installed.
+        FileNotFoundError: If the CSV file does not exist.
+    """
+    global _FEDERAL_PROGRAMS_CACHE
+
+    if not HAS_PANDAS:
+        raise ImportError(
+            "pandas is required for loading Federal Programs database. "
+            "Install with: pip install pandas"
+        )
+
+    # Return cached data if available and not forcing reload
+    if _FEDERAL_PROGRAMS_CACHE is not None and not force_reload and csv_path is None:
+        return _FEDERAL_PROGRAMS_CACHE
+
+    # Determine path
+    if csv_path is None:
+        path = DEFAULT_FEDERAL_PROGRAMS_CSV
+    else:
+        path = Path(csv_path)
+
+    if not path.exists():
+        raise FileNotFoundError(f"Federal Programs CSV not found at: {path}")
+
+    # Load CSV with proper encoding handling
+    try:
+        df = pd.read_csv(path, encoding='utf-8-sig')
+    except UnicodeDecodeError:
+        df = pd.read_csv(path, encoding='latin-1')
+
+    # Clean column names (remove leading/trailing whitespace)
+    df.columns = df.columns.str.strip()
+
+    # Cache if using default path
+    if csv_path is None:
+        _FEDERAL_PROGRAMS_CACHE = df
+
+    return df
+
+
+def get_program_count(df: Optional[pd.DataFrame] = None) -> int:
+    """
+    Get the number of programs in the database.
+
+    Args:
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        Number of programs in the database.
+    """
+    if df is None:
+        df = load_federal_programs()
+    return len(df)
+
+
+def parse_keywords_field(keywords_str: str) -> List[str]:
+    """
+    Parse the Keywords/Signals field from the CSV.
+
+    The field may contain semicolon-separated values, quoted strings,
+    or arrays formatted as strings.
+
+    Args:
+        keywords_str: Raw keywords string from CSV.
+
+    Returns:
+        List of individual keyword strings.
+    """
+    if pd.isna(keywords_str) or not keywords_str:
+        return []
+
+    keywords_str = str(keywords_str)
+
+    # Handle quoted strings with semicolons
+    keywords = []
+
+    # Split by semicolon but respect quoted strings
+    parts = re.split(r';\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', keywords_str)
+
+    for part in parts:
+        # Remove surrounding quotes and whitespace
+        cleaned = part.strip().strip('"').strip("'").strip()
+        if cleaned:
+            keywords.append(cleaned)
+
+    return keywords
+
+
+def parse_locations_field(locations_str: str) -> List[str]:
+    """
+    Parse the Key Locations field from the CSV.
+
+    The field may contain semicolon-separated locations.
+
+    Args:
+        locations_str: Raw locations string from CSV.
+
+    Returns:
+        List of individual location strings.
+    """
+    if pd.isna(locations_str) or not locations_str:
+        return []
+
+    locations_str = str(locations_str)
+
+    # Split by semicolons
+    locations = [loc.strip() for loc in locations_str.split(';')]
+
+    # Remove empty strings and clean up
+    return [loc for loc in locations if loc]
+
+
+def get_program_by_name(
+    program_name: str,
+    df: Optional[pd.DataFrame] = None
+) -> Optional[FederalProgram]:
+    """
+    Get a federal program by its name.
+
+    Args:
+        program_name: Name of the program to find.
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        FederalProgram object if found, None otherwise.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    # Case-insensitive search
+    matches = df[df['Program Name'].str.lower() == program_name.lower()]
+
+    if matches.empty:
+        return None
+
+    row = matches.iloc[0]
+    return _row_to_program(row)
+
+
+def get_program_by_acronym(
+    acronym: str,
+    df: Optional[pd.DataFrame] = None
+) -> Optional[FederalProgram]:
+    """
+    Get a federal program by its acronym.
+
+    Args:
+        acronym: Acronym of the program to find.
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        FederalProgram object if found, None otherwise.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    # Case-insensitive search
+    if 'Acronym' not in df.columns:
+        return None
+
+    matches = df[df['Acronym'].str.lower() == acronym.lower()]
+
+    if matches.empty:
+        return None
+
+    row = matches.iloc[0]
+    return _row_to_program(row)
+
+
+def _row_to_program(row: pd.Series) -> FederalProgram:
+    """
+    Convert a DataFrame row to a FederalProgram object.
+
+    Args:
+        row: pandas Series representing a program row.
+
+    Returns:
+        FederalProgram object.
+    """
+    def safe_get(col: str, default: str = "") -> str:
+        val = row.get(col, default)
+        return str(val) if pd.notna(val) else default
+
+    return FederalProgram(
+        program_name=safe_get('Program Name'),
+        acronym=safe_get('Acronym'),
+        agency_owner=safe_get('Agency Owner'),
+        program_type=safe_get('Program Type'),
+        key_locations=parse_locations_field(safe_get('Key Locations')),
+        keywords=parse_keywords_field(safe_get('Keywords/Signals')),
+        clearance_requirements=safe_get('Clearance Requirements'),
+        prime_contractor=safe_get('Prime Contractor'),
+        priority_level=safe_get('Priority Level'),
+        typical_roles=parse_keywords_field(safe_get('Typical Roles')),
+    )
+
+
+def get_all_programs(df: Optional[pd.DataFrame] = None) -> List[FederalProgram]:
+    """
+    Get all programs from the database as FederalProgram objects.
+
+    Args:
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        List of FederalProgram objects.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    programs = []
+    for _, row in df.iterrows():
+        programs.append(_row_to_program(row))
+
+    return programs
+
+
+def build_keyword_index(df: Optional[pd.DataFrame] = None) -> Dict[str, List[str]]:
+    """
+    Build an index mapping keywords to program names.
+
+    Args:
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        Dict mapping lowercase keywords to list of program names.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    keyword_index: Dict[str, List[str]] = {}
+
+    for _, row in df.iterrows():
+        program_name = row.get('Program Name', '')
+        if pd.isna(program_name) or not program_name:
+            continue
+
+        keywords_raw = row.get('Keywords/Signals', '')
+        keywords = parse_keywords_field(keywords_raw)
+
+        # Add program name itself as a keyword
+        keywords.append(str(program_name))
+
+        # Add acronym as a keyword
+        acronym = row.get('Acronym', '')
+        if pd.notna(acronym) and acronym:
+            keywords.append(str(acronym))
+
+        for kw in keywords:
+            kw_lower = kw.lower().strip()
+            if kw_lower:
+                if kw_lower not in keyword_index:
+                    keyword_index[kw_lower] = []
+                if program_name not in keyword_index[kw_lower]:
+                    keyword_index[kw_lower].append(program_name)
+
+    return keyword_index
+
+
+def build_location_index(df: Optional[pd.DataFrame] = None) -> Dict[str, List[str]]:
+    """
+    Build an index mapping locations to program names.
+
+    Args:
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        Dict mapping lowercase location strings to list of program names.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    location_index: Dict[str, List[str]] = {}
+
+    for _, row in df.iterrows():
+        program_name = row.get('Program Name', '')
+        if pd.isna(program_name) or not program_name:
+            continue
+
+        locations_raw = row.get('Key Locations', '')
+        locations = parse_locations_field(locations_raw)
+
+        for loc in locations:
+            loc_lower = loc.lower().strip()
+            if loc_lower:
+                if loc_lower not in location_index:
+                    location_index[loc_lower] = []
+                if program_name not in location_index[loc_lower]:
+                    location_index[loc_lower].append(program_name)
+
+    return location_index
 
 
 # ============================================
