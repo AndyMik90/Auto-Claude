@@ -64,8 +64,11 @@ interface QueueSettingsDialogProps {
   onSaved?: () => void;
 }
 
-/** Preset values for max concurrent tasks */
-const CONCURRENT_PRESETS: readonly (1 | 2 | 3)[] = [1, 2, 3] as const;
+/** Preset values for max concurrent tasks - derived from min/max constants */
+const CONCURRENT_PRESETS = Array.from(
+  { length: QUEUE_MAX_CONCURRENT - QUEUE_MIN_CONCURRENT + 1 },
+  (_, i) => QUEUE_MIN_CONCURRENT + i
+) as readonly number[];
 
 export function QueueSettingsDialog({
   projectId,
@@ -196,12 +199,12 @@ export function QueueSettingsDialog({
 
                 {/* Preset buttons for max concurrent tasks */}
                 <div className="space-y-3 pt-1">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${CONCURRENT_PRESETS.length}, minmax(0, 1fr))` }}>
                     {CONCURRENT_PRESETS.map((value) => (
                       <button
                         key={value}
                         type="button"
-                        onClick={() => setMaxConcurrent(value)}
+                        onClick={() => setMaxConcurrent(value as 1 | 2 | 3)}
                         className={cn(
                           'flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
