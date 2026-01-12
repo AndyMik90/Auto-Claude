@@ -223,18 +223,40 @@ def _map_raw_to_standardized(raw_job: Dict) -> Dict:
     """
     standardized = {}
 
-    # Field mapping from raw to standardized
+    # Field mapping from raw to standardized (supports multiple scraper formats)
     field_map = {
+        # Title variations
         'title': 'Job Title/Position',
+        'jobTitle': 'Job Title/Position',
+        'Job Title': 'Job Title/Position',
+        # Date variations
         'datePosted': 'Date Posted',
+        'date_posted': 'Date Posted',
+        # Location
         'location': 'Location',
+        # Description variations
         'description': 'Position Overview',
+        'job_description': 'Position Overview',
+        # Clearance variations
         'clearance': 'Security Clearance',
+        'securityClearance': 'Security Clearance',
+        'security_clearance': 'Security Clearance',
+        # Duration/type variations
         'jobType': 'Project Duration',
+        'duration': 'Project Duration',
+        'employmentType': 'Position Details',
+        # Pay variations
         'salary': 'Rate/Pay Rate',
+        'payRate': 'Rate/Pay Rate',
+        'pay_rate': 'Rate/Pay Rate',
+        # Company
         'company': 'Prime Contractor',
+        # Tech
         'technologies': 'Technologies',
+        # URL
         'url': 'Source URL',
+        # Job number
+        'jobNumber': 'Additional Info',
     }
 
     for raw_field, std_field in field_map.items():
