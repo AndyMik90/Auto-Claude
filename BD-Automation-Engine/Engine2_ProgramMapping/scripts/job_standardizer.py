@@ -378,50 +378,389 @@ def standardize_job_with_llm(
 # VALIDATION
 # ============================================
 
-def validate_standardized_job(job: Dict) -> Tuple[bool, List[str]]:
+# Valid standardized clearance levels
+VALID_CLEARANCES = [
+    'TS/SCI w/ Full Scope Poly',
+    'TS/SCI w/ CI Poly',
+    'TS/SCI w/ Poly',
+    'TS/SCI',
+    'Top Secret',
+    'Secret',
+    'Public Trust',
+    'None',
+]
+
+# Valid match types for enrichment
+VALID_MATCH_TYPES = ['direct', 'fuzzy', 'inferred']
+
+# Valid priority tiers
+VALID_TIERS = ['Hot', 'Warm', 'Cold']
+
+
+def _validate_required_fields(job: Dict, errors: List[str]) -> None:
+    """Validate the 6 required fields."""
+    # Job Title/Position - must be non-empty string
+    title = job.get('Job Title/Position')
+    if not title or not isinstance(title, str):
+        errors.append("Missing required field: Job Title/Position")
+    elif len(title.strip()) < 3:
+        errors.append("Job Title/Position is too short (minimum 3 characters)")
+
+    # Date Posted - must be YYYY-MM-DD format
+    date_posted = job.get('Date Posted')
+    if not date_posted:
+        errors.append("Missing required field: Date Posted")
+    elif isinstance(date_posted, str):
+        try:
+            datetime.strptime(date_posted, '%Y-%m-%d')
+        except ValueError:
+            errors.append("Date Posted must be YYYY-MM-DD format")
+
+    # Location - must be non-empty string (City, State or special values)
+    location = job.get('Location')
+    if not location or not isinstance(location, str):
+        errors.append("Missing required field: Location")
+    elif len(location.strip()) < 2:
+        errors.append("Location is too short")
+
+    # Position Overview - 100-200 words (warn if outside range)
+    overview = job.get('Position Overview', '')
+    if not overview or not isinstance(overview, str):
+        errors.append("Missing required field: Position Overview")
+    else:
+        word_count = len(overview.split())
+        if word_count < 50:
+            errors.append(f"Position Overview too short ({word_count} words, need 100+)")
+        elif word_count > 300:
+            errors.append(f"Position Overview too long ({word_count} words, max 200)")
+
+    # Key Responsibilities - array of 5-15 bullet points
+    responsibilities = job.get('Key Responsibilities')
+    if not isinstance(responsibilities, list):
+        errors.append("Key Responsibilities must be an array")
+    elif len(responsibilities) < 3:
+        errors.append("Key Responsibilities should have at least 3 items")
+    elif len(responsibilities) > 20:
+        errors.append("Key Responsibilities has too many items (max 20)")
+    else:
+        # Validate each item is a non-empty string
+        for i, item in enumerate(responsibilities):
+            if not isinstance(item, str) or not item.strip():
+                errors.append(f"Key Responsibilities[{i}] must be a non-empty string")
+                break
+
+    # Required Qualifications - array of 5-20 bullet points
+    qualifications = job.get('Required Qualifications')
+    if not isinstance(qualifications, list):
+        errors.append("Required Qualifications must be an array")
+    elif len(qualifications) < 3:
+        errors.append("Required Qualifications should have at least 3 items")
+    elif len(qualifications) > 30:
+        errors.append("Required Qualifications has too many items (max 30)")
+    else:
+        # Validate each item is a non-empty string
+        for i, item in enumerate(qualifications):
+            if not isinstance(item, str) or not item.strip():
+                errors.append(f"Required Qualifications[{i}] must be a non-empty string")
+                break
+
+
+def _validate_intelligence_fields(job: Dict, errors: List[str]) -> None:
+    """Validate the 8 intelligence fields."""
+    # Security Clearance - standardized string or null
+    clearance = job.get('Security Clearance')
+    if clearance is not None:
+        if not isinstance(clearance, str):
+            errors.append("Security Clearance must be a string or null")
+        elif clearance not in VALID_CLEARANCES:
+            # Allow variations but log as warning (not error)
+            # Check if it's at least a reasonable clearance string
+            clearance_lower = clearance.lower()
+            has_valid_keyword = any(kw in clearance_lower for kw in ['secret', 'ts', 'sci', 'poly', 'trust', 'none'])
+            if not has_valid_keyword:
+                errors.append(f"Security Clearance '{clearance}' is not a recognized format")
+
+    # Program Hints - array of strings or null
+    program_hints = job.get('Program Hints')
+    if program_hints is not None:
+        if not isinstance(program_hints, list):
+            errors.append("Program Hints must be an array or null")
+        else:
+            for i, hint in enumerate(program_hints):
+                if not isinstance(hint, str):
+                    errors.append(f"Program Hints[{i}] must be a string")
+                    break
+
+    # Client Hints - array of strings or null
+    client_hints = job.get('Client Hints')
+    if client_hints is not None:
+        if not isinstance(client_hints, list):
+            errors.append("Client Hints must be an array or null")
+        else:
+            for i, hint in enumerate(client_hints):
+                if not isinstance(hint, str):
+                    errors.append(f"Client Hints[{i}] must be a string")
+                    break
+
+    # Contract Vehicle Hints - array of strings or null
+    contract_hints = job.get('Contract Vehicle Hints')
+    if contract_hints is not None:
+        if not isinstance(contract_hints, list):
+            errors.append("Contract Vehicle Hints must be an array or null")
+        else:
+            for i, hint in enumerate(contract_hints):
+                if not isinstance(hint, str):
+                    errors.append(f"Contract Vehicle Hints[{i}] must be a string")
+                    break
+
+    # Prime Contractor - string or null
+    prime = job.get('Prime Contractor')
+    if prime is not None and not isinstance(prime, str):
+        errors.append("Prime Contractor must be a string or null")
+
+    # Recruiter Contact - object with name/email/phone or null
+    recruiter = job.get('Recruiter Contact')
+    if recruiter is not None:
+        if not isinstance(recruiter, dict):
+            errors.append("Recruiter Contact must be an object or null")
+        else:
+            # Validate email format if present
+            email = recruiter.get('email')
+            if email and isinstance(email, str):
+                if '@' not in email or '.' not in email:
+                    errors.append("Recruiter Contact email is not valid format")
+
+    # Technologies - array of strings (can be empty but should exist)
+    technologies = job.get('Technologies')
+    if technologies is not None:
+        if not isinstance(technologies, list):
+            errors.append("Technologies must be an array or null")
+        else:
+            for i, tech in enumerate(technologies):
+                if not isinstance(tech, str):
+                    errors.append(f"Technologies[{i}] must be a string")
+                    break
+
+    # Certifications Required - array of strings or null
+    certifications = job.get('Certifications Required')
+    if certifications is not None:
+        if not isinstance(certifications, list):
+            errors.append("Certifications Required must be an array or null")
+        else:
+            for i, cert in enumerate(certifications):
+                if not isinstance(cert, str):
+                    errors.append(f"Certifications Required[{i}] must be a string")
+                    break
+
+
+def _validate_optional_fields(job: Dict, errors: List[str]) -> None:
+    """Validate the 4 optional fields."""
+    # Project Duration - string or null
+    duration = job.get('Project Duration')
+    if duration is not None and not isinstance(duration, str):
+        errors.append("Project Duration must be a string or null")
+
+    # Rate/Pay Rate - string or null
+    rate = job.get('Rate/Pay Rate')
+    if rate is not None and not isinstance(rate, str):
+        errors.append("Rate/Pay Rate must be a string or null")
+
+    # Position Details - string or null
+    details = job.get('Position Details')
+    if details is not None and not isinstance(details, str):
+        errors.append("Position Details must be a string or null")
+
+    # Additional Information - string or null
+    additional = job.get('Additional Information')
+    if additional is not None and not isinstance(additional, str):
+        errors.append("Additional Information must be a string or null")
+
+
+def _validate_enrichment_fields(job: Dict, errors: List[str]) -> None:
+    """Validate the 6 enrichment fields (if present)."""
+    # Matched Program - string or null
+    matched = job.get('Matched Program')
+    if matched is not None and not isinstance(matched, str):
+        errors.append("Matched Program must be a string or null")
+
+    # Match Confidence - float 0.0-1.0 or null
+    confidence = job.get('Match Confidence')
+    if confidence is not None:
+        if not isinstance(confidence, (int, float)):
+            errors.append("Match Confidence must be a number or null")
+        elif confidence < 0.0 or confidence > 1.0:
+            errors.append(f"Match Confidence must be 0.0-1.0, got {confidence}")
+
+    # Match Type - direct/fuzzy/inferred or null
+    match_type = job.get('Match Type')
+    if match_type is not None:
+        if not isinstance(match_type, str):
+            errors.append("Match Type must be a string or null")
+        elif match_type not in VALID_MATCH_TYPES:
+            errors.append(f"Match Type must be one of {VALID_MATCH_TYPES}, got '{match_type}'")
+
+    # BD Priority Score - int 0-100 or null
+    bd_score = job.get('BD Priority Score')
+    if bd_score is not None:
+        if not isinstance(bd_score, (int, float)):
+            errors.append("BD Priority Score must be a number or null")
+        elif bd_score < 0 or bd_score > 100:
+            errors.append(f"BD Priority Score must be 0-100, got {bd_score}")
+
+    # Priority Tier - Hot/Warm/Cold or null
+    tier = job.get('Priority Tier')
+    if tier is not None:
+        if not isinstance(tier, str):
+            errors.append("Priority Tier must be a string or null")
+        else:
+            # Handle tier with emoji prefix (e.g., "🔥 Hot")
+            tier_clean = tier.split()[-1] if tier else tier
+            if tier_clean not in VALID_TIERS:
+                errors.append(f"Priority Tier must be one of {VALID_TIERS}, got '{tier}'")
+
+    # Match Signals - array of strings or null
+    signals = job.get('Match Signals')
+    if signals is not None:
+        if not isinstance(signals, list):
+            errors.append("Match Signals must be an array or null")
+        else:
+            for i, signal in enumerate(signals):
+                if not isinstance(signal, str):
+                    errors.append(f"Match Signals[{i}] must be a string")
+                    break
+
+
+def _validate_metadata_fields(job: Dict, errors: List[str]) -> None:
+    """Validate the 4 metadata fields (if present)."""
+    # Source - non-empty string
+    source = job.get('Source')
+    if source is not None:
+        if not isinstance(source, str):
+            errors.append("Source must be a string")
+        elif not source.strip():
+            errors.append("Source cannot be empty")
+
+    # Source URL - valid URL string
+    url = job.get('Source URL')
+    if url is not None:
+        if not isinstance(url, str):
+            errors.append("Source URL must be a string")
+        elif url and not (url.startswith('http://') or url.startswith('https://')):
+            errors.append("Source URL must be a valid HTTP/HTTPS URL")
+
+    # Scraped At - ISO timestamp string
+    scraped_at = job.get('Scraped At')
+    if scraped_at is not None:
+        if not isinstance(scraped_at, str):
+            errors.append("Scraped At must be a string")
+        else:
+            # Try to parse ISO format
+            try:
+                datetime.fromisoformat(scraped_at.replace('Z', '+00:00'))
+            except ValueError:
+                errors.append("Scraped At must be ISO timestamp format")
+
+    # Processed At - ISO timestamp string
+    processed_at = job.get('Processed At')
+    if processed_at is not None:
+        if not isinstance(processed_at, str):
+            errors.append("Processed At must be a string")
+        else:
+            try:
+                datetime.fromisoformat(processed_at.replace('Z', '+00:00'))
+            except ValueError:
+                errors.append("Processed At must be ISO timestamp format")
+
+
+def validate_standardized_job(
+    job: Dict,
+    validate_enrichment: bool = False,
+    validate_metadata: bool = False,
+    strict: bool = False
+) -> Tuple[bool, List[str]]:
     """
-    Validate that standardized job has all required fields.
+    Validate that standardized job has all required fields and proper formats.
+
+    Validates the 18-field extraction schema:
+    - 6 Required Fields (always validated)
+    - 8 Intelligence Fields (always validated)
+    - 4 Optional Fields (always validated)
+
+    Optionally validates:
+    - 6 Enrichment Fields (when validate_enrichment=True)
+    - 4 Metadata Fields (when validate_metadata=True)
 
     Args:
         job: Standardized job dictionary
+        validate_enrichment: Also validate enrichment fields (Matched Program, etc.)
+        validate_metadata: Also validate metadata fields (Source, Source URL, etc.)
+        strict: If True, treat warnings as errors
 
     Returns:
         Tuple of (is_valid, list_of_errors)
     """
     errors = []
 
-    # Check required fields
-    for field in REQUIRED_FIELDS:
-        if not job.get(field):
-            errors.append(f"Missing required field: {field}")
+    # Validate required fields (6)
+    _validate_required_fields(job, errors)
 
-    # Validate arrays
-    if not isinstance(job.get('Key Responsibilities'), list):
-        errors.append("Key Responsibilities must be an array")
-    elif len(job.get('Key Responsibilities', [])) < 3:
-        errors.append("Key Responsibilities should have at least 3 items")
+    # Validate intelligence fields (8)
+    _validate_intelligence_fields(job, errors)
 
-    if not isinstance(job.get('Required Qualifications'), list):
-        errors.append("Required Qualifications must be an array")
-    elif len(job.get('Required Qualifications', [])) < 3:
-        errors.append("Required Qualifications should have at least 3 items")
+    # Validate optional fields (4)
+    _validate_optional_fields(job, errors)
 
-    # Validate date format
-    if job.get('Date Posted'):
-        try:
-            datetime.strptime(job['Date Posted'], '%Y-%m-%d')
-        except ValueError:
-            errors.append("Date Posted must be YYYY-MM-DD format")
+    # Optionally validate enrichment fields (6)
+    if validate_enrichment:
+        _validate_enrichment_fields(job, errors)
 
-    # Validate Position Overview length
-    overview = job.get('Position Overview', '')
-    word_count = len(overview.split())
-    if word_count < 50:
-        errors.append(f"Position Overview too short ({word_count} words, need 100+)")
-    elif word_count > 300:
-        errors.append(f"Position Overview too long ({word_count} words, max 200)")
+    # Optionally validate metadata fields (4)
+    if validate_metadata:
+        _validate_metadata_fields(job, errors)
 
     return len(errors) == 0, errors
+
+
+def validate_job_batch(
+    jobs: List[Dict],
+    validate_enrichment: bool = False,
+    validate_metadata: bool = False
+) -> Tuple[int, int, List[Dict]]:
+    """
+    Validate a batch of standardized jobs.
+
+    Args:
+        jobs: List of standardized job dictionaries
+        validate_enrichment: Also validate enrichment fields
+        validate_metadata: Also validate metadata fields
+
+    Returns:
+        Tuple of (valid_count, invalid_count, list_of_validation_results)
+    """
+    results = []
+    valid_count = 0
+    invalid_count = 0
+
+    for i, job in enumerate(jobs):
+        is_valid, errors = validate_standardized_job(
+            job,
+            validate_enrichment=validate_enrichment,
+            validate_metadata=validate_metadata
+        )
+
+        if is_valid:
+            valid_count += 1
+        else:
+            invalid_count += 1
+
+        results.append({
+            'index': i,
+            'is_valid': is_valid,
+            'errors': errors,
+            'job_title': job.get('Job Title/Position', 'Unknown')
+        })
+
+    return valid_count, invalid_count, results
 
 
 # ============================================
