@@ -163,6 +163,16 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
     phaseThinking: AUTO_PHASE_THINKING
   },
   {
+    id: 'opus_discovery',
+    name: 'Opus Discovery',
+    description: 'Ultra-deep codebase exploration with maximum reasoning depth',
+    model: 'opus',
+    thinkingLevel: 'ultrathink',
+    icon: 'Telescope',
+    phaseModels: COMPLEX_PHASE_MODELS,
+    phaseThinking: COMPLEX_PHASE_THINKING
+  },
+  {
     id: 'complex',
     name: 'Complex Tasks',
     description: 'For intricate, multi-step implementations requiring deep analysis',

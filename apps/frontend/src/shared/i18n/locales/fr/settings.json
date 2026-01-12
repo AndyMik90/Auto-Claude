@@ -509,6 +509,10 @@
         "name": "Puppeteer",
         "description": "Automatisation du navigateur web pour les tests"
       },
+      "playwright": {
+        "name": "Playwright",
+        "description": "Tests E2E modernes et automatisation du navigateur"
+      },
       "autoClaude": {
         "name": "Outils Auto-Claude",
         "description": "Suivi de la progression du build"

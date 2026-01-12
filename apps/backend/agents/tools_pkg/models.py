@@ -436,7 +436,8 @@ def get_required_mcp_servers(
         linear_enabled: Whether Linear integration is enabled for this project
         mcp_config: Per-project MCP server toggles from .auto-claude/.env
                    Keys: CONTEXT7_ENABLED, LINEAR_MCP_ENABLED, ELECTRON_MCP_ENABLED,
-                         PUPPETEER_MCP_ENABLED, AGENT_MCP_<agent>_ADD/REMOVE
+                         PUPPETEER_MCP_ENABLED, PLAYWRIGHT_MCP_ENABLED,
+                         AGENT_MCP_<agent>_ADD/REMOVE
 
     Returns:
         List of MCP server names to start
@@ -471,7 +472,7 @@ def get_required_mcp_servers(
             is_electron = project_capabilities.get("is_electron", False)
             is_web_frontend = project_capabilities.get("is_web_frontend", False)
 
-            # Check per-project overrides (default false for both MCP servers)
+            # Check per-project overrides (default false for MCP servers)
             electron_enabled = mcp_config.get("ELECTRON_MCP_ENABLED", "false")
             puppeteer_enabled = mcp_config.get("PUPPETEER_MCP_ENABLED", "false")
 
@@ -488,9 +489,12 @@ def get_required_mcp_servers(
                     browser_tool_added = True
 
         # Playwright: Use as default browser automation if no other browser tool enabled
-        # Playwright is built-in (native Python), always available, requires no MCP server
-        if not browser_tool_added and is_playwright_enabled():
-            servers.append("playwright")
+        # Playwright is built-in (native Python), always available via SDK MCP
+        # Can be explicitly enabled via project config or global env var
+        if not browser_tool_added:
+            playwright_from_config = mcp_config.get("PLAYWRIGHT_MCP_ENABLED", "false")
+            if str(playwright_from_config).lower() == "true" or is_playwright_enabled():
+                servers.append("playwright")
 
     # Filter graphiti if not enabled
     if "graphiti" in servers:

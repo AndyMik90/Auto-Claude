@@ -338,6 +338,20 @@ const MCP_SERVERS: Record<string, { name: string; description: string; icon: Rea
       'mcp__puppeteer__puppeteer_evaluate',
     ],
   },
+  playwright: {
+    name: 'Playwright',
+    description: 'Modern E2E testing and browser automation (native Python integration).',
+    icon: Terminal,
+    tools: [
+      'playwright_navigate',
+      'playwright_screenshot',
+      'playwright_click',
+      'playwright_fill',
+      'playwright_assert',
+      'playwright_get_console',
+      'playwright_create_test',
+    ],
+  },
 };
 
 // All available MCP servers that can be added to agents
@@ -347,6 +361,7 @@ const ALL_MCP_SERVERS = [
   'linear',
   'electron',
   'puppeteer',
+  'playwright',
   'auto-claude'
 ] as const;
 
@@ -409,6 +424,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
         case 'linear': return mcpServerStates.linearMcpEnabled !== false;
         case 'electron': return mcpServerStates.electronEnabled !== false;
         case 'puppeteer': return mcpServerStates.puppeteerEnabled !== false;
+        case 'playwright': return mcpServerStates.playwrightEnabled !== false;
         default: return true;
       }
     });
@@ -1187,7 +1203,7 @@ export function AgentTools() {
                   </div>
 
                   {/* Puppeteer */}
-                  <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center justify-between py-2 border-b border-border">
                     <div className="flex items-center gap-3">
                       <Globe className="h-4 w-4 text-muted-foreground" />
                       <div>
@@ -1198,6 +1214,21 @@ export function AgentTools() {
                     <Switch
                       checked={mcpServers.puppeteerEnabled === true}
                       onCheckedChange={(checked) => updateMcpServer('puppeteerEnabled', checked)}
+                    />
+                  </div>
+
+                  {/* Playwright */}
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center gap-3">
+                      <Terminal className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <span className="text-sm font-medium">{t('settings:mcp.servers.playwright.name')}</span>
+                        <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.playwright.description')}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={mcpServers.playwrightEnabled === true}
+                      onCheckedChange={(checked) => updateMcpServer('playwrightEnabled', checked)}
                     />
                   </div>
                 </div>
