@@ -45,6 +45,7 @@ export function Combobox({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const listboxId = React.useId();
 
   // Find the selected option's label
   const selectedOption = options.find((opt) => opt.value === value);
@@ -89,6 +90,7 @@ export function Combobox({
           role="combobox"
           aria-expanded={open}
           aria-haspopup="listbox"
+          aria-controls={open ? listboxId : undefined}
           id={id}
           className={cn(
             'flex h-10 w-full items-center justify-between rounded-lg',
@@ -131,7 +133,7 @@ export function Combobox({
 
         {/* Options list */}
         <ScrollArea className="max-h-[300px]">
-          <div className="p-1">
+          <div id={listboxId} role="listbox" className="p-1">
             {filteredOptions.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 {emptyMessage}

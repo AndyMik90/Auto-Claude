@@ -27,6 +27,31 @@ import { useProjectStore } from '../../stores/project-store';
 // Special value to represent "use project default" since Radix UI Select doesn't allow empty string values
 const PROJECT_DEFAULT_BRANCH = '__project_default__';
 
+/**
+ * Sanitizes a string into a valid worktree/branch name.
+ * - Converts to lowercase
+ * - Replaces spaces and invalid characters with hyphens
+ * - Collapses consecutive hyphens/dots
+ * - Trims leading/trailing hyphens and dots
+ */
+function sanitizeWorktreeName(value: string, maxLength?: number): string {
+  let sanitized = value
+    .toLowerCase()
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/[^a-z0-9._-]/g, '-') // Replace other invalid chars with hyphens
+    .replace(/-{2,}/g, '-') // Collapse consecutive hyphens
+    .replace(/\.{2,}/g, '.') // Collapse consecutive dots
+    .replace(/^[.-]+|[.-]+$/g, ''); // Trim leading and trailing hyphens/dots
+
+  if (maxLength) {
+    sanitized = sanitized.slice(0, maxLength);
+    // Trim trailing hyphens/dots again after slicing
+    sanitized = sanitized.replace(/[.-]+$/, '');
+  }
+
+  return sanitized;
+}
+
 interface CreateWorktreeDialogProps {
   /** Whether the dialog is open */
   open: boolean;
@@ -100,15 +125,7 @@ export function CreateWorktreeDialog({
   }, [open, projectPath, project?.settings?.mainBranch]);
 
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    // Auto-sanitize: lowercase, allow letters, numbers, dashes, underscores, and dots
-    // Replace spaces with dashes, remove other invalid characters
-    const sanitized = e.target.value
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9._-]/g, '')
-      .replace(/\.{2,}/g, '.')
-      .replace(/-{2,}/g, '-')
-      .replace(/^[.-]+/, '');
+    const sanitized = sanitizeWorktreeName(e.target.value);
     setName(sanitized);
     setError(null);
   }, []);
@@ -123,13 +140,7 @@ export function CreateWorktreeDialog({
     if (!name) {
       const task = backlogTasks.find(t => t.id === taskId);
       if (task) {
-        // Convert task title to valid name - allow dots and underscores
-        const autoName = task.title
-          .toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^a-z0-9._-]/g, '')
-          .replace(/^[.-]+/, '')
-          .slice(0, 40);
+        const autoName = sanitizeWorktreeName(task.title, 40);
         setName(autoName);
       }
     }
@@ -142,8 +153,8 @@ export function CreateWorktreeDialog({
     }
 
     // Validate name format - allow letters, numbers, dashes, underscores, and dots
-    // Must start with letter or number, must not end with dot
-    if (!/^[a-z0-9][a-z0-9._-]*$/.test(name) || name.endsWith('.')) {
+    // Must start with letter or number, must not end with dot, must not contain '..' (invalid for Git)
+    if (!/^[a-z0-9][a-z0-9._-]*$/.test(name) || name.endsWith('.') || name.includes('..')) {
       setError(t('terminal:worktree.nameInvalid'));
       return;
     }
@@ -193,21 +204,19 @@ export function CreateWorktreeDialog({
 
   // Memoized branch options for the Combobox
   const branchOptions: ComboboxOption[] = useMemo(() => {
+    const regularBranchOptions = branches
+      .filter((b) => b !== projectDefaultBranch)
+      .map((branch) => ({ value: branch, label: branch }));
+
     const options: ComboboxOption[] = [
       {
         value: PROJECT_DEFAULT_BRANCH,
         label: t('terminal:worktree.useProjectDefault', { branch: projectDefaultBranch || 'main' }),
       },
+      ...regularBranchOptions,
     ];
 
-    // Add all branches except the project default (which is already shown as "Use project default")
-    branches
-      .filter((b) => b !== projectDefaultBranch)
-      .forEach((branch) => {
-        options.push({ value: branch, label: branch });
-      });
-
-    // If the project default branch is not in the list, add it
+    // If the project default branch is not in the list of existing branches, add it as a selectable option
     if (projectDefaultBranch && !branches.includes(projectDefaultBranch)) {
       options.push({ value: projectDefaultBranch, label: projectDefaultBranch });
     }
