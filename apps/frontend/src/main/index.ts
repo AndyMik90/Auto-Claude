@@ -35,6 +35,7 @@ import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
+import { WindowManager } from './window-manager';
 import type { AppSettings } from '../shared/types';
 
 // Setup error logging early (captures uncaught exceptions)
@@ -104,32 +105,16 @@ function getIconPath(): string {
 let mainWindow: BrowserWindow | null = null;
 let agentManager: AgentManager | null = null;
 let terminalManager: TerminalManager | null = null;
+let windowManager: WindowManager | null = null;
 
 function createWindow(): void {
-  // Create the browser window
-  mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1000,
-    minHeight: 700,
-    show: false,
-    autoHideMenuBar: true,
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 15, y: 10 },
-    icon: getIconPath(),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
-      sandbox: false,
-      contextIsolation: true,
-      nodeIntegration: false,
-      backgroundThrottling: false // Prevent terminal lag when window loses focus
-    }
-  });
+  // Create window manager if not exists
+  if (!windowManager) {
+    windowManager = new WindowManager();
+  }
 
-  // Show window when ready to avoid visual flash
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show();
-  });
+  // Create the main window via WindowManager
+  mainWindow = windowManager.createMainWindow();
 
   // Handle external links
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -148,11 +133,16 @@ function createWindow(): void {
   if (is.dev) {
     mainWindow.webContents.openDevTools({ mode: 'right' });
   }
+}
 
-  // Clean up on close
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
+/**
+ * Get the window manager instance for IPC handlers
+ */
+export function getWindowManager(): WindowManager {
+  if (!windowManager) {
+    windowManager = new WindowManager();
+  }
+  return windowManager;
 }
 
 // Set app name before ready (for dock tooltip on macOS in dev mode)

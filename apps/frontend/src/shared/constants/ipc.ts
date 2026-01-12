@@ -507,5 +507,16 @@ export const IPC_CHANNELS = {
   // Sentry error reporting
   SENTRY_STATE_CHANGED: 'sentry:state-changed',  // Notify main process when setting changes
   GET_SENTRY_DSN: 'sentry:get-dsn',              // Get DSN from main process (env var)
-  GET_SENTRY_CONFIG: 'sentry:get-config'         // Get full Sentry config (DSN + sample rates)
+  GET_SENTRY_CONFIG: 'sentry:get-config',        // Get full Sentry config (DSN + sample rates)
+
+  // Window management (multi-window support)
+  WINDOW_DETACH_PROJECT: 'window:detach-project',         // Detach project to new window
+  WINDOW_REATTACH_PROJECT: 'window:reattach-project',     // Reattach project to main window
+  WINDOW_GET_CONTEXT: 'window:get-context',               // Get current window context (main vs project)
+  WINDOW_GET_MAIN_BOUNDS: 'window:get-main-bounds',       // Get main window bounds for drag detection
+  WINDOW_CLOSE_PROJECT: 'window:close-project',           // Close a project window
+
+  // Window events (main -> renderer)
+  WINDOW_PROJECT_DETACHED: 'window:project-detached',     // Event: project was detached to new window
+  WINDOW_PROJECT_REATTACHED: 'window:project-reattached'  // Event: project was reattached to main window
 } as const;
