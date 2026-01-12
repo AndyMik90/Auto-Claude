@@ -38,6 +38,9 @@ DEFAULT_FEDERAL_PROGRAMS_CSV = Path(__file__).parent.parent / "data" / "Federal 
 # Global cache for loaded programs database
 _FEDERAL_PROGRAMS_CACHE: Optional[pd.DataFrame] = None
 
+# Global cache for keyword index (keyword -> list of program names)
+_KEYWORD_INDEX_CACHE: Optional[Dict[str, List[str]]] = None
+
 
 @dataclass
 class FederalProgram:
@@ -328,6 +331,27 @@ def build_keyword_index(df: Optional[pd.DataFrame] = None) -> Dict[str, List[str
     return keyword_index
 
 
+def get_keyword_index(force_reload: bool = False) -> Dict[str, List[str]]:
+    """
+    Get the keyword index, using cache if available.
+
+    This function provides a cached keyword index for efficient lookups
+    during keyword signal extraction.
+
+    Args:
+        force_reload: If True, rebuild the index from the CSV.
+
+    Returns:
+        Dict mapping lowercase keywords to list of program names.
+    """
+    global _KEYWORD_INDEX_CACHE
+
+    if _KEYWORD_INDEX_CACHE is None or force_reload:
+        _KEYWORD_INDEX_CACHE = build_keyword_index()
+
+    return _KEYWORD_INDEX_CACHE
+
+
 def build_location_index(df: Optional[pd.DataFrame] = None) -> Dict[str, List[str]]:
     """
     Build an index mapping locations to program names.
@@ -505,15 +529,27 @@ def extract_location_signal(job: Dict) -> Tuple[Optional[str], int]:
     return None, 0
 
 
-def extract_keyword_signals(job: Dict) -> List[Tuple[str, int, str]]:
+def extract_keyword_signals(
+    job: Dict,
+    use_dynamic_keywords: bool = True
+) -> List[Tuple[str, int, str]]:
     """
     Extract program signals from job text using keywords.
 
+    This function searches job titles and descriptions for keywords that map
+    to federal programs. It uses the Federal Programs CSV database for dynamic
+    keyword matching, with fallback to hardcoded keywords.
+
     Args:
-        job: Job dictionary
+        job: Job dictionary with 'title' and 'description' fields
+        use_dynamic_keywords: If True, use keywords from Federal Programs CSV.
+                              If False or CSV unavailable, use hardcoded keywords.
 
     Returns:
-        List of (program_name, score, signal_description)
+        List of (program_name, score, signal_description) tuples.
+        - program_name: Name of the matched federal program
+        - score: Weight for this signal (50 for title, 20 for description)
+        - signal_description: Human-readable description of the match
     """
     signals = []
 
@@ -522,34 +558,83 @@ def extract_keyword_signals(job: Dict) -> List[Tuple[str, int, str]]:
     description = (job.get('description', '') or job.get('Position Overview', '')).lower()
     full_text = f"{title} {description}"
 
-    for program, keywords in PROGRAM_KEYWORDS.items():
-        for keyword in keywords:
+    # Track matched programs to avoid duplicate signals per program
+    matched_programs: Dict[str, Tuple[int, str]] = {}
+
+    # Try to use dynamic keywords from Federal Programs CSV
+    keyword_index = None
+    if use_dynamic_keywords and HAS_PANDAS:
+        try:
+            keyword_index = get_keyword_index()
+        except (FileNotFoundError, ImportError):
+            keyword_index = None
+
+    if keyword_index:
+        # Use dynamic keywords from Federal Programs CSV
+        for keyword, program_list in keyword_index.items():
             keyword_lower = keyword.lower()
 
-            # Check title (highest weight)
-            if keyword_lower in title:
-                signals.append((
-                    program,
-                    SCORING_WEIGHTS['program_name_in_title'],
-                    f"'{keyword}' in title"
-                ))
-            # Check description
-            elif keyword_lower in description:
-                signals.append((
-                    program,
-                    SCORING_WEIGHTS['program_name_in_description'],
-                    f"'{keyword}' in description"
-                ))
+            # Skip very short keywords to avoid false positives
+            if len(keyword_lower) < 3:
+                continue
 
-    # Check for DCGS-specific keywords
+            for program_name in program_list:
+                # Check title (highest weight)
+                if keyword_lower in title:
+                    score = SCORING_WEIGHTS['program_name_in_title']
+                    signal_desc = f"'{keyword}' in title"
+
+                    # Keep only the highest-scoring signal per program
+                    if program_name not in matched_programs or matched_programs[program_name][0] < score:
+                        matched_programs[program_name] = (score, signal_desc)
+
+                # Check description (lower weight)
+                elif keyword_lower in description:
+                    score = SCORING_WEIGHTS['program_name_in_description']
+                    signal_desc = f"'{keyword}' in description"
+
+                    # Keep only the highest-scoring signal per program
+                    if program_name not in matched_programs or matched_programs[program_name][0] < score:
+                        matched_programs[program_name] = (score, signal_desc)
+    else:
+        # Fallback to hardcoded PROGRAM_KEYWORDS
+        for program, keywords in PROGRAM_KEYWORDS.items():
+            for keyword in keywords:
+                keyword_lower = keyword.lower()
+
+                # Check title (highest weight)
+                if keyword_lower in title:
+                    score = SCORING_WEIGHTS['program_name_in_title']
+                    signal_desc = f"'{keyword}' in title"
+
+                    if program not in matched_programs or matched_programs[program][0] < score:
+                        matched_programs[program] = (score, signal_desc)
+
+                # Check description (lower weight)
+                elif keyword_lower in description:
+                    score = SCORING_WEIGHTS['program_name_in_description']
+                    signal_desc = f"'{keyword}' in description"
+
+                    if program not in matched_programs or matched_programs[program][0] < score:
+                        matched_programs[program] = (score, signal_desc)
+
+    # Convert matched_programs dict to signals list
+    for program_name, (score, signal_desc) in matched_programs.items():
+        signals.append((program_name, score, signal_desc))
+
+    # Check for DCGS-specific keywords (always check for these)
     dcgs_keywords = ['dcgs', '480th', 'dgs-', 'distributed common ground', 'isr']
+    dcgs_matched = False
     for kw in dcgs_keywords:
         if kw in full_text:
-            signals.append((
-                "DCGS Family",
-                SCORING_WEIGHTS['dcgs_specific_keyword'],
-                f"DCGS keyword: '{kw}'"
-            ))
+            # Only add DCGS Family signal if not already matched through dynamic keywords
+            if "DCGS Family" not in matched_programs:
+                signals.append((
+                    "DCGS Family",
+                    SCORING_WEIGHTS['dcgs_specific_keyword'],
+                    f"DCGS keyword: '{kw}'"
+                ))
+            dcgs_matched = True
             break
 
     return signals
