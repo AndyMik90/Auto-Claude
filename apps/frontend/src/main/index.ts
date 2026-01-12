@@ -214,11 +214,10 @@ function createWindow(): void {
   if (process.platform === "darwin") {
     // macOS: Add vibrancy effect for native blur
     mainWindow.setVibrancy("under-window");
-    // @ts-ignore - setTrafficLightPosition exists on macOS but might be missing from some type defs
+    // @ts-expect-error - setTrafficLightPosition exists on macOS but might be missing from some type defs
     mainWindow.setTrafficLightPosition({ x: 15, y: 10 });
   } else if (process.platform === "win32") {
     // Windows: Try to enable Mica/Acrylic (Electron 30+)
-    // @ts-ignore - backgroundMaterial is available in newer Electron versions
     // mainWindow.setBackgroundMaterial('acrylic');
   }
 
