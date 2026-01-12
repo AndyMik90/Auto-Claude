@@ -107,10 +107,19 @@ export function detectRateLimit(
   output: string,
   profileId?: string
 ): RateLimitDetectionResult {
+  // Debug: Log what we're checking (only for lines that might contain rate limit keywords)
+  const lowerOutput = output.toLowerCase();
+  if (lowerOutput.includes('limit') || lowerOutput.includes('usage') || lowerOutput.includes('reset')) {
+    console.log('[RateLimitDetector] Checking output for rate limit:', output.substring(0, 300));
+  }
+
   // Check for rate limit patterns (primary patterns with reset time)
-  for (const pattern of RATE_LIMIT_PATTERNS) {
+  for (let i = 0; i < RATE_LIMIT_PATTERNS.length; i++) {
+    const pattern = RATE_LIMIT_PATTERNS[i];
     const match = output.match(pattern);
     if (match) {
+      console.log('[RateLimitDetector] MATCH FOUND with pattern', i, ':', pattern.toString());
+      console.log('[RateLimitDetector] Captured reset time:', match[1]);
       const resetTime = match[1].trim();
       const limitType = classifyLimitType(resetTime);
 
