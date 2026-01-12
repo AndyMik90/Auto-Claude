@@ -24,7 +24,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict, TypeVar
+from typing import Literal, TypedDict, TypeVar
 
 from core.git_executable import get_git_executable, run_git
 from debug import debug_warning
@@ -144,7 +144,7 @@ class PushAndCreatePRResult(TypedDict, total=False):
 class MergeStrategyRecommendation(TypedDict):
     """Recommendation for merge strategy based on commit analysis."""
 
-    strategy: str  # "merge" or "squash"
+    strategy: Literal["merge", "squash"]
     reason: str  # Human-readable explanation
     commitCount: int  # Number of commits in the worktree
     hasWipCommits: bool  # Whether WIP/fixup commits were detected
@@ -744,7 +744,7 @@ class WorktreeManager:
 
         # Detect WIP/fixup/temporary commits that suggest squashing
         # Use regex patterns with word boundaries to avoid false positives
-        # (e.g., "Revert feature" shouldn't match, but "revert" at start should)
+        # Note: "revert" is excluded as legitimate revert commits should not be WIP
         wip_patterns = [
             r"^wip\b",  # WIP at start of commit message
             r"^fixup[!:]?\s",  # fixup! or fixup: at start (git autosquash format)
@@ -754,7 +754,6 @@ class WorktreeManager:
             r"^todo\b",  # TODO at start
             r"^fix typo",  # "fix typo" at start (common throwaway commit)
             r"^oops\b",  # "oops" at start
-            r"^revert\b",  # "revert" at start (intentional revert commits)
             r"^undo\b",  # "undo" at start
             r"^amend\b",  # "amend" at start
         ]
@@ -776,7 +775,7 @@ class WorktreeManager:
                 "strategy": "merge",
                 "reason": "Single commit - merge preserves clean history",
                 "commitCount": 1,
-                "hasWipCommits": False,
+                "hasWipCommits": has_wip,
             }
         elif has_wip:
             return {
