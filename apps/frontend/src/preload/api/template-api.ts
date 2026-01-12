@@ -4,9 +4,9 @@ import type { Template, IPCResult, ParsedTemplate, TemplateEditorStatus, Templat
 
 export interface TemplateAPI {
   getTemplates: () => Promise<IPCResult<Template[]>>;
-  saveTemplate: (template: Omit<Template, 'id' | 'createdAt' | 'updatedAt'>) => Promise<IPCResult<Template>>;
+  saveTemplate: (template: Omit<Template, 'id' | 'version' | 'createdAt' | 'updatedAt'>) => Promise<IPCResult<Template>>;
   deleteTemplate: (templateId: string) => Promise<IPCResult>;
-  updateTemplate: (templateId: string, updates: Partial<Omit<Template, 'id' | 'createdAt' | 'updatedAt'>>, expectedVersion: number) => Promise<IPCResult<Template>>;
+  updateTemplate: (templateId: string, updates: Partial<Omit<Template, 'id' | 'version' | 'createdAt' | 'updatedAt'>>, expectedVersion: number) => Promise<IPCResult<Template>>;
   copyTemplate: (templateId: string, destinationPath: string) => Promise<IPCResult<{ path: string }>>;
   copyTemplateWithName: (templateId: string, destinationPath: string, customName: string) => Promise<IPCResult<{ path: string }>>;
   parseTemplateParameters: (templateId: string) => Promise<IPCResult<ParsedTemplate>>;

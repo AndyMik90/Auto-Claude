@@ -1,11 +1,11 @@
 import { ipcMain, app } from 'electron';
-import { existsSync, writeFileSync, readFileSync, mkdirSync, cpSync, realpathSync } from 'fs';
+import { existsSync, writeFileSync, readFileSync, mkdirSync, cpSync, realpathSync, statSync } from 'fs';
 import { exec } from 'child_process';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
-import type { Template, TemplateStore, IPCResult } from '../../shared/types';
+import type { Template, TemplateStore, IPCResult, ParsedTemplate, TemplateParameter } from '../../shared/types';
 import { v4 as uuidv4 } from 'uuid';
-import { parseTemplateDirectory, replaceTemplateParameters, type ParsedTemplate, type TemplateParameter } from '../template-parser';
+import { parseTemplateDirectory, replaceTemplateParameters } from '../template-parser';
 
 /**
  * Security: Sanitize folder/file name to prevent path traversal attacks
@@ -52,7 +52,7 @@ const validateDestinationPath = (destinationPath: string): string => {
     const realPath = realpathSync(absolutePath);
 
     // Ensure it's a directory (not a file)
-    const stats = require('fs').statSync(realPath);
+    const stats = statSync(realPath);
     if (!stats.isDirectory()) {
       throw new Error('Destination path must be a directory');
     }

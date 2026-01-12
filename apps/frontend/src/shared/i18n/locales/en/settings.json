@@ -493,18 +493,30 @@
         "secretGroup": "Secret Group",
         "secretKey": "Secret Key"
       },
+      "placeholders": {
+        "title": "e.g., Project Name",
+        "defaultValue": "Default value",
+        "secretGroup": "e.g., AWS",
+        "secretKey": "e.g., ACCESS_KEY"
+      },
       "types": {
         "text": "Text",
         "dropdown": "Dropdown",
         "secret": "Secret"
       },
       "badges": {
-        "modified": "Modified"
+        "modified": "Modified",
+        "paramCount": "{{count}} param",
+        "paramCount_plural": "{{count}} params"
       },
       "actions": {
         "save": "Save Changes",
         "saving": "Saving...",
         "cancel": "Cancel"
+      },
+      "errors": {
+        "loadFailed": "Failed to load parameters",
+        "saveFailed": "Failed to save parameters"
       }
     }
   },

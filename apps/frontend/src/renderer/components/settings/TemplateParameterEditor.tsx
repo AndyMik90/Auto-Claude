@@ -81,10 +81,10 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
         }));
         setParameters(editableParams);
       } else {
-        setError(result.error || 'Failed to load parameters');
+        setError(result.error || t('templates.parameterEditor.errors.loadFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load parameters');
+      setError(err instanceof Error ? err.message : t('templates.parameterEditor.errors.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -185,7 +185,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
       onSaved?.();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save parameters');
+      setError(err instanceof Error ? err.message : t('templates.parameterEditor.errors.saveFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -268,7 +268,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                       <FileEdit className="h-4 w-4" />
                       {filePath.split('/').pop()}
                       <Badge variant="secondary" className="text-xs">
-                        {fileParams.length} param{fileParams.length !== 1 ? 's' : ''}
+                        {t('templates.parameterEditor.badges.paramCount', { count: fileParams.length })}
                       </Badge>
                     </h3>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{filePath}</p>
@@ -284,7 +284,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                           id={`${param.key}-title`}
                           value={param.title}
                           onChange={(e) => updateParameter(param.key, { title: e.target.value })}
-                          placeholder="e.g., Project Name"
+                          placeholder={t('templates.parameterEditor.placeholders.title')}
                         />
                       </div>
 
@@ -316,7 +316,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                             id={`${param.key}-default`}
                             value={param.default || ''}
                             onChange={(e) => updateParameter(param.key, { default: e.target.value })}
-                            placeholder="Default value"
+                            placeholder={t('templates.parameterEditor.placeholders.defaultValue')}
                           />
                         </div>
                       )}
@@ -368,7 +368,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                               id={`${param.key}-group`}
                               value={param.group || ''}
                               onChange={(e) => updateParameter(param.key, { group: e.target.value })}
-                              placeholder="e.g., AWS"
+                              placeholder={t('templates.parameterEditor.placeholders.secretGroup')}
                             />
                           </div>
                           <div className="space-y-1">
@@ -377,7 +377,7 @@ export function TemplateParameterEditor({ open, onOpenChange, template, onSaved 
                               id={`${param.key}-secretKey`}
                               value={param.secretKey || ''}
                               onChange={(e) => updateParameter(param.key, { secretKey: e.target.value })}
-                              placeholder="e.g., ACCESS_KEY"
+                              placeholder={t('templates.parameterEditor.placeholders.secretKey')}
                             />
                           </div>
                         </>

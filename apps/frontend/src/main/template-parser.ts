@@ -1,25 +1,7 @@
 import { readFileSync } from 'fs';
 import { readdir, stat } from 'fs/promises';
 import path from 'path';
-
-export interface TemplateParameter {
-  key: string; // Unique key for this parameter (generated from position)
-  title: string;
-  type: 'text' | 'dropdown' | 'secret';
-  options?: string[]; // For dropdown type
-  default?: string;
-  group?: string; // For secret type
-  secretKey?: string; // For secret type (the key within the group)
-  placeholder?: string; // Original placeholder text in file
-  filePath: string; // File where this parameter was found
-  position: number; // Position in file for replacement
-}
-
-export interface ParsedTemplate {
-  parameters: TemplateParameter[];
-  totalFiles: number;
-  filesWithParameters: number;
-}
+import type { TemplateParameter, ParsedTemplate } from '../shared/types';
 
 /**
  * Parse a parameter string like: {{title="Hello",type=text,default="World"}}
@@ -65,7 +47,7 @@ function parseParameterString(paramStr: string): Omit<TemplateParameter, 'key' |
         // For unquoted values, strip any stray quotes
         // Remove straight quotes: ' "
         // Remove smart quotes: " " ' ' (Unicode \u201C \u201D \u2018 \u2019)
-        value = value.replace(/['""\u201C\u201D''\u2018\u2019]/g, '');
+        value = value.replace(/['"\u201C\u201D\u2018\u2019]/g, '');
         console.log('[PARSER] After quote strip (unquoted):', JSON.stringify(value));
       }
 

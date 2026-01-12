@@ -498,8 +498,20 @@
         "dropdown": "Liste déroulante",
         "secret": "Secret"
       },
+      "placeholders": {
+        "title": "ex.: Nom du projet",
+        "defaultValue": "Valeur par défaut",
+        "secretGroup": "ex.: AWS",
+        "secretKey": "ex.: ACCESS_KEY"
+      },
       "badges": {
-        "modified": "Modifié"
+        "modified": "Modifié",
+        "paramCount": "{{count}} param",
+        "paramCount_plural": "{{count}} params"
+      },
+      "errors": {
+        "loadFailed": "Échec du chargement des paramètres",
+        "saveFailed": "Échec de l'enregistrement des paramètres"
       },
       "actions": {
         "save": "Enregistrer les modifications",
