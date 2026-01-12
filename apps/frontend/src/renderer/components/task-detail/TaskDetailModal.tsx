@@ -43,6 +43,7 @@ import { TaskLogs } from './TaskLogs';
 import { TaskFiles } from './TaskFiles';
 import { TaskReview } from './TaskReview';
 import { TaskConfiguration } from './TaskConfiguration';
+import { TaskFeedback } from './TaskFeedback';
 import type { Task, WorktreeCreatePROptions } from '../../../shared/types';
 
 interface TaskDetailModalProps {
@@ -489,6 +490,12 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                   >
                     Configuration
                   </TabsTrigger>
+                  <TabsTrigger
+                    value="feedback"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
+                  >
+                    Feedback
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Overview Tab */}
@@ -575,6 +582,11 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                 {/* Configuration Tab */}
                 <TabsContent value="configuration" className="flex-1 min-h-0 overflow-hidden mt-0">
                   <TaskConfiguration task={task} />
+                </TabsContent>
+
+                {/* Feedback Tab */}
+                <TabsContent value="feedback" className="flex-1 min-h-0 overflow-hidden mt-0">
+                  <TaskFeedback task={task} />
                 </TabsContent>
               </Tabs>
             </div>
