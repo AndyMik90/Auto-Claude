@@ -239,5 +239,44 @@
     "enrichedJobsPath": "Engine2_ProgramMapping/data/Enriched_Jobs.json",
     "mappingLogPath": "outputs/Logs/program_mapping.log",
     "unmatchedJobsPath": "Engine2_ProgramMapping/data/Unmatched_Jobs.json"
+  },
+
+  "export": {
+    "_comment": "Export configuration for pipeline output formats",
+
+    "notion_output_path": "outputs/notion",
+    "n8n_output_path": "outputs/n8n",
+
+    "formats": ["notion", "n8n"],
+
+    "notion": {
+      "enabled": true,
+      "filename_pattern": "jobs_export_{timestamp}.csv",
+      "include_header": true,
+      "column_count": 24
+    },
+
+    "n8n": {
+      "enabled": true,
+      "filename_pattern": "jobs_webhook_{timestamp}.json",
+      "webhook_url": null,
+      "include_metadata": true
+    },
+
+    "batch_size": 1000,
+    "include_raw_data": false
+  },
+
+  "processing": {
+    "_comment": "Pipeline processing options",
+
+    "test_mode": false,
+    "skip_llm": false,
+    "batch_size": 50,
+
+    "anthropic_model": "claude-sonnet-4-20250514",
+
+    "input_path": "Engine1_Scraper/data/Sample_Jobs.json",
+    "output_dir": "outputs"
   }
 }
