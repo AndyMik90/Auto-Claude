@@ -1,0 +1,37 @@
+[
+  {
+    "job_id": "https://example.com/1",
+    "added_at": "2026-01-12T14:17:02.306116",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold",
+      "High clearance requires verification"
+    ],
+    "original_program": "AF DCGS",
+    "reviewed": false
+  },
+  {
+    "job_id": "https://example.com/2",
+    "added_at": "2026-01-12T14:17:02.306966",
+    "status": "needs_review",
+    "confidence": 0.2,
+    "review_reasons": [
+      "Low confidence 20%",
+      "High clearance requires verification"
+    ],
+    "original_program": "NSA Programs",
+    "reviewed": false
+  },
+  {
+    "job_id": "https://example.com/3",
+    "added_at": "2026-01-12T14:17:02.307833",
+    "status": "needs_review",
+    "confidence": 0.15,
+    "review_reasons": [
+      "Low confidence 15%"
+    ],
+    "original_program": "Corporate HQ",
+    "reviewed": false
+  }
+]
