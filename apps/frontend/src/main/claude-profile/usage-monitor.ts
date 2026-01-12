@@ -19,6 +19,13 @@ export class UsageMonitor extends EventEmitter {
   private currentUsage: ClaudeUsageSnapshot | null = null;
   private isChecking = false;
   private useApiMethod = true; // Try API first, fall back to CLI if it fails
+  
+  // Swap loop protection: track profiles that recently failed auth
+  private authFailedProfiles: Map<string, number> = new Map(); // profileId -> timestamp
+  private static AUTH_FAILURE_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
+  
+  // Debug flag for verbose logging
+  private readonly isDebug = process.env.DEBUG === 'true';
 
   private constructor() {
     super();
@@ -118,12 +125,14 @@ export class UsageMonitor extends EventEmitter {
       const weeklyExceeded = usage.weeklyPercent >= settings.weeklyThreshold;
 
       if (sessionExceeded || weeklyExceeded) {
-        console.warn('[UsageMonitor:TRACE] Threshold exceeded', {
-          sessionPercent: usage.sessionPercent,
-          weekPercent: usage.weeklyPercent,
-          activeProfile: activeProfile.id,
-          hasToken: !!decryptedToken
-        });
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:TRACE] Threshold exceeded', {
+            sessionPercent: usage.sessionPercent,
+            weekPercent: usage.weeklyPercent,
+            activeProfile: activeProfile.id,
+            hasToken: !!decryptedToken
+          });
+        }
 
         console.warn('[UsageMonitor] Threshold exceeded:', {
           sessionPercent: usage.sessionPercent,
@@ -138,29 +147,44 @@ export class UsageMonitor extends EventEmitter {
           sessionExceeded ? 'session' : 'weekly'
         );
       } else {
-        console.log('[UsageMonitor:TRACE] Usage OK', {
-          sessionPercent: usage.sessionPercent,
-          weekPercent: usage.weeklyPercent
-        });
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:TRACE] Usage OK', {
+            sessionPercent: usage.sessionPercent,
+            weekPercent: usage.weeklyPercent
+          });
+        }
       }
     } catch (error) {
       // Check for auth failure (401/403) from fetchUsageViaAPI
       if ((error as any).statusCode === 401 || (error as any).statusCode === 403) {
-        console.warn('[UsageMonitor] Auth failure detected, attempting proactive swap');
+        const profileManager = getClaudeProfileManager();
+        const activeProfile = profileManager.getActiveProfile();
         
-        try {
-          const profileManager = getClaudeProfileManager();
-          const activeProfile = profileManager.getActiveProfile();
+        if (activeProfile) {
+          // Mark this profile as auth-failed to prevent swap loops
+          this.authFailedProfiles.set(activeProfile.id, Date.now());
+          console.warn('[UsageMonitor] Auth failure detected, marked profile as failed:', activeProfile.id);
           
-          if (activeProfile) {
+          // Clean up expired entries from the failed profiles map
+          const now = Date.now();
+          this.authFailedProfiles.forEach((timestamp, profileId) => {
+            if (now - timestamp > UsageMonitor.AUTH_FAILURE_COOLDOWN_MS) {
+              this.authFailedProfiles.delete(profileId);
+            }
+          });
+          
+          try {
+            const excludeProfiles = Array.from(this.authFailedProfiles.keys());
+            console.warn('[UsageMonitor] Attempting proactive swap (excluding failed profiles):', excludeProfiles);
             await this.performProactiveSwap(
               activeProfile.id,
-              'session' // Treat auth failure as session limit for immediate swap
+              'session', // Treat auth failure as session limit for immediate swap
+              excludeProfiles
             );
             return;
+          } catch (swapError) {
+            console.error('[UsageMonitor] Failed to perform auth-failure swap:', swapError);
           }
-        } catch (swapError) {
-          console.error('[UsageMonitor] Failed to perform auth-failure swap:', swapError);
         }
       }
 
@@ -313,24 +337,34 @@ export class UsageMonitor extends EventEmitter {
 
   /**
    * Perform proactive profile swap
+   * @param currentProfileId - The profile to switch from
+   * @param limitType - The type of limit that triggered the swap
+   * @param additionalExclusions - Additional profile IDs to exclude (e.g., auth-failed profiles)
    */
   private async performProactiveSwap(
     currentProfileId: string,
-    limitType: 'session' | 'weekly'
+    limitType: 'session' | 'weekly',
+    additionalExclusions: string[] = []
   ): Promise<void> {
     const profileManager = getClaudeProfileManager();
     
-    // Explicitly log the search for best profile
-    const bestProfile = profileManager.getBestAvailableProfile(currentProfileId);
-
-    if (!bestProfile) {
-      console.warn('[UsageMonitor] No alternative profile for proactive swap');
+    // Get all profiles to swap to, excluding current and any additional exclusions
+    const allProfiles = profileManager.getProfilesSortedByAvailability();
+    const excludeIds = new Set([currentProfileId, ...additionalExclusions]);
+    const eligibleProfiles = allProfiles.filter(p => !excludeIds.has(p.id));
+    
+    if (eligibleProfiles.length === 0) {
+      console.warn('[UsageMonitor] No alternative profile for proactive swap (excluded:', Array.from(excludeIds), ')');
       this.emit('proactive-swap-failed', {
-        reason: 'no_alternative',
-        currentProfile: currentProfileId
+        reason: additionalExclusions.length > 0 ? 'all_alternatives_failed_auth' : 'no_alternative',
+        currentProfile: currentProfileId,
+        excludedProfiles: Array.from(excludeIds)
       });
       return;
     }
+    
+    // Use the best available from eligible profiles
+    const bestProfile = eligibleProfiles[0];
 
     console.warn('[UsageMonitor] Proactive swap:', {
       from: currentProfileId,
