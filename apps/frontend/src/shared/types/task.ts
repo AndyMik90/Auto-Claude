@@ -50,6 +50,7 @@ export interface QAReport {
   status: 'passed' | 'failed' | 'pending';
   issues: QAIssue[];
   timestamp: Date;
+  screenshots?: string[];  // Paths to Playwright screenshots taken during QA
 }
 
 export interface QAIssue {

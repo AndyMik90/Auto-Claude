@@ -6,6 +6,7 @@ Manages acceptance criteria validation and status tracking.
 """
 
 import json
+import time
 from pathlib import Path
 
 from progress import is_build_complete
@@ -83,6 +84,61 @@ def get_qa_iteration_count(spec_dir: Path) -> int:
     if not status:
         return 0
     return status.get("qa_session", 0)
+
+
+def collect_qa_screenshots(spec_dir: Path, max_age_seconds: int = 600) -> list[str]:
+    """
+    Collect screenshot files generated during the QA session.
+
+    Looks for .png files in spec_dir that were created recently.
+
+    Args:
+        spec_dir: Spec directory where screenshots are saved
+        max_age_seconds: Only include screenshots created within this timeframe (default: 10 minutes)
+
+    Returns:
+        List of screenshot paths relative to spec_dir
+    """
+    screenshots = []
+    current_time = time.time()
+
+    # Look for .png files in spec_dir
+    if spec_dir.exists():
+        for file_path in spec_dir.glob("**/*.png"):
+            if file_path.is_file():
+                # Check file age
+                file_age = current_time - file_path.stat().st_mtime
+                if file_age <= max_age_seconds:
+                    # Store path relative to spec_dir
+                    rel_path = file_path.relative_to(spec_dir)
+                    screenshots.append(str(rel_path))
+
+    return sorted(screenshots)
+
+
+def save_qa_screenshots_to_plan(spec_dir: Path, max_age_seconds: int = 600) -> bool:
+    """
+    Collect recent screenshots and add them to qa_signoff in implementation_plan.json.
+
+    Args:
+        spec_dir: Spec directory
+        max_age_seconds: Only include screenshots created within this timeframe
+
+    Returns:
+        True if screenshots were saved successfully
+    """
+    plan = load_implementation_plan(spec_dir)
+    if not plan or "qa_signoff" not in plan:
+        return False
+
+    # Collect screenshots
+    screenshots = collect_qa_screenshots(spec_dir, max_age_seconds)
+
+    # Add to qa_signoff
+    plan["qa_signoff"]["screenshots"] = screenshots
+
+    # Save plan
+    return save_implementation_plan(spec_dir, plan)
 
 
 # =============================================================================
