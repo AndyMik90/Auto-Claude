@@ -21,27 +21,60 @@ except ImportError:
 
 
 # ============================================
-# SCHEMA DEFINITION
+# SCHEMA DEFINITION (20+ Field Schema)
 # ============================================
 
+# Required Fields (6) - Must be extracted from job posting
 REQUIRED_FIELDS = [
-    'Job Title/Position',
-    'Date Posted',
-    'Location',
-    'Position Overview',
-    'Key Responsibilities',
-    'Required Qualifications'
+    'Job Title/Position',       # Title Case, cleaned
+    'Date Posted',              # YYYY-MM-DD format
+    'Location',                 # "City, State" format
+    'Position Overview',        # 100-200 word summary
+    'Key Responsibilities',     # Array of 5-15 bullet points
+    'Required Qualifications'   # Array of 5-20 bullet points
 ]
 
+# Intelligence Fields (8) - Extracted for BD intelligence
+INTELLIGENCE_FIELDS = [
+    'Security Clearance',       # Standardized (TS/SCI w/ Poly, TS/SCI, Top Secret, Secret)
+    'Program Hints',            # Extracted program names/acronyms from description
+    'Client Hints',             # Agency, department, command mentions
+    'Contract Vehicle Hints',   # GWAC, IDIQ, BPA mentions
+    'Prime Contractor',         # Identified prime contractor
+    'Recruiter Contact',        # Name, email, phone if available
+    'Technologies',             # Array of tech stack mentions
+    'Certifications Required'   # Array of cert requirements
+]
+
+# Optional Fields (3) - Additional info if available
 OPTIONAL_FIELDS = [
-    'Project Duration',
-    'Rate/Pay Rate',
-    'Security Clearance',
-    'Position Details',
-    'Additional Information'
+    'Project Duration',         # Contract length or "Permanent"
+    'Rate/Pay Rate',            # "$X/hour" or "$XXK-XXXK/year"
+    'Position Details',         # 150-300 word detailed context
+    'Additional Information'    # Benefits, travel, misc details
 ]
 
-ALL_FIELDS = REQUIRED_FIELDS + OPTIONAL_FIELDS
+# Enrichment Fields (6) - Added during pipeline processing
+ENRICHMENT_FIELDS = [
+    'Matched Program',          # Best-matched federal program name
+    'Match Confidence',         # 0.0-1.0 confidence score
+    'Match Type',               # direct/fuzzy/inferred
+    'BD Priority Score',        # 0-100 numeric score
+    'Priority Tier',            # Hot/Warm/Cold
+    'Match Signals'             # Array of signals that contributed to match
+]
+
+# Metadata Fields (4) - From raw scraper data
+METADATA_FIELDS = [
+    'Source',                   # Scraper source (clearancejobs, linkedin, indeed)
+    'Source URL',               # Original job posting URL
+    'Scraped At',               # ISO timestamp of scrape
+    'Processed At'              # ISO timestamp of processing
+]
+
+# Combined field lists for different use cases
+EXTRACTION_FIELDS = REQUIRED_FIELDS + INTELLIGENCE_FIELDS + OPTIONAL_FIELDS  # 18 fields for LLM extraction
+ALL_FIELDS = REQUIRED_FIELDS + INTELLIGENCE_FIELDS + OPTIONAL_FIELDS + ENRICHMENT_FIELDS + METADATA_FIELDS  # 24 total fields
 
 
 # ============================================
