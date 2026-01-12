@@ -188,7 +188,14 @@ class ProjectAnalyzer:
         return hasher.hexdigest()
 
     def should_reanalyze(self, profile: SecurityProfile) -> bool:
-        """Check if project has changed since last analysis."""
+        """Check if project has changed since last analysis.
+
+        Never re-analyzes inherited profiles (from worktrees) since they
+        came from a validated parent project with full context (e.g., node_modules).
+        """
+        # Never re-analyze inherited profiles - they came from a validated parent
+        if profile.inherited_from:
+            return False
         current_hash = self.compute_project_hash()
         return current_hash != profile.project_hash
 
@@ -205,7 +212,12 @@ class ProjectAnalyzer:
         # Check for existing profile
         existing = self.load_profile()
         if existing and not force and not self.should_reanalyze(existing):
-            print(f"Using cached security profile (hash: {existing.project_hash[:8]})")
+            if existing.inherited_from:
+                print("Using inherited security profile from parent project")
+            else:
+                print(
+                    f"Using cached security profile (hash: {existing.project_hash[:8]})"
+                )
             return existing
 
         print("Analyzing project structure for security profile...")

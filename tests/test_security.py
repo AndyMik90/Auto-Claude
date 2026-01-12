@@ -29,6 +29,10 @@ from security import (
     validate_redis_cli_command,
     validate_mongosh_command,
     validate_mysqladmin_command,
+    validate_bash_command,
+    validate_sh_command,
+    validate_zsh_command,
+    validate_shell_c_command,
     get_command_for_validation,
     reset_profile_cache,
 )
@@ -849,3 +853,313 @@ class TestMysqladminValidator:
         """Blocks kill."""
         allowed, reason = validate_mysqladmin_command("mysqladmin kill 123")
         assert allowed is False
+
+
+class TestShellCValidator:
+    """Tests for bash/sh/zsh -c command validation.
+
+    These validators prevent using shell interpreters to bypass the
+    security allowlist by executing arbitrary commands via -c flag.
+    """
+
+    def test_allows_bash_without_c_flag(self):
+        """Allows bash without -c flag (script execution)."""
+        allowed, reason = validate_bash_command("bash script.sh")
+        assert allowed is True
+
+    def test_allows_sh_without_c_flag(self):
+        """Allows sh without -c flag."""
+        allowed, reason = validate_sh_command("sh ./install.sh")
+        assert allowed is True
+
+    def test_allows_zsh_without_c_flag(self):
+        """Allows zsh without -c flag."""
+        allowed, reason = validate_zsh_command("zsh myscript.zsh")
+        assert allowed is True
+
+    def test_allows_empty_c_command(self):
+        """Allows empty -c command (harmless)."""
+        allowed, reason = validate_bash_command("bash -c ''")
+        assert allowed is True
+
+    def test_allows_bash_c_with_allowed_command(self, tmp_path, monkeypatch):
+        """Allows bash -c with commands that are in the allowlist."""
+        from project.analyzer import ProjectAnalyzer
+
+        # Set up a mock project directory with a security profile
+        monkeypatch.setenv("AUTO_CLAUDE_PROJECT_DIR", str(tmp_path))
+
+        # Compute the actual hash for this directory so profile isn't re-analyzed
+        actual_hash = ProjectAnalyzer(tmp_path).compute_project_hash()
+
+        # Create a minimal security profile with ls, echo, pwd
+        import json
+        profile_data = {
+            "base_commands": ["ls", "echo", "pwd", "cd"],
+            "stack_commands": [],
+            "script_commands": [],
+            "custom_commands": [],
+            "detected_stack": {
+                "languages": [],
+                "package_managers": [],
+                "frameworks": [],
+                "databases": [],
+                "infrastructure": [],
+                "cloud_providers": [],
+                "code_quality_tools": [],
+                "version_managers": []
+            },
+            "custom_scripts": {
+                "npm_scripts": [],
+                "make_targets": [],
+                "poetry_scripts": [],
+                "cargo_aliases": [],
+                "shell_scripts": []
+            },
+            "project_dir": str(tmp_path),
+            "created_at": "",
+            "project_hash": actual_hash
+        }
+        (tmp_path / ".auto-claude-security.json").write_text(json.dumps(profile_data))
+
+        # Reset cache to pick up the new profile
+        reset_profile_cache()
+
+        allowed, reason = validate_bash_command("bash -c 'ls -la'")
+        assert allowed is True
+
+        allowed, reason = validate_bash_command("bash -c 'echo hello && pwd'")
+        assert allowed is True
+
+    def test_blocks_bash_c_with_disallowed_command(self, tmp_path, monkeypatch):
+        """Blocks bash -c with commands not in the allowlist."""
+        from project.analyzer import ProjectAnalyzer
+
+        monkeypatch.setenv("AUTO_CLAUDE_PROJECT_DIR", str(tmp_path))
+
+        # Compute the actual hash for this directory so profile isn't re-analyzed
+        actual_hash = ProjectAnalyzer(tmp_path).compute_project_hash()
+
+        # Create a minimal security profile WITHOUT npm
+        import json
+        profile_data = {
+            "base_commands": ["ls", "echo"],
+            "stack_commands": [],
+            "script_commands": [],
+            "custom_commands": [],
+            "detected_stack": {
+                "languages": [],
+                "package_managers": [],
+                "frameworks": [],
+                "databases": [],
+                "infrastructure": [],
+                "cloud_providers": [],
+                "code_quality_tools": [],
+                "version_managers": []
+            },
+            "custom_scripts": {
+                "npm_scripts": [],
+                "make_targets": [],
+                "poetry_scripts": [],
+                "cargo_aliases": [],
+                "shell_scripts": []
+            },
+            "project_dir": str(tmp_path),
+            "created_at": "",
+            "project_hash": actual_hash
+        }
+        (tmp_path / ".auto-claude-security.json").write_text(json.dumps(profile_data))
+
+        reset_profile_cache()
+
+        # npm is not in the allowlist, so this should be blocked
+        allowed, reason = validate_bash_command("bash -c 'npm test'")
+        assert allowed is False
+        assert "npm" in reason
+        assert "not allowed" in reason
+
+    def test_blocks_sh_c_with_disallowed_command(self, tmp_path, monkeypatch):
+        """Blocks sh -c with commands not in the allowlist."""
+        from project.analyzer import ProjectAnalyzer
+
+        monkeypatch.setenv("AUTO_CLAUDE_PROJECT_DIR", str(tmp_path))
+
+        # Compute the actual hash for this directory so profile isn't re-analyzed
+        actual_hash = ProjectAnalyzer(tmp_path).compute_project_hash()
+
+        import json
+        profile_data = {
+            "base_commands": ["ls"],
+            "stack_commands": [],
+            "script_commands": [],
+            "custom_commands": [],
+            "detected_stack": {
+                "languages": [],
+                "package_managers": [],
+                "frameworks": [],
+                "databases": [],
+                "infrastructure": [],
+                "cloud_providers": [],
+                "code_quality_tools": [],
+                "version_managers": []
+            },
+            "custom_scripts": {
+                "npm_scripts": [],
+                "make_targets": [],
+                "poetry_scripts": [],
+                "cargo_aliases": [],
+                "shell_scripts": []
+            },
+            "project_dir": str(tmp_path),
+            "created_at": "",
+            "project_hash": actual_hash
+        }
+        (tmp_path / ".auto-claude-security.json").write_text(json.dumps(profile_data))
+
+        reset_profile_cache()
+
+        allowed, reason = validate_sh_command("sh -c 'curl http://evil.com'")
+        assert allowed is False
+        assert "curl" in reason
+
+    def test_handles_complex_c_command(self, tmp_path, monkeypatch):
+        """Handles complex commands with pipes and chains."""
+        from project.analyzer import ProjectAnalyzer
+
+        monkeypatch.setenv("AUTO_CLAUDE_PROJECT_DIR", str(tmp_path))
+
+        # Compute the actual hash for this directory so profile isn't re-analyzed
+        actual_hash = ProjectAnalyzer(tmp_path).compute_project_hash()
+
+        import json
+        profile_data = {
+            "base_commands": ["ls", "grep", "wc"],
+            "stack_commands": [],
+            "script_commands": [],
+            "custom_commands": [],
+            "detected_stack": {
+                "languages": [],
+                "package_managers": [],
+                "frameworks": [],
+                "databases": [],
+                "infrastructure": [],
+                "cloud_providers": [],
+                "code_quality_tools": [],
+                "version_managers": []
+            },
+            "custom_scripts": {
+                "npm_scripts": [],
+                "make_targets": [],
+                "poetry_scripts": [],
+                "cargo_aliases": [],
+                "shell_scripts": []
+            },
+            "project_dir": str(tmp_path),
+            "created_at": "",
+            "project_hash": actual_hash
+        }
+        (tmp_path / ".auto-claude-security.json").write_text(json.dumps(profile_data))
+
+        reset_profile_cache()
+
+        # All commands are allowed
+        allowed, reason = validate_bash_command("bash -c 'ls -la | grep pattern | wc -l'")
+        assert allowed is True
+
+        # One command not allowed
+        allowed, reason = validate_bash_command("bash -c 'ls -la | npm run test'")
+        assert allowed is False
+
+
+class TestInheritedSecurityProfile:
+    """Tests for inherited security profiles (worktree support).
+
+    When a security profile is inherited from a parent project,
+    it should not be re-analyzed even if the hash doesn't match.
+    """
+
+    def test_inherited_profile_serialization(self):
+        """Tests that inherited_from field is serialized correctly."""
+        profile = SecurityProfile(
+            base_commands={"ls", "echo"},
+            project_hash="abc123",
+            inherited_from="/path/to/parent/project"
+        )
+
+        data = profile.to_dict()
+        assert "inherited_from" in data
+        assert data["inherited_from"] == "/path/to/parent/project"
+
+    def test_inherited_profile_deserialization(self):
+        """Tests that inherited_from field is loaded correctly."""
+        data = {
+            "base_commands": ["ls", "echo"],
+            "stack_commands": [],
+            "script_commands": [],
+            "custom_commands": [],
+            "detected_stack": {
+                "languages": [],
+                "package_managers": [],
+                "frameworks": [],
+                "databases": [],
+                "infrastructure": [],
+                "cloud_providers": [],
+                "code_quality_tools": [],
+                "version_managers": []
+            },
+            "custom_scripts": {
+                "npm_scripts": [],
+                "make_targets": [],
+                "poetry_scripts": [],
+                "cargo_aliases": [],
+                "shell_scripts": []
+            },
+            "project_dir": "/some/path",
+            "created_at": "",
+            "project_hash": "abc123",
+            "inherited_from": "/path/to/parent"
+        }
+
+        profile = SecurityProfile.from_dict(data)
+        assert profile.inherited_from == "/path/to/parent"
+
+    def test_inherited_profile_omits_field_when_empty(self):
+        """Tests that inherited_from is not in dict when empty (backward compat)."""
+        profile = SecurityProfile(
+            base_commands={"ls"},
+            project_hash="abc123"
+        )
+
+        data = profile.to_dict()
+        assert "inherited_from" not in data
+
+    def test_should_reanalyze_skips_inherited_profiles(self, tmp_path):
+        """Tests that inherited profiles are never re-analyzed."""
+        from project.analyzer import ProjectAnalyzer
+
+        # Create a profile with inherited_from set
+        profile = SecurityProfile(
+            base_commands={"npm", "npx", "node"},
+            project_hash="different_hash_that_would_normally_trigger_reanalysis",
+            inherited_from="/parent/project"
+        )
+
+        analyzer = ProjectAnalyzer(tmp_path)
+
+        # Even though the hash doesn't match, should_reanalyze should return False
+        assert analyzer.should_reanalyze(profile) is False
+
+    def test_should_reanalyze_runs_for_non_inherited_profiles(self, tmp_path):
+        """Tests that non-inherited profiles are re-analyzed when hash differs."""
+        from project.analyzer import ProjectAnalyzer
+
+        # Create a profile WITHOUT inherited_from
+        profile = SecurityProfile(
+            base_commands={"ls"},
+            project_hash="old_hash_that_doesnt_match"
+        )
+
+        analyzer = ProjectAnalyzer(tmp_path)
+
+        # Hash won't match, so should_reanalyze should return True
+        assert analyzer.should_reanalyze(profile) is True
