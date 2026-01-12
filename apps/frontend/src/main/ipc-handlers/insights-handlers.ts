@@ -67,6 +67,17 @@ export function registerInsightsHandlers(
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_CANCEL_SESSION,
+    async (_, projectId: string): Promise<IPCResult> => {
+      const canceled = insightsService.cancelSession(projectId);
+      if (canceled) {
+        return { success: true };
+      }
+      return { success: false, error: 'No active session to cancel' };
+    }
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.INSIGHTS_CLEAR_SESSION,
     async (_, projectId: string): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);
