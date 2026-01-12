@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask } from '../shared/types';
+import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, QAReport } from '../shared/types';
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
@@ -493,6 +493,33 @@ export class ProjectStore {
           }
         }
 
+        // Extract QA report from plan's qa_signoff
+        const planWithQA = plan as unknown as {
+          qa_signoff?: {
+            status?: string;
+            timestamp?: string;
+            issues_found?: Array<{ title?: string; severity?: string; description?: string; file?: string; line?: number }>;
+            screenshots?: string[];
+          };
+        } | null;
+        const qaSignoff = planWithQA?.qa_signoff;
+        let qaReport: QAReport | undefined;
+
+        if (qaSignoff && qaSignoff.status && ['approved', 'rejected'].includes(qaSignoff.status)) {
+          qaReport = {
+            status: qaSignoff.status === 'approved' ? 'passed' : 'failed',
+            issues: (qaSignoff.issues_found || []).map((issue, idx) => ({
+              id: `qa-${idx}`,
+              severity: (issue.severity as 'critical' | 'major' | 'minor') || 'minor',
+              description: issue.description || issue.title || 'No description',
+              file: issue.file,
+              line: issue.line
+            })),
+            timestamp: qaSignoff.timestamp ? new Date(qaSignoff.timestamp) : new Date(),
+            screenshots: qaSignoff.screenshots
+          };
+        }
+
         tasks.push({
           id: dir.name, // Use spec directory name as ID
           specId: dir.name,
@@ -502,6 +529,7 @@ export class ProjectStore {
           status,
           reviewReason,
           subtasks,
+          qaReport,
           logs: [],
           metadata,
           stagedInMainProject,
