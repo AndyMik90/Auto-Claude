@@ -129,13 +129,36 @@ cat src/components/SomeFeature.tsx | grep -A 5 -B 5 "Button"
 - ✅ GOOD: "Create TaskCard component using Button from @/components/ui/button and Card from @/components/ui/card"
 - ❌ BAD: "Create TaskCard component with custom button and card styling"
 
-**CRITICAL - Untitled UI Projects:**
-If `ui_library` contains "Untitled UI", this is a PREMIUM design system with STRICT component usage rules:
-- **NEVER create similar/alternative components** - use ONLY existing Untitled UI components
+**CRITICAL - Premium UI Framework Projects (Untitled UI, etc.):**
+If `ui_library` contains "Untitled UI" or other premium design systems, follow this workflow:
+
+**Step 1: Fetch Documentation Automatically**
+```python
+from ui_docs import ensure_ui_docs_available
+from pathlib import Path
+
+# Automatically fetch and cache UI framework docs
+success, docs_path, message = ensure_ui_docs_available("Untitled UI", Path("."))
+if success:
+    print(f"✓ UI framework docs available: {docs_path}")
+    # Read the documentation
+    docs_content = docs_path.read_text()
+else:
+    print(f"⚠ Warning: {message}")
+    print("Will work with existing component structure only")
+```
+
+**Step 2: Study Documentation + Existing Code**
+- **Read fetched docs** to understand ALL available components
+- **Study existing patterns** - read 3-5 existing component files
+- **Never create custom components** if they exist in the design system
+
+**Strict Rules:**
+- **NEVER create similar/alternative components** - use ONLY existing components
 - **NO custom implementations** - even if you think it's "similar" or "better"
-- **NO workarounds** - if a component doesn't exist, flag it as blocker, don't create custom solution
-- **Study existing patterns FIRST** - read 3-5 existing component files before planning
-- Example: If Button exists in Untitled UI, NEVER create CustomButton, ActionButton, or any variant
+- **NO workarounds** - if unsure about component, read docs or existing code
+- **Study existing patterns FIRST** before planning any UI work
+- Example: If Button exists, NEVER create CustomButton, ActionButton, or any variant
 - The design system is purchased/licensed - maintaining consistency is critical
 
 **If UI framework is NOT detected** (rare), you may create custom components, but document this clearly in the plan.

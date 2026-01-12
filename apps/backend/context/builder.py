@@ -257,6 +257,24 @@ class ContextBuilder:
             if ui_library:
                 context["ui_library"] = ui_library
 
+                # Auto-fetch UI framework documentation if supported
+                try:
+                    from ui_docs import ensure_ui_docs_available
+
+                    success, docs_path, message = ensure_ui_docs_available(
+                        ui_library, self.project_dir
+                    )
+                    if success and docs_path:
+                        context["ui_docs_path"] = str(docs_path)
+                        context["ui_docs_available"] = True
+                    else:
+                        context["ui_docs_available"] = False
+                        context["ui_docs_message"] = message
+                except Exception as e:
+                    # Silently fail if docs fetching fails - not critical
+                    context["ui_docs_available"] = False
+                    context["ui_docs_message"] = f"Could not fetch docs: {e}"
+
             # Get custom UI framework instructions from ENV
             ui_instructions = os.environ.get("UI_FRAMEWORK_INSTRUCTIONS")
             if ui_instructions:

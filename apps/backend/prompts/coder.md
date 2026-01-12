@@ -373,28 +373,49 @@ export function TaskCard() {
 2. Read 1-2 existing component files to understand composition patterns
 3. Use Context7 to look up component documentation if needed
 
-**🚨 CRITICAL - Untitled UI Projects:**
-If `ui_library` contains "Untitled UI", follow these STRICT rules:
-- **NEVER create custom/similar components** - use ONLY existing Untitled UI components
-- **NO "I made something similar"** - this violates design system consistency
-- **NO custom variants** - don't create CustomButton, ActionButton, or any alternatives
-- **If component missing → ASK USER** - flag as blocker, don't improvise
-- **Study existing code EXTENSIVELY** - read 5+ component files to see exact patterns
-- The design system is purchased/licensed - component consistency is NON-NEGOTIABLE
+**🚨 CRITICAL - Premium UI Framework Projects (Untitled UI, etc.):**
+If `ui_library` contains "Untitled UI" or other premium design systems, follow this AUTONOMOUS workflow:
 
-Example workflow for Untitled UI:
+**Step 1: Auto-Fetch Documentation (If Not Cached)**
+```python
+from ui_docs import ensure_ui_docs_available
+from pathlib import Path
+
+# Automatically fetch and cache documentation
+success, docs_path, message = ensure_ui_docs_available("Untitled UI", Path("."))
+if success and docs_path:
+    print(f"✓ Reading UI framework documentation from {docs_path}")
+    docs_content = docs_path.read_text()
+    # Now you know ALL available components - no guessing needed
+else:
+    print(f"⚠ Warning: {message}")
+    print("Proceeding with existing component analysis only")
+```
+
+**Step 2: Study Documentation + Existing Code**
 ```bash
-# 1. Find all Button usages to understand the pattern
+# 1. Read fetched documentation to see ALL available components
+cat .auto-claude/ui-framework-docs/untitled-ui/components.md
+
+# 2. Find all Button usages to understand the pattern
 grep -r "Button" --include="*.tsx" src/components | head -20
 
-# 2. Read actual Button component implementation
+# 3. Read actual component implementation
 cat src/design-system/Button.tsx  # or wherever it lives
 
-# 3. See how it's used in practice
+# 4. See how it's used in practice
 cat src/components/ExistingFeature.tsx | grep -A 10 -B 5 "Button"
 
-# 4. Use EXACTLY that pattern - no modifications
+# 5. Use EXACTLY that pattern - no modifications
 ```
+
+**Strict Rules:**
+- **NEVER create custom/similar components** - use ONLY existing components from docs
+- **NO "I made something similar"** - this violates design system consistency
+- **NO custom variants** - don't create CustomButton, ActionButton, or any alternatives
+- **Docs are your source of truth** - if component exists in docs, use it exactly
+- **Study existing code EXTENSIVELY** - read 5+ component files to see exact patterns
+- The design system is purchased/licensed - component consistency is NON-NEGOTIABLE
 
 ### 5.4: Look Up External Library Documentation (Use Context7)
 
