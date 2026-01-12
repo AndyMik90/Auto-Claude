@@ -62,12 +62,22 @@ vi.mock('child_process', () => ({
   spawn: vi.fn()
 }));
 
+vi.mock('../rate-limit-detector', () => ({
+  detectRateLimit: vi.fn(() => ({ isRateLimited: false })),
+  createSDKRateLimitInfo: vi.fn(() => ({
+    source: 'title-generator',
+    profileId: 'test-profile-id',
+    detectedAt: new Date()
+  })),
+  getProfileEnv: vi.fn(() => ({}))
+}));
+
 /**
  * Type helper interface for accessing private TitleGenerator methods in tests.
  * This provides type-safe access to private methods for testing purposes.
  */
 interface TitleGeneratorTestMethods {
-  getActiveAPIProfile(): Promise<{ apiKey: string; baseUrl: string; haikuModel: string } | null>;
+  getActiveAPIProfile(): Promise<import('../title-generator').ActiveAPIProfile | null>;
   cleanTitle(title: string): string;
   createTitlePrompt(desc: string): string;
 }
