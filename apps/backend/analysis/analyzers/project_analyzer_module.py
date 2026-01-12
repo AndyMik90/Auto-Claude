@@ -122,6 +122,18 @@ class ProjectAnalyzer:
             if service_info.get("language"):
                 services["main"] = service_info
 
+            # Also check for common frontend/backend subdirectories in single projects
+            # These often contain separate package.json with UI libraries
+            common_subdirs = ["browser", "web", "frontend", "client", "www", "ui", "app", "backend", "server", "api"]
+            for subdir_name in common_subdirs:
+                subdir = self.project_dir / subdir_name
+                if subdir.is_dir() and (subdir / "package.json").exists():
+                    # Analyze this subdirectory as a separate service
+                    sub_analyzer = ServiceAnalyzer(subdir, subdir_name)
+                    sub_service_info = sub_analyzer.analyze()
+                    if sub_service_info.get("language"):
+                        services[subdir_name] = sub_service_info
+
         self.index["services"] = services
 
     def _analyze_infrastructure(self) -> None:
