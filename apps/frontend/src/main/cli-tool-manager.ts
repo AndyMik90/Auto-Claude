@@ -26,7 +26,19 @@ import path from 'path';
 import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
-import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync, getSpawnCommand } from './env-utils';
+import {
+  findExecutable,
+  findExecutableAsync,
+  getAugmentedEnv,
+  getAugmentedEnvAsync,
+  shouldUseShell,
+  existsAsync,
+  getSpawnCommand,
+  parseRegOutput,
+  expandWindowsEnvVars,
+  getWindowsRegistryPath,
+  getWindowsRegistryPathAsync,
+} from './env-utils';
 import type { ToolDetectionResult } from '../shared/types';
 
 const execFileAsync = promisify(execFile);
@@ -265,167 +277,10 @@ export function buildClaudeDetectionResult(
 }
 
 // ============================================================================
-// WINDOWS REGISTRY PATH HELPERS
+// WINDOWS REGISTRY PATH CLAUDE DETECTION
 // ============================================================================
-// Windows GUI apps (like Electron) don't inherit the shell's PATH environment.
-// These functions read the TRUE Windows PATH directly from the Registry,
-// which is the authoritative source for PATH on Windows.
-
-/**
- * Parse the output from `reg.exe query` command.
- *
- * The output format is:
- *   HKEY_CURRENT_USER\Environment
- *       Path    REG_EXPAND_SZ    %USERPROFILE%\AppData\Local\...
- *
- * @param output - Raw output from reg.exe query
- * @returns The PATH value or null if not found/error
- */
-export function parseRegOutput(output: string): string | null {
-  if (!output || output.includes('ERROR:')) {
-    return null;
-  }
-  // Match: Path    REG_SZ or REG_EXPAND_SZ    <value>
-  const match = output.match(/^\s*Path\s+REG_(?:EXPAND_)?SZ\s+(.+)$/m);
-  if (match && match[1]) {
-    return match[1].trim();
-  }
-  return null;
-}
-
-/**
- * Expand Windows environment variables in a path string.
- *
- * Replaces %VAR% patterns with their actual values from process.env.
- *
- * @param pathStr - Path string potentially containing %VAR% patterns
- * @returns Path with environment variables expanded
- *
- * @example
- * expandWindowsEnvVars('%USERPROFILE%\\bin')
- * // Returns 'C:\\Users\\John\\bin'
- */
-export function expandWindowsEnvVars(pathStr: string): string {
-  if (!pathStr.includes('%')) {
-    return pathStr;
-  }
-  return pathStr.replace(/%([^%]+)%/g, (match, varName) => {
-    const value = process.env[varName];
-    return value !== undefined ? value : match;
-  });
-}
-
-/**
- * Read the Windows PATH from the Registry (HKLM + HKCU).
- *
- * This is the TRUE Windows PATH that:
- * - Includes system PATH (HKEY_LOCAL_MACHINE)
- * - Includes user PATH (HKEY_CURRENT_USER)
- * - Contains the actual configured paths, not inherited from parent shell
- *
- * @returns Combined PATH string or null if unable to read
- */
-export function getWindowsRegistryPath(): string | null {
-  if (process.platform !== 'win32') {
-    return null;
-  }
-
-  try {
-    const paths: string[] = [];
-
-    // Read System PATH (HKEY_LOCAL_MACHINE)
-    try {
-      const systemOutput = execSync(
-        'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment" /v Path',
-        { encoding: 'utf-8', timeout: 5000, windowsHide: true }
-      );
-      const systemPath = parseRegOutput(systemOutput);
-      if (systemPath) {
-        paths.push(expandWindowsEnvVars(systemPath));
-      }
-    } catch {
-      // System PATH read failed, continue with user PATH
-    }
-
-    // Read User PATH (HKEY_CURRENT_USER)
-    try {
-      const userOutput = execSync(
-        'reg query "HKCU\\Environment" /v Path',
-        { encoding: 'utf-8', timeout: 5000, windowsHide: true }
-      );
-      const userPath = parseRegOutput(userOutput);
-      if (userPath) {
-        paths.push(expandWindowsEnvVars(userPath));
-      }
-    } catch {
-      // User PATH read failed
-    }
-
-    if (paths.length === 0) {
-      return null;
-    }
-
-    return paths.join(';');
-  } catch (error) {
-    console.warn('[Windows Registry] Failed to read PATH:', error);
-    return null;
-  }
-}
-
-/**
- * Async version of getWindowsRegistryPath.
- *
- * Reads the Windows PATH from the Registry using non-blocking async operations.
- * This should be used in async contexts to avoid blocking the event loop.
- *
- * @returns Promise resolving to combined PATH string or null if unable to read
- */
-export async function getWindowsRegistryPathAsync(): Promise<string | null> {
-  if (process.platform !== 'win32') {
-    return null;
-  }
-
-  try {
-    const paths: string[] = [];
-
-    // Read System PATH (HKEY_LOCAL_MACHINE)
-    try {
-      const { stdout: systemOutput } = await execAsync(
-        'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment" /v Path',
-        { encoding: 'utf-8', timeout: 5000, windowsHide: true }
-      );
-      const systemPath = parseRegOutput(systemOutput);
-      if (systemPath) {
-        paths.push(expandWindowsEnvVars(systemPath));
-      }
-    } catch {
-      // System PATH read failed, continue with user PATH
-    }
-
-    // Read User PATH (HKEY_CURRENT_USER)
-    try {
-      const { stdout: userOutput } = await execAsync(
-        'reg query "HKCU\\Environment" /v Path',
-        { encoding: 'utf-8', timeout: 5000, windowsHide: true }
-      );
-      const userPath = parseRegOutput(userOutput);
-      if (userPath) {
-        paths.push(expandWindowsEnvVars(userPath));
-      }
-    } catch {
-      // User PATH read failed
-    }
-
-    if (paths.length === 0) {
-      return null;
-    }
-
-    return paths.join(';');
-  } catch (error) {
-    console.warn('[Windows Registry] Failed to read PATH:', error);
-    return null;
-  }
-}
+// These functions use the Registry PATH helpers from env-utils.ts to find
+// Claude CLI on Windows when GUI apps don't inherit the shell's PATH.
 
 /**
  * Find Claude CLI in the Windows Registry PATH.
