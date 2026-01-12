@@ -151,11 +151,9 @@ def format_contacts_for_briefing(result):
         if c.email: info.append(f"Email: {c.email}")
         if c.phone: info.append(f"Phone: {c.phone}")
         if c.linkedin: info.append(f"[LinkedIn]({c.linkedin})")
-        if info: line += "
-  " + " | ".join(info)
+        if info: line += "\n  " + " | ".join(info)
         lines.append(line)
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 def format_contacts_json(result):
     return [{"name": f"{c.first_name} {c.name}".strip() or c.name, "title": c.title, "company": c.company,
