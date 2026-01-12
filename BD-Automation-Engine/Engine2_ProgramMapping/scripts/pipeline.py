@@ -355,6 +355,59 @@ def validate_config(config: PipelineConfig) -> List[str]:
 
 
 # ============================================
+# STAGE 1: INGEST
+# ============================================
+
+def ingest_jobs(input_path: str) -> List[Dict[str, Any]]:
+    """
+    Stage 1: Ingest raw job data from Engine1_Scraper JSON output.
+
+    Loads job postings from a JSON file produced by Engine1_Scraper.
+    Validates basic structure and returns list of job dictionaries.
+
+    Args:
+        input_path: Path to JSON file containing scraped job postings.
+                   Expected format: Array of job objects with fields like
+                   id, title, company, location, description, etc.
+
+    Returns:
+        List of job dictionaries ready for parsing/standardization.
+
+    Raises:
+        FileNotFoundError: If input file does not exist.
+        ValueError: If JSON is invalid or not a list.
+
+    Example:
+        >>> jobs = ingest_jobs('Engine1_Scraper/data/Sample_Jobs.json')
+        >>> len(jobs)
+        5
+        >>> jobs[0]['title']
+        'Senior Network Engineer - DCGS'
+    """
+    path = Path(input_path)
+
+    # Validate file exists
+    if not path.exists():
+        raise FileNotFoundError(f"Input file not found: {input_path}")
+
+    if not path.is_file():
+        raise ValueError(f"Input path is not a file: {input_path}")
+
+    # Load JSON data
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in {input_path}: {e}")
+
+    # Validate data is a list
+    if not isinstance(data, list):
+        raise ValueError(f"Expected JSON array, got {type(data).__name__}")
+
+    return data
+
+
+# ============================================
 # CLI INTERFACE
 # ============================================
 
