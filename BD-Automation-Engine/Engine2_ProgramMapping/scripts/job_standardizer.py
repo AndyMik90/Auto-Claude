@@ -1,8 +1,9 @@
 """
 Job Standardization Engine
-Transforms unstructured job posting data into standardized 11-field schema.
+Transforms unstructured job posting data into standardized 20+ field schema.
 
 Based on: job-standardization-skill.md
+Schema: 6 Required + 8 Intelligence + 4 Optional + 6 Enrichment + 4 Metadata = 28 total fields
 """
 
 import html
@@ -81,9 +82,11 @@ ALL_FIELDS = REQUIRED_FIELDS + INTELLIGENCE_FIELDS + OPTIONAL_FIELDS + ENRICHMEN
 # SYSTEM PROMPT FOR LLM
 # ============================================
 
-SYSTEM_PROMPT = """You are a specialized data extraction system for defense contractor job postings. Analyze the raw job description and extract information into the standardized 11-field schema.
+SYSTEM_PROMPT = """You are a specialized data extraction system for defense contractor job postings. Analyze the raw job description and extract information into the standardized 18-field schema.
 
 ### EXTRACTION RULES
+
+## Required Fields (6)
 
 **Job Title/Position**
 - Use Title Case (e.g., "Network Engineer" not "NETWORK ENGINEER")
@@ -103,22 +106,10 @@ SYSTEM_PROMPT = """You are a specialized data extraction system for defense cont
   - "Washington DC Metro" → "Washington, DC"
 - Preserve full military base names
 
-**Security Clearance**
-- Standardize abbreviations:
-  - "TS/SCI w/ CI Poly" (with polygraph)
-  - "TS/SCI" (no polygraph)
-  - "Top Secret" → "Top Secret"
-  - "Secret" (not "DOD Secret")
-- Note if "ability to obtain" vs "active"
-
 **Position Overview (REQUIRED)**
 - 100-200 word summary
 - Answer: What does this person do day-to-day?
 - Extract from "Overview", "Summary", "About the Role" sections
-
-**Position Details**
-- 150-300 word detailed context
-- Work environment, team structure, project scope
 
 **Key Responsibilities (REQUIRED)**
 - Array of 5-15 bullet points
@@ -131,6 +122,71 @@ SYSTEM_PROMPT = """You are a specialized data extraction system for defense cont
 - Separate from "Preferred" qualifications
 - Include: clearance, education, experience, certifications, skills
 
+## Intelligence Fields (8)
+
+**Security Clearance**
+- Standardize abbreviations:
+  - "TS/SCI w/ CI Poly" (with polygraph)
+  - "TS/SCI w/ Full Scope Poly" (full scope polygraph)
+  - "TS/SCI" (no polygraph)
+  - "Top Secret" → "Top Secret"
+  - "Secret" (not "DOD Secret")
+- Note if "ability to obtain" vs "active"
+
+**Program Hints**
+- Array of program names/acronyms mentioned in the description
+- Look for: NSA programs, DoD programs, IC program names
+- Extract acronyms in ALL CAPS that appear to be program names
+- Common patterns: three/four letter acronyms, names ending in "-NET", "-SAT", "-COM"
+- Examples: "SIGINT", "JWICS", "NIPR", "SIPR", "CENTCOM", "SOCOM"
+- Return as array of strings, or null if none found
+
+**Client Hints**
+- Array of agency, department, or command mentions
+- Look for: federal agency names, military commands, intelligence community references
+- Examples: "NSA", "CIA", "DIA", "NGA", "FBI", "DoD", "Army", "Navy", "Air Force"
+- Include: combatant commands (CENTCOM, EUCOM), service branches, civilian agencies
+- Return as array of strings, or null if none found
+
+**Contract Vehicle Hints**
+- Array of contract vehicle mentions
+- Look for: GWAC, IDIQ, BPA, task order references
+- Common vehicles: "GSA Schedule", "SEWP", "OASIS", "CIO-SP3", "Alliant 2"
+- Include contract numbers if mentioned (e.g., "FA8773-xx-xxxx")
+- Return as array of strings, or null if none found
+
+**Prime Contractor**
+- Identified prime contractor if this is a subcontract position
+- Look for phrases: "supporting [Company]", "prime contractor is", "teaming with"
+- Common primes: Booz Allen, Leidos, SAIC, Northrop Grumman, Raytheon, General Dynamics
+- Return company name string, or null if position is direct-hire
+
+**Recruiter Contact**
+- Object with recruiter contact information if available
+- Extract: name, email, phone number
+- Format: {"name": "John Doe", "email": "jdoe@company.com", "phone": "555-123-4567"}
+- Return null if no contact info found
+
+**Technologies**
+- Array of technology stack mentions
+- Include: programming languages, frameworks, tools, platforms, databases
+- Cloud platforms: AWS, Azure, GCP, OpenStack
+- Security tools: Splunk, Elastic, Nessus, Tenable, CrowdStrike
+- DevOps: Kubernetes, Docker, Terraform, Ansible, Jenkins
+- Languages: Python, Java, Go, JavaScript, C++, Rust
+- Return as array of strings, minimum 3 items if technologies mentioned
+
+**Certifications Required**
+- Array of certification requirements
+- Security certs: Security+, CISSP, CISM, CEH, GIAC (GSEC, GPEN, etc.)
+- Cloud certs: AWS Solutions Architect, Azure Administrator, GCP Professional
+- IT certs: CCNA, CCNP, ITIL, PMP, Agile/Scrum certifications
+- DoD 8570/8140 baseline certifications
+- Include certification level if specified (e.g., "CISSP" not just "ISC2 cert")
+- Return as array of strings, or null if none mentioned
+
+## Optional Fields (4)
+
 **Project Duration**
 - Contract length or "Permanent"
 - Extract from contract type mentions
@@ -139,11 +195,37 @@ SYSTEM_PROMPT = """You are a specialized data extraction system for defense cont
 - "$X/hour" or "$XXK-XXXK/year"
 - Extract from compensation sections
 
+**Position Details**
+- 150-300 word detailed context
+- Work environment, team structure, project scope
+
 **Additional Information**
 - Benefits, travel requirements, misc details
 
 ### OUTPUT FORMAT
-Return valid JSON matching the 11-field schema exactly. Use null for missing optional fields.
+Return valid JSON with all 18 fields. Use null for missing optional fields. Arrays should be empty [] if no items found, or null if the field type is not applicable.
+
+Example structure:
+{
+  "Job Title/Position": "string",
+  "Date Posted": "YYYY-MM-DD",
+  "Location": "City, State",
+  "Position Overview": "string (100-200 words)",
+  "Key Responsibilities": ["item1", "item2", ...],
+  "Required Qualifications": ["item1", "item2", ...],
+  "Security Clearance": "standardized clearance level",
+  "Program Hints": ["PROGRAM1", "PROGRAM2"] or null,
+  "Client Hints": ["Agency1", "Command2"] or null,
+  "Contract Vehicle Hints": ["Vehicle1"] or null,
+  "Prime Contractor": "Company Name" or null,
+  "Recruiter Contact": {"name": "", "email": "", "phone": ""} or null,
+  "Technologies": ["Tech1", "Tech2", ...],
+  "Certifications Required": ["Cert1", "Cert2"] or null,
+  "Project Duration": "string" or null,
+  "Rate/Pay Rate": "string" or null,
+  "Position Details": "string" or null,
+  "Additional Information": "string" or null
+}
 """
 
 
@@ -256,7 +338,8 @@ def standardize_job_with_llm(
         api_key: Anthropic API key (uses env var if not provided)
 
     Returns:
-        Standardized job dictionary with 11 fields
+        Standardized job dictionary with 18 extraction fields
+        (6 Required + 8 Intelligence + 4 Optional)
     """
     if not HAS_ANTHROPIC:
         raise ImportError("anthropic package not installed. Run: pip install anthropic")
