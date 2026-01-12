@@ -355,6 +355,52 @@ def validate_config(config: PipelineConfig) -> List[str]:
 
 
 # ============================================
+# IMPORTS FOR PIPELINE STAGES
+# ============================================
+
+# Import other pipeline components (will be used in stages 2-6)
+try:
+    from Engine2_ProgramMapping.scripts.job_standardizer import (
+        preprocess_job_data,
+        standardize_job_with_llm,
+        normalize_location,
+        normalize_clearance,
+        validate_standardized_job,
+    )
+    HAS_STANDARDIZER = True
+except ImportError:
+    HAS_STANDARDIZER = False
+
+try:
+    from Engine2_ProgramMapping.scripts.program_mapper import (
+        map_job_to_program,
+        process_jobs_batch as map_jobs_batch,
+    )
+    HAS_MAPPER = True
+except ImportError:
+    HAS_MAPPER = False
+
+try:
+    from Engine5_Scoring.scripts.bd_scoring import (
+        calculate_bd_score,
+        score_batch,
+    )
+    HAS_SCORING = True
+except ImportError:
+    HAS_SCORING = False
+
+try:
+    from Engine2_ProgramMapping.scripts.exporters import (
+        NotionCSVExporter,
+        N8nWebhookExporter,
+        export_batch as export_to_formats,
+    )
+    HAS_EXPORTERS = True
+except ImportError:
+    HAS_EXPORTERS = False
+
+
+# ============================================
 # STAGE 1: INGEST
 # ============================================
 
@@ -405,6 +451,502 @@ def ingest_jobs(input_path: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Expected JSON array, got {type(data).__name__}")
 
     return data
+
+
+# ============================================
+# STAGE 2-3: PARSE AND STANDARDIZE
+# ============================================
+
+def parse_and_standardize(
+    jobs: List[Dict[str, Any]],
+    config: PipelineConfig,
+    on_progress: Optional[Callable[[int, int, str], None]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Stage 2-3: Parse raw job text and standardize into 18-field schema.
+
+    Uses the job_standardizer module to:
+    1. Preprocess raw job data (clean HTML, normalize whitespace)
+    2. Extract structured fields using Claude LLM
+    3. Post-process with normalizations (location, clearance)
+    4. Validate against schema
+
+    Args:
+        jobs: List of raw job dictionaries from ingest stage.
+        config: PipelineConfig with API settings and processing options.
+        on_progress: Optional callback(current, total, message) for progress.
+
+    Returns:
+        List of standardized job dictionaries with 18 extraction fields.
+
+    Raises:
+        ImportError: If job_standardizer module is not available.
+    """
+    if not HAS_STANDARDIZER:
+        raise ImportError(
+            "job_standardizer module not found. "
+            "Ensure Engine2_ProgramMapping/scripts/job_standardizer.py exists."
+        )
+
+    results = []
+    total = len(jobs)
+
+    for i, raw_job in enumerate(jobs):
+        try:
+            # Stage 2: Preprocess
+            cleaned = preprocess_job_data(raw_job)
+
+            # Stage 3: Standardize with LLM (unless skip_llm is set)
+            if config.skip_llm:
+                # Use raw data as-is if skipping LLM
+                standardized = cleaned.copy()
+            else:
+                standardized = standardize_job_with_llm(
+                    cleaned,
+                    api_key=config.anthropic_api_key
+                )
+
+            # Post-process normalizations
+            if standardized.get('Location'):
+                standardized['Location'] = normalize_location(standardized['Location'])
+            if standardized.get('Security Clearance'):
+                standardized['Security Clearance'] = normalize_clearance(
+                    standardized['Security Clearance']
+                )
+
+            # Add metadata
+            standardized['Processed At'] = datetime.now().isoformat()
+            standardized['Source'] = raw_job.get('source', 'unknown')
+            standardized['Source URL'] = raw_job.get('url', raw_job.get('link', ''))
+            standardized['Scraped At'] = raw_job.get('scraped_at', raw_job.get('date', ''))
+
+            # Preserve original data for reference
+            standardized['_raw'] = raw_job
+
+            results.append(standardized)
+
+            if on_progress:
+                on_progress(i + 1, total, f"Standardized: {standardized.get('Job Title/Position', 'Unknown')[:50]}")
+
+        except Exception as e:
+            # Add failed job with error info
+            error_job = raw_job.copy()
+            error_job['_error'] = str(e)
+            error_job['_stage'] = 'standardize'
+            results.append(error_job)
+
+            if on_progress:
+                on_progress(i + 1, total, f"Error: {str(e)[:50]}")
+
+    return results
+
+
+# ============================================
+# STAGE 4: MATCH TO PROGRAMS
+# ============================================
+
+def match_to_programs(
+    jobs: List[Dict[str, Any]],
+    config: PipelineConfig,
+    on_progress: Optional[Callable[[int, int, str], None]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Stage 4: Map standardized jobs to federal programs.
+
+    Uses the program_mapper module to:
+    1. Extract location signals (DCGS sites, IC locations)
+    2. Extract keyword signals (program names, acronyms)
+    3. Calculate match confidence and type
+    4. Identify secondary candidates
+
+    Args:
+        jobs: List of standardized job dictionaries.
+        config: PipelineConfig with matching thresholds.
+        on_progress: Optional callback(current, total, message) for progress.
+
+    Returns:
+        List of jobs enriched with _mapping data:
+        - program_name: Best matched program
+        - match_confidence: 0.0-1.0 confidence score
+        - match_type: 'direct', 'fuzzy', or 'inferred'
+        - signals: List of matching signals
+        - secondary_candidates: Other potential matches
+    """
+    if not HAS_MAPPER:
+        raise ImportError(
+            "program_mapper module not found. "
+            "Ensure Engine2_ProgramMapping/scripts/program_mapper.py exists."
+        )
+
+    results = []
+    total = len(jobs)
+
+    for i, job in enumerate(jobs):
+        try:
+            # Skip jobs that failed previous stages
+            if job.get('_error'):
+                results.append(job)
+                continue
+
+            # Map to program using multi-signal scoring
+            mapping_result = map_job_to_program(job)
+
+            # Create enriched job with mapping data
+            enriched = job.copy()
+            enriched['_mapping'] = {
+                'program_name': mapping_result.program_name,
+                'match_confidence': mapping_result.match_confidence,
+                'match_type': mapping_result.match_type,
+                'bd_priority_score': mapping_result.bd_priority_score,
+                'priority_tier': mapping_result.priority_tier,
+                'signals': mapping_result.signals,
+                'secondary_candidates': mapping_result.secondary_candidates,
+            }
+
+            # Also set top-level enrichment fields for easier access
+            enriched['Matched Program'] = mapping_result.program_name
+            enriched['Match Confidence'] = mapping_result.match_confidence
+            enriched['Match Type'] = mapping_result.match_type
+            enriched['Match Signals'] = mapping_result.signals
+
+            results.append(enriched)
+
+            if on_progress:
+                on_progress(
+                    i + 1, total,
+                    f"Matched: {mapping_result.program_name} ({mapping_result.match_type})"
+                )
+
+        except Exception as e:
+            # Preserve job with error info
+            error_job = job.copy()
+            error_job['_error'] = str(e)
+            error_job['_stage'] = 'match'
+            results.append(error_job)
+
+            if on_progress:
+                on_progress(i + 1, total, f"Error: {str(e)[:50]}")
+
+    return results
+
+
+# ============================================
+# STAGE 5: CALCULATE BD SCORES
+# ============================================
+
+def calculate_bd_scores(
+    jobs: List[Dict[str, Any]],
+    config: PipelineConfig,
+    on_progress: Optional[Callable[[int, int, str], None]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Stage 5: Calculate BD Priority Scores and tier classifications.
+
+    Uses the bd_scoring module to:
+    1. Calculate base score (50)
+    2. Apply clearance boosts (0-35)
+    3. Apply program boosts (0-15)
+    4. Apply location boosts (0-10)
+    5. Apply confidence boosts (0-20)
+    6. Determine tier (Hot/Warm/Cold)
+
+    Args:
+        jobs: List of jobs with _mapping data.
+        config: PipelineConfig with tier thresholds.
+        on_progress: Optional callback(current, total, message) for progress.
+
+    Returns:
+        List of jobs enriched with _scoring data:
+        - BD Priority Score: 0-100 score
+        - Priority Tier: Hot/Warm/Cold
+        - Score Breakdown: Component scores
+        - Recommendations: Action items
+    """
+    if not HAS_SCORING:
+        raise ImportError(
+            "bd_scoring module not found. "
+            "Ensure Engine5_Scoring/scripts/bd_scoring.py exists."
+        )
+
+    results = []
+    total = len(jobs)
+
+    for i, job in enumerate(jobs):
+        try:
+            # Skip jobs that failed previous stages
+            if job.get('_error'):
+                results.append(job)
+                continue
+
+            # Prepare scoring input from job + mapping data
+            scoring_input = job.copy()
+
+            # Add mapping data if available
+            if '_mapping' in job:
+                mapping = job['_mapping']
+                scoring_input['match_confidence'] = mapping.get('match_confidence', 0.5)
+                scoring_input['program'] = mapping.get('program_name', '')
+
+            # Calculate BD score
+            scoring_result = calculate_bd_score(scoring_input)
+
+            # Create enriched job with scoring data
+            enriched = job.copy()
+            enriched['_scoring'] = {
+                'BD Priority Score': scoring_result.bd_score,
+                'Priority Tier': f"{scoring_result.tier_emoji} {scoring_result.tier}",
+                'Score Breakdown': scoring_result.score_breakdown,
+                'Recommendations': scoring_result.recommendations,
+            }
+
+            # Also set top-level enrichment fields
+            enriched['BD Priority Score'] = scoring_result.bd_score
+            enriched['Priority Tier'] = f"{scoring_result.tier_emoji} {scoring_result.tier}"
+
+            results.append(enriched)
+
+            if on_progress:
+                on_progress(
+                    i + 1, total,
+                    f"Scored: {scoring_result.bd_score} ({scoring_result.tier})"
+                )
+
+        except Exception as e:
+            # Preserve job with error info
+            error_job = job.copy()
+            error_job['_error'] = str(e)
+            error_job['_stage'] = 'score'
+            results.append(error_job)
+
+            if on_progress:
+                on_progress(i + 1, total, f"Error: {str(e)[:50]}")
+
+    return results
+
+
+# ============================================
+# STAGE 6: EXPORT RESULTS
+# ============================================
+
+def export_results(
+    jobs: List[Dict[str, Any]],
+    config: PipelineConfig,
+    on_progress: Optional[Callable[[int, int, str], None]] = None
+) -> Dict[str, Any]:
+    """
+    Stage 6: Export enriched jobs to Notion CSV and n8n JSON formats.
+
+    Uses the exporters module to:
+    1. Export to Notion-compatible CSV (24 columns)
+    2. Export to n8n webhook JSON (with _mapping and _scoring)
+    3. Generate export report
+
+    Args:
+        jobs: List of fully enriched jobs with _mapping and _scoring.
+        config: PipelineConfig with export formats and paths.
+        on_progress: Optional callback(current, total, message) for progress.
+
+    Returns:
+        Dict with export results:
+        - notion: ExportResult for Notion CSV
+        - n8n: ExportResult for n8n JSON
+        - report: Export summary statistics
+    """
+    if not HAS_EXPORTERS:
+        raise ImportError(
+            "exporters module not found. "
+            "Ensure Engine2_ProgramMapping/scripts/exporters.py exists."
+        )
+
+    results = {}
+
+    if on_progress:
+        on_progress(0, len(config.export_formats), "Starting export...")
+
+    # Export to Notion CSV
+    if 'notion' in config.export_formats:
+        exporter = NotionCSVExporter(output_dir=config.notion_output_dir)
+        notion_result = exporter.export_jobs(jobs)
+        results['notion'] = {
+            'success': notion_result.success,
+            'file_path': notion_result.file_path,
+            'record_count': notion_result.record_count,
+            'errors': notion_result.errors,
+        }
+
+        if on_progress:
+            on_progress(1, len(config.export_formats), f"Notion CSV: {notion_result.file_path}")
+
+    # Export to n8n JSON
+    if 'n8n' in config.export_formats:
+        exporter = N8nWebhookExporter(output_dir=config.n8n_output_dir)
+        n8n_result = exporter.export_jobs(jobs)
+        results['n8n'] = {
+            'success': n8n_result.success,
+            'file_path': n8n_result.file_path,
+            'record_count': n8n_result.record_count,
+            'errors': n8n_result.errors,
+        }
+
+        if on_progress:
+            on_progress(2, len(config.export_formats), f"n8n JSON: {n8n_result.file_path}")
+
+    # Generate summary report
+    results['report'] = {
+        'total_jobs': len(jobs),
+        'successful_jobs': sum(1 for j in jobs if '_error' not in j),
+        'failed_jobs': sum(1 for j in jobs if '_error' in j),
+        'export_formats': config.export_formats,
+        'timestamp': datetime.now().isoformat(),
+    }
+
+    return results
+
+
+# ============================================
+# MAIN PIPELINE ORCHESTRATOR
+# ============================================
+
+def run_pipeline(config: PipelineConfig) -> Dict[str, Any]:
+    """
+    Run the complete 6-stage pipeline.
+
+    Orchestrates the full processing flow:
+    1. INGEST: Load raw jobs from JSON
+    2. PARSE: Clean and preprocess text
+    3. STANDARDIZE: Extract structured fields with LLM
+    4. MATCH: Map to federal programs
+    5. SCORE: Calculate BD priority scores
+    6. EXPORT: Write to Notion CSV and n8n JSON
+
+    Args:
+        config: PipelineConfig with all settings
+
+    Returns:
+        Dict with pipeline results:
+        - jobs: List of enriched jobs
+        - stats: Processing statistics
+        - exports: Export file paths and results
+        - errors: Any pipeline errors
+    """
+    start_time = datetime.now()
+    pipeline_results = {
+        'jobs': [],
+        'stats': {
+            'total_ingested': 0,
+            'total_processed': 0,
+            'successful': 0,
+            'failed': 0,
+            'by_tier': {'Hot': 0, 'Warm': 0, 'Cold': 0},
+            'by_match_type': {'direct': 0, 'fuzzy': 0, 'inferred': 0},
+        },
+        'exports': {},
+        'errors': [],
+        'config': config.to_dict(),
+    }
+
+    # Progress callback
+    def progress(current, total, message):
+        if config.progress_callback:
+            config.progress_callback(current, total, message)
+        print(f"  [{current}/{total}] {message}")
+
+    try:
+        # Stage 1: Ingest
+        print(f"\n{'='*60}")
+        print("STAGE 1: INGEST")
+        print(f"{'='*60}")
+
+        jobs = ingest_jobs(config.input_path)
+        pipeline_results['stats']['total_ingested'] = len(jobs)
+        print(f"  Loaded {len(jobs)} jobs from {config.input_path}")
+
+        # Apply test mode limit
+        if config.test_mode:
+            jobs = jobs[:3]
+            print(f"  Test mode: processing first {len(jobs)} jobs")
+
+        # Stage 2-3: Parse and Standardize
+        print(f"\n{'='*60}")
+        print("STAGE 2-3: PARSE AND STANDARDIZE")
+        print(f"{'='*60}")
+
+        jobs = parse_and_standardize(jobs, config, on_progress=progress)
+
+        # Stage 4: Match to Programs
+        print(f"\n{'='*60}")
+        print("STAGE 4: MATCH TO PROGRAMS")
+        print(f"{'='*60}")
+
+        jobs = match_to_programs(jobs, config, on_progress=progress)
+
+        # Stage 5: Calculate BD Scores
+        print(f"\n{'='*60}")
+        print("STAGE 5: CALCULATE BD SCORES")
+        print(f"{'='*60}")
+
+        jobs = calculate_bd_scores(jobs, config, on_progress=progress)
+
+        # Stage 6: Export Results
+        print(f"\n{'='*60}")
+        print("STAGE 6: EXPORT RESULTS")
+        print(f"{'='*60}")
+
+        export_results_data = export_results(jobs, config, on_progress=progress)
+        pipeline_results['exports'] = export_results_data
+
+        # Calculate final statistics
+        pipeline_results['jobs'] = jobs
+        pipeline_results['stats']['total_processed'] = len(jobs)
+
+        for job in jobs:
+            if '_error' in job:
+                pipeline_results['stats']['failed'] += 1
+            else:
+                pipeline_results['stats']['successful'] += 1
+
+                # Count by tier
+                tier = job.get('Priority Tier', 'Cold')
+                if 'Hot' in tier:
+                    pipeline_results['stats']['by_tier']['Hot'] += 1
+                elif 'Warm' in tier:
+                    pipeline_results['stats']['by_tier']['Warm'] += 1
+                else:
+                    pipeline_results['stats']['by_tier']['Cold'] += 1
+
+                # Count by match type
+                match_type = job.get('Match Type', 'inferred')
+                if match_type in pipeline_results['stats']['by_match_type']:
+                    pipeline_results['stats']['by_match_type'][match_type] += 1
+
+    except Exception as e:
+        pipeline_results['errors'].append(str(e))
+        print(f"\n  Pipeline error: {e}")
+
+    # Calculate duration
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    pipeline_results['stats']['duration_seconds'] = duration
+
+    # Print summary
+    print(f"\n{'='*60}")
+    print("PIPELINE COMPLETE")
+    print(f"{'='*60}")
+    print(f"  Duration: {duration:.1f} seconds")
+    print(f"  Processed: {pipeline_results['stats']['successful']}/{pipeline_results['stats']['total_processed']} jobs")
+    print(f"  By Tier: Hot={pipeline_results['stats']['by_tier']['Hot']}, "
+          f"Warm={pipeline_results['stats']['by_tier']['Warm']}, "
+          f"Cold={pipeline_results['stats']['by_tier']['Cold']}")
+    print(f"  By Match: Direct={pipeline_results['stats']['by_match_type']['direct']}, "
+          f"Fuzzy={pipeline_results['stats']['by_match_type']['fuzzy']}, "
+          f"Inferred={pipeline_results['stats']['by_match_type']['inferred']}")
+
+    if pipeline_results['exports'].get('notion'):
+        print(f"  Notion CSV: {pipeline_results['exports']['notion'].get('file_path', 'N/A')}")
+    if pipeline_results['exports'].get('n8n'):
+        print(f"  n8n JSON: {pipeline_results['exports']['n8n'].get('file_path', 'N/A')}")
+
+    return pipeline_results
 
 
 # ============================================
@@ -506,12 +1048,22 @@ Examples:
         print(json.dumps(config.to_dict(), indent=2))
         exit(0)
 
-    # Pipeline execution will be implemented in subsequent subtasks
+    # Run the pipeline
     print(f"Pipeline config loaded: {config.name} v{config.version}")
     print(f"  Input: {config.input_path}")
     print(f"  Output: {config.output_dir}")
     print(f"  Test Mode: {config.test_mode}")
     print(f"  Export Formats: {config.export_formats}")
 
-    # Note: run_pipeline() will be added in subtask-4-7
-    print("\n[Pipeline execution to be implemented in subtask-4-7]")
+    # Execute the pipeline
+    results = run_pipeline(config)
+
+    # Exit with error code if pipeline had failures
+    if results['errors']:
+        print(f"\nPipeline completed with errors:")
+        for error in results['errors']:
+            print(f"  - {error}")
+        exit(1)
+
+    # Print final message
+    print(f"\nProcessed {results['stats']['successful']} jobs successfully.")
