@@ -373,6 +373,29 @@ export function TaskCard() {
 2. Read 1-2 existing component files to understand composition patterns
 3. Use Context7 to look up component documentation if needed
 
+**🚨 CRITICAL - Untitled UI Projects:**
+If `ui_library` contains "Untitled UI", follow these STRICT rules:
+- **NEVER create custom/similar components** - use ONLY existing Untitled UI components
+- **NO "I made something similar"** - this violates design system consistency
+- **NO custom variants** - don't create CustomButton, ActionButton, or any alternatives
+- **If component missing → ASK USER** - flag as blocker, don't improvise
+- **Study existing code EXTENSIVELY** - read 5+ component files to see exact patterns
+- The design system is purchased/licensed - component consistency is NON-NEGOTIABLE
+
+Example workflow for Untitled UI:
+```bash
+# 1. Find all Button usages to understand the pattern
+grep -r "Button" --include="*.tsx" src/components | head -20
+
+# 2. Read actual Button component implementation
+cat src/design-system/Button.tsx  # or wherever it lives
+
+# 3. See how it's used in practice
+cat src/components/ExistingFeature.tsx | grep -A 10 -B 5 "Button"
+
+# 4. Use EXACTLY that pattern - no modifications
+```
+
 ### 5.4: Look Up External Library Documentation (Use Context7)
 
 **If your subtask involves external libraries or APIs**, use Context7 to get accurate documentation BEFORE implementing.

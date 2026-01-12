@@ -129,6 +129,15 @@ cat src/components/SomeFeature.tsx | grep -A 5 -B 5 "Button"
 - ✅ GOOD: "Create TaskCard component using Button from @/components/ui/button and Card from @/components/ui/card"
 - ❌ BAD: "Create TaskCard component with custom button and card styling"
 
+**CRITICAL - Untitled UI Projects:**
+If `ui_library` contains "Untitled UI", this is a PREMIUM design system with STRICT component usage rules:
+- **NEVER create similar/alternative components** - use ONLY existing Untitled UI components
+- **NO custom implementations** - even if you think it's "similar" or "better"
+- **NO workarounds** - if a component doesn't exist, flag it as blocker, don't create custom solution
+- **Study existing patterns FIRST** - read 3-5 existing component files before planning
+- Example: If Button exists in Untitled UI, NEVER create CustomButton, ActionButton, or any variant
+- The design system is purchased/licensed - maintaining consistency is critical
+
 **If UI framework is NOT detected** (rare), you may create custom components, but document this clearly in the plan.
 
 ---

@@ -209,6 +209,37 @@ class FrameworkAnalyzer(BaseAnalyzer):
 
         # UI Component Libraries / Design Systems
         ui_libraries = []
+
+        # Check for Untitled UI (premium design system - not in npm)
+        # Detect by folder structure and component comments
+        untitled_ui_detected = False
+        if self._exists("src/components/untitled-ui") or self._exists("components/untitled-ui"):
+            untitled_ui_detected = True
+        elif self._exists("src/design-system") or self._exists("design-system"):
+            # Check if design-system folder contains Untitled UI references
+            design_system_paths = [
+                self.path / "src" / "design-system",
+                self.path / "design-system"
+            ]
+            for ds_path in design_system_paths:
+                if ds_path.exists():
+                    # Look for Untitled UI markers in first few component files
+                    component_files = list(ds_path.glob("**/*.tsx"))[:5] + list(ds_path.glob("**/*.ts"))[:5]
+                    for comp_file in component_files:
+                        try:
+                            content = comp_file.read_text(encoding="utf-8", errors="ignore")
+                            if "untitled" in content.lower() and ("ui" in content.lower() or "design system" in content.lower()):
+                                untitled_ui_detected = True
+                                break
+                        except Exception:
+                            continue
+                if untitled_ui_detected:
+                    break
+
+        if untitled_ui_detected:
+            ui_libraries.append("Untitled UI")
+
+        # Other UI libraries
         if any(k.startswith("@radix-ui/") for k in deps_lower):
             # Check if it's shadcn/ui (uses Radix + has components directory)
             if self._exists("components.json") or self._exists("src/components/ui"):
