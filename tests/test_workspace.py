@@ -787,6 +787,31 @@ class TestRebaseSpecBranch:
 
         assert result is False, "Rebase of non-existent branch should fail"
 
+        # NEW-004: Verify repo state after failure - should be clean and unchanged
+        # (1) Current branch should still be 'main'
+        current_branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=temp_git_repo,
+            capture_output=True,
+            text=True,
+        )
+        assert current_branch.stdout.strip() == "main", "Should still be on main branch"
+
+        # (2) No rebase state directories should exist
+        rebase_merge_dir = temp_git_repo / ".git" / "rebase-merge"
+        rebase_apply_dir = temp_git_repo / ".git" / "rebase-apply"
+        assert not rebase_merge_dir.exists(), "Should not be in rebase-merge state"
+        assert not rebase_apply_dir.exists(), "Should not be in rebase-apply state"
+
+        # (3) Git status should show clean state
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=temp_git_repo,
+            capture_output=True,
+            text=True,
+        )
+        assert status_result.stdout.strip() == "", "Git status should be clean"
+
     def test_rebase_spec_branch_already_up_to_date(self, temp_git_repo: Path):
         """_rebase_spec_branch returns True when spec branch is already up-to-date (ACS-224)."""
         from core.workspace import _rebase_spec_branch
