@@ -32,6 +32,7 @@ export function useCrossWindowDrag(
   });
 
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const accumulatedDistance = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const activeProjectId = useRef<string | null>(null);
   const DETACH_THRESHOLD = 100; // pixels downward
 
@@ -54,6 +55,9 @@ export function useCrossWindowDrag(
         activeProjectId.current = event.active.id as string;
       }
 
+      // Reset accumulated distance
+      accumulatedDistance.current = { x: 0, y: 0 };
+
       setDragState({
         isDetachThresholdCrossed: false,
         isOverMainWindow: false,
@@ -62,28 +66,31 @@ export function useCrossWindowDrag(
     },
 
     onDragMove(event: DragMoveEvent) {
-      if (!dragStartPos.current || !event.activatorEvent || !('clientX' in event.activatorEvent)) {
+      if (!dragStartPos.current) {
         return;
       }
 
-      const activatorEvent = event.activatorEvent as PointerEvent;
-      const currentPos = {
-        x: activatorEvent.clientX,
-        y: activatorEvent.clientY
-      };
+      // Accumulate delta from @dnd-kit to track total movement
+      accumulatedDistance.current.x += event.delta.x;
+      accumulatedDistance.current.y += event.delta.y;
 
       const distance = {
-        x: currentPos.x - dragStartPos.current.x,
-        y: currentPos.y - dragStartPos.current.y
+        x: accumulatedDistance.current.x,
+        y: accumulatedDistance.current.y
       };
 
       // Check if dragged down past threshold (main window only)
       const thresholdCrossed = windowType === 'main' && distance.y > DETACH_THRESHOLD;
 
+      if (windowType === 'main' && Math.abs(distance.y) > 10) {
+        console.log('[useCrossWindowDrag] Drag distance Y:', distance.y, 'Threshold:', DETACH_THRESHOLD, 'Crossed:', thresholdCrossed);
+      }
+
       // Check if dragging over main window (project window only)
       let overMainWindow = false;
-      if (windowType === 'project' && 'screenX' in activatorEvent) {
+      if (windowType === 'project' && event.activatorEvent && 'screenX' in event.activatorEvent) {
         // Use IPC to get main window bounds and check if cursor is over it
+        const activatorEvent = event.activatorEvent as PointerEvent;
         window.electronAPI.window.getMainBounds().then(bounds => {
           if (bounds) {
             const screenPos = {
@@ -162,6 +169,7 @@ export function useCrossWindowDrag(
   function resetDragState() {
     dragStartPos.current = null;
     activeProjectId.current = null;
+    accumulatedDistance.current = { x: 0, y: 0 };
     setDragState({
       isDetachThresholdCrossed: false,
       isOverMainWindow: false,
