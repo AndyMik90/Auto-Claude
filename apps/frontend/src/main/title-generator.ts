@@ -211,24 +211,29 @@ export class TitleGenerator extends EventEmitter {
       const status = err?.status;
       const message = err?.message || String(error);
 
-      // Check for rate limit conditions
-      const isRateLimit = status === 429 || /rate\s*limit/i.test(message) || /too\s*many\s*requests/i.test(message);
+      // Check for rate limit conditions using detectRateLimit for consistency with OAuth path
+      const rateLimitDetection = detectRateLimit(message);
+      const isRateLimit = rateLimitDetection.isRateLimited || 
+        status === 429 || 
+        /rate\s*limit/i.test(message) || 
+        /too\s*many\s*requests/i.test(message);
 
-      // Log with appropriate detail
+      // Log with appropriate detail (indicate truncation if message is long)
+      const truncatedMessage = message.length > 200 
+        ? message.substring(0, 197) + '...' 
+        : message;
+      
       console.warn('[TitleGenerator] SDK title generation failed', {
         errorType,
         status,
-        message: message.substring(0, 200),
+        message: truncatedMessage,
         isRateLimited: isRateLimit
       });
 
       // Emit rate limit event if detected (consistent with OAuth path behavior)
-      if (isRateLimit) {
-        const rateLimitDetection = detectRateLimit(message);
-        if (rateLimitDetection.isRateLimited) {
-          const rateLimitInfo = createSDKRateLimitInfo('title-generator', rateLimitDetection);
-          this.emit('sdk-rate-limit', rateLimitInfo);
-        }
+      if (isRateLimit && rateLimitDetection.isRateLimited) {
+        const rateLimitInfo = createSDKRateLimitInfo('title-generator', rateLimitDetection);
+        this.emit('sdk-rate-limit', rateLimitInfo);
       }
 
       return null;
