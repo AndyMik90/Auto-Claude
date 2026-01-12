@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, RefreshCw, AlertCircle } from 'lucide-react';
 import {
@@ -66,7 +66,7 @@ import { ProjectTabBar } from './components/ProjectTabBar';
 import { AddProjectModal } from './components/AddProjectModal';
 import { ViewStateProvider } from './contexts/ViewStateContext';
 
-// Wrapper component for ProjectTabBar
+// Wrapper component for ProjectTabBar with drag detection
 interface ProjectTabBarWithContextProps {
   projects: Project[];
   activeProjectId: string | null;
@@ -74,6 +74,10 @@ interface ProjectTabBarWithContextProps {
   onProjectClose: (projectId: string) => void;
   onAddProject: () => void;
   onSettingsClick: () => void;
+  windowType: 'main' | 'project';
+  onDetach: (projectId: string, position: { x: number; y: number }) => void;
+  onReattach: (projectId: string) => void;
+  onDragStateChange: (state: any) => void;
 }
 
 function ProjectTabBarWithContext({
@@ -82,8 +86,24 @@ function ProjectTabBarWithContext({
   onProjectSelect,
   onProjectClose,
   onAddProject,
-  onSettingsClick
+  onSettingsClick,
+  windowType,
+  onDetach,
+  onReattach,
+  onDragStateChange
 }: ProjectTabBarWithContextProps) {
+  // Cross-window drag detection - must be inside DndContext
+  const dragState = useCrossWindowDrag(
+    onDetach,
+    onReattach,
+    windowType
+  );
+
+  // Update parent component's drag state
+  React.useEffect(() => {
+    onDragStateChange(dragState);
+  }, [dragState, onDragStateChange]);
+
   return (
     <ProjectTabBar
       projects={projects}
@@ -163,13 +183,11 @@ export function App() {
 
   // Track dragging state for overlay
   const [activeDragProject, setActiveDragProject] = useState<Project | null>(null);
-
-  // Cross-window drag detection
-  const dragState = useCrossWindowDrag(
-    detachProject,
-    reattachProject,
-    windowContext?.type || 'main'
-  );
+  const [dragState, setDragState] = useState({
+    isDetachThresholdCrossed: false,
+    isOverMainWindow: false,
+    dragDistance: { x: 0, y: 0 }
+  });
 
   // Get tabs and selected project
   const projectTabs = getProjectTabs();
@@ -737,6 +755,10 @@ export function App() {
                   onProjectClose={handleProjectTabClose}
                   onAddProject={handleAddProject}
                   onSettingsClick={() => setIsSettingsDialogOpen(true)}
+                  windowType={windowContext?.type || 'main'}
+                  onDetach={detachProject}
+                  onReattach={reattachProject}
+                  onDragStateChange={setDragState}
                 />
               </SortableContext>
 
