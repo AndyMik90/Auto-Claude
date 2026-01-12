@@ -62,6 +62,9 @@ if (DEBUG_UPDATER) {
 
 let mainWindow: BrowserWindow | null = null;
 
+// Track downloaded update state so it persists across Settings page navigations
+let downloadedUpdateInfo: AppUpdateInfo | null = null;
+
 /**
  * Initialize the app updater system
  *
@@ -107,6 +110,12 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   // Update downloaded - ready to install
   autoUpdater.on('update-downloaded', (info) => {
     console.warn('[app-updater] Update downloaded:', info.version);
+    // Store downloaded update info so it persists across Settings page navigations
+    downloadedUpdateInfo = {
+      version: info.version,
+      releaseNotes: info.releaseNotes as string | undefined,
+      releaseDate: info.releaseDate
+    };
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_DOWNLOADED, {
         version: info.version,
@@ -254,6 +263,15 @@ export function quitAndInstall(): void {
  */
 export function getCurrentVersion(): string {
   return autoUpdater.currentVersion.version;
+}
+
+/**
+ * Get downloaded update info if an update has been downloaded and is ready to install.
+ * This allows the UI to show "Install and Restart" even if the user opens Settings
+ * after the download completed in the background.
+ */
+export function getDownloadedUpdateInfo(): AppUpdateInfo | null {
+  return downloadedUpdateInfo;
 }
 
 /**

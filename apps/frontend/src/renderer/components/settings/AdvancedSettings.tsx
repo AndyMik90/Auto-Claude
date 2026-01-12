@@ -80,12 +80,30 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
   // Stable downgrade state (shown when user turns off beta while on prerelease)
   const [stableDowngradeInfo, setStableDowngradeInfo] = useState<AppUpdateInfo | null>(null);
 
-  // Check for updates on mount
+  // Check for updates on mount, including any already-downloaded updates
   useEffect(() => {
     if (section === 'updates') {
+      // First check if an update was already downloaded (e.g., auto-downloaded in background)
+      checkForDownloadedUpdate();
+      // Then check for available updates
       checkForAppUpdates();
     }
   }, [section]);
+
+  // Check if an update was already downloaded before the Settings page opened
+  const checkForDownloadedUpdate = async () => {
+    try {
+      const result = await window.electronAPI.getDownloadedAppUpdate();
+      if (result.success && result.data) {
+        // An update was already downloaded - show "Install and Restart" button
+        setAppUpdateInfo(result.data);
+        setIsAppUpdateDownloaded(true);
+        console.log('[AdvancedSettings] Found already-downloaded update:', result.data.version);
+      }
+    } catch (err) {
+      console.error('Failed to check for downloaded update:', err);
+    }
+  };
 
   // Listen for app update events
   useEffect(() => {
