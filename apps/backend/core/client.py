@@ -282,6 +282,24 @@ def _validate_custom_mcp_server(server: dict) -> bool:
     if "description" in server and not isinstance(server.get("description"), str):
         return False
 
+    # Validate env field if present (must be dict of strings)
+    if "env" in server:
+        if not isinstance(server["env"], dict):
+            logger.warning("Custom MCP server 'env' field must be a dictionary")
+            return False
+        if not all(
+            isinstance(k, str) and isinstance(v, str)
+            for k, v in server["env"].items()
+        ):
+            logger.warning("Custom MCP server 'env' values must be strings")
+            return False
+
+    # Validate timeout if present (must be positive integer)
+    if "timeout" in server:
+        if not isinstance(server["timeout"], (int, float)) or server["timeout"] <= 0:
+            logger.warning("Custom MCP server 'timeout' must be a positive number")
+            return False
+
     # Reject any unexpected fields that could be exploited
     allowed_fields = {
         "id",
@@ -292,6 +310,8 @@ def _validate_custom_mcp_server(server: dict) -> bool:
         "url",
         "headers",
         "description",
+        "env",      # Environment variables for subprocess
+        "timeout",  # Connection timeout in milliseconds
     }
     unexpected_fields = set(server.keys()) - allowed_fields
     if unexpected_fields:
@@ -743,10 +763,17 @@ def create_client(
             continue
         server_type = custom.get("type", "command")
         if server_type == "command":
-            mcp_servers[server_id] = {
+            server_config = {
                 "command": custom.get("command", "npx"),
                 "args": custom.get("args", []),
             }
+            # Pass environment variables to the MCP server subprocess
+            if custom.get("env"):
+                server_config["env"] = custom["env"]
+            # Pass timeout if specified
+            if custom.get("timeout"):
+                server_config["timeout"] = custom["timeout"]
+            mcp_servers[server_id] = server_config
         elif server_type == "http":
             server_config = {
                 "type": "http",
