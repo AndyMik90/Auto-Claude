@@ -947,21 +947,17 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
 
     try:
         # Get current branch
-        base_result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        base_result = run_git(
+            ["rev-parse", "--abbrev-ref", "HEAD"],
             cwd=project_dir,
-            capture_output=True,
-            text=True,
         )
         if base_result.returncode == 0:
             result["base_branch"] = base_result.stdout.strip()
 
         # Get merge base
-        merge_base_result = subprocess.run(
-            ["git", "merge-base", result["base_branch"], spec_branch],
+        merge_base_result = run_git(
+            ["merge-base", result["base_branch"], spec_branch],
             cwd=project_dir,
-            capture_output=True,
-            text=True,
         )
         if merge_base_result.returncode != 0:
             debug_warning(MODULE, "Could not find merge base")
@@ -970,17 +966,13 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
         merge_base = merge_base_result.stdout.strip()
 
         # Get commit hashes
-        main_commit_result = subprocess.run(
-            ["git", "rev-parse", result["base_branch"]],
+        main_commit_result = run_git(
+            ["rev-parse", result["base_branch"]],
             cwd=project_dir,
-            capture_output=True,
-            text=True,
         )
-        spec_commit_result = subprocess.run(
-            ["git", "rev-parse", spec_branch],
+        spec_commit_result = run_git(
+            ["rev-parse", spec_branch],
             cwd=project_dir,
-            capture_output=True,
-            text=True,
         )
 
         if main_commit_result.returncode != 0 or spec_commit_result.returncode != 0:
@@ -1016,9 +1008,8 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
 
         # Use git merge-tree to check for conflicts WITHOUT touching working directory
         # Note: --write-tree mode only accepts 2 branches (it auto-finds the merge base)
-        merge_tree_result = subprocess.run(
+        merge_tree_result = run_git(
             [
-                "git",
                 "merge-tree",
                 "--write-tree",
                 "--no-messages",
@@ -1026,8 +1017,6 @@ def _check_git_conflicts(project_dir: Path, spec_name: str) -> dict:
                 spec_branch,
             ],
             cwd=project_dir,
-            capture_output=True,
-            text=True,
         )
 
         # merge-tree returns exit code 1 if there are actual text conflicts

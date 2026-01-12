@@ -596,6 +596,14 @@ class TestRebaseDetection:
             capture_output=True,
         )
 
+        # Switch back to main before checking conflicts
+        # (otherwise _check_git_conflicts would compare spec to itself)
+        subprocess.run(
+            ["git", "checkout", "main"],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+
         # Check git conflicts - spec branch is ahead, not behind
         result = _check_git_conflicts(temp_git_repo, "test-spec")
 
@@ -779,6 +787,38 @@ class TestRebaseSpecBranch:
 
         assert result is False, "Rebase of non-existent branch should fail"
 
+    def test_rebase_spec_branch_already_up_to_date(self, temp_git_repo: Path):
+        """_rebase_spec_branch returns True when spec branch is already up-to-date (ACS-224)."""
+        from core.workspace import _rebase_spec_branch
+
+        # Create a spec branch and add a commit
+        spec_branch = "auto-claude/test-spec"
+        subprocess.run(
+            ["git", "checkout", "-b", spec_branch],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+        (temp_git_repo / "spec-file.txt").write_text("spec content")
+        subprocess.run(["git", "add", "."], cwd=temp_git_repo, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Spec commit"],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+
+        # Switch back to main (no new commits added to main)
+        subprocess.run(
+            ["git", "checkout", "main"],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+
+        # Spec branch is ahead of main (not behind), so rebase should return True
+        # (branch already up-to-date is a success condition)
+        result = _rebase_spec_branch(temp_git_repo, "test-spec", "main")
+
+        assert result is True, "Rebase should return True when branch is already up-to-date"
+
 
 class TestRebaseIntegration:
     """Integration tests for automatic rebase in merge flow (ACS-224)."""
@@ -889,3 +929,112 @@ class TestRebaseErrorHandling:
         assert "commits_behind" in result
         assert result.get("needs_rebase") is False
         assert result.get("commits_behind") == 0
+
+    def test_check_git_conflicts_handles_detached_head(self, temp_git_repo: Path):
+        """_check_git_conflicts handles detached HEAD state gracefully (ACS-224)."""
+        from core.workspace import _check_git_conflicts
+
+        # Create a spec branch first
+        spec_branch = "auto-claude/test-spec"
+        subprocess.run(
+            ["git", "checkout", "-b", spec_branch],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+        (temp_git_repo / "spec-file.txt").write_text("spec content")
+        subprocess.run(["git", "add", "."], cwd=temp_git_repo, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Spec commit"],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+
+        # Get the commit hash and checkout to detached HEAD state
+        commit_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=temp_git_repo,
+            capture_output=True,
+            text=True,
+        )
+        commit_hash = commit_result.stdout.strip()
+        subprocess.run(
+            ["git", "checkout", commit_hash],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+
+        # Check conflicts while in detached HEAD state
+        result = _check_git_conflicts(temp_git_repo, "test-spec")
+
+        # Should return a valid dict structure with safe defaults
+        assert result is not None
+        assert "needs_rebase" in result
+        assert "commits_behind" in result
+        # In detached HEAD, base_branch will be "HEAD" and results may vary
+        # The important thing is it doesn't crash
+
+        # Cleanup: return to main branch
+        subprocess.run(
+            ["git", "checkout", "main"],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+
+    def test_check_git_conflicts_handles_corrupted_repo(self, temp_git_repo: Path):
+        """_check_git_conflicts handles corrupted repo metadata gracefully (ACS-224)."""
+        import shutil
+        import tempfile
+
+        from core.workspace import _check_git_conflicts
+
+        # Create a spec branch
+        spec_branch = "auto-claude/test-spec"
+        subprocess.run(
+            ["git", "checkout", "-b", spec_branch],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+        (temp_git_repo / "spec-file.txt").write_text("spec content")
+        subprocess.run(["git", "add", "."], cwd=temp_git_repo, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Spec commit"],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+
+        # Return to main
+        subprocess.run(
+            ["git", "checkout", "main"],
+            cwd=temp_git_repo,
+            capture_output=True,
+        )
+
+        # Backup .git directory
+        git_dir = temp_git_repo / ".git"
+        backup_dir = temp_git_repo / ".git.backup"
+
+        try:
+            # Simulate corrupted repo by temporarily moving .git
+            shutil.move(str(git_dir), str(backup_dir))
+
+            # Check conflicts should handle gracefully (no exception)
+            result = _check_git_conflicts(temp_git_repo, "test-spec")
+
+            # Should return a valid dict structure with default/false values
+            assert result is not None
+            assert "needs_rebase" in result
+            assert "commits_behind" in result
+            # When repo is corrupted, should return safe defaults
+            assert result.get("needs_rebase") is False
+            assert result.get("commits_behind") == 0
+
+        finally:
+            # Restore .git directory
+            if backup_dir.exists():
+                shutil.move(str(backup_dir), str(git_dir))
+            # Ensure we're back on main
+            subprocess.run(
+                ["git", "checkout", "main"],
+                cwd=temp_git_repo,
+                capture_output=True,
+            )
