@@ -1,0 +1,5 @@
+[
+  {"title": "Senior Systems Engineer - DCGS", "company": "GDIT", "location": "San Diego, CA", "clearance": "TS/SCI", "description": "Support AF DCGS program.", "datePosted": "2026-01-10", "url": "https://example.com/1"},
+  {"title": "Intelligence Analyst", "company": "Lockheed Martin", "location": "Fort Meade, MD", "clearance": "TS/SCI with CI Poly", "description": "NSA/CYBERCOM support.", "datePosted": "2026-01-09", "url": "https://example.com/2"},
+  {"title": "Software Developer", "company": "Booz Allen", "location": "Herndon, VA", "clearance": "Secret", "description": "Federal client support.", "datePosted": "2026-01-08", "url": "https://example.com/3"}
+]

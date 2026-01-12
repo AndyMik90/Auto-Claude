@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "n8n": {
+      "command": "npx",
+      "args": ["-y", "n8n-mcp@latest"],
+      "timeout": 300000,
+      "env": {
+        "MCP_MODE": "stdio",
+        "N8N_API_URL": "${N8N_API_URL}",
+        "N8N_API_KEY": "${N8N_API_KEY}"
+      }
+    },
+    "notion": {
+      "command": "npx",
+      "args": ["-y", "@notionhq/notion-mcp-server"],
+      "timeout": 300000,
+      "env": {
+        "OPENAPI_MCP_HEADERS": "${OPENAPI_MCP_HEADERS}"
+      }
+    },
+    "apify": {
+      "command": "npx",
+      "args": ["-y", "@apify/actors-mcp-server"],
+      "timeout": 300000,
+      "env": {
+        "APIFY_TOKEN": "${APIFY_TOKEN}"
+      }
+    }
+  }
+}
