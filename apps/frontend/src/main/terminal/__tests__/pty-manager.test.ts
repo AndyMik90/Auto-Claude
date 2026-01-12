@@ -168,5 +168,85 @@ describe('pty-manager', () => {
         expect(detectShellType('/mnt/c/Windows/System32/bash.exe')).toBe('bash');
       });
     });
+
+    describe('False positive prevention (precise path boundary matching)', () => {
+      // These tests verify that shell names in directory paths don't cause false positives
+      // when using endsWith() instead of includes()
+
+      describe('pwsh false positives', () => {
+        it('should NOT match pwsh-tools directory as pwsh', () => {
+          // /usr/local/pwsh-tools/bash should be bash, not pwsh
+          expect(detectShellType('/usr/local/pwsh-tools/bash')).toBe('bash');
+        });
+
+        it('should NOT match pwsh in middle of path', () => {
+          expect(detectShellType('/home/user/pwsh/bin/zsh')).toBe('zsh');
+        });
+      });
+
+      describe('powershell false positives', () => {
+        it('should NOT match powershell-scripts directory as powershell', () => {
+          // /opt/powershell-scripts/zsh should be zsh, not powershell
+          expect(detectShellType('/opt/powershell-scripts/zsh')).toBe('zsh');
+        });
+
+        it('should NOT match powershell in middle of path', () => {
+          expect(detectShellType('/home/user/powershell/modules/bash')).toBe('bash');
+        });
+      });
+
+      describe('cmd false positives', () => {
+        it('should NOT match cmd in username', () => {
+          // C:\Users\cmd-admin\Git\bin\bash.exe should be bash
+          expect(detectShellType('C:\\Users\\cmd-admin\\Git\\bin\\bash.exe')).toBe('bash');
+        });
+
+        it('should NOT match commander directory as cmd', () => {
+          // /home/commander/bin/bash should be bash
+          expect(detectShellType('/home/commander/bin/bash')).toBe('bash');
+        });
+
+        it('should NOT match cmdtools directory as cmd', () => {
+          expect(detectShellType('/usr/local/cmdtools/zsh')).toBe('zsh');
+        });
+      });
+
+      describe('bash false positives', () => {
+        it('should NOT match bash-tools directory as bash', () => {
+          // /path/to/bash-tools/zsh should be zsh, not bash
+          expect(detectShellType('/path/to/bash-tools/zsh')).toBe('zsh');
+        });
+
+        it('should NOT match bash_scripts directory as bash', () => {
+          expect(detectShellType('/home/user/bash_scripts/pwsh')).toBe('pwsh');
+        });
+      });
+
+      describe('zsh false positives', () => {
+        it('should NOT match zsh-plugin directory as zsh', () => {
+          // /path/to/zsh-plugin/bash should be bash, not zsh
+          expect(detectShellType('/path/to/zsh-plugin/bash')).toBe('bash');
+        });
+
+        it('should NOT match zshrc-backup directory as zsh', () => {
+          expect(detectShellType('/home/user/zshrc-backup/pwsh')).toBe('pwsh');
+        });
+      });
+
+      describe('complex mixed scenarios', () => {
+        it('should correctly identify shell even with multiple shell names in path', () => {
+          // Path contains pwsh, bash, cmd but ends with zsh
+          expect(detectShellType('/pwsh-tools/bash-scripts/cmd-utils/zsh')).toBe('zsh');
+
+          // Path contains all shell names but ends with bash
+          expect(detectShellType('/zsh-config/powershell/cmd/bash')).toBe('bash');
+        });
+
+        it('should handle Windows paths with shell names in directories', () => {
+          expect(detectShellType('C:\\Users\\pwsh-user\\bash-scripts\\Git\\bin\\bash.exe')).toBe('bash');
+          expect(detectShellType('C:\\cmd-tools\\powershell\\7\\pwsh.exe')).toBe('pwsh');
+        });
+      });
+    });
   });
 });

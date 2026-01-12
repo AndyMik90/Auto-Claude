@@ -35,13 +35,17 @@ export function detectShellType(shellPath: string): ShellType {
 
   // Check for PowerShell Core (pwsh) first - more specific match
   // Matches: pwsh.exe, pwsh, /usr/bin/pwsh
-  if (normalized.endsWith('pwsh.exe') || normalized.endsWith('pwsh') || normalized.includes('/pwsh')) {
+  // Using endsWith() for precise path boundary matching to avoid false positives
+  // (e.g., /usr/local/pwsh-tools/bash should NOT match as pwsh)
+  if (normalized.endsWith('pwsh.exe') || normalized.endsWith('pwsh') || normalized.endsWith('/pwsh')) {
     return 'pwsh';
   }
 
   // Check for Windows PowerShell
-  // Matches: powershell.exe, /powershell
-  if (normalized.endsWith('powershell.exe') || normalized.includes('/powershell')) {
+  // Matches: powershell.exe, powershell, /powershell
+  // Using endsWith() for precise path boundary matching to avoid false positives
+  // (e.g., /opt/powershell-scripts/zsh should NOT match as powershell)
+  if (normalized.endsWith('powershell.exe') || normalized.endsWith('powershell') || normalized.endsWith('/powershell')) {
     return 'powershell';
   }
 
@@ -59,13 +63,17 @@ export function detectShellType(shellPath: string): ShellType {
 
   // Check for bash (includes Git Bash, Cygwin, MSYS2)
   // Matches: bash.exe, bash, /bin/bash, /usr/bin/bash
-  if (normalized.endsWith('bash.exe') || normalized.endsWith('bash') || normalized.includes('/bash')) {
+  // Using endsWith() for precise path boundary matching to avoid false positives
+  // (e.g., /path/to/bash-tools/zsh should NOT match as bash)
+  if (normalized.endsWith('bash.exe') || normalized.endsWith('bash') || normalized.endsWith('/bash')) {
     return 'bash';
   }
 
   // Check for zsh
   // Matches: zsh, /bin/zsh, /usr/bin/zsh
-  if (normalized.endsWith('zsh') || normalized.includes('/zsh')) {
+  // Using endsWith() for precise path boundary matching to avoid false positives
+  // (e.g., /path/to/zsh-plugin/bash should NOT match as zsh)
+  if (normalized.endsWith('zsh') || normalized.endsWith('/zsh')) {
     return 'zsh';
   }
 
