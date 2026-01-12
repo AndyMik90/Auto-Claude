@@ -328,7 +328,7 @@ export function Sidebar({
     <TooltipProvider>
       <div className={cn(
         "flex h-full flex-col bg-sidebar border-r border-border transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64"
+        isCollapsed ? "w-20" : "w-64"
       )}>
         {/* Header with drag area and collapse toggle */}
         <div className="electron-drag flex h-14 items-center justify-between px-4 pt-6">
