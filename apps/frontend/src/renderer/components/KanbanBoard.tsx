@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   Archive,
   RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Button } from "./ui/button";
@@ -165,7 +166,14 @@ const getEmptyStateContent = (
       return {
         icon: <CheckCircle2 className="h-6 w-6 text-muted-foreground/50" />,
         message: t("tasks:kanban.emptyDone"),
+
         subtext: t("tasks:kanban.emptyDoneHint"),
+      };
+    case "error":
+      return {
+        icon: <AlertCircle className="h-6 w-6 text-destructive/50" />,
+        message: t("tasks:kanban.emptyError"),
+        subtext: t("tasks:kanban.emptyErrorHint"),
       };
     default:
       return {
@@ -240,6 +248,8 @@ const DroppableColumn = memo(function DroppableColumn({
         return "column-human-review";
       case "done":
         return "column-done";
+      case "error":
+        return "column-error";
       default:
         return "border-t-muted-foreground/30";
     }
@@ -440,6 +450,7 @@ export function KanbanBoard({
       ai_review: [],
       human_review: [],
       done: [],
+      error: [],
     };
 
     filteredTasks.forEach((task) => {

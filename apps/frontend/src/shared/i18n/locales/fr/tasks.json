@@ -86,6 +86,7 @@
     "worktreeCleanupNotStaged": "Cette tâche possède un worktree avec des changements non fusionnés. Supprimez le worktree pour marquer comme terminé, ou annulez pour réviser les changements d'abord.",
     "keepWorktree": "Garder le Worktree",
     "deleteWorktree": "Supprimer le Worktree & Marquer Terminé",
+    "refreshing": "Actualisation en cours...",
     "refreshTasks": "Actualiser les tâches"
   },
   "execution": {

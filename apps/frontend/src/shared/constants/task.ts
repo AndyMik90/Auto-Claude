@@ -9,38 +9,44 @@
 
 // Task status columns in Kanban board order
 export const TASK_STATUS_COLUMNS = [
-  'error',
-  'backlog',
-  'in_progress',
-  'ai_review',
-  'human_review',
-  'done'
+  "backlog",
+  "in_progress",
+  "ai_review",
+  "human_review",
+  "done",
+  "error",
 ] as const;
 
-export type TaskStatusColumn = typeof TASK_STATUS_COLUMNS[number];
+export type TaskStatusColumn = (typeof TASK_STATUS_COLUMNS)[number];
 
 // Status label translation keys (use with t() from react-i18next)
 // Note: pr_created maps to 'done' column in Kanban view (see KanbanBoard.tsx)
-export const TASK_STATUS_LABELS: Record<TaskStatusColumn | 'pr_created', string> = {
-  error: 'columns.error',
-  backlog: 'columns.backlog',
-  in_progress: 'columns.in_progress',
-  ai_review: 'columns.ai_review',
-  human_review: 'columns.human_review',
-  done: 'columns.done',
-  pr_created: 'columns.pr_created'
+export const TASK_STATUS_LABELS: Record<
+  TaskStatusColumn | "pr_created",
+  string
+> = {
+  backlog: "columns.backlog",
+  in_progress: "columns.in_progress",
+  ai_review: "columns.ai_review",
+  human_review: "columns.human_review",
+  done: "columns.done",
+  pr_created: "columns.pr_created",
+  error: "columns.error",
 };
 
 // Status colors for UI
 // Note: pr_created maps to 'done' column in Kanban view (see KanbanBoard.tsx)
-export const TASK_STATUS_COLORS: Record<TaskStatusColumn | 'pr_created', string> = {
-  error: 'bg-destructive/10 text-destructive',
-  backlog: 'bg-muted text-muted-foreground',
-  in_progress: 'bg-info/10 text-info',
-  ai_review: 'bg-warning/10 text-warning',
-  human_review: 'bg-purple-500/10 text-purple-400',
-  done: 'bg-success/10 text-success',
-  pr_created: 'bg-info/10 text-info'
+export const TASK_STATUS_COLORS: Record<
+  TaskStatusColumn | "pr_created",
+  string
+> = {
+  backlog: "bg-muted text-muted-foreground",
+  in_progress: "bg-info/10 text-info",
+  ai_review: "bg-warning/10 text-warning",
+  human_review: "bg-purple-500/10 text-purple-400",
+  done: "bg-success/10 text-success",
+  pr_created: "bg-info/10 text-info",
+  error: "bg-destructive/10 text-destructive",
 };
 
 // ============================================
@@ -48,10 +54,10 @@ export const TASK_STATUS_COLORS: Record<TaskStatusColumn | 'pr_created', string>
 // ============================================
 
 export const SUBTASK_STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-muted',
-  in_progress: 'bg-info',
-  completed: 'bg-success',
-  failed: 'bg-destructive'
+  pending: "bg-muted",
+  in_progress: "bg-info",
+  completed: "bg-success",
+  failed: "bg-destructive",
 };
 
 // ============================================
@@ -60,46 +66,49 @@ export const SUBTASK_STATUS_COLORS: Record<string, string> = {
 
 // Execution phase labels
 export const EXECUTION_PHASE_LABELS: Record<string, string> = {
-  idle: 'Idle',
-  planning: 'Planning',
-  coding: 'Coding',
-  qa_review: 'AI Review',
-  qa_fixing: 'Fixing Issues',
-  complete: 'Complete',
-  failed: 'Failed'
+  idle: "Idle",
+  planning: "Planning",
+  coding: "Coding",
+  qa_review: "AI Review",
+  qa_fixing: "Fixing Issues",
+  complete: "Complete",
+  failed: "Failed",
 };
 
 // Execution phase colors (for progress bars and indicators)
 export const EXECUTION_PHASE_COLORS: Record<string, string> = {
-  idle: 'bg-muted text-muted-foreground',
-  planning: 'bg-amber-500 text-amber-50',
-  coding: 'bg-info text-info-foreground',
-  qa_review: 'bg-purple-500 text-purple-50',
-  qa_fixing: 'bg-warning text-warning-foreground',
-  complete: 'bg-success text-success-foreground',
-  failed: 'bg-destructive text-destructive-foreground'
+  idle: "bg-muted text-muted-foreground",
+  planning: "bg-amber-500 text-amber-50",
+  coding: "bg-info text-info-foreground",
+  qa_review: "bg-purple-500 text-purple-50",
+  qa_fixing: "bg-warning text-warning-foreground",
+  complete: "bg-success text-success-foreground",
+  failed: "bg-destructive text-destructive-foreground",
 };
 
 // Execution phase badge colors (outline style)
 export const EXECUTION_PHASE_BADGE_COLORS: Record<string, string> = {
-  idle: 'bg-muted/50 text-muted-foreground border-muted',
-  planning: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
-  coding: 'bg-info/10 text-info border-info/30',
-  qa_review: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
-  qa_fixing: 'bg-warning/10 text-warning border-warning/30',
-  complete: 'bg-success/10 text-success border-success/30',
-  failed: 'bg-destructive/10 text-destructive border-destructive/30'
+  idle: "bg-muted/50 text-muted-foreground border-muted",
+  planning: "bg-amber-500/10 text-amber-500 border-amber-500/30",
+  coding: "bg-info/10 text-info border-info/30",
+  qa_review: "bg-purple-500/10 text-purple-400 border-purple-500/30",
+  qa_fixing: "bg-warning/10 text-warning border-warning/30",
+  complete: "bg-success/10 text-success border-success/30",
+  failed: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
 // Execution phase progress weights (for overall progress calculation)
-export const EXECUTION_PHASE_WEIGHTS: Record<string, { start: number; end: number }> = {
+export const EXECUTION_PHASE_WEIGHTS: Record<
+  string,
+  { start: number; end: number }
+> = {
   idle: { start: 0, end: 0 },
   planning: { start: 0, end: 20 },
   coding: { start: 20, end: 80 },
   qa_review: { start: 80, end: 95 },
-  qa_fixing: { start: 80, end: 95 },  // Same range as qa_review, cycles back
+  qa_fixing: { start: 80, end: 95 }, // Same range as qa_review, cycles back
   complete: { start: 100, end: 100 },
-  failed: { start: 0, end: 0 }
+  failed: { start: 0, end: 0 },
 };
 
 // ============================================
@@ -107,27 +116,27 @@ export const EXECUTION_PHASE_WEIGHTS: Record<string, { start: number; end: numbe
 // ============================================
 
 export const TASK_CATEGORY_LABELS: Record<string, string> = {
-  feature: 'Feature',
-  bug_fix: 'Bug Fix',
-  refactoring: 'Refactoring',
-  documentation: 'Docs',
-  security: 'Security',
-  performance: 'Performance',
-  ui_ux: 'UI/UX',
-  infrastructure: 'Infrastructure',
-  testing: 'Testing'
+  feature: "Feature",
+  bug_fix: "Bug Fix",
+  refactoring: "Refactoring",
+  documentation: "Docs",
+  security: "Security",
+  performance: "Performance",
+  ui_ux: "UI/UX",
+  infrastructure: "Infrastructure",
+  testing: "Testing",
 };
 
 export const TASK_CATEGORY_COLORS: Record<string, string> = {
-  feature: 'bg-primary/10 text-primary border-primary/30',
-  bug_fix: 'bg-destructive/10 text-destructive border-destructive/30',
-  refactoring: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
-  documentation: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
-  security: 'bg-red-500/10 text-red-400 border-red-500/30',
-  performance: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
-  ui_ux: 'bg-info/10 text-info border-info/30',
-  infrastructure: 'bg-slate-500/10 text-slate-400 border-slate-500/30',
-  testing: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+  feature: "bg-primary/10 text-primary border-primary/30",
+  bug_fix: "bg-destructive/10 text-destructive border-destructive/30",
+  refactoring: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+  documentation: "bg-amber-500/10 text-amber-500 border-amber-500/30",
+  security: "bg-red-500/10 text-red-400 border-red-500/30",
+  performance: "bg-purple-500/10 text-purple-400 border-purple-500/30",
+  ui_ux: "bg-info/10 text-info border-info/30",
+  infrastructure: "bg-slate-500/10 text-slate-400 border-slate-500/30",
+  testing: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
 };
 
 // ============================================
@@ -135,19 +144,19 @@ export const TASK_CATEGORY_COLORS: Record<string, string> = {
 // ============================================
 
 export const TASK_COMPLEXITY_LABELS: Record<string, string> = {
-  trivial: 'Trivial',
-  small: 'Small',
-  medium: 'Medium',
-  large: 'Large',
-  complex: 'Complex'
+  trivial: "Trivial",
+  small: "Small",
+  medium: "Medium",
+  large: "Large",
+  complex: "Complex",
 };
 
 export const TASK_COMPLEXITY_COLORS: Record<string, string> = {
-  trivial: 'bg-success/10 text-success',
-  small: 'bg-info/10 text-info',
-  medium: 'bg-warning/10 text-warning',
-  large: 'bg-orange-500/10 text-orange-400',
-  complex: 'bg-destructive/10 text-destructive'
+  trivial: "bg-success/10 text-success",
+  small: "bg-info/10 text-info",
+  medium: "bg-warning/10 text-warning",
+  large: "bg-orange-500/10 text-orange-400",
+  complex: "bg-destructive/10 text-destructive",
 };
 
 // ============================================
@@ -155,17 +164,17 @@ export const TASK_COMPLEXITY_COLORS: Record<string, string> = {
 // ============================================
 
 export const TASK_IMPACT_LABELS: Record<string, string> = {
-  low: 'Low Impact',
-  medium: 'Medium Impact',
-  high: 'High Impact',
-  critical: 'Critical Impact'
+  low: "Low Impact",
+  medium: "Medium Impact",
+  high: "High Impact",
+  critical: "Critical Impact",
 };
 
 export const TASK_IMPACT_COLORS: Record<string, string> = {
-  low: 'bg-muted text-muted-foreground',
-  medium: 'bg-info/10 text-info',
-  high: 'bg-warning/10 text-warning',
-  critical: 'bg-destructive/10 text-destructive'
+  low: "bg-muted text-muted-foreground",
+  medium: "bg-info/10 text-info",
+  high: "bg-warning/10 text-warning",
+  critical: "bg-destructive/10 text-destructive",
 };
 
 // ============================================
@@ -173,17 +182,17 @@ export const TASK_IMPACT_COLORS: Record<string, string> = {
 // ============================================
 
 export const TASK_PRIORITY_LABELS: Record<string, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent'
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  urgent: "Urgent",
 };
 
 export const TASK_PRIORITY_COLORS: Record<string, string> = {
-  low: 'bg-muted text-muted-foreground',
-  medium: 'bg-info/10 text-info',
-  high: 'bg-warning/10 text-warning',
-  urgent: 'bg-destructive/10 text-destructive'
+  low: "bg-muted text-muted-foreground",
+  medium: "bg-info/10 text-info",
+  high: "bg-warning/10 text-warning",
+  urgent: "bg-destructive/10 text-destructive",
 };
 
 // ============================================
@@ -201,19 +210,26 @@ export const MAX_REFERENCED_FILES = 20;
 
 // Allowed image MIME types
 export const ALLOWED_IMAGE_TYPES = [
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'image/gif',
-  'image/webp',
-  'image/svg+xml'
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
 ] as const;
 
 // Allowed image file extensions (for display)
-export const ALLOWED_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'] as const;
+export const ALLOWED_IMAGE_EXTENSIONS = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".svg",
+] as const;
 
 // Human-readable allowed types for error messages
-export const ALLOWED_IMAGE_TYPES_DISPLAY = 'PNG, JPEG, GIF, WebP, SVG';
+export const ALLOWED_IMAGE_TYPES_DISPLAY = "PNG, JPEG, GIF, WebP, SVG";
 
 // Attachments directory name within spec folder
-export const ATTACHMENTS_DIR = 'attachments';
+export const ATTACHMENTS_DIR = "attachments";
