@@ -275,6 +275,26 @@ class MergeOrchestrator:
                     task_snapshots=[snapshot],
                     target_branch=target_branch,
                 )
+
+                # Handle DIRECT_COPY: read file directly from worktree
+                # This happens when file has modifications but semantic analysis
+                # couldn't parse the changes (body modifications, unsupported languages)
+                if result.decision == MergeDecision.DIRECT_COPY and worktree_path:
+                    worktree_file = worktree_path / file_path
+                    if worktree_file.exists():
+                        try:
+                            result.merged_content = worktree_file.read_text(
+                                encoding="utf-8"
+                            )
+                            debug_detailed(
+                                MODULE,
+                                f"Read file from worktree for direct copy: {file_path}",
+                            )
+                        except UnicodeDecodeError:
+                            result.merged_content = worktree_file.read_text(
+                                encoding="utf-8", errors="replace"
+                            )
+
                 report.file_results[file_path] = result
                 self._update_stats(report.stats, result)
                 debug_verbose(
@@ -640,7 +660,7 @@ class MergeOrchestrator:
         )
         stats.conflicts_auto_resolved += len(result.conflicts_resolved)
 
-        if result.decision == MergeDecision.AUTO_MERGED:
+        if result.decision in (MergeDecision.AUTO_MERGED, MergeDecision.DIRECT_COPY):
             stats.files_auto_merged += 1
         elif result.decision == MergeDecision.AI_MERGED:
             stats.files_ai_merged += 1
