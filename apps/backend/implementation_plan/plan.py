@@ -126,11 +126,8 @@ class ImplementationPlan:
         Use this from async contexts (like agent sessions) to prevent blocking.
         Restores in-memory state if the write fails.
         """
-        # Capture current state for potential rollback
-        old_updated_at = self.updated_at
-        old_created_at = self.created_at
-        old_status = self.status
-        old_planStatus = self.planStatus
+        # Capture full state for potential rollback (handles future field additions)
+        old_state = self.to_dict()
 
         # Update state and capture dict
         self._update_timestamps_and_status()
@@ -149,11 +146,13 @@ class ImplementationPlan:
         try:
             await loop.run_in_executor(None, partial_write)
         except Exception:
-            # Restore state on write failure so in-memory object matches file
-            self.updated_at = old_updated_at
-            self.created_at = old_created_at
-            self.status = old_status
-            self.planStatus = old_planStatus
+            # Restore mutable fields from captured state on write failure
+            self.updated_at = old_state.get("updated_at")
+            self.created_at = old_state.get("created_at")
+            self.status = old_state.get("status")
+            self.planStatus = old_state.get("planStatus")
+            self.recoveryNote = old_state.get("recoveryNote")
+            self.qa_signoff = old_state.get("qa_signoff")
             raise
 
     def update_status_from_subtasks(self):

@@ -168,7 +168,7 @@ def main() -> None:
                 sys.exit(1)
 
             print(f"[INFO] Processing spec: {args.spec_id}")
-            for json_file in spec_dir.glob("*.json"):
+            for json_file in spec_dir.rglob("*.json"):
                 is_valid, error = check_json_file(json_file)
                 if not is_valid:
                     print(f"  [CORRUPTED] {json_file.name}")

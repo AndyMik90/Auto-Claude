@@ -63,7 +63,15 @@ def atomic_write(
 
     try:
         # Open temp file with requested mode
-        with os.fdopen(fd, mode, encoding=actual_encoding) as f:
+        # If fdopen fails, close fd and clean up temp file
+        try:
+            f = os.fdopen(fd, mode, encoding=actual_encoding)
+        except Exception:
+            os.close(fd)
+            os.unlink(tmp_path)
+            raise
+
+        with f:
             yield f
 
         # Atomic replace - succeeds or fails completely
