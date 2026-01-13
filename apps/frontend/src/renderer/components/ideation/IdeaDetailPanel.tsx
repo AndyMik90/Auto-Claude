@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ExternalLink, Lightbulb, Play, X } from 'lucide-react';
+import { ChevronRight, ExternalLink, Lightbulb, Loader2, Play, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import {
@@ -30,9 +30,10 @@ interface IdeaDetailPanelProps {
   onConvert: (idea: Idea) => void;
   onGoToTask?: (taskId: string) => void;
   onDismiss: (idea: Idea) => void;
+  isConverting?: boolean;
 }
 
-export function IdeaDetailPanel({ idea, onClose, onConvert, onGoToTask, onDismiss }: IdeaDetailPanelProps) {
+export function IdeaDetailPanel({ idea, onClose, onConvert, onGoToTask, onDismiss, isConverting }: IdeaDetailPanelProps) {
   const { t } = useTranslation('common');
   const isDismissed = idea.status === 'dismissed';
   const isConverted = idea.status === 'converted';
@@ -91,9 +92,13 @@ export function IdeaDetailPanel({ idea, onClose, onConvert, onGoToTask, onDismis
       {/* Actions */}
       {!isDismissed && !isConverted && (
         <div className="shrink-0 p-4 border-t border-border space-y-2">
-          <Button className="w-full" onClick={() => onConvert(idea)}>
-            <Play className="h-4 w-4 mr-2" />
-            Convert to Auto-Build Task
+          <Button className="w-full" onClick={() => onConvert(idea)} disabled={isConverting}>
+            {isConverting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            {isConverting ? 'Converting...' : 'Convert to Auto-Build Task'}
           </Button>
           <Button
             variant="outline"
