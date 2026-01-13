@@ -22,6 +22,7 @@ import { loadProfilesFile, detectProvider, fetchUsageForProfile, fetchAnthropicO
 import { getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { getSpawnCommand, getSpawnOptions } from '../env-utils';
 import { parseUsageOutput, parseResetTime } from './usage-parser';
+import { getProfileEnv } from '../rate-limit-detector';
 
 export class UsageMonitor extends EventEmitter {
   private static instance: UsageMonitor;
@@ -355,7 +356,8 @@ export class UsageMonitor extends EventEmitter {
     profileName: string
   ): Promise<ClaudeUsageSnapshot | null> {
     try {
-      const { command: claudeCmd } = await getClaudeCliInvocationAsync();
+      const { command: claudeCmd, env: augmentedEnv } = await getClaudeCliInvocationAsync();
+      const profileEnv = getProfileEnv(profileId);
 
       return new Promise((resolve) => {
         let stdout = '';
@@ -363,9 +365,15 @@ export class UsageMonitor extends EventEmitter {
         let timedOut = false;
         let timeoutId: NodeJS.Timeout;
 
-        // Build env object without undefined values
+        // Merge augmented environment with profile-specific environment
+        const mergedEnv: Record<string, string> = {
+          ...augmentedEnv,
+          ...profileEnv,
+        };
+
+        // Remove undefined values
         const cleanEnv = Object.fromEntries(
-          Object.entries(process.env).filter(([_, value]) => value !== undefined)
+          Object.entries(mergedEnv).filter(([_, value]) => value !== undefined)
         ) as Record<string, string>;
 
         const proc = spawn(getSpawnCommand(claudeCmd), ['/usage'], getSpawnOptions(claudeCmd, {
