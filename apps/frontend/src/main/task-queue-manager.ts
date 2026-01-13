@@ -134,7 +134,7 @@ export class TaskQueueManager {
    */
   private pruneProcessingQueue(): void {
     const now = Date.now();
-    const prunedCount = this.processingQueue.size;
+    const originalCount = this.processingQueue.size;
 
     for (const [projectId, entry] of this.processingQueue.entries()) {
       const age = now - entry.lastUpdated;
@@ -144,11 +144,11 @@ export class TaskQueueManager {
       }
     }
 
-    if (this.processingQueue.size < prunedCount) {
+    if (this.processingQueue.size < originalCount) {
       debugLog('[TaskQueueManager] Pruned processing queue:', {
-        before: prunedCount,
+        before: originalCount,
         after: this.processingQueue.size,
-        removed: prunedCount - this.processingQueue.size
+        removed: originalCount - this.processingQueue.size
       });
     }
   }
