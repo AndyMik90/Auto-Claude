@@ -338,7 +338,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     // Use setTimeout to ensure this runs after initialization effect
     // This is needed because fitAddonRef might not be set yet on first render
     const timeoutId = setTimeout(() => {
-      if (xtermRef.current && fitAddonRef.current) {
+      if (xtermRef.current && fitAddonRef.current && xtermRef.current.options) {
         xtermRef.current.options.fontSize = terminalFont.fontSize;
         xtermRef.current.options.fontFamily = TERMINAL_FONT_FAMILY_MAP[terminalFont.fontFamily as TerminalFontFamily];
         xtermRef.current.options.lineHeight = terminalFont.lineHeight;
