@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { Plus, RefreshCw, Archive } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -148,28 +148,29 @@ export function ProjectTabBar({
         )}
 
         {/* Show Archived button */}
-        {onToggleArchived && (
+        {onToggleArchived && archivedCount !== undefined && archivedCount > 0 && (
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
-                onClick={onToggleArchived}
-                aria-label={t('accessibility.toggleShowArchivedAriaLabel')}
-              >
-                {showArchived ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
+                className={cn(
+                  "h-8 w-8 relative",
+                  showArchived
+                    ? "text-primary bg-primary/10 hover:bg-primary/20"
+                    : "hover:bg-muted-foreground/10 hover:text-muted-foreground"
                 )}
+                onClick={onToggleArchived}
+                aria-pressed={showArchived}
+              >
+                <Archive className="h-4 w-4" />
+                <span className="absolute -top-1 -right-1 text-[10px] font-medium bg-muted rounded-full min-w-[14px] h-[14px] flex items-center justify-center">
+                  {archivedCount}
+                </span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="flex items-center gap-2">
+            <TooltipContent side="bottom">
               <span>{showArchived ? t('projectTab.hideArchived') : t('projectTab.showArchived')}</span>
-              {archivedCount > 0 && (
-                <span className="text-xs text-muted-foreground">({archivedCount})</span>
-              )}
             </TooltipContent>
           </Tooltip>
         )}
@@ -188,7 +189,7 @@ export function ProjectTabBar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            <span>{t('projectTab.addProjectAriaLabel')}</span>
+            <span>{t('projectTab.addNewProject')}</span>
           </TooltipContent>
         </Tooltip>
       </div>
