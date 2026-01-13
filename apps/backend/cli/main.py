@@ -381,10 +381,13 @@ def _run_cli() -> None:
     debug_success("run.py", "Spec found", spec_dir=str(spec_dir))
 
     # Set Sentry context for error tracking
-    set_context("spec", {
-        "name": spec_dir.name,
-        "project": str(project_dir),
-    })
+    set_context(
+        "spec",
+        {
+            "name": spec_dir.name,
+            "project": str(project_dir),
+        },
+    )
 
     # Handle build management commands
     if args.merge_preview:

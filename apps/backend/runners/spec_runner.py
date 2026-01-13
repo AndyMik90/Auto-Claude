@@ -377,7 +377,9 @@ Examples:
         sys.exit(1)
     except Exception as e:
         # Capture unexpected errors to Sentry
-        capture_exception(e, spec_dir=str(orchestrator.spec_dir) if orchestrator else None)
+        capture_exception(
+            e, spec_dir=str(orchestrator.spec_dir) if orchestrator else None
+        )
         debug_error("spec_runner", f"Unexpected error: {e}")
         print(f"\n\nUnexpected error: {e}")
         sys.exit(1)

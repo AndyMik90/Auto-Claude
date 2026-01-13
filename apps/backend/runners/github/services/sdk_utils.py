@@ -323,9 +323,7 @@ async def process_sdk_stream(
         safe_print(f"[{context_name}] ERROR: Stream processing failed: {e}")
 
     if DEBUG_MODE:
-        safe_print(
-            f"[DEBUG {context_name}] Session ended. Total messages: {msg_count}"
-        )
+        safe_print(f"[DEBUG {context_name}] Session ended. Total messages: {msg_count}")
 
     safe_print(f"[{context_name}] Session ended. Total messages: {msg_count}")
 

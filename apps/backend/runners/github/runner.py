@@ -160,11 +160,15 @@ def get_config(args) -> GitHubRunnerConfig:
             pass  # gh not installed or not in PATH
 
     if not token:
-        safe_print("Error: No GitHub token found. Set GITHUB_TOKEN or run 'gh auth login'")
+        safe_print(
+            "Error: No GitHub token found. Set GITHUB_TOKEN or run 'gh auth login'"
+        )
         sys.exit(1)
 
     if not repo:
-        safe_print("Error: No GitHub repo found. Set GITHUB_REPO or run from a git repo.")
+        safe_print(
+            "Error: No GitHub repo found. Set GITHUB_REPO or run from a git repo."
+        )
         sys.exit(1)
 
     return GitHubRunnerConfig(
@@ -488,7 +492,9 @@ async def cmd_batch_issues(args) -> int:
     safe_print(f"{'=' * 60}")
 
     if not batches:
-        safe_print("No batches created. Either no issues found or all issues are unique.")
+        safe_print(
+            "No batches created. Either no issues found or all issues are unique."
+        )
         return 0
 
     for batch in batches:
@@ -811,11 +817,14 @@ def main():
 
     try:
         # Set context for Sentry
-        set_context("command", {
-            "name": args.command,
-            "project": str(args.project),
-            "repo": args.repo or "auto-detect",
-        })
+        set_context(
+            "command",
+            {
+                "name": args.command,
+                "project": str(args.project),
+                "repo": args.repo or "auto-detect",
+            },
+        )
 
         exit_code = asyncio.run(handler(args))
         sys.exit(exit_code)

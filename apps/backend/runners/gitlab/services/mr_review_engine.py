@@ -41,6 +41,7 @@ except ImportError:
     # Fallback for direct script execution
     import sys
     from pathlib import Path as PathLib
+
     sys.path.insert(0, str(PathLib(__file__).parent.parent.parent.parent))
     from core.io_utils import safe_print
 

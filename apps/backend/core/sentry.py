@@ -52,6 +52,7 @@ def _get_version() -> str:
 
         if package_json.exists():
             import json
+
             with open(package_json) as f:
                 data = json.load(f)
                 return data.get("version", "0.0.0")
@@ -76,17 +77,17 @@ def _mask_user_paths(text: str) -> str:
         return text
 
     # macOS: /Users/username/...
-    text = re.sub(r'/Users/[^/]+(?=/|$)', '/Users/***', text)
+    text = re.sub(r"/Users/[^/]+(?=/|$)", "/Users/***", text)
 
     # Windows: C:\Users\username\...
     text = re.sub(
-        r'[A-Za-z]:\\Users\\[^\\]+(?=\\|$)',
-        lambda m: f'{m.group(0)[0]}:\\Users\\***',
-        text
+        r"[A-Za-z]:\\Users\\[^\\]+(?=\\|$)",
+        lambda m: f"{m.group(0)[0]}:\\Users\\***",
+        text,
     )
 
     # Linux: /home/username/...
-    text = re.sub(r'/home/[^/]+(?=/|$)', '/home/***', text)
+    text = re.sub(r"/home/[^/]+(?=/|$)", "/home/***", text)
 
     return text
 
@@ -193,12 +194,14 @@ def init_sentry(
     # - Running from packaged app (detected by __compiled__ or frozen)
     # - SENTRY_DEV=true is set
     # - force_enable is True
-    is_packaged = getattr(sys, 'frozen', False) or hasattr(sys, '__compiled__')
+    is_packaged = getattr(sys, "frozen", False) or hasattr(sys, "__compiled__")
     sentry_dev = os.environ.get("SENTRY_DEV", "").lower() in ("true", "1", "yes")
     should_enable = is_packaged or sentry_dev or force_enable
 
     if not should_enable:
-        logger.debug("[Sentry] Development mode - error reporting disabled (set SENTRY_DEV=true to enable)")
+        logger.debug(
+            "[Sentry] Development mode - error reporting disabled (set SENTRY_DEV=true to enable)"
+        )
         return False
 
     try:
@@ -210,7 +213,9 @@ def init_sentry(
 
     # Get configuration from environment variables
     version = _get_version()
-    environment = os.environ.get("SENTRY_ENVIRONMENT", "production" if is_packaged else "development")
+    environment = os.environ.get(
+        "SENTRY_ENVIRONMENT", "production" if is_packaged else "development"
+    )
 
     # Get sample rates
     traces_sample_rate = PRODUCTION_TRACE_SAMPLE_RATE
@@ -245,7 +250,9 @@ def init_sentry(
     sentry_sdk.set_tag("component", component)
 
     _sentry_enabled = True
-    logger.info(f"[Sentry] Backend initialized (component: {component}, release: auto-claude@{version}, traces: {traces_sample_rate})")
+    logger.info(
+        f"[Sentry] Backend initialized (component: {component}, release: auto-claude@{version}, traces: {traces_sample_rate})"
+    )
 
     return True
 
@@ -270,7 +277,11 @@ def capture_exception(error: Exception, **kwargs) -> None:
         with sentry_sdk.push_scope() as scope:
             for key, value in kwargs.items():
                 # Apply defensive path masking for extra data
-                masked_value = _mask_object_paths(value) if isinstance(value, (str, dict, list)) else value
+                masked_value = (
+                    _mask_object_paths(value)
+                    if isinstance(value, (str, dict, list))
+                    else value
+                )
                 scope.set_extra(key, masked_value)
             sentry_sdk.capture_exception(error)
     except ImportError:
@@ -321,6 +332,7 @@ def set_context(name: str, data: dict) -> None:
 
     try:
         import sentry_sdk
+
         # Apply path masking to context data before sending to Sentry
         masked_data = _mask_object_paths(data)
         sentry_sdk.set_context(name, masked_data)
@@ -345,6 +357,7 @@ def set_tag(key: str, value: str) -> None:
 
     try:
         import sentry_sdk
+
         # Apply path masking to tag value
         masked_value = _mask_user_paths(value) if isinstance(value, str) else value
         sentry_sdk.set_tag(key, masked_value)
