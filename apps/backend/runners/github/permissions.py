@@ -100,6 +100,22 @@ class GitHubPermissionChecker:
             f"Initialized permission checker for {repo} with allowed roles: {self.allowed_roles}"
         )
 
+    async def _api_get(self, path: str):
+        if hasattr(self.gh_client, "api_get"):
+            return await self.gh_client.api_get(path)
+        if hasattr(self.gh_client, "get"):
+            return await self.gh_client.get(path)
+        raise AttributeError("gh_client does not support api_get or get")
+
+    async def _get_token_scopes(self) -> set[str]:
+        if not hasattr(self.gh_client, "_get_headers"):
+            return set()
+        headers = await self.gh_client._get_headers()
+        if not isinstance(headers, dict):
+            return set()
+        raw_scopes = headers.get("X-OAuth-Scopes") or headers.get("x-oauth-scopes") or ""
+        return {scope.strip() for scope in raw_scopes.split(",") if scope.strip()}
+
     async def verify_token_scopes(self) -> None:
         """
         Verify token has required scopes. Raises PermissionError if insufficient.
@@ -110,31 +126,40 @@ class GitHubPermissionChecker:
         logger.info("Verifying GitHub token and permissions...")
 
         try:
-            # Verify we can access the repo (checks auth + repo access)
-            repo_info = await self.gh_client.api_get(f"/repos/{self.repo}")
+            scopes = await self._get_token_scopes()
 
-            if not repo_info:
+            repo_info = await self._api_get(f"/repos/{self.repo}")
+            if not isinstance(repo_info, dict):
+                repo_info = {}
+
+            owner_type = repo_info.get("owner", {}).get("type", "")
+            required = (
+                self.REQUIRED_SCOPES if owner_type == "Organization" else self.MINIMUM_SCOPES
+            )
+            missing = [scope for scope in required if scope not in scopes]
+            if missing:
                 raise PermissionError(
-                    f"Cannot access repository {self.repo}. "
-                    f"Check your token has 'repo' scope."
+                    f"missing required scopes: {', '.join(missing)}"
                 )
 
             # Check if we have write access (needed for auto-fix)
-            permissions = repo_info.get("permissions", {})
-            has_push = permissions.get("push", False)
-            has_admin = permissions.get("admin", False)
+            has_push = False
+            has_admin = False
+            if repo_info:
+                permissions = repo_info.get("permissions", {})
+                has_push = permissions.get("push", False)
+                has_admin = permissions.get("admin", False)
 
-            if not (has_push or has_admin):
-                logger.warning(
-                    f"Token does not have write access to {self.repo}. "
-                    f"Auto-fix and PR creation will not work."
-                )
+                if not (has_push or has_admin):
+                    logger.warning(
+                        f"Token does not have write access to {self.repo}. "
+                        f"Auto-fix and PR creation will not work."
+                    )
 
             # For org repos, try to verify org access
-            owner_type = repo_info.get("owner", {}).get("type", "")
             if owner_type == "Organization":
                 try:
-                    await self.gh_client.api_get(f"/orgs/{self.owner}")
+                    await self._api_get(f"/orgs/{self.owner}")
                     logger.info(f"✓ Have access to organization {self.owner}")
                 except Exception:
                     logger.warning(
@@ -171,7 +196,7 @@ class GitHubPermissionChecker:
 
         try:
             # Get issue timeline events
-            events = await self.gh_client.api_get(
+            events = await self._api_get(
                 f"/repos/{self.repo}/issues/{issue_number}/events"
             )
 
@@ -237,7 +262,7 @@ class GitHubPermissionChecker:
 
             # Check collaborator status (write access)
             try:
-                permission = await self.gh_client.api_get(
+                permission = await self._api_get(
                     f"/repos/{self.repo}/collaborators/{username}/permission"
                 )
                 permission_level = permission.get("permission", "none")
@@ -253,11 +278,11 @@ class GitHubPermissionChecker:
             # For organization repos, check org membership
             try:
                 # Check if repo is owned by an org
-                repo_info = await self.gh_client.api_get(f"/repos/{self.repo}")
+                repo_info = await self._api_get(f"/repos/{self.repo}")
                 if repo_info.get("owner", {}).get("type") == "Organization":
                     # Check org membership
                     try:
-                        await self.gh_client.api_get(
+                        await self._api_get(
                             f"/orgs/{self.owner}/members/{username}"
                         )
                         role = "MEMBER"
@@ -272,7 +297,7 @@ class GitHubPermissionChecker:
             # Check if user has any contributions
             try:
                 # This is a heuristic - check if user appears in contributors
-                contributors = await self.gh_client.api_get(
+                contributors = await self._api_get(
                     f"/repos/{self.repo}/contributors"
                 )
                 if any(c.get("login") == username for c in contributors):
@@ -353,14 +378,14 @@ class GitHubPermissionChecker:
         """
         try:
             # Check if repo is owned by an org
-            repo_info = await self.gh_client.api_get(f"/repos/{self.repo}")
+            repo_info = await self._api_get(f"/repos/{self.repo}")
             if repo_info.get("owner", {}).get("type") != "Organization":
                 logger.debug(f"Repository {self.repo} is not owned by an organization")
                 return True  # Not an org repo, so membership check N/A
 
             # Check org membership
             try:
-                await self.gh_client.api_get(f"/orgs/{self.owner}/members/{username}")
+                await self._api_get(f"/orgs/{self.owner}/members/{username}")
                 logger.info(f"✓ User {username} is a member of org {self.owner}")
                 return True
             except Exception:
@@ -383,7 +408,7 @@ class GitHubPermissionChecker:
             True if user is a team member
         """
         try:
-            await self.gh_client.api_get(
+            await self._api_get(
                 f"/orgs/{self.owner}/teams/{team_slug}/memberships/{username}"
             )
             logger.info(

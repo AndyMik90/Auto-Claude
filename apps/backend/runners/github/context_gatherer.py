@@ -855,7 +855,7 @@ class PRContextGatherer:
         for test_path in test_patterns:
             full_path = self.project_dir / test_path
             if full_path.exists() and full_path.is_file():
-                found.add(str(test_path))
+                found.add(test_path.as_posix())
 
         return found
 
@@ -911,7 +911,7 @@ class PRContextGatherer:
                 if candidate.exists() and candidate.is_file():
                     try:
                         rel_path = candidate.relative_to(self.project_dir)
-                        return str(rel_path)
+                        return rel_path.as_posix()
                     except ValueError:
                         # File is outside project directory
                         return None
@@ -922,7 +922,7 @@ class PRContextGatherer:
                 if index_file.exists() and index_file.is_file():
                     try:
                         rel_path = index_file.relative_to(self.project_dir)
-                        return str(rel_path)
+                        return rel_path.as_posix()
                     except ValueError:
                         return None
 
@@ -930,7 +930,7 @@ class PRContextGatherer:
         if resolved.exists() and resolved.is_file():
             try:
                 rel_path = resolved.relative_to(self.project_dir)
-                return str(rel_path)
+                return rel_path.as_posix()
             except ValueError:
                 return None
 
@@ -955,7 +955,7 @@ class PRContextGatherer:
             config_path = directory / name
             full_path = self.project_dir / config_path
             if full_path.exists() and full_path.is_file():
-                found.add(str(config_path))
+                found.add(config_path.as_posix())
 
         return found
 
@@ -966,9 +966,26 @@ class PRContextGatherer:
         full_path = self.project_dir / type_def
 
         if full_path.exists() and full_path.is_file():
-            return {str(type_def)}
+            return {type_def.as_posix()}
 
         return set()
+
+    def _get_file_extension(self, filename: str) -> str:
+        """Map file extension to syntax highlighting language."""
+        suffix = Path(filename).suffix.lower()
+        if suffix in (".ts", ".tsx"):
+            return "typescript"
+        if suffix in (".js", ".jsx"):
+            return "javascript"
+        if suffix == ".py":
+            return "python"
+        if suffix == ".json":
+            return "json"
+        if suffix == ".md":
+            return "markdown"
+        if suffix in (".yml", ".yaml"):
+            return "yaml"
+        return "text"
 
 
 class FollowupContextGatherer:

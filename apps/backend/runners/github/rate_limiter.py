@@ -130,13 +130,25 @@ class TokenBucket:
             # Check timeout
             if timeout is not None:
                 elapsed = time.monotonic() - start_time
-                if elapsed >= timeout:
+                remaining = timeout - elapsed
+                if remaining <= 0:
                     return False
+            else:
+                remaining = None
+
+            if self.refill_rate <= 0:
+                return False
 
             # Wait for next refill
             # Calculate time until we have enough tokens
             tokens_needed = tokens - self.tokens
-            wait_time = min(tokens_needed / self.refill_rate, 1.0)  # Max 1 second wait
+            wait_time = tokens_needed / self.refill_rate
+            if remaining is not None:
+                wait_time = min(wait_time, remaining)
+            wait_time = min(wait_time, 1.0)
+            if wait_time <= 0:
+                await asyncio.sleep(0)
+                continue
             await asyncio.sleep(wait_time)
 
     def available(self) -> int:
@@ -154,6 +166,8 @@ class TokenBucket:
         self._refill()
         if self.tokens >= tokens:
             return 0.0
+        if self.refill_rate <= 0:
+            return float("inf")
         tokens_needed = tokens - self.tokens
         return tokens_needed / self.refill_rate
 
@@ -387,6 +401,8 @@ class RateLimiter:
             return True, f"{available} requests available"
 
         wait_time = self.github_bucket.time_until_available()
+        if wait_time == float("inf"):
+            return False, "Rate limited. No refill available"
         return False, f"Rate limited. Wait {wait_time:.1f}s for next request"
 
     def track_ai_cost(
@@ -525,18 +541,9 @@ def rate_limited(
                 try:
                     # Pre-flight check
                     if operation_type == "github":
-                        available, msg = limiter.check_github_available()
-                        if not available and attempt == 0:
-                            # Try to acquire (will wait if needed)
-                            if not await limiter.acquire_github(timeout=30.0):
-                                raise RateLimitExceeded(
-                                    f"GitHub API rate limit exceeded: {msg}"
-                                )
-                        elif not available:
-                            # On retry, wait for token
-                            await limiter.acquire_github(
-                                timeout=limiter.max_retry_delay
-                            )
+                        timeout = 30.0 if attempt == 0 else limiter.max_retry_delay
+                        if not await limiter.acquire_github(timeout=timeout):
+                            raise RateLimitExceeded("GitHub API rate limit exceeded")
 
                     # Execute function
                     result = await func(*args, **kwargs)

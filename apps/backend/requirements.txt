@@ -19,3 +19,6 @@ google-generativeai>=0.8.0
 
 # Pydantic for structured output schemas
 pydantic>=2.0.0
+
+# Test dependencies
+pytest-asyncio>=0.23.0
