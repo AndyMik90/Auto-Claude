@@ -374,8 +374,7 @@
       "mainBranchDescription": "The base branch for creating task worktrees. All new tasks will branch from here.",
       "loadingBranches": "Loading branches...",
       "selectMainBranch": "Select main branch",
-      "tasksWillBeCreated": "Tasks will be created on branches like",
-      "from": "from",
+      "tasksWillBeCreated": "Tasks will be created on branches like <branch>{{branch}}</branch> from <base>{{base}}</base>",
       "enableGithubIssues": "Enable GitHub Issues",
       "enableGithubIssuesDescription": "Sync issues from GitHub and create tasks automatically"
     },

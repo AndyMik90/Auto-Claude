@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Zap,
   Eye,
@@ -478,10 +478,14 @@ export function IntegrationSettings({
                   </Select>
                   {settings.mainBranch && (
                     <p className="text-xs text-muted-foreground">
-                      {t('projectSections.github.tasksWillBeCreated')}{' '}
-                      <code className="px-1 bg-muted rounded">auto-claude/task-name</code>{' '}
-                      {t('projectSections.github.from')}{' '}
-                      <code className="px-1 bg-muted rounded">{settings.mainBranch}</code>
+                      <Trans
+                        i18nKey="projectSections.github.tasksWillBeCreated"
+                        values={{ branch: 'auto-claude/task-name', base: settings.mainBranch }}
+                        components={{
+                          branch: <code className="px-1 bg-muted rounded" />,
+                          base: <code className="px-1 bg-muted rounded" />
+                        }}
+                      />
                     </p>
                   )}
                 </div>
