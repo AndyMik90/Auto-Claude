@@ -3,13 +3,12 @@ Program Mapping Engine
 Maps job postings to federal programs using location intelligence,
 keyword matching, and multi-factor scoring.
 
-Integrates with Federal Programs CSV database for dynamic matching.
 Based on: program-mapping-skill.md
 """
 
 import json
 import re
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 from pathlib import Path
 import os
@@ -33,229 +32,416 @@ except ImportError:
 # FEDERAL PROGRAMS DATABASE
 # ============================================
 
+# Default path to Federal Programs CSV
+DEFAULT_FEDERAL_PROGRAMS_CSV = Path(__file__).parent.parent / "data" / "Federal Programs.csv"
+
+# Global cache for loaded programs database
+_FEDERAL_PROGRAMS_CACHE: Optional[pd.DataFrame] = None
+
+# Global cache for keyword index (keyword -> list of program names)
+_KEYWORD_INDEX_CACHE: Optional[Dict[str, List[str]]] = None
+
+# Global cache for location index (location -> list of program names)
+_LOCATION_INDEX_CACHE: Optional[Dict[str, List[str]]] = None
+
+
 @dataclass
 class FederalProgram:
     """Represents a federal program from the database."""
-    name: str
-    acronym: str
-    agency_owner: str
-    key_locations: List[str]
-    keywords: List[str]
-    clearance_requirements: str
-    prime_contractor: str
-    priority_level: str
-    technical_stack: List[str]
-    typical_roles: List[str]
+    program_name: str
+    acronym: str = ""
+    agency_owner: str = ""
+    program_type: str = ""
+    key_locations: List[str] = field(default_factory=list)
+    keywords: List[str] = field(default_factory=list)
+    clearance_requirements: str = ""
+    prime_contractor: str = ""
+    priority_level: str = ""
+    typical_roles: List[str] = field(default_factory=list)
 
 
-class FederalProgramsDB:
+def load_federal_programs(
+    csv_path: Optional[str] = None,
+    force_reload: bool = False
+) -> pd.DataFrame:
     """
-    Loads and manages the Federal Programs CSV database.
-    Provides dynamic keyword and location matching.
+    Load the Federal Programs database from CSV.
+
+    Args:
+        csv_path: Path to the Federal Programs CSV file. Uses default path if None.
+        force_reload: If True, reload from file even if cached.
+
+    Returns:
+        DataFrame containing federal programs data.
+
+    Raises:
+        ImportError: If pandas is not installed.
+        FileNotFoundError: If the CSV file does not exist.
     """
+    global _FEDERAL_PROGRAMS_CACHE
 
-    def __init__(self, csv_path: Optional[str] = None):
-        """
-        Initialize the Federal Programs database.
+    if not HAS_PANDAS:
+        raise ImportError(
+            "pandas is required for loading Federal Programs database. "
+            "Install with: pip install pandas"
+        )
 
-        Args:
-            csv_path: Path to Federal Programs.csv (auto-detected if not provided)
-        """
-        self.programs: List[FederalProgram] = []
-        self._location_to_programs: Dict[str, List[str]] = {}
-        self._keyword_to_programs: Dict[str, List[str]] = {}
-        self._acronym_to_program: Dict[str, str] = {}
+    # Return cached data if available and not forcing reload
+    if _FEDERAL_PROGRAMS_CACHE is not None and not force_reload and csv_path is None:
+        return _FEDERAL_PROGRAMS_CACHE
 
-        if csv_path is None:
-            # Auto-detect path relative to this file
-            script_dir = Path(__file__).parent
-            csv_path = script_dir.parent / "data" / "Federal Programs.csv"
+    # Determine path
+    if csv_path is None:
+        path = DEFAULT_FEDERAL_PROGRAMS_CSV
+    else:
+        path = Path(csv_path)
 
-        if Path(csv_path).exists():
-            self._load_csv(csv_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Federal Programs CSV not found at: {path}")
 
-    def _load_csv(self, csv_path: str) -> None:
-        """Load programs from CSV file."""
-        if not HAS_PANDAS:
-            print("Warning: pandas not installed, Federal Programs DB not loaded")
-            return
+    # Load CSV with proper encoding handling
+    try:
+        df = pd.read_csv(path, encoding='utf-8-sig')
+    except UnicodeDecodeError:
+        df = pd.read_csv(path, encoding='latin-1')
 
-        df = pd.read_csv(csv_path, encoding='utf-8-sig')
+    # Clean column names (remove leading/trailing whitespace)
+    df.columns = df.columns.str.strip()
 
-        for _, row in df.iterrows():
-            # Parse keywords from Keywords/Signals column
-            keywords = self._parse_semicolon_list(row.get('Keywords/Signals', ''))
+    # Cache if using default path
+    if csv_path is None:
+        _FEDERAL_PROGRAMS_CACHE = df
 
-            # Parse locations from Key Locations column
-            locations = self._parse_semicolon_list(row.get('Key Locations', ''))
+    return df
 
-            # Parse technical stack
-            tech_stack = self._parse_semicolon_list(row.get('Technical Stack', ''))
 
-            # Parse typical roles
-            roles = self._parse_semicolon_list(row.get('Typical Roles', ''))
+def get_program_count(df: Optional[pd.DataFrame] = None) -> int:
+    """
+    Get the number of programs in the database.
 
-            program = FederalProgram(
-                name=str(row.get('Program Name', '')).strip(),
-                acronym=str(row.get('Acronym', '')).strip(),
-                agency_owner=str(row.get('Agency Owner', '')).strip(),
-                key_locations=locations,
-                keywords=keywords,
-                clearance_requirements=str(row.get('Clearance Requirements', '')).strip(),
-                prime_contractor=str(row.get('Prime Contractor', '') or row.get('Prime Contractor 1', '')).strip(),
-                priority_level=str(row.get('Priority Level', '')).strip(),
-                technical_stack=tech_stack,
-                typical_roles=roles,
-            )
+    Args:
+        df: Optional DataFrame. If None, loads from default path.
 
-            if program.name:
-                self.programs.append(program)
+    Returns:
+        Number of programs in the database.
+    """
+    if df is None:
+        df = load_federal_programs()
+    return len(df)
 
-                # Build location index
-                for loc in locations:
-                    loc_key = loc.lower().strip()
-                    if loc_key:
-                        if loc_key not in self._location_to_programs:
-                            self._location_to_programs[loc_key] = []
-                        self._location_to_programs[loc_key].append(program.name)
 
-                # Build keyword index
-                for kw in keywords:
-                    kw_key = kw.lower().strip()
-                    if kw_key and len(kw_key) > 2:  # Skip very short keywords
-                        if kw_key not in self._keyword_to_programs:
-                            self._keyword_to_programs[kw_key] = []
-                        self._keyword_to_programs[kw_key].append(program.name)
+def parse_keywords_field(keywords_str: str) -> List[str]:
+    """
+    Parse the Keywords/Signals field from the CSV.
 
-                # Build acronym index
-                if program.acronym:
-                    self._acronym_to_program[program.acronym.lower()] = program.name
+    The field may contain semicolon-separated values, quoted strings,
+    or arrays formatted as strings.
 
-    def _parse_semicolon_list(self, value: str) -> List[str]:
-        """Parse a semicolon or comma separated list, cleaning up quotes and artifacts."""
-        if pd.isna(value) or not value:
-            return []
+    Args:
+        keywords_str: Raw keywords string from CSV.
 
-        value = str(value)
-        # Handle both semicolon and comma separators
-        items = re.split(r'[;,]', value)
+    Returns:
+        List of individual keyword strings.
+    """
+    if pd.isna(keywords_str) or not keywords_str:
+        return []
 
-        result = []
-        for item in items:
-            # Clean up quotes and special characters
-            cleaned = re.sub(r'["""\']', '', item).strip()
-            if cleaned and len(cleaned) > 1:
-                result.append(cleaned)
+    keywords_str = str(keywords_str)
 
-        return result
+    # Handle quoted strings with semicolons
+    keywords = []
 
-    def get_programs_by_location(self, location: str) -> List[str]:
-        """Find programs associated with a location."""
-        location_lower = location.lower()
-        matches = set()
+    # Split by semicolon but respect quoted strings
+    parts = re.split(r';\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', keywords_str)
 
-        # Exact match
-        if location_lower in self._location_to_programs:
-            matches.update(self._location_to_programs[location_lower])
+    for part in parts:
+        # Remove surrounding quotes and whitespace
+        cleaned = part.strip().strip('"').strip("'").strip()
+        if cleaned:
+            keywords.append(cleaned)
 
-        # Partial match (location contains key or key contains location)
-        for loc_key, programs in self._location_to_programs.items():
-            if loc_key in location_lower or location_lower in loc_key:
-                matches.update(programs)
+    return keywords
 
-        return list(matches)
 
-    def get_programs_by_keyword(self, text: str) -> Dict[str, int]:
-        """
-        Find programs matching keywords in text.
+def parse_locations_field(locations_str: str) -> List[str]:
+    """
+    Parse the Key Locations field from the CSV.
 
-        Returns:
-            Dict mapping program name to match count
-        """
-        text_lower = text.lower()
-        program_scores: Dict[str, int] = {}
+    The field may contain semicolon-separated locations.
 
-        # Check all indexed keywords
-        for keyword, programs in self._keyword_to_programs.items():
-            if keyword in text_lower:
-                for prog in programs:
-                    program_scores[prog] = program_scores.get(prog, 0) + 1
+    Args:
+        locations_str: Raw locations string from CSV.
 
-        # Also check acronyms (higher weight)
-        for acronym, program in self._acronym_to_program.items():
-            # Use word boundary matching for acronyms
-            if re.search(rf'\b{re.escape(acronym)}\b', text_lower):
-                program_scores[program] = program_scores.get(program, 0) + 3
+    Returns:
+        List of individual location strings.
+    """
+    if pd.isna(locations_str) or not locations_str:
+        return []
 
-        return program_scores
+    locations_str = str(locations_str)
 
-    def get_program_by_name(self, name: str) -> Optional[FederalProgram]:
-        """Get program by name or acronym."""
-        name_lower = name.lower()
+    # Split by semicolons
+    locations = [loc.strip() for loc in locations_str.split(';')]
 
-        # Check acronym first
-        if name_lower in self._acronym_to_program:
-            target_name = self._acronym_to_program[name_lower]
-            for prog in self.programs:
-                if prog.name == target_name:
-                    return prog
+    # Remove empty strings and clean up
+    return [loc for loc in locations if loc]
 
-        # Check by name
-        for prog in self.programs:
-            if prog.name.lower() == name_lower:
-                return prog
 
+def get_program_by_name(
+    program_name: str,
+    df: Optional[pd.DataFrame] = None
+) -> Optional[FederalProgram]:
+    """
+    Get a federal program by its name.
+
+    Args:
+        program_name: Name of the program to find.
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        FederalProgram object if found, None otherwise.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    # Case-insensitive search
+    matches = df[df['Program Name'].str.lower() == program_name.lower()]
+
+    if matches.empty:
         return None
 
-    @property
-    def total_programs(self) -> int:
-        """Return total number of programs loaded."""
-        return len(self.programs)
-
-    @property
-    def all_keywords(self) -> Set[str]:
-        """Return all unique keywords."""
-        return set(self._keyword_to_programs.keys())
-
-    @property
-    def all_locations(self) -> Set[str]:
-        """Return all unique locations."""
-        return set(self._location_to_programs.keys())
+    row = matches.iloc[0]
+    return _row_to_program(row)
 
 
-# Global database instance (lazy loaded)
-_federal_programs_db: Optional[FederalProgramsDB] = None
-
-
-def get_federal_programs_db(csv_path: Optional[str] = None) -> FederalProgramsDB:
+def get_program_by_acronym(
+    acronym: str,
+    df: Optional[pd.DataFrame] = None
+) -> Optional[FederalProgram]:
     """
-    Get or create the Federal Programs database instance.
+    Get a federal program by its acronym.
 
     Args:
-        csv_path: Optional path to CSV (uses default if not provided)
+        acronym: Acronym of the program to find.
+        df: Optional DataFrame. If None, loads from default path.
 
     Returns:
-        FederalProgramsDB instance
+        FederalProgram object if found, None otherwise.
     """
-    global _federal_programs_db
-    if _federal_programs_db is None:
-        _federal_programs_db = FederalProgramsDB(csv_path)
-    return _federal_programs_db
+    if df is None:
+        df = load_federal_programs()
+
+    # Case-insensitive search
+    if 'Acronym' not in df.columns:
+        return None
+
+    matches = df[df['Acronym'].str.lower() == acronym.lower()]
+
+    if matches.empty:
+        return None
+
+    row = matches.iloc[0]
+    return _row_to_program(row)
 
 
-def load_federal_programs(csv_path: str) -> int:
+def _row_to_program(row: pd.Series) -> FederalProgram:
     """
-    Load Federal Programs CSV database.
+    Convert a DataFrame row to a FederalProgram object.
 
     Args:
-        csv_path: Path to Federal Programs.csv
+        row: pandas Series representing a program row.
 
     Returns:
-        Number of programs loaded
+        FederalProgram object.
     """
-    global _federal_programs_db
-    _federal_programs_db = FederalProgramsDB(csv_path)
-    return _federal_programs_db.total_programs
+    def safe_get(col: str, default: str = "") -> str:
+        val = row.get(col, default)
+        return str(val) if pd.notna(val) else default
+
+    return FederalProgram(
+        program_name=safe_get('Program Name'),
+        acronym=safe_get('Acronym'),
+        agency_owner=safe_get('Agency Owner'),
+        program_type=safe_get('Program Type'),
+        key_locations=parse_locations_field(safe_get('Key Locations')),
+        keywords=parse_keywords_field(safe_get('Keywords/Signals')),
+        clearance_requirements=safe_get('Clearance Requirements'),
+        prime_contractor=safe_get('Prime Contractor'),
+        priority_level=safe_get('Priority Level'),
+        typical_roles=parse_keywords_field(safe_get('Typical Roles')),
+    )
+
+
+def get_all_programs(df: Optional[pd.DataFrame] = None) -> List[FederalProgram]:
+    """
+    Get all programs from the database as FederalProgram objects.
+
+    Args:
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        List of FederalProgram objects.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    programs = []
+    for _, row in df.iterrows():
+        programs.append(_row_to_program(row))
+
+    return programs
+
+
+def build_keyword_index(df: Optional[pd.DataFrame] = None) -> Dict[str, List[str]]:
+    """
+    Build an index mapping keywords to program names.
+
+    Args:
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        Dict mapping lowercase keywords to list of program names.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    keyword_index: Dict[str, List[str]] = {}
+
+    for _, row in df.iterrows():
+        program_name = row.get('Program Name', '')
+        if pd.isna(program_name) or not program_name:
+            continue
+
+        keywords_raw = row.get('Keywords/Signals', '')
+        keywords = parse_keywords_field(keywords_raw)
+
+        # Add program name itself as a keyword
+        keywords.append(str(program_name))
+
+        # Add acronym as a keyword
+        acronym = row.get('Acronym', '')
+        if pd.notna(acronym) and acronym:
+            keywords.append(str(acronym))
+
+        for kw in keywords:
+            kw_lower = kw.lower().strip()
+            if kw_lower:
+                if kw_lower not in keyword_index:
+                    keyword_index[kw_lower] = []
+                if program_name not in keyword_index[kw_lower]:
+                    keyword_index[kw_lower].append(program_name)
+
+    return keyword_index
+
+
+def get_keyword_index(force_reload: bool = False) -> Dict[str, List[str]]:
+    """
+    Get the keyword index, using cache if available.
+
+    This function provides a cached keyword index for efficient lookups
+    during keyword signal extraction.
+
+    Args:
+        force_reload: If True, rebuild the index from the CSV.
+
+    Returns:
+        Dict mapping lowercase keywords to list of program names.
+    """
+    global _KEYWORD_INDEX_CACHE
+
+    if _KEYWORD_INDEX_CACHE is None or force_reload:
+        _KEYWORD_INDEX_CACHE = build_keyword_index()
+
+    return _KEYWORD_INDEX_CACHE
+
+
+def build_location_index(df: Optional[pd.DataFrame] = None) -> Dict[str, List[str]]:
+    """
+    Build an index mapping locations to program names.
+
+    Args:
+        df: Optional DataFrame. If None, loads from default path.
+
+    Returns:
+        Dict mapping lowercase location strings to list of program names.
+    """
+    if df is None:
+        df = load_federal_programs()
+
+    location_index: Dict[str, List[str]] = {}
+
+    for _, row in df.iterrows():
+        program_name = row.get('Program Name', '')
+        if pd.isna(program_name) or not program_name:
+            continue
+
+        locations_raw = row.get('Key Locations', '')
+        locations = parse_locations_field(locations_raw)
+
+        for loc in locations:
+            loc_lower = loc.lower().strip()
+            if loc_lower:
+                if loc_lower not in location_index:
+                    location_index[loc_lower] = []
+                if program_name not in location_index[loc_lower]:
+                    location_index[loc_lower].append(program_name)
+
+    return location_index
+
+
+def get_location_index(force_reload: bool = False) -> Dict[str, List[str]]:
+    """
+    Get the location index, using cache if available.
+
+    This function provides a cached location index for efficient lookups
+    during location signal extraction. It maps normalized location strings
+    (city names, base names, etc.) to the programs that operate in those areas.
+
+    Args:
+        force_reload: If True, rebuild the index from the CSV.
+
+    Returns:
+        Dict mapping lowercase location strings to list of program names.
+    """
+    global _LOCATION_INDEX_CACHE
+
+    if _LOCATION_INDEX_CACHE is None or force_reload:
+        _LOCATION_INDEX_CACHE = build_location_index()
+
+    return _LOCATION_INDEX_CACHE
+
+
+def normalize_location_for_matching(location: str) -> str:
+    """
+    Normalize a location string for matching.
+
+    Handles common variations like:
+    - "Ft. Meade" -> "fort meade"
+    - "AFB" -> "air force base"
+    - Removes parenthetical notes
+
+    Args:
+        location: Raw location string from job posting.
+
+    Returns:
+        Normalized lowercase location string.
+    """
+    if not location:
+        return ""
+
+    loc = location.lower().strip()
+
+    # Remove parenthetical notes like "(DGS-1)" or "(test & evaluation)"
+    loc = re.sub(r'\([^)]*\)', '', loc).strip()
+
+    # Normalize common abbreviations
+    loc = re.sub(r'\bft\.?\s+', 'fort ', loc)
+    loc = re.sub(r'\bafb\b', 'air force base', loc)
+    loc = re.sub(r'\bjba\b', 'joint base andrews', loc)
+    loc = re.sub(r'\bjblm\b', 'joint base lewis-mcchord', loc)
+    loc = re.sub(r'\bjbsa\b', 'joint base san antonio', loc)
+
+    return loc.strip()
 
 
 # ============================================
@@ -381,140 +567,231 @@ class MappingResult:
 # MATCHING FUNCTIONS
 # ============================================
 
-def extract_location_signal(job: Dict, use_federal_db: bool = True) -> Tuple[List[str], int]:
+def extract_location_signal(
+    job: Dict,
+    use_dynamic_locations: bool = True
+) -> Tuple[Optional[str], int, List[Tuple[str, int, str]]]:
     """
-    Extract program signals from job location.
+    Extract program signal from job location.
+
+    This function searches job locations against both hardcoded DCGS/IC location
+    mappings and dynamic location data from the Federal Programs CSV database.
 
     Args:
         job: Job dictionary with 'location' field
-        use_federal_db: Whether to use Federal Programs CSV database
+        use_dynamic_locations: If True, also use locations from Federal Programs CSV.
+                               If False or CSV unavailable, use only hardcoded locations.
 
     Returns:
-        Tuple of (list_of_program_names, total_score)
+        Tuple of (best_program_name, best_score, all_location_signals)
+        - best_program_name: The highest-scoring matched program (or None)
+        - best_score: The score for the best match
+        - all_location_signals: List of (program_name, score, signal_description) tuples
+          for all location matches found (useful for secondary candidates)
     """
     location = job.get('location', '') or job.get('Location', '')
     if not location:
-        return [], 0
+        return None, 0, []
 
-    programs_found = []
-    total_score = 0
+    location_lower = location.lower()
+    normalized_location = normalize_location_for_matching(location)
 
-    # Check hardcoded DCGS/IC locations (high confidence)
+    all_signals: List[Tuple[str, int, str]] = []
+    program_scores: Dict[str, Tuple[int, str]] = {}
+
+    # Check hardcoded DCGS/IC locations first (exact matches)
     for loc_key, program in ALL_LOCATIONS.items():
-        if loc_key.lower() in location.lower():
-            programs_found.append(program)
-            total_score += SCORING_WEIGHTS['location_match_exact']
+        if loc_key.lower() in location_lower:
+            score = SCORING_WEIGHTS['location_match_exact']
+            signal_desc = f"Location match: {loc_key} -> {program}"
 
-    # Check Federal Programs database for additional matches
-    if use_federal_db:
-        db = get_federal_programs_db()
-        if db.total_programs > 0:
-            db_matches = db.get_programs_by_location(location)
-            for prog in db_matches:
-                if prog not in programs_found:
-                    programs_found.append(prog)
-                    total_score += SCORING_WEIGHTS['location_match_region']
+            # Keep highest score per program
+            if program not in program_scores or program_scores[program][0] < score:
+                program_scores[program] = (score, signal_desc)
 
-    return programs_found, total_score
+    # Try dynamic locations from Federal Programs CSV
+    location_index = None
+    if use_dynamic_locations and HAS_PANDAS:
+        try:
+            location_index = get_location_index()
+        except (FileNotFoundError, ImportError):
+            location_index = None
+
+    if location_index:
+        # Check for matches in the dynamic location index
+        for csv_location, program_list in location_index.items():
+            csv_loc_lower = csv_location.lower()
+
+            # Skip very short location strings to avoid false positives
+            if len(csv_loc_lower) < 3:
+                continue
+
+            # Try multiple matching strategies
+            match_found = False
+            match_type = ""
+
+            # Strategy 1: Direct substring match
+            if csv_loc_lower in location_lower or csv_loc_lower in normalized_location:
+                match_found = True
+                match_type = "exact"
+
+            # Strategy 2: Location substring appears in CSV location
+            # (e.g., job has "Colorado Springs" and CSV has "Colorado Springs CO")
+            if not match_found:
+                # Extract city/base names from job location
+                for word in location_lower.split(','):
+                    word = word.strip()
+                    if len(word) >= 4 and word in csv_loc_lower:
+                        match_found = True
+                        match_type = "partial"
+                        break
+
+            # Strategy 3: State-based region matching (weaker signal)
+            if not match_found:
+                # Check for state abbreviations
+                state_pattern = r'\b([A-Z]{2})\b'
+                job_states = set(re.findall(state_pattern, location))
+                csv_states = set(re.findall(state_pattern, csv_location))
+                if job_states & csv_states:  # Intersection
+                    match_found = True
+                    match_type = "region"
+
+            if match_found:
+                # Determine score based on match type
+                if match_type == "exact":
+                    score = SCORING_WEIGHTS['location_match_exact']
+                elif match_type == "partial":
+                    score = SCORING_WEIGHTS['location_match_region'] + 5
+                else:  # region
+                    score = SCORING_WEIGHTS['location_match_region']
+
+                for program_name in program_list:
+                    signal_desc = f"Location match ({match_type}): {location} -> {program_name} via '{csv_location}'"
+
+                    # Keep highest score per program
+                    if program_name not in program_scores or program_scores[program_name][0] < score:
+                        program_scores[program_name] = (score, signal_desc)
+
+    # Convert to signals list
+    for program_name, (score, signal_desc) in program_scores.items():
+        all_signals.append((program_name, score, signal_desc))
+
+    # Find best match
+    if program_scores:
+        best_program = max(program_scores.keys(), key=lambda p: program_scores[p][0])
+        best_score = program_scores[best_program][0]
+        return best_program, best_score, all_signals
+
+    return None, 0, []
 
 
-def extract_keyword_signals(job: Dict, use_federal_db: bool = True) -> List[Tuple[str, int, str]]:
+def extract_keyword_signals(
+    job: Dict,
+    use_dynamic_keywords: bool = True
+) -> List[Tuple[str, int, str]]:
     """
     Extract program signals from job text using keywords.
-    Uses both hardcoded keywords and Federal Programs database.
+
+    This function searches job titles and descriptions for keywords that map
+    to federal programs. It uses the Federal Programs CSV database for dynamic
+    keyword matching, with fallback to hardcoded keywords.
 
     Args:
-        job: Job dictionary
-        use_federal_db: Whether to use Federal Programs CSV database
+        job: Job dictionary with 'title' and 'description' fields
+        use_dynamic_keywords: If True, use keywords from Federal Programs CSV.
+                              If False or CSV unavailable, use hardcoded keywords.
 
     Returns:
-        List of (program_name, score, signal_description)
+        List of (program_name, score, signal_description) tuples.
+        - program_name: Name of the matched federal program
+        - score: Weight for this signal (50 for title, 20 for description)
+        - signal_description: Human-readable description of the match
     """
     signals = []
 
     # Combine all text fields
     title = (job.get('title', '') or job.get('Job Title/Position', '')).lower()
     description = (job.get('description', '') or job.get('Position Overview', '')).lower()
-    responsibilities = ' '.join(job.get('Key Responsibilities', []) or []).lower()
-    qualifications = ' '.join(job.get('Required Qualifications', []) or []).lower()
+    full_text = f"{title} {description}"
 
-    # Also check intelligence fields if present
-    program_hints = ' '.join(job.get('Program Hints', []) or []).lower()
-    client_hints = ' '.join(job.get('Client Hints', []) or []).lower()
+    # Track matched programs to avoid duplicate signals per program
+    matched_programs: Dict[str, Tuple[int, str]] = {}
 
-    full_text = f"{title} {description} {responsibilities} {qualifications} {program_hints} {client_hints}"
+    # Try to use dynamic keywords from Federal Programs CSV
+    keyword_index = None
+    if use_dynamic_keywords and HAS_PANDAS:
+        try:
+            keyword_index = get_keyword_index()
+        except (FileNotFoundError, ImportError):
+            keyword_index = None
 
-    # Track which programs we've already scored to avoid duplicates
-    scored_programs = set()
-
-    # Check hardcoded PROGRAM_KEYWORDS (high confidence signals)
-    for program, keywords in PROGRAM_KEYWORDS.items():
-        for keyword in keywords:
+    if keyword_index:
+        # Use dynamic keywords from Federal Programs CSV
+        for keyword, program_list in keyword_index.items():
             keyword_lower = keyword.lower()
 
-            # Check title (highest weight)
-            if keyword_lower in title:
-                if program not in scored_programs:
-                    signals.append((
-                        program,
-                        SCORING_WEIGHTS['program_name_in_title'],
-                        f"'{keyword}' in title"
-                    ))
-                    scored_programs.add(program)
-                break
-            # Check description
-            elif keyword_lower in description:
-                if program not in scored_programs:
-                    signals.append((
-                        program,
-                        SCORING_WEIGHTS['program_name_in_description'],
-                        f"'{keyword}' in description"
-                    ))
-                    scored_programs.add(program)
-                break
+            # Skip very short keywords to avoid false positives
+            if len(keyword_lower) < 3:
+                continue
 
-    # Check for DCGS-specific keywords
+            for program_name in program_list:
+                # Check title (highest weight)
+                if keyword_lower in title:
+                    score = SCORING_WEIGHTS['program_name_in_title']
+                    signal_desc = f"'{keyword}' in title"
+
+                    # Keep only the highest-scoring signal per program
+                    if program_name not in matched_programs or matched_programs[program_name][0] < score:
+                        matched_programs[program_name] = (score, signal_desc)
+
+                # Check description (lower weight)
+                elif keyword_lower in description:
+                    score = SCORING_WEIGHTS['program_name_in_description']
+                    signal_desc = f"'{keyword}' in description"
+
+                    # Keep only the highest-scoring signal per program
+                    if program_name not in matched_programs or matched_programs[program_name][0] < score:
+                        matched_programs[program_name] = (score, signal_desc)
+    else:
+        # Fallback to hardcoded PROGRAM_KEYWORDS
+        for program, keywords in PROGRAM_KEYWORDS.items():
+            for keyword in keywords:
+                keyword_lower = keyword.lower()
+
+                # Check title (highest weight)
+                if keyword_lower in title:
+                    score = SCORING_WEIGHTS['program_name_in_title']
+                    signal_desc = f"'{keyword}' in title"
+
+                    if program not in matched_programs or matched_programs[program][0] < score:
+                        matched_programs[program] = (score, signal_desc)
+
+                # Check description (lower weight)
+                elif keyword_lower in description:
+                    score = SCORING_WEIGHTS['program_name_in_description']
+                    signal_desc = f"'{keyword}' in description"
+
+                    if program not in matched_programs or matched_programs[program][0] < score:
+                        matched_programs[program] = (score, signal_desc)
+
+    # Convert matched_programs dict to signals list
+    for program_name, (score, signal_desc) in matched_programs.items():
+        signals.append((program_name, score, signal_desc))
+
+    # Check for DCGS-specific keywords (always check for these)
     dcgs_keywords = ['dcgs', '480th', 'dgs-', 'distributed common ground', 'isr']
+    dcgs_matched = False
     for kw in dcgs_keywords:
         if kw in full_text:
-            signals.append((
-                "DCGS Family",
-                SCORING_WEIGHTS['dcgs_specific_keyword'],
-                f"DCGS keyword: '{kw}'"
-            ))
-            break
-
-    # Check Federal Programs database for dynamic keyword matching
-    if use_federal_db:
-        db = get_federal_programs_db()
-        if db.total_programs > 0:
-            # Get keyword matches from database
-            db_matches = db.get_programs_by_keyword(full_text)
-
-            # Add signals for database matches (lower weight to avoid over-scoring)
-            for program_name, match_count in sorted(db_matches.items(), key=lambda x: -x[1]):
-                if program_name not in scored_programs:
-                    # Higher score for more keyword matches
-                    score = min(match_count * 5, SCORING_WEIGHTS['technology_keyword'])
-                    signals.append((
-                        program_name,
-                        score,
-                        f"DB match ({match_count} keywords)"
-                    ))
-                    scored_programs.add(program_name)
-
-    # Check Program Hints field (explicit program mentions in job)
-    if program_hints:
-        for hint in job.get('Program Hints', []) or []:
-            db = get_federal_programs_db()
-            prog = db.get_program_by_name(hint)
-            if prog and prog.name not in scored_programs:
+            # Only add DCGS Family signal if not already matched through dynamic keywords
+            if "DCGS Family" not in matched_programs:
                 signals.append((
-                    prog.name,
-                    SCORING_WEIGHTS['program_name_in_title'],  # High score for explicit mention
-                    f"Explicit program hint: '{hint}'"
+                    "DCGS Family",
+                    SCORING_WEIGHTS['dcgs_specific_keyword'],
+                    f"DCGS keyword: '{kw}'"
                 ))
-                scored_programs.add(prog.name)
+            dcgs_matched = True
+            break
 
     return signals
 
@@ -593,13 +870,12 @@ def calculate_bd_priority_score(job: Dict, match_confidence: float) -> Tuple[int
     return score, tier
 
 
-def map_job_to_program(job: Dict, use_federal_db: bool = True) -> MappingResult:
+def map_job_to_program(job: Dict) -> MappingResult:
     """
     Main function to map a job posting to a federal program.
 
     Args:
         job: Job dictionary (raw or standardized)
-        use_federal_db: Whether to use Federal Programs CSV database
 
     Returns:
         MappingResult with program match details
@@ -607,16 +883,14 @@ def map_job_to_program(job: Dict, use_federal_db: bool = True) -> MappingResult:
     all_signals = []
     program_scores = {}
 
-    # Get location signals (now returns list of programs)
-    loc_programs, loc_score = extract_location_signal(job, use_federal_db)
-    for loc_program in loc_programs:
-        all_signals.append(f"Location match: {loc_program}")
-        # Distribute score among matched programs
-        per_program_score = loc_score // max(len(loc_programs), 1)
-        program_scores[loc_program] = program_scores.get(loc_program, 0) + per_program_score
+    # Get location signals (now returns all matching programs)
+    loc_program, loc_score, location_signals = extract_location_signal(job)
+    for program, score, signal_desc in location_signals:
+        all_signals.append(signal_desc)
+        program_scores[program] = program_scores.get(program, 0) + score
 
     # Get keyword signals
-    keyword_signals = extract_keyword_signals(job, use_federal_db)
+    keyword_signals = extract_keyword_signals(job)
     for program, score, signal_desc in keyword_signals:
         all_signals.append(signal_desc)
         program_scores[program] = program_scores.get(program, 0) + score
