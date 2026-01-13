@@ -163,7 +163,7 @@
     }
   },
   "review": {
-    "mergeTooltip": "Fusionne les changements de la branche worktree de la tâche vers votre branche de base et supprime le worktree. L'IA résoudra les conflits éventuels."
+    "mergeTooltip": "Fusionne les changements de la branche worktree de la tâche vers votre branche de base. L'IA résoudra les conflits éventuels. Vous pourrez ensuite choisir de conserver ou de supprimer le worktree."
   },
   "edit": {
     "title": "Modifier la tâche",
