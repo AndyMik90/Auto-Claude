@@ -107,7 +107,9 @@ export function StagedInProjectMessage({ task, projectPath, hasWorktree = false,
 
     try {
       // Call the discard/delete worktree command
-      const result = await window.electronAPI.discardWorktree(task.id);
+      // Pass skipStatusChange=true to prevent backend from resetting to 'backlog'
+      // since we explicitly set status to 'done' immediately after
+      const result = await window.electronAPI.discardWorktree(task.id, true);
 
       if (!result.success) {
         setError(result.error || 'Failed to delete worktree');
