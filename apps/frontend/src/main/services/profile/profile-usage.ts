@@ -198,8 +198,8 @@ export async function fetchAnthropicOAuthUsage(
       : undefined;
 
     return {
-      sessionPercent: Math.round(data.five_hour_utilization || 0),
-      weeklyPercent: Math.round(data.seven_day_utilization || 0),
+      sessionPercent: Math.round((data.five_hour_utilization || 0) * 100),
+      weeklyPercent: Math.round((data.seven_day_utilization || 0) * 100),
       sessionResetTime: formatResetTimeFromTimestamp(fiveHourResetTimestamp),
       weeklyResetTime: formatResetTimeFromTimestamp(sevenDayResetTimestamp),
       sessionResetTimestamp: fiveHourResetTimestamp,

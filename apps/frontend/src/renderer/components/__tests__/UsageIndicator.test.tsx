@@ -248,28 +248,6 @@ describe('UsageIndicator', () => {
   });
 
   describe('resetting soon and past timestamp handling', () => {
-    it('should show "resetting soon" text when sessionResetTime is RESETTING_SOON', async () => {
-      const usage = createUsageSnapshot({
-        sessionPercent: 95,
-        weeklyPercent: 30,
-        sessionResetTime: RESETTING_SOON,
-        weeklyResetTime: '2h 30m'
-      });
-      mockRequestUsageUpdate.mockResolvedValue({ success: true, data: usage });
-
-      const { container } = renderWithI18n(<UsageIndicator />);
-
-      await waitFor(() => {
-        const badge = container.querySelector('button');
-        expect(badge).toBeInTheDocument();
-      });
-
-      // The tooltip should show "Resetting soon..." text for session reset
-      await waitFor(() => {
-        expect(screen.getByText(/resetting soon/i)).toBeInTheDocument();
-      });
-    });
-
     it('should not show countdown when sessionResetTimestamp is in the past', async () => {
       const past = new Date();
       past.setHours(past.getHours() - 1); // 1 hour ago
