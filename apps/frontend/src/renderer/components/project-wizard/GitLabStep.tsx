@@ -63,6 +63,9 @@ export function GitLabStep({ project, onComplete, onSkip, onBack }: GitLabStepPr
   const [isCheckingGlab, setIsCheckingGlab] = useState(false);
   const [authMode, setAuthMode] = useState<'oauth' | 'manual'>('oauth');
 
+  // Self-hosted GitLab instance state
+  const [instanceUrl, setInstanceUrl] = useState<string>('');
+
   // Reset project name when project changes
   useEffect(() => {
     if (project) {
@@ -182,7 +185,9 @@ export function GitLabStep({ project, onComplete, onSkip, onBack }: GitLabStepPr
 
     try {
       // Step 1: Start device authorization flow
-      const authResult = await window.electronAPI.startGitLabAuth();
+      const authResult = await window.electronAPI.startGitLabAuth(
+        instanceUrl.trim() || undefined
+      );
       if (!authResult.success || !authResult.data) {
         setError(authResult.error || 'Failed to start GitLab authorization');
         return;
@@ -361,6 +366,27 @@ export function GitLabStep({ project, onComplete, onSkip, onBack }: GitLabStepPr
                 {error && (
                   <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive mb-6" role="alert">
                     {error}
+                  </div>
+                )}
+
+                {/* Self-hosted GitLab instance URL input */}
+                {glabInstalled && (
+                  <div className="mb-6 text-left">
+                    <Label htmlFor="instance-url" className="text-sm text-foreground mb-2 block">
+                      GitLab Instance URL (optional)
+                    </Label>
+                    <Input
+                      id="instance-url"
+                      type="url"
+                      placeholder="https://gitlab.com"
+                      value={instanceUrl}
+                      onChange={(e) => setInstanceUrl(e.target.value)}
+                      disabled={isAuthenticating}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Leave blank for gitlab.com. Enter your self-hosted GitLab instance URL (e.g., https://gitlab.example.com)
+                    </p>
                   </div>
                 )}
 
