@@ -1,4 +1,4 @@
-import { Terminal, Type, Minus, Plus, RotateCcw } from 'lucide-react';
+import { Terminal, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { Label } from '../ui/label';
@@ -77,6 +77,28 @@ export function TerminalSettings({ settings, onSettingsChange }: TerminalSetting
     approxEqual(currentFontSettings.lineHeight, DEFAULT_TERMINAL_FONT_SETTINGS.lineHeight) &&
     approxEqual(currentFontSettings.letterSpacing, DEFAULT_TERMINAL_FONT_SETTINGS.letterSpacing) &&
     selectedFontFamily === DEFAULT_TERMINAL_FONT_SETTINGS.fontFamily;
+
+  // Shared slider className to avoid repetition
+  const SLIDER_CLASSES = cn(
+    'flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+    '[&::-webkit-slider-thumb]:appearance-none',
+    '[&::-webkit-slider-thumb]:w-4',
+    '[&::-webkit-slider-thumb]:h-4',
+    '[&::-webkit-slider-thumb]:rounded-full',
+    '[&::-webkit-slider-thumb]:bg-primary',
+    '[&::-webkit-slider-thumb]:cursor-pointer',
+    '[&::-webkit-slider-thumb]:transition-all',
+    '[&::-webkit-slider-thumb]:hover:scale-110',
+    '[&::-moz-range-thumb]:w-4',
+    '[&::-moz-range-thumb]:h-4',
+    '[&::-moz-range-thumb]:rounded-full',
+    '[&::-moz-range-thumb]:bg-primary',
+    '[&::-moz-range-thumb]:border-0',
+    '[&::-moz-range-thumb]:cursor-pointer',
+    '[&::-moz-range-thumb]:transition-all',
+    '[&::-moz-range-thumb]:hover:scale-110'
+  );
 
   return (
     <SettingsSection
@@ -167,26 +189,7 @@ export function TerminalSettings({ settings, onSettingsChange }: TerminalSetting
               value={currentFontSettings.fontSize}
               onChange={(e) => handleFontSizeChange(parseFloat(e.target.value))}
               aria-label={t('terminal.fontSize')}
-              className={cn(
-                'flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                '[&::-webkit-slider-thumb]:appearance-none',
-                '[&::-webkit-slider-thumb]:w-4',
-                '[&::-webkit-slider-thumb]:h-4',
-                '[&::-webkit-slider-thumb]:rounded-full',
-                '[&::-webkit-slider-thumb]:bg-primary',
-                '[&::-webkit-slider-thumb]:cursor-pointer',
-                '[&::-webkit-slider-thumb]:transition-all',
-                '[&::-webkit-slider-thumb]:hover:scale-110',
-                '[&::-moz-range-thumb]:w-4',
-                '[&::-moz-range-thumb]:h-4',
-                '[&::-moz-range-thumb]:rounded-full',
-                '[&::-moz-range-thumb]:bg-primary',
-                '[&::-moz-range-thumb]:border-0',
-                '[&::-moz-range-thumb]:cursor-pointer',
-                '[&::-moz-range-thumb]:transition-all',
-                '[&::-moz-range-thumb]:hover:scale-110'
-              )}
+              className={SLIDER_CLASSES}
             />
             <button
               type="button"
@@ -219,7 +222,7 @@ export function TerminalSettings({ settings, onSettingsChange }: TerminalSetting
               <span className="text-sm font-mono text-muted-foreground">
                 {currentFontSettings.lineHeight.toFixed(2)}
               </span>
-              {currentFontSettings.lineHeight !== DEFAULT_TERMINAL_FONT_SETTINGS.lineHeight && (
+              {!approxEqual(currentFontSettings.lineHeight, DEFAULT_TERMINAL_FONT_SETTINGS.lineHeight) && (
                 <button
                   type="button"
                   onClick={() => handleLineHeightChange(DEFAULT_TERMINAL_FONT_SETTINGS.lineHeight)}
@@ -262,26 +265,7 @@ export function TerminalSettings({ settings, onSettingsChange }: TerminalSetting
               value={currentFontSettings.lineHeight}
               onChange={(e) => handleLineHeightChange(parseFloat(e.target.value))}
               aria-label={t('terminal.lineHeight')}
-              className={cn(
-                'flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                '[&::-webkit-slider-thumb]:appearance-none',
-                '[&::-webkit-slider-thumb]:w-4',
-                '[&::-webkit-slider-thumb]:h-4',
-                '[&::-webkit-slider-thumb]:rounded-full',
-                '[&::-webkit-slider-thumb]:bg-primary',
-                '[&::-webkit-slider-thumb]:cursor-pointer',
-                '[&::-webkit-slider-thumb]:transition-all',
-                '[&::-webkit-slider-thumb]:hover:scale-110',
-                '[&::-moz-range-thumb]:w-4',
-                '[&::-moz-range-thumb]:h-4',
-                '[&::-moz-range-thumb]:rounded-full',
-                '[&::-moz-range-thumb]:bg-primary',
-                '[&::-moz-range-thumb]:border-0',
-                '[&::-moz-range-thumb]:cursor-pointer',
-                '[&::-moz-range-thumb]:transition-all',
-                '[&::-moz-range-thumb]:hover:scale-110'
-              )}
+              className={SLIDER_CLASSES}
             />
             <button
               type="button"
@@ -313,7 +297,7 @@ export function TerminalSettings({ settings, onSettingsChange }: TerminalSetting
               <span className="text-sm font-mono text-muted-foreground">
                 {currentFontSettings.letterSpacing > 0 ? '+' : ''}{currentFontSettings.letterSpacing.toFixed(1)}
               </span>
-              {currentFontSettings.letterSpacing !== DEFAULT_TERMINAL_FONT_SETTINGS.letterSpacing && (
+              {!approxEqual(currentFontSettings.letterSpacing, DEFAULT_TERMINAL_FONT_SETTINGS.letterSpacing) && (
                 <button
                   type="button"
                   onClick={() => handleLetterSpacingChange(DEFAULT_TERMINAL_FONT_SETTINGS.letterSpacing)}
@@ -356,26 +340,7 @@ export function TerminalSettings({ settings, onSettingsChange }: TerminalSetting
               value={currentFontSettings.letterSpacing}
               onChange={(e) => handleLetterSpacingChange(parseFloat(e.target.value))}
               aria-label={t('terminal.letterSpacing')}
-              className={cn(
-                'flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                '[&::-webkit-slider-thumb]:appearance-none',
-                '[&::-webkit-slider-thumb]:w-4',
-                '[&::-webkit-slider-thumb]:h-4',
-                '[&::-webkit-slider-thumb]:rounded-full',
-                '[&::-webkit-slider-thumb]:bg-primary',
-                '[&::-webkit-slider-thumb]:cursor-pointer',
-                '[&::-webkit-slider-thumb]:transition-all',
-                '[&::-webkit-slider-thumb]:hover:scale-110',
-                '[&::-moz-range-thumb]:w-4',
-                '[&::-moz-range-thumb]:h-4',
-                '[&::-moz-range-thumb]:rounded-full',
-                '[&::-moz-range-thumb]:bg-primary',
-                '[&::-moz-range-thumb]:border-0',
-                '[&::-moz-range-thumb]:cursor-pointer',
-                '[&::-moz-range-thumb]:transition-all',
-                '[&::-moz-range-thumb]:hover:scale-110'
-              )}
+              className={SLIDER_CLASSES}
             />
             <button
               type="button"

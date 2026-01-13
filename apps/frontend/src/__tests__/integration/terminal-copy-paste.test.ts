@@ -71,7 +71,7 @@ vi.mock('../../renderer/stores/settings-store', () => ({
   useSettingsStore: vi.fn(() => ({
     settings: {
       terminalFont: {
-        fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
+        fontFamily: 'system',
         fontSize: 13,
         lineHeight: 1.2,
         letterSpacing: 0

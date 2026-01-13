@@ -42,6 +42,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const isDisposedRef = useRef<boolean>(false);
   const dimensionsReadyCalledRef = useRef<boolean>(false);
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
+  // Track first render to skip redundant font update on mount
+  const isFirstRenderRef = useRef<boolean>(true);
 
   // Get terminal font settings from store
   const terminalFont = useSettingsStore((state) => state.settings.terminalFont) ?? DEFAULT_TERMINAL_FONT_SETTINGS;
@@ -325,6 +327,12 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
   // Update terminal options when font settings change
   useEffect(() => {
+    // Skip first render - initial font settings are already applied during initialization
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+
     // Use setTimeout to ensure this runs after initialization effect
     // This is needed because fitAddonRef might not be set yet on first render
     const timeoutId = setTimeout(() => {
