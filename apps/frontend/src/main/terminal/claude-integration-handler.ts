@@ -13,7 +13,7 @@ import { getClaudeProfileManager, initializeClaudeProfileManager } from '../clau
 import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
-import { escapeShellArg, buildCdCommand } from '../../shared/utils/shell-escape';
+import { escapeShellArg, escapeShellArgWindows, buildCdCommand } from '../../shared/utils/shell-escape';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import type {
   TerminalProcess,
@@ -31,6 +31,23 @@ function normalizePathForBash(envPath: string): string {
  * Extracted as constant to ensure consistency across invokeClaude and invokeClaudeAsync
  */
 const YOLO_MODE_FLAG = ' --dangerously-skip-permissions';
+
+/**
+ * Check if we're running on Windows
+ */
+const isWindows = process.platform === 'win32';
+
+/**
+ * Escape a shell argument for the current platform.
+ * Uses single quotes on Unix/Mac, double quotes on Windows cmd.exe.
+ */
+function escapeForPlatform(arg: string): string {
+  if (isWindows) {
+    // On Windows cmd.exe, wrap in double quotes after escaping special chars
+    return `"${escapeShellArgWindows(arg)}"`;
+  }
+  return escapeShellArg(arg);
+}
 
 // ============================================================================
 // SHARED HELPERS - Used by both sync and async invokeClaude
@@ -56,8 +73,10 @@ type ClaudeCommandConfig =
  * All non-default methods include history-safe prefixes (HISTFILE=, HISTCONTROL=)
  * to prevent sensitive data from appearing in shell history.
  *
+ * On Windows, uses cmd.exe-compatible syntax. On Unix/Mac, uses bash syntax.
+ *
  * @param cwdCommand - Command to change directory (empty string if no change needed)
- * @param pathPrefix - PATH prefix for Claude CLI (empty string if not needed)
+ * @param pathPrefix - PATH prefix for Claude CLI (empty string if not needed, ignored on Windows)
  * @param escapedClaudeCmd - Shell-escaped Claude CLI command
  * @param config - Configuration object with method and required options (discriminated union)
  * @param extraFlags - Optional extra flags to append to the command (e.g., '--dangerously-skip-permissions')
@@ -80,6 +99,25 @@ export function buildClaudeShellCommand(
   extraFlags?: string
 ): string {
   const fullCmd = extraFlags ? `${escapedClaudeCmd}${extraFlags}` : escapedClaudeCmd;
+
+  // Windows uses cmd.exe which has different syntax than bash
+  if (isWindows) {
+    switch (config.method) {
+      case 'temp-file':
+        // On Windows, use 'call' to execute the batch file that sets env var, then run claude
+        return `cls && ${cwdCommand}call ${config.escapedTempFile} && del ${config.escapedTempFile} && ${fullCmd}\r`;
+
+      case 'config-dir':
+        // On Windows, use 'set' to set environment variable inline
+        return `cls && ${cwdCommand}set CLAUDE_CONFIG_DIR=${config.escapedConfigDir} && ${fullCmd}\r`;
+
+      default:
+        // On Windows, don't use PATH= prefix syntax - the PTY already has correct PATH
+        return `${cwdCommand}${fullCmd}\r`;
+    }
+  }
+
+  // Unix/Mac bash syntax
   switch (config.method) {
     case 'temp-file':
       return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace ${pathPrefix}bash -c "source ${config.escapedTempFile} && rm -f ${config.escapedTempFile} && exec ${fullCmd}"\r`;
@@ -419,7 +457,7 @@ export function invokeClaude(
 
   const cwdCommand = buildCdCommand(cwd);
   const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const escapedClaudeCmd = escapeForPlatform(claudeCmd);
   const pathPrefix = claudeEnv.PATH
     ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
     : '';
@@ -440,14 +478,18 @@ export function invokeClaude(
 
     if (token) {
       const nonce = crypto.randomBytes(8).toString('hex');
-      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
-      const escapedTempFile = escapeShellArg(tempFile);
+      // Use .bat extension on Windows, no extension on Unix (sourced as shell script)
+      const tempFileExt = isWindows ? '.bat' : '';
+      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}${tempFileExt}`);
+      const escapedTempFile = escapeForPlatform(tempFile);
       debugLog('[ClaudeIntegration:invokeClaude] Writing token to temp file:', tempFile);
-      fs.writeFileSync(
-        tempFile,
-        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        { mode: 0o600 }
-      );
+
+      // Write platform-appropriate content
+      const tempFileContent = isWindows
+        ? `@echo off\r\nset CLAUDE_CODE_OAUTH_TOKEN=${token}\r\n`  // Windows batch file
+        : `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`;  // Unix shell script
+
+      fs.writeFileSync(tempFile, tempFileContent, { mode: 0o600 });
 
       const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile }, extraFlags);
       debugLog('[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)');
@@ -457,7 +499,7 @@ export function invokeClaude(
       debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
       return;
     } else if (activeProfile.configDir) {
-      const escapedConfigDir = escapeShellArg(activeProfile.configDir);
+      const escapedConfigDir = escapeForPlatform(activeProfile.configDir);
       const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir }, extraFlags);
       debugLog('[ClaudeIntegration:invokeClaude] Executing command (configDir method, history-safe)');
       terminal.pty.write(command);
@@ -506,7 +548,7 @@ export function resumeClaude(
   SessionHandler.releaseSessionId(terminal.id);
 
   const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const escapedClaudeCmd = escapeForPlatform(claudeCmd);
   const pathPrefix = claudeEnv.PATH
     ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
     : '';
@@ -597,7 +639,7 @@ export async function invokeClaudeAsync(
   // Async CLI invocation - non-blocking
   const cwdCommand = buildCdCommand(cwd);
   const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const escapedClaudeCmd = escapeForPlatform(claudeCmd);
   const pathPrefix = claudeEnv.PATH
     ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
     : '';
@@ -618,14 +660,18 @@ export async function invokeClaudeAsync(
 
     if (token) {
       const nonce = crypto.randomBytes(8).toString('hex');
-      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
-      const escapedTempFile = escapeShellArg(tempFile);
+      // Use .bat extension on Windows, no extension on Unix (sourced as shell script)
+      const tempFileExt = isWindows ? '.bat' : '';
+      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}${tempFileExt}`);
+      const escapedTempFile = escapeForPlatform(tempFile);
       debugLog('[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:', tempFile);
-      await fsPromises.writeFile(
-        tempFile,
-        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        { mode: 0o600 }
-      );
+
+      // Write platform-appropriate content
+      const tempFileContent = isWindows
+        ? `@echo off\r\nset CLAUDE_CODE_OAUTH_TOKEN=${token}\r\n`  // Windows batch file
+        : `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`;  // Unix shell script
+
+      await fsPromises.writeFile(tempFile, tempFileContent, { mode: 0o600 });
 
       const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile }, extraFlags);
       debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
@@ -635,7 +681,7 @@ export async function invokeClaudeAsync(
       debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
       return;
     } else if (activeProfile.configDir) {
-      const escapedConfigDir = escapeShellArg(activeProfile.configDir);
+      const escapedConfigDir = escapeForPlatform(activeProfile.configDir);
       const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir }, extraFlags);
       debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
       terminal.pty.write(command);
@@ -680,7 +726,7 @@ export async function resumeClaudeAsync(
 
   // Async CLI invocation - non-blocking
   const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const escapedClaudeCmd = escapeForPlatform(claudeCmd);
   const pathPrefix = claudeEnv.PATH
     ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
     : '';
