@@ -33,5 +33,71 @@
     ],
     "original_program": "Corporate HQ",
     "reviewed": false
+  },
+  {
+    "job_id": "2890319783040",
+    "added_at": "2026-01-13T00:32:05.133691",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold"
+    ],
+    "original_program": "Distributed Common Ground System (AF)",
+    "reviewed": false
+  },
+  {
+    "job_id": "2890272760000",
+    "added_at": "2026-01-13T00:32:05.136812",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold"
+    ],
+    "original_program": "BICES (Expanded Historical Listing)",
+    "reviewed": false
+  },
+  {
+    "job_id": "2890319770880",
+    "added_at": "2026-01-13T00:32:05.139257",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold"
+    ],
+    "original_program": "Next Generation Interceptor",
+    "reviewed": false
+  },
+  {
+    "job_id": "2107100589568",
+    "added_at": "2026-01-13T08:07:27.009012",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold"
+    ],
+    "original_program": "Distributed Common Ground System (AF)",
+    "reviewed": false
+  },
+  {
+    "job_id": "2107107465280",
+    "added_at": "2026-01-13T08:07:27.009952",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold"
+    ],
+    "original_program": "BICES (Expanded Historical Listing)",
+    "reviewed": false
+  },
+  {
+    "job_id": "2107100430592",
+    "added_at": "2026-01-13T08:07:27.010630",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold"
+    ],
+    "original_program": "Next Generation Interceptor",
+    "reviewed": false
   }
 ]

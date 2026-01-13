@@ -1,38 +1,73 @@
 # BD Automation Engine - Python Dependencies
+# Full-stack dependencies for the complete BD automation pipeline
 
-# Core
+# ============================================
+# CORE
+# ============================================
 python-dotenv>=1.0.0
 requests>=2.31.0
 
+# ============================================
 # AI/LLM
+# ============================================
 anthropic>=0.18.0
 openai>=1.12.0
 
-# Data Processing
+# ============================================
+# DATA PROCESSING
+# ============================================
 pandas>=2.0.0
 numpy>=1.24.0
 
-# Notion Integration
+# ============================================
+# NOTION INTEGRATION
+# ============================================
 notion-client>=2.2.0
 
-# Embeddings & Vector Search
+# ============================================
+# EMBEDDINGS & VECTOR SEARCH
+# ============================================
 tiktoken>=0.5.0
 scipy>=1.11.0
 
-# Web Scraping Support
+# ============================================
+# WEB SCRAPING SUPPORT
+# ============================================
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 
-# JSON Schema Validation
+# ============================================
+# JSON SCHEMA VALIDATION
+# ============================================
 jsonschema>=4.17.0
 
-# CLI Tools
+# ============================================
+# CLI TOOLS
+# ============================================
 click>=8.1.0
 tqdm>=4.65.0
 
-# Testing
-pytest>=7.4.0
+# ============================================
+# DATABASE (PostgreSQL)
+# ============================================
+psycopg2-binary>=2.9.0
 
-# Optional: For local development
+# ============================================
+# TESTING
+# ============================================
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# ============================================
+# OPTIONAL: ADVANCED FEATURES
+# ============================================
+# For local development
 # ipython>=8.12.0
 # jupyter>=1.0.0
+
+# For Qdrant vector database
+# qdrant-client>=1.6.0
+
+# For advanced scheduling
+# schedule>=1.2.0
+# apscheduler>=3.10.0

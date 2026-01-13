@@ -175,11 +175,34 @@ class NotionCSVExporter:
         except (ValueError, TypeError):
             return str(value)
 
+    # Field name mappings: Notion column name -> possible source field names
+    FIELD_MAPPINGS = {
+        'Job Title/Position': ['Job Title/Position', 'title', 'jobTitle', 'position'],
+        'Date Posted': ['Date Posted', 'datePosted', 'date_posted', 'posted_date'],
+        'Location': ['Location', 'location'],
+        'Position Overview': ['Position Overview', 'description', 'overview', 'summary'],
+        'Key Responsibilities': ['Key Responsibilities', 'responsibilities', 'duties'],
+        'Required Qualifications': ['Required Qualifications', 'qualifications', 'requirements'],
+        'Security Clearance': ['Security Clearance', 'clearance', 'securityClearance'],
+        'Program Hints': ['Program Hints', 'programHints', 'program_hints'],
+        'Client Hints': ['Client Hints', 'clientHints', 'client_hints'],
+        'Contract Vehicle Hints': ['Contract Vehicle Hints', 'contractVehicleHints', 'contract_hints'],
+        'Prime Contractor': ['Prime Contractor', 'company', 'contractor', 'employer'],
+        'Recruiter Contact': ['Recruiter Contact', 'recruiter', 'contact'],
+        'Technologies': ['Technologies', 'technologies', 'tech', 'skills'],
+        'Certifications Required': ['Certifications Required', 'certifications', 'certs'],
+        'Source': ['Source', 'source'],
+        'Source URL': ['Source URL', 'url', 'source_url', 'link'],
+        'Scraped At': ['Scraped At', 'scrapedAt', 'scraped_at'],
+        'Processed At': ['Processed At', 'processedAt', 'processed_at'],
+    }
+
     def _extract_field_value(self, job: Dict, field_name: str) -> str:
         """
         Extract and format a field value from a job dictionary.
 
         Handles both direct fields and enrichment data from _mapping/_scoring.
+        Supports multiple field name variations for scraper compatibility.
 
         Args:
             job: Job dictionary (may contain _mapping and _scoring)
@@ -188,8 +211,13 @@ class NotionCSVExporter:
         Returns:
             Formatted string value for CSV
         """
-        # Direct field access
-        value = job.get(field_name)
+        # Try all possible field name variations
+        value = None
+        possible_names = self.FIELD_MAPPINGS.get(field_name, [field_name])
+        for name in possible_names:
+            if name in job:
+                value = job[name]
+                break
 
         # Try _mapping for enrichment fields
         if value is None and '_mapping' in job:

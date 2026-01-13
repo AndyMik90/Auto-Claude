@@ -4,13 +4,16 @@ End-to-end Business Development automation pipeline for federal defense programs
 
 ## Project Overview
 
-This system automates the following workflow every 24 hours:
+This system provides a **complete, production-ready** BD intelligence pipeline that runs autonomously every 6-24 hours:
 
 1. **Scrape** new job postings from ClearanceJobs, LinkedIn, and competitor portals
-2. **Standardize** raw data into 11-field schema using LLM extraction
+2. **Standardize** raw data into 28-field schema using LLM extraction
 3. **Map** jobs to federal programs using location intelligence and keyword matching
-4. **Classify** contacts into 6-tier hierarchy with BD priority assignment
-5. **Score** opportunities and generate actionable BD intelligence
+4. **Score** opportunities with BD Priority Scores (0-100) and tier classification
+5. **Generate** BD briefing documents with contact information
+6. **Evaluate** results through QA gating with human review queue
+7. **Export** to Notion, n8n, and downstream systems
+8. **Notify** via email and webhooks for hot leads
 
 ## Target Portfolio
 
@@ -33,147 +36,204 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your API keys:
+# - ANTHROPIC_API_KEY (required)
+# - NOTION_TOKEN (optional)
+# - N8N_WEBHOOK_URL (optional)
+# - SMTP credentials (optional for email)
 ```
 
-### 3. Export Required Data
-
-See [REQUIRED_EXPORTS.md](./REQUIRED_EXPORTS.md) for the complete list of Notion database exports needed.
-
-### 4. Run Initial Test
+### 3. Verify Setup
 
 ```bash
-# Test program mapping with sample data
-python Engine2_ProgramMapping/scripts/program_mapper.py \
-  --input Engine1_Scraper/data/Sample_Jobs.json \
-  --output outputs/test_mapping.json \
-  --test
+python quickstart.py --check
 ```
 
-### 5. Follow Setup Guide
+### 4. Run Test Pipeline
 
-See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for complete setup instructions.
+```bash
+python quickstart.py --test
+```
+
+### 5. Run Full Pipeline
+
+```bash
+# Full pipeline with all stages
+python orchestrator.py --input Engine1_Scraper/data/Sample_Jobs.json
+
+# Hot leads only with email notifications
+python orchestrator.py --input data/jobs.json --hot-leads-only --email
+
+# Start scheduled runs (every 6 hours)
+python orchestrator.py --schedule --interval 6
+```
+
+## Architecture
+
+### 6-Engine Pipeline
+
+```
+                    ┌─────────────────────────────────────────────────────┐
+                    │              BD AUTOMATION ENGINE                    │
+                    │                Master Orchestrator                   │
+                    └─────────────────────────────────────────────────────┘
+                                           │
+        ┌──────────────────────────────────┼──────────────────────────────────┐
+        │                                  │                                  │
+        ▼                                  ▼                                  ▼
+┌───────────────┐              ┌───────────────────┐              ┌───────────────┐
+│   Engine 1    │              │     Engine 2      │              │   Engine 3    │
+│   Scraper     │──────────────│  Program Mapping  │──────────────│   OrgChart    │
+│  (Apify)      │              │   (6-Stage)       │              │  (Contacts)   │
+└───────────────┘              └───────────────────┘              └───────────────┘
+                                       │
+                    ┌──────────────────┴──────────────────┐
+                    │                                      │
+                    ▼                                      ▼
+           ┌───────────────┐                      ┌───────────────┐
+           │   Engine 4    │                      │   Engine 5    │
+           │   Briefing    │                      │   Scoring     │
+           │  Generator    │                      │  (BD Score)   │
+           └───────────────┘                      └───────────────┘
+                    │                                      │
+                    └──────────────────┬───────────────────┘
+                                       │
+                                       ▼
+                              ┌───────────────┐
+                              │   Engine 6    │
+                              │      QA       │
+                              │  Feedback     │
+                              └───────────────┘
+                                       │
+            ┌──────────────────────────┼──────────────────────────┐
+            │                          │                          │
+            ▼                          ▼                          ▼
+     ┌────────────┐           ┌────────────┐            ┌────────────┐
+     │   Notion   │           │    n8n     │            │   Email    │
+     │   Export   │           │  Webhook   │            │   Alerts   │
+     └────────────┘           └────────────┘            └────────────┘
+```
+
+### Pipeline Stages (Engine 2)
+
+| Stage | Description | Output |
+|-------|-------------|--------|
+| 1. Ingest | Load raw jobs from JSON | Raw job list |
+| 2. Preprocess | Clean HTML, normalize text | Cleaned jobs |
+| 3. Standardize | LLM extraction to 28 fields | Structured jobs |
+| 4. Match | Map to federal programs | Enriched jobs |
+| 5. Score | Calculate BD priority scores | Scored jobs |
+| 6. Export | Write to Notion CSV/n8n JSON | Export files |
 
 ## Folder Structure
 
 ```
 BD-Automation-Engine/
-├── .env.example                    # Environment template with Notion IDs
-├── README.md                       # This file
-├── SETUP_GUIDE.md                  # Comprehensive setup instructions
-├── REQUIRED_EXPORTS.md             # Data export checklist
-├── TASKS.md                        # Auto Claude task definitions
-├── requirements.txt                # Python dependencies
+├── orchestrator.py              # Master pipeline orchestrator
+├── quickstart.py                # Quick start and validation
+├── requirements.txt             # Python dependencies
+├── .env.example                 # Environment template
 │
-├── Engine1_Scraper/                # Job data collection
-│   ├── Configurations/             # Apify actor settings
-│   ├── data/                       # Scraped job data
-│   └── scripts/                    # Scraping scripts
+├── Engine1_Scraper/             # Job data collection (Apify)
+│   ├── Configurations/          # Scraper settings
+│   └── data/                    # Raw job data (10+ sources)
 │
-├── Engine2_ProgramMapping/         # Job-to-Program tagging
-│   ├── Configurations/             # DCGS-focused mapping config
-│   ├── data/                       # Program KB, templates
-│   └── scripts/                    # job_standardizer.py, program_mapper.py
+├── Engine2_ProgramMapping/      # Core pipeline engine
+│   ├── Configurations/          # ProgramMapping_Config.json
+│   ├── data/                    # Federal Programs KB (400+ programs)
+│   └── scripts/
+│       ├── pipeline.py          # 6-stage orchestrator
+│       ├── job_standardizer.py  # LLM extraction (28 fields)
+│       ├── program_mapper.py    # Multi-signal matching
+│       └── exporters.py         # Notion CSV / n8n JSON
 │
-├── Engine3_OrgChart/               # Contact & org mapping
-│   ├── Configurations/             # Classification settings
-│   ├── data/                       # Contact databases
-│   └── scripts/                    # contact_classifier.py
+├── Engine3_OrgChart/            # Contact management
+│   ├── data/                    # 6,288+ DCGS contacts
+│   └── scripts/
+│       ├── contact_lookup.py    # Program-based lookup
+│       └── contact_classifier.py # 6-tier classification
 │
-├── Engine4_Playbook/               # BD content generation
-│   ├── Configurations/             # Playbook settings
-│   ├── Templates/                  # Message templates
-│   └── Outputs/                    # Generated content
+├── Engine4_Briefing/            # BD content generation
+│   ├── Templates/               # Document templates
+│   └── scripts/
+│       └── briefing_generator.py # Markdown briefings
 │
-├── Engine5_Scoring/                # Opportunity scoring
-│   ├── Configurations/             # Scoring weights
-│   └── scripts/                    # bd_scoring.py
+├── Engine5_Scoring/             # Opportunity scoring
+│   ├── Configurations/          # Scoring weights
+│   └── scripts/
+│       └── bd_scoring.py        # BD Priority Score (0-100)
 │
-├── docs/
-│   ├── Claude Skills/              # 10 Claude skills suite
-│   └── Claude Exports/             # Conversation exports
+├── Engine6_QA/                  # Quality assurance
+│   ├── data/                    # review_queue.json
+│   └── scripts/
+│       └── qa_feedback.py       # QA gating & feedback
 │
-├── n8n/                            # Workflow automation
-│   └── bd_automation_workflow.json
+├── services/                    # Infrastructure services
+│   ├── database.py              # PostgreSQL persistence
+│   ├── scheduler.py             # 24-hour automated runs
+│   ├── notion_sync.py           # Notion database sync
+│   └── bullhorn_integration.py  # CRM contact enrichment
 │
-├── prompts/                        # Prompt templates
-└── outputs/                        # Generated outputs
-    ├── BD_Briefings/
-    └── Logs/
+├── n8n/                         # Workflow automation (18 workflows)
+│   └── BD_Master_Orchestration_Workflow.json
+│
+├── tests/                       # Test suite
+│   └── test_orchestrator.py     # Comprehensive tests
+│
+├── outputs/                     # Generated outputs
+│   ├── BD_Briefings/            # Markdown briefings
+│   ├── notion/                  # CSV exports
+│   ├── n8n/                     # JSON exports
+│   └── Logs/                    # Pipeline logs
+│
+└── docs/                        # Documentation
+    ├── Claude Skills/           # 10 Claude skills
+    └── Claude Exports/          # Conversation history
 ```
 
-## Claude Skills Suite
+## 28-Field Schema
 
-The `docs/Claude Skills/` folder contains 10 specialized skills:
+### Required Fields (6)
+1. Job Title/Position
+2. Date Posted
+3. Location
+4. Position Overview
+5. Key Responsibilities
+6. Required Qualifications
 
-| Skill | Purpose |
-|-------|---------|
-| job-standardization | Parse raw jobs to 11-field schema |
-| program-mapping | Map jobs to DCGS programs |
-| contact-classification | 6-tier hierarchy classification |
-| bd-outreach-messaging | Personalized outreach generation |
-| humint-intelligence | Intelligence gathering methodology |
-| federal-defense-programs | Program intelligence reference |
-| notion-bd-operations | Database operation patterns |
-| apify-job-scraping | Scraper configuration |
-| bd-call-sheet | Call list generation |
-| bd-playbook | Strategic playbook creation |
+### Intelligence Fields (8)
+7. Security Clearance
+8. Program Hints
+9. Client Hints
+10. Contract Vehicle Hints
+11. Prime Contractor
+12. Recruiter Contact
+13. Technologies
+14. Certifications Required
 
-## Notion Database Integration
+### Enrichment Fields (6)
+15. Matched Program
+16. Match Confidence (0.0-1.0)
+17. Match Type (direct/fuzzy/inferred)
+18. BD Priority Score (0-100)
+19. Priority Tier (Hot/Warm/Cold)
+20. Match Signals
 
-Pre-configured database IDs (verify in your workspace):
-
-```bash
-DCGS Contacts Full:     2ccdef65-baa5-8087-a53b-000ba596128e
-GDIT Other Contacts:    70ea1c94-211d-40e6-a994-e8d7c4807434
-GDIT Jobs:              2ccdef65-baa5-80b0-9a80-000bd2745f63
-Program Mapping Hub:    f57792c1-605b-424c-8830-23ab41c47137
-Federal Programs:       06cd9b22-5d6b-4d37-b0d3-ba99da4971fa
-BD Opportunities:       2bcdef65-baa5-80ed-bd95-000b2f898e17
-Contractors:            3a259041-22bf-4262-a94a-7d33467a1752
-Contract Vehicles:      0f09543e-9932-44f2-b0ab-7b4c070afb81
-```
-
-## Python Scripts
-
-### Job Standardization
-```bash
-python Engine2_ProgramMapping/scripts/job_standardizer.py \
-  --input raw_jobs.json \
-  --output standardized_jobs.json
-```
-
-### Program Mapping
-```bash
-python Engine2_ProgramMapping/scripts/program_mapper.py \
-  --input jobs.json \
-  --output enriched_jobs.json
-```
-
-### Contact Classification
-```bash
-python Engine3_OrgChart/scripts/contact_classifier.py \
-  --input contacts.csv \
-  --output classified_contacts.json
-```
-
-### BD Scoring
-```bash
-python Engine5_Scoring/scripts/bd_scoring.py \
-  --input enriched_jobs.json \
-  --output scored_jobs.json \
-  --report scoring_report.json
-```
+### Metadata Fields (4)
+21. Source
+22. Source URL
+23. Scraped At
+24. Processed At
 
 ## Priority System
 
 ### BD Priority Tiers
 
-| Score | Tier | Emoji | Action |
-|-------|------|-------|--------|
-| 80-100 | Hot | Fire | Immediate outreach |
-| 50-79 | Warm | Yellow | Weekly follow-up |
-| 0-49 | Cold | Snowflake | Pipeline tracking |
+| Score | Tier | Action |
+|-------|------|--------|
+| 80-100 | Hot | Immediate outreach, escalate to BD leadership |
+| 50-79 | Warm | Weekly follow-up queue |
+| 0-49 | Cold | Pipeline tracking, monitor for changes |
 
 ### Contact Hierarchy
 
@@ -186,45 +246,168 @@ python Engine5_Scoring/scripts/bd_scoring.py \
 | 5 | Senior IC | Medium |
 | 6 | Individual Contributor | Standard |
 
-## Auto Claude Integration
+## CLI Commands
 
-Load task definitions from `TASKS.md` into Auto Claude:
+### Full Pipeline
+```bash
+# Run complete pipeline
+python orchestrator.py --input data/jobs.json
 
-1. Task 1: New Job Ingestion & Deduplication Pipeline
-2. Task 2: Program Knowledge Base Prep
-3. Task 3: Job→Program Mapping Engine
-4. Task 4: Update Notion with Enrichment Results
-5. Task 5: Org Chart Contact Extraction
-6. Task 6: BD Briefing Document Generation
-7. Task 7: Workflow Orchestration & Sequencing
-8. Task 8: Quality Assurance & Feedback Loop
+# Test mode (first 3 jobs)
+python orchestrator.py --input data/jobs.json --test
 
-## n8n Workflow
+# Hot leads only with email
+python orchestrator.py --input data/jobs.json --hot-leads-only --email
 
-Import `n8n/bd_automation_workflow.json` for:
+# Skip specific stages
+python orchestrator.py --input data/jobs.json --no-briefings --no-qa
+```
 
-- Webhook trigger from Apify
-- Job validation and deduplication
-- Notion record creation
-- Enrichment processing
+### Scheduled Runs
+```bash
+# Start scheduler (every 6 hours)
+python orchestrator.py --schedule --interval 6
+
+# Or use the scheduler service directly
+python services/scheduler.py --interval 12 --run-now
+```
+
+### Individual Engines
+```bash
+# Program Mapping
+python Engine2_ProgramMapping/scripts/pipeline.py \
+  --input data/jobs.json --output outputs/ --test
+
+# BD Scoring
+python Engine5_Scoring/scripts/bd_scoring.py \
+  --input enriched_jobs.json --output scored.json --report report.json
+
+# Contact Lookup
+python Engine3_OrgChart/scripts/contact_lookup.py
+
+# Briefing Generation
+python Engine4_Briefing/scripts/briefing_generator.py
+```
+
+### Database Operations
+```bash
+# Initialize database schema
+python services/database.py --init
+
+# Show statistics
+python services/database.py --stats
+
+# View hot leads
+python services/database.py --hot-leads
+```
+
+### Notion Sync
+```bash
+# Test Notion connection
+python services/notion_sync.py --test
+
+# Get jobs needing review
+python services/notion_sync.py --get-reviews
+
+# Sync jobs to Notion
+python services/notion_sync.py --sync-jobs data/jobs.json
+```
+
+## Running Tests
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ --cov=. --cov-report=html
+
+# Run specific test
+pytest tests/test_orchestrator.py::TestBDOrchestrator -v
+```
+
+## n8n Workflows
+
+Import `n8n/BD_Master_Orchestration_Workflow.json` for:
+
+- Scheduled triggers (every 6 hours)
+- Webhook triggers for manual runs
+- Job standardization
+- Program mapping
+- BD scoring
+- QA evaluation
 - Hot lead alerts
+- Notion opportunity creation
+- Pipeline reporting
+
+## Services
+
+### Database (PostgreSQL)
+- Persistent storage for jobs, mappings, scores, QA results
+- Pipeline run history and statistics
+- Dashboard data generation
+
+### Scheduler
+- Automated 24-hour pipeline execution
+- File watching for new job data
+- Retry logic with configurable intervals
+
+### Notion Sync
+- Bidirectional sync with Notion databases
+- Review queue management
+- Dashboard statistics
+
+### Bullhorn Integration
+- CRM contact enrichment
+- Candidate sync and management
+- Job order creation
+
+## Environment Variables
+
+```bash
+# Required
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Notion Integration
+NOTION_TOKEN=ntn_...
+NOTION_DB_GDIT_JOBS=...
+NOTION_DB_BD_OPPORTUNITIES=...
+
+# n8n Webhooks
+N8N_WEBHOOK_URL=https://...
+N8N_ENRICHMENT_WEBHOOK=https://...
+
+# Email Notifications
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+NOTIFICATION_EMAIL=bd-team@company.com
+
+# Database (Optional)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=bd_automation
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=...
+```
 
 ## Maintenance
 
 ### Daily
-- Review hot lead alerts
+- Review hot lead email alerts
 - Check Notion "Needs Review" queue
-- Verify scrapers ran successfully
+- Verify scheduled runs completed
 
 ### Weekly
-- Update program keywords
-- Review unmatched jobs
+- Update program keywords based on feedback
+- Review unmatched jobs for new patterns
 - Gather HUMINT and update pain points
 
 ### Monthly
 - Refresh contact databases
 - Update competitive intelligence
-- Review and archive old data
+- Archive old data and clean logs
 
 ## Resources
 
@@ -232,7 +415,6 @@ Import `n8n/bd_automation_workflow.json` for:
 - [Required Data Exports](./REQUIRED_EXPORTS.md)
 - [Auto Claude Tasks](./TASKS.md)
 - [Claude Skills Documentation](./docs/Claude%20Skills/README.md)
-- [Auto Claude Setup Guide](../AUTO_CLAUDE_SETUP_GUIDE.md)
 
 ## License
 

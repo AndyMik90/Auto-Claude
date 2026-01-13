@@ -1,0 +1,415 @@
+{
+  "name": "BD Master Orchestration Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bd-pipeline-trigger",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "trigger-webhook",
+      "name": "Pipeline Trigger Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Scheduled Trigger (Every 6 Hours)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "options": {}
+      },
+      "id": "merge-triggers",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize pipeline run\nconst timestamp = new Date().toISOString();\nconst batchId = `BATCH_${timestamp.replace(/[-:T.Z]/g, '').slice(0, 14)}`;\n\nreturn {\n  batch_id: batchId,\n  started_at: timestamp,\n  source: $input.first().json.source || 'scheduled',\n  config: {\n    test_mode: false,\n    send_notifications: true,\n    export_formats: ['notion', 'n8n']\n  }\n};"
+      },
+      "id": "init-pipeline",
+      "name": "Initialize Pipeline",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_API_URL }}/webhook/apify-scraper-results",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "fetch-latest-jobs",
+      "name": "Fetch Latest Jobs from Apify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.jobs && $json.jobs.length > 0 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-jobs-exist",
+      "name": "Check Jobs Exist",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage 1: Standardize job data\nconst jobs = $input.first().json.jobs || [];\n\nconst standardized = jobs.map(job => {\n  return {\n    // Required Fields\n    'Job Title/Position': job.title || job['Job Title/Position'] || '',\n    'Date Posted': job.date_posted || job['Date Posted'] || new Date().toISOString(),\n    'Location': job.location || job['Location'] || '',\n    'Position Overview': job.description || job['Position Overview'] || '',\n    'Key Responsibilities': job.responsibilities || [],\n    'Required Qualifications': job.requirements || [],\n    \n    // Intelligence Fields\n    'Security Clearance': job.clearance || job['Security Clearance'] || '',\n    'Program Hints': job.program_hints || [],\n    'Prime Contractor': job.company || job['Prime Contractor'] || '',\n    'Technologies': job.technologies || [],\n    \n    // Metadata\n    'Source': job.source || 'Unknown',\n    'Source URL': job.url || job['Source URL'] || '',\n    'Scraped At': job.scraped_at || new Date().toISOString(),\n    'Processed At': new Date().toISOString(),\n    \n    // Preserve raw data\n    '_raw': job\n  };\n});\n\nreturn { jobs: standardized, count: standardized.length };"
+      },
+      "id": "standardize-jobs",
+      "name": "Stage 1: Standardize Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage 2: Program Mapping\nconst jobs = $input.first().json.jobs || [];\n\n// DCGS Location Mapping\nconst DCGS_LOCATIONS = {\n  'San Diego': 'AF DCGS - PACAF',\n  'La Mesa': 'AF DCGS - PACAF',\n  'Hampton': 'AF DCGS - Langley',\n  'Langley': 'AF DCGS - Langley',\n  'Dayton': 'AF DCGS - Wright-Patt',\n  'Norfolk': 'Navy DCGS-N',\n  'Fort Belvoir': 'Army DCGS-A',\n  'Herndon': 'Corporate HQ',\n  'Fort Meade': 'NSA Programs'\n};\n\n// Program Keywords\nconst PROGRAM_KEYWORDS = {\n  'AF DCGS': ['dcgs', '480th', 'isr', 'distributed common ground'],\n  'Army DCGS-A': ['dcgs-a', 'inscom', 'g2'],\n  'Navy DCGS-N': ['dcgs-n', 'n2', 'naval intelligence'],\n  'NSA Programs': ['sigint', 'nsa', 'uscybercom']\n};\n\nconst mapped = jobs.map(job => {\n  const location = (job.Location || '').toLowerCase();\n  const title = (job['Job Title/Position'] || '').toLowerCase();\n  const description = (job['Position Overview'] || '').toLowerCase();\n  \n  let program = 'Unmatched';\n  let confidence = 0.3;\n  let matchType = 'inferred';\n  const signals = [];\n  \n  // Location matching\n  for (const [loc, prog] of Object.entries(DCGS_LOCATIONS)) {\n    if (location.includes(loc.toLowerCase())) {\n      program = prog;\n      confidence = 0.75;\n      matchType = 'direct';\n      signals.push(`Location match: ${loc}`);\n      break;\n    }\n  }\n  \n  // Keyword matching\n  for (const [prog, keywords] of Object.entries(PROGRAM_KEYWORDS)) {\n    for (const kw of keywords) {\n      if (title.includes(kw) || description.includes(kw)) {\n        if (program === 'Unmatched') {\n          program = prog;\n          confidence = 0.65;\n          matchType = 'fuzzy';\n        }\n        signals.push(`Keyword: ${kw}`);\n      }\n    }\n  }\n  \n  return {\n    ...job,\n    '_mapping': {\n      program_name: program,\n      match_confidence: confidence,\n      match_type: matchType,\n      signals: signals\n    }\n  };\n});\n\nreturn { jobs: mapped, count: mapped.length };"
+      },
+      "id": "program-mapping",
+      "name": "Stage 2: Program Mapping",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage 3: BD Scoring\nconst jobs = $input.first().json.jobs || [];\n\nconst CLEARANCE_BOOSTS = {\n  'ts/sci': 25,\n  'poly': 35,\n  'top secret': 15,\n  'secret': 5\n};\n\nconst scored = jobs.map(job => {\n  let score = 50; // Base score\n  const breakdown = { base: 50 };\n  const recommendations = [];\n  \n  // Clearance boost\n  const clearance = (job['Security Clearance'] || '').toLowerCase();\n  for (const [level, boost] of Object.entries(CLEARANCE_BOOSTS)) {\n    if (clearance.includes(level)) {\n      score += boost;\n      breakdown.clearance = boost;\n      break;\n    }\n  }\n  \n  // Confidence boost\n  const confidence = job._mapping?.match_confidence || 0.5;\n  const confBoost = Math.round(confidence * 20);\n  score += confBoost;\n  breakdown.confidence = confBoost;\n  \n  // DCGS relevance boost\n  const description = (job['Position Overview'] || '').toLowerCase();\n  if (description.includes('dcgs')) {\n    score += 10;\n    breakdown.dcgs_relevance = 10;\n  }\n  \n  // Location boost (San Diego is understaffed)\n  const location = (job.Location || '').toLowerCase();\n  if (location.includes('san diego')) {\n    score += 10;\n    breakdown.priority_location = 10;\n  }\n  \n  // Cap at 100\n  score = Math.min(score, 100);\n  \n  // Determine tier\n  let tier = 'Cold';\n  let emoji = '❄️';\n  if (score >= 80) {\n    tier = 'Hot';\n    emoji = '🔥';\n    recommendations.push('Immediate outreach recommended - Hot opportunity');\n    recommendations.push('Escalate to BD leadership for review');\n  } else if (score >= 50) {\n    tier = 'Warm';\n    emoji = '🟡';\n    recommendations.push('Add to weekly follow-up queue');\n  } else {\n    recommendations.push('Monitor for changes in priority signals');\n  }\n  \n  return {\n    ...job,\n    '_scoring': {\n      'BD Priority Score': score,\n      'Priority Tier': `${emoji} ${tier}`,\n      'Score Breakdown': breakdown,\n      'Recommendations': recommendations\n    }\n  };\n});\n\n// Categorize\nconst hotLeads = scored.filter(j => j._scoring['BD Priority Score'] >= 80);\nconst warmLeads = scored.filter(j => j._scoring['BD Priority Score'] >= 50 && j._scoring['BD Priority Score'] < 80);\nconst coldLeads = scored.filter(j => j._scoring['BD Priority Score'] < 50);\n\nreturn {\n  jobs: scored,\n  stats: {\n    total: scored.length,\n    hot: hotLeads.length,\n    warm: warmLeads.length,\n    cold: coldLeads.length\n  },\n  hot_leads: hotLeads\n};"
+      },
+      "id": "bd-scoring",
+      "name": "Stage 3: BD Scoring",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1700, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.stats.hot }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-hot-leads",
+      "name": "Check for Hot Leads",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate Hot Lead Alert\nconst hotLeads = $input.first().json.hot_leads || [];\nconst stats = $input.first().json.stats || {};\n\nconst alertSubject = `[BD Alert] ${hotLeads.length} Hot Lead(s) Detected - ${new Date().toLocaleDateString()}`;\n\nlet alertBody = `BD Automation Engine has identified ${hotLeads.length} high-priority opportunities:\\n\\n`;\n\nhotLeads.forEach((lead, index) => {\n  alertBody += `${index + 1}. ${lead['Job Title/Position']}\\n`;\n  alertBody += `   Location: ${lead.Location}\\n`;\n  alertBody += `   Program: ${lead._mapping?.program_name}\\n`;\n  alertBody += `   BD Score: ${lead._scoring?.['BD Priority Score']}\\n`;\n  alertBody += `   Clearance: ${lead['Security Clearance']}\\n\\n`;\n});\n\nalertBody += `\\nRecommended Actions:\\n`;\nalertBody += `1. Review attached briefings\\n`;\nalertBody += `2. Escalate to BD leadership\\n`;\nalertBody += `3. Initiate outreach to program contacts\\n`;\n\nreturn {\n  subject: alertSubject,\n  body: alertBody,\n  hot_leads: hotLeads,\n  stats: stats\n};"
+      },
+      "id": "generate-alert",
+      "name": "Generate Hot Lead Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [2150, 200]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "createDatabaseItem",
+        "databaseId": "={{ $env.NOTION_DB_BD_OPPORTUNITIES }}",
+        "title": "={{ $json['Job Title/Position'] }} - {{ $json._mapping.program_name }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Program",
+              "select": "={{ $json._mapping.program_name }}"
+            },
+            {
+              "key": "BD Score",
+              "number": "={{ $json._scoring['BD Priority Score'] }}"
+            },
+            {
+              "key": "Status",
+              "select": "New"
+            },
+            {
+              "key": "Location",
+              "richText": "={{ $json.Location }}"
+            }
+          ]
+        }
+      },
+      "id": "create-notion-opportunity",
+      "name": "Create Notion Opportunity",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [2350, 200],
+      "credentials": {
+        "notionApi": {
+          "id": "notion-creds",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage 4: QA Evaluation\nconst jobs = $input.first().json.jobs || [];\n\nconst qaResults = jobs.map(job => {\n  const confidence = job._mapping?.match_confidence || 0.5;\n  const clearance = (job['Security Clearance'] || '').toLowerCase();\n  const program = job._mapping?.program_name || 'Unmatched';\n  \n  let status = 'approved';\n  const reviewReasons = [];\n  \n  // Check confidence threshold\n  if (confidence >= 0.70) {\n    status = 'approved';\n  } else if (confidence >= 0.50) {\n    status = 'needs_review';\n    reviewReasons.push(`Confidence ${Math.round(confidence * 100)}% below threshold`);\n  } else {\n    status = 'needs_review';\n    reviewReasons.push(`Low confidence ${Math.round(confidence * 100)}%`);\n  }\n  \n  // High clearance requires verification\n  if (clearance.includes('ts/sci')) {\n    if (status === 'approved') {\n      status = 'needs_review';\n    }\n    reviewReasons.push('High clearance requires verification');\n  }\n  \n  // No match requires review\n  if (program === 'Unmatched') {\n    status = 'needs_review';\n    reviewReasons.push('No program match found');\n  }\n  \n  return {\n    ...job,\n    '_qa': {\n      status: status,\n      confidence: confidence,\n      review_reasons: reviewReasons,\n      reviewed: false\n    }\n  };\n});\n\nconst approved = qaResults.filter(j => j._qa.status === 'approved');\nconst needsReview = qaResults.filter(j => j._qa.status === 'needs_review');\n\nreturn {\n  jobs: qaResults,\n  qa_stats: {\n    total: qaResults.length,\n    approved: approved.length,\n    needs_review: needsReview.length\n  },\n  approved_jobs: approved,\n  review_queue: needsReview\n};"
+      },
+      "id": "qa-evaluation",
+      "name": "Stage 4: QA Evaluation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1900, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate Pipeline Report\nconst input = $input.first().json;\nconst jobs = input.jobs || [];\nconst stats = input.stats || {};\nconst qaStats = input.qa_stats || {};\n\nconst report = {\n  batch_id: $('Initialize Pipeline').first().json.batch_id,\n  completed_at: new Date().toISOString(),\n  duration_seconds: (new Date() - new Date($('Initialize Pipeline').first().json.started_at)) / 1000,\n  \n  summary: {\n    jobs_processed: jobs.length,\n    hot_leads: stats.hot || 0,\n    warm_leads: stats.warm || 0,\n    cold_leads: stats.cold || 0,\n    qa_approved: qaStats.approved || 0,\n    qa_needs_review: qaStats.needs_review || 0\n  },\n  \n  status: 'SUCCESS',\n  errors: []\n};\n\nreturn report;"
+      },
+      "id": "generate-report",
+      "name": "Generate Pipeline Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [2100, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "batch_id",
+              "value": "={{ $json.batch_id }}"
+            },
+            {
+              "name": "jobs",
+              "value": "={{ $('Stage 4: QA Evaluation').first().json.jobs }}"
+            },
+            {
+              "name": "report",
+              "value": "={{ $json }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-to-downstream",
+      "name": "Send to Downstream Systems",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2300, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// No jobs to process\nreturn {\n  status: 'NO_JOBS',\n  message: 'No new jobs found to process',\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "no-jobs-handler",
+      "name": "No Jobs Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1300, 500]
+    }
+  ],
+  "connections": {
+    "Pipeline Trigger Webhook": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scheduled Trigger (Every 6 Hours)": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Initialize Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Fetch Latest Jobs from Apify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Latest Jobs from Apify": {
+      "main": [
+        [
+          {
+            "node": "Check Jobs Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Jobs Exist": {
+      "main": [
+        [
+          {
+            "node": "Stage 1: Standardize Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Jobs Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 1: Standardize Jobs": {
+      "main": [
+        [
+          {
+            "node": "Stage 2: Program Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 2: Program Mapping": {
+      "main": [
+        [
+          {
+            "node": "Stage 3: BD Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 3: BD Scoring": {
+      "main": [
+        [
+          {
+            "node": "Check for Hot Leads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Stage 4: QA Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Hot Leads": {
+      "main": [
+        [
+          {
+            "node": "Generate Hot Lead Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Generate Hot Lead Alert": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 4: QA Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Generate Pipeline Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Pipeline Report": {
+      "main": [
+        [
+          {
+            "node": "Send to Downstream Systems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "BD-Automation",
+      "createdAt": "2026-01-12T00:00:00.000Z"
+    }
+  ]
+}

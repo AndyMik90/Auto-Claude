@@ -39,13 +39,17 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Ensure log directory exists
+LOG_DIR = PROJECT_ROOT / 'outputs' / 'Logs'
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(PROJECT_ROOT / 'outputs' / 'Logs' / 'orchestrator.log', mode='a')
+        logging.FileHandler(LOG_DIR / 'orchestrator.log', mode='a')
     ]
 )
 logger = logging.getLogger('BD-Orchestrator')
