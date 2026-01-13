@@ -100,12 +100,25 @@ fi
 if git diff --cached --name-only | grep -q "^apps/backend/.*\.py$"; then
   echo "Python changes detected, running backend checks..."
 
+  # Detect if running in a worktree and find the main repo's venv
+  # Worktrees don't have their own venv, so we need to use the main repo's
+  VENV_BASE="apps/backend/.venv"
+  GIT_DIR_PATH=$(git rev-parse --git-dir 2>/dev/null)
+  if echo "$GIT_DIR_PATH" | grep -q "/.git/worktrees/"; then
+    # We're in a worktree - derive main repo path
+    MAIN_REPO=$(echo "$GIT_DIR_PATH" | sed 's|/.git/worktrees/.*||')
+    if [ -d "$MAIN_REPO/apps/backend/.venv" ]; then
+      VENV_BASE="$MAIN_REPO/apps/backend/.venv"
+      echo "  (Using main repo venv: $VENV_BASE)"
+    fi
+  fi
+
   # Determine ruff command (venv or global)
   RUFF=""
-  if [ -f "apps/backend/.venv/bin/ruff" ]; then
-    RUFF="apps/backend/.venv/bin/ruff"
-  elif [ -f "apps/backend/.venv/Scripts/ruff.exe" ]; then
-    RUFF="apps/backend/.venv/Scripts/ruff.exe"
+  if [ -f "$VENV_BASE/bin/ruff" ]; then
+    RUFF="$VENV_BASE/bin/ruff"
+  elif [ -f "$VENV_BASE/Scripts/ruff.exe" ]; then
+    RUFF="$VENV_BASE/Scripts/ruff.exe"
   elif command -v ruff >/dev/null 2>&1; then
     RUFF="ruff"
   fi
