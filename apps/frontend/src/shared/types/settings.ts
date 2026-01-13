@@ -280,6 +280,8 @@ export interface AppSettings {
   preferredTerminal?: SupportedTerminal;
   customTerminalPath?: string; // For 'custom' terminal
   terminalFontFamily?: string; // Custom font family for built-in xterm terminal
+  terminalFontSize?: number;   // Font size in pixels (default: 13)
+  terminalFontWeight?: string; // Font weight: 'normal', 'bold', or numeric (100-900)
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
   sentryEnabled?: boolean;
 }

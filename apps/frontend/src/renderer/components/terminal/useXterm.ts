@@ -32,8 +32,10 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T 
   }) as T;
 }
 
-// Default font family for terminal
+// Default terminal font settings
 const DEFAULT_TERMINAL_FONT = 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace';
+const DEFAULT_TERMINAL_FONT_SIZE = 13;
+const DEFAULT_TERMINAL_FONT_WEIGHT = '600';
 
 export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsReady }: UseXtermOptions) {
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -45,8 +47,10 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const dimensionsReadyCalledRef = useRef<boolean>(false);
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
 
-  // Get terminal font from settings
+  // Get terminal font settings
   const terminalFontFamily = useSettingsStore((state) => state.settings.terminalFontFamily);
+  const terminalFontSize = useSettingsStore((state) => state.settings.terminalFontSize);
+  const terminalFontWeight = useSettingsStore((state) => state.settings.terminalFontWeight);
 
   // Initialize xterm.js UI
   useEffect(() => {
@@ -55,8 +59,10 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     const xterm = new XTerm({
       cursorBlink: true,
       cursorStyle: 'block',
-      fontSize: 13,
+      fontSize: terminalFontSize || DEFAULT_TERMINAL_FONT_SIZE,
       fontFamily: terminalFontFamily || DEFAULT_TERMINAL_FONT,
+      fontWeight: (terminalFontWeight || DEFAULT_TERMINAL_FONT_WEIGHT) as '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | 'normal' | 'bold',
+      fontWeightBold: 'bold',
       lineHeight: 1.2,
       letterSpacing: 0,
       theme: {
@@ -291,14 +297,16 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     };
   }, [terminalId, onCommandEnter, onResize, onDimensionsReady]);
 
-  // Update terminal font when settings change
+  // Update terminal font settings when they change
   useEffect(() => {
     if (xtermRef.current) {
       xtermRef.current.options.fontFamily = terminalFontFamily || DEFAULT_TERMINAL_FONT;
-      // Refit to adjust for potential font size differences
+      xtermRef.current.options.fontSize = terminalFontSize || DEFAULT_TERMINAL_FONT_SIZE;
+      xtermRef.current.options.fontWeight = (terminalFontWeight || DEFAULT_TERMINAL_FONT_WEIGHT) as '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | 'normal' | 'bold';
+      // Refit to adjust for font size differences
       fitAddonRef.current?.fit();
     }
-  }, [terminalFontFamily]);
+  }, [terminalFontFamily, terminalFontSize, terminalFontWeight]);
 
   // Handle resize on container resize with debouncing
   useEffect(() => {

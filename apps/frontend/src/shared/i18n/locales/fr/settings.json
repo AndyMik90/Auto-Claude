@@ -263,6 +263,14 @@
       "description": "Police pour le terminal intégré. Utilisez Nerd Fonts pour le support des icônes.",
       "placeholder": "JetBrains Mono Nerd Font, monospace"
     },
+    "terminalFontSize": {
+      "label": "Taille de police",
+      "description": "Taille de police en pixels"
+    },
+    "terminalFontWeight": {
+      "label": "Épaisseur de police",
+      "description": "Épaisseur (normal, bold, ou 100-900)"
+    },
     "detected": "Détecté",
     "notInstalled": "Non installé",
     "detectedSummary": "Détecté sur votre système :",
