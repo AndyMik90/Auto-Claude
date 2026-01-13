@@ -294,7 +294,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     return () => {
       // Cleanup handled by parent component
     };
-  }, [terminalId, onCommandEnter, onResize, onDimensionsReady]);
+  }, [terminalId, onCommandEnter, onResize, onDimensionsReady]); // Note: terminalFont intentionally excluded - font updates handled in separate effect to avoid recreating xterm instance
 
   // Handle resize on container resize with debouncing
   useEffect(() => {
@@ -326,6 +326,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   }, [onDimensionsReady]);
 
   // Update terminal options when font settings change
+  // Debounced to prevent excessive updates during rapid slider changes
   useEffect(() => {
     // Skip first render - initial font settings are already applied during initialization
     if (isFirstRenderRef.current) {
@@ -333,8 +334,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       return;
     }
 
-    // Use setTimeout to ensure this runs after initialization effect
-    // This is needed because fitAddonRef might not be set yet on first render
+    // Debounce font updates (100ms) for smoother slider interaction
+    // This prevents excessive re-renders and flicker during rapid slider drags
     const timeoutId = setTimeout(() => {
       if (xtermRef.current && fitAddonRef.current && xtermRef.current.options) {
         xtermRef.current.options.fontSize = terminalFont.fontSize;
@@ -346,19 +347,27 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
         // Font changes affect character width/height, so cols/rows may change
         fitAddonRef.current.fit();
 
+        // Get the new dimensions after fit
+        const newCols = xtermRef.current.cols;
+        const newRows = xtermRef.current.rows;
+
         // Refresh the terminal to apply new font settings
-        xtermRef.current.refresh(0, xtermRef.current.rows - 1);
+        xtermRef.current.refresh(0, newRows - 1);
 
         // Update dimensions state with new grid size
-        setDimensions({
-          cols: xtermRef.current.cols,
-          rows: xtermRef.current.rows
-        });
+        setDimensions({ cols: newCols, rows: newRows });
+
+        // Notify backend PTY of dimension changes
+        // This is critical - without this, the backend's dimensions become stale
+        // causing text wrapping issues in terminal apps (vim, htop, etc.)
+        if (onResize) {
+          onResize(newCols, newRows);
+        }
       }
-    }, 0);
+    }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [terminalFont]);
+  }, [terminalFont, onResize]);
 
   const fit = useCallback(() => {
     if (fitAddonRef.current && xtermRef.current) {
