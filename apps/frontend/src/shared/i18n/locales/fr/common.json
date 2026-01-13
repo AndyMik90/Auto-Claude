@@ -1,4 +1,12 @@
 {
+  "window": {
+    "controls": {
+      "minimize": "Minimiser",
+      "maximize": "Maximiser",
+      "restore": "Restaurer",
+      "close": "Fermer"
+    }
+  },
   "projectTab": {
     "settings": "Paramètres du projet",
     "showArchived": "Afficher archivés",
@@ -72,7 +80,7 @@
     "start": "Démarrer",
     "stop": "Arrêter",
     "refresh": "Actualiser",
-    "refreshing": "Actualisation...",
+    "refreshing": "Actualisation en cours...",
     "merge": "Fusionner",
     "discard": "Abandonner",
     "switch": "Changer",

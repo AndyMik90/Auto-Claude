@@ -1,10 +1,10 @@
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { useTranslation } from 'react-i18next';
-import { Settings2 } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import type { Project } from '../../shared/types';
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useTranslation } from "react-i18next";
+import { Settings2, X } from "lucide-react";
+import { cn } from "../lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import type { Project } from "../../shared/types";
 
 interface SortableProjectTabProps {
   project: Project;
@@ -15,11 +15,13 @@ interface SortableProjectTabProps {
   onClose: (e: React.MouseEvent) => void;
   // Optional control props for active tab
   onSettingsClick?: () => void;
+  onDoubleClick?: () => void;
 }
 
 // Detect if running on macOS for keyboard shortcut display
-const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-const modKey = isMac ? '⌘' : 'Ctrl+';
+const isMac =
+  typeof navigator !== "undefined" && navigator.userAgent.includes("Macintosh");
+const modKey = isMac ? "⌘" : "Ctrl+";
 
 export function SortableProjectTab({
   project,
@@ -28,11 +30,12 @@ export function SortableProjectTab({
   tabIndex,
   onSelect,
   onClose,
-  onSettingsClick
+  onSettingsClick,
+  onDoubleClick,
 }: SortableProjectTabProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   // Build tooltip with keyboard shortcut hint (only for tabs 1-9)
-  const shortcutHint = tabIndex < 9 ? `${modKey}${tabIndex + 1}` : '';
+  const shortcutHint = tabIndex < 9 ? `${modKey}${tabIndex + 1}` : "";
   const closeShortcut = `${modKey}W`;
   const {
     attributes,
@@ -40,14 +43,14 @@ export function SortableProjectTab({
     setNodeRef,
     transform,
     transition,
-    isDragging
+    isDragging,
   } = useSortable({ id: project.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     // Prevent z-index stacking issues during drag
-    zIndex: isDragging ? 50 : undefined
+    zIndex: isDragging ? 50 : undefined,
   };
 
   return (
@@ -55,52 +58,56 @@ export function SortableProjectTab({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group relative flex items-center min-w-0',
+        "group relative flex items-center min-w-0",
         // Responsive max-widths: smaller on mobile, larger on desktop
         isActive
-          ? 'max-w-[180px] sm:max-w-[220px] md:max-w-[280px]'
-          : 'max-w-[120px] sm:max-w-[160px] md:max-w-[200px]',
-        'border-r border-border last:border-r-0',
-        'touch-none transition-all duration-200',
-        isDragging && 'opacity-60 scale-[0.98] shadow-lg'
+          ? "max-w-[180px] sm:max-w-[220px] md:max-w-[280px]"
+          : "max-w-[120px] sm:max-w-[160px] md:max-w-[200px]",
+        "border-r border-border last:border-r-0",
+        "touch-none transition-all duration-200 electron-no-drag",
+        isDragging && "opacity-60 scale-[0.98] shadow-lg"
       )}
       {...attributes}
     >
       <Tooltip delayDuration={200}>
         <TooltipTrigger asChild>
-          <div
+          <button
+            type="button"
             className={cn(
-              'flex-1 flex items-center gap-1 sm:gap-2',
+              "flex-1 flex items-center gap-1 sm:gap-2",
               // Responsive padding: tighter on mobile, normal on desktop
-              'px-2 sm:px-3 md:px-4 py-2 sm:py-2.5',
-              'text-xs sm:text-sm',
-              'min-w-0 truncate hover:bg-muted/50 transition-colors',
-              'border-b-2 border-transparent cursor-pointer',
+              "px-2 sm:px-3 md:px-4 py-2 sm:py-2.5",
+              "text-xs sm:text-sm",
+              "min-w-0 truncate hover:bg-muted/50 transition-colors",
+              "border-b-2 border-transparent cursor-pointer bg-transparent appearance-none text-left",
               isActive && [
-                'bg-background border-b-primary text-foreground',
-                'hover:bg-background'
+                "bg-background border-b-primary text-foreground",
+                "hover:bg-background",
               ],
-              !isActive && [
-                'text-muted-foreground',
-                'hover:text-foreground'
-              ]
+              !isActive && ["text-muted-foreground", "hover:text-foreground"]
             )}
             onClick={onSelect}
+            onDoubleClick={(e) => {
+              // Prevent interference with dnd-kit or sorting if needed
+              // But allow bubbling if we want parent to handle or handle here
+              if (onDoubleClick) {
+                e.stopPropagation(); // Stop bubbling to avoid double triggers if parent has handler
+                onDoubleClick();
+              }
+            }}
           >
             {/* Drag handle - visible on hover, hidden on mobile */}
             <div
               {...listeners}
               className={cn(
-                'hidden sm:block',
-                'opacity-0 group-hover:opacity-60 transition-opacity',
-                'cursor-grab active:cursor-grabbing',
-                'w-1 h-4 bg-muted-foreground rounded-full flex-shrink-0'
+                "hidden sm:block",
+                "opacity-0 group-hover:opacity-60 transition-opacity",
+                "cursor-grab active:cursor-grabbing",
+                "w-1 h-4 bg-muted-foreground rounded-full flex-shrink-0"
               )}
             />
-            <span className="truncate font-medium">
-              {project.name}
-            </span>
-          </div>
+            <span className="truncate font-medium">{project.name}</span>
+          </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="flex items-center gap-2">
           <span>{project.name}</span>
@@ -122,58 +129,59 @@ export function SortableProjectTab({
                 <button
                   type="button"
                   className={cn(
-                    'h-5 w-5 sm:h-6 sm:w-6 p-0 rounded',
-                    'flex items-center justify-center',
-                    'text-muted-foreground hover:text-foreground',
-                    'hover:bg-muted/50 transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                    "h-5 w-5 sm:h-6 sm:w-6 p-0 rounded",
+                    "flex items-center justify-center",
+                    "text-muted-foreground hover:text-foreground",
+                    "hover:bg-muted/50 transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                   )}
                   onClick={(e) => {
                     e.stopPropagation();
                     onSettingsClick();
                   }}
-                  aria-label={t('projectTab.settings')}
+                  aria-label={t("projectTab.settings")}
                 >
                   <Settings2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <span>{t('projectTab.settings')}</span>
+                <span>{t("projectTab.settings")}</span>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Close button - visible on hover or active */}
+          {canClose && (
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "h-5 w-5 sm:h-6 sm:w-6 p-0 rounded",
+                    "flex items-center justify-center",
+                    "text-muted-foreground hover:text-foreground",
+                    "hover:bg-destructive/10 hover:text-destructive transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose(e);
+                  }}
+                  aria-label={t("projectTab.close", {
+                    shortcut: closeShortcut,
+                  })}
+                >
+                  <X className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <span>
+                  {t("projectTab.close", { shortcut: closeShortcut })}
+                </span>
               </TooltipContent>
             </Tooltip>
           )}
         </div>
-      )}
-
-      {canClose && (
-        <Tooltip delayDuration={200}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                'h-5 w-5 sm:h-6 sm:w-6 p-0 mr-0.5 sm:mr-1',
-                'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
-                'transition-opacity duration-200 rounded flex-shrink-0',
-                'hover:bg-destructive hover:text-destructive-foreground',
-                'flex items-center justify-center',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                isActive && 'opacity-100'
-              )}
-              onClick={onClose}
-              aria-label={t('projectTab.closeTabAriaLabel')}
-            >
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="flex items-center gap-2">
-            <span>{t('projectTab.closeTab')}</span>
-            <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded border border-border font-mono">
-              {closeShortcut}
-            </kbd>
-          </TooltipContent>
-        </Tooltip>
       )}
     </div>
   );

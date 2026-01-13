@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   Settings,
@@ -20,39 +20,57 @@ import {
   Sparkles,
   GitBranch,
   HelpCircle,
-  Wrench
-} from 'lucide-react';
-import { Button } from './ui/button';
-import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
+  Wrench,
+} from "lucide-react";
+import { Button } from "./ui/button";
+import { ScrollArea } from "./ui/scroll-area";
+import { Separator } from "./ui/separator";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger
-} from './ui/tooltip';
+  TooltipTrigger,
+} from "./ui/tooltip";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from './ui/dialog';
-import { cn } from '../lib/utils';
+  DialogTitle,
+} from "./ui/dialog";
+import { cn } from "../lib/utils";
 import {
   useProjectStore,
   removeProject,
-  initializeProject
-} from '../stores/project-store';
-import { useSettingsStore } from '../stores/settings-store';
-import { AddProjectModal } from './AddProjectModal';
-import { GitSetupModal } from './GitSetupModal';
-import { RateLimitIndicator } from './RateLimitIndicator';
-import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
-import type { Project, AutoBuildVersionInfo, GitStatus, ProjectEnvConfig } from '../../shared/types';
+  initializeProject,
+} from "../stores/project-store";
+import { useSettingsStore } from "../stores/settings-store";
+import { AddProjectModal } from "./AddProjectModal";
+import { GitSetupModal } from "./GitSetupModal";
+import { RateLimitIndicator } from "./RateLimitIndicator";
+import { ClaudeCodeStatusBadge } from "./ClaudeCodeStatusBadge";
+import type {
+  Project,
+  AutoBuildVersionInfo,
+  GitStatus,
+  ProjectEnvConfig,
+} from "../../shared/types";
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'github-prs' | 'gitlab-merge-requests' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
+export type SidebarView =
+  | "kanban"
+  | "terminals"
+  | "roadmap"
+  | "context"
+  | "ideation"
+  | "github-issues"
+  | "gitlab-issues"
+  | "github-prs"
+  | "gitlab-merge-requests"
+  | "changelog"
+  | "insights"
+  | "worktrees"
+  | "agent-tools";
 
 interface SidebarProps {
   onSettingsClick: () => void;
@@ -70,36 +88,101 @@ interface NavItem {
 
 // Base nav items always shown
 const baseNavItems: NavItem[] = [
-  { id: 'kanban', labelKey: 'navigation:items.kanban', icon: LayoutGrid, shortcut: 'K' },
-  { id: 'terminals', labelKey: 'navigation:items.terminals', icon: Terminal, shortcut: 'A' },
-  { id: 'insights', labelKey: 'navigation:items.insights', icon: Sparkles, shortcut: 'N' },
-  { id: 'roadmap', labelKey: 'navigation:items.roadmap', icon: Map, shortcut: 'D' },
-  { id: 'ideation', labelKey: 'navigation:items.ideation', icon: Lightbulb, shortcut: 'I' },
-  { id: 'changelog', labelKey: 'navigation:items.changelog', icon: FileText, shortcut: 'L' },
-  { id: 'context', labelKey: 'navigation:items.context', icon: BookOpen, shortcut: 'C' },
-  { id: 'agent-tools', labelKey: 'navigation:items.agentTools', icon: Wrench, shortcut: 'M' },
-  { id: 'worktrees', labelKey: 'navigation:items.worktrees', icon: GitBranch, shortcut: 'W' }
+  {
+    id: "kanban",
+    labelKey: "navigation:items.kanban",
+    icon: LayoutGrid,
+    shortcut: "K",
+  },
+  {
+    id: "terminals",
+    labelKey: "navigation:items.terminals",
+    icon: Terminal,
+    shortcut: "A",
+  },
+  {
+    id: "insights",
+    labelKey: "navigation:items.insights",
+    icon: Sparkles,
+    shortcut: "N",
+  },
+  {
+    id: "roadmap",
+    labelKey: "navigation:items.roadmap",
+    icon: Map,
+    shortcut: "D",
+  },
+  {
+    id: "ideation",
+    labelKey: "navigation:items.ideation",
+    icon: Lightbulb,
+    shortcut: "I",
+  },
+  {
+    id: "changelog",
+    labelKey: "navigation:items.changelog",
+    icon: FileText,
+    shortcut: "L",
+  },
+  {
+    id: "context",
+    labelKey: "navigation:items.context",
+    icon: BookOpen,
+    shortcut: "C",
+  },
+  {
+    id: "agent-tools",
+    labelKey: "navigation:items.agentTools",
+    icon: Wrench,
+    shortcut: "M",
+  },
+  {
+    id: "worktrees",
+    labelKey: "navigation:items.worktrees",
+    icon: GitBranch,
+    shortcut: "W",
+  },
 ];
 
 // GitHub nav items shown when GitHub is enabled
 const githubNavItems: NavItem[] = [
-  { id: 'github-issues', labelKey: 'navigation:items.githubIssues', icon: Github, shortcut: 'G' },
-  { id: 'github-prs', labelKey: 'navigation:items.githubPRs', icon: GitPullRequest, shortcut: 'P' }
+  {
+    id: "github-issues",
+    labelKey: "navigation:items.githubIssues",
+    icon: Github,
+    shortcut: "G",
+  },
+  {
+    id: "github-prs",
+    labelKey: "navigation:items.githubPRs",
+    icon: GitPullRequest,
+    shortcut: "P",
+  },
 ];
 
 // GitLab nav items shown when GitLab is enabled
 const gitlabNavItems: NavItem[] = [
-  { id: 'gitlab-issues', labelKey: 'navigation:items.gitlabIssues', icon: GitlabIcon, shortcut: 'B' },
-  { id: 'gitlab-merge-requests', labelKey: 'navigation:items.gitlabMRs', icon: GitMerge, shortcut: 'R' }
+  {
+    id: "gitlab-issues",
+    labelKey: "navigation:items.gitlabIssues",
+    icon: GitlabIcon,
+    shortcut: "B",
+  },
+  {
+    id: "gitlab-merge-requests",
+    labelKey: "navigation:items.gitlabMRs",
+    icon: GitMerge,
+    shortcut: "R",
+  },
 ];
 
 export function Sidebar({
   onSettingsClick,
   onNewTaskClick,
-  activeView = 'kanban',
-  onViewChange
+  activeView = "kanban",
+  onViewChange,
 }: SidebarProps) {
-  const { t } = useTranslation(['navigation', 'dialogs', 'common']);
+  const { t } = useTranslation(["navigation", "dialogs", "common"]);
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectProject = useProjectStore((state) => state.selectProject);
@@ -120,7 +203,9 @@ export function Sidebar({
     const loadEnvConfig = async () => {
       if (selectedProject?.autoBuildPath) {
         try {
-          const result = await window.electronAPI.getProjectEnv(selectedProject.id);
+          const result = await window.electronAPI.getProjectEnv(
+            selectedProject.id
+          );
           if (result.success && result.data) {
             setEnvConfig(result.data);
           } else {
@@ -181,8 +266,8 @@ export function Sidebar({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedProjectId, onViewChange, visibleNavItems]);
 
   // Check git status when project changes
@@ -190,7 +275,9 @@ export function Sidebar({
     const checkGit = async () => {
       if (selectedProject) {
         try {
-          const result = await window.electronAPI.checkGitStatus(selectedProject.path);
+          const result = await window.electronAPI.checkGitStatus(
+            selectedProject.path
+          );
           if (result.success && result.data) {
             setGitStatus(result.data);
             // Show git setup modal if project is not a git repo or has no commits
@@ -199,7 +286,7 @@ export function Sidebar({
             }
           }
         } catch (error) {
-          console.error('Failed to check git status:', error);
+          console.error("Failed to check git status:", error);
         }
       } else {
         setGitStatus(null);
@@ -246,22 +333,26 @@ export function Sidebar({
     // Refresh git status after initialization
     if (selectedProject) {
       try {
-        const result = await window.electronAPI.checkGitStatus(selectedProject.path);
+        const result = await window.electronAPI.checkGitStatus(
+          selectedProject.path
+        );
         if (result.success && result.data) {
           setGitStatus(result.data);
         }
       } catch (error) {
-        console.error('Failed to refresh git status:', error);
+        console.error("Failed to refresh git status:", error);
       }
     }
   };
 
-  const _handleRemoveProject = async (projectId: string, e: React.MouseEvent) => {
+  const _handleRemoveProject = async (
+    projectId: string,
+    e: React.MouseEvent
+  ) => {
     e.stopPropagation();
     e.preventDefault();
     await removeProject(projectId);
   };
-
 
   const handleNavClick = (view: SidebarView) => {
     onViewChange?.(view);
@@ -278,10 +369,10 @@ export function Sidebar({
         disabled={!selectedProjectId}
         aria-keyshortcuts={item.shortcut}
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200',
-          'hover:bg-accent hover:text-accent-foreground',
-          'disabled:pointer-events-none disabled:opacity-50',
-          isActive && 'bg-accent text-accent-foreground'
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
+          "hover:bg-accent hover:text-accent-foreground",
+          "disabled:pointer-events-none disabled:opacity-50",
+          isActive && "bg-accent text-accent-foreground"
         )}
       >
         <Icon className="h-4 w-4 shrink-0" />
@@ -298,15 +389,17 @@ export function Sidebar({
   return (
     <TooltipProvider>
       <div className="flex h-full w-64 flex-col bg-sidebar border-r border-border">
-        {/* Header with drag area - extra top padding for macOS traffic lights */}
-        <div className="electron-drag flex h-14 items-center px-4 pt-6">
-          <span className="electron-no-drag text-lg font-bold text-primary">Auto Claude</span>
+        {/* Header with drag area */}
+        <div className="electron-drag flex h-12 items-center px-4 shrink-0 border-b border-border bg-sidebar/95 backdrop-blur">
+          <button
+            type="button"
+            className="electron-no-drag text-sm font-bold text-primary tracking-tight cursor-default hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-sm"
+            onDoubleClick={() => window.electronAPI.maximizeWindow()}
+            aria-label={t("common:window.controls.maximize")}
+          >
+            {t("navigation:app.title")}
+          </button>
         </div>
-
-        <Separator className="mt-2" />
-
-
-        <Separator />
 
         {/* Navigation */}
         <ScrollArea className="flex-1">
@@ -314,7 +407,7 @@ export function Sidebar({
             {/* Project Section */}
             <div>
               <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t('sections.project')}
+                {t("navigation:sections.project")}
               </h3>
               <nav className="space-y-1">
                 {visibleNavItems.map(renderNavItem)}
@@ -344,23 +437,31 @@ export function Sidebar({
                   onClick={onSettingsClick}
                 >
                   <Settings className="h-4 w-4" />
-                  {t('actions.settings')}
+                  {t("navigation:actions.settings")}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">{t('tooltips.settings')}</TooltipContent>
+              <TooltipContent side="top">
+                {t("navigation:tooltips.settings")}
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => window.open('https://github.com/AndyMik90/Auto-Claude/issues', '_blank')}
-                  aria-label={t('tooltips.help')}
+                  onClick={() =>
+                    window.open(
+                      "https://github.com/AndyMik90/Auto-Claude/issues",
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
+                  aria-label={t("tooltips.help")}
                 >
                   <HelpCircle className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">{t('tooltips.help')}</TooltipContent>
+              <TooltipContent side="top">{t("tooltips.help")}</TooltipContent>
             </Tooltip>
           </div>
 
@@ -371,40 +472,45 @@ export function Sidebar({
             disabled={!selectedProjectId || !selectedProject?.autoBuildPath}
           >
             <Plus className="mr-2 h-4 w-4" />
-            {t('actions.newTask')}
+            {t("navigation:actions.newTask")}
           </Button>
           {selectedProject && !selectedProject.autoBuildPath && (
             <p className="mt-2 text-xs text-muted-foreground text-center">
-              {t('messages.initializeToCreateTasks')}
+              {t("navigation:messages.initializeToCreateTasks")}
             </p>
           )}
         </div>
       </div>
 
       {/* Initialize Auto Claude Dialog */}
-      <Dialog open={showInitDialog} onOpenChange={(open) => {
-        // Only allow closing if user manually closes (not during initialization)
-        if (!open && !isInitializing) {
-          handleSkipInit();
-        }
-      }}>
+      <Dialog
+        open={showInitDialog}
+        onOpenChange={(open) => {
+          // Only allow closing if user manually closes (not during initialization)
+          if (!open && !isInitializing) {
+            handleSkipInit();
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Download className="h-5 w-5" />
-              {t('dialogs:initialize.title')}
+              {t("dialogs:initialize.title")}
             </DialogTitle>
             <DialogDescription>
-              {t('dialogs:initialize.description')}
+              {t("dialogs:initialize.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="font-medium mb-2">{t('dialogs:initialize.willDo')}</p>
+              <p className="font-medium mb-2">
+                {t("dialogs:initialize.willDo")}
+              </p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>{t('dialogs:initialize.createFolder')}</li>
-                <li>{t('dialogs:initialize.copyFramework')}</li>
-                <li>{t('dialogs:initialize.setupSpecs')}</li>
+                <li>{t("dialogs:initialize.createFolder")}</li>
+                <li>{t("dialogs:initialize.copyFramework")}</li>
+                <li>{t("dialogs:initialize.setupSpecs")}</li>
               </ul>
             </div>
             {!settings.autoBuildPath && (
@@ -412,9 +518,13 @@ export function Sidebar({
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-medium text-warning">{t('dialogs:initialize.sourcePathNotConfigured')}</p>
+                    <p className="font-medium text-warning">
+                      {t("dialogs:initialize.sourcePathNotConfigured")}
+                    </p>
                     <p className="text-muted-foreground mt-1">
-                      {t('dialogs:initialize.sourcePathNotConfiguredDescription')}
+                      {t(
+                        "dialogs:initialize.sourcePathNotConfiguredDescription"
+                      )}
                     </p>
                   </div>
                 </div>
@@ -422,8 +532,12 @@ export function Sidebar({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleSkipInit} disabled={isInitializing}>
-              {t('common:buttons.skip')}
+            <Button
+              variant="outline"
+              onClick={handleSkipInit}
+              disabled={isInitializing}
+            >
+              {t("common:buttons.skip")}
             </Button>
             <Button
               onClick={handleInitialize}
@@ -432,12 +546,12 @@ export function Sidebar({
               {isInitializing ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  {t('common:labels.initializing')}
+                  {t("common:labels.initializing")}
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  {t('common:buttons.initialize')}
+                  {t("common:buttons.initialize")}
                 </>
               )}
             </Button>

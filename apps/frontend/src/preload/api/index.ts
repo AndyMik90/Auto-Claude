@@ -1,35 +1,46 @@
-import { ProjectAPI, createProjectAPI } from './project-api';
-import { TerminalAPI, createTerminalAPI } from './terminal-api';
-import { TaskAPI, createTaskAPI } from './task-api';
-import { SettingsAPI, createSettingsAPI } from './settings-api';
-import { FileAPI, createFileAPI } from './file-api';
-import { AgentAPI, createAgentAPI } from './agent-api';
-import { IdeationAPI, createIdeationAPI } from './modules/ideation-api';
-import { InsightsAPI, createInsightsAPI } from './modules/insights-api';
-import { AppUpdateAPI, createAppUpdateAPI } from './app-update-api';
-import { GitHubAPI, createGitHubAPI } from './modules/github-api';
-import { GitLabAPI, createGitLabAPI } from './modules/gitlab-api';
-import { DebugAPI, createDebugAPI } from './modules/debug-api';
-import { ClaudeCodeAPI, createClaudeCodeAPI } from './modules/claude-code-api';
-import { McpAPI, createMcpAPI } from './modules/mcp-api';
-import { ProfileAPI, createProfileAPI } from './profile-api';
+import { ProjectAPI, createProjectAPI } from "./project-api";
+import { TerminalAPI, createTerminalAPI } from "./terminal-api";
+import { TaskAPI, createTaskAPI } from "./task-api";
+import { SettingsAPI, createSettingsAPI } from "./settings-api";
+import { FileAPI, createFileAPI } from "./file-api";
+import { AgentAPI, createAgentAPI } from "./agent-api";
+import { IdeationAPI, createIdeationAPI } from "./modules/ideation-api";
+import { InsightsAPI, createInsightsAPI } from "./modules/insights-api";
+import { AppUpdateAPI, createAppUpdateAPI } from "./app-update-api";
+import { GitHubAPI, createGitHubAPI } from "./modules/github-api";
+import { GitLabAPI, createGitLabAPI } from "./modules/gitlab-api";
+import { DebugAPI, createDebugAPI } from "./modules/debug-api";
+import { ClaudeCodeAPI, createClaudeCodeAPI } from "./modules/claude-code-api";
+import { McpAPI, createMcpAPI } from "./modules/mcp-api";
+import { ProfileAPI, createProfileAPI } from "./profile-api";
+import { ipcRenderer, type IpcRendererEvent } from "electron";
 
-export interface ElectronAPI extends
-  ProjectAPI,
-  TerminalAPI,
-  TaskAPI,
-  SettingsAPI,
-  FileAPI,
-  AgentAPI,
-  IdeationAPI,
-  InsightsAPI,
-  AppUpdateAPI,
-  GitLabAPI,
-  DebugAPI,
-  ClaudeCodeAPI,
-  McpAPI,
-  ProfileAPI {
+export interface ElectronAPI
+  extends ProjectAPI,
+    TerminalAPI,
+    TaskAPI,
+    SettingsAPI,
+    FileAPI,
+    AgentAPI,
+    IdeationAPI,
+    InsightsAPI,
+    AppUpdateAPI,
+    GitLabAPI,
+    DebugAPI,
+    ClaudeCodeAPI,
+    McpAPI,
+    ProfileAPI {
   github: GitHubAPI;
+  minimizeWindow: () => void;
+  maximizeWindow: () => void;
+  closeWindow: () => void;
+
+  onWindowMaximizedChange: (
+    callback: (isMaximized: boolean) => void
+  ) => () => void;
+  onWindowFullscreenChange: (
+    callback: (isFullscreen: boolean) => void
+  ) => () => void;
 }
 
 export const createElectronAPI = (): ElectronAPI => ({
@@ -47,7 +58,24 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createClaudeCodeAPI(),
   ...createMcpAPI(),
   ...createProfileAPI(),
-  github: createGitHubAPI()
+  github: createGitHubAPI(),
+  minimizeWindow: () => ipcRenderer.send("window:minimize"),
+  maximizeWindow: () => ipcRenderer.send("window:maximize"),
+  closeWindow: () => ipcRenderer.send("window:close"),
+
+  onWindowMaximizedChange: (callback) => {
+    const subscription = (_: IpcRendererEvent, isMaximized: boolean) =>
+      callback(isMaximized);
+    ipcRenderer.on("window:maximized", subscription);
+    return () => ipcRenderer.off("window:maximized", subscription);
+  },
+
+  onWindowFullscreenChange: (callback) => {
+    const subscription = (_: IpcRendererEvent, isFullscreen: boolean) =>
+      callback(isFullscreen);
+    ipcRenderer.on("window:fullscreen", subscription);
+    return () => ipcRenderer.off("window:fullscreen", subscription);
+  },
 });
 
 // Export individual API creators for potential use in tests or specialized contexts
@@ -66,7 +94,7 @@ export {
   createGitLabAPI,
   createDebugAPI,
   createClaudeCodeAPI,
-  createMcpAPI
+  createMcpAPI,
 };
 
 export type {
@@ -84,5 +112,5 @@ export type {
   GitLabAPI,
   DebugAPI,
   ClaudeCodeAPI,
-  McpAPI
+  McpAPI,
 };

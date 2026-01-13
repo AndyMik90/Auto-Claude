@@ -3,6 +3,9 @@
     "project": "Projet",
     "tools": "Outils"
   },
+  "app": {
+    "title": "Auto Claude"
+  },
   "items": {
     "kanban": "Tableau Kanban",
     "terminals": "Terminaux Agent",

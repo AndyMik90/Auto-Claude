@@ -4,9 +4,13 @@
  *
  * This module aggregates all mock implementations from separate modules
  * for better code organization and maintainability.
+ *
+ * NOTE: Auto-invocation has been removed to prevent side effects during import.
+ * Consumers must explicitly call initBrowserMock() to initialize the mock.
+ * Usage: import { initBrowserMock } from './lib/browser-mock'; initBrowserMock();
  */
 
-import type { ElectronAPI } from '../../shared/types';
+import type { ElectronAPI } from "../../shared/types";
 import {
   projectMock,
   taskMock,
@@ -18,17 +22,35 @@ import {
   changelogMock,
   insightsMock,
   infrastructureMock,
-  settingsMock
-} from './mocks';
+  settingsMock,
+} from "./mocks";
 
 // Check if we're in a browser (not Electron)
-const isElectron = typeof window !== 'undefined' && window.electronAPI !== undefined;
+// Lazy check to avoid side effects during module import
+const isElectron = () =>
+  typeof window !== "undefined" && window.electronAPI !== undefined;
 
 /**
  * Create mock electronAPI for browser
  * Aggregates all mock implementations from separate modules
  */
 const browserMockAPI: ElectronAPI = {
+  // Window Controls
+  minimizeWindow: () => console.log("[Browser Mock] minimizeWindow called"),
+  maximizeWindow: () => console.log("[Browser Mock] maximizeWindow called"),
+  closeWindow: () => console.log("[Browser Mock] closeWindow called"),
+  onWindowMaximizedChange: (callback: (isMaximized: boolean) => void) => {
+    callback(false); // Initial state
+    return () => {};
+  },
+  onWindowFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
+    // Basic fullscreen detection for mock
+    callback(
+      typeof document !== "undefined" && document.fullscreenElement !== null
+    );
+    return () => {};
+  },
+
   // Project Operations
   ...projectMock,
 
@@ -50,24 +72,32 @@ const browserMockAPI: ElectronAPI = {
   // Roadmap Operations
   getRoadmap: async () => ({
     success: true,
-    data: null
+    data: null,
   }),
 
   getRoadmapStatus: async () => ({
     success: true,
-    data: { isRunning: false }
+    data: { isRunning: false },
   }),
 
   saveRoadmap: async () => ({
-    success: true
+    success: true,
   }),
 
-  generateRoadmap: (_projectId: string, _enableCompetitorAnalysis?: boolean, _refreshCompetitorAnalysis?: boolean) => {
-    console.warn('[Browser Mock] generateRoadmap called');
+  generateRoadmap: (
+    _projectId: string,
+    _enableCompetitorAnalysis?: boolean,
+    _refreshCompetitorAnalysis?: boolean
+  ) => {
+    console.warn("[Browser Mock] generateRoadmap called");
   },
 
-  refreshRoadmap: (_projectId: string, _enableCompetitorAnalysis?: boolean, _refreshCompetitorAnalysis?: boolean) => {
-    console.warn('[Browser Mock] refreshRoadmap called');
+  refreshRoadmap: (
+    _projectId: string,
+    _enableCompetitorAnalysis?: boolean,
+    _refreshCompetitorAnalysis?: boolean
+  ) => {
+    console.warn("[Browser Mock] refreshRoadmap called");
   },
 
   updateFeatureStatus: async () => ({ success: true }),
@@ -76,16 +106,16 @@ const browserMockAPI: ElectronAPI = {
     success: true,
     data: {
       id: `task-${Date.now()}`,
-      specId: '',
+      specId: "",
       projectId,
-      title: 'Converted Feature',
-      description: 'Feature converted from roadmap',
-      status: 'backlog' as const,
+      title: "Converted Feature",
+      description: "Feature converted from roadmap",
+      status: "backlog" as const,
       subtasks: [],
       logs: [],
       createdAt: new Date(),
-      updatedAt: new Date()
-    }
+      updatedAt: new Date(),
+    },
   }),
 
   stopRoadmap: async () => ({ success: true }),
@@ -116,8 +146,8 @@ const browserMockAPI: ElectronAPI = {
     data: {
       profiles: [],
       activeProfileId: null,
-      version: 1
-    }
+      version: 1,
+    },
   }),
 
   saveAPIProfile: async (profile) => ({
@@ -126,39 +156,47 @@ const browserMockAPI: ElectronAPI = {
       id: `mock-profile-${Date.now()}`,
       ...profile,
       createdAt: Date.now(),
-      updatedAt: Date.now()
-    }
+      updatedAt: Date.now(),
+    },
   }),
 
   updateAPIProfile: async (profile) => ({
     success: true,
     data: {
       ...profile,
-      updatedAt: Date.now()
-    }
+      updatedAt: Date.now(),
+    },
   }),
 
   deleteAPIProfile: async (_profileId: string) => ({
-    success: true
+    success: true,
   }),
 
   setActiveAPIProfile: async (_profileId: string | null) => ({
-    success: true
+    success: true,
   }),
 
-  testConnection: async (_baseUrl: string, _apiKey: string, _signal?: AbortSignal) => ({
+  testConnection: async (
+    _baseUrl: string,
+    _apiKey: string,
+    _signal?: AbortSignal
+  ) => ({
     success: true,
     data: {
       success: true,
-      message: 'Connection successful (mock)'
-    }
+      message: "Connection successful (mock)",
+    },
   }),
 
-  discoverModels: async (_baseUrl: string, _apiKey: string, _signal?: AbortSignal) => ({
+  discoverModels: async (
+    _baseUrl: string,
+    _apiKey: string,
+    _signal?: AbortSignal
+  ) => ({
     success: true,
     data: {
-      models: []
-    }
+      models: [],
+    },
   }),
 
   // GitHub API
@@ -167,21 +205,42 @@ const browserMockAPI: ElectronAPI = {
     getGitHubIssues: async () => ({ success: true, data: [] }),
     getGitHubIssue: async () => ({ success: true, data: null as any }),
     getIssueComments: async () => ({ success: true, data: [] }),
-    checkGitHubConnection: async () => ({ success: true, data: { connected: false, repoFullName: undefined, error: undefined } }),
+    checkGitHubConnection: async () => ({
+      success: true,
+      data: { connected: false, repoFullName: undefined, error: undefined },
+    }),
     investigateGitHubIssue: () => {},
-    importGitHubIssues: async () => ({ success: true, data: { success: true, imported: 0, failed: 0, issues: [] } }),
-    createGitHubRelease: async () => ({ success: true, data: { url: '' } }),
-    suggestReleaseVersion: async () => ({ success: true, data: { suggestedVersion: '1.0.0', currentVersion: '0.0.0', bumpType: 'minor' as const, commitCount: 0, reason: 'Initial' } }),
+    importGitHubIssues: async () => ({
+      success: true,
+      data: { success: true, imported: 0, failed: 0, issues: [] },
+    }),
+    createGitHubRelease: async () => ({ success: true, data: { url: "" } }),
+    suggestReleaseVersion: async () => ({
+      success: true,
+      data: {
+        suggestedVersion: "1.0.0",
+        currentVersion: "0.0.0",
+        bumpType: "minor" as const,
+        commitCount: 0,
+        reason: "Initial",
+      },
+    }),
     checkGitHubCli: async () => ({ success: true, data: { installed: false } }),
-    checkGitHubAuth: async () => ({ success: true, data: { authenticated: false } }),
+    checkGitHubAuth: async () => ({
+      success: true,
+      data: { authenticated: false },
+    }),
     startGitHubAuth: async () => ({ success: true, data: { success: false } }),
-    getGitHubToken: async () => ({ success: true, data: { token: '' } }),
-    getGitHubUser: async () => ({ success: true, data: { username: '' } }),
+    getGitHubToken: async () => ({ success: true, data: { token: "" } }),
+    getGitHubUser: async () => ({ success: true, data: { username: "" } }),
     listGitHubUserRepos: async () => ({ success: true, data: { repos: [] } }),
-    detectGitHubRepo: async () => ({ success: true, data: '' }),
+    detectGitHubRepo: async () => ({ success: true, data: "" }),
     getGitHubBranches: async () => ({ success: true, data: [] }),
-    createGitHubRepo: async () => ({ success: true, data: { fullName: '', url: '' } }),
-    addGitRemote: async () => ({ success: true, data: { remoteUrl: '' } }),
+    createGitHubRepo: async () => ({
+      success: true,
+      data: { fullName: "", url: "" },
+    }),
+    addGitRemote: async () => ({ success: true, data: { remoteUrl: "" } }),
     listGitHubOrgs: async () => ({ success: true, data: { orgs: [] } }),
     onGitHubAuthDeviceCode: () => () => {},
     onGitHubInvestigationProgress: () => () => {},
@@ -208,10 +267,20 @@ const browserMockAPI: ElectronAPI = {
     getPRReviewsBatch: async () => ({}),
     deletePRReview: async () => true,
     checkNewCommits: async () => ({ hasNewCommits: false, newCommitCount: 0 }),
-    checkMergeReadiness: async () => ({ isDraft: false, mergeable: 'UNKNOWN' as const, isBehind: false, ciStatus: 'none' as const, blockers: [] }),
+    checkMergeReadiness: async () => ({
+      isDraft: false,
+      mergeable: "UNKNOWN" as const,
+      isBehind: false,
+      ciStatus: "none" as const,
+      blockers: [],
+    }),
     runFollowupReview: () => {},
     getPRLogs: async () => null,
-    getWorkflowsAwaitingApproval: async () => ({ awaiting_approval: 0, workflow_runs: [], can_approve: false }),
+    getWorkflowsAwaitingApproval: async () => ({
+      awaiting_approval: 0,
+      workflow_runs: [],
+      can_approve: false,
+    }),
     approveWorkflow: async () => true,
     onPRReviewProgress: () => () => {},
     onPRReviewComplete: () => () => {},
@@ -226,71 +295,74 @@ const browserMockAPI: ElectronAPI = {
     approveBatches: async () => ({ success: true, batches: [] }),
     onAnalyzePreviewProgress: () => () => {},
     onAnalyzePreviewComplete: () => () => {},
-    onAnalyzePreviewError: () => () => {}
+    onAnalyzePreviewError: () => () => {},
   },
 
   // Claude Code Operations
   checkClaudeCodeVersion: async () => ({
     success: true,
     data: {
-      installed: '1.0.0',
-      latest: '1.0.0',
+      installed: "1.0.0",
+      latest: "1.0.0",
       isOutdated: false,
-      path: '/usr/local/bin/claude',
+      path: "/usr/local/bin/claude",
       detectionResult: {
         found: true,
-        version: '1.0.0',
-        path: '/usr/local/bin/claude',
-        source: 'system-path' as const,
-        message: 'Claude Code CLI found'
-      }
-    }
+        version: "1.0.0",
+        path: "/usr/local/bin/claude",
+        source: "system-path" as const,
+        message: "Claude Code CLI found",
+      },
+    },
   }),
   installClaudeCode: async () => ({
     success: true,
-    data: { command: 'npm install -g @anthropic-ai/claude-code' }
+    data: { command: "npm install -g @anthropic-ai/claude-code" },
   }),
   getClaudeCodeVersions: async () => ({
     success: true,
     data: {
-      versions: ['1.0.5', '1.0.4', '1.0.3', '1.0.2', '1.0.1', '1.0.0']
-    }
+      versions: ["1.0.5", "1.0.4", "1.0.3", "1.0.2", "1.0.1", "1.0.0"],
+    },
   }),
   installClaudeCodeVersion: async (version: string) => ({
     success: true,
-    data: { command: `npm install -g @anthropic-ai/claude-code@${version}`, version }
+    data: {
+      command: `npm install -g @anthropic-ai/claude-code@${version}`,
+      version,
+    },
   }),
   getClaudeCodeInstallations: async () => ({
     success: true,
     data: {
       installations: [
         {
-          path: '/usr/local/bin/claude',
-          version: '1.0.0',
-          source: 'system-path' as const,
+          path: "/usr/local/bin/claude",
+          version: "1.0.0",
+          source: "system-path" as const,
           isActive: true,
-        }
+        },
       ],
-      activePath: '/usr/local/bin/claude',
-    }
+      activePath: "/usr/local/bin/claude",
+    },
   }),
   setClaudeCodeActivePath: async (cliPath: string) => ({
     success: true,
-    data: { path: cliPath }
+    data: { path: cliPath },
   }),
 
   // Terminal Worktree Operations
   createTerminalWorktree: async () => ({
     success: false,
-    error: 'Not available in browser mode'
+    error: "Not available in browser mode",
   }),
   listTerminalWorktrees: async () => ({
     success: true,
-    data: []
+    data: [],
   }),
   removeTerminalWorktree: async () => ({
     success: false,
-    error: 'Not available in browser mode'
+    error: "Not available in browser mode",
   }),
 
   // MCP Server Health Check Operations
@@ -298,46 +370,56 @@ const browserMockAPI: ElectronAPI = {
     success: true,
     data: {
       serverId: server.id,
-      status: 'unknown' as const,
-      message: 'Health check not available in browser mode',
-      checkedAt: new Date().toISOString()
-    }
+      status: "unknown" as const,
+      message: "Health check not available in browser mode",
+      checkedAt: new Date().toISOString(),
+    },
   }),
   testMcpConnection: async (server) => ({
     success: true,
     data: {
       serverId: server.id,
       success: false,
-      message: 'Connection test not available in browser mode'
-    }
+      message: "Connection test not available in browser mode",
+    },
   }),
 
   // Debug Operations
   getDebugInfo: async () => ({
     systemInfo: {
-      appVersion: '0.0.0-browser-mock',
-      platform: 'browser',
-      isPackaged: 'false'
+      appVersion: "0.0.0-browser-mock",
+      platform: "browser",
+      isPackaged: "false",
     },
     recentErrors: [],
-    logsPath: '/mock/logs',
-    debugReport: '[Browser Mock] Debug report not available in browser mode'
+    logsPath: "/mock/logs",
+    debugReport: "[Browser Mock] Debug report not available in browser mode",
   }),
-  openLogsFolder: async () => ({ success: false, error: 'Not available in browser mode' }),
-  copyDebugInfo: async () => ({ success: false, error: 'Not available in browser mode' }),
+  openLogsFolder: async () => ({
+    success: false,
+    error: "Not available in browser mode",
+  }),
+  copyDebugInfo: async () => ({
+    success: false,
+    error: "Not available in browser mode",
+  }),
   getRecentErrors: async () => [],
-  listLogFiles: async () => []
+  listLogFiles: async () => [],
 };
 
 /**
  * Initialize browser mock if not running in Electron
  */
 export function initBrowserMock(): void {
-  if (!isElectron) {
-    console.warn('%c[Browser Mock] Initializing mock electronAPI for browser preview', 'color: #f0ad4e; font-weight: bold;');
-    (window as Window & { electronAPI: ElectronAPI }).electronAPI = browserMockAPI;
+  if (typeof window !== "undefined" && !isElectron()) {
+    console.warn(
+      "%c[Browser Mock] Initializing mock electronAPI for browser preview",
+      "color: #f0ad4e; font-weight: bold;"
+    );
+    (window as Window & { electronAPI: ElectronAPI }).electronAPI =
+      browserMockAPI;
   }
 }
 
-// Auto-initialize
-initBrowserMock();
+// Auto-invocation removed to prevent side effects during import
+// Consumers must explicitly call initBrowserMock() if they want the mock
