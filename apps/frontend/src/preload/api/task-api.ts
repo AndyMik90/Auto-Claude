@@ -14,7 +14,8 @@ import type {
   SupportedTerminal,
   WorktreeCreatePROptions,
   WorktreeCreatePRResult,
-  TaskHealthCheckResult
+  TaskHealthCheckResult,
+  ImageAttachment
 } from '../../shared/types';
 
 export interface TaskAPI {
@@ -36,7 +37,8 @@ export interface TaskAPI {
   submitReview: (
     taskId: string,
     approved: boolean,
-    feedback?: string
+    feedback?: string,
+    images?: ImageAttachment[]
   ) => Promise<IPCResult>;
   updateTaskStatus: (
     taskId: string,
@@ -116,9 +118,10 @@ export const createTaskAPI = (): TaskAPI => ({
   submitReview: (
     taskId: string,
     approved: boolean,
-    feedback?: string
+    feedback?: string,
+    images?: ImageAttachment[]
   ): Promise<IPCResult> =>
-    ipcRenderer.invoke(IPC_CHANNELS.TASK_REVIEW, taskId, approved, feedback),
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_REVIEW, taskId, approved, feedback, images),
 
   updateTaskStatus: (
     taskId: string,
