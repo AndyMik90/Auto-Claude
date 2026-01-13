@@ -46,7 +46,9 @@ let sentryEnabledState = true;
 function getSentryDsn(): string {
   // __SENTRY_DSN__ is replaced at build time with the actual value
   // Falls back to runtime env var for development flexibility
-  return __SENTRY_DSN__ || process.env.SENTRY_DSN || '';
+  // typeof guard needed for test environments where Vite's define doesn't apply
+  const buildTimeValue = typeof __SENTRY_DSN__ !== 'undefined' ? __SENTRY_DSN__ : '';
+  return buildTimeValue || process.env.SENTRY_DSN || '';
 }
 
 /**
@@ -56,7 +58,9 @@ function getSentryDsn(): string {
  */
 function getTracesSampleRate(): number {
   // Try build-time constant first, then runtime env var
-  const envValue = __SENTRY_TRACES_SAMPLE_RATE__ || process.env.SENTRY_TRACES_SAMPLE_RATE;
+  // typeof guard needed for test environments where Vite's define doesn't apply
+  const buildTimeValue = typeof __SENTRY_TRACES_SAMPLE_RATE__ !== 'undefined' ? __SENTRY_TRACES_SAMPLE_RATE__ : '';
+  const envValue = buildTimeValue || process.env.SENTRY_TRACES_SAMPLE_RATE;
   if (envValue) {
     const parsed = parseFloat(envValue);
     if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
@@ -74,7 +78,9 @@ function getTracesSampleRate(): number {
  */
 function getProfilesSampleRate(): number {
   // Try build-time constant first, then runtime env var
-  const envValue = __SENTRY_PROFILES_SAMPLE_RATE__ || process.env.SENTRY_PROFILES_SAMPLE_RATE;
+  // typeof guard needed for test environments where Vite's define doesn't apply
+  const buildTimeValue = typeof __SENTRY_PROFILES_SAMPLE_RATE__ !== 'undefined' ? __SENTRY_PROFILES_SAMPLE_RATE__ : '';
+  const envValue = buildTimeValue || process.env.SENTRY_PROFILES_SAMPLE_RATE;
   if (envValue) {
     const parsed = parseFloat(envValue);
     if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
