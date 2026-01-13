@@ -159,7 +159,15 @@ export class TaskQueueManager {
 
   /**
    * Prune stale entries from the processing queue.
-   * Removes entries that are older than QUEUE_TTL_MS or at/above MAX_QUEUE_DEPTH.
+   * Removes entries that are older than QUEUE_TTL_MS.
+   *
+   * Note: Only time-based pruning is used. The depth cap in executeInChain()
+   * prevents unbounded growth of chained operations by capping the counter,
+   * but we must NOT delete entries while their promise is still running.
+   * Deleting a running promise's entry breaks serialization because:
+   * 1. The promise's finally() won't clean up (entry already gone)
+   * 2. The next operation creates a fresh chain, running in parallel
+   * 3. This violates the serialization guarantee and can exceed maxConcurrent
    */
   private pruneProcessingQueue(): void {
     const now = Date.now();
@@ -167,12 +175,9 @@ export class TaskQueueManager {
 
     for (const [projectId, entry] of this.processingQueue.entries()) {
       const age = now - entry.lastUpdated;
-      // Remove if entry is stale or depth is at/above max.
-      // executeInChain caps depth with Math.min(currentDepth + 1, MAX_QUEUE_DEPTH),
-      // so entries that hit exactly MAX_QUEUE_DEPTH have reached the cap and are
-      // intentionally pruned on the next prune cycle. This prevents unbounded
-      // accumulation of entries that have hit the depth limit.
-      if (age > QUEUE_TTL_MS || entry.depth >= MAX_QUEUE_DEPTH) {
+      // Only prune truly stale entries (no activity for QUEUE_TTL_MS)
+      // Do NOT prune based on depth - the promise's finally() handles cleanup
+      if (age > QUEUE_TTL_MS) {
         this.processingQueue.delete(projectId);
       }
     }
