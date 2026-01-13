@@ -73,6 +73,12 @@ const QUEUE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const PRUNE_INTERVAL_MS = 60 * 1000; // 1 minute
 
 /**
+ * Delay between consecutive task starts to avoid overwhelming the system.
+ * Provides a brief pause for the agent to initialize before starting the next task.
+ */
+const TASK_START_THROTTLE_MS = 100;
+
+/**
  * Processing queue entry with metadata for bounded cleanup
  */
 interface ProcessingQueueEntry {
@@ -138,7 +144,11 @@ export class TaskQueueManager {
 
     for (const [projectId, entry] of this.processingQueue.entries()) {
       const age = now - entry.lastUpdated;
-      // Remove if entry is stale or depth is at/above max (capped at MAX_QUEUE_DEPTH by executeInChain)
+      // Remove if entry is stale or depth is at/above max.
+      // executeInChain caps depth with Math.min(currentDepth + 1, MAX_QUEUE_DEPTH),
+      // so entries that hit exactly MAX_QUEUE_DEPTH have reached the cap and are
+      // intentionally pruned on the next prune cycle. This prevents unbounded
+      // accumulation of entries that have hit the depth limit.
       if (age > QUEUE_TTL_MS || entry.depth >= MAX_QUEUE_DEPTH) {
         this.processingQueue.delete(projectId);
       }
@@ -418,7 +428,7 @@ export class TaskQueueManager {
         }
         startedCount++;
         // Small delay between starts to avoid overwhelming the system
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, TASK_START_THROTTLE_MS));
       }
 
       debugLog('[TaskQueueManager] Started', startedCount, 'tasks from backlog');
