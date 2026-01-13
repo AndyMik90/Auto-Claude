@@ -23,6 +23,8 @@ interface QueueState {
   configs: Record<string, QueueConfig>;
   /** Current status for each project */
   statuses: Record<string, QueueStatus>;
+  /** Pending request tokens for load operations (prevents stale responses) */
+  pendingLoadRequests: Record<string, string>;
 
   // Actions
   setQueueConfig: (projectId: string, config: QueueConfig) => void;
@@ -32,6 +34,7 @@ interface QueueState {
   updateRunningCount: (projectId: string, count: number) => void;
   updateBacklogCount: (projectId: string, count: number) => void;
   clearProject: (projectId: string) => void;
+  setPendingLoadRequest: (projectId: string, requestId: string) => void;
 }
 
 /**
@@ -49,6 +52,7 @@ export const DEFAULT_QUEUE_CONFIG: QueueConfig = {
 export const useQueueStore = create<QueueState>((set, get) => ({
   configs: {},
   statuses: {},
+  pendingLoadRequests: {},
 
   setQueueConfig: (projectId, config) =>
     set((state) => ({
@@ -116,22 +120,46 @@ export const useQueueStore = create<QueueState>((set, get) => ({
     set((state) => {
       const newConfigs = { ...state.configs };
       const newStatuses = { ...state.statuses };
+      const newPending = { ...state.pendingLoadRequests };
       delete newConfigs[projectId];
       delete newStatuses[projectId];
-      return { configs: newConfigs, statuses: newStatuses };
-    })
+      delete newPending[projectId];
+      return { configs: newConfigs, statuses: newStatuses, pendingLoadRequests: newPending };
+    }),
+
+  setPendingLoadRequest: (projectId, requestId) =>
+    set((state) => ({
+      pendingLoadRequests: {
+        ...state.pendingLoadRequests,
+        [projectId]: requestId
+      }
+    }))
 }));
 
 /**
  * Load queue configuration for a project
+ * Uses request token to prevent stale responses from racing requests
  */
 export async function loadQueueConfig(projectId: string): Promise<QueueConfig | null> {
+  // Generate unique request ID for this load operation
+  const requestId = `load-${projectId}-${Date.now()}-${Math.random()}`;
+  const store = useQueueStore.getState();
+
+  // Register this as the pending request
+  store.setPendingLoadRequest(projectId, requestId);
+
   try {
     const result = await window.electronAPI.getQueueConfig(projectId);
     if (result.success && result.data) {
-      const store = useQueueStore.getState();
-      store.setQueueConfig(projectId, result.data);
-      return result.data;
+      // Only apply if this is still the latest request
+      const currentState = useQueueStore.getState();
+      if (currentState.pendingLoadRequests[projectId] === requestId) {
+        currentState.setQueueConfig(projectId, result.data);
+        return result.data;
+      } else {
+        debugLog('[QueueStore] Ignoring stale loadQueueConfig response for:', projectId);
+        return currentState.getQueueConfig(projectId) || null;
+      }
     }
     return null;
   } catch (error) {
@@ -142,17 +170,46 @@ export async function loadQueueConfig(projectId: string): Promise<QueueConfig | 
 
 /**
  * Save queue configuration for a project
+ * Uses optimistic update with rollback on failure
  */
 export async function saveQueueConfig(projectId: string, config: QueueConfig): Promise<boolean> {
+  const store = useQueueStore.getState();
+
+  // Save previous config for rollback
+  const previousConfig = store.getQueueConfig(projectId);
+
+  // Optimistic update: apply to renderer state immediately
+  store.setQueueConfig(projectId, config);
+
   try {
     const result = await window.electronAPI.setQueueConfig(projectId, config);
     if (result.success) {
-      const store = useQueueStore.getState();
-      store.setQueueConfig(projectId, config);
       return true;
+    } else {
+      // IPC failed - rollback renderer state
+      if (previousConfig) {
+        store.setQueueConfig(projectId, previousConfig);
+      } else {
+        // If there was no previous config, clear the optimistic update
+        const currentState = useQueueStore.getState();
+        const newConfigs = { ...currentState.configs };
+        delete newConfigs[projectId];
+        useQueueStore.setState({ configs: newConfigs });
+      }
+      debugError('[QueueStore] Failed to save queue config, rolled back renderer state');
+      return false;
     }
-    return false;
   } catch (error) {
+    // Exception occurred - rollback renderer state
+    if (previousConfig) {
+      store.setQueueConfig(projectId, previousConfig);
+    } else {
+      // If there was no previous config, clear the optimistic update
+      const currentState = useQueueStore.getState();
+      const newConfigs = { ...currentState.configs };
+      delete newConfigs[projectId];
+      useQueueStore.setState({ configs: newConfigs });
+    }
     debugError('[QueueStore] Failed to save queue config:', error);
     return false;
   }

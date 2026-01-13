@@ -215,21 +215,20 @@ export class TaskQueueManager {
   }
 
   /**
-   * Handle task exit event - trigger queue check
-   * Uses per-project promise chaining to prevent race conditions
+   * Execute an operation within the processing queue chain for a project.
+   * This helper encapsulates the shared promise-chaining logic used by
+   * handleTaskExit and triggerQueue to prevent duplication.
+   *
+   * @param projectId - Project ID to chain the operation for
+   * @param operation - Async operation to execute within the chain
+   * @param rethrow - Whether to re-throw errors (false for event handlers)
    */
-  private async handleTaskExit(taskId: string, exitCode: number | null): Promise<void> {
-    debugLog('[TaskQueueManager] Task exit:', { taskId, exitCode });
-
-    // Find the project for this task
-    const { task, project } = findTaskAndProject(taskId);
-    if (!task || !project) {
-      debugLog('[TaskQueueManager] Task or project not found, skipping queue check');
-      return;
-    }
-
+  private async executeInChain(
+    projectId: string,
+    operation: () => Promise<void>,
+    rethrow: boolean = false
+  ): Promise<void> {
     // Get or create the processing promise chain for this project
-    const projectId = project.id;
     const existingEntry = this.processingQueue.get(projectId);
     const existingChain = existingEntry?.promise || Promise.resolve();
     const currentDepth = existingEntry?.depth ?? 0;
@@ -237,34 +236,15 @@ export class TaskQueueManager {
     // Chain this operation onto the existing one
     const processingPromise = existingChain.then(async () => {
       try {
-        // Check if queue is enabled for this project
-        const config = this.getQueueConfig(projectId);
-        if (!config.enabled) {
-          debugLog('[TaskQueueManager] Queue not enabled for project:', projectId);
-          return;
-        }
-
-        // Wait for status updates to propagate before checking if we can start more tasks.
-        // See STATUS_PROPAGATION_DELAY_MS documentation for the trade-off analysis.
-        await new Promise(resolve => setTimeout(resolve, STATUS_PROPAGATION_DELAY_MS));
-
-        // Check if we can start more tasks
-        if (this.canStartMoreTasks(projectId)) {
-          debugLog('[TaskQueueManager] Queue can start more tasks, triggering next task');
-          await this.triggerNextTask(projectId);
-        } else {
-          debugLog('[TaskQueueManager] Queue cannot start more tasks',
-            this.getQueueStatus(projectId)
-          );
-        }
-
-        // Emit queue status update
-        this.emitQueueStatusUpdate(projectId);
+        await operation();
       } catch (error) {
-        debugError('[TaskQueueManager] Error in handleTaskExit promise chain:', error);
+        debugError('[TaskQueueManager] Error in promise chain:', error);
         // Emit queue status update even on error to keep state consistent
         this.emitQueueStatusUpdate(projectId);
-        // Don't re-throw since this is an event handler and would cause unhandled rejection
+        if (rethrow) {
+          throw error; // Re-throw for upstream handlers
+        }
+        // Don't re-throw for event handlers to prevent unhandled rejection
       }
     });
 
@@ -288,6 +268,50 @@ export class TaskQueueManager {
 
     // Wait for this operation to complete
     await processingPromise;
+  }
+
+  /**
+   * Handle task exit event - trigger queue check
+   * Uses per-project promise chaining to prevent race conditions
+   */
+  private async handleTaskExit(taskId: string, exitCode: number | null): Promise<void> {
+    debugLog('[TaskQueueManager] Task exit:', { taskId, exitCode });
+
+    // Find the project for this task
+    const { task, project } = findTaskAndProject(taskId);
+    if (!task || !project) {
+      debugLog('[TaskQueueManager] Task or project not found, skipping queue check');
+      return;
+    }
+
+    const projectId = project.id;
+
+    // Execute queue check in the promise chain (no rethrow for event handler)
+    await this.executeInChain(projectId, async () => {
+      // Check if queue is enabled for this project
+      const config = this.getQueueConfig(projectId);
+      if (!config.enabled) {
+        debugLog('[TaskQueueManager] Queue not enabled for project:', projectId);
+        return;
+      }
+
+      // Wait for status updates to propagate before checking if we can start more tasks.
+      // See STATUS_PROPAGATION_DELAY_MS documentation for the trade-off analysis.
+      await new Promise(resolve => setTimeout(resolve, STATUS_PROPAGATION_DELAY_MS));
+
+      // Check if we can start more tasks
+      if (this.canStartMoreTasks(projectId)) {
+        debugLog('[TaskQueueManager] Queue can start more tasks, triggering next task');
+        await this.triggerNextTask(projectId);
+      } else {
+        debugLog('[TaskQueueManager] Queue cannot start more tasks',
+          this.getQueueStatus(projectId)
+        );
+      }
+
+      // Emit queue status update
+      this.emitQueueStatusUpdate(projectId);
+    }, false); // No rethrow for event handler
   }
 
   /**
@@ -376,65 +400,32 @@ export class TaskQueueManager {
 
     debugLog('[TaskQueueManager] Manually triggering queue for project:', projectId);
 
-    // Get or create the processing promise chain for this project
-    const existingEntry = this.processingQueue.get(projectId);
-    const existingChain = existingEntry?.promise || Promise.resolve();
-    const currentDepth = existingEntry?.depth ?? 0;
-
-    // Chain this operation onto the existing one
-    const processingPromise = existingChain.then(async () => {
-      try {
-        // Fetch fresh config inside the promise chain to avoid stale values
-        const freshConfig = this.getQueueConfig(projectId);
-        if (!freshConfig.enabled) {
-          return;
-        }
-
-        // Start tasks until we reach max concurrent or run out of backlog
-        // Re-check canStartMoreTasks() before each iteration to handle status updates
-        let startedCount = 0;
-        while (this.canStartMoreTasks(projectId)) {
-          const started = await this.triggerNextTask(projectId);
-          if (!started) {
-            break; // Stop if we can't start more tasks
-          }
-          startedCount++;
-          // Small delay between starts to avoid overwhelming the system
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-        debugLog('[TaskQueueManager] Started', startedCount, 'tasks from backlog');
-
-        // Emit queue status update
-        this.emitQueueStatusUpdate(projectId);
-      } catch (error) {
-        debugError('[TaskQueueManager] Error in triggerQueue promise chain:', error);
-        // Emit queue status update even on error to keep state consistent
-        this.emitQueueStatusUpdate(projectId);
-        throw error; // Re-throw for upstream handlers
+    // Execute queue trigger in the promise chain (with rethrow for caller)
+    await this.executeInChain(projectId, async () => {
+      // Fetch fresh config inside the promise chain to avoid stale values
+      const freshConfig = this.getQueueConfig(projectId);
+      if (!freshConfig.enabled) {
+        return;
       }
-    });
 
-    // Create entry with updated metadata
-    const entry: ProcessingQueueEntry = {
-      promise: processingPromise,
-      lastUpdated: Date.now(),
-      depth: Math.min(currentDepth + 1, MAX_QUEUE_DEPTH)
-    };
-
-    // Update the chain (removes the completed promise to prevent memory leak)
-    processingPromise.finally(() => {
-      // Only remove if it's still the current chain
-      const current = this.processingQueue.get(projectId);
-      if (current && current.promise === processingPromise) {
-        this.processingQueue.delete(projectId);
+      // Start tasks until we reach max concurrent or run out of backlog
+      // Re-check canStartMoreTasks() before each iteration to handle status updates
+      let startedCount = 0;
+      while (this.canStartMoreTasks(projectId)) {
+        const started = await this.triggerNextTask(projectId);
+        if (!started) {
+          break; // Stop if we can't start more tasks
+        }
+        startedCount++;
+        // Small delay between starts to avoid overwhelming the system
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-    });
 
-    this.processingQueue.set(projectId, entry);
+      debugLog('[TaskQueueManager] Started', startedCount, 'tasks from backlog');
 
-    // Wait for this operation to complete
-    await processingPromise;
+      // Emit queue status update
+      this.emitQueueStatusUpdate(projectId);
+    }, true); // Rethrow for upstream handlers
   }
 
   /**
