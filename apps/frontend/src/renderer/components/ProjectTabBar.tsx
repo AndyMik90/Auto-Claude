@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus } from 'lucide-react';
+import { Plus, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { SortableProjectTab } from './SortableProjectTab';
 import { UsageIndicator } from './UsageIndicator';
 import type { Project } from '../../shared/types';
@@ -16,6 +17,12 @@ interface ProjectTabBarProps {
   className?: string;
   // Control props for active tab
   onSettingsClick?: () => void;
+  // Kanban board controls
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
+  showArchived?: boolean;
+  onToggleArchived?: () => void;
+  archivedCount?: number;
 }
 
 export function ProjectTabBar({
@@ -25,9 +32,14 @@ export function ProjectTabBar({
   onProjectClose,
   onAddProject,
   className,
-  onSettingsClick
+  onSettingsClick,
+  onRefresh,
+  isRefreshing = false,
+  showArchived = false,
+  onToggleArchived,
+  archivedCount = 0
 }: ProjectTabBarProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'tasks']);
 
   // Keyboard shortcuts for tab navigation
   useEffect(() => {
@@ -113,15 +125,72 @@ export function ProjectTabBar({
 
       <div className="flex items-center gap-2 px-2 py-1">
         <UsageIndicator />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={onAddProject}
-          aria-label={t('projectTab.addProjectAriaLabel')}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+
+        {/* Refresh button */}
+        {onRefresh && (
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                aria-label={t('accessibility.refreshAriaLabel')}
+              >
+                <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <span>{t('kanban.refreshTasks')}</span>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* Show Archived button */}
+        {onToggleArchived && (
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={onToggleArchived}
+                aria-label={t('accessibility.toggleShowArchivedAriaLabel')}
+              >
+                {showArchived ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="flex items-center gap-2">
+              <span>{showArchived ? t('projectTab.hideArchived') : t('projectTab.showArchived')}</span>
+              {archivedCount > 0 && (
+                <span className="text-xs text-muted-foreground">({archivedCount})</span>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* Add project button with tooltip */}
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onAddProject}
+              aria-label={t('projectTab.addProjectAriaLabel')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <span>{t('projectTab.addProjectAriaLabel')}</span>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
