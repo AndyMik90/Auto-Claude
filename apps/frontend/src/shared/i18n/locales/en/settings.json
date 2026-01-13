@@ -258,6 +258,19 @@
       "customPath": "Custom Terminal Path",
       "customPathPlaceholder": "/path/to/your/terminal"
     },
+    "terminalFont": {
+      "label": "Terminal Font",
+      "description": "Font family for the built-in terminal. Use Nerd Fonts for icon support.",
+      "placeholder": "JetBrains Mono Nerd Font, monospace"
+    },
+    "terminalFontSize": {
+      "label": "Font Size",
+      "description": "Font size in pixels"
+    },
+    "terminalFontWeight": {
+      "label": "Font Weight",
+      "description": "Font weight (normal, bold, or 100-900)"
+    },
     "detected": "Detected",
     "notInstalled": "Not installed",
     "detectedSummary": "Detected on your system:",

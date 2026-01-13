@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
+import { useSettingsStore } from '../../stores/settings-store';
 
 // Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
 interface NavigatorUAData {
@@ -31,6 +32,11 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T 
   }) as T;
 }
 
+// Default terminal font settings
+const DEFAULT_TERMINAL_FONT = 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace';
+const DEFAULT_TERMINAL_FONT_SIZE = 13;
+const DEFAULT_TERMINAL_FONT_WEIGHT = '600';
+
 export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsReady }: UseXtermOptions) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
@@ -41,6 +47,11 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const dimensionsReadyCalledRef = useRef<boolean>(false);
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
 
+  // Get terminal font settings
+  const terminalFontFamily = useSettingsStore((state) => state.settings.terminalFontFamily);
+  const terminalFontSize = useSettingsStore((state) => state.settings.terminalFontSize);
+  const terminalFontWeight = useSettingsStore((state) => state.settings.terminalFontWeight);
+
   // Initialize xterm.js UI
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
@@ -48,8 +59,10 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     const xterm = new XTerm({
       cursorBlink: true,
       cursorStyle: 'block',
-      fontSize: 13,
-      fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
+      fontSize: terminalFontSize || DEFAULT_TERMINAL_FONT_SIZE,
+      fontFamily: terminalFontFamily || DEFAULT_TERMINAL_FONT,
+      fontWeight: (terminalFontWeight || DEFAULT_TERMINAL_FONT_WEIGHT) as '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | 'normal' | 'bold',
+      fontWeightBold: 'bold',
       lineHeight: 1.2,
       letterSpacing: 0,
       theme: {
@@ -283,6 +296,17 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       // Cleanup handled by parent component
     };
   }, [terminalId, onCommandEnter, onResize, onDimensionsReady]);
+
+  // Update terminal font settings when they change
+  useEffect(() => {
+    if (xtermRef.current?.options) {
+      xtermRef.current.options.fontFamily = terminalFontFamily || DEFAULT_TERMINAL_FONT;
+      xtermRef.current.options.fontSize = terminalFontSize || DEFAULT_TERMINAL_FONT_SIZE;
+      xtermRef.current.options.fontWeight = (terminalFontWeight || DEFAULT_TERMINAL_FONT_WEIGHT) as '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | 'normal' | 'bold';
+      // Refit to adjust for font size differences
+      fitAddonRef.current?.fit();
+    }
+  }, [terminalFontFamily, terminalFontSize, terminalFontWeight]);
 
   // Handle resize on container resize with debouncing
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Code, Terminal, RefreshCw, Loader2, Check, FolderOpen } from 'lucide-react';
+import { Code, Terminal, RefreshCw, Loader2, Check, FolderOpen, Type } from 'lucide-react';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -140,6 +140,28 @@ export function DevToolsSettings({ settings, onSettingsChange }: DevToolsSetting
     onSettingsChange({
       ...settings,
       customTerminalPath: path
+    });
+  };
+
+  const handleTerminalFontChange = (fontFamily: string) => {
+    onSettingsChange({
+      ...settings,
+      terminalFontFamily: fontFamily || undefined
+    });
+  };
+
+  const handleTerminalFontSizeChange = (size: string) => {
+    const parsed = parseInt(size, 10);
+    onSettingsChange({
+      ...settings,
+      terminalFontSize: isNaN(parsed) ? undefined : parsed
+    });
+  };
+
+  const handleTerminalFontWeightChange = (weight: string) => {
+    onSettingsChange({
+      ...settings,
+      terminalFontWeight: weight || undefined
     });
   };
 
@@ -362,6 +384,61 @@ export function DevToolsSettings({ settings, onSettingsChange }: DevToolsSetting
               </div>
             </div>
           )}
+        </div>
+
+        {/* Terminal Font Settings */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="terminal-font" className="flex items-center gap-2">
+              <Type className="h-4 w-4" />
+              {t('devtools.terminalFont.label', 'Terminal Font')}
+            </Label>
+            <Input
+              id="terminal-font"
+              value={settings.terminalFontFamily || ''}
+              onChange={(e) => handleTerminalFontChange(e.target.value)}
+              placeholder={t('devtools.terminalFont.placeholder', 'JetBrains Mono Nerd Font, monospace')}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('devtools.terminalFont.description', 'Font family for the built-in terminal. Use Nerd Fonts for icon support.')}
+            </p>
+          </div>
+
+          {/* Font Size and Weight in a row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="terminal-font-size">
+                {t('devtools.terminalFontSize.label', 'Font Size')}
+              </Label>
+              <Input
+                id="terminal-font-size"
+                type="number"
+                min={8}
+                max={32}
+                value={settings.terminalFontSize || ''}
+                onChange={(e) => handleTerminalFontSizeChange(e.target.value)}
+                placeholder="13"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('devtools.terminalFontSize.description', 'Font size in pixels')}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="terminal-font-weight">
+                {t('devtools.terminalFontWeight.label', 'Font Weight')}
+              </Label>
+              <Input
+                id="terminal-font-weight"
+                value={settings.terminalFontWeight || ''}
+                onChange={(e) => handleTerminalFontWeightChange(e.target.value)}
+                placeholder="normal"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('devtools.terminalFontWeight.description', 'Font weight (normal, bold, or 100-900)')}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Detection Summary */}
