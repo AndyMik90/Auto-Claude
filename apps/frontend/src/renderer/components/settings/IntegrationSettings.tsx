@@ -115,12 +115,23 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   };
 
   const handleAddProfile = async () => {
-    if (!newProfileName.trim()) return;
+    debugLog('[IntegrationSettings] handleAddProfile called');
+    debugLog('[IntegrationSettings] newProfileName value:', newProfileName);
+
+    if (!newProfileName.trim()) {
+      debugLog('[IntegrationSettings] newProfileName is empty, returning early');
+      return;
+    }
 
     setIsAddingProfile(true);
     try {
       const profileName = newProfileName.trim();
       const profileSlug = profileName.toLowerCase().replace(/\s+/g, '-');
+
+      debugLog('[IntegrationSettings] Calling saveClaudeProfile IPC with:', {
+        name: profileName,
+        configDir: `~/.claude-profiles/${profileSlug}`
+      });
 
       const result = await window.electronAPI.saveClaudeProfile({
         id: `profile-${Date.now()}`,
@@ -130,9 +141,13 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         createdAt: new Date()
       });
 
+      debugLog('[IntegrationSettings] saveClaudeProfile IPC returned:', result);
+
       if (result.success && result.data) {
         // Initialize the profile
+        debugLog('[IntegrationSettings] Calling initializeClaudeProfile IPC for:', result.data.id);
         const initResult = await window.electronAPI.initializeClaudeProfile(result.data.id);
+        debugLog('[IntegrationSettings] initializeClaudeProfile IPC returned:', initResult);
 
         if (initResult.success) {
           await loadClaudeProfiles();
@@ -156,6 +171,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         description: t('integrations.toast.tryAgain'),
       });
     } finally {
+      debugLog('[IntegrationSettings] finally block - clearing isAddingProfile');
       setIsAddingProfile(false);
     }
   };
