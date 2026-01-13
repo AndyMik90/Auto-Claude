@@ -360,7 +360,10 @@ export class TaskQueueManager {
         // Handle both Date and string createdAt fields defensively
         const timestampA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
         const timestampB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
-        return timestampA - timestampB;
+        // Substitute POSITIVE_INFINITY for invalid dates to push them to the end
+        const normalizedA = isNaN(timestampA) ? Number.POSITIVE_INFINITY : timestampA;
+        const normalizedB = isNaN(timestampB) ? Number.POSITIVE_INFINITY : timestampB;
+        return normalizedA - normalizedB;
       });
 
     if (backlogTasks.length === 0) {
