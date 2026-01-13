@@ -761,12 +761,36 @@ export function initializeUsageMonitorForwarding(mainWindow: BrowserWindow): voi
 
   // Forward usage updates to renderer
   monitor.on('usage-updated', (usage: ClaudeUsageSnapshot) => {
-    mainWindow.webContents.send(IPC_CHANNELS.USAGE_UPDATED, usage);
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC_CHANNELS.USAGE_UPDATED, usage);
+    }
   });
 
-  // Forward proactive swap notifications to renderer
+  // Forward proactive swap completed events to renderer
+  monitor.on('proactive-swap-completed', (data: any) => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC_CHANNELS.PROACTIVE_SWAP_NOTIFICATION, {
+        type: 'completed',
+        ...data
+      });
+    }
+  });
+
+  // Forward proactive swap failed events to renderer
+  monitor.on('proactive-swap-failed', (data: any) => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC_CHANNELS.PROACTIVE_SWAP_NOTIFICATION, {
+        type: 'failed',
+        ...data
+      });
+    }
+  });
+
+  // Forward show-swap-notification events (for in-app swap notifications)
   monitor.on('show-swap-notification', (notification: unknown) => {
-    mainWindow.webContents.send(IPC_CHANNELS.PROACTIVE_SWAP_NOTIFICATION, notification);
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC_CHANNELS.PROACTIVE_SWAP_NOTIFICATION, notification);
+    }
   });
 
   debugLog('[terminal-handlers] Usage monitor event forwarding initialized');
