@@ -132,6 +132,7 @@ export const IPC_CHANNELS = {
   PROFILES_UPDATE: 'profiles:update',
   PROFILES_DELETE: 'profiles:delete',
   PROFILES_SET_ACTIVE: 'profiles:setActive',
+  PROFILES_GET_USAGE: 'profiles:getUsage',
   PROFILES_TEST_CONNECTION: 'profiles:test-connection',
   PROFILES_TEST_CONNECTION_CANCEL: 'profiles:test-connection-cancel',
   PROFILES_DISCOVER_MODELS: 'profiles:discover-models',

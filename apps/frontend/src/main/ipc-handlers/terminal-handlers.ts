@@ -607,6 +607,32 @@ export function registerTerminalHandlers(
   );
 
 
+  // Get usage statistics for active profile (API-based, on-demand)
+  ipcMain.handle(
+    IPC_CHANNELS.PROFILES_GET_USAGE,
+    async (): Promise<IPCResult<import('../../shared/types').ClaudeUsageSnapshot>> => {
+      try {
+        const { fetchActiveProfileUsage } = await import('../services/profile');
+        const result = await fetchActiveProfileUsage();
+
+        if (!result.success || !result.usage) {
+          return {
+            success: false,
+            error: result.error || 'Failed to fetch usage data'
+          };
+        }
+
+        return { success: true, data: result.usage };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to fetch usage data'
+        };
+      }
+    }
+  );
+
+
   // Terminal session management (persistence/restore)
   ipcMain.handle(
     IPC_CHANNELS.TERMINAL_GET_SESSIONS,

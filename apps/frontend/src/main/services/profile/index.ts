@@ -36,10 +36,11 @@ export {
   detectProvider,
   fetchZaiUsage,
   fetchAnthropicOAuthUsage,
-  fetchUsageForProfile
+  fetchUsageForProfile,
+  fetchActiveProfileUsage
 } from './profile-usage';
 
-export type { UsageProvider } from './profile-usage';
+export type { UsageProvider, UsageFetchResult } from './profile-usage';
 
 // Re-export types from shared for convenience
 export type {

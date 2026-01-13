@@ -146,6 +146,23 @@ const browserMockAPI: ElectronAPI = {
     success: true
   }),
 
+  getAPIProfileUsage: async () => ({
+    success: true,
+    data: {
+      sessionPercent: 0,
+      weeklyPercent: 0,
+      sessionResetTime: undefined,
+      weeklyResetTime: undefined,
+      sessionResetTimestamp: undefined,
+      weeklyResetTimestamp: undefined,
+      profileId: 'mock',
+      profileName: 'Mock Profile',
+      fetchedAt: new Date(),
+      limitType: 'session',
+      provider: 'anthropic-oauth'
+    }
+  }),
+
   testConnection: async (_baseUrl: string, _apiKey: string, _signal?: AbortSignal) => ({
     success: true,
     data: {

@@ -10,6 +10,7 @@
 
 import type { ClaudeUsageSnapshot } from '../../../shared/types/agent';
 import { RESETTING_SOON } from '../../../shared/types/agent';
+import { loadProfilesFile } from './profile-manager';
 
 // ============================================
 // Error Classes
@@ -308,6 +309,74 @@ export async function fetchUsageForProfile(
     default:
       console.warn('[profile-usage] Unknown provider:', provider);
       return null;
+  }
+}
+
+// ============================================
+// Active Profile Usage
+// ============================================
+
+/**
+ * Result type for usage fetching operations
+ */
+export interface UsageFetchResult {
+  success: boolean;
+  usage?: ClaudeUsageSnapshot;
+  error?: string;
+}
+
+/**
+ * Fetch usage for the currently active profile
+ *
+ * This function loads the profiles file and fetches usage for the
+ * active profile (OAuth or API profile).
+ */
+export async function fetchActiveProfileUsage(): Promise<UsageFetchResult> {
+  try {
+    const file = await loadProfilesFile();
+
+    // No active profile set
+    if (!file.activeProfileId) {
+      return {
+        success: false,
+        error: 'No active profile set'
+      };
+    }
+
+    // Find active profile
+    const profile = file.profiles.find(p => p.id === file.activeProfileId);
+    if (!profile) {
+      return {
+        success: false,
+        error: 'Active profile not found'
+      };
+    }
+
+    // Detect provider type
+    const provider = detectProvider(profile.baseUrl, profile.apiKey);
+
+    // Fetch usage based on provider
+    const usage = await fetchUsageForProfile(
+      provider,
+      profile.apiKey,
+      profile.id,
+      profile.name
+    );
+
+    if (!usage) {
+      return {
+        success: false,
+        error: 'Failed to fetch usage data'
+      };
+    }
+
+    return { success: true, usage };
+  } catch (error) {
+    console.error('[ProfileUsage] Failed to load profiles:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load profiles'
+    };
   }
 }
 

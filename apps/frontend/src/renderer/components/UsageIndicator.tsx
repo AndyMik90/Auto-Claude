@@ -83,16 +83,27 @@ export function UsageIndicator() {
       setIsVisible(true);
     });
 
-    // Request initial usage on mount
-    window.electronAPI.requestUsageUpdate().then((result) => {
+    // Request initial usage on mount using new API profile usage method
+    // This supports both Anthropic OAuth and Z.ai (and other API profiles)
+    window.electronAPI.getAPIProfileUsage().then((result) => {
       if (result.success && result.data) {
         setUsage(result.data);
         setIsVisible(true);
       }
     });
 
+    // Set up interval to refresh usage every 30 seconds
+    const intervalId = setInterval(() => {
+      window.electronAPI.getAPIProfileUsage().then((result) => {
+        if (result.success && result.data) {
+          setUsage(result.data);
+        }
+      });
+    }, 30000); // 30 seconds
+
     return () => {
       unsubscribe();
+      clearInterval(intervalId);
     };
   }, []);
 

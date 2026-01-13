@@ -8,6 +8,7 @@ import type {
   TestConnectionResult,
   DiscoverModelsResult
 } from '@shared/types/profile';
+import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export interface ProfileAPI {
   // Get all profiles
@@ -28,6 +29,9 @@ export interface ProfileAPI {
 
   // Set active profile (null to switch to OAuth)
   setActiveAPIProfile: (profileId: string | null) => Promise<IPCResult>;
+
+  // Get usage statistics for active profile
+  getAPIProfileUsage: () => Promise<IPCResult<ClaudeUsageSnapshot>>;
 
   // Test API profile connection
   testConnection: (
@@ -71,6 +75,10 @@ export const createProfileAPI = (): ProfileAPI => ({
   // Set active profile (null to switch to OAuth)
   setActiveAPIProfile: (profileId: string | null): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.PROFILES_SET_ACTIVE, profileId),
+
+  // Get usage statistics for active profile
+  getAPIProfileUsage: (): Promise<IPCResult<ClaudeUsageSnapshot>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROFILES_GET_USAGE),
 
   // Test API profile connection
   testConnection: (
