@@ -9,6 +9,7 @@
     "project": "Project",
     "git": "Git",
     "autoclaude": "Auto Claude",
+    "provider": "Provider",
     "github": "GitHub",
     "gitlab": "GitLab",
     "complete": "Complete"
@@ -62,6 +63,13 @@
     "initializingRepo": "Initializing git repository and creating initial commit...",
     "success": "Git Initialized",
     "readyToUse": "Your project is now ready to use with Auto Claude!"
+  },
+  "provider": {
+    "title": "Connect Git Hosting",
+    "description": "Choose which git hosting providers you'd like to integrate with",
+    "optionalLabel": "Optional - Skip if you'll configure later",
+    "helpText": "You can configure one or both providers, or skip to configure later",
+    "skip": "Skip for now"
   },
   "autoclaude": {
     "title": "Initialize Auto Claude",

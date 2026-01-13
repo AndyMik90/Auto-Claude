@@ -17,11 +17,12 @@ import { GitStep } from './GitStep';
 import { AutoClaudeStep } from './AutoClaudeStep';
 import { GitHubStep } from './GitHubStep';
 import { GitLabStep } from './GitLabStep';
+import { ProviderSelectionStep } from './ProviderSelectionStep';
 import { CompletionStep } from './CompletionStep';
 import type { Project } from '../../../shared/types';
 
 // Wizard step identifiers
-type WizardStepId = 'project' | 'project-new' | 'git' | 'autoclaude' | 'github' | 'gitlab' | 'complete';
+type WizardStepId = 'project' | 'project-new' | 'git' | 'provider' | 'autoclaude' | 'github' | 'gitlab' | 'complete';
 
 // Step configuration with translation keys
 const WIZARD_STEPS: { id: WizardStepId; labelKey: string; optional: boolean }[] = [
@@ -104,6 +105,8 @@ export function ProjectWizard({
   // Build visible steps based on state
   const getVisibleSteps = (): VisibleStepId[] => {
     const steps: VisibleStepId[] = ['project', 'git', 'autoclaude', 'complete'];
+    // Provider step is shown dynamically after git based on showGitHub/showGitLab state
+    // Integration steps are added after autoclaude
     if (state.showGitHub) {
       steps.splice(3, 0, 'github');
     }
@@ -114,11 +117,11 @@ export function ProjectWizard({
   };
 
   const visibleSteps = getVisibleSteps();
-  // Get current step ID - can be any WizardStepId including project-new
+  // Get current step ID - can be any WizardStepId including project-new and provider
   const getAllSteps = (): WizardStepId[] => {
-    const baseSteps: WizardStepId[] = ['project', 'project-new', 'git', 'autoclaude', 'complete'];
-    if (state.showGitHub) baseSteps.splice(4, 0, 'github');
-    if (state.showGitLab) baseSteps.splice(4, 0, 'gitlab');
+    const baseSteps: WizardStepId[] = ['project', 'project-new', 'git', 'provider', 'autoclaude', 'complete'];
+    if (state.showGitHub) baseSteps.splice(5, 0, 'github');
+    if (state.showGitLab) baseSteps.splice(5, 0, 'gitlab');
     return baseSteps;
   };
   const currentStepId = getAllSteps()[currentStepIndex];
@@ -162,17 +165,13 @@ export function ProjectWizard({
       ...prev,
       project,
       projectPath: project.path,
-      showGitHub: needsGit, // Show GitHub if git is needed
-      showGitLab: false // GitLab is opt-in, not shown by default
+      showGitHub: false, // Will be set by provider selection
+      showGitLab: false  // Will be set by provider selection
     }));
 
-    // Skip git if already initialized
-    if (needsGit) {
-      goToNextStep();
-    } else {
-      skipToStep('autoclaude');
-    }
-  }, [goToNextStep, skipToStep]);
+    // Always go to git step first
+    goToNextStep();
+  }, [goToNextStep]);
 
   const handleProjectCreated = useCallback((project: Project, initWithGit: boolean) => {
     setState(prev => ({
@@ -193,6 +192,17 @@ export function ProjectWizard({
   }, [goToNextStep]);
 
   const handleGitSkip = useCallback(() => {
+    goToNextStep();
+  }, [goToNextStep]);
+
+  const handleProviderSelection = useCallback((selection: { github: boolean; gitlab: boolean }) => {
+    setState(prev => ({
+      ...prev,
+      showGitHub: selection.github,
+      showGitLab: selection.gitlab
+    }));
+
+    // Move to autoclaude step (provider step dynamically adds integration steps)
     goToNextStep();
   }, [goToNextStep]);
 
@@ -296,6 +306,13 @@ export function ProjectWizard({
             onBack={goToPreviousStep}
           />
         );
+      case 'provider':
+        return (
+          <ProviderSelectionStep
+            onComplete={handleProviderSelection}
+            onBack={goToPreviousStep}
+          />
+        );
       case 'autoclaude':
         return (
           <AutoClaudeStep
@@ -340,8 +357,8 @@ export function ProjectWizard({
     }
   };
 
-  // Check if we should show progress indicator (hide for project, project-new, and complete steps)
-  const showProgress = currentStepId !== 'project' && currentStepId !== 'project-new' && currentStepId !== 'complete';
+  // Check if we should show progress indicator (hide for project, project-new, provider, and complete steps)
+  const showProgress = currentStepId !== 'project' && currentStepId !== 'project-new' && currentStepId !== 'provider' && currentStepId !== 'complete';
 
   return (
     <FullScreenDialog open={open} onOpenChange={handleOpenChange}>
