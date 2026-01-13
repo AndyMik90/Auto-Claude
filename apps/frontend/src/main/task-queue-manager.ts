@@ -226,6 +226,11 @@ export class TaskQueueManager {
 
   /**
    * Check if the queue can start more tasks for a project
+   *
+   * NOTE: Uses agentManager.getRunningTasks() instead of task status because
+   * status updates happen asynchronously via Python processes. Relying on
+   * task.status === 'in_progress' creates a race condition where the queue
+   * starts multiple tasks before status propagates, exceeding maxConcurrent.
    */
   canStartMoreTasks(projectId: string): boolean {
     const config = this.getQueueConfig(projectId);
@@ -234,7 +239,20 @@ export class TaskQueueManager {
     }
 
     const status = this.getQueueStatus(projectId);
-    return status.runningCount < status.maxConcurrent && status.backlogCount > 0;
+    // Count running tasks from agent process state (immediate, in-memory)
+    // rather than task status (eventually-consistent via file I/O)
+    const runningTaskIds = this.agentManager.getRunningTasks();
+    const project = projectStore.getProject(projectId);
+    if (!project) {
+      return false;
+    }
+    const tasks = projectStore.getTasks(projectId);
+    // Count tasks that are both in the project AND actually running
+    const runningTasksInProject = tasks.filter(t =>
+      runningTaskIds.includes(t.id)
+    ).length;
+
+    return runningTasksInProject < status.maxConcurrent && status.backlogCount > 0;
   }
 
   /**
