@@ -480,6 +480,7 @@ export const IPC_CHANNELS = {
   APP_UPDATE_DOWNLOAD_STABLE: 'app-update:download-stable',  // Download stable version (for downgrade from beta)
   APP_UPDATE_INSTALL: 'app-update:install',
   APP_UPDATE_GET_VERSION: 'app-update:get-version',
+  APP_UPDATE_GET_DOWNLOADED: 'app-update:get-downloaded',  // Get downloaded update info (for showing Install button on Settings open)
 
   // App auto-update events (main -> renderer)
   APP_UPDATE_AVAILABLE: 'app-update:available',
