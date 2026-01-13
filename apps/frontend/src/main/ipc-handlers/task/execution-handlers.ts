@@ -9,7 +9,7 @@ import { AgentManager } from '../../agent';
 import { fileWatcher } from '../../file-watcher';
 import { findTaskAndProject } from './shared';
 import { checkGitStatus } from '../../project-initializer';
-import { getClaudeProfileManager } from '../../claude-profile-manager';
+import { initializeClaudeProfileManager, type ClaudeProfileManager } from '../../claude-profile-manager';
 import {
   getPlanPath,
   persistPlanStatus,
@@ -75,6 +75,30 @@ function checkSubtasksCompletion(plan: Record<string, unknown> | null): {
 }
 
 /**
+ * Helper function to ensure profile manager is initialized.
+ * Returns a discriminated union for type-safe error handling.
+ *
+ * @returns Success with profile manager, or failure with error message
+ */
+async function ensureProfileManagerInitialized(): Promise<
+  | { success: true; profileManager: ClaudeProfileManager }
+  | { success: false; error: string }
+> {
+  try {
+    const profileManager = await initializeClaudeProfileManager();
+    return { success: true, profileManager };
+  } catch (error) {
+    console.error('[ensureProfileManagerInitialized] Failed to initialize:', error);
+    // Include actual error details for debugging while providing actionable guidance
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: `Failed to initialize profile manager. Please check file permissions and disk space. (${errorMessage})`
+    };
+  }
+}
+
+/**
  * Register task execution handlers (start, stop, review, status management, recovery)
  */
 export function registerTaskExecutionHandlers(
@@ -86,13 +110,26 @@ export function registerTaskExecutionHandlers(
    */
   ipcMain.on(
     IPC_CHANNELS.TASK_START,
-    (_, taskId: string, _options?: TaskStartOptions) => {
+    async (_, taskId: string, _options?: TaskStartOptions) => {
       console.warn('[TASK_START] Received request for taskId:', taskId);
       const mainWindow = getMainWindow();
       if (!mainWindow) {
         console.warn('[TASK_START] No main window found');
         return;
       }
+
+      // Ensure profile manager is initialized before checking auth
+      // This prevents race condition where auth check runs before profile data loads from disk
+      const initResult = await ensureProfileManagerInitialized();
+      if (!initResult.success) {
+        mainWindow.webContents.send(
+          IPC_CHANNELS.TASK_ERROR,
+          taskId,
+          initResult.error
+        );
+        return;
+      }
+      const profileManager = initResult.profileManager;
 
       // Find task and project
       const { task, project } = findTaskAndProject(taskId);
@@ -129,7 +166,6 @@ export function registerTaskExecutionHandlers(
       }
 
       // Check authentication - Claude requires valid auth to run tasks
-      const profileManager = getClaudeProfileManager();
       if (!profileManager.hasValidAuth()) {
         console.warn('[TASK_START] No valid authentication for active profile');
         mainWindow.webContents.send(
@@ -665,7 +701,19 @@ export function registerTaskExecutionHandlers(
           }
 
           // Check authentication before auto-starting
-          const profileManager = getClaudeProfileManager();
+          // Ensure profile manager is initialized to prevent race condition
+          const initResult = await ensureProfileManagerInitialized();
+          if (!initResult.success) {
+            if (mainWindow) {
+              mainWindow.webContents.send(
+                IPC_CHANNELS.TASK_ERROR,
+                taskId,
+                initResult.error
+              );
+            }
+            return { success: false, error: initResult.error };
+          }
+          const profileManager = initResult.profileManager;
           if (!profileManager.hasValidAuth()) {
             console.warn('[TASK_UPDATE_STATUS] No valid authentication for active profile');
             if (mainWindow) {
@@ -996,7 +1044,22 @@ export function registerTaskExecutionHandlers(
           }
 
           // Check authentication before auto-restarting
-          const profileManager = getClaudeProfileManager();
+          // Ensure profile manager is initialized to prevent race condition
+          const initResult = await ensureProfileManagerInitialized();
+          if (!initResult.success) {
+            // Recovery succeeded but we can't restart without profile manager
+            return {
+              success: true,
+              data: {
+                taskId,
+                recovered: true,
+                newStatus,
+                message: `Task recovered but cannot restart: ${initResult.error}`,
+                autoRestarted: false
+              }
+            };
+          }
+          const profileManager = initResult.profileManager;
           if (!profileManager.hasValidAuth()) {
             console.warn('[Recovery] Auth check failed, cannot auto-restart task');
             // Recovery succeeded but we can't restart without auth
