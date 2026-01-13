@@ -652,7 +652,10 @@ class WorktreeManager:
         result = self._run_git(merge_args)
 
         if result.returncode != 0:
-            print("Merge conflict! Aborting merge...")
+            error_detail = (
+                result.stderr.strip() or result.stdout.strip() or "Unknown error"
+            )
+            print(f"Merge failed: {error_detail}")
             self._run_git(["merge", "--abort"])
             return False
 
