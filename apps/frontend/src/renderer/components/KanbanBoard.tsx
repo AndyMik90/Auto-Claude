@@ -40,6 +40,7 @@ interface KanbanBoardProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
   onNewTaskClick?: () => void;
+  showArchived?: boolean;
 }
 
 interface DroppableColumnProps {
@@ -303,7 +304,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
   );
 }, droppableColumnPropsAreEqual);
 
-export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, showArchived = false }: KanbanBoardProps) {
   const { t } = useTranslation(['tasks', 'dialogs', 'common']);
   const { toast } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -349,6 +350,11 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
     };
 
     tasks.forEach((task) => {
+      // Filter out archived tasks when showArchived is false
+      if (!showArchived && task.metadata?.archivedAt) {
+        return;
+      }
+
       // Map pr_created tasks to the done column
       const targetColumn = task.status === 'pr_created' ? 'done' : task.status;
       if (grouped[targetColumn]) {
@@ -366,7 +372,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick }: KanbanBoardP
     });
 
     return grouped;
-  }, [tasks]);
+  }, [tasks, showArchived]);
 
   const handleArchiveAll = async () => {
     // Get projectId from the first task (all tasks should have the same projectId)

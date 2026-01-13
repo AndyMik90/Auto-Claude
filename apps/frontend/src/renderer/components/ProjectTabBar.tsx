@@ -101,7 +101,7 @@ export function ProjectTabBar({
       'overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent',
       className
     )}>
-      <div className="flex items-center flex-1 min-w-0">
+      <div className="flex items-center gap-2 px-2 min-w-0">
         {projects.map((project, index) => {
           const isActiveTab = activeProjectId === project.id;
           return (
@@ -121,10 +121,8 @@ export function ProjectTabBar({
             />
           );
         })}
-      </div>
 
-      <div className="flex items-center gap-2 px-2 py-1">
-        <UsageIndicator />
+        <UsageIndicator className="flex-shrink-0" />
 
         {/* Refresh button */}
         {onRefresh && (
@@ -133,7 +131,7 @@ export function ProjectTabBar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 flex-shrink-0"
                 onClick={onRefresh}
                 disabled={isRefreshing}
                 aria-label={t('accessibility.refreshAriaLabel')}
@@ -155,7 +153,7 @@ export function ProjectTabBar({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "h-8 w-8 relative",
+                  "h-8 w-8 relative flex-shrink-0",
                   showArchived
                     ? "text-primary bg-primary/10 hover:bg-primary/20"
                     : "hover:bg-muted-foreground/10 hover:text-muted-foreground"
@@ -181,7 +179,7 @@ export function ProjectTabBar({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 flex-shrink-0"
               onClick={onAddProject}
               aria-label={t('projectTab.addProjectAriaLabel')}
             >
