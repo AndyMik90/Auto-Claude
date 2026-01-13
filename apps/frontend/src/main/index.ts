@@ -197,9 +197,12 @@ function createWindow(): void {
     minHeight,
     show: false,
     autoHideMenuBar: true,
-    // titleBarStyle: 'hidden', // Disabled native overlay to avoid conflicts
-    // titleBarOverlay: { ... },
-    frame: false, // Frameless for custom Arc-like aesthetic
+    // macOS: Use hidden titleBar to keep traffic lights but hide the standard bar
+    // Windows/Linux: Use frame: false for custom title bar to avoid double title bars
+    // Note: On macOS, frame: false would remove traffic lights unless we specify titleBarStyle: 'hidden'
+    titleBarStyle: process.platform === "darwin" ? "hidden" : undefined,
+    frame: false,
+
     resizable: true, // Enable native resizing behavior
     maximizable: true,
     // Transparency causes issues with native resizing/snapping on Windows

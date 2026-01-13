@@ -22,7 +22,6 @@ import {
 } from "./mocks";
 
 // Check if we're in a browser (not Electron)
-// Check if we're in a browser (not Electron)
 // Lazy check to avoid side effects during module import
 const isElectron = () =>
   typeof window !== "undefined" && window.electronAPI !== undefined;
@@ -319,30 +318,33 @@ const browserMockAPI: ElectronAPI = {
   getClaudeCodeVersions: async () => ({
     success: true,
     data: {
-      versions: ['1.0.5', '1.0.4', '1.0.3', '1.0.2', '1.0.1', '1.0.0']
-    }
+      versions: ["1.0.5", "1.0.4", "1.0.3", "1.0.2", "1.0.1", "1.0.0"],
+    },
   }),
   installClaudeCodeVersion: async (version: string) => ({
     success: true,
-    data: { command: `npm install -g @anthropic-ai/claude-code@${version}`, version }
+    data: {
+      command: `npm install -g @anthropic-ai/claude-code@${version}`,
+      version,
+    },
   }),
   getClaudeCodeInstallations: async () => ({
     success: true,
     data: {
       installations: [
         {
-          path: '/usr/local/bin/claude',
-          version: '1.0.0',
-          source: 'system-path' as const,
+          path: "/usr/local/bin/claude",
+          version: "1.0.0",
+          source: "system-path" as const,
           isActive: true,
-        }
+        },
       ],
-      activePath: '/usr/local/bin/claude',
-    }
+      activePath: "/usr/local/bin/claude",
+    },
   }),
   setClaudeCodeActivePath: async (cliPath: string) => ({
     success: true,
-    data: { path: cliPath }
+    data: { path: cliPath },
   }),
 
   // Terminal Worktree Operations
