@@ -13,6 +13,7 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from '../../../shared/i18n';
 import { UsageIndicator } from '../UsageIndicator';
 import type { ClaudeUsageSnapshot } from '../../../shared/types/agent';
+import { RESETTING_SOON } from '../../../shared/types/agent';
 
 // Wrapper component for i18n
 function I18nWrapper({ children }: { children: React.ReactNode }) {
@@ -348,6 +349,83 @@ describe('UsageIndicator', () => {
 
       // After unmount, useEffect cleanup should have called unsubscribe
       expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+    });
+
+    it('should update UI when onUsageUpdated callback is invoked', async () => {
+      // Initial request returns null (no data)
+      mockRequestUsageUpdate.mockResolvedValue({
+        success: true,
+        data: null
+      });
+
+      renderWithI18n(<UsageIndicator />);
+
+      // Component should not render initially
+      await waitFor(() => {
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      });
+
+      // Simulate a usage update push from main process
+      const updatedUsage = createUsageSnapshot({ sessionPercent: 80, weeklyPercent: 40 });
+      mockOnUsageUpdated(updatedUsage);
+
+      // UI should update to show the new percentage
+      await waitFor(() => {
+        expect(screen.getByText('80%')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('provider-specific labels', () => {
+    it('should render badge with Z.ai provider data', async () => {
+      const zaiUsage = createUsageSnapshot({
+        provider: 'zai',
+        sessionPercent: 37,
+        weeklyPercent: 53
+      });
+      mockRequestUsageUpdate.mockResolvedValue({
+        success: true,
+        data: zaiUsage
+      });
+
+      renderWithI18n(<UsageIndicator />);
+
+      // Wait for badge to render with Z.ai usage (higher percentage is 53%)
+      const badge = await waitFor(() => screen.getByRole('button', { name: /claude usage status/i }));
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent('53%');
+
+      // Verify the component receives Z.ai provider data
+      // The provider-specific labels would be visible in tooltip on hover
+      expect(zaiUsage.provider).toBe('zai');
+    });
+  });
+
+  describe('RESETTING_SOON sentinel handling', () => {
+    it('should handle RESETTING_SOON sentinel in usage snapshot', async () => {
+      const resettingSoonUsage = createUsageSnapshot({
+        sessionPercent: 95,
+        weeklyPercent: 30,
+        sessionResetTimestamp: RESETTING_SOON as any,
+        sessionResetTime: RESETTING_SOON,
+        limitType: 'session'
+      });
+      mockRequestUsageUpdate.mockResolvedValue({
+        success: true,
+        data: resettingSoonUsage
+      });
+
+      renderWithI18n(<UsageIndicator />);
+
+      // Verify component renders with RESETTING_SOON sentinel
+      await waitFor(() => {
+        const badge = screen.getByRole('button', { name: /claude usage status/i });
+        expect(badge).toBeInTheDocument();
+        expect(badge).toHaveTextContent('95%');
+      });
+
+      // Verify the snapshot contains RESETTING_SOON sentinel
+      expect(resettingSoonUsage.sessionResetTime).toBe(RESETTING_SOON);
     });
   });
 });

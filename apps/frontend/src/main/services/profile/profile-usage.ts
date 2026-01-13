@@ -135,9 +135,12 @@ export async function fetchZaiUsage(
 
     const data = (await response.json()) as ZaiQuotaResponse;
 
+    // Guard against malformed response - ensure limits array exists
+    const limits = Array.isArray(data?.data?.limits) ? data.data.limits : [];
+
     // Extract token and tool limits from the response
-    const tokensLimit = data.data.limits.find((limit) => limit.type === 'TOKENS_LIMIT');
-    const timeLimit = data.data.limits.find((limit) => limit.type === 'TIME_LIMIT');
+    const tokensLimit = limits.find((limit) => limit.type === 'TOKENS_LIMIT');
+    const timeLimit = limits.find((limit) => limit.type === 'TIME_LIMIT');
 
     // Use pre-calculated percentages from API
     const tokenPercent = tokensLimit?.percentage ?? 0;

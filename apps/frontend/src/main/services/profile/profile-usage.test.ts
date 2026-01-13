@@ -191,6 +191,22 @@ describe('profile-usage service', () => {
       expect(result).toBeNull();
     });
 
+    it('should return null and log error on AbortError (timeout)', async () => {
+      const abortError = new Error('Aborted');
+      abortError.name = 'AbortError';
+
+      (global.fetch as any).mockRejectedValue(abortError);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await fetchZaiUsage('test-api-key', 'test-profile', 'Test Profile');
+
+      expect(result).toBeNull();
+      expect(consoleSpy).toHaveBeenCalledWith('[profile-usage] Z.ai fetch timed out');
+
+      consoleSpy.mockRestore();
+    });
+
     it('should set correct reset timestamp when nextResetTime is provided', async () => {
       const futureTimestamp = Date.now() + 5 * 60 * 60 * 1000; // 5 hours from now
       const mockResponse = {
