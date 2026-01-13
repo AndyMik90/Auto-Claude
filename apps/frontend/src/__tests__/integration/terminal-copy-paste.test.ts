@@ -98,6 +98,16 @@ describe('Terminal copy/paste integration', () => {
       };
     });
 
+    // Mock requestAnimationFrame
+    global.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
+      return setTimeout(cb, 0) as unknown as number;
+    });
+
+    // Mock cancelAnimationFrame
+    global.cancelAnimationFrame = vi.fn((id: number) => {
+      clearTimeout(id);
+    });
+
     // Mock navigator.clipboard
     mockClipboard = {
       writeText: vi.fn().mockResolvedValue(undefined),
