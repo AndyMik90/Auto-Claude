@@ -124,7 +124,8 @@ export function ProjectWizard({
     if (state.showGitLab) baseSteps.splice(5, 0, 'gitlab');
     return baseSteps;
   };
-  const currentStepId = getAllSteps()[currentStepIndex];
+  const allSteps = getAllSteps();
+  const currentStepId = allSteps[currentStepIndex];
 
   // Build step data for progress indicator
   const steps: WizardStep[] = visibleSteps.map((stepId, index) => {
@@ -141,10 +142,10 @@ export function ProjectWizard({
     // Mark current step as completed
     setCompletedSteps(prev => new Set(prev).add(currentStepId));
 
-    if (currentStepIndex < visibleSteps.length - 1) {
+    if (currentStepIndex < allSteps.length - 1) {
       setCurrentStepIndex(prev => prev + 1);
     }
-  }, [currentStepIndex, currentStepId, visibleSteps.length]);
+  }, [currentStepIndex, currentStepId, allSteps.length]);
 
   const goToPreviousStep = useCallback(() => {
     if (currentStepIndex > 0) {
@@ -195,9 +196,9 @@ export function ProjectWizard({
       showGitLab: selection.gitlab
     }));
 
-    // Move to autoclaude step (provider step dynamically adds integration steps)
-    goToNextStep();
-  }, [goToNextStep]);
+    // Move to autoclaude step directly since provider is at index 3 and autoclaude is at index 4
+    setCurrentStepIndex(4);
+  }, []);
 
   const handleAutoClaudeComplete = useCallback(() => {
     setState(prev => ({ ...prev, autoClaudeInitialized: true }));
