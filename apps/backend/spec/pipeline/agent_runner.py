@@ -12,14 +12,9 @@ from ui.capabilities import configure_safe_encoding
 
 configure_safe_encoding()
 
-from core.client import create_client
+from core.agent_backend import create_agent_backend
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
-from security.tool_input_validator import get_safe_tool_input
-from task_logger import (
-    LogEntryType,
-    LogPhase,
-    TaskLogger,
-)
+from task_logger import LogPhase, TaskLogger
 
 
 class AgentRunner:
@@ -29,7 +24,7 @@ class AgentRunner:
         self,
         project_dir: Path,
         spec_dir: Path,
-        model: str,
+        model: str | None,
         task_logger: TaskLogger | None = None,
     ):
         """Initialize the agent runner.
@@ -110,178 +105,77 @@ class AgentRunner:
                 context_length=len(additional_context),
             )
 
-        # Create client with thinking budget
+        # Create backend with thinking budget
         debug(
             "agent_runner",
-            "Creating Claude SDK client...",
+            "Creating agent backend...",
             thinking_budget=thinking_budget,
         )
-        client = create_client(
-            self.project_dir,
-            self.spec_dir,
-            self.model,
-            max_thinking_tokens=thinking_budget,
-        )
+        agent_type = self._resolve_agent_type(prompt_file)
+        response_text = ""
+        for attempt in range(2):
+            backend = create_agent_backend(
+                self.project_dir,
+                self.spec_dir,
+                self.model,
+                agent_type=agent_type,
+                max_thinking_tokens=thinking_budget,
+            )
 
-        current_tool = None
-        message_count = 0
-        tool_count = 0
-
-        try:
-            async with client:
-                debug("agent_runner", "Sending query to Claude SDK...")
-                await client.query(prompt)
-                debug_success("agent_runner", "Query sent successfully")
-
-                response_text = ""
-                debug("agent_runner", "Starting to receive response stream...")
-                async for msg in client.receive_response():
-                    msg_type = type(msg).__name__
-                    message_count += 1
-                    debug_detailed(
-                        "agent_runner",
-                        f"Received message #{message_count}",
-                        msg_type=msg_type,
+            try:
+                async with backend:
+                    debug("agent_runner", "Running agent backend session...")
+                    status, response_text = await backend.run(
+                        prompt,
+                        self.spec_dir,
+                        interactive,
+                        LogPhase.PLANNING.value,
                     )
 
-                    if msg_type == "AssistantMessage" and hasattr(msg, "content"):
-                        for block in msg.content:
-                            block_type = type(block).__name__
-                            if block_type == "TextBlock" and hasattr(block, "text"):
-                                response_text += block.text
-                                print(block.text, end="", flush=True)
-                                if self.task_logger and block.text.strip():
-                                    self.task_logger.log(
-                                        block.text,
-                                        LogEntryType.TEXT,
-                                        LogPhase.PLANNING,
-                                        print_to_console=False,
-                                    )
-                            elif block_type == "ToolUseBlock" and hasattr(
-                                block, "name"
-                            ):
-                                tool_name = block.name
-                                tool_count += 1
+                    debug_success(
+                        "agent_runner",
+                        "Agent session completed successfully",
+                        status=status,
+                        response_length=len(response_text),
+                    )
+                    if status == "provider_budget_exhausted":
+                        if self.task_logger:
+                            self.task_logger.log_info(
+                                "Provider budget exhausted; retrying with fallback provider",
+                                LogPhase.PLANNING,
+                            )
+                        continue
+                    if status == "blocked_by_budget":
+                        if self.task_logger:
+                            self.task_logger.log_error(
+                                "Agent session blocked by budget",
+                                LogPhase.PLANNING,
+                            )
+                        return False, response_text
+                    return status != "error", response_text
 
-                                # Safely extract tool input (handles None, non-dict, etc.)
-                                inp = get_safe_tool_input(block)
-                                tool_input_display = self._extract_tool_input_display(
-                                    inp
-                                )
-
-                                debug(
-                                    "agent_runner",
-                                    f"Tool call #{tool_count}: {tool_name}",
-                                    tool_input=tool_input_display,
-                                )
-
-                                if self.task_logger:
-                                    self.task_logger.tool_start(
-                                        tool_name,
-                                        tool_input_display,
-                                        LogPhase.PLANNING,
-                                        print_to_console=True,
-                                    )
-                                else:
-                                    print(f"\n[Tool: {tool_name}]", flush=True)
-                                current_tool = tool_name
-
-                    elif msg_type == "UserMessage" and hasattr(msg, "content"):
-                        for block in msg.content:
-                            block_type = type(block).__name__
-                            if block_type == "ToolResultBlock":
-                                is_error = getattr(block, "is_error", False)
-                                result_content = getattr(block, "content", "")
-                                if is_error:
-                                    debug_error(
-                                        "agent_runner",
-                                        f"Tool error: {current_tool}",
-                                        error=str(result_content)[:200],
-                                    )
-                                else:
-                                    debug_detailed(
-                                        "agent_runner",
-                                        f"Tool success: {current_tool}",
-                                        result_length=len(str(result_content)),
-                                    )
-                                if self.task_logger and current_tool:
-                                    detail_content = self._get_tool_detail_content(
-                                        current_tool, result_content
-                                    )
-                                    self.task_logger.tool_end(
-                                        current_tool,
-                                        success=not is_error,
-                                        detail=detail_content,
-                                        phase=LogPhase.PLANNING,
-                                    )
-                                current_tool = None
-
-                print()
-                debug_success(
+            except Exception as e:
+                debug_error(
                     "agent_runner",
-                    "Agent session completed successfully",
-                    message_count=message_count,
-                    tool_count=tool_count,
-                    response_length=len(response_text),
+                    f"Agent session error: {e}",
+                    exception_type=type(e).__name__,
                 )
-                return True, response_text
+                if self.task_logger:
+                    self.task_logger.log_error(f"Agent error: {e}", LogPhase.PLANNING)
+                return False, str(e)
 
-        except Exception as e:
-            debug_error(
-                "agent_runner",
-                f"Agent session error: {e}",
-                exception_type=type(e).__name__,
-            )
-            if self.task_logger:
-                self.task_logger.log_error(f"Agent error: {e}", LogPhase.PLANNING)
-            return False, str(e)
+        return False, response_text
 
     @staticmethod
-    def _extract_tool_input_display(inp: dict) -> str | None:
-        """Extract meaningful tool input for display.
+    def _resolve_agent_type(prompt_file: str) -> str:
+        stem = Path(prompt_file).stem
+        try:
+            from agents.tools_pkg.models import AGENT_CONFIGS
 
-        Args:
-            inp: The tool input dictionary
+            if stem in AGENT_CONFIGS:
+                return stem
+        except Exception:
+            pass
+        return "planner" if "planner" in stem else "coder"
 
-        Returns:
-            A formatted string for display, or None
-        """
-        if not isinstance(inp, dict):
-            return None
-
-        if "pattern" in inp:
-            return f"pattern: {inp['pattern']}"
-        elif "file_path" in inp:
-            fp = inp["file_path"]
-            if len(fp) > 50:
-                fp = "..." + fp[-47:]
-            return fp
-        elif "command" in inp:
-            cmd = inp["command"]
-            if len(cmd) > 50:
-                cmd = cmd[:47] + "..."
-            return cmd
-        elif "path" in inp:
-            return inp["path"]
-
-        return None
-
-    @staticmethod
-    def _get_tool_detail_content(tool_name: str, result_content: str) -> str | None:
-        """Get detail content for specific tools.
-
-        Args:
-            tool_name: The name of the tool
-            result_content: The result content from the tool
-
-        Returns:
-            Detail content if relevant, otherwise None
-        """
-        if tool_name not in ("Read", "Grep", "Bash", "Edit", "Write"):
-            return None
-
-        result_str = str(result_content)
-        if len(result_str) < 50000:
-            return result_str
-
-        return None
+    # Tool detail helpers were previously used by the Claude SDK streaming path.

@@ -6,6 +6,8 @@ import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { AgentQueueManager } from './agent-queue';
 import { getClaudeProfileManager } from '../claude-profile-manager';
+import { loadAutoBuildProvider } from '../auto-build-provider';
+import { checkCodexCliReady } from '../codex-cli-utils';
 import {
   SpecCreationMetadata,
   TaskExecutionOptions,
@@ -84,6 +86,28 @@ export class AgentManager extends EventEmitter {
     this.processManager.configure(pythonPath, autoBuildSourcePath);
   }
 
+  private ensureProviderReady(taskId: string): boolean {
+    const provider = loadAutoBuildProvider();
+
+    if (provider === 'claude' || provider === 'hybrid') {
+      const profileManager = getClaudeProfileManager();
+      if (!profileManager.hasValidAuth()) {
+        this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+        return false;
+      }
+    }
+
+    if (provider === 'codex' || provider === 'hybrid') {
+      const codexCheck = checkCodexCliReady();
+      if (!codexCheck.ok) {
+        this.emit('error', taskId, codexCheck.message || 'Codex CLI not found. Install it and ensure it is on PATH.');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   /**
    * Start spec creation process
    */
@@ -95,10 +119,7 @@ export class AgentManager extends EventEmitter {
     metadata?: SpecCreationMetadata,
     baseBranch?: string
   ): Promise<void> {
-    // Pre-flight auth check: Verify active profile has valid authentication
-    const profileManager = getClaudeProfileManager();
-    if (!profileManager.hasValidAuth()) {
-      this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+    if (!this.ensureProviderReady(taskId)) {
       return;
     }
 
@@ -173,10 +194,7 @@ export class AgentManager extends EventEmitter {
     specId: string,
     options: TaskExecutionOptions = {}
   ): Promise<void> {
-    // Pre-flight auth check: Verify active profile has valid authentication
-    const profileManager = getClaudeProfileManager();
-    if (!profileManager.hasValidAuth()) {
-      this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+    if (!this.ensureProviderReady(taskId)) {
       return;
     }
 
@@ -234,6 +252,10 @@ export class AgentManager extends EventEmitter {
     projectPath: string,
     specId: string
   ): Promise<void> {
+    if (!this.ensureProviderReady(taskId)) {
+      return;
+    }
+
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
 
     if (!autoBuildSource) {
@@ -402,7 +424,7 @@ export class AgentManager extends EventEmitter {
     console.log('[AgentManager] Incremented swap count to:', context.swapCount);
 
     // If a new profile was specified, ensure it's set as active before restart
-    if (newProfileId) {
+    if (newProfileId && loadAutoBuildProvider() !== 'codex') {
       const profileManager = getClaudeProfileManager();
       const currentActiveId = profileManager.getActiveProfile()?.id;
       if (currentActiveId !== newProfileId) {
