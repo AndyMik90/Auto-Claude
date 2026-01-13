@@ -10,8 +10,6 @@ import {
   BookOpen,
   Lightbulb,
   AlertCircle,
-  Download,
-  RefreshCw,
   Github,
   GitlabIcon,
   GitPullRequest,
@@ -42,11 +40,10 @@ import {
 import { cn } from '../lib/utils';
 import {
   useProjectStore,
-  removeProject,
-  initializeProject
+  removeProject
 } from '../stores/project-store';
 import { useSettingsStore } from '../stores/settings-store';
-import { AddProjectModal } from './AddProjectModal';
+import { ProjectWizard } from './project-wizard/ProjectWizard';
 import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
@@ -105,12 +102,9 @@ export function Sidebar({
   const selectProject = useProjectStore((state) => state.selectProject);
   const settings = useSettingsStore((state) => state.settings);
 
-  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
-  const [showInitDialog, setShowInitDialog] = useState(false);
+  const [showProjectWizard, setShowProjectWizard] = useState(false);
   const [showGitSetupModal, setShowGitSetupModal] = useState(false);
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
-  const [pendingProject, setPendingProject] = useState<Project | null>(null);
-  const [isInitializing, setIsInitializing] = useState(false);
   const [envConfig, setEnvConfig] = useState<ProjectEnvConfig | null>(null);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -209,37 +203,13 @@ export function Sidebar({
   }, [selectedProject]);
 
   const handleAddProject = () => {
-    setShowAddProjectModal(true);
+    setShowProjectWizard(true);
   };
 
-  const handleProjectAdded = (project: Project, needsInit: boolean) => {
-    if (needsInit) {
-      setPendingProject(project);
-      setShowInitDialog(true);
-    }
-  };
-
-  const handleInitialize = async () => {
-    if (!pendingProject) return;
-
-    const projectId = pendingProject.id;
-    setIsInitializing(true);
-    try {
-      const result = await initializeProject(projectId);
-      if (result?.success) {
-        // Clear pendingProject FIRST before closing dialog
-        // This prevents onOpenChange from triggering skip logic
-        setPendingProject(null);
-        setShowInitDialog(false);
-      }
-    } finally {
-      setIsInitializing(false);
-    }
-  };
-
-  const handleSkipInit = () => {
-    setShowInitDialog(false);
-    setPendingProject(null);
+  const handleWizardProjectAdded = (project: Project) => {
+    // ProjectWizard handles everything internally, just select the project
+    selectProject(project.id);
+    setShowProjectWizard(false);
   };
 
   const handleGitInitialized = async () => {
@@ -381,78 +351,14 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Initialize Auto Claude Dialog */}
-      <Dialog open={showInitDialog} onOpenChange={(open) => {
-        // Only allow closing if user manually closes (not during initialization)
-        if (!open && !isInitializing) {
-          handleSkipInit();
-        }
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5" />
-              {t('dialogs:initialize.title')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('dialogs:initialize.description')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="font-medium mb-2">{t('dialogs:initialize.willDo')}</p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>{t('dialogs:initialize.createFolder')}</li>
-                <li>{t('dialogs:initialize.copyFramework')}</li>
-                <li>{t('dialogs:initialize.setupSpecs')}</li>
-              </ul>
-            </div>
-            {!settings.autoBuildPath && (
-              <div className="mt-4 rounded-lg border border-warning/50 bg-warning/10 p-4 text-sm">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-medium text-warning">{t('dialogs:initialize.sourcePathNotConfigured')}</p>
-                    <p className="text-muted-foreground mt-1">
-                      {t('dialogs:initialize.sourcePathNotConfiguredDescription')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleSkipInit} disabled={isInitializing}>
-              {t('common:buttons.skip')}
-            </Button>
-            <Button
-              onClick={handleInitialize}
-              disabled={isInitializing || !settings.autoBuildPath}
-            >
-              {isInitializing ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  {t('common:labels.initializing')}
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  {t('common:buttons.initialize')}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Project Modal */}
-      <AddProjectModal
-        open={showAddProjectModal}
-        onOpenChange={setShowAddProjectModal}
-        onProjectAdded={handleProjectAdded}
+      {/* Add Project Wizard - unified project creation */}
+      <ProjectWizard
+        open={showProjectWizard}
+        onOpenChange={setShowProjectWizard}
+        onProjectAdded={handleWizardProjectAdded}
       />
 
-      {/* Git Setup Modal */}
+      {/* Git Setup Modal - for existing projects that need git setup */}
       <GitSetupModal
         open={showGitSetupModal}
         onOpenChange={setShowGitSetupModal}

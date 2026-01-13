@@ -64,6 +64,7 @@ import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../s
 import type { Task, Project, ColorTheme } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
 import { AddProjectModal } from './components/AddProjectModal';
+import { ProjectWizard } from './components/project-wizard/ProjectWizard';
 import { ViewStateProvider } from './contexts/ViewStateContext';
 
 // Wrapper component for ProjectTabBar
@@ -130,6 +131,12 @@ export function App() {
   const [isOnboardingWizardOpen, setIsOnboardingWizardOpen] = useState(false);
   const [isRefreshingTasks, setIsRefreshingTasks] = useState(false);
 
+  // Project Wizard state (new unified wizard)
+  const [showProjectWizard, setShowProjectWizard] = useState(false);
+
+  // Legacy modal state (kept for backward compatibility during migration)
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+
   // Initialize dialog state
   const [showInitDialog, setShowInitDialog] = useState(false);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
@@ -137,7 +144,6 @@ export function App() {
   const [initSuccess, setInitSuccess] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [skippedInitProjectId, setSkippedInitProjectId] = useState<string | null>(null);
-  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
 
   // GitHub setup state (shown after Auto Claude init)
   const [showGitHubSetup, setShowGitHubSetup] = useState(false);
@@ -565,7 +571,8 @@ export function App() {
   };
 
   const handleAddProject = () => {
-    setShowAddProjectModal(true);
+    // Use the new unified ProjectWizard
+    setShowProjectWizard(true);
   };
 
   const handleProjectAdded = (project: Project, needsInit: boolean) => {
@@ -576,6 +583,14 @@ export function App() {
       setInitSuccess(false);
       setShowInitDialog(true);
     }
+  };
+
+  // Handler for the new ProjectWizard (replaces the old modal flow)
+  const handleWizardProjectAdded = (project: Project) => {
+    openProjectTab(project.id);
+    setShowProjectWizard(false);
+    // Refresh projects to get updated data
+    loadProjects();
   };
 
   const handleProjectTabSelect = (projectId: string) => {
@@ -934,14 +949,14 @@ export function App() {
           }}
         />
 
-        {/* Add Project Modal */}
-        <AddProjectModal
-          open={showAddProjectModal}
-          onOpenChange={setShowAddProjectModal}
-          onProjectAdded={handleProjectAdded}
+        {/* Add Project Modal - Use new unified ProjectWizard */}
+        <ProjectWizard
+          open={showProjectWizard}
+          onOpenChange={setShowProjectWizard}
+          onProjectAdded={handleWizardProjectAdded}
         />
 
-        {/* Initialize Auto Claude Dialog */}
+        {/* Initialize Auto Claude Dialog (legacy - kept for backward compatibility) */}
         <Dialog open={showInitDialog} onOpenChange={(open) => {
           console.log('[InitDialog] onOpenChange called', { open, pendingProject: !!pendingProject, isInitializing, initSuccess });
           // Only trigger skip if user manually closed the dialog
