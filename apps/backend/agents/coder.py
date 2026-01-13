@@ -596,20 +596,34 @@ CRITICAL: Mark feedback as read when you have FULLY ADDRESSED it in any way:
                         message="Planning failed: no valid implementation plan created",
                     )
 
-                # Update status to error in implementation plan so frontend shows error state
+                # Update status in implementation plan so frontend shows error state correctly
+                # Use human_review with reviewReason='errors' as frontend doesn't have 'error' status
                 plan_file = spec_dir / "implementation_plan.json"
                 if plan_file.exists():
                     try:
                         with open(plan_file) as f:
                             plan_data = json.load(f)
-                        plan_data["status"] = "error"
+                        plan_data["status"] = "human_review"
+                        plan_data["reviewReason"] = "errors"
                         plan_data["planStatus"] = "error"
                         plan_data["error_message"] = (
-                            "Planning failed: no valid implementation plan created. Please review and improve the spec.md file."
+                            "❌ PLANNING FAILED: The planner agent did not create any subtasks.\n\n"
+                            "This usually happens when:\n"
+                            "  • The spec.md is too vague or lacks clear requirements\n"
+                            "  • The planner encountered errors during codebase investigation\n"
+                            "  • The agent hit token limits before completing the plan\n\n"
+                            "Next steps:\n"
+                            f"  1. Review and improve: {spec_dir / 'spec.md'}\n"
+                            "  2. Ensure the spec includes clear requirements and acceptance criteria\n"
+                            "  3. Delete this task and create a new one with an improved spec\n"
                         )
                         plan_data["updated_at"] = datetime.now().isoformat()
                         with open(plan_file, "w") as f:
                             json.dump(plan_data, f, indent=2)
+                        print()
+                        print_status(
+                            "Task status updated to show planning error in UI", "info"
+                        )
                     except (OSError, json.JSONDecodeError) as e:
                         print_status(
                             f"Warning: Could not update plan status: {e}", "warning"
