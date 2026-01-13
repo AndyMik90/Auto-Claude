@@ -130,7 +130,7 @@ export class TaskQueueManager {
 
   /**
    * Prune stale entries from the processing queue.
-   * Removes entries that are older than QUEUE_TTL_MS or exceed MAX_QUEUE_DEPTH.
+   * Removes entries that are older than QUEUE_TTL_MS or at/above MAX_QUEUE_DEPTH.
    */
   private pruneProcessingQueue(): void {
     const now = Date.now();
@@ -138,8 +138,8 @@ export class TaskQueueManager {
 
     for (const [projectId, entry] of this.processingQueue.entries()) {
       const age = now - entry.lastUpdated;
-      // Remove if entry is stale or depth is too large
-      if (age > QUEUE_TTL_MS || entry.depth > MAX_QUEUE_DEPTH) {
+      // Remove if entry is stale or depth is at/above max (capped at MAX_QUEUE_DEPTH by executeInChain)
+      if (age > QUEUE_TTL_MS || entry.depth >= MAX_QUEUE_DEPTH) {
         this.processingQueue.delete(projectId);
       }
     }

@@ -169,6 +169,17 @@ export async function loadQueueConfig(projectId: string): Promise<QueueConfig | 
 }
 
 /**
+ * Helper to rollback optimistic config update when no previous config exists.
+ * Clears the projectId entry from the configs map.
+ */
+function rollbackOptimisticConfig(projectId: string): void {
+  const currentState = useQueueStore.getState();
+  const newConfigs = { ...currentState.configs };
+  delete newConfigs[projectId];
+  useQueueStore.setState({ configs: newConfigs });
+}
+
+/**
  * Save queue configuration for a project
  * Uses optimistic update with rollback on failure
  */
@@ -190,11 +201,7 @@ export async function saveQueueConfig(projectId: string, config: QueueConfig): P
       if (previousConfig) {
         store.setQueueConfig(projectId, previousConfig);
       } else {
-        // If there was no previous config, clear the optimistic update
-        const currentState = useQueueStore.getState();
-        const newConfigs = { ...currentState.configs };
-        delete newConfigs[projectId];
-        useQueueStore.setState({ configs: newConfigs });
+        rollbackOptimisticConfig(projectId);
       }
       debugError('[QueueStore] Failed to save queue config, rolled back renderer state');
       return false;
@@ -204,11 +211,7 @@ export async function saveQueueConfig(projectId: string, config: QueueConfig): P
     if (previousConfig) {
       store.setQueueConfig(projectId, previousConfig);
     } else {
-      // If there was no previous config, clear the optimistic update
-      const currentState = useQueueStore.getState();
-      const newConfigs = { ...currentState.configs };
-      delete newConfigs[projectId];
-      useQueueStore.setState({ configs: newConfigs });
+      rollbackOptimisticConfig(projectId);
     }
     debugError('[QueueStore] Failed to save queue config:', error);
     return false;
