@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, ChevronDown, ChevronUp, RotateCcw, FolderTree, GitBranch, Camera } from 'lucide-react';
+import { generateImageId } from './ImageUpload';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import {
@@ -119,6 +120,44 @@ export function TaskCreationWizard({
     startPos: number;
     position: { top: number; left: number };
   } | null>(null);
+
+  // Helper function to create thumbnail from data URL
+  const createThumbnailFromDataUrl = (dataUrl: string, maxSize = 200): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Scale down to maxSize while maintaining aspect ratio
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        } else {
+          resolve(dataUrl); // Fallback to original if canvas fails
+        }
+      };
+      img.onerror = () => resolve(dataUrl); // Fallback to original on error
+      img.src = dataUrl;
+    });
+  };
 
   // Load draft when dialog opens
   useEffect(() => {
@@ -652,8 +691,21 @@ export function TaskCreationWizard({
     <ScreenshotCapture
       open={showScreenshotCapture}
       onOpenChange={setShowScreenshotCapture}
-      onCapture={(imageData) => {
-        setImages((prev) => [...prev, imageData]);
+      onCapture={async (imageData: string, filename: string) => {
+        // Create thumbnail from screenshot
+        const thumbnail = await createThumbnailFromDataUrl(imageData, 200);
+
+        // Create ImageAttachment object
+        const imageAttachment: ImageAttachment = {
+          id: generateImageId(),
+          filename,
+          mimeType: 'image/png',
+          size: Math.round((imageData.length * 3) / 4), // Approximate base64 to bytes
+          data: imageData.split(',')[1], // Store base64 without data URL prefix
+          thumbnail
+        };
+
+        setImages((prev) => [...prev, imageAttachment]);
       }}
     />
     </>

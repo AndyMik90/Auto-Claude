@@ -766,6 +766,14 @@ export interface ElectronAPI {
     }) => void
   ) => () => void;
 
+  // Screenshot capture operations
+  getSources: () => Promise<IPCResult<Array<{
+    id: string;
+    name: string;
+    thumbnail: string;
+  }>>>;
+  captureScreen: (sourceId: string) => Promise<IPCResult<string>>;
+
   // GitHub API (nested for organized access)
   github: import('../../preload/api/modules/github-api').GitHubAPI;
 

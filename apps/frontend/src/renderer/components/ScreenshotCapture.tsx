@@ -49,7 +49,7 @@ export function ScreenshotCapture({
       if (result.success && result.data) {
         setSources(result.data);
         // Auto-select the first screen (usually the primary display)
-        const firstScreen = result.data.find(s => s.name.includes('Screen') || s.name.includes('Display'));
+        const firstScreen = result.data.find((s: { id: string; name: string; thumbnail: string }) => s.name.includes('Screen') || s.name.includes('Display'));
         if (firstScreen) {
           setSelectedSource(firstScreen.id);
         } else if (result.data.length > 0) {
