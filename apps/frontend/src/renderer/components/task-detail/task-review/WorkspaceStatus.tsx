@@ -358,15 +358,15 @@ export function WorkspaceStatus({
         {/* Branch Behind Details (no explicit conflicts but needs AI merge due to path mappings) */}
         {!hasGitConflicts && isBranchBehind && mergePreview?.gitConflicts && (
           <div className="text-xs text-muted-foreground pl-6">
-            {mergePreview.gitConflicts.baseBranch} branch has {commitsBehind} new commit{commitsBehind !== 1 ? 's' : ''} since this build started.
+            {t('taskReview:merge.branchHasNewCommitsSinceBuild', { branch: mergePreview.gitConflicts.baseBranch, count: commitsBehind })}
             {hasPathMappedMerges ? (
               <span className="text-warning">
-                {' '}{pathMappedAIMergeCount} file{pathMappedAIMergeCount !== 1 ? 's' : ''} need AI merge due to {totalRenames} file rename{totalRenames !== 1 ? 's' : ''}.
+                {' '}{t('taskReview:merge.filesNeedAIMergeDueToRenames', { fileCount: pathMappedAIMergeCount, renameCount: totalRenames, count: pathMappedAIMergeCount })}
               </span>
             ) : totalRenames > 0 ? (
-              <span className="text-warning"> {totalRenames} file rename{totalRenames !== 1 ? 's' : ''} detected - AI will handle the merge.</span>
+              <span className="text-warning"> {t('taskReview:merge.fileRenamesDetected', { count: totalRenames })}</span>
             ) : (
-              <span className="text-warning"> Files may have been renamed or moved - AI will handle the merge.</span>
+              <span className="text-warning"> {t('taskReview:merge.filesRenamedOrMoved')}</span>
             )}
           </div>
         )}
