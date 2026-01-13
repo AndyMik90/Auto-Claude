@@ -56,13 +56,15 @@ export class UsageMonitor extends EventEmitter {
 
   /**
    * Start monitoring usage at configured interval
+   * Always runs to provide usage data for the badge
+   * Proactive swapping only occurs when enabled in settings
    */
   start(): void {
     const profileManager = getClaudeProfileManager();
     const settings = profileManager.getAutoSwitchSettings();
 
-    if (!settings.enabled || !settings.proactiveSwapEnabled) {
-      console.warn('[UsageMonitor] Proactive monitoring disabled. Settings:', JSON.stringify(settings, null, 2));
+    if (!settings.enabled) {
+      console.warn('[UsageMonitor] Usage monitoring disabled. Settings:', JSON.stringify(settings, null, 2));
       return;
     }
 
@@ -72,7 +74,8 @@ export class UsageMonitor extends EventEmitter {
     }
 
     const interval = settings.usageCheckInterval || 30000;
-    console.warn('[UsageMonitor] Starting with interval:', interval, 'ms');
+    console.warn('[UsageMonitor] Starting with interval:', interval, 'ms',
+      'Proactive swap:', settings.proactiveSwapEnabled ? 'enabled' : 'disabled');
 
     // Check immediately
     this.checkUsageAndSwap();
@@ -144,7 +147,8 @@ export class UsageMonitor extends EventEmitter {
         const sessionExceeded = usage.sessionPercent >= settings.sessionThreshold;
         const weeklyExceeded = usage.weeklyPercent >= settings.weeklyThreshold;
 
-        if (sessionExceeded || weeklyExceeded) {
+        // Only perform proactive swap if enabled in settings
+        if (settings.proactiveSwapEnabled && (sessionExceeded || weeklyExceeded)) {
           if (this.isDebug) {
             console.warn('[UsageMonitor:TRACE] Threshold exceeded', {
               sessionPercent: usage.sessionPercent,
