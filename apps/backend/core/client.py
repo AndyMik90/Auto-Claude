@@ -138,7 +138,15 @@ def _get_claude_detection_paths() -> dict[str, list[str]]:
     Get all candidate paths for Claude CLI detection.
 
     Returns platform-specific paths where Claude CLI might be installed.
-    Mirrors the frontend's getClaudeDetectionPaths() function.
+
+    IMPORTANT: This function mirrors the frontend's getClaudeDetectionPaths()
+    in apps/frontend/src/main/cli-tool-manager.ts. Both implementations MUST
+    be kept in sync to ensure consistent detection behavior across the
+    Python backend and Electron frontend.
+
+    When adding new detection paths, update BOTH:
+    1. This function (_get_claude_detection_paths in client.py)
+    2. getClaudeDetectionPaths() in cli-tool-manager.ts
 
     Returns:
         Dict with 'homebrew', 'platform', and 'nvm' path lists
@@ -174,17 +182,59 @@ def _get_claude_detection_paths() -> dict[str, list[str]]:
     }
 
 
+def _is_secure_path(path_str: str) -> bool:
+    """
+    Validate that a path doesn't contain dangerous characters.
+
+    Prevents command injection attacks by rejecting paths with shell metacharacters,
+    directory traversal patterns, or environment variable expansion.
+
+    Args:
+        path_str: Path to validate
+
+    Returns:
+        True if the path is safe, False otherwise
+    """
+    import re
+
+    dangerous_patterns = [
+        r'[;&|`${}[\]<>!"^]',  # Shell metacharacters
+        r"%[^%]+%",  # Windows environment variable expansion
+        r"\.\./",  # Unix directory traversal
+        r"\.\.\\",  # Windows directory traversal
+        r"[\r\n]",  # Newlines (command injection)
+    ]
+
+    for pattern in dangerous_patterns:
+        if re.search(pattern, path_str):
+            return False
+
+    return True
+
+
 def _validate_claude_cli(cli_path: str) -> tuple[bool, str | None]:
     """
     Validate that a Claude CLI path is executable and returns a version.
+
+    Includes security validation to prevent command injection attacks.
 
     Args:
         cli_path: Path to the Claude CLI executable
 
     Returns:
         Tuple of (is_valid, version_string or None)
+
+    Note:
+        Cross-references with frontend's validateClaudeCliAsync() in
+        apps/frontend/src/main/ipc-handlers/claude-code-handlers.ts
+        Both should be kept in sync for consistent behavior.
     """
     import re
+
+    # Security validation: reject paths with shell metacharacters or directory traversal
+    if not _is_secure_path(cli_path):
+        logger.warning(f"Rejecting insecure Claude CLI path: {cli_path}")
+        return False, None
 
     try:
         is_windows = platform.system() == "Windows"

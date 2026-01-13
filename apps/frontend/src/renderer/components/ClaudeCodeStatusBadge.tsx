@@ -579,10 +579,11 @@ export function ClaudeCodeStatusBadge({ className }: ClaudeCodeStatusBadgeProps)
                     >
                       <div className="flex flex-col">
                         <span className="font-mono text-[10px] truncate max-w-[180px]" title={installation.path}>
-                          {installation.path.split('/').slice(-2).join('/') || installation.path}
+                          {/* Split on both path separators for cross-platform compatibility */}
+                          {installation.path.split(/[/\\]/).slice(-2).join('/') || installation.path}
                         </span>
                         <span className="text-muted-foreground text-[9px]">
-                          v{installation.version} ({installation.source})
+                          {installation.version ? `v${installation.version}` : t("navigation:claudeCode.versionUnknown", "version unknown")} ({installation.source})
                           {installation.isActive && ` - ${t("navigation:claudeCode.activeInstallation", "Active")}`}
                         </span>
                       </div>

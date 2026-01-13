@@ -13,11 +13,12 @@ import { existsSync, promises as fsPromises } from 'fs';
 import path from 'path';
 import os from 'os';
 import { promisify } from 'util';
-import { IPC_CHANNELS } from '../../shared/constants/ipc';
+import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationInfo } from '../../shared/types/cli';
-import { getToolInfo, configureTools, sortNvmVersionDirs } from '../cli-tool-manager';
+import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
+import { isSecurePath } from '../utils/windows-paths';
 import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
@@ -75,20 +76,30 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
     const version = String(stdout).trim();
     const match = version.match(/(\d+\.\d+\.\d+)/);
     return [true, match ? match[1] : version.split('\n')[0]];
-  } catch {
+  } catch (error) {
+    // Log validation errors to help debug CLI detection issues
+    console.warn('[Claude Code] CLI validation failed for', cliPath, ':', error);
     return [false, null];
   }
 }
 
 /**
- * Scan all known locations for Claude CLI installations
- * Returns all found installations with their paths, versions, and sources
+ * Scan all known locations for Claude CLI installations.
+ * Returns all found installations with their paths, versions, and sources.
+ *
+ * Uses getClaudeDetectionPaths() from cli-tool-manager.ts as the single source
+ * of truth for detection paths to avoid duplication and ensure consistency.
+ *
+ * @see cli-tool-manager.ts getClaudeDetectionPaths() for path configuration
  */
 async function scanClaudeInstallations(activePath: string | null): Promise<ClaudeInstallationInfo[]> {
   const installations: ClaudeInstallationInfo[] = [];
   const seenPaths = new Set<string>();
   const homeDir = os.homedir();
   const isWindows = process.platform === 'win32';
+
+  // Get detection paths from cli-tool-manager (single source of truth)
+  const detectionPaths = getClaudeDetectionPaths(homeDir);
 
   const addInstallation = async (
     cliPath: string,
@@ -99,6 +110,12 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
     if (seenPaths.has(normalizedPath)) return;
 
     if (!existsSync(cliPath)) return;
+
+    // Security validation: reject paths with shell metacharacters or directory traversal
+    if (!isSecurePath(cliPath)) {
+      console.warn('[Claude Code] Rejecting insecure path:', cliPath);
+      return;
+    }
 
     const [isValid, version] = await validateClaudeCliAsync(cliPath);
     if (!isValid) return;
@@ -136,53 +153,43 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
     // which/where failed, continue with other methods
   }
 
-  // 3. Homebrew paths (macOS)
+  // 3. Homebrew paths (macOS) - from getClaudeDetectionPaths
   if (process.platform === 'darwin') {
-    const homebrewPaths = [
-      '/opt/homebrew/bin/claude', // Apple Silicon
-      '/usr/local/bin/claude',    // Intel Mac
-    ];
-    for (const p of homebrewPaths) {
+    for (const p of detectionPaths.homebrewPaths) {
       await addInstallation(p, 'homebrew');
     }
   }
 
   // 4. NVM paths (Unix) - check Node.js version manager
-  if (!isWindows) {
-    const nvmDir = path.join(homeDir, '.nvm', 'versions', 'node');
-    if (existsSync(nvmDir)) {
-      try {
-        const entries = await fsPromises.readdir(nvmDir, { withFileTypes: true });
-        const versionDirs = sortNvmVersionDirs(entries);
-        for (const versionName of versionDirs) {
-          const nvmClaudePath = path.join(nvmDir, versionName, 'bin', 'claude');
-          await addInstallation(nvmClaudePath, 'nvm');
-        }
-      } catch {
-        // Failed to read NVM directory
+  if (!isWindows && existsSync(detectionPaths.nvmVersionsDir)) {
+    try {
+      const entries = await fsPromises.readdir(detectionPaths.nvmVersionsDir, { withFileTypes: true });
+      const versionDirs = sortNvmVersionDirs(entries);
+      for (const versionName of versionDirs) {
+        const nvmClaudePath = path.join(detectionPaths.nvmVersionsDir, versionName, 'bin', 'claude');
+        await addInstallation(nvmClaudePath, 'nvm');
       }
+    } catch {
+      // Failed to read NVM directory
     }
   }
 
-  // 5. Platform-specific standard locations
-  const platformPaths = isWindows
-    ? [
-        path.join(homeDir, 'AppData', 'Local', 'Programs', 'claude', 'claude.exe'),
-        path.join(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
-        path.join(homeDir, '.local', 'bin', 'claude.exe'),
-        'C:\\Program Files\\Claude\\claude.exe',
-        'C:\\Program Files (x86)\\Claude\\claude.exe',
-      ]
+  // 5. Platform-specific standard locations - from getClaudeDetectionPaths
+  for (const p of detectionPaths.platformPaths) {
+    await addInstallation(p, 'system-path');
+  }
+
+  // 6. Additional common paths not in getClaudeDetectionPaths (for broader scanning)
+  const additionalPaths = isWindows
+    ? [] // Windows paths are well covered by detectionPaths.platformPaths
     : [
-        path.join(homeDir, '.local', 'bin', 'claude'),
-        path.join(homeDir, 'bin', 'claude'),
         path.join(homeDir, '.npm-global', 'bin', 'claude'),
         path.join(homeDir, '.yarn', 'bin', 'claude'),
         path.join(homeDir, '.claude', 'local', 'claude'),
         path.join(homeDir, 'node_modules', '.bin', 'claude'),
       ];
 
-  for (const p of platformPaths) {
+  for (const p of additionalPaths) {
     await addInstallation(p, 'system-path');
   }
 
@@ -960,29 +967,41 @@ export function registerClaudeCodeHandlers(): void {
       try {
         console.log('[Claude Code] Setting active path:', cliPath);
 
+        // Security validation: reject paths with shell metacharacters or directory traversal
+        if (!isSecurePath(cliPath)) {
+          throw new Error('Invalid path: contains potentially unsafe characters');
+        }
+
+        // Normalize path to prevent directory traversal
+        const normalizedPath = path.resolve(cliPath);
+
         // Validate the path exists and is executable
-        if (!existsSync(cliPath)) {
+        if (!existsSync(normalizedPath)) {
           throw new Error('Claude CLI not found at specified path');
         }
 
-        const [isValid, version] = await validateClaudeCliAsync(cliPath);
+        const [isValid, version] = await validateClaudeCliAsync(normalizedPath);
         if (!isValid) {
           throw new Error('Claude CLI at specified path is not valid or not executable');
         }
 
-        // Save to settings
-        const settings = readSettingsFile() || {};
-        settings.claudePath = cliPath;
-        writeSettingsFile(settings);
+        // Save to settings using established pattern: merge with DEFAULT_APP_SETTINGS
+        const currentSettings = readSettingsFile() || {};
+        const mergedSettings = {
+          ...DEFAULT_APP_SETTINGS,
+          ...currentSettings,
+          claudePath: normalizedPath,
+        } as Record<string, unknown>;
+        writeSettingsFile(mergedSettings);
 
         // Update CLI tool manager cache
-        configureTools({ claudePath: cliPath });
+        configureTools({ claudePath: normalizedPath });
 
-        console.log('[Claude Code] Active path set:', cliPath, 'version:', version);
+        console.log('[Claude Code] Active path set:', normalizedPath, 'version:', version);
 
         return {
           success: true,
-          data: { path: cliPath },
+          data: { path: normalizedPath },
         };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';

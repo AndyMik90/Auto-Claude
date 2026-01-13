@@ -66,6 +66,7 @@
     "activeInstallation": "Active",
     "pathChangeWarningTitle": "Switch CLI installation?",
     "pathChangeWarningDescription": "Switching CLI installations will use a different Claude Code binary. Any running sessions will continue using the previous installation until restarted.",
-    "switchInstallationConfirm": "Switch"
+    "switchInstallationConfirm": "Switch",
+    "versionUnknown": "version unknown"
   }
 }
