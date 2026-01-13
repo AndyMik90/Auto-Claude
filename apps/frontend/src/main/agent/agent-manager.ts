@@ -97,7 +97,14 @@ export class AgentManager extends EventEmitter {
   ): Promise<void> {
     // Pre-flight auth check: Verify active profile has valid authentication
     // Ensure profile manager is initialized to prevent race condition
-    const profileManager = await initializeClaudeProfileManager();
+    let profileManager;
+    try {
+      profileManager = await initializeClaudeProfileManager();
+    } catch (error) {
+      console.error('[AgentManager] Failed to initialize profile manager:', error);
+      this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
+      return;
+    }
     if (!profileManager.hasValidAuth()) {
       this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
       return;
@@ -176,7 +183,14 @@ export class AgentManager extends EventEmitter {
   ): Promise<void> {
     // Pre-flight auth check: Verify active profile has valid authentication
     // Ensure profile manager is initialized to prevent race condition
-    const profileManager = await initializeClaudeProfileManager();
+    let profileManager;
+    try {
+      profileManager = await initializeClaudeProfileManager();
+    } catch (error) {
+      console.error('[AgentManager] Failed to initialize profile manager:', error);
+      this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
+      return;
+    }
     if (!profileManager.hasValidAuth()) {
       this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
       return;

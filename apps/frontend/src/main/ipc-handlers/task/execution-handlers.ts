@@ -96,7 +96,18 @@ export function registerTaskExecutionHandlers(
 
       // Ensure profile manager is initialized before checking auth
       // This prevents race condition where auth check runs before profile data loads from disk
-      const profileManager = await initializeClaudeProfileManager();
+      let profileManager;
+      try {
+        profileManager = await initializeClaudeProfileManager();
+      } catch (error) {
+        console.error('[TASK_START] Failed to initialize profile manager:', error);
+        mainWindow.webContents.send(
+          IPC_CHANNELS.TASK_ERROR,
+          taskId,
+          'Failed to initialize profile manager. Please check file permissions and disk space.'
+        );
+        return;
+      }
 
       // Find task and project
       const { task, project } = findTaskAndProject(taskId);
