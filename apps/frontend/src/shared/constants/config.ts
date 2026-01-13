@@ -13,6 +13,32 @@ export const UI_SCALE_DEFAULT = 100;
 export const UI_SCALE_STEP = 5;
 
 // ============================================
+// Terminal Font Constants
+// ============================================
+
+export const TERMINAL_FONT_SIZE_MIN = 10;
+export const TERMINAL_FONT_SIZE_MAX = 20;
+export const TERMINAL_FONT_SIZE_DEFAULT = 13;
+export const TERMINAL_FONT_SIZE_STEP = 1;
+
+export const TERMINAL_LINE_HEIGHT_MIN = 1.0;
+export const TERMINAL_LINE_HEIGHT_MAX = 1.5;
+export const TERMINAL_LINE_HEIGHT_DEFAULT = 1.2;
+export const TERMINAL_LINE_HEIGHT_STEP = 0.05;
+
+export const TERMINAL_LETTER_SPACING_MIN = -2;
+export const TERMINAL_LETTER_SPACING_MAX = 2;
+export const TERMINAL_LETTER_SPACING_DEFAULT = 0;
+export const TERMINAL_LETTER_SPACING_STEP = 0.5;
+
+export const DEFAULT_TERMINAL_FONT_SETTINGS = {
+  fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
+  fontSize: TERMINAL_FONT_SIZE_DEFAULT,
+  lineHeight: TERMINAL_LINE_HEIGHT_DEFAULT,
+  letterSpacing: TERMINAL_LETTER_SPACING_DEFAULT
+};
+
+// ============================================
 // Default App Settings
 // ============================================
 
@@ -49,6 +75,8 @@ export const DEFAULT_APP_SETTINGS = {
   betaUpdates: false,
   // Language preference (default to English)
   language: 'en' as const,
+  // Terminal font settings
+  terminalFont: DEFAULT_TERMINAL_FONT_SETTINGS,
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
   sentryEnabled: true
 };

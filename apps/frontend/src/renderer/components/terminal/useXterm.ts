@@ -4,6 +4,8 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
+import { useSettingsStore } from '../../stores/settings-store';
+import { DEFAULT_TERMINAL_FONT_SETTINGS } from '../../../shared/constants';
 
 // Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
 interface NavigatorUAData {
@@ -41,6 +43,9 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const dimensionsReadyCalledRef = useRef<boolean>(false);
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
 
+  // Get terminal font settings from store
+  const terminalFont = useSettingsStore((state) => state.settings.terminalFont) ?? DEFAULT_TERMINAL_FONT_SETTINGS;
+
   // Initialize xterm.js UI
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
@@ -48,10 +53,10 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     const xterm = new XTerm({
       cursorBlink: true,
       cursorStyle: 'block',
-      fontSize: 13,
-      fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
-      lineHeight: 1.2,
-      letterSpacing: 0,
+      fontSize: terminalFont.fontSize,
+      fontFamily: terminalFont.fontFamily,
+      lineHeight: terminalFont.lineHeight,
+      letterSpacing: terminalFont.letterSpacing,
       theme: {
         background: '#0B0B0F',
         foreground: '#E8E6E3',
@@ -312,6 +317,18 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       return () => resizeObserver.disconnect();
     }
   }, [onDimensionsReady]);
+
+  // Update terminal options when font settings change
+  useEffect(() => {
+    if (xtermRef.current) {
+      xtermRef.current.options.fontSize = terminalFont.fontSize;
+      xtermRef.current.options.fontFamily = terminalFont.fontFamily;
+      xtermRef.current.options.lineHeight = terminalFont.lineHeight;
+      xtermRef.current.options.letterSpacing = terminalFont.letterSpacing;
+      // Refresh the terminal to apply new font settings
+      xtermRef.current.refresh(0, xtermRef.current.rows);
+    }
+  }, [terminalFont]);
 
   const fit = useCallback(() => {
     if (fitAddonRef.current && xtermRef.current) {

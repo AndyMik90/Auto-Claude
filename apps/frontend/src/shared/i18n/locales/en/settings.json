@@ -48,6 +48,10 @@
     "debug": {
       "title": "Debug & Logs",
       "description": "Troubleshooting tools"
+    },
+    "terminal": {
+      "title": "Terminal",
+      "description": "Customize terminal appearance"
     }
   },
   "apiProfiles": {
@@ -572,5 +576,19 @@
       "openai": "This looks like an OpenAI API. You'll need an API key.",
       "createOpenaiKey": "Create OpenAI API Key"
     }
+  },
+  "terminal": {
+    "fontFamily": "Font Family",
+    "fontFamilyDescription": "Choose the font family for agent terminals",
+    "fontSize": "Font Size",
+    "fontSizeDescription": "Adjust the font size (10-20px)",
+    "lineHeight": "Line Height",
+    "lineHeightDescription": "Adjust line spacing for better readability",
+    "letterSpacing": "Letter Spacing",
+    "letterSpacingDescription": "Adjust character spacing",
+    "resetToDefault": "Reset to default",
+    "resetAll": "Reset All to Defaults",
+    "decrease": "Decrease",
+    "increase": "Increase"
   }
 }

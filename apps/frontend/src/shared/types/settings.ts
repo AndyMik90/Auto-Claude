@@ -200,6 +200,27 @@ export interface FeatureThinkingConfig {
   utility: ThinkingLevel;
 }
 
+// Terminal font settings
+export interface TerminalFontSettings {
+  fontFamily: string;
+  fontSize: number;
+  lineHeight: number;
+  letterSpacing: number;
+}
+
+// Terminal font family type
+export type TerminalFontFamily =
+  | 'system'
+  | 'jetbrainsMono'
+  | 'firaCode'
+  | 'cascadiaCode'
+  | 'consolas'
+  | 'monaco'
+  | 'sfMono'
+  | 'sourceCodePro'
+  | 'ubuntuMono'
+  | 'dejaVuSansMono';
+
 // Agent profile for preset model/thinking configurations
 // All profiles have per-phase configuration (phaseModels/phaseThinking)
 export interface AgentProfile {
@@ -279,6 +300,8 @@ export interface AppSettings {
   customIDEPath?: string;      // For 'custom' IDE
   preferredTerminal?: SupportedTerminal;
   customTerminalPath?: string; // For 'custom' terminal
+  // Terminal font settings
+  terminalFont?: TerminalFontSettings;
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
   sentryEnabled?: boolean;
 }
