@@ -89,9 +89,11 @@ async function ensureProfileManagerInitialized(): Promise<
     return { success: true, profileManager };
   } catch (error) {
     console.error('[ensureProfileManagerInitialized] Failed to initialize:', error);
+    // Include actual error details for debugging while providing actionable guidance
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: 'Failed to initialize profile manager. Please check file permissions and disk space.'
+      error: `Failed to initialize profile manager. Please check file permissions and disk space. (${errorMessage})`
     };
   }
 }
