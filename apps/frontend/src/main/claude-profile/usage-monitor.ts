@@ -17,8 +17,8 @@
 import { EventEmitter } from 'events';
 import { spawn } from 'child_process';
 import { getClaudeProfileManager } from '../claude-profile-manager';
-import { ClaudeUsageSnapshot, RESETTING_SOON } from '../../shared/types/agent';
-import { loadProfilesFile, detectProvider, fetchUsageForProfile } from '../services/profile';
+import { ClaudeUsageSnapshot } from '../../shared/types/agent';
+import { loadProfilesFile, detectProvider, fetchUsageForProfile, RESETTING_SOON } from '../services/profile';
 import { getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { getSpawnCommand, getSpawnOptions } from '../env-utils';
 import { parseUsageOutput } from './usage-parser';

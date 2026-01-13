@@ -52,5 +52,5 @@ export type {
   DiscoverModelsError
 } from '@shared/types/profile';
 
-// Re-export RESETTING_SOON from shared types for convenience
-export { RESETTING_SOON } from '@shared/types/agent';
+// Re-export RESETTING_SOON from profile-usage for convenience
+export { RESETTING_SOON } from './profile-usage';
