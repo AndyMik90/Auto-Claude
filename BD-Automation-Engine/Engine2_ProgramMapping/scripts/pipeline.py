@@ -12,6 +12,16 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 
+# Import Playbook Generator (optional)
+try:
+    from Engine4_Playbook.scripts.bd_playbook_generator import (
+        generate_playbooks_batch,
+        PlaybookOutput,
+    )
+    HAS_PLAYBOOK_GENERATOR = True
+except ImportError:
+    HAS_PLAYBOOK_GENERATOR = False
+
 
 # ============================================
 # CONFIGURATION
@@ -121,6 +131,13 @@ class PipelineConfig:
     export_formats: List[str] = field(default_factory=lambda: ["notion", "n8n"])
     include_raw_data: bool = True
 
+    # Playbook Generation Options
+    generate_playbooks: bool = True  # Generate playbooks for Hot tier
+    playbook_output_dir: Optional[str] = None
+    playbook_min_score: int = 80  # Minimum score to generate playbook
+    playbook_formats: List[str] = field(default_factory=lambda: ["full", "email", "call", "talking"])
+    include_contacts_in_playbook: bool = True
+
     # Progress Callback
     progress_callback: Optional[Callable[[int, int, str], None]] = None
 
@@ -138,6 +155,9 @@ class PipelineConfig:
 
         if self.n8n_output_dir is None:
             self.n8n_output_dir = str(Path(self.output_dir) / "n8n")
+
+        if self.playbook_output_dir is None:
+            self.playbook_output_dir = str(Path(self.output_dir) / "BD_Briefings")
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary (excluding non-serializable fields)."""
@@ -160,6 +180,11 @@ class PipelineConfig:
             "warm_tier_min": self.warm_tier_min,
             "export_formats": self.export_formats,
             "include_raw_data": self.include_raw_data,
+            "generate_playbooks": self.generate_playbooks,
+            "playbook_output_dir": self.playbook_output_dir,
+            "playbook_min_score": self.playbook_min_score,
+            "playbook_formats": self.playbook_formats,
+            "include_contacts_in_playbook": self.include_contacts_in_playbook,
         }
 
 
@@ -804,12 +829,106 @@ def export_results(
 
 
 # ============================================
+# STAGE 7: PLAYBOOK GENERATION
+# ============================================
+
+def generate_bd_playbooks(
+    jobs: List[Dict[str, Any]],
+    config: PipelineConfig,
+    on_progress: Optional[Callable[[int, int, str], None]] = None
+) -> Dict[str, Any]:
+    """
+    Stage 7: Generate BD Playbooks for Hot-tier opportunities.
+
+    Uses Engine4_Playbook to create comprehensive sales playbooks for
+    opportunities with BD Score >= min_score (default: 80).
+
+    Args:
+        jobs: List of enriched jobs with _mapping and _scoring.
+        config: PipelineConfig with playbook settings.
+        on_progress: Optional callback(current, total, message) for progress.
+
+    Returns:
+        Dict with playbook generation results:
+        - generated: Number of playbooks generated
+        - skipped: Number of jobs below threshold
+        - output_dir: Directory where playbooks were saved
+        - playbooks: List of playbook metadata
+    """
+    if not HAS_PLAYBOOK_GENERATOR:
+        return {
+            'generated': 0,
+            'skipped': len(jobs),
+            'output_dir': None,
+            'playbooks': [],
+            'error': 'Playbook generator not available'
+        }
+
+    if not config.generate_playbooks:
+        return {
+            'generated': 0,
+            'skipped': len(jobs),
+            'output_dir': None,
+            'playbooks': [],
+            'note': 'Playbook generation disabled in config'
+        }
+
+    # Count eligible jobs
+    eligible = [j for j in jobs if j.get('_scoring', {}).get('BD Priority Score',
+                j.get('BD Priority Score', 0)) >= config.playbook_min_score]
+
+    if on_progress:
+        on_progress(0, len(eligible), f"Found {len(eligible)} Hot-tier opportunities")
+
+    if not eligible:
+        return {
+            'generated': 0,
+            'skipped': len(jobs),
+            'output_dir': config.playbook_output_dir,
+            'playbooks': [],
+            'note': f'No jobs with score >= {config.playbook_min_score}'
+        }
+
+    # Generate playbooks
+    playbook_results = generate_playbooks_batch(
+        jobs=eligible,
+        output_dir=config.playbook_output_dir,
+        min_score=config.playbook_min_score,
+        include_contacts=config.include_contacts_in_playbook,
+        output_formats=config.playbook_formats,
+    )
+
+    # Build result metadata
+    playbooks_metadata = []
+    for output in playbook_results:
+        playbooks_metadata.append({
+            'job_title': output.data.job_title,
+            'program_name': output.data.program_name,
+            'bd_score': output.data.bd_score,
+            'priority_tier': output.data.priority_tier,
+            'output_paths': output.output_paths,
+            'generated_at': output.generated_at,
+        })
+
+    if on_progress:
+        on_progress(len(playbook_results), len(eligible),
+                   f"Generated {len(playbook_results)} playbooks")
+
+    return {
+        'generated': len(playbook_results),
+        'skipped': len(jobs) - len(eligible),
+        'output_dir': config.playbook_output_dir,
+        'playbooks': playbooks_metadata,
+    }
+
+
+# ============================================
 # MAIN PIPELINE ORCHESTRATOR
 # ============================================
 
 def run_pipeline(config: PipelineConfig) -> Dict[str, Any]:
     """
-    Run the complete 6-stage pipeline.
+    Run the complete 7-stage pipeline.
 
     Orchestrates the full processing flow:
     1. INGEST: Load raw jobs from JSON
@@ -818,6 +937,7 @@ def run_pipeline(config: PipelineConfig) -> Dict[str, Any]:
     4. MATCH: Map to federal programs
     5. SCORE: Calculate BD priority scores
     6. EXPORT: Write to Notion CSV and n8n JSON
+    7. PLAYBOOKS: Generate BD playbooks for Hot-tier opportunities
 
     Args:
         config: PipelineConfig with all settings
@@ -841,6 +961,7 @@ def run_pipeline(config: PipelineConfig) -> Dict[str, Any]:
             'by_match_type': {'direct': 0, 'fuzzy': 0, 'inferred': 0},
         },
         'exports': {},
+        'playbooks': {},
         'errors': [],
         'config': config.to_dict(),
     }
@@ -895,6 +1016,14 @@ def run_pipeline(config: PipelineConfig) -> Dict[str, Any]:
         export_results_data = export_results(jobs, config, on_progress=progress)
         pipeline_results['exports'] = export_results_data
 
+        # Stage 7: Generate Playbooks (for Hot-tier)
+        print(f"\n{'='*60}")
+        print("STAGE 7: GENERATE BD PLAYBOOKS")
+        print(f"{'='*60}")
+
+        playbook_results = generate_bd_playbooks(jobs, config, on_progress=progress)
+        pipeline_results['playbooks'] = playbook_results
+
         # Calculate final statistics
         pipeline_results['jobs'] = jobs
         pipeline_results['stats']['total_processed'] = len(jobs)
@@ -945,6 +1074,8 @@ def run_pipeline(config: PipelineConfig) -> Dict[str, Any]:
         print(f"  Notion CSV: {pipeline_results['exports']['notion'].get('file_path', 'N/A')}")
     if pipeline_results['exports'].get('n8n'):
         print(f"  n8n JSON: {pipeline_results['exports']['n8n'].get('file_path', 'N/A')}")
+    if pipeline_results['playbooks'].get('generated', 0) > 0:
+        print(f"  Playbooks: {pipeline_results['playbooks']['generated']} generated → {pipeline_results['playbooks'].get('output_dir', 'N/A')}")
 
     return pipeline_results
 
@@ -957,7 +1088,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Program Mapping Pipeline - Process job postings through 6-stage enrichment pipeline',
+        description='Program Mapping Pipeline - Process job postings through 7-stage enrichment pipeline',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1014,6 +1145,18 @@ Examples:
         action='store_true',
         help='Show loaded configuration and exit'
     )
+    parser.add_argument(
+        '--no-playbooks',
+        action='store_true',
+        dest='no_playbooks',
+        help='Disable playbook generation for Hot-tier opportunities'
+    )
+    parser.add_argument(
+        '--playbook-min-score',
+        type=int,
+        default=80,
+        help='Minimum BD score for playbook generation (default: 80)'
+    )
 
     args = parser.parse_args()
 
@@ -1030,6 +1173,10 @@ Examples:
         overrides['export_formats'] = ['notion', 'n8n']
     else:
         overrides['export_formats'] = [args.format]
+
+    # Playbook options
+    overrides['generate_playbooks'] = not args.no_playbooks
+    overrides['playbook_min_score'] = args.playbook_min_score
 
     # Load configuration
     config = load_config(config_path=args.config, overrides=overrides)
