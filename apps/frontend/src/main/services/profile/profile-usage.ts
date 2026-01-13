@@ -75,9 +75,16 @@ interface AnthropicUsageResponse {
 }
 
 /**
- * Detect provider type from base URL
+ * Detect provider type from base URL and API key/token format
+ *
+ * For api.anthropic.com:
+ * - OAuth tokens (sk-ant-oat01-*) -> 'anthropic-oauth' (usage available)
+ * - Regular API keys (sk-ant-api03-*, etc.) -> 'other' (no usage API)
+ *
+ * @param baseUrl - API base URL
+ * @param apiKey - API key or OAuth token
  */
-export function detectProvider(baseUrl: string): UsageProvider {
+export function detectProvider(baseUrl: string, apiKey: string): UsageProvider {
   try {
     const url = new URL(baseUrl.trim());
     const hostname = url.hostname.toLowerCase();
@@ -88,8 +95,14 @@ export function detectProvider(baseUrl: string): UsageProvider {
     }
 
     // Check for Anthropic OAuth domain (api.anthropic.com)
+    // Must also have an OAuth token (sk-ant-oat01-*)
     if (hostname === 'api.anthropic.com') {
-      return 'anthropic-oauth';
+      const isOAuthToken = apiKey.startsWith('sk-ant-oat01-');
+      if (isOAuthToken) {
+        return 'anthropic-oauth';
+      }
+      // Regular API keys on api.anthropic.com don't have a usage API
+      return 'other';
     }
 
     return 'other';

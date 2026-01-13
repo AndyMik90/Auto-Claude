@@ -232,7 +232,7 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Detect provider type
-      const provider = detectProvider(activeProfile.baseUrl);
+      const provider = detectProvider(activeProfile.baseUrl, activeProfile.apiKey);
 
       // Fetch usage based on provider
       const usage = await fetchUsageForProfile(

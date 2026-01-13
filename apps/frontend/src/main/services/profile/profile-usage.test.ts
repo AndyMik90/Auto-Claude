@@ -21,41 +21,50 @@ describe('profile-usage service', () => {
   });
 
   describe('detectProvider', () => {
+    const zaiApiKey = 'zai-api-key';
+    const oauthToken = 'sk-ant-oat01-test-token';
+    const regularApiKey = 'sk-ant-api03-test-key';
+
     it('should detect Z.ai provider from api.z.ai URL', () => {
-      expect(detectProvider('https://api.z.ai')).toBe('zai');
-      expect(detectProvider('https://api.z.ai/v1')).toBe('zai');
-      expect(detectProvider('http://api.z.ai')).toBe('zai');
+      expect(detectProvider('https://api.z.ai', zaiApiKey)).toBe('zai');
+      expect(detectProvider('https://api.z.ai/v1', zaiApiKey)).toBe('zai');
+      expect(detectProvider('http://api.z.ai', zaiApiKey)).toBe('zai');
     });
 
     it('should detect Z.ai provider from z.ai URL', () => {
-      expect(detectProvider('https://z.ai')).toBe('zai');
-      expect(detectProvider('https://z.ai/api')).toBe('zai');
+      expect(detectProvider('https://z.ai', zaiApiKey)).toBe('zai');
+      expect(detectProvider('https://z.ai/api', zaiApiKey)).toBe('zai');
     });
 
-    it('should detect Anthropic OAuth provider from api.anthropic.com', () => {
-      expect(detectProvider('https://api.anthropic.com')).toBe('anthropic-oauth');
-      expect(detectProvider('https://api.anthropic.com/v1')).toBe('anthropic-oauth');
+    it('should detect Anthropic OAuth provider from api.anthropic.com with OAuth token', () => {
+      expect(detectProvider('https://api.anthropic.com', oauthToken)).toBe('anthropic-oauth');
+      expect(detectProvider('https://api.anthropic.com/v1', oauthToken)).toBe('anthropic-oauth');
+    });
+
+    it('should return "other" for api.anthropic.com with regular API key', () => {
+      expect(detectProvider('https://api.anthropic.com', regularApiKey)).toBe('other');
+      expect(detectProvider('https://api.anthropic.com/v1', regularApiKey)).toBe('other');
     });
 
     it('should return "other" for unknown providers', () => {
-      expect(detectProvider('https://api.example.com')).toBe('other');
-      expect(detectProvider('https://custom-api.com/v1')).toBe('other');
-      expect(detectProvider('https://api.openai.com')).toBe('other');
+      expect(detectProvider('https://api.example.com', regularApiKey)).toBe('other');
+      expect(detectProvider('https://custom-api.com/v1', regularApiKey)).toBe('other');
+      expect(detectProvider('https://api.openai.com', regularApiKey)).toBe('other');
     });
 
     it('should handle URLs with paths correctly', () => {
-      expect(detectProvider('https://api.anthropic.com/v1/messages')).toBe('anthropic-oauth');
-      expect(detectProvider('https://api.z.ai/api/monitor/usage/quota/limit')).toBe('zai');
+      expect(detectProvider('https://api.anthropic.com/v1/messages', oauthToken)).toBe('anthropic-oauth');
+      expect(detectProvider('https://api.z.ai/api/monitor/usage/quota/limit', zaiApiKey)).toBe('zai');
     });
 
     it('should be case-insensitive for domain matching', () => {
-      expect(detectProvider('https://API.Z.AI')).toBe('zai');
-      expect(detectProvider('https://API.ANTHROPIC.COM')).toBe('anthropic-oauth');
+      expect(detectProvider('https://API.Z.AI', zaiApiKey)).toBe('zai');
+      expect(detectProvider('https://API.ANTHROPIC.COM', oauthToken)).toBe('anthropic-oauth');
     });
 
     it('should handle whitespace in URLs', () => {
-      expect(detectProvider('  https://api.z.ai  ')).toBe('zai');
-      expect(detectProvider('  https://api.anthropic.com  ')).toBe('anthropic-oauth');
+      expect(detectProvider('  https://api.z.ai  ', zaiApiKey)).toBe('zai');
+      expect(detectProvider('  https://api.anthropic.com  ', oauthToken)).toBe('anthropic-oauth');
     });
   });
 
