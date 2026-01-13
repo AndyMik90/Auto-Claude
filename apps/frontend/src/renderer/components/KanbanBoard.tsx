@@ -658,7 +658,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
           ref={scrollContainerRef}
           onMouseDown={handleMouseDown}
           className={cn(
-            "flex flex-1 gap-4 overflow-x-auto p-6",
+            "flex flex-1 gap-4 overflow-x-auto p-6 cursor-grab select-none",
             isScrollDragging && "cursor-grabbing active:cursor-grabbing"
           )}
         >
