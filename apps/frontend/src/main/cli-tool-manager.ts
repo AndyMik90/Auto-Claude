@@ -935,23 +935,30 @@ class CLIToolManager {
    */
   private validateClaude(claudeCmd: string): ToolValidation {
     try {
-      const needsShell = shouldUseShell(claudeCmd);
-      const env = getAugmentedEnv([path.dirname(claudeCmd)]);
+      const trimmedCmd = claudeCmd.trim();
+      const unquotedCmd =
+        trimmedCmd.startsWith('"') && trimmedCmd.endsWith('"')
+          ? trimmedCmd.slice(1, -1)
+          : trimmedCmd;
+
+      const needsShell = shouldUseShell(trimmedCmd);
+      const cmdDir = path.dirname(unquotedCmd);
+      const env = getAugmentedEnv(cmdDir && cmdDir !== '.' ? [cmdDir] : []);
 
       let version: string;
 
       if (needsShell) {
         // For .cmd/.bat files on Windows, use cmd.exe with a quoted command line
         // /s preserves quotes so paths with spaces are handled correctly.
-        if (process.platform === 'win32' && !isSecurePath(claudeCmd)) {
+        if (!isSecurePath(unquotedCmd)) {
           return {
             valid: false,
-            message: `Claude CLI path failed security validation: ${claudeCmd}`,
+            message: `Claude CLI path failed security validation: ${unquotedCmd}`,
           };
         }
         const cmdExe = process.env.ComSpec
           || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
-        const cmdLine = `""${claudeCmd}" --version"`;
+        const cmdLine = `""${unquotedCmd}" --version"`;
         const execOptions: ExecFileSyncOptionsWithVerbatim = {
           encoding: 'utf-8',
           timeout: 5000,
@@ -965,7 +972,7 @@ class CLIToolManager {
       } else {
         // For .exe files and non-Windows, use execFileSync
         version = normalizeExecOutput(
-          execFileSync(claudeCmd, ['--version'], {
+          execFileSync(unquotedCmd, ['--version'], {
             encoding: 'utf-8',
             timeout: 5000,
             windowsHide: true,
@@ -1067,23 +1074,30 @@ class CLIToolManager {
    */
   private async validateClaudeAsync(claudeCmd: string): Promise<ToolValidation> {
     try {
-      const needsShell = shouldUseShell(claudeCmd);
-      const env = await getAugmentedEnvAsync([path.dirname(claudeCmd)]);
+      const trimmedCmd = claudeCmd.trim();
+      const unquotedCmd =
+        trimmedCmd.startsWith('"') && trimmedCmd.endsWith('"')
+          ? trimmedCmd.slice(1, -1)
+          : trimmedCmd;
+
+      const needsShell = shouldUseShell(trimmedCmd);
+      const cmdDir = path.dirname(unquotedCmd);
+      const env = await getAugmentedEnvAsync(cmdDir && cmdDir !== '.' ? [cmdDir] : []);
 
       let stdout: string;
 
       if (needsShell) {
         // For .cmd/.bat files on Windows, use cmd.exe with a quoted command line
         // /s preserves quotes so paths with spaces are handled correctly.
-        if (process.platform === 'win32' && !isSecurePath(claudeCmd)) {
+        if (!isSecurePath(unquotedCmd)) {
           return {
             valid: false,
-            message: `Claude CLI path failed security validation: ${claudeCmd}`,
+            message: `Claude CLI path failed security validation: ${unquotedCmd}`,
           };
         }
         const cmdExe = process.env.ComSpec
           || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
-        const cmdLine = `""${claudeCmd}" --version"`;
+        const cmdLine = `""${unquotedCmd}" --version"`;
         const execOptions: ExecFileAsyncOptionsWithVerbatim = {
           encoding: 'utf-8',
           timeout: 5000,
@@ -1095,7 +1109,7 @@ class CLIToolManager {
         stdout = result.stdout;
       } else {
         // For .exe files and non-Windows, use execFileAsync
-        const result = await execFileAsync(claudeCmd, ['--version'], {
+        const result = await execFileAsync(unquotedCmd, ['--version'], {
           encoding: 'utf-8',
           timeout: 5000,
           windowsHide: true,
