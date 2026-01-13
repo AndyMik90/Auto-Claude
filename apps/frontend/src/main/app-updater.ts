@@ -47,6 +47,9 @@ type UpdateChannel = 'latest' | 'beta';
  */
 export function setUpdateChannel(channel: UpdateChannel): void {
   autoUpdater.channel = channel;
+  // Clear any downloaded update info when channel changes to prevent showing
+  // an Install button for an update from a different channel
+  downloadedUpdateInfo = null;
   console.warn(`[app-updater] Update channel set to: ${channel}`);
 }
 
@@ -442,6 +445,9 @@ export async function setUpdateChannelWithDowngradeCheck(
   triggerDowngradeCheck = false
 ): Promise<AppUpdateInfo | null> {
   autoUpdater.channel = channel;
+  // Clear any downloaded update info when channel changes to prevent showing
+  // an Install button for an update from a different channel
+  downloadedUpdateInfo = null;
   console.warn(`[app-updater] Update channel set to: ${channel}`);
 
   // If switching to stable and downgrade check requested, look for stable version
