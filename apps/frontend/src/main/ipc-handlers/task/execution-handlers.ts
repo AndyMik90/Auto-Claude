@@ -624,7 +624,20 @@ export function registerTaskExecutionHandlers(
 
           // Check authentication before auto-starting
           // Ensure profile manager is initialized to prevent race condition
-          const profileManager = await initializeClaudeProfileManager();
+          let profileManager;
+          try {
+            profileManager = await initializeClaudeProfileManager();
+          } catch (error) {
+            console.error('[TASK_UPDATE_STATUS] Failed to initialize profile manager:', error);
+            if (mainWindow) {
+              mainWindow.webContents.send(
+                IPC_CHANNELS.TASK_ERROR,
+                taskId,
+                'Failed to initialize profile manager. Please check file permissions and disk space.'
+              );
+            }
+            return { success: false, error: 'Failed to initialize profile manager. Please check file permissions and disk space.' };
+          }
           if (!profileManager.hasValidAuth()) {
             console.warn('[TASK_UPDATE_STATUS] No valid authentication for active profile');
             if (mainWindow) {
@@ -956,7 +969,23 @@ export function registerTaskExecutionHandlers(
 
           // Check authentication before auto-restarting
           // Ensure profile manager is initialized to prevent race condition
-          const profileManager = await initializeClaudeProfileManager();
+          let profileManager;
+          try {
+            profileManager = await initializeClaudeProfileManager();
+          } catch (error) {
+            console.error('[Recovery] Failed to initialize profile manager:', error);
+            // Recovery succeeded but we can't restart without profile manager
+            return {
+              success: true,
+              data: {
+                taskId,
+                recovered: true,
+                newStatus,
+                message: 'Task recovered but cannot restart: Failed to initialize profile manager. Please check file permissions and disk space.',
+                autoRestarted: false
+              }
+            };
+          }
           if (!profileManager.hasValidAuth()) {
             console.warn('[Recovery] Auth check failed, cannot auto-restart task');
             // Recovery succeeded but we can't restart without auth
