@@ -82,6 +82,13 @@ jobs:
             if [ "$asset_count" -eq 0 ]; then
               echo "Release has no assets yet (this is OK for new releases)"
             else
+              # Check if any scannable assets exist that should have been downloaded
+              scannable_assets=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets \
+                -q '.assets[].name | select(test("\\.(exe|dmg|AppImage|deb|flatpak)$"))' | wc -l)
+              if [ "$scannable_assets" -gt 0 ]; then
+                echo "::error::Download failed - $scannable_assets scannable asset(s) exist but download failed"
+                exit 1
+              fi
               echo "No assets matched the patterns (exe, dmg, AppImage, deb, flatpak)"
             fi
           fi
@@ -228,6 +235,14 @@ jobs:
               fi
             done
 
+            # Handle analysis timeout - if loop completed without status=completed
+            if [ "$status" != "completed" ]; then
+              echo "::warning::Analysis timed out for $filename (status: $status after 5 minutes)"
+              file_hash=$(sha256sum "$file" | cut -d' ' -f1)
+              echo "- [$filename](https://www.virustotal.com/gui/file/$file_hash) - ⚠️ Analysis timed out" >> vt_results.md
+              continue
+            fi
+
             # Final validation that we have valid analysis data
             if ! echo "$analysis" | jq -e '.data.attributes.stats' >/dev/null 2>&1; then
               echo "::warning::Could not get complete analysis for $filename, using local hash"
@@ -296,8 +311,8 @@ jobs:
           # First, write current body to file
           echo "$current_body" > release-body.md
 
-          # Remove placeholder text if present
-          sed -i '/_VirusTotal scan results will be added automatically after release\./d' release-body.md
+          # Remove placeholder text if present (portable sed approach)
+          sed '/_VirusTotal scan results will be added automatically after release\./d' release-body.md > release-body.tmp && mv release-body.tmp release-body.md
 
           # Append separator and VT results
           echo "" >> release-body.md
