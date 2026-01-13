@@ -50,7 +50,7 @@ interface WorktreesProps {
 }
 
 export function Worktrees({ projectId }: WorktreesProps) {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation(['common', 'worktrees']);
   const projects = useProjectStore((state) => state.projects);
   const selectedProject = projects.find((p) => p.id === projectId);
   const tasks = useTaskStore((state) => state.tasks);
@@ -94,27 +94,21 @@ export function Worktrees({ projectId }: WorktreesProps) {
         window.electronAPI.listTerminalWorktrees(selectedProject.path)
       ]);
 
-      console.log('[Worktrees] Task worktrees result:', taskResult);
-      console.log('[Worktrees] Terminal worktrees result:', terminalResult);
-
       if (taskResult.success && taskResult.data) {
         setWorktrees(taskResult.data.worktrees);
       } else {
-        setError(taskResult.error || 'Failed to load task worktrees');
+        setError(taskResult.error || t('worktrees.errorLoading'));
       }
 
       if (terminalResult.success && terminalResult.data) {
-        console.log('[Worktrees] Setting terminal worktrees:', terminalResult.data);
         setTerminalWorktrees(terminalResult.data);
-      } else {
-        console.warn('[Worktrees] Terminal worktrees fetch failed or empty:', terminalResult);
       }
     } catch (err) {
-      console.error('[Worktrees] Error loading worktrees:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load worktrees');
+      setError(err instanceof Error ? err.message : t('worktrees.errorLoading'));
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable from useTranslation
   }, [projectId, selectedProject]);
 
   // Load on mount and when project changes
@@ -133,7 +127,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
 
     const task = findTaskForWorktree(selectedWorktree.specName);
     if (!task) {
-      setError('Task not found for this worktree');
+      setError(t('worktrees.taskNotFound'));
       return;
     }
 
@@ -149,13 +143,13 @@ export function Worktrees({ projectId }: WorktreesProps) {
       } else {
         setMergeResult({
           success: false,
-          message: result.error || 'Merge failed'
+          message: result.error || t('worktrees.mergeResult.failed')
         });
       }
     } catch (err) {
       setMergeResult({
         success: false,
-        message: err instanceof Error ? err.message : 'Merge failed'
+        message: err instanceof Error ? err.message : t('worktrees.mergeResult.failed')
       });
     } finally {
       setIsMerging(false);
@@ -168,7 +162,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
 
     const task = findTaskForWorktree(worktreeToDelete.specName);
     if (!task) {
-      setError('Task not found for this worktree');
+      setError(t('worktrees.taskNotFound'));
       return;
     }
 
@@ -181,10 +175,10 @@ export function Worktrees({ projectId }: WorktreesProps) {
         setShowDeleteConfirm(false);
         setWorktreeToDelete(null);
       } else {
-        setError(result.error || 'Failed to delete worktree');
+        setError(result.error || t('worktrees.errorDeleting'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete worktree');
+      setError(err instanceof Error ? err.message : t('worktrees.errorDeleting'));
     } finally {
       setIsDeleting(false);
     }
@@ -262,10 +256,10 @@ export function Worktrees({ projectId }: WorktreesProps) {
         await loadWorktrees();
         setTerminalWorktreeToDelete(null);
       } else {
-        setError(result.error || 'Failed to delete terminal worktree');
+        setError(result.error || t('worktrees.errorDeletingTerminal'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete terminal worktree');
+      setError(err instanceof Error ? err.message : t('worktrees.errorDeletingTerminal'));
     } finally {
       setIsDeletingTerminal(false);
     }
@@ -274,7 +268,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
   if (!selectedProject) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Select a project to view worktrees</p>
+        <p className="text-muted-foreground">{t('worktrees.selectProject')}</p>
       </div>
     );
   }
@@ -286,10 +280,10 @@ export function Worktrees({ projectId }: WorktreesProps) {
         <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <GitBranch className="h-6 w-6" />
-            Worktrees
+            {t('worktrees.title')}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage isolated workspaces for your Auto Claude tasks
+            {t('worktrees.description')}
           </p>
         </div>
         <Button
@@ -299,7 +293,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
           disabled={isLoading}
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('common:buttons.refresh')}
         </Button>
       </div>
 
@@ -309,7 +303,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
           <div className="flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium text-destructive">Error</p>
+              <p className="font-medium text-destructive">{t('common:labels.error')}</p>
               <p className="text-muted-foreground mt-1">{error}</p>
             </div>
           </div>
@@ -329,10 +323,9 @@ export function Worktrees({ projectId }: WorktreesProps) {
           <div className="rounded-full bg-muted p-4 mb-4">
             <GitBranch className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">No Worktrees</h3>
+          <h3 className="text-lg font-semibold text-foreground">{t('worktrees.noWorktrees')}</h3>
           <p className="text-sm text-muted-foreground mt-2 max-w-md">
-            Worktrees are created automatically when Auto Claude builds features.
-            You can also create terminal worktrees from the Agent Terminals tab.
+            {t('worktrees.noWorktreesDescription')}
           </p>
         </div>
       )}
@@ -346,7 +339,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <GitBranch className="h-4 w-4" />
-                  Task Worktrees
+                  {t('worktrees.taskWorktrees')}
                 </h3>
                 {worktrees.map((worktree) => {
                   const task = findTaskForWorktree(worktree.specName);
@@ -375,11 +368,11 @@ export function Worktrees({ projectId }: WorktreesProps) {
                         <div className="flex flex-wrap gap-4 text-sm mb-4">
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <FileCode className="h-3.5 w-3.5" />
-                            <span>{worktree.filesChanged} files changed</span>
+                            <span>{worktree.filesChanged} {t('worktrees.stats.filesChanged')}</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <ChevronRight className="h-3.5 w-3.5" />
-                            <span>{worktree.commitCount} commits ahead</span>
+                            <span>{worktree.commitCount} {t('worktrees.stats.commitsAhead')}</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-success">
                             <Plus className="h-3.5 w-3.5" />
@@ -407,7 +400,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                             disabled={!task}
                           >
                             <GitMerge className="h-3.5 w-3.5 mr-1.5" />
-                            Merge to {worktree.baseBranch}
+                            {t('worktrees.actions.mergeTo', { branch: worktree.baseBranch })}
                           </Button>
                           {task && (
                             <Button
@@ -438,7 +431,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                             }}
                           >
                             <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
-                            Copy Path
+                            {t('worktrees.actions.copyPath')}
                           </Button>
                           <Button
                             variant="outline"
@@ -448,7 +441,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                             disabled={!task}
                           >
                             <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                            Delete
+                            {t('common:buttons.delete')}
                           </Button>
                         </div>
                       </CardContent>
@@ -463,7 +456,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Terminal className="h-4 w-4" />
-                  Terminal Worktrees
+                  {t('worktrees.terminalWorktrees')}
                 </h3>
                 {terminalWorktrees.map((wt) => (
                   <Card key={wt.name} className="overflow-hidden">
@@ -500,7 +493,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                       {/* Created at */}
                       {wt.createdAt && (
                         <div className="text-xs text-muted-foreground mb-4">
-                          Created {new Date(wt.createdAt).toLocaleDateString()}
+                          {t('worktrees.createdAt', { date: new Date(wt.createdAt).toLocaleDateString() })}
                         </div>
                       )}
 
@@ -515,7 +508,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                           }}
                         >
                           <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
-                          Copy Path
+                          {t('worktrees.actions.copyPath')}
                         </Button>
                         <Button
                           variant="outline"
@@ -524,7 +517,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                           onClick={() => setTerminalWorktreeToDelete(wt)}
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                          Delete
+                          {t('common:buttons.delete')}
                         </Button>
                       </div>
                     </CardContent>
@@ -542,10 +535,10 @@ export function Worktrees({ projectId }: WorktreesProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <GitMerge className="h-5 w-5" />
-              Merge Worktree
+              {t('worktrees.mergeDialog.title')}
             </DialogTitle>
             <DialogDescription>
-              Merge changes from this worktree into the base branch.
+              {t('worktrees.mergeDialog.description')}
             </DialogDescription>
           </DialogHeader>
 
@@ -553,21 +546,21 @@ export function Worktrees({ projectId }: WorktreesProps) {
             <div className="py-4">
               <div className="rounded-lg bg-muted p-4 text-sm space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Source Branch</span>
+                  <span className="text-muted-foreground">{t('worktrees.mergeDialog.sourceBranch')}</span>
                   <span className="font-mono text-info">{selectedWorktree.branch}</span>
                 </div>
                 <div className="flex items-center justify-center">
                   <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Target Branch</span>
+                  <span className="text-muted-foreground">{t('worktrees.mergeDialog.targetBranch')}</span>
                   <span className="font-mono">{selectedWorktree.baseBranch}</span>
                 </div>
                 <div className="border-t border-border pt-3 mt-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Changes</span>
+                    <span className="text-muted-foreground">{t('worktrees.mergeDialog.changes')}</span>
                     <span>
-                      {selectedWorktree.commitCount} commits, {selectedWorktree.filesChanged} files
+                      {t('worktrees.mergeDialog.commitsFiles', { commits: selectedWorktree.commitCount, files: selectedWorktree.filesChanged })}
                     </span>
                   </div>
                 </div>
@@ -588,22 +581,22 @@ export function Worktrees({ projectId }: WorktreesProps) {
                   ) : (
                     <X className="h-4 w-4 text-destructive mt-0.5" />
                   )}
-                  <div>
-                    <p className={`font-medium ${mergeResult.success ? 'text-success' : 'text-destructive'}`}>
-                      {mergeResult.success ? 'Merge Successful' : 'Merge Failed'}
-                    </p>
-                    <p className="text-muted-foreground mt-1">{mergeResult.message}</p>
-                    {mergeResult.conflictFiles && mergeResult.conflictFiles.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-xs font-medium">Conflicting files:</p>
-                        <ul className="list-disc list-inside text-xs mt-1">
-                          {mergeResult.conflictFiles.map(file => (
-                            <li key={file} className="font-mono">{file}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+                    <div>
+                      <p className={`font-medium ${mergeResult.success ? 'text-success' : 'text-destructive'}`}>
+                        {mergeResult.success ? t('worktrees.mergeResult.success') : t('worktrees.mergeResult.failed')}
+                      </p>
+                      <p className="text-muted-foreground mt-1">{mergeResult.message}</p>
+                      {mergeResult.conflictFiles && mergeResult.conflictFiles.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium">{t('worktrees.mergeResult.conflictingFiles')}</p>
+                          <ul className="list-disc list-inside text-xs mt-1">
+                            {mergeResult.conflictFiles.map(file => (
+                              <li key={file} className="font-mono">{file}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                 </div>
               </div>
             </div>
@@ -617,7 +610,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                 setMergeResult(null);
               }}
             >
-              {mergeResult ? 'Close' : 'Cancel'}
+              {mergeResult ? t('common:buttons.close') : t('common:buttons.cancel')}
             </Button>
             {!mergeResult && (
               <Button
@@ -627,12 +620,12 @@ export function Worktrees({ projectId }: WorktreesProps) {
                 {isMerging ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Merging...
+                    {t('worktrees.mergeDialog.merging')}
                   </>
                 ) : (
                   <>
                     <GitMerge className="h-4 w-4 mr-2" />
-                    Merge
+                    {t('worktrees.mergeDialog.merge')}
                   </>
                 )}
               </Button>
@@ -645,19 +638,19 @@ export function Worktrees({ projectId }: WorktreesProps) {
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Worktree?</AlertDialogTitle>
+            <AlertDialogTitle>{t('worktrees.deleteDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the worktree and all uncommitted changes.
+              {t('worktrees.deleteDialog.description')}
               {worktreeToDelete && (
                 <span className="block mt-2 font-mono text-sm">
                   {worktreeToDelete.branch}
                 </span>
               )}
-              This action cannot be undone.
+              {t('worktrees.deleteDialog.cannotUndo')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t('common:buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
@@ -666,12 +659,12 @@ export function Worktrees({ projectId }: WorktreesProps) {
               {isDeleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
+                  {t('worktrees.deleteDialog.deleting')}
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
+                  {t('worktrees.deleteDialog.delete')}
                 </>
               )}
             </AlertDialogAction>
@@ -683,9 +676,9 @@ export function Worktrees({ projectId }: WorktreesProps) {
       <AlertDialog open={!!terminalWorktreeToDelete} onOpenChange={(open) => !open && setTerminalWorktreeToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Terminal Worktree?</AlertDialogTitle>
+            <AlertDialogTitle>{t('worktrees.deleteDialog.titleTerminal')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the worktree and its branch. Any uncommitted changes will be lost.
+              {t('worktrees.deleteDialog.descriptionTerminal')}
               {terminalWorktreeToDelete && (
                 <span className="block mt-2 font-mono text-sm">
                   {terminalWorktreeToDelete.name}
@@ -697,7 +690,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletingTerminal}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeletingTerminal}>{t('common:buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteTerminalWorktree}
               disabled={isDeletingTerminal}
@@ -706,12 +699,12 @@ export function Worktrees({ projectId }: WorktreesProps) {
               {isDeletingTerminal ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
+                  {t('worktrees.deleteDialog.deleting')}
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
+                  {t('worktrees.deleteDialog.delete')}
                 </>
               )}
             </AlertDialogAction>
