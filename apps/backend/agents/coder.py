@@ -253,7 +253,7 @@ async def run_autonomous_agent(
                 content=f"📢 USER FEEDBACK DETECTED - {len(unread_feedback)} unread feedback item(s) will be incorporated into this subtask",
                 entry_type=LogEntryType.INFO,
                 phase=LogPhase.CODING,
-                print_to_console=True
+                print_to_console=True,
             )
 
         # Update status for this session
@@ -362,8 +362,12 @@ async def run_autonomous_agent(
                     print(
                         "\nThe agent MUST call mark_feedback_read with the indices of addressed items."
                     )
-                    print("Build cannot proceed to validation until feedback is marked as read.")
-                    print("\nThis is a safeguard to ensure feedback is never ignored.\n")
+                    print(
+                        "Build cannot proceed to validation until feedback is marked as read."
+                    )
+                    print(
+                        "\nThis is a safeguard to ensure feedback is never ignored.\n"
+                    )
                     raise RuntimeError(
                         "Build blocked: unread feedback must be addressed before completion"
                     )
@@ -531,10 +535,85 @@ CRITICAL: Mark feedback as read when you have FULLY ADDRESSED it in any way:
                         attempt_count=attempt_count,
                     )
                     print_status("Linear notified of stuck subtask", "info")
-        elif is_planning_phase and source_spec_dir:
-            # After planning phase, sync the newly created implementation plan back to source
-            if sync_spec_to_source(spec_dir, source_spec_dir):
-                print_status("Implementation plan synced to main project", "success")
+        elif is_planning_phase:
+            # After planning phase, validate that the planner created a valid plan with subtasks
+            from spec.validate_pkg.validators.implementation_plan_validator import (
+                ImplementationPlanValidator,
+            )
+
+            validator = ImplementationPlanValidator(spec_dir)
+            result = validator.validate()
+
+            if not result.valid:
+                # Planner failed to create a valid implementation plan
+                print()
+                print("=" * 70)
+                print_status("PLANNING FAILED: Implementation plan is invalid", "error")
+                print("=" * 70)
+                print()
+                print("The planner agent did not create a valid implementation plan.")
+                print("Validation errors:")
+                for error in result.errors:
+                    print(f"  {icon(Icons.ERROR)} {error}")
+
+                if result.fixes:
+                    print()
+                    print("Suggested fixes:")
+                    for fix in result.fixes:
+                        print(f"  {icon(Icons.ARROW_RIGHT)} {fix}")
+
+                print()
+                print("This usually happens when:")
+                print(
+                    "  - The spec.md is incomplete, vague, or missing critical details"
+                )
+                print(
+                    "  - The planner encountered errors during codebase investigation"
+                )
+                print(
+                    "  - The agent hit token limits or timeouts before completing the plan"
+                )
+                print()
+                print("Next steps:")
+                print(
+                    f"  1. Review and improve the spec: {highlight(str(spec_dir / 'spec.md'))}"
+                )
+                print(
+                    "  2. Ensure the spec includes clear requirements and acceptance criteria"
+                )
+                print(
+                    f"  3. Try running the build again: {highlight('python run.py --spec ' + spec_dir.name)}"
+                )
+                print()
+
+                # End planning phase in task logger
+                if task_logger:
+                    task_logger.end_phase(
+                        LogPhase.PLANNING,
+                        success=False,
+                        message="Planning failed: no valid implementation plan created",
+                    )
+
+                status_manager.update(state=BuildState.ERROR)
+                return
+
+            # Planning succeeded - sync back to source if in worktree mode
+            if source_spec_dir:
+                if sync_spec_to_source(spec_dir, source_spec_dir):
+                    print_status(
+                        "Implementation plan synced to main project", "success"
+                    )
+
+            # Show plan statistics
+            from implementation_plan import ImplementationPlan
+
+            plan = ImplementationPlan.load(spec_dir / "implementation_plan.json")
+            total_phases = len(plan.phases)
+            total_subtasks = sum(len(p.subtasks) for p in plan.phases)
+            print_status(
+                f"Planning complete: {total_phases} phase(s), {total_subtasks} subtask(s)",
+                "success",
+            )
 
         # Handle session status
         if status == "complete":

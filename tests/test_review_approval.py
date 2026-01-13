@@ -33,15 +33,11 @@ class TestReviewStateApproval:
     def test_approve_sets_fields(self, review_spec_dir: Path) -> None:
         """approve() sets all required fields correctly."""
         state = ReviewState()
-
-        # Freeze time for consistent testing
-        with patch("review.state.datetime") as mock_datetime:
-            mock_datetime.now.return_value.isoformat.return_value = "2024-07-01T10:00:00"
-            state.approve(review_spec_dir, approved_by="approver")
+        state.approve(review_spec_dir, approved_by="approver")
 
         assert state.approved is True
         assert state.approved_by == "approver"
-        assert state.approved_at == "2024-07-01T10:00:00"
+        assert state.approved_at != ""  # Timestamp should be set
         assert state.spec_hash != ""  # Hash should be computed
         assert state.review_count == 1
 

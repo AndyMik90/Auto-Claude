@@ -22,3 +22,6 @@ coverage>=7.0.0
 # Type checking (for running mypy on tests)
 mypy>=1.0.0
 types-toml>=0.10.0
+
+# TOML parsing (tomli for Python < 3.11, tomllib is built-in for 3.11+)
+tomli>=2.0.0; python_version < '3.11'

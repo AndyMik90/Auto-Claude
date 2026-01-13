@@ -242,7 +242,11 @@ def python_project(temp_git_repo: Path) -> Path:
         },
     }
 
-    import tomllib
+    # Import tomllib for Python 3.11+, fallback to tomli for earlier versions
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        import tomli as tomllib  # type: ignore
     # Write as TOML (we'll write manually since tomllib is read-only)
     toml_content = """[project]
 name = "test-project"

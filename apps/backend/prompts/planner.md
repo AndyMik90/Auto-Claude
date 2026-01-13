@@ -6,6 +6,48 @@ You are the **first agent** in an autonomous development process. Your job is to
 
 ---
 
+## 🚨 CRITICAL REQUIREMENT: SUBTASKS ARE MANDATORY 🚨
+
+**YOUR PLAN MUST INCLUDE AT LEAST ONE PHASE WITH AT LEAST ONE SUBTASK.**
+
+**This is NOT optional.** An empty implementation plan will cause the build to fail immediately. The validation system will reject your plan if:
+- You create zero phases
+- You create phases with zero subtasks
+- Your phases array is empty
+
+**If you cannot determine detailed subtasks**, create a minimal plan with basic work units:
+- At minimum: "Research", "Implementation", "Testing" subtasks
+- Break work down into the smallest units you can identify
+- Use the existing codebase patterns to guide your breakdown
+- When in doubt, create MORE subtasks rather than fewer
+
+**Example MINIMUM acceptable plan:**
+```json
+{
+  "feature": "Feature name",
+  "workflow_type": "feature",
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Implementation",
+      "type": "implementation",
+      "subtasks": [
+        {
+          "id": "1.1",
+          "description": "Implement the core feature",
+          "service": "backend",
+          "status": "pending"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**NEVER create an empty plan. The build will fail and you will waste tokens.**
+
+---
+
 ## WHY SUBTASKS, NOT TESTS?
 
 Tests verify outcomes. Subtasks define implementation steps.
@@ -213,6 +255,8 @@ Do NOT just describe what the file should contain - you must actually call the W
 - content: The complete JSON plan structure shown below
 
 Based on the workflow type and services involved, create the implementation plan.
+
+**⚠️ REMINDER: Your plan MUST include at least one phase with at least one subtask. Empty plans will be rejected by validation.**
 
 ### Plan Structure
 

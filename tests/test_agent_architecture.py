@@ -126,7 +126,7 @@ class TestAgentPrompt:
     def test_mentions_subagents(self):
         """Agent prompt mentions subagent capability."""
         coder_prompt_path = Path(__file__).parent.parent / "apps" / "backend" / "prompts" / "coder.md"
-        content = coder_prompt_path.read_text()
+        content = coder_prompt_path.read_text(encoding="utf-8")
 
         assert "subagent" in content.lower(), (
             "Agent prompt should document subagent capability for parallel work."
@@ -135,7 +135,7 @@ class TestAgentPrompt:
     def test_mentions_parallel_capability(self):
         """Agent prompt mentions parallel/concurrent capability."""
         coder_prompt_path = Path(__file__).parent.parent / "apps" / "backend" / "prompts" / "coder.md"
-        content = coder_prompt_path.read_text()
+        content = coder_prompt_path.read_text(encoding="utf-8")
 
         has_task_tool = "task tool" in content.lower() or "Task tool" in content
         has_parallel = "parallel" in content.lower()
