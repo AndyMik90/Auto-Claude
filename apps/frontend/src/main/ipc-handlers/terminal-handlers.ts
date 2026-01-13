@@ -145,6 +145,14 @@ export function registerTerminalHandlers(
         debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Getting profile manager...');
         const profileManager = getClaudeProfileManager();
 
+        // HYPOTHESIS 2: Check if Profile Manager is initialized
+        const isInitialized = profileManager.isInitialized();
+        console.warn('[terminal-handlers:CLAUDE_PROFILE_SAVE] ⚠️ HYPOTHESIS 2 CHECK - Profile Manager initialized:', isInitialized);
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Profile Manager initialization state:', {
+          isInitialized,
+          timestamp: Date.now()
+        });
+
         // If this is a new profile without an ID, generate one
         if (!profile.id) {
           debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] No profile ID found, generating new ID...');
@@ -367,6 +375,14 @@ export function registerTerminalHandlers(
         debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Getting profile manager...');
         const profileManager = getClaudeProfileManager();
         debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Profile manager obtained');
+
+        // HYPOTHESIS 2: Check if Profile Manager is initialized
+        const isInitialized = profileManager.isInitialized();
+        console.warn('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] ⚠️ HYPOTHESIS 2 CHECK - Profile Manager initialized:', isInitialized);
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Profile Manager initialization state:', {
+          isInitialized,
+          timestamp: Date.now()
+        });
 
         debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Getting profile...');
         const profile = profileManager.getProfile(profileId);
