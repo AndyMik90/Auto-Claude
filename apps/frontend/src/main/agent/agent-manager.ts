@@ -435,7 +435,9 @@ export class AgentManager extends EventEmitter {
           context.specDir,
           context.metadata,
           context.baseBranch
-        );
+        ).catch((error) => {
+          console.error('[AgentManager] Failed to restart spec creation:', taskId, error.message);
+        });
       } else {
         console.log('[AgentManager] Restarting as task execution');
         this.startTaskExecution(
@@ -443,7 +445,9 @@ export class AgentManager extends EventEmitter {
           context.projectPath,
           context.specId,
           context.options
-        );
+        ).catch((error) => {
+          console.error('[AgentManager] Failed to restart task:', taskId, error.message);
+        });
       }
     }, 500);
 
