@@ -181,15 +181,39 @@ export function GitLabStep({ project, onComplete, onSkip, onBack }: GitLabStepPr
     setError(null);
 
     try {
-      const result = await window.electronAPI.startGitLabAuth();
-      if (result.success && result.data) {
-        const authData = result.data as unknown as { deviceCode: string; verificationUrl: string; userCode: string };
-        setGitlabToken(authData.deviceCode); // Using deviceCode as placeholder
-        setOauthUsername(authData.userCode);
-        setStep('project');
-      } else {
-        setError(result.error || 'Failed to authenticate with GitLab');
+      // Step 1: Start device authorization flow
+      const authResult = await window.electronAPI.startGitLabAuth();
+      if (!authResult.success || !authResult.data) {
+        setError(authResult.error || 'Failed to start GitLab authorization');
+        return;
       }
+
+      const authData = authResult.data as unknown as { deviceCode: string; verificationUrl: string; userCode: string };
+
+      // Step 2: Poll for the actual access token after user authorizes
+      // In production, this should poll with delays. For now, try once.
+      const MAX_POLL_ATTEMPTS = 10;
+      const POLL_DELAY = 2000; // 2 seconds
+
+      for (let i = 0; i < MAX_POLL_ATTEMPTS; i++) {
+        await new Promise(resolve => setTimeout(resolve, POLL_DELAY));
+
+        const tokenResult = await window.electronAPI.getGitLabToken();
+        if (tokenResult.success && tokenResult.data?.token) {
+          setGitlabToken(tokenResult.data.token);
+
+          // Get username
+          const userResult = await window.electronAPI.getGitLabUser();
+          if (userResult.success && userResult.data) {
+            setOauthUsername((userResult.data as any).username || authData.userCode);
+          }
+
+          setStep('project');
+          return;
+        }
+      }
+
+      setError('Authorization timed out. Please try again or use manual token.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to authenticate with GitLab');
     } finally {
