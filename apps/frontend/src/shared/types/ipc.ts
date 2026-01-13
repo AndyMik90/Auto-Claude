@@ -348,6 +348,10 @@ export interface ElectronAPI {
   onTerminalTitleChange: (
     callback: (id: string, title: string) => void
   ) => () => void;
+  /** Listen for worktree config changes (synced from main process during restoration) */
+  onTerminalWorktreeConfigChange: (
+    callback: (id: string, config: TerminalWorktreeConfig | undefined) => void
+  ) => () => void;
   onTerminalClaudeSession: (
     callback: (id: string, sessionId: string) => void
   ) => () => void;
@@ -375,6 +379,8 @@ export interface ElectronAPI {
   onTerminalClaudeBusy: (
     callback: (id: string, isBusy: boolean) => void
   ) => () => void;
+  /** Listen for Claude exit (user closed Claude within terminal, returned to shell) */
+  onTerminalClaudeExit: (callback: (id: string) => void) => () => void;
   /** Listen for pending Claude resume notifications (for deferred resume on tab activation) */
   onTerminalPendingResume: (
     callback: (id: string, sessionId?: string) => void
@@ -968,6 +974,7 @@ export interface ElectronAPI {
   downloadAppUpdate: () => Promise<IPCResult>;
   downloadStableUpdate: () => Promise<IPCResult>;
   installAppUpdate: () => void;
+  getDownloadedAppUpdate: () => Promise<IPCResult<AppUpdateInfo | null>>;
 
   // Electron app update event listeners
   onAppUpdateAvailable: (
@@ -1206,6 +1213,18 @@ export interface ElectronAPI {
     IPCResult<import("./cli").ClaudeCodeVersionInfo>
   >;
   installClaudeCode: () => Promise<IPCResult<{ command: string }>>;
+  getClaudeCodeVersions: () => Promise<
+    IPCResult<import("./cli").ClaudeCodeVersionList>
+  >;
+  installClaudeCodeVersion: (
+    version: string
+  ) => Promise<IPCResult<{ command: string; version: string }>>;
+  getClaudeCodeInstallations: () => Promise<
+    IPCResult<import("./cli").ClaudeInstallationList>
+  >;
+  setClaudeCodeActivePath: (
+    cliPath: string
+  ) => Promise<IPCResult<{ path: string }>>;
 
   // Debug operations
   getDebugInfo: () => Promise<{
