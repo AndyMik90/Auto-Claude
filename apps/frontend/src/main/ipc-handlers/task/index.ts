@@ -16,6 +16,7 @@ import { registerTaskExecutionHandlers } from './execution-handlers';
 import { registerWorktreeHandlers } from './worktree-handlers';
 import { registerTaskLogsHandlers } from './logs-handlers';
 import { registerTaskArchiveHandlers } from './archive-handlers';
+import { registerTaskHealthHandlers } from './health-handlers';
 
 /**
  * Register all task-related IPC handlers
@@ -39,6 +40,9 @@ export function registerTaskHandlers(
 
   // Register archive handlers (archive, unarchive)
   registerTaskArchiveHandlers();
+
+  // Register health check handlers (ACS-241)
+  registerTaskHealthHandlers(agentManager);
 }
 
 // Export shared utilities for use by other modules if needed

@@ -494,3 +494,39 @@ export interface TaskStartOptions {
   model?: string;
   baseBranch?: string; // Override base branch for worktree creation
 }
+
+/**
+ * Task Health Check Feature Types
+ * See ACS-241: https://linear.app/stillknotknown/issue/ACS-241
+ */
+
+/**
+ * Result of a health check performed on a task
+ */
+export interface TaskHealthCheckResult {
+  taskId: string;
+  title: string;
+  status: TaskStatus;
+  isHealthy: boolean;
+  issues: HealthIssue[];
+  recoveryActions: RecoveryAction[];
+}
+
+/**
+ * A health issue detected on a task
+ */
+export interface HealthIssue {
+  type: 'stuck' | 'failed' | 'qa_rejected' | 'missing_artifact' | 'corrupted' | 'no_progress' | 'failed_subtasks';
+  severity: 'error' | 'warning';
+  message: string;
+  details?: string;
+}
+
+/**
+ * Recovery action available for a task issue
+ */
+export interface RecoveryAction {
+  label: string;
+  actionType: 'recover_stuck' | 'view_logs' | 'view_qa_report' | 'discard_task' | 'retry';
+  variant?: 'default' | 'destructive' | 'outline' | 'warning' | 'success';
+}

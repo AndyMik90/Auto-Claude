@@ -86,7 +86,28 @@
     "worktreeCleanupNotStaged": "Cette tâche possède un worktree avec des changements non fusionnés. Supprimez le worktree pour marquer comme terminé, ou annulez pour réviser les changements d'abord.",
     "keepWorktree": "Garder le Worktree",
     "deleteWorktree": "Supprimer le Worktree & Marquer Terminé",
-    "refreshTasks": "Actualiser les tâches"
+    "refreshTasks": "Actualiser les tâches",
+    "healthCheck": "Vérification de Santé",
+    "healthCheckAriaLabel": "Exécuter la vérification de santé sur toutes les tâches",
+    "healthCheckDialogTitle": "Résultats de la Vérification de Santé",
+    "healthCheckDialogDescription": "Problèmes trouvés dans {{count}} tâche(s)",
+    "noHealthIssues": "Aucun problème de santé trouvé - toutes les tâches sont saines!",
+    "checkingHealth": "Vérification de la santé des tâches...",
+    "issues": {
+      "stuck": "La tâche est bloquée (aucun processus en cours)",
+      "failed": "L'exécution de la tâche a échoué",
+      "failedSubtasks": "{{count}} sous-tâche(s) échouée(s)",
+      "qaRejected": "Examen QA rejeté",
+      "missingSpec": "spec.md manquant",
+      "corruptedPlan": "implementation_plan.json corrompu",
+      "noProgress": "Aucune progression d'exécution détectée"
+    },
+    "recovery": {
+      "recoverStuck": "Récupérer",
+      "viewLogs": "Voir les Journaux",
+      "viewQARequest": "Voir le Rapport QA",
+      "discardTask": "Abandonner la Tâche"
+    }
   },
   "execution": {
     "phases": {

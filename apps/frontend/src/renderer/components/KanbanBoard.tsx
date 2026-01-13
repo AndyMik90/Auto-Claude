@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, AlertCircle, Activity } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -30,6 +30,7 @@ import { cn } from '../lib/utils';
 import { persistTaskStatus, forceCompleteTask, archiveTasks } from '../stores/task-store';
 import { useToast } from '../hooks/use-toast';
 import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
+import { TaskHealthCheckDialog } from './TaskHealthCheckDialog';
 import type { Task, TaskStatus } from '../../shared/types';
 
 // Type guard for valid drop column targets - preserves literal type from TASK_STATUS_COLUMNS
@@ -364,6 +365,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     error: undefined
   });
 
+  // Health check dialog state (ACS-241)
+  const [healthCheckDialogOpen, setHealthCheckDialogOpen] = useState(false);
+
   // Calculate archived count for Done column button
   const archivedCount = useMemo(() =>
     tasks.filter(t => t.metadata?.archivedAt).length,
@@ -566,9 +570,18 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   return (
     <div className="flex h-full flex-col">
-      {/* Kanban header with refresh button */}
+      {/* Kanban header with refresh and health check buttons */}
       {onRefresh && (
-        <div className="flex items-center justify-end px-6 pt-4 pb-2">
+        <div className="flex items-center justify-end gap-2 px-6 pt-4 pb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setHealthCheckDialogOpen(true)}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <Activity className="h-4 w-4" />
+            {t('tasks:kanban.healthCheck')}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -630,6 +643,13 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
           }
         }}
         onConfirm={handleWorktreeCleanupConfirm}
+      />
+
+      {/* Health check dialog (ACS-241) */}
+      <TaskHealthCheckDialog
+        open={healthCheckDialogOpen}
+        onOpenChange={setHealthCheckDialogOpen}
+        projectId={tasks[0]?.projectId || ''}
       />
     </div>
   );

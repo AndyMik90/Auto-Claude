@@ -74,6 +74,9 @@ export const taskMock = {
 
   checkTaskRunning: async () => ({ success: true, data: false }),
 
+  // Health check (ACS-241)
+  checkTaskHealth: async () => ({ success: true, data: [] }),
+
   // Task logs operations
   getTaskLogs: async () => ({
     success: true,

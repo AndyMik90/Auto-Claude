@@ -13,7 +13,8 @@ import type {
   SupportedIDE,
   SupportedTerminal,
   WorktreeCreatePROptions,
-  WorktreeCreatePRResult
+  WorktreeCreatePRResult,
+  TaskHealthCheckResult
 } from '../../shared/types';
 
 export interface TaskAPI {
@@ -47,6 +48,9 @@ export interface TaskAPI {
     options?: import('../../shared/types').TaskRecoveryOptions
   ) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
+
+  // Health Check (ACS-241)
+  checkTaskHealth: (projectId: string) => Promise<IPCResult<TaskHealthCheckResult[]>>;
 
   // Workspace Management (for human review)
   getWorktreeStatus: (taskId: string) => Promise<IPCResult<import('../../shared/types').WorktreeStatus>>;
@@ -131,6 +135,10 @@ export const createTaskAPI = (): TaskAPI => ({
 
   checkTaskRunning: (taskId: string): Promise<IPCResult<boolean>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_CHECK_RUNNING, taskId),
+
+  // Health Check (ACS-241)
+  checkTaskHealth: (projectId: string): Promise<IPCResult<TaskHealthCheckResult[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_HEALTH_CHECK, projectId),
 
   // Workspace Management
   getWorktreeStatus: (taskId: string): Promise<IPCResult<import('../../shared/types').WorktreeStatus>> =>

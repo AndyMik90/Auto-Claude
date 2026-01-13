@@ -86,7 +86,28 @@
     "worktreeCleanupNotStaged": "This task has a worktree with changes that have not been merged. Delete the worktree to mark as done, or cancel to review the changes first.",
     "keepWorktree": "Keep Worktree",
     "deleteWorktree": "Delete Worktree & Mark Done",
-    "refreshTasks": "Refresh Tasks"
+    "refreshTasks": "Refresh Tasks",
+    "healthCheck": "Health Check",
+    "healthCheckAriaLabel": "Run health check on all tasks",
+    "healthCheckDialogTitle": "Task Health Check Results",
+    "healthCheckDialogDescription": "Issues found in {{count}} task(s)",
+    "noHealthIssues": "No health issues found - all tasks are healthy!",
+    "checkingHealth": "Checking task health...",
+    "issues": {
+      "stuck": "Task is stuck (no process running)",
+      "failed": "Task execution failed",
+      "failedSubtasks": "{{count}} subtask(s) failed",
+      "qaRejected": "QA review rejected",
+      "missingSpec": "Missing spec.md",
+      "corruptedPlan": "Corrupted implementation_plan.json",
+      "noProgress": "No execution progress detected"
+    },
+    "recovery": {
+      "recoverStuck": "Recover",
+      "viewLogs": "View Logs",
+      "viewQARequest": "View QA Report",
+      "discardTask": "Discard Task"
+    }
   },
   "execution": {
     "phases": {
