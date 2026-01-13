@@ -424,15 +424,23 @@ class TaskSnapshot:
         as the source of truth. This handles cases where the semantic analyzer
         couldn't detect changes (e.g., function body modifications, unsupported
         file types like Rust) but the file was actually changed.
+
+        Also returns True for newly created files (where content_hash_before
+        is empty but content_hash_after is set).
         """
         # If we have semantic changes, the file was definitely modified
         if self.semantic_changes:
             return True
+
+        # Handle new files: if before is empty but after has content, it's a new file
+        if not self.content_hash_before and self.content_hash_after:
+            return True
+
         # Fall back to content hash comparison for files where semantic
         # analysis returned empty (body modifications, unsupported languages)
-        # Note: Both hashes must be set (non-empty) for a valid comparison
         if self.content_hash_before and self.content_hash_after:
             return self.content_hash_before != self.content_hash_after
+
         return False
 
 

@@ -203,6 +203,56 @@ class MergeOrchestrator:
             )
         return self._merge_pipeline
 
+    def _read_worktree_file_for_direct_copy(
+        self,
+        file_path: str,
+        worktree_path: Path | None,
+    ) -> tuple[str | None, bool]:
+        """
+        Read file content from worktree for DIRECT_COPY merge.
+
+        Args:
+            file_path: Relative path to the file
+            worktree_path: Path to the worktree directory
+
+        Returns:
+            Tuple of (content, success). If success is False, content is None
+            and the caller should mark the merge as FAILED.
+        """
+        if not worktree_path:
+            logger.warning(f"DIRECT_COPY: No worktree path provided for file: {file_path}")
+            debug_warning(
+                MODULE,
+                "DIRECT_COPY: No worktree path provided",
+                file=file_path,
+            )
+            return None, False
+
+        worktree_file = worktree_path / file_path
+        if not worktree_file.exists():
+            logger.warning(f"DIRECT_COPY: Worktree file not found: {worktree_file}")
+            debug_warning(
+                MODULE,
+                "DIRECT_COPY: Worktree file not found",
+                file=str(worktree_file),
+            )
+            return None, False
+
+        try:
+            content = worktree_file.read_text(encoding="utf-8")
+            debug_detailed(
+                MODULE,
+                f"Read file from worktree for direct copy: {file_path}",
+            )
+            return content, True
+        except UnicodeDecodeError:
+            content = worktree_file.read_text(encoding="utf-8", errors="replace")
+            debug_detailed(
+                MODULE,
+                f"Read file from worktree with encoding fallback: {file_path}",
+            )
+            return content, True
+
     def merge_task(
         self,
         task_id: str,
@@ -279,30 +329,15 @@ class MergeOrchestrator:
                 # Handle DIRECT_COPY: read file directly from worktree
                 # This happens when file has modifications but semantic analysis
                 # couldn't parse the changes (body modifications, unsupported languages)
-                if result.decision == MergeDecision.DIRECT_COPY and worktree_path:
-                    worktree_file = worktree_path / file_path
-                    if worktree_file.exists():
-                        try:
-                            result.merged_content = worktree_file.read_text(
-                                encoding="utf-8"
-                            )
-                            debug_detailed(
-                                MODULE,
-                                f"Read file from worktree for direct copy: {file_path}",
-                            )
-                        except UnicodeDecodeError:
-                            result.merged_content = worktree_file.read_text(
-                                encoding="utf-8", errors="replace"
-                            )
+                if result.decision == MergeDecision.DIRECT_COPY:
+                    content, success = self._read_worktree_file_for_direct_copy(
+                        file_path, worktree_path
+                    )
+                    if success:
+                        result.merged_content = content
                     else:
-                        logger.warning(
-                            f"DIRECT_COPY: Worktree file not found: {worktree_file}"
-                        )
-                        debug_warning(
-                            MODULE,
-                            "DIRECT_COPY: Worktree file not found",
-                            file=str(worktree_file),
-                        )
+                        result.decision = MergeDecision.FAILED
+                        result.error = "Worktree file not found for DIRECT_COPY"
 
                 report.file_results[file_path] = result
                 self._update_stats(report.stats, result)
@@ -417,30 +452,14 @@ class MergeOrchestrator:
                         if worktree_path:
                             break
 
-                    if worktree_path:
-                        worktree_file = worktree_path / file_path
-                        if worktree_file.exists():
-                            try:
-                                result.merged_content = worktree_file.read_text(
-                                    encoding="utf-8"
-                                )
-                                debug_detailed(
-                                    MODULE,
-                                    f"Read file from worktree for direct copy: {file_path}",
-                                )
-                            except UnicodeDecodeError:
-                                result.merged_content = worktree_file.read_text(
-                                    encoding="utf-8", errors="replace"
-                                )
-                        else:
-                            logger.warning(
-                                f"DIRECT_COPY: Worktree file not found: {worktree_file}"
-                            )
-                            debug_warning(
-                                MODULE,
-                                "DIRECT_COPY: Worktree file not found",
-                                file=str(worktree_file),
-                            )
+                    content, success = self._read_worktree_file_for_direct_copy(
+                        file_path, worktree_path
+                    )
+                    if success:
+                        result.merged_content = content
+                    else:
+                        result.decision = MergeDecision.FAILED
+                        result.error = "Worktree file not found for DIRECT_COPY"
 
                 report.file_results[file_path] = result
                 self._update_stats(report.stats, result)
@@ -448,6 +467,12 @@ class MergeOrchestrator:
             report.success = report.stats.files_failed == 0
 
         except Exception as e:
+            debug_error(
+                MODULE,
+                "Merge failed for tasks",
+                task_ids=[r.task_id for r in requests],
+                error=str(e),
+            )
             logger.exception("Merge failed")
             report.success = False
             report.error = str(e)
@@ -657,7 +682,7 @@ class MergeOrchestrator:
 
         written = []
         for file_path, result in report.file_results.items():
-            if result.merged_content:
+            if result.merged_content is not None:
                 out_path = output_dir / file_path
                 out_path.parent.mkdir(parents=True, exist_ok=True)
                 out_path.write_text(result.merged_content, encoding="utf-8")
