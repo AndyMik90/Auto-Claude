@@ -106,6 +106,8 @@ export class TaskQueueManager {
   private boundHandleTaskExit: (taskId: string, exitCode: number | null, processType: string) => Promise<void>;
   /** Periodic prune interval for cleaning up stale queue entries */
   private pruneInterval: ReturnType<typeof setInterval> | null = null;
+  /** Flag to prevent new tasks from being queued during shutdown */
+  private shuttingDown = false;
 
   constructor(agentManager: AgentManager, emitter: EventEmitter) {
     this.agentManager = agentManager;
@@ -124,14 +126,29 @@ export class TaskQueueManager {
 
   /**
    * Stop the queue manager and remove event listeners
+   * Waits for in-flight operations to complete before returning.
    */
-  stop(): void {
+  async stop(): Promise<void> {
+    // Set flag to prevent new operations from starting
+    this.shuttingDown = true;
+
+    // Wait for all pending promise chains to complete
+    const pendingPromises = Array.from(this.processingQueue.values()).map(entry => entry.promise);
+    if (pendingPromises.length > 0) {
+      debugLog('[TaskQueueManager] Waiting for', pendingPromises.length, 'pending queue operations to complete...');
+      await Promise.all(pendingPromises);
+    }
+
+    // Remove event listener
     this.emitter.off('exit', this.boundHandleTaskExit);
+
     // Clear the periodic prune interval
     if (this.pruneInterval) {
       clearInterval(this.pruneInterval);
       this.pruneInterval = null;
     }
+
+    debugLog('[TaskQueueManager] Queue manager stopped');
   }
 
   /**
@@ -318,6 +335,12 @@ export class TaskQueueManager {
   private async handleTaskExit(taskId: string, exitCode: number | null, _processType: string): Promise<void> {
     debugLog('[TaskQueueManager] Task exit:', { taskId, exitCode });
 
+    // Skip queue processing during shutdown
+    if (this.shuttingDown) {
+      debugLog('[TaskQueueManager] Shutting down, skipping queue check');
+      return;
+    }
+
     // Find the project for this task
     const { task, project } = findTaskAndProject(taskId);
     if (!task || !project) {
@@ -367,8 +390,16 @@ export class TaskQueueManager {
     }
 
     const status = this.getQueueStatus(projectId);
-    if (status.runningCount >= status.maxConcurrent) {
-      debugLog('[TaskQueueManager] Max concurrent tasks reached:', status);
+    // Use in-memory process count instead of eventually-consistent task status
+    const runningTaskIds = this.agentManager.getRunningTasks();
+    const tasks = projectStore.getTasks(projectId);
+    const runningCount = tasks.filter(t => runningTaskIds.includes(t.id)).length;
+
+    if (runningCount >= status.maxConcurrent) {
+      debugLog('[TaskQueueManager] Max concurrent tasks reached:', {
+        runningCount,
+        maxConcurrent: status.maxConcurrent
+      });
       return false;
     }
 
@@ -378,7 +409,6 @@ export class TaskQueueManager {
     }
 
     // Get backlog tasks, sorted by priority (highest first), then by creation date (oldest first)
-    const tasks = projectStore.getTasks(projectId);
     const backlogTasks = tasks
       .filter(t => t.status === 'backlog')
       .sort((a, b) => {
@@ -439,6 +469,12 @@ export class TaskQueueManager {
    * handleTaskExit, ensuring maxConcurrent is never exceeded.
    */
   async triggerQueue(projectId: string): Promise<void> {
+    // Skip new triggers during shutdown
+    if (this.shuttingDown) {
+      debugLog('[TaskQueueManager] Shutting down, skipping queue trigger');
+      return;
+    }
+
     const config = this.getQueueConfig(projectId);
     if (!config.enabled) {
       debugLog('[TaskQueueManager] Queue not enabled, skipping trigger');
