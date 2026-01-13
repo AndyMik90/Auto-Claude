@@ -20,7 +20,7 @@
  * - Graceful fallbacks when tools not found
  */
 
-import { execFileSync, execFile, type ExecFileOptionsWithStringEncoding, type ExecFileSyncOptions } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
 import { existsSync, readdirSync, promises as fsPromises } from 'fs';
 import path from 'path';
 import os from 'os';
@@ -33,10 +33,10 @@ import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-p
 
 const execFileAsync = promisify(execFile);
 
-export type ExecFileSyncOptionsWithVerbatim = ExecFileSyncOptions & {
+type ExecFileSyncOptionsWithVerbatim = import('child_process').ExecFileSyncOptions & {
   windowsVerbatimArguments?: boolean;
 };
-export type ExecFileAsyncOptionsWithVerbatim = ExecFileOptionsWithStringEncoding & {
+type ExecFileAsyncOptionsWithVerbatim = import('child_process').ExecFileOptionsWithStringEncoding & {
   windowsVerbatimArguments?: boolean;
 };
 

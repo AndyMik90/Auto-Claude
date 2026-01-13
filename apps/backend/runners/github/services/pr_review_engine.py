@@ -34,7 +34,6 @@ except (ImportError, ValueError, SystemError):
         ReviewPass,
         StructuralIssue,
     )
-    from phase_config import resolve_model_id
     from services.io_utils import safe_print
     from services.prompt_manager import PromptManager
     from services.response_parsers import ResponseParser

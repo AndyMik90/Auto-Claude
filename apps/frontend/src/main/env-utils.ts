@@ -16,7 +16,6 @@ import { promises as fsPromises } from 'fs';
 import { execFileSync, execFile } from 'child_process';
 import { promisify } from 'util';
 import { getSentryEnvForSubprocess } from './sentry';
-import { isWindows, isUnix, getPathDelimiter } from './platform';
 
 const execFileAsync = promisify(execFile);
 

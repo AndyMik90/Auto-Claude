@@ -176,10 +176,6 @@ async def process_sdk_stream(
     if DEBUG_MODE:
         safe_print(f"[DEBUG {context_name}] Awaiting response stream...")
 
-    # Track activity for progress logging
-    last_progress_log = 0
-    PROGRESS_LOG_INTERVAL = 10  # Log progress every N messages
-
     try:
         async for msg in client.receive_response():
             try:
@@ -253,15 +249,23 @@ async def process_sdk_stream(
                         agents_invoked.append(agent_name)
                         # Track this tool ID to log its result later
                         subagent_tool_ids[tool_id] = agent_name
-                        # Log with model info if available
-                        model_info = f" [{_short_model_name(model)}]" if model else ""
-                        safe_print(
-                            f"[{context_name}] Invoking agent: {agent_name}{model_info}"
-                        )
-                    elif tool_name != "StructuredOutput":
-                        # Log meaningful tool info (not just tool name)
-                        tool_detail = _get_tool_detail(tool_name, tool_input)
-                        safe_print(f"[{context_name}] {tool_detail}")
+                        safe_print(f"[{context_name}] Invoked agent: {agent_name}")
+                    elif tool_name == "StructuredOutput":
+                        if tool_input:
+                            # Warn if overwriting existing structured output
+                            if structured_output is not None:
+                                logger.warning(
+                                    f"[{context_name}] Multiple StructuredOutput blocks received, "
+                                    f"overwriting previous output"
+                                )
+                            structured_output = tool_input
+                            safe_print(f"[{context_name}] Received structured output")
+                            # Invoke callback
+                            if on_structured_output:
+                                on_structured_output(tool_input)
+                    elif DEBUG_MODE:
+                        # Log other tool calls in debug mode
+                        safe_print(f"[DEBUG {context_name}] Other tool: {tool_name}")
 
                     # Invoke callback for all tool uses
                     if on_tool_use:
@@ -292,12 +296,10 @@ async def process_sdk_stream(
                         safe_print(
                             f"[Agent:{agent_name}] {status}: {result_preview}{'...' if len(str(result_content)) > 600 else ''}"
                         )
-                    else:
-                        # Show tool completion for visibility (not gated by DEBUG)
-                        status = "ERROR" if is_error else "done"
-                        # Show brief preview of result for context
-                        result_preview = (
-                            str(result_content)[:100].replace("\n", " ").strip()
+                    elif DEBUG_MODE:
+                        status = "ERROR" if is_error else "OK"
+                        safe_print(
+                            f"[DEBUG {context_name}] Tool result: {tool_id} [{status}]"
                         )
                         if result_preview:
                             safe_print(
@@ -327,11 +329,8 @@ async def process_sdk_stream(
                                 if agent_name not in agents_invoked:
                                     agents_invoked.append(agent_name)
                                     subagent_tool_ids[tool_id] = agent_name
-                                    # Log with model info if available
-                                    model_info = (
-                                        f" [{_short_model_name(model)}]"
-                                        if model
-                                        else ""
+                                    safe_print(
+                                        f"[{context_name}] Invoking agent: {agent_name}"
                                     )
                                     safe_print(
                                         f"[{context_name}] Invoking agent: {agent_name}{model_info}"

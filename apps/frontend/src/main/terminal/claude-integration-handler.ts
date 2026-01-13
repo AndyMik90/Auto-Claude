@@ -28,88 +28,6 @@ function normalizePathForBash(envPath: string): string {
 }
 
 /**
- * Generate temp file content for OAuth token based on platform
- *
- * On Windows, creates a .bat file with set command using double-quote syntax;
- * on Unix, creates a shell script with export.
- *
- * @param token - OAuth token value
- * @returns Content string for the temp file
- */
-function generateTokenTempFileContent(token: string): string {
-  if (isWindows()) {
-    // Windows: Use double-quote syntax for set command to handle special characters
-    // Format: set "VARNAME=value" - quotes allow spaces and special chars in value
-    // For values inside double quotes, use escapeForWindowsDoubleQuote() because
-    // caret is literal inside double quotes in cmd.exe (only " needs escaping).
-    const escapedToken = escapeForWindowsDoubleQuote(token);
-    return `@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=${escapedToken}"\r\n`;
-  }
-  // Unix/macOS: Use export with single-quoted value
-  return `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`;
-}
-
-/**
- * Get the file extension for temp files based on platform
- *
- * @returns File extension including the dot (e.g., '.bat' on Windows, '' on Unix)
- */
-function getTempFileExtension(): string {
-  return isWindows() ? '.bat' : '';
-}
-
-/**
- * Build PATH environment variable prefix for Claude CLI invocation.
- *
- * On Windows, uses semicolon separators and cmd.exe escaping.
- * On Unix/macOS, uses colon separators and bash escaping.
- *
- * @param pathEnv - PATH environment variable value
- * @returns Empty string if no PATH, otherwise platform-specific PATH prefix
- */
-function buildPathPrefix(pathEnv: string): string {
-  if (!pathEnv) {
-    return '';
-  }
-
-  if (isWindows()) {
-    // Windows: Use semicolon-separated PATH with double-quote escaping
-    // Format: set "PATH=value" where value uses semicolons
-    // For values inside double quotes, use escapeForWindowsDoubleQuote() because
-    // caret is literal inside double quotes in cmd.exe (only " needs escaping).
-    const escapedPath = escapeForWindowsDoubleQuote(pathEnv);
-    return `set "PATH=${escapedPath}" && `;
-  }
-
-  // Unix/macOS: Use colon-separated PATH with bash escaping
-  // Format: PATH='value' where value uses colons
-  const normalizedPath = normalizePathForBash(pathEnv);
-  return `PATH=${escapeShellArg(normalizedPath)} `;
-}
-
-/**
- * Escape a command for safe use in shell commands.
- *
- * On Windows, wraps in double quotes for cmd.exe. Since the value is inside
- * double quotes, we use escapeForWindowsDoubleQuote() (only escapes embedded
- * double quotes as ""). Caret escaping is NOT used inside double quotes.
- * On Unix/macOS, wraps in single quotes for bash.
- *
- * @param cmd - The command to escape
- * @returns The escaped command safe for use in shell commands
- */
-function escapeShellCommand(cmd: string): string {
-  if (isWindows()) {
-    // Windows: Wrap in double quotes and escape only embedded double quotes
-    // Inside double quotes, caret is literal, so use escapeForWindowsDoubleQuote()
-    const escapedCmd = escapeForWindowsDoubleQuote(cmd);
-    return `"${escapedCmd}"`;
-  }
-  // Unix/macOS: Wrap in single quotes for bash
-  return escapeShellArg(cmd);
-}
-
-/**
  * Flag for YOLO mode (skip all permission prompts)
  * Extracted as constant to ensure consistency across invokeClaude and invokeClaudeAsync
  */
@@ -172,43 +90,12 @@ export function buildClaudeShellCommand(
   extraFlags?: string
 ): string {
   const fullCmd = extraFlags ? `${escapedClaudeCmd}${extraFlags}` : escapedClaudeCmd;
-  const isWin = isWindows();
-
   switch (config.method) {
     case 'temp-file':
-      if (isWin) {
-        // Windows: Use batch file approach with 'call' command
-        // The temp file on Windows is a .bat file that sets CLAUDE_CODE_OAUTH_TOKEN
-        // We use 'cls' instead of 'clear', and 'call' to execute the batch file
-        //
-        // SECURITY: Environment variables set via 'call' persist in memory
-        // after the batch file is deleted, so we can safely delete the file
-        // immediately after sourcing it (before running Claude).
-        //
-        // For paths inside double quotes (call "..." and del "..."), use
-        // escapeForWindowsDoubleQuote() instead of escapeShellArgWindows()
-        // because caret is literal inside double quotes in cmd.exe.
-        const escapedTempFile = escapeForWindowsDoubleQuote(config.tempFile);
-        return `cls && ${cwdCommand}${pathPrefix}call "${escapedTempFile}" && del "${escapedTempFile}" && ${fullCmd}\r`;
-      } else {
-        // Unix/macOS: Use bash with source command and history-safe prefixes
-        const escapedTempFile = escapeShellArg(config.tempFile);
-        return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace ${pathPrefix}bash -c "source ${escapedTempFile} && rm -f ${escapedTempFile} && exec ${fullCmd}"\r`;
-      }
+      return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace ${pathPrefix}bash -c "source ${config.escapedTempFile} && rm -f ${config.escapedTempFile} && exec ${fullCmd}"\r`;
 
     case 'config-dir':
-      if (isWin) {
-        // Windows: Set environment variable using double-quote syntax
-        // For values inside double quotes (set "VAR=value"), use
-        // escapeForWindowsDoubleQuote() because caret is literal inside
-        // double quotes in cmd.exe (only double quotes need escaping).
-        const escapedConfigDir = escapeForWindowsDoubleQuote(config.configDir);
-        return `cls && ${cwdCommand}set "CLAUDE_CONFIG_DIR=${escapedConfigDir}" && ${pathPrefix}${fullCmd}\r`;
-      } else {
-        // Unix/macOS: Use bash with config dir and history-safe prefixes
-        const escapedConfigDir = escapeShellArg(config.configDir);
-        return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CLAUDE_CONFIG_DIR=${escapedConfigDir} ${pathPrefix}bash -c "exec ${fullCmd}"\r`;
-      }
+      return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CLAUDE_CONFIG_DIR=${config.escapedConfigDir} ${pathPrefix}bash -c "exec ${fullCmd}"\r`;
 
     default:
       return `${cwdCommand}${pathPrefix}${fullCmd}\r`;
@@ -539,6 +426,20 @@ export function invokeClaude(
   // Compute extra flags for YOLO mode
   const extraFlags = dangerouslySkipPermissions ? YOLO_MODE_FLAG : undefined;
 
+  terminal.isClaudeMode = true;
+  // Store YOLO mode setting so it persists across profile switches
+  terminal.dangerouslySkipPermissions = dangerouslySkipPermissions;
+  SessionHandler.releaseSessionId(terminal.id);
+  terminal.claudeSessionId = undefined;
+
+  const startTime = Date.now();
+  const projectPath = cwd || terminal.projectPath || terminal.cwd;
+
+  const profileManager = getClaudeProfileManager();
+  const activeProfile = profileId
+    ? profileManager.getProfile(profileId)
+    : profileManager.getActiveProfile();
+
   // Track terminal state for cleanup on error
   const wasClaudeMode = terminal.isClaudeMode;
   const previousProfileId = terminal.claudeProfileId;
@@ -574,47 +475,24 @@ export function invokeClaude(
     const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
     const needsEnvOverride = profileId && profileId !== previousProfileId;
 
-    debugLog('[ClaudeIntegration:invokeClaude] Environment override check:', {
-      profileIdProvided: !!profileId,
-      previousProfileId,
-      needsEnvOverride
-    });
-
-    if (needsEnvOverride && activeProfile && !activeProfile.isDefault) {
-      const token = profileManager.getProfileToken(activeProfile.id);
-      debugLog('[ClaudeIntegration:invokeClaude] Token retrieval:', {
-        hasToken: !!token,
-        tokenLength: token?.length
-      });
-
-      if (token) {
-        const nonce = crypto.randomBytes(8).toString('hex');
-        const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}${getTempFileExtension()}`);
-        debugLog('[ClaudeIntegration:invokeClaude] Writing token to temp file:', tempFile);
-        fs.writeFileSync(
-          tempFile,
-          generateTokenTempFileContent(token),
-          { mode: 0o600 }
-        );
-
-        const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', tempFile }, extraFlags);
-        debugLog('[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)');
-        terminal.pty.write(command);
-        profileManager.markProfileUsed(activeProfile.id);
-        finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
-        debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
-        return;
-      } else if (activeProfile.configDir) {
-        const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', configDir: activeProfile.configDir }, extraFlags);
-        debugLog('[ClaudeIntegration:invokeClaude] Executing command (configDir method, history-safe)');
-        terminal.pty.write(command);
-        profileManager.markProfileUsed(activeProfile.id);
-        finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
-        debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
-        return;
-      } else {
-        debugLog('[ClaudeIntegration:invokeClaude] WARNING: No token or configDir available for non-default profile');
-      }
+      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile }, extraFlags);
+      debugLog('[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)');
+      terminal.pty.write(command);
+      profileManager.markProfileUsed(activeProfile.id);
+      finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+      debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
+      return;
+    } else if (activeProfile.configDir) {
+      const escapedConfigDir = escapeShellArg(activeProfile.configDir);
+      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir }, extraFlags);
+      debugLog('[ClaudeIntegration:invokeClaude] Executing command (configDir method, history-safe)');
+      terminal.pty.write(command);
+      profileManager.markProfileUsed(activeProfile.id);
+      finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+      debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
+      return;
+    } else {
+      debugLog('[ClaudeIntegration:invokeClaude] WARNING: No token or configDir available for non-default profile');
     }
 
     if (activeProfile && !activeProfile.isDefault) {
@@ -646,6 +524,21 @@ export function invokeClaude(
     });
     throw error; // Re-throw to allow caller to handle
   }
+
+  if (activeProfile && !activeProfile.isDefault) {
+    debugLog('[ClaudeIntegration:invokeClaude] Using terminal environment for non-default profile:', activeProfile.name);
+  }
+
+  const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' }, extraFlags);
+  debugLog('[ClaudeIntegration:invokeClaude] Executing command (default method):', command);
+  terminal.pty.write(command);
+
+  if (activeProfile) {
+    profileManager.markProfileUsed(activeProfile.id);
+  }
+
+  finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+  debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (default) ==========');
 }
 
 /**
@@ -734,9 +627,20 @@ export async function invokeClaudeAsync(
   onSessionCapture: (terminalId: string, projectPath: string, startTime: number) => void,
   dangerouslySkipPermissions?: boolean
 ): Promise<void> {
-  // Track terminal state for cleanup on error
-  const wasClaudeMode = terminal.isClaudeMode;
-  const previousProfileId = terminal.claudeProfileId;
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE START (async) ==========');
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Terminal ID:', terminal.id);
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Requested profile ID:', profileId);
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] CWD:', cwd);
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Dangerously skip permissions:', dangerouslySkipPermissions);
+
+  // Compute extra flags for YOLO mode
+  const extraFlags = dangerouslySkipPermissions ? YOLO_MODE_FLAG : undefined;
+
+  terminal.isClaudeMode = true;
+  // Store YOLO mode setting so it persists across profile switches
+  terminal.dangerouslySkipPermissions = dangerouslySkipPermissions;
+  SessionHandler.releaseSessionId(terminal.id);
+  terminal.claudeSessionId = undefined;
 
   const startTime = Date.now();
 
@@ -777,62 +681,24 @@ export async function invokeClaudeAsync(
     // Async CLI invocation - non-blocking
     const cwdCommand = buildCdCommand(cwd);
 
-    // Add timeout protection for CLI detection (10s timeout)
-    const cliInvocationPromise = getClaudeCliInvocationAsync();
-    let timeoutId: NodeJS.Timeout | undefined;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('CLI invocation timeout after 10s')), 10000);
-    });
-    const { command: claudeCmd, env: claudeEnv } = await Promise.race([cliInvocationPromise, timeoutPromise])
-      .finally(() => {
-        if (timeoutId) clearTimeout(timeoutId);
-      });
-
-    const escapedClaudeCmd = escapeShellCommand(claudeCmd);
-    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
-    const needsEnvOverride = profileId && profileId !== previousProfileId;
-
-    debugLog('[ClaudeIntegration:invokeClaudeAsync] Environment override check:', {
-      profileIdProvided: !!profileId,
-      previousProfileId,
-      needsEnvOverride
-    });
-
-    if (needsEnvOverride && activeProfile && !activeProfile.isDefault) {
-      const token = profileManager.getProfileToken(activeProfile.id);
-      debugLog('[ClaudeIntegration:invokeClaudeAsync] Token retrieval:', {
-        hasToken: !!token,
-        tokenLength: token?.length
-      });
-
-      if (token) {
-        const nonce = crypto.randomBytes(8).toString('hex');
-        const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}${getTempFileExtension()}`);
-        debugLog('[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:', tempFile);
-        await fsPromises.writeFile(
-          tempFile,
-          generateTokenTempFileContent(token),
-          { mode: 0o600 }
-        );
-
-        const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', tempFile }, extraFlags);
-        debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
-        terminal.pty.write(command);
-        profileManager.markProfileUsed(activeProfile.id);
-        finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
-        debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
-        return;
-      } else if (activeProfile.configDir) {
-        const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', configDir: activeProfile.configDir }, extraFlags);
-        debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
-        terminal.pty.write(command);
-        profileManager.markProfileUsed(activeProfile.id);
-        finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
-        debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
-        return;
-      } else {
-        debugLog('[ClaudeIntegration:invokeClaudeAsync] WARNING: No token or configDir available for non-default profile');
-      }
+      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile }, extraFlags);
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
+      terminal.pty.write(command);
+      profileManager.markProfileUsed(activeProfile.id);
+      finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
+      return;
+    } else if (activeProfile.configDir) {
+      const escapedConfigDir = escapeShellArg(activeProfile.configDir);
+      const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', escapedConfigDir }, extraFlags);
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
+      terminal.pty.write(command);
+      profileManager.markProfileUsed(activeProfile.id);
+      finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
+      return;
+    } else {
+      debugLog('[ClaudeIntegration:invokeClaudeAsync] WARNING: No token or configDir available for non-default profile');
     }
 
     if (activeProfile && !activeProfile.isDefault) {
@@ -866,6 +732,21 @@ export async function invokeClaudeAsync(
     });
     throw error; // Re-throw to allow caller to handle
   }
+
+  if (activeProfile && !activeProfile.isDefault) {
+    debugLog('[ClaudeIntegration:invokeClaudeAsync] Using terminal environment for non-default profile:', activeProfile.name);
+  }
+
+  const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' }, extraFlags);
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (default method):', command);
+  terminal.pty.write(command);
+
+  if (activeProfile) {
+    profileManager.markProfileUsed(activeProfile.id);
+  }
+
+  finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
+  debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (default) ==========');
 }
 
 /**
