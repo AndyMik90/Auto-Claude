@@ -7,7 +7,7 @@
  * See ACS-241: https://linear.app/stillknotknown/issue/ACS-241
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -22,7 +22,7 @@ import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { AlertCircle, AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
-import type { TaskHealthCheckResult, HealthIssue, RecoveryAction } from '../../shared/types';
+import type { TaskHealthCheckResult, RecoveryAction } from '../../shared/types';
 import { recoverStuckTask } from '../stores/task-store';
 
 interface TaskHealthCheckDialogProps {
@@ -69,12 +69,13 @@ function getRecoveryActionLabel(actionType: RecoveryAction['actionType']): strin
  */
 async function handleRecoveryAction(action: RecoveryAction, taskId: string, onRefresh?: () => void) {
   switch (action.actionType) {
-    case 'recover_stuck':
+    case 'recover_stuck': {
       const result = await recoverStuckTask(taskId, { autoRestart: false });
       if (result.success && onRefresh) {
         onRefresh();
       }
       break;
+    }
     case 'view_logs':
       // TODO: Open logs dialog
       console.log('View logs for task:', taskId);
@@ -108,43 +109,14 @@ export function TaskHealthCheckDialog({ open, onOpenChange, projectId }: TaskHea
   const [error, setError] = useState<string | null>(null);
   const [recoveringTaskIds, setRecoveringTaskIds] = useState<Set<string>>(new Set());
 
-  // Run health check when dialog opens
-  useEffect(() => {
-    if (!open) {
-      setResults([]);
-      setError(null);
-      return;
-    }
-
-    const runHealthCheck = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await window.electronAPI.checkTaskHealth(projectId);
-
-        if (response.success && response.data) {
-          setResults(response.data);
-        } else {
-          setError(response.error || 'Health check failed');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    runHealthCheck();
-  }, [open, projectId]);
-
-  // Refresh health check
-  const handleRefresh = async () => {
+  // Shared health check fetch logic
+  const fetchTaskHealth = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await window.electronAPI.checkTaskHealth(projectId);
+
       if (response.success && response.data) {
         setResults(response.data);
       } else {
@@ -155,6 +127,22 @@ export function TaskHealthCheckDialog({ open, onOpenChange, projectId }: TaskHea
     } finally {
       setIsLoading(false);
     }
+  }, [projectId]);
+
+  // Run health check when dialog opens
+  useEffect(() => {
+    if (!open) {
+      setResults([]);
+      setError(null);
+      return;
+    }
+
+    fetchTaskHealth();
+  }, [open, fetchTaskHealth]);
+
+  // Refresh health check
+  const handleRefresh = () => {
+    fetchTaskHealth();
   };
 
   // Handle recovery action with loading state

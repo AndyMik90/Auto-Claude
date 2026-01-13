@@ -579,6 +579,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
             onClick={() => setHealthCheckDialogOpen(true)}
             disabled={tasks.length === 0}
             className="gap-2 text-muted-foreground hover:text-foreground"
+            aria-label={t('tasks:kanban.healthCheckAriaLabel')}
           >
             <Activity className="h-4 w-4" />
             {t('tasks:kanban.healthCheck')}

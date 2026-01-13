@@ -161,7 +161,7 @@ describe('health-handlers - TASK_HEALTH_CHECK', () => {
         specId: '001-healthy',
         status: 'done',
         subtasks: [
-          { id: 'sub-1', title: 'Subtask 1', status: 'completed' }
+          { id: 'sub-1', title: 'Subtask 1', status: 'completed', description: '', files: [] }
         ],
         specsPath: join(TEST_SPECS_DIR, '001-healthy')
       });
@@ -197,7 +197,8 @@ describe('health-handlers - TASK_HEALTH_CHECK', () => {
         executionProgress: {
           phase: 'coding',
           overallProgress: 50,
-          currentSubtask: 'Implementing feature'
+          currentSubtask: 'Implementing feature',
+          phaseProgress: 0
         }
       });
 
@@ -229,7 +230,8 @@ describe('health-handlers - TASK_HEALTH_CHECK', () => {
         specsPath: join(TEST_SPECS_DIR, '003-running'),
         executionProgress: {
           phase: 'coding',
-          overallProgress: 50
+          overallProgress: 50,
+          phaseProgress: 0
         }
       });
 
@@ -284,7 +286,8 @@ describe('health-handlers - TASK_HEALTH_CHECK', () => {
         executionProgress: {
           phase: 'failed',
           overallProgress: 25,
-          message: 'Build compilation failed'
+          message: 'Build compilation failed',
+          phaseProgress: 0
         }
       });
 
@@ -312,9 +315,9 @@ describe('health-handlers - TASK_HEALTH_CHECK', () => {
         status: 'human_review',
         specsPath: join(TEST_SPECS_DIR, '006-failed-subtasks'),
         subtasks: [
-          { id: 'sub-1', title: 'Completed subtask', status: 'completed' },
-          { id: 'sub-2', title: 'Failed subtask', status: 'failed' },
-          { id: 'sub-3', title: 'Another failed subtask', status: 'failed' }
+          { id: 'sub-1', title: 'Completed subtask', status: 'completed', description: '', files: [] },
+          { id: 'sub-2', title: 'Failed subtask', status: 'failed', description: '', files: [] },
+          { id: 'sub-3', title: 'Another failed subtask', status: 'failed', description: '', files: [] }
         ]
       });
 
@@ -462,11 +465,10 @@ describe('health-handlers - TASK_HEALTH_CHECK', () => {
         status: 'in_progress',
         specsPath: join(TEST_SPECS_DIR, '012-empty-progress'),
         executionProgress: {
-          phase: undefined,
           overallProgress: 0,
           currentSubtask: undefined,
           startedAt: undefined
-        }
+        } as any
       });
 
       setupTestSpecDir('012-empty-progress', {
@@ -492,7 +494,7 @@ describe('health-handlers - TASK_HEALTH_CHECK', () => {
         status: 'in_progress',
         specsPath: join(TEST_SPECS_DIR, '013-multi-issue'),
         subtasks: [
-          { id: 'sub-1', title: 'Failed subtask', status: 'failed' }
+          { id: 'sub-1', title: 'Failed subtask', status: 'failed', description: '', files: [] }
         ]
       });
 

@@ -125,15 +125,17 @@ async function checkMissingSpec(specDir: string): Promise<HealthIssue | null> {
   const specPath = path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE);
 
   try {
-    await fs.access(specPath);
-  } catch {
-    // File doesn't exist
-    return {
-      type: 'missing_artifact',
-      severity: 'error',
-      message: 'spec.md file is missing',
-      details: `Expected at: ${specPath}`
-    };
+    await fs.readFile(specPath, 'utf-8');
+  } catch (err) {
+    // File doesn't exist or can't be read
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return {
+        type: 'missing_artifact',
+        severity: 'error',
+        message: 'spec.md file is missing',
+        details: `Expected at: ${specPath}`
+      };
+    }
   }
 
   return null;
@@ -146,16 +148,15 @@ async function checkCorruptedPlan(specDir: string): Promise<HealthIssue | null> 
   const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
 
   try {
-    await fs.access(planPath);
-  } catch {
-    // File doesn't exist - not a corruption issue
-    return null;
-  }
-
-  try {
     const content = await fs.readFile(planPath, 'utf-8');
     JSON.parse(content); // Will throw if invalid JSON
-  } catch {
+    return null; // File exists and is valid JSON
+  } catch (err) {
+    // If file doesn't exist, that's not a corruption issue
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+    // File exists but is corrupted or has invalid JSON
     return {
       type: 'corrupted',
       severity: 'error',
@@ -163,8 +164,6 @@ async function checkCorruptedPlan(specDir: string): Promise<HealthIssue | null> 
       details: 'File may be corrupted or partially written'
     };
   }
-
-  return null;
 }
 
 /**
