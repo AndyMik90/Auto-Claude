@@ -57,6 +57,7 @@ output/
 tmp/
 temp/
 *.tmp
+tmpclaude-*-cwd
 
 # Jupyter Notebook
 .ipynb_checkpoints/
