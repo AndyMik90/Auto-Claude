@@ -417,6 +417,178 @@ cat src/components/ExistingFeature.tsx | grep -A 10 -B 5 "Button"
 - **Study existing code EXTENSIVELY** - read 5+ component files to see exact patterns
 - The design system is purchased/licensed - component consistency is NON-NEGOTIABLE
 
+### 5.3.1: Backend Framework Documentation (WordPress, Laravel, Django)
+
+**For projects using backend frameworks like WordPress, Laravel, or Django**, follow framework-specific best practices and use proper tooling.
+
+#### Check Backend Framework
+
+First, check `context.json` in your working directory:
+```json
+{
+  "services": {
+    "backend": {
+      "framework": "WordPress",
+      "type": "cms",
+      "backend_docs_available": true,
+      "backend_docs_path": ".auto-claude/backend-framework-docs/wordpress/docs.md"
+    }
+  }
+}
+```
+
+#### Auto-Fetch Documentation
+
+If backend framework is detected but docs aren't available:
+
+```python
+from backend_docs import ensure_backend_docs_available
+from pathlib import Path
+
+success, docs_path, message = ensure_backend_docs_available("WordPress", Path.cwd())
+if success and docs_path:
+    # Documentation now available at docs_path
+    # Read it to understand framework APIs
+    docs_content = docs_path.read_text()
+```
+
+#### WordPress-Specific Best Practices
+
+When working with **WordPress** projects:
+
+**1. Use WP-CLI for Database Operations**
+```bash
+# CORRECT: Use WP-CLI for database queries
+wp db query "SELECT * FROM wp_posts WHERE post_type = 'page'"
+
+# CORRECT: Use WP-CLI for user management
+wp user create newuser user@example.com --role=editor
+
+# INCORRECT: Never use raw MySQL queries
+mysql -u root -p wordpress_db -e "SELECT * FROM wp_posts"
+```
+
+**2. Use WordPress Database Abstraction**
+```php
+// CORRECT: Use $wpdb with prepared statements
+global $wpdb;
+$results = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT * FROM {$wpdb->posts} WHERE post_type = %s",
+        'page'
+    )
+);
+
+// INCORRECT: Never use raw SQL without preparation
+$results = $wpdb->get_results("SELECT * FROM wp_posts WHERE id = " . $_GET['id']);
+```
+
+**3. Always Sanitize and Escape**
+```php
+// CORRECT: Sanitize input, escape output
+$title = sanitize_text_field($_POST['title']);
+echo '<h1>' . esc_html($title) . '</h1>';
+
+// For URLs
+$url = esc_url($_POST['website']);
+
+// For attributes
+echo '<div class="' . esc_attr($class) . '">';
+
+// INCORRECT: Never output unescaped data
+echo '<h1>' . $_POST['title'] . '</h1>';
+```
+
+**4. Use Hooks and Filters (Don't Modify Core)**
+```php
+// CORRECT: Use hooks to extend functionality
+add_action('init', function() {
+    register_post_type('custom_type', [...]);
+});
+
+add_filter('the_content', function($content) {
+    return $content . '<p>Additional text</p>';
+});
+
+// INCORRECT: Never modify WordPress core files
+// Don't edit wp-includes/post.php or wp-admin files
+```
+
+**5. Use WordPress APIs**
+```php
+// CORRECT: Use WordPress functions
+$post = get_post(123);
+$user = get_user_by('email', 'user@example.com');
+wp_insert_post($post_data);
+update_option('my_setting', $value);
+
+// INCORRECT: Direct database manipulation
+$wpdb->query("INSERT INTO wp_posts ...");
+```
+
+**6. Follow WordPress Coding Standards**
+- Use tabs for indentation (WordPress standard)
+- Function names: `my_plugin_function_name()`
+- Class names: `My_Plugin_Class_Name`
+- Constants: `MY_PLUGIN_CONSTANT`
+- Check with PHP_CodeSniffer: `phpcs --standard=WordPress file.php`
+
+**Laravel-Specific Best Practices:**
+
+**1. Use Artisan Commands**
+```bash
+# Database operations
+php artisan migrate
+php artisan db:seed
+
+# Cache management
+php artisan cache:clear
+php artisan config:cache
+
+# Code generation
+php artisan make:model Post -mcr
+```
+
+**2. Use Eloquent ORM**
+```php
+// CORRECT: Use Eloquent models
+$posts = Post::where('published', true)->get();
+$user = User::find($id);
+
+// INCORRECT: Raw SQL (unless absolutely necessary)
+DB::select('SELECT * FROM posts WHERE published = 1');
+```
+
+**Django-Specific Best Practices:**
+
+**1. Use Django Management Commands**
+```bash
+# Database operations
+python manage.py migrate
+python manage.py createsuperuser
+
+# Run development server
+python manage.py runserver
+```
+
+**2. Use Django ORM**
+```python
+# CORRECT: Use Django QuerySets
+posts = Post.objects.filter(published=True)
+user = User.objects.get(pk=id)
+
+# INCORRECT: Raw SQL (unless absolutely necessary)
+cursor.execute("SELECT * FROM posts WHERE published = 1")
+```
+
+**Strict Rules for All Backend Frameworks:**
+- **ALWAYS use framework CLI tools** - Never bypass with raw database queries
+- **ALWAYS use framework ORM/database abstraction** - Prepared statements, query builders
+- **ALWAYS sanitize user input** - Use framework validation and sanitization
+- **ALWAYS follow framework conventions** - Coding standards, directory structure
+- **Study framework docs BEFORE implementing** - Use cached documentation
+- **NEVER modify framework core files** - Use hooks, events, or extensions
+
 ### 5.4: Look Up External Library Documentation (Use Context7)
 
 **If your subtask involves external libraries or APIs**, use Context7 to get accurate documentation BEFORE implementing.

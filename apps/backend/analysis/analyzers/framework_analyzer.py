@@ -91,6 +91,12 @@ class FrameworkAnalyzer(BaseAnalyzer):
             content = self._read_file("Gemfile")
             self._detect_ruby_framework(content)
 
+        # PHP detection
+        elif self._exists("composer.json") or self._exists("wp-config.php"):
+            self.analysis["language"] = "PHP"
+            self.analysis["package_manager"] = "composer"
+            self._detect_php_framework()
+
     def _detect_python_framework(self, content: str) -> None:
         """Detect Python framework."""
         from .port_detector import PortDetector
@@ -211,9 +217,12 @@ class FrameworkAnalyzer(BaseAnalyzer):
         ui_libraries = []
 
         # Check for Untitled UI (premium design system - not in npm)
-        # Detect by folder structure and component comments
+        # Detect by folder structure, component comments, and @untitledui packages
         untitled_ui_detected = False
-        if self._exists("src/components/untitled-ui") or self._exists("components/untitled-ui"):
+        # Check for @untitledui packages in dependencies
+        if any("@untitledui/" in k.lower() for k in deps_lower):
+            untitled_ui_detected = True
+        elif self._exists("src/components/untitled-ui") or self._exists("components/untitled-ui"):
             untitled_ui_detected = True
         elif self._exists("src/design-system") or self._exists("design-system"):
             # Check if design-system folder contains Untitled UI references
@@ -355,6 +364,56 @@ class FrameworkAnalyzer(BaseAnalyzer):
 
         if "sidekiq" in content.lower():
             self.analysis["task_queue"] = "Sidekiq"
+
+    def _detect_php_framework(self) -> None:
+        """Detect PHP framework (WordPress, Laravel, Symfony)."""
+        from .port_detector import PortDetector
+
+        port_detector = PortDetector(self.path, self.analysis)
+
+        # Check for WordPress (multiple detection methods)
+        if self._exists("wp-config.php"):
+            self.analysis["framework"] = "WordPress"
+            self.analysis["type"] = "cms"
+            # WordPress typically runs on port 8000 for local dev, or 80/443 in production
+            detected_port = port_detector.detect_port_from_sources(8000)
+            self.analysis["default_port"] = detected_port
+            return
+
+        # Check wp-content directory (WordPress with custom structure)
+        if self._exists("wp-content"):
+            self.analysis["framework"] = "WordPress"
+            self.analysis["type"] = "cms"
+            detected_port = port_detector.detect_port_from_sources(8000)
+            self.analysis["default_port"] = detected_port
+            return
+
+        # Check composer.json for framework detection
+        composer = self._read_json("composer.json")
+        if composer:
+            deps = {
+                **composer.get("require", {}),
+                **composer.get("require-dev", {}),
+            }
+
+            # WordPress via Composer (Bedrock, custom setups)
+            if any(pkg in deps for pkg in ["johnpbloch/wordpress", "roots/wordpress", "roots/bedrock"]):
+                self.analysis["framework"] = "WordPress"
+                self.analysis["type"] = "cms"
+                detected_port = port_detector.detect_port_from_sources(8000)
+                self.analysis["default_port"] = detected_port
+            # Laravel
+            elif "laravel/framework" in deps:
+                self.analysis["framework"] = "Laravel"
+                self.analysis["type"] = "backend"
+                detected_port = port_detector.detect_port_from_sources(8000)
+                self.analysis["default_port"] = detected_port
+            # Symfony
+            elif "symfony/framework-bundle" in deps:
+                self.analysis["framework"] = "Symfony"
+                self.analysis["type"] = "backend"
+                detected_port = port_detector.detect_port_from_sources(8000)
+                self.analysis["default_port"] = detected_port
 
     def _detect_swift_framework(self) -> None:
         """Detect Swift/iOS framework and dependencies."""

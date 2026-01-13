@@ -284,4 +284,29 @@ class ContextBuilder:
             component_path = os.environ.get("UI_FRAMEWORK_COMPONENT_PATH", "@/components")
             context["component_path"] = component_path
 
+        # Backend/CMS framework documentation
+        if service_info.get("type") in ("backend", "cms"):
+            # Get backend framework (auto-detected or from ENV override)
+            backend_framework = os.environ.get("BACKEND_FRAMEWORK") or service_info.get("framework")
+            if backend_framework:
+                context["framework"] = backend_framework
+
+                # Auto-fetch backend framework documentation if supported
+                try:
+                    from backend_docs import ensure_backend_docs_available
+
+                    success, docs_path, message = ensure_backend_docs_available(
+                        backend_framework, self.project_dir
+                    )
+                    if success and docs_path:
+                        context["backend_docs_path"] = str(docs_path)
+                        context["backend_docs_available"] = True
+                    else:
+                        context["backend_docs_available"] = False
+                        context["backend_docs_message"] = message
+                except Exception as e:
+                    # Silently fail if docs fetching fails - not critical
+                    context["backend_docs_available"] = False
+                    context["backend_docs_message"] = f"Could not fetch docs: {e}"
+
         return context

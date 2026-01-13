@@ -226,6 +226,17 @@ class FrameworkDetector:
     def detect_php_frameworks(self) -> None:
         """Detect PHP frameworks from composer.json."""
         composer = self.parser.read_json("composer.json")
+
+        # Check for WordPress via wp-config.php (standard WordPress install)
+        if self.parser.file_exists("wp-config.php"):
+            self.frameworks.append("wordpress")
+            return  # WordPress detected, no need to check composer
+
+        # Check for WordPress via wp-content directory
+        if self.parser.file_exists("wp-content"):
+            self.frameworks.append("wordpress")
+            return
+
         if not composer:
             return
 
@@ -234,6 +245,9 @@ class FrameworkDetector:
             **composer.get("require-dev", {}),
         }
 
+        # WordPress via Composer (Bedrock, custom setups)
+        if any(pkg in deps for pkg in ["johnpbloch/wordpress", "roots/wordpress", "roots/bedrock"]):
+            self.frameworks.append("wordpress")
         if "laravel/framework" in deps:
             self.frameworks.append("laravel")
         if "symfony/framework-bundle" in deps:
