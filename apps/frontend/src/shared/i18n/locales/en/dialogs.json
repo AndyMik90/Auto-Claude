@@ -84,6 +84,7 @@
     "completeSetup": "Complete Setup",
     "setupComplete": "Setup Complete",
     "setupCompleteDescription": "Auto Claude is ready to use! You can now create tasks that will be automatically based on",
+    "setupCompleteSuffix": ".",
     "repositoryLabel": "Repository :",
     "progressAuthenticate": "Authenticate",
     "progressConfigure": "Configure"

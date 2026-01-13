@@ -84,6 +84,7 @@
     "completeSetup": "Terminer la configuration",
     "setupComplete": "Configuration terminée",
     "setupCompleteDescription": "Auto Claude est prêt à l'emploi ! Vous pouvez maintenant créer des tâches qui seront automatiquement basées sur",
+    "setupCompleteSuffix": ".",
     "repositoryLabel": "Dépôt :",
     "progressAuthenticate": "Authentifier",
     "progressConfigure": "Configurer"

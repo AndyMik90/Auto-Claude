@@ -848,7 +848,7 @@ export function GitHubSetupModal({
                 <CheckCircle2 className="h-8 w-8 text-success" />
               </div>
               <p className="text-sm text-muted-foreground text-center">
-                {t('githubSetup.setupCompleteDescription')} <code className="px-1 bg-muted rounded">{selectedBranch}</code>.
+                {t('githubSetup.setupCompleteDescription')} <code className="px-1 bg-muted rounded">{selectedBranch}</code>{t('githubSetup.setupCompleteSuffix')}
               </p>
             </div>
           </>

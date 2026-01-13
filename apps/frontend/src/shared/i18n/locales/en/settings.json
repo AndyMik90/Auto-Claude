@@ -427,7 +427,9 @@
       },
       "google": {
         "apiKey": "Google AI API Key",
-        "requiredDescription": "Required for Google AI embeddings"
+        "requiredDescription": "Required for Google AI embeddings",
+        "getKeyFrom": "Get your key from",
+        "linkText": "Google AI Studio"
       },
       "azure": {
         "configuration": "Azure OpenAI Configuration",

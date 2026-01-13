@@ -126,7 +126,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
 
     const task = findTaskForWorktree(selectedWorktree.specName);
     if (!task) {
-      setError('Task not found for this worktree');
+      setError(t('worktrees.taskNotFound'));
       return;
     }
 
@@ -142,13 +142,13 @@ export function Worktrees({ projectId }: WorktreesProps) {
       } else {
         setMergeResult({
           success: false,
-          message: result.error || 'Merge failed'
+          message: result.error || t('worktrees.mergeResult.failed')
         });
       }
     } catch (err) {
       setMergeResult({
         success: false,
-        message: err instanceof Error ? err.message : 'Merge failed'
+        message: err instanceof Error ? err.message : t('worktrees.mergeResult.failed')
       });
     } finally {
       setIsMerging(false);
@@ -161,7 +161,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
 
     const task = findTaskForWorktree(worktreeToDelete.specName);
     if (!task) {
-      setError('Task not found for this worktree');
+      setError(t('worktrees.taskNotFound'));
       return;
     }
 
@@ -174,10 +174,10 @@ export function Worktrees({ projectId }: WorktreesProps) {
         setShowDeleteConfirm(false);
         setWorktreeToDelete(null);
       } else {
-        setError(result.error || 'Failed to delete worktree');
+        setError(result.error || t('worktrees.errorDeleting'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete worktree');
+      setError(err instanceof Error ? err.message : t('worktrees.errorDeleting'));
     } finally {
       setIsDeleting(false);
     }
@@ -255,10 +255,10 @@ export function Worktrees({ projectId }: WorktreesProps) {
         await loadWorktrees();
         setTerminalWorktreeToDelete(null);
       } else {
-        setError(result.error || 'Failed to delete terminal worktree');
+        setError(result.error || t('worktrees.errorDeletingTerminal'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete terminal worktree');
+      setError(err instanceof Error ? err.message : t('worktrees.errorDeletingTerminal'));
     } finally {
       setIsDeletingTerminal(false);
     }
@@ -292,7 +292,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
           disabled={isLoading}
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('common:buttons.refresh')}
         </Button>
       </div>
 
@@ -302,7 +302,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
           <div className="flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium text-destructive">{t('labels.error')}</p>
+              <p className="font-medium text-destructive">{t('common:labels.error')}</p>
               <p className="text-muted-foreground mt-1">{error}</p>
             </div>
           </div>
@@ -440,7 +440,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                             disabled={!task}
                           >
                             <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                            Delete
+                            {t('common:buttons.delete')}
                           </Button>
                         </div>
                       </CardContent>
@@ -492,7 +492,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                       {/* Created at */}
                       {wt.createdAt && (
                         <div className="text-xs text-muted-foreground mb-4">
-                          Created {new Date(wt.createdAt).toLocaleDateString()}
+                          {t('worktrees.createdAt', { date: new Date(wt.createdAt).toLocaleDateString() })}
                         </div>
                       )}
 
@@ -516,7 +516,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                           onClick={() => setTerminalWorktreeToDelete(wt)}
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                          {t('buttons.delete')}
+                          {t('common:buttons.delete')}
                         </Button>
                       </div>
                     </CardContent>
@@ -609,7 +609,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                 setMergeResult(null);
               }}
             >
-              {mergeResult ? t('buttons.close') : t('buttons.cancel')}
+              {mergeResult ? t('common:buttons.close') : t('common:buttons.cancel')}
             </Button>
             {!mergeResult && (
               <Button
@@ -649,7 +649,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>{t('buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t('common:buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
@@ -689,7 +689,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletingTerminal}>{t('buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeletingTerminal}>{t('common:buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteTerminalWorktree}
               disabled={isDeletingTerminal}

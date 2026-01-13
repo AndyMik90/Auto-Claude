@@ -181,9 +181,9 @@ export function SecuritySettings({
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Get your key from{' '}
+            {t('projectSections.memory.google.getKeyFrom')}{' '}
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-              Google AI Studio
+              {t('projectSections.memory.google.linkText')}
             </a>
           </p>
         </div>
