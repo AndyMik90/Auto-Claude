@@ -99,5 +99,38 @@
     ],
     "original_program": "Next Generation Interceptor",
     "reviewed": false
+  },
+  {
+    "job_id": "139545833032000",
+    "added_at": "2026-01-13T15:22:24.023629",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold"
+    ],
+    "original_program": "Distributed Common Ground System (AF)",
+    "reviewed": false
+  },
+  {
+    "job_id": "139545835682048",
+    "added_at": "2026-01-13T15:22:24.024470",
+    "status": "needs_review",
+    "confidence": 0.5,
+    "review_reasons": [
+      "Confidence 50% below threshold"
+    ],
+    "original_program": "BICES (Expanded Historical Listing)",
+    "reviewed": false
+  },
+  {
+    "job_id": "139545832898048",
+    "added_at": "2026-01-13T15:22:24.025214",
+    "status": "needs_review",
+    "confidence": 0.2,
+    "review_reasons": [
+      "Low confidence 20%"
+    ],
+    "original_program": "Corporate HQ",
+    "reviewed": false
   }
 ]
