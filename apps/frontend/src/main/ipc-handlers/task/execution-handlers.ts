@@ -423,6 +423,12 @@ export function registerTaskExecutionHandlers(
                   console.warn('[TASK_REVIEW] Skipping image with no data:', image.filename);
                   continue;
                 }
+                // Server-side MIME type validation (defense in depth - frontend also validates)
+                const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+                if (image.mimeType && !ALLOWED_MIME_TYPES.includes(image.mimeType)) {
+                  console.warn('[TASK_REVIEW] Skipping image with disallowed MIME type:', image.mimeType);
+                  continue;
+                }
                 // Sanitize filename to prevent path traversal attacks
                 const sanitizedFilename = path.basename(image.filename);
                 if (!sanitizedFilename || sanitizedFilename === '.' || sanitizedFilename === '..') {

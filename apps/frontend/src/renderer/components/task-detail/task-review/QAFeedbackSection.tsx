@@ -106,7 +106,15 @@ export function QAFeedbackSection({
         const thumbnail = await createThumbnail(dataUrl);
 
         // Generate filename for pasted images (screenshot-timestamp.ext)
-        const extension = file.type.split('/')[1] || 'png';
+        // Map MIME types to proper file extensions (handles svg+xml -> svg, etc.)
+        const mimeToExtension: Record<string, string> = {
+          'image/svg+xml': 'svg',
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/gif': 'gif',
+          'image/webp': 'webp',
+        };
+        const extension = mimeToExtension[file.type] || file.type.split('/')[1] || 'png';
         const baseFilename = `screenshot-${Date.now()}.${extension}`;
         const resolvedFilename = resolveFilename(baseFilename, [
           ...existingFilenames,
