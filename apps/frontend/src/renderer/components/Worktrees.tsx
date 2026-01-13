@@ -94,28 +94,21 @@ export function Worktrees({ projectId }: WorktreesProps) {
         window.electronAPI.listTerminalWorktrees(selectedProject.path)
       ]);
 
-      console.log('[Worktrees] Task worktrees result:', taskResult);
-      console.log('[Worktrees] Terminal worktrees result:', terminalResult);
-
       if (taskResult.success && taskResult.data) {
         setWorktrees(taskResult.data.worktrees);
       } else {
-        setError(taskResult.error || 'Failed to load task worktrees');
+        setError(taskResult.error || t('worktrees.errorLoading'));
       }
 
       if (terminalResult.success && terminalResult.data) {
-        console.log('[Worktrees] Setting terminal worktrees:', terminalResult.data);
         setTerminalWorktrees(terminalResult.data);
-      } else {
-        console.warn('[Worktrees] Terminal worktrees fetch failed or empty:', terminalResult);
       }
     } catch (err) {
-      console.error('[Worktrees] Error loading worktrees:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load worktrees');
+      setError(err instanceof Error ? err.message : t('worktrees.errorLoading'));
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, selectedProject]);
+  }, [projectId, selectedProject, t]);
 
   // Load on mount and when project changes
   useEffect(() => {
