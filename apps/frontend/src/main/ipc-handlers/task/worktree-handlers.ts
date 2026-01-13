@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow, shell, app } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir } from '../../../shared/constants';
-import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
+import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings, MergeStrategy } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
@@ -1834,7 +1834,7 @@ export function registerWorktreeHandlers(
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_MERGE,
-    async (_, taskId: string, options?: { noCommit?: boolean }): Promise<IPCResult<WorktreeMergeResult>> => {
+    async (_, taskId: string, options?: { noCommit?: boolean; strategy?: MergeStrategy }): Promise<IPCResult<WorktreeMergeResult>> => {
       const isDebugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
       const debug = (...args: unknown[]) => {
         if (isDebugMode) {
@@ -1939,6 +1939,11 @@ export function registerWorktreeHandlers(
         // Add --no-commit flag if requested (stage changes without committing)
         if (options?.noCommit) {
           args.push('--no-commit');
+        }
+
+        // Add merge strategy flag if specified
+        if (options?.strategy === 'squash') {
+          args.push('--squash');
         }
 
         // Add --base-branch with proper priority:
@@ -2565,6 +2570,109 @@ export function registerWorktreeHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to preview merge'
+        };
+      }
+    }
+  );
+
+  /**
+   * Get recommended merge strategy based on commit analysis
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_GET_MERGE_STRATEGY_RECOMMENDATION,
+    async (_, taskId: string): Promise<IPCResult<{ strategy: 'merge' | 'squash'; reason: string; commitCount: number; hasWipCommits: boolean }>> => {
+      try {
+        const { task, project } = findTaskAndProject(taskId);
+        if (!task || !project) {
+          return { success: false, error: 'Task not found' };
+        }
+
+        // Find worktree path
+        const worktreePath = findTaskWorktree(project.path, task.specId);
+        if (!worktreePath) {
+          // No worktree, recommend default merge
+          return {
+            success: true,
+            data: {
+              strategy: 'merge',
+              reason: 'No worktree found - using default',
+              commitCount: 0,
+              hasWipCommits: false
+            }
+          };
+        }
+
+        // Get base branch using proper fallback chain:
+        // 1. Task metadata baseBranch, 2. Project settings mainBranch, 3. main/master detection
+        const baseBranch = getEffectiveBaseBranch(project.path, task.specId, project.settings?.mainBranch);
+
+        // Get commits in worktree that aren't in base branch
+        let commits: string[] = [];
+        try {
+          const logResult = execFileSync(
+            getToolPath('git'),
+            ['log', '--oneline', `${baseBranch}..HEAD`],
+            { cwd: worktreePath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+          );
+          commits = logResult.trim().split('\n').filter(c => c.trim());
+        } catch {
+          // If base branch doesn't exist locally, try with origin prefix
+          try {
+            const logResult = execFileSync(
+              getToolPath('git'),
+              ['log', '--oneline', `origin/${baseBranch}..HEAD`],
+              { cwd: worktreePath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+            );
+            commits = logResult.trim().split('\n').filter(c => c.trim());
+          } catch {
+            // Fall back to default
+            commits = [];
+          }
+        }
+
+        const commitCount = commits.length;
+
+        // Detect WIP/fixup commits
+        const wipPatterns = ['wip', 'fixup', 'squash', 'temp', 'xxx', 'todo', 'fix typo', 'oops', 'revert', 'undo', 'amend'];
+        const hasWipCommits = commits.some(commit =>
+          wipPatterns.some(pattern => commit.toLowerCase().includes(pattern))
+        );
+
+        // Decision logic
+        let strategy: 'merge' | 'squash';
+        let reason: string;
+
+        if (commitCount === 0) {
+          strategy = 'merge';
+          reason = 'No commits to merge';
+        } else if (commitCount === 1) {
+          strategy = 'merge';
+          reason = 'Single commit - merge preserves clean history';
+        } else if (hasWipCommits) {
+          strategy = 'squash';
+          reason = `${commitCount} commits with WIP/fixup - squash for clean history`;
+        } else if (commitCount > 10) {
+          strategy = 'squash';
+          reason = `${commitCount} commits - consider squashing for cleaner history`;
+        } else {
+          strategy = 'merge';
+          reason = `${commitCount} meaningful commits - merge preserves history`;
+        }
+
+        return {
+          success: true,
+          data: {
+            strategy,
+            reason,
+            commitCount,
+            hasWipCommits
+          }
+        };
+      } catch (error) {
+        console.error('[IPC] TASK_GET_MERGE_STRATEGY_RECOMMENDATION error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get merge strategy recommendation'
         };
       }
     }

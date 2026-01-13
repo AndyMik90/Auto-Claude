@@ -152,6 +152,7 @@ def merge_existing_build(
     no_commit: bool = False,
     use_smart_merge: bool = True,
     base_branch: str | None = None,
+    strategy: str = "merge",
 ) -> bool:
     """
     Merge an existing build into the project using intent-aware merge.
@@ -171,6 +172,8 @@ def merge_existing_build(
         no_commit: If True, merge changes but don't commit (stage only for review in IDE)
         use_smart_merge: If True, use intent-aware merge (default True)
         base_branch: The branch the task was created from (for comparison). If None, auto-detect.
+        strategy: Merge strategy - "merge" for regular merge preserving history,
+                 "squash" to combine all commits into one
 
     Returns:
         True if merge succeeded
@@ -214,7 +217,15 @@ def merge_existing_build(
         print(highlight(f"  python auto-claude/run.py --spec {spec_name} --merge"))
         return False
 
-    if no_commit:
+    # Build status message based on merge strategy
+    if strategy == "squash":
+        content = [
+            bold(f"{icon(Icons.SUCCESS)} SQUASH MERGING BUILD"),
+            "",
+            muted("All commits will be combined into staged changes."),
+            muted("Review and commit with a single commit message."),
+        ]
+    elif no_commit:
         content = [
             bold(f"{icon(Icons.SUCCESS)} STAGING BUILD FOR REVIEW"),
             "",
@@ -272,7 +283,10 @@ def merge_existing_build(
                     # No conflicts needed AI resolution - do standard git merge
                     # This is the common case: no divergence, just need to merge changes
                     success_result = manager.merge_worktree(
-                        spec_name, delete_after=False, no_commit=no_commit
+                        spec_name,
+                        delete_after=False,
+                        no_commit=no_commit,
+                        strategy=strategy,
                     )
                     if success_result:
                         _print_merge_success(
@@ -319,12 +333,23 @@ def merge_existing_build(
 
     # Fall back to standard git merge
     success_result = manager.merge_worktree(
-        spec_name, delete_after=False, no_commit=no_commit
+        spec_name,
+        delete_after=False,
+        no_commit=no_commit,
+        strategy=strategy,
     )
 
     if success_result:
         print()
-        if no_commit:
+        if strategy == "squash":
+            print_status("All commits squashed and staged.", "success")
+            print()
+            print("Review the changes in your IDE, then commit:")
+            print(highlight("  git commit -m 'your commit message'"))
+            print()
+            print("When satisfied, delete the worktree:")
+            print(muted(f"  python auto-claude/run.py --spec {spec_name} --discard"))
+        elif no_commit:
             print_status("Changes are staged in your working directory.", "success")
             print()
             print("Review the changes in your IDE, then commit:")

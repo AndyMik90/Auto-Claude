@@ -186,6 +186,19 @@ Environment Variables:
         help="With --merge: stage changes but don't commit (review in IDE first)",
     )
     parser.add_argument(
+        "--squash",
+        action="store_true",
+        help="With --merge: squash all commits into one (combine history)",
+    )
+    parser.add_argument(
+        "--merge-strategy",
+        type=str,
+        choices=["merge", "squash"],
+        default=None,
+        metavar="STRATEGY",
+        help="With --merge: specify merge strategy ('merge' or 'squash')",
+    )
+    parser.add_argument(
         "--merge-preview",
         action="store_true",
         help="Preview merge conflicts without actually merging (returns JSON)",
@@ -372,11 +385,14 @@ def main() -> None:
         return
 
     if args.merge:
+        # Determine merge strategy: --merge-strategy takes precedence, then --squash flag
+        strategy = args.merge_strategy or ("squash" if args.squash else "merge")
         success = handle_merge_command(
             project_dir,
             spec_dir.name,
             no_commit=args.no_commit,
             base_branch=args.base_branch,
+            strategy=strategy,
         )
         if not success:
             sys.exit(1)

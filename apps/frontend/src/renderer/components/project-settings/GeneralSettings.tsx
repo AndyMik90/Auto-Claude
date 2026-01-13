@@ -150,6 +150,44 @@ export function GeneralSettings({
 
           <Separator />
 
+          {/* Git & Merge Settings */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">
+              {t('settings:projectSections.gitMerge.title')}
+            </h3>
+            <div className="space-y-2">
+              <Label htmlFor="defaultMergeStrategy" className="text-sm font-medium text-foreground">
+                {t('settings:projectSections.gitMerge.defaultStrategy')}
+              </Label>
+              <Select
+                value={settings.defaultMergeStrategy || 'recommended'}
+                onValueChange={(value: 'recommended' | 'merge' | 'squash') =>
+                  setSettings({ ...settings, defaultMergeStrategy: value })
+                }
+              >
+                <SelectTrigger id="defaultMergeStrategy">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recommended">
+                    {t('settings:projectSections.gitMerge.strategies.recommended')}
+                  </SelectItem>
+                  <SelectItem value="merge">
+                    {t('settings:projectSections.gitMerge.strategies.merge')}
+                  </SelectItem>
+                  <SelectItem value="squash">
+                    {t('settings:projectSections.gitMerge.strategies.squash')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t('settings:projectSections.gitMerge.defaultStrategyDescription')}
+              </p>
+            </div>
+          </section>
+
+          <Separator />
+
           {/* Notifications */}
           <section className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Notifications</h3>

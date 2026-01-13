@@ -4,6 +4,16 @@
     "openInbuilt": "Ouvrir dans le terminal intégré",
     "openExternal": "Ouvrir dans le terminal externe"
   },
+  "mergeStrategy": {
+    "label": "Stratégie :",
+    "merge": "Merge",
+    "squash": "Squash",
+    "commits": "{{count}} commit",
+    "commits_plural": "{{count}} commits"
+  },
+  "stageOnly": {
+    "label": "Indexer uniquement (revoir dans l'IDE avant de valider)"
+  },
   "pr": {
     "title": "Créer une Pull Request",
     "description": "Pousser la branche et créer une pull request pour \"{{taskTitle}}\"",

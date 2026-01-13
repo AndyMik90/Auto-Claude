@@ -314,6 +314,16 @@
       "useClaudeMd": "Utiliser CLAUDE.md",
       "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
     },
+    "gitMerge": {
+      "title": "Git & Merge",
+      "defaultStrategy": "Stratégie de merge par défaut",
+      "strategies": {
+        "recommended": "Recommandé (suggestion IA)",
+        "merge": "Toujours Merge (conserver l'historique)",
+        "squash": "Toujours Squash (commit unique)"
+      },
+      "defaultStrategyDescription": "Stratégie par défaut lors de la fusion des tâches terminées. \"Recommandé\" analyse les commits pour suggérer la meilleure option."
+    },
     "claude": {
       "title": "Auth Claude",
       "description": "Authentification Claude"

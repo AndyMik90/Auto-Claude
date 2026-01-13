@@ -26,6 +26,8 @@ export interface ProjectSettings {
   mainBranch?: string;
   /** Include CLAUDE.md instructions in agent system prompt (default: true) */
   useClaudeMd?: boolean;
+  /** Default merge strategy for worktree merges ('recommended' uses AI suggestion, 'merge' or 'squash' are fixed) */
+  defaultMergeStrategy?: 'recommended' | 'merge' | 'squash';
 }
 
 export interface NotificationSettings {

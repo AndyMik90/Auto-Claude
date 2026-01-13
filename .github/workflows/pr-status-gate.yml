@@ -11,10 +11,6 @@ on:
   pull_request:
     types: [synchronize]
 
-concurrency:
-  group: pr-status-gate-${{ github.event.workflow_run.pull_requests[0].number || github.event.issue.number || github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
-
 permissions:
   pull-requests: write
   checks: read
@@ -41,6 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_run' && github.event.workflow_run.pull_requests[0] != null
     timeout-minutes: 5
+    concurrency:
+      group: pr-ci-status-${{ github.event.workflow_run.pull_requests[0].number }}
+      cancel-in-progress: true
 
     steps:
       - name: Check all required checks and update label
@@ -177,6 +176,9 @@ jobs:
       github.event.issue.pull_request &&
       contains(github.event.comment.body, '/check-status')
     timeout-minutes: 5
+    concurrency:
+      group: pr-check-status-${{ github.event.issue.number }}
+      cancel-in-progress: true
 
     steps:
       - name: Run status check and post report
@@ -338,6 +340,9 @@ jobs:
       github.event.issue.pull_request &&
       !contains(github.event.comment.body, '/check-status')
     timeout-minutes: 5
+    concurrency:
+      group: pr-review-status-${{ github.event.issue.number }}
+      cancel-in-progress: true
 
     steps:
       - name: Check for Auto-Claude review
@@ -504,6 +509,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
     timeout-minutes: 5
+    concurrency:
+      group: pr-re-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
 
     steps:
       - name: Check and reset AC approval if needed

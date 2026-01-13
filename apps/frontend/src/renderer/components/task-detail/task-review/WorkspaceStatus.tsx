@@ -19,13 +19,15 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { cn } from '../../../lib/utils';
-import type { WorktreeStatus, MergeConflict, MergeStats, GitConflictInfo, SupportedIDE, SupportedTerminal } from '../../../../shared/types';
+import type { WorktreeStatus, MergeConflict, MergeStats, GitConflictInfo, SupportedIDE, SupportedTerminal, MergeStrategy, MergeStrategyRecommendation } from '../../../../shared/types';
 import { useSettingsStore } from '../../../stores/settings-store';
 
 interface WorkspaceStatusProps {
   worktreeStatus: WorktreeStatus;
   workspaceError: string | null;
   stageOnly: boolean;
+  mergeStrategy: MergeStrategy;
+  mergeStrategyRecommendation?: MergeStrategyRecommendation | null;
   mergePreview: { files: string[]; conflicts: MergeConflict[]; summary: MergeStats; gitConflicts?: GitConflictInfo; uncommittedChanges?: { hasChanges: boolean; files: string[]; count: number } | null } | null;
   isLoadingPreview: boolean;
   isMerging: boolean;
@@ -36,6 +38,7 @@ interface WorkspaceStatusProps {
   onShowConflictDialog: (show: boolean) => void;
   onLoadMergePreview: () => void;
   onStageOnlyChange: (value: boolean) => void;
+  onMergeStrategyChange: (strategy: MergeStrategy) => void;
   onMerge: () => void;
   onShowPRDialog?: (show: boolean) => void;
   onClose?: () => void;
@@ -84,6 +87,8 @@ export function WorkspaceStatus({
   worktreeStatus,
   workspaceError,
   stageOnly,
+  mergeStrategy,
+  mergeStrategyRecommendation,
   mergePreview,
   isLoadingPreview,
   isMerging,
@@ -94,6 +99,7 @@ export function WorkspaceStatus({
   onShowConflictDialog,
   onLoadMergePreview,
   onStageOnlyChange,
+  onMergeStrategyChange,
   onMerge,
   onShowPRDialog,
   onClose,
@@ -374,19 +380,69 @@ export function WorkspaceStatus({
 
       {/* Actions Footer */}
       <div className="px-4 py-3 bg-muted/20 border-t border-border space-y-3">
-        {/* Stage Only Option - only show after conflicts have been checked */}
+        {/* Merge Options - only show after conflicts have been checked */}
         {mergePreview && (
-          <label className="inline-flex items-center gap-2.5 text-sm cursor-pointer select-none px-3 py-2 rounded-lg border border-border bg-background/50 hover:bg-background/80 transition-colors">
-            <Checkbox
-              checked={stageOnly}
-              onCheckedChange={(checked) => onStageOnlyChange(checked === true)}
-              className="border-muted-foreground/50 data-[state=checked]:border-primary"
-            />
-            <span className={cn(
-              "transition-colors",
-              stageOnly ? "text-foreground" : "text-muted-foreground"
-            )}>Stage only (review in IDE before committing)</span>
-          </label>
+          <div className="flex flex-wrap gap-3">
+            {/* Merge Strategy Selector */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background/50">
+              <span className="text-sm text-muted-foreground" id="merge-strategy-label">{t('taskReview:mergeStrategy.label')}</span>
+              <div
+                className="flex gap-1"
+                role="radiogroup"
+                aria-labelledby="merge-strategy-label"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={mergeStrategy === 'merge'}
+                  aria-label={t('taskReview:mergeStrategy.merge')}
+                  onClick={() => onMergeStrategyChange('merge')}
+                  className={cn(
+                    "px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                    mergeStrategy === 'merge'
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {t('taskReview:mergeStrategy.merge')}
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={mergeStrategy === 'squash'}
+                  aria-label={t('taskReview:mergeStrategy.squash')}
+                  onClick={() => onMergeStrategyChange('squash')}
+                  className={cn(
+                    "px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                    mergeStrategy === 'squash'
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {t('taskReview:mergeStrategy.squash')}
+                </button>
+              </div>
+              {mergeStrategyRecommendation && (
+                <span className="text-xs text-muted-foreground/70" title={mergeStrategyRecommendation.reason}>
+                  ({t('taskReview:mergeStrategy.commits', { count: mergeStrategyRecommendation.commitCount })})
+                </span>
+              )}
+            </div>
+
+            {/* Stage Only Option */}
+            <label htmlFor="stage-only-checkbox" className="inline-flex items-center gap-2.5 text-sm cursor-pointer select-none px-3 py-2 rounded-lg border border-border bg-background/50 hover:bg-background/80 transition-colors">
+              <Checkbox
+                id="stage-only-checkbox"
+                checked={stageOnly}
+                onCheckedChange={(checked) => onStageOnlyChange(checked === true)}
+                className="border-muted-foreground/50 data-[state=checked]:border-primary"
+              />
+              <span className={cn(
+                "transition-colors",
+                stageOnly ? "text-foreground" : "text-muted-foreground"
+              )}>{t('taskReview:stageOnly.label')}</span>
+            </label>
+          </div>
         )}
 
         {/* Primary Actions */}

@@ -144,9 +144,14 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
     state.setIsMerging(true);
     state.setWorkspaceError(null);
     try {
-      const result = await window.electronAPI.mergeWorktree(task.id, { noCommit: state.stageOnly });
+      // Squash merge always stages changes (no auto-commit)
+      const effectiveNoCommit = state.stageOnly || state.mergeStrategy === 'squash';
+      const result = await window.electronAPI.mergeWorktree(task.id, {
+        noCommit: effectiveNoCommit,
+        strategy: state.mergeStrategy
+      });
       if (result.success && result.data?.success) {
-        if (state.stageOnly && result.data.staged) {
+        if (effectiveNoCommit && result.data.staged) {
           state.setWorkspaceError(null);
           state.setStagedSuccess(result.data.message || 'Changes staged in main project');
           state.setStagedProjectPath(result.data.projectPath);
@@ -508,6 +513,9 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                             showDiffDialog={state.showDiffDialog}
                             workspaceError={state.workspaceError}
                             stageOnly={state.stageOnly}
+                            mergeStrategy={state.mergeStrategy}
+                            mergeStrategyRecommendation={state.mergeStrategyRecommendation}
+                            onMergeStrategyChange={state.setMergeStrategy}
                             stagedSuccess={state.stagedSuccess}
                             stagedProjectPath={state.stagedProjectPath}
                             suggestedCommitMessage={state.suggestedCommitMessage}
