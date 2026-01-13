@@ -95,33 +95,46 @@ export function CreateWorktreeDialog({
 
   // Fetch branches when dialog opens
   useEffect(() => {
-    if (open && projectPath) {
-      const fetchBranches = async () => {
-        setIsLoadingBranches(true);
-        try {
-          const result = await window.electronAPI.getGitBranches(projectPath);
-          if (result.success && result.data) {
-            setBranches(result.data);
-          }
+    if (!open || !projectPath) return;
 
-          // Use project settings mainBranch if available, otherwise auto-detect
-          if (project?.settings?.mainBranch) {
-            setProjectDefaultBranch(project.settings.mainBranch);
-          } else {
-            // Fallback to auto-detect if no project setting
-            const defaultResult = await window.electronAPI.detectMainBranch(projectPath);
-            if (defaultResult.success && defaultResult.data) {
-              setProjectDefaultBranch(defaultResult.data);
-            }
+    let isMounted = true;
+
+    const fetchBranches = async () => {
+      setIsLoadingBranches(true);
+      try {
+        const result = await window.electronAPI.getGitBranches(projectPath);
+        if (!isMounted) return;
+
+        if (result.success && result.data) {
+          setBranches(result.data);
+        }
+
+        // Use project settings mainBranch if available, otherwise auto-detect
+        if (project?.settings?.mainBranch) {
+          setProjectDefaultBranch(project.settings.mainBranch);
+        } else {
+          // Fallback to auto-detect if no project setting
+          const defaultResult = await window.electronAPI.detectMainBranch(projectPath);
+          if (!isMounted) return;
+
+          if (defaultResult.success && defaultResult.data) {
+            setProjectDefaultBranch(defaultResult.data);
           }
-        } catch (err) {
-          console.error('Failed to fetch branches:', err);
-        } finally {
+        }
+      } catch (err) {
+        console.error('Failed to fetch branches:', err);
+      } finally {
+        if (isMounted) {
           setIsLoadingBranches(false);
         }
-      };
-      fetchBranches();
-    }
+      }
+    };
+
+    fetchBranches();
+
+    return () => {
+      isMounted = false;
+    };
   }, [open, projectPath, project?.settings?.mainBranch]);
 
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
