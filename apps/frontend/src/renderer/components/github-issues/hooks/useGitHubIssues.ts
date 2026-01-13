@@ -1,8 +1,10 @@
-import { useEffect, useCallback, useRef, useMemo } from "react";
+import { useEffect, useCallback, useRef, useMemo, useState } from "react";
 import {
   useIssuesStore,
   useSyncStatusStore,
   loadGitHubIssues,
+  loadMoreGitHubIssues,
+  loadAllGitHubIssues,
   checkGitHubConnection,
   type IssueFilterState,
 } from "../../../stores/github";
@@ -12,9 +14,11 @@ export function useGitHubIssues(projectId: string | undefined) {
   const {
     issues,
     isLoading,
+    isLoadingMore,
     error,
     selectedIssueNumber,
     filterState,
+    hasMore,
     selectIssue,
     setFilterState,
     getFilteredIssues,
@@ -25,6 +29,9 @@ export function useGitHubIssues(projectId: string | undefined) {
 
   // Track if we've checked connection for this mount
   const hasCheckedRef = useRef(false);
+
+  // Track if search is active (need to load all issues for search)
+  const [isSearchActive, setIsSearchActive] = useState(false);
 
   // Always check connection when component mounts or projectId changes
   useEffect(() => {
@@ -38,27 +45,52 @@ export function useGitHubIssues(projectId: string | undefined) {
   // Load issues when filter changes or after connection is established
   useEffect(() => {
     if (projectId && syncStatus?.connected) {
-      loadGitHubIssues(projectId, filterState);
+      // If search is active, load all issues for complete search
+      loadGitHubIssues(projectId, filterState, isSearchActive);
     }
-  }, [projectId, filterState, syncStatus?.connected]);
+  }, [projectId, filterState, syncStatus?.connected, isSearchActive]);
 
   const handleRefresh = useCallback(() => {
     if (projectId) {
       // Re-check connection and reload issues
       checkGitHubConnection(projectId);
-      loadGitHubIssues(projectId, filterState);
+      loadGitHubIssues(projectId, filterState, isSearchActive);
     }
-  }, [projectId, filterState]);
+  }, [projectId, filterState, isSearchActive]);
 
   const handleFilterChange = useCallback(
     (state: FilterState) => {
       setFilterState(state);
       if (projectId) {
-        loadGitHubIssues(projectId, state);
+        loadGitHubIssues(projectId, state, isSearchActive);
       }
     },
-    [projectId, setFilterState]
+    [projectId, setFilterState, isSearchActive]
   );
+
+  const handleLoadMore = useCallback(() => {
+    if (projectId && !isSearchActive) {
+      loadMoreGitHubIssues(projectId, filterState);
+    }
+  }, [projectId, filterState, isSearchActive]);
+
+  // When user starts searching, load all issues
+  const handleSearchStart = useCallback(() => {
+    if (!isSearchActive && projectId) {
+      setIsSearchActive(true);
+      // Load all issues for search
+      loadAllGitHubIssues(projectId, filterState);
+    }
+  }, [isSearchActive, projectId, filterState]);
+
+  // When user clears search, reset to paginated mode
+  const handleSearchClear = useCallback(() => {
+    if (isSearchActive && projectId) {
+      setIsSearchActive(false);
+      // Reset to paginated loading
+      loadGitHubIssues(projectId, filterState, false);
+    }
+  }, [isSearchActive, projectId, filterState]);
 
   // Compute selectedIssue from issues array
   const selectedIssue = useMemo(() => {
@@ -69,14 +101,19 @@ export function useGitHubIssues(projectId: string | undefined) {
     issues,
     syncStatus,
     isLoading,
+    isLoadingMore,
     error,
     selectedIssueNumber,
     selectedIssue,
     filterState,
+    hasMore: !isSearchActive && hasMore, // No "load more" when search is active
     selectIssue,
     getFilteredIssues,
     getOpenIssuesCount,
     handleRefresh,
     handleFilterChange,
+    handleLoadMore,
+    handleSearchStart,
+    handleSearchClear,
   };
 }

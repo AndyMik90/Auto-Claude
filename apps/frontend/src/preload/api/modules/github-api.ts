@@ -146,12 +146,25 @@ export interface WorkflowsAwaitingApprovalResult {
 }
 
 /**
+ * Paginated issues result
+ */
+export interface PaginatedIssuesResult {
+  issues: GitHubIssue[];
+  hasMore: boolean;
+}
+
+/**
  * GitHub Integration API operations
  */
 export interface GitHubAPI {
   // Operations
   getGitHubRepositories: (projectId: string) => Promise<IPCResult<GitHubRepository[]>>;
-  getGitHubIssues: (projectId: string, state?: 'open' | 'closed' | 'all') => Promise<IPCResult<GitHubIssue[]>>;
+  getGitHubIssues: (
+    projectId: string,
+    state?: 'open' | 'closed' | 'all',
+    page?: number,
+    fetchAll?: boolean
+  ) => Promise<IPCResult<PaginatedIssuesResult>>;
   getGitHubIssue: (projectId: string, issueNumber: number) => Promise<IPCResult<GitHubIssue>>;
   getIssueComments: (projectId: string, issueNumber: number) => Promise<IPCResult<any[]>>;
   checkGitHubConnection: (projectId: string) => Promise<IPCResult<GitHubSyncStatus>>;
@@ -456,8 +469,13 @@ export const createGitHubAPI = (): GitHubAPI => ({
   getGitHubRepositories: (projectId: string): Promise<IPCResult<GitHubRepository[]>> =>
     invokeIpc(IPC_CHANNELS.GITHUB_GET_REPOSITORIES, projectId),
 
-  getGitHubIssues: (projectId: string, state?: 'open' | 'closed' | 'all'): Promise<IPCResult<GitHubIssue[]>> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_GET_ISSUES, projectId, state),
+  getGitHubIssues: (
+    projectId: string,
+    state?: 'open' | 'closed' | 'all',
+    page?: number,
+    fetchAll?: boolean
+  ): Promise<IPCResult<PaginatedIssuesResult>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_GET_ISSUES, projectId, state, page, fetchAll),
 
   getGitHubIssue: (projectId: string, issueNumber: number): Promise<IPCResult<GitHubIssue>> =>
     invokeIpc(IPC_CHANNELS.GITHUB_GET_ISSUE, projectId, issueNumber),
