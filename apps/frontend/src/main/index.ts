@@ -452,6 +452,10 @@ app.on('window-all-closed', () => {
 // 2. Run async cleanup
 // 3. Call app.quit() again when cleanup completes
 // 4. Use cleaned flag to prevent infinite loop
+//
+// Note: app.quit() must be called via setImmediate() to ensure it's invoked
+// outside the before-quit event handler's call stack. Calling it directly from
+// within the promise callback can fail on some Electron versions/platforms.
 let cleaned = false;
 app.on('before-quit', (event) => {
   if (!cleaned) {
@@ -460,12 +464,12 @@ app.on('before-quit', (event) => {
     // Run async cleanup and quit when done
     doCleanup().then(() => {
       cleaned = true;
-      app.quit();
+      setImmediate(() => app.quit());
     }).catch((error) => {
       console.error('[main] Error during cleanup:', error);
       // Quit anyway even if cleanup fails
       cleaned = true;
-      app.quit();
+      setImmediate(() => app.quit());
     });
   }
 });
