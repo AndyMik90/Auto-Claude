@@ -71,10 +71,12 @@ export function registerGetIssues(): void {
         let allIssues: GitHubAPIIssue[] = [];
 
         while (hasMore) {
+          console.log(`Fetching page ${page} of issues from ${normalizedRepo}...`);
           const issues = await githubFetch(
             config.token,
             `/repos/${normalizedRepo}/issues?state=${state}&per_page=100&page=${page}&sort=updated`
           );
+          console.log(`Fetched ${issues.length} issues from page ${page}`);
 
           // Ensure issues is an array
           if (!Array.isArray(issues)) {
@@ -97,6 +99,10 @@ export function registerGetIssues(): void {
 
         // Filter out pull requests AFTER all pages are merged
         const issuesOnly = allIssues.filter((issue: GitHubAPIIssue) => !issue.pull_request);
+
+        console.log(`Total fetched: ${allIssues.length} items (issues + PRs)`);
+        console.log(`After filtering PRs: ${issuesOnly.length} issues`);
+        console.log(`Filtered out ${allIssues.length - issuesOnly.length} pull requests`);
 
         const result: GitHubIssue[] = issuesOnly.map((issue: GitHubAPIIssue) =>
           transformIssue(issue, normalizedRepo)
