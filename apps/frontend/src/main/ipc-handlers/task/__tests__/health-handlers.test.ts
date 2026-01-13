@@ -13,10 +13,9 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, existsSync, rmSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { randomBytes } from 'crypto';
+import { join, dirname } from 'path';
 import type { Task } from '@shared/types/task';
+import { fileURLToPath } from 'url';
 
 // Mock electron before importing
 vi.mock('electron', () => ({
@@ -55,9 +54,11 @@ import type { AgentManager } from '../../../agent';
 import type { TaskHealthCheckResult } from '@shared/types/task';
 
 // Test directory setup
-// Use system temp directory with a unique subdirectory for security
-const TEST_UNIQUE_ID = randomBytes(8).toString('hex');
-const TEST_PROJECT_PATH = join(tmpdir(), `test-health-check-${TEST_UNIQUE_ID}`);
+// Use project-local fixtures directory for tests (avoids temp directory security concerns)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const FIXTURES_DIR = join(__dirname, 'fixtures');
+const TEST_PROJECT_PATH = join(FIXTURES_DIR, 'test-project');
 const TEST_SPECS_DIR = join(TEST_PROJECT_PATH, '.auto-claude', 'specs');
 
 /**

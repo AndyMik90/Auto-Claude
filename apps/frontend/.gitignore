@@ -43,6 +43,9 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
+# Test fixtures (created at runtime by tests)
+**/__tests__/fixtures/
+
 # Temporary files
 *.tmp
 *.temp
