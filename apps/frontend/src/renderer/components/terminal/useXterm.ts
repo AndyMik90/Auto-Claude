@@ -299,7 +299,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
   // Update terminal font settings when they change
   useEffect(() => {
-    if (xtermRef.current) {
+    if (xtermRef.current?.options) {
       xtermRef.current.options.fontFamily = terminalFontFamily || DEFAULT_TERMINAL_FONT;
       xtermRef.current.options.fontSize = terminalFontSize || DEFAULT_TERMINAL_FONT_SIZE;
       xtermRef.current.options.fontWeight = (terminalFontWeight || DEFAULT_TERMINAL_FONT_WEIGHT) as '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | 'normal' | 'bold';

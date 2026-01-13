@@ -1124,7 +1124,16 @@ class WorktreeManager:
 
         try:
             result = subprocess.run(
-                [get_gh_executable(), "pr", "view", info.branch, "--json", "url", "--jq", ".url"],
+                [
+                    get_gh_executable(),
+                    "pr",
+                    "view",
+                    info.branch,
+                    "--json",
+                    "url",
+                    "--jq",
+                    ".url",
+                ],
                 cwd=info.path,
                 capture_output=True,
                 text=True,
