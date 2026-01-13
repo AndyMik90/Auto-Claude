@@ -170,19 +170,20 @@ def import_engines():
     except ImportError as e:
         logger.warning(f"Engine3_OrgChart not available: {e}")
 
-    # Engine 4: Briefing Generator
+    # Engine 4: Playbook Generator (Full BD Playbooks with Email/Call/TalkingPoints)
     try:
-        from Engine4_Briefing.scripts.briefing_generator import (
-            generate_briefing, generate_briefings_batch, BriefingData
+        from Engine4_Playbook.scripts.bd_playbook_generator import (
+            generate_playbook, generate_playbooks_batch, PlaybookData, PlaybookOutput
         )
         engines['briefings'] = {
-            'generate_briefing': generate_briefing,
-            'generate_briefings_batch': generate_briefings_batch,
-            'BriefingData': BriefingData,
+            'generate_briefing': generate_playbook,
+            'generate_briefings_batch': generate_playbooks_batch,
+            'BriefingData': PlaybookData,
+            'PlaybookOutput': PlaybookOutput,
         }
-        logger.info("Engine4_Briefing loaded successfully")
+        logger.info("Engine4_Playbook loaded successfully")
     except ImportError as e:
-        logger.warning(f"Engine4_Briefing not available: {e}")
+        logger.warning(f"Engine4_Playbook not available: {e}")
 
     # Engine 5: BD Scoring
     try:
