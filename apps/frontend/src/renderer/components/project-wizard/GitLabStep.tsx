@@ -61,7 +61,6 @@ export function GitLabStep({ project, onComplete, onSkip, onBack }: GitLabStepPr
   // GitLab CLI detection state
   const [glabInstalled, setGlabInstalled] = useState<boolean | null>(null);
   const [isCheckingGlab, setIsCheckingGlab] = useState(false);
-  const [authMode, setAuthMode] = useState<'oauth' | 'manual'>('oauth');
 
   // Self-hosted GitLab instance state
   const [instanceUrl, setInstanceUrl] = useState<string>('');
@@ -145,13 +144,17 @@ export function GitLabStep({ project, onComplete, onSkip, onBack }: GitLabStepPr
   };
 
   const loadBranches = async () => {
-    if (!project) return;
+    if (!gitlabProject) return;
 
     setIsLoadingBranches(true);
     setError(null);
 
     try {
-      const result = await window.electronAPI.getGitBranches(project.path);
+      // Use GitLab API to fetch remote branches, not local git
+      const result = await window.electronAPI.getGitLabBranches(
+        gitlabProject,
+        instanceUrl.trim()
+      );
       if (result.success && result.data) {
         setBranches(result.data);
 
@@ -227,7 +230,6 @@ export function GitLabStep({ project, onComplete, onSkip, onBack }: GitLabStepPr
   };
 
   const handleManualToken = () => {
-    setAuthMode('manual');
     // For manual token, user enters token in settings
     // For now, skip to completion and let user configure later
     onComplete({ token: 'manual', project: 'manual', branch: 'main' });
