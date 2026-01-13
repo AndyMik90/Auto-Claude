@@ -91,6 +91,31 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
           title: t('integrations.toast.authSuccess'),
           description: info.email ? t('integrations.toast.authSuccessWithEmail', { email: info.email }) : t('integrations.toast.authSuccessGeneric'),
         });
+      } else if (!info.success) {
+        // Handle authentication failure
+        await loadClaudeProfiles();
+
+        const errorMessage = info.message || '';
+        let title = t('integrations.toast.authStartFailed');
+        let description = t('integrations.toast.tryAgain');
+
+        // Provide specific error messages based on error type
+        if (errorMessage.toLowerCase().includes('cancelled') || errorMessage.toLowerCase().includes('timeout')) {
+          title = t('integrations.toast.authProcessFailed');
+          description = errorMessage || t('integrations.toast.authProcessFailedDescription');
+        } else if (errorMessage.toLowerCase().includes('invalid') || errorMessage.toLowerCase().includes('token')) {
+          title = t('integrations.toast.tokenSaveFailed');
+          description = errorMessage || t('integrations.toast.tryAgain');
+        } else if (errorMessage) {
+          title = t('integrations.toast.authProcessFailed');
+          description = errorMessage;
+        }
+
+        toast({
+          variant: 'destructive',
+          title,
+          description,
+        });
       }
     });
 
