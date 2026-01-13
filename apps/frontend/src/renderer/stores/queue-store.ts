@@ -16,7 +16,7 @@
 import { create } from 'zustand';
 import type { QueueConfig, QueueStatus } from '../../shared/types';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
-import { QUEUE_MIN_CONCURRENT } from '../../shared/constants/task';
+import { QUEUE_MIN_CONCURRENT, type QueueConcurrent } from '../../shared/constants/task';
 
 interface QueueState {
   /** Map of projectId to queue config */
@@ -36,10 +36,11 @@ interface QueueState {
 
 /**
  * Default queue configuration
+ * Uses QueueConcurrent type derived from QUEUE_CONCURRENT_VALUES
  */
 export const DEFAULT_QUEUE_CONFIG: QueueConfig = {
   enabled: false,
-  maxConcurrent: QUEUE_MIN_CONCURRENT as 1 | 2 | 3
+  maxConcurrent: QUEUE_MIN_CONCURRENT satisfies QueueConcurrent
 };
 
 /**

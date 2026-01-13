@@ -21,7 +21,7 @@ import { EventEmitter } from 'events';
 import type { Task, TaskStatus, QueueStatus, QueueConfig, TaskPriority, Project } from '../shared/types';
 import { projectStore } from './project-store';
 import { debugLog, debugError } from '../shared/utils/debug-logger';
-import { QUEUE_MIN_CONCURRENT, QUEUE_MAX_CONCURRENT } from '../shared/constants/task';
+import { QUEUE_MIN_CONCURRENT, QUEUE_MAX_CONCURRENT, type QueueConcurrent } from '../shared/constants/task';
 import type { AgentManager } from './agent/agent-manager';
 import { findTaskAndProject } from './ipc-handlers/task/shared';
 
@@ -56,6 +56,32 @@ const PRIORITY_WEIGHT: Record<TaskPriority | '', number> = {
 const STATUS_PROPAGATION_DELAY_MS = 500;
 
 /**
+ * Maximum depth of chained promises per project before eviction.
+ * Prevents unbounded growth from rapidly queued operations.
+ */
+const MAX_QUEUE_DEPTH = 50;
+
+/**
+ * Time-to-live for processing queue entries in milliseconds.
+ * Entries older than this are pruned by the periodic cleanup.
+ */
+const QUEUE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Interval for periodic pruning of stale processing queue entries.
+ */
+const PRUNE_INTERVAL_MS = 60 * 1000; // 1 minute
+
+/**
+ * Processing queue entry with metadata for bounded cleanup
+ */
+interface ProcessingQueueEntry {
+  promise: Promise<void>;
+  lastUpdated: number;
+  depth: number;
+}
+
+/**
  * Task Queue Manager
  *
  * Manages automatic task scheduling from backlog to in_progress
@@ -68,10 +94,12 @@ const STATUS_PROPAGATION_DELAY_MS = 500;
 export class TaskQueueManager {
   private agentManager: AgentManager;
   private emitter: EventEmitter;
-  /** Per-project promise chain for serializing queue operations */
-  private processingQueue = new Map<string, Promise<void>>();
+  /** Per-project promise chain for serializing queue operations with metadata */
+  private processingQueue = new Map<string, ProcessingQueueEntry>();
   /** Bound handler for cleanup */
   private boundHandleTaskExit: (taskId: string, exitCode: number | null) => Promise<void>;
+  /** Periodic prune interval for cleaning up stale queue entries */
+  private pruneInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(agentManager: AgentManager, emitter: EventEmitter) {
     this.agentManager = agentManager;
@@ -81,6 +109,11 @@ export class TaskQueueManager {
     this.boundHandleTaskExit = this.handleTaskExit.bind(this);
     // Listen for task exit events to trigger queue check
     this.emitter.on('exit', this.boundHandleTaskExit);
+
+    // Set up periodic prune to prevent unbounded growth
+    this.pruneInterval = setInterval(() => {
+      this.pruneProcessingQueue();
+    }, PRUNE_INTERVAL_MS);
   }
 
   /**
@@ -88,6 +121,36 @@ export class TaskQueueManager {
    */
   stop(): void {
     this.emitter.off('exit', this.boundHandleTaskExit);
+    // Clear the periodic prune interval
+    if (this.pruneInterval) {
+      clearInterval(this.pruneInterval);
+      this.pruneInterval = null;
+    }
+  }
+
+  /**
+   * Prune stale entries from the processing queue.
+   * Removes entries that are older than QUEUE_TTL_MS or exceed MAX_QUEUE_DEPTH.
+   */
+  private pruneProcessingQueue(): void {
+    const now = Date.now();
+    const prunedCount = this.processingQueue.size;
+
+    for (const [projectId, entry] of this.processingQueue.entries()) {
+      const age = now - entry.lastUpdated;
+      // Remove if entry is stale or depth is too large
+      if (age > QUEUE_TTL_MS || entry.depth > MAX_QUEUE_DEPTH) {
+        this.processingQueue.delete(projectId);
+      }
+    }
+
+    if (this.processingQueue.size < prunedCount) {
+      debugLog('[TaskQueueManager] Pruned processing queue:', {
+        before: prunedCount,
+        after: this.processingQueue.size,
+        removed: prunedCount - this.processingQueue.size
+      });
+    }
   }
 
   /**
@@ -104,7 +167,7 @@ export class TaskQueueManager {
   getQueueConfig(projectId: string): QueueConfig {
     const project = projectStore.getProject(projectId);
     if (!project?.settings.queueConfig) {
-      return { enabled: false, maxConcurrent: QUEUE_MIN_CONCURRENT as 1 | 2 | 3 };
+      return { enabled: false, maxConcurrent: QUEUE_MIN_CONCURRENT satisfies QueueConcurrent };
     }
 
     let maxConcurrent = project.settings.queueConfig.maxConcurrent;
@@ -116,7 +179,7 @@ export class TaskQueueManager {
 
     return {
       enabled: project.settings.queueConfig.enabled || false,
-      maxConcurrent: maxConcurrent as 1 | 2 | 3
+      maxConcurrent: maxConcurrent satisfies QueueConcurrent
     };
   }
 
@@ -167,7 +230,9 @@ export class TaskQueueManager {
 
     // Get or create the processing promise chain for this project
     const projectId = project.id;
-    const existingChain = this.processingQueue.get(projectId) || Promise.resolve();
+    const existingEntry = this.processingQueue.get(projectId);
+    const existingChain = existingEntry?.promise || Promise.resolve();
+    const currentDepth = existingEntry?.depth ?? 0;
 
     // Chain this operation onto the existing one
     const processingPromise = existingChain.then(async () => {
@@ -203,15 +268,23 @@ export class TaskQueueManager {
       }
     });
 
+    // Create entry with updated metadata
+    const entry: ProcessingQueueEntry = {
+      promise: processingPromise,
+      lastUpdated: Date.now(),
+      depth: Math.min(currentDepth + 1, MAX_QUEUE_DEPTH)
+    };
+
     // Update the chain (removes the completed promise to prevent memory leak)
     processingPromise.finally(() => {
       // Only remove if it's still the current chain
-      if (this.processingQueue.get(projectId) === processingPromise) {
+      const current = this.processingQueue.get(projectId);
+      if (current && current.promise === processingPromise) {
         this.processingQueue.delete(projectId);
       }
     });
 
-    this.processingQueue.set(projectId, processingPromise);
+    this.processingQueue.set(projectId, entry);
 
     // Wait for this operation to complete
     await processingPromise;
@@ -304,7 +377,9 @@ export class TaskQueueManager {
     debugLog('[TaskQueueManager] Manually triggering queue for project:', projectId);
 
     // Get or create the processing promise chain for this project
-    const existingChain = this.processingQueue.get(projectId) || Promise.resolve();
+    const existingEntry = this.processingQueue.get(projectId);
+    const existingChain = existingEntry?.promise || Promise.resolve();
+    const currentDepth = existingEntry?.depth ?? 0;
 
     // Chain this operation onto the existing one
     const processingPromise = existingChain.then(async () => {
@@ -340,15 +415,23 @@ export class TaskQueueManager {
       }
     });
 
+    // Create entry with updated metadata
+    const entry: ProcessingQueueEntry = {
+      promise: processingPromise,
+      lastUpdated: Date.now(),
+      depth: Math.min(currentDepth + 1, MAX_QUEUE_DEPTH)
+    };
+
     // Update the chain (removes the completed promise to prevent memory leak)
     processingPromise.finally(() => {
       // Only remove if it's still the current chain
-      if (this.processingQueue.get(projectId) === processingPromise) {
+      const current = this.processingQueue.get(projectId);
+      if (current && current.promise === processingPromise) {
         this.processingQueue.delete(projectId);
       }
     });
 
-    this.processingQueue.set(projectId, processingPromise);
+    this.processingQueue.set(projectId, entry);
 
     // Wait for this operation to complete
     await processingPromise;

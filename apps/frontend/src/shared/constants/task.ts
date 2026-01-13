@@ -222,8 +222,14 @@ export const ATTACHMENTS_DIR = 'attachments';
 // Task Queue Constants
 // ============================================
 
-/** Minimum number of concurrent tasks allowed in queue */
+/** Allowed concurrent task values (as const for literal type) */
+export const QUEUE_CONCURRENT_VALUES = [1, 2, 3] as const;
+
+/** Minimum number of concurrent tasks allowed in queue (literal type) */
 export const QUEUE_MIN_CONCURRENT = 1;
 
-/** Maximum number of concurrent tasks allowed in queue */
+/** Maximum number of concurrent tasks allowed in queue (literal type) */
 export const QUEUE_MAX_CONCURRENT = 3;
+
+/** Derived type from allowed concurrent values */
+export type QueueConcurrent = typeof QUEUE_CONCURRENT_VALUES[number];

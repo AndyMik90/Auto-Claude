@@ -4,6 +4,7 @@
 
 import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from './settings';
 import type { ExecutionPhase as ExecutionPhaseType, CompletablePhase } from '../constants/phase-protocol';
+import type { QueueConcurrent } from '../constants/task';
 
 export type TaskStatus = 'backlog' | 'in_progress' | 'ai_review' | 'human_review' | 'pr_created' | 'done' | 'error';
 
@@ -14,7 +15,7 @@ export interface QueueConfig {
   /** Whether the queue is enabled for the project */
   enabled: boolean;
   /** Maximum number of concurrent tasks allowed (1-3) */
-  maxConcurrent: 1 | 2 | 3;
+  maxConcurrent: QueueConcurrent;
 }
 
 /**

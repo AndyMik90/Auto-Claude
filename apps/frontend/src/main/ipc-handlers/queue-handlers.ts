@@ -9,7 +9,7 @@
 import { ipcMain } from 'electron';
 import { TaskQueueManager } from '../task-queue-manager';
 import { projectStore } from '../project-store';
-import { QUEUE_MIN_CONCURRENT, QUEUE_MAX_CONCURRENT } from '../../shared/constants/task';
+import { QUEUE_MIN_CONCURRENT, QUEUE_MAX_CONCURRENT, type QueueConcurrent } from '../../shared/constants/task';
 import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import type { QueueConfig, QueueStatus } from '../../shared/types';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
@@ -28,7 +28,7 @@ export function registerQueueHandlers(taskQueueManager: TaskQueueManager): void 
       if (!project?.settings.queueConfig) {
         return {
           success: true,
-          data: { enabled: false, maxConcurrent: QUEUE_MIN_CONCURRENT as 1 | 2 | 3 }
+          data: { enabled: false, maxConcurrent: QUEUE_MIN_CONCURRENT satisfies QueueConcurrent }
         };
       }
       return {
