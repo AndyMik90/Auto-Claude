@@ -424,9 +424,10 @@ export function registerTaskExecutionHandlers(
                   continue;
                 }
                 // Server-side MIME type validation (defense in depth - frontend also validates)
-                const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
-                if (image.mimeType && !ALLOWED_MIME_TYPES.includes(image.mimeType)) {
-                  console.warn('[TASK_REVIEW] Skipping image with disallowed MIME type:', image.mimeType);
+                // Reject missing mimeType to prevent bypass attacks
+                const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+                if (!image.mimeType || !ALLOWED_MIME_TYPES.includes(image.mimeType)) {
+                  console.warn('[TASK_REVIEW] Skipping image with missing or disallowed MIME type:', image.mimeType);
                   continue;
                 }
                 // Sanitize filename to prevent path traversal attacks

@@ -212,8 +212,17 @@ export function QAFeedbackSection({
           const dataUrl = await blobToBase64(file);
           const thumbnail = await createThumbnail(dataUrl);
 
-          // Use original filename or generate one
-          const baseFilename = file.name || `dropped-image-${Date.now()}.${file.type.split('/')[1] || 'png'}`;
+          // Use original filename or generate one with proper extension
+          // Map MIME types to proper file extensions (handles svg+xml -> svg, etc.)
+          const mimeToExtension: Record<string, string> = {
+            'image/svg+xml': 'svg',
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/gif': 'gif',
+            'image/webp': 'webp',
+          };
+          const extension = mimeToExtension[file.type] || file.type.split('/')[1] || 'png';
+          const baseFilename = file.name || `dropped-image-${Date.now()}.${extension}`;
           const resolvedFilename = resolveFilename(baseFilename, [
             ...existingFilenames,
             ...newImages.map(img => img.filename)
