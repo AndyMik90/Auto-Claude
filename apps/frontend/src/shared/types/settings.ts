@@ -302,6 +302,8 @@ export interface AppSettings {
   customTerminalPath?: string; // For 'custom' terminal
   // Terminal font settings
   terminalFont?: TerminalFontSettings;
+  // YOLO mode: invoke Claude with --dangerously-skip-permissions flag
+  dangerouslySkipPermissions?: boolean;
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
   sentryEnabled?: boolean;
 }
