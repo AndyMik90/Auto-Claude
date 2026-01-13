@@ -1,8 +1,8 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
-import type { IPCResult, TaskStartOptions, TaskStatus } from '../../../shared/types';
+import type { IPCResult, TaskStartOptions, TaskStatus, ImageAttachment } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from 'fs';
 import { spawnSync, execFileSync } from 'child_process';
 import { getToolPath } from '../../cli-tool-manager';
 import { AgentManager } from '../../agent';
@@ -354,7 +354,8 @@ export function registerTaskExecutionHandlers(
       _,
       taskId: string,
       approved: boolean,
-      feedback?: string
+      feedback?: string,
+      images?: ImageAttachment[]
     ): Promise<IPCResult> => {
       // Find task and project
       const { task, project } = findTaskAndProject(taskId);
@@ -443,10 +444,65 @@ export function registerTaskExecutionHandlers(
         console.warn('[TASK_REVIEW] Writing QA fix request to:', fixRequestPath);
         console.warn('[TASK_REVIEW] hasWorktree:', hasWorktree, 'worktreePath:', worktreePath);
 
+        // Process images if provided
+        let imageReferences = '';
+        if (images && images.length > 0) {
+          const imagesDir = path.join(targetSpecDir, 'feedback_images');
+          try {
+            if (!existsSync(imagesDir)) {
+              mkdirSync(imagesDir, { recursive: true });
+            }
+            const savedImages: string[] = [];
+            for (const image of images) {
+              try {
+                if (!image.data) {
+                  console.warn('[TASK_REVIEW] Skipping image with no data:', image.filename);
+                  continue;
+                }
+                // Server-side MIME type validation (defense in depth - frontend also validates)
+                // Reject missing mimeType to prevent bypass attacks
+                const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+                if (!image.mimeType || !ALLOWED_MIME_TYPES.includes(image.mimeType)) {
+                  console.warn('[TASK_REVIEW] Skipping image with missing or disallowed MIME type:', image.mimeType);
+                  continue;
+                }
+                // Sanitize filename to prevent path traversal attacks
+                const sanitizedFilename = path.basename(image.filename);
+                if (!sanitizedFilename || sanitizedFilename === '.' || sanitizedFilename === '..') {
+                  console.warn('[TASK_REVIEW] Skipping image with invalid filename:', image.filename);
+                  continue;
+                }
+                // Remove data URL prefix if present (e.g., "data:image/png;base64," or "data:image/svg+xml;base64,")
+                const base64Data = image.data.replace(/^data:image\/[^;]+;base64,/, '');
+                const imageBuffer = Buffer.from(base64Data, 'base64');
+                const imagePath = path.join(imagesDir, sanitizedFilename);
+                // Verify the resolved path is within the images directory (defense in depth)
+                const resolvedPath = path.resolve(imagePath);
+                const resolvedImagesDir = path.resolve(imagesDir);
+                if (!resolvedPath.startsWith(resolvedImagesDir + path.sep)) {
+                  console.warn('[TASK_REVIEW] Skipping image with path outside target directory:', image.filename);
+                  continue;
+                }
+                writeFileSync(imagePath, imageBuffer);
+                savedImages.push(`feedback_images/${sanitizedFilename}`);
+                console.log('[TASK_REVIEW] Saved image:', sanitizedFilename);
+              } catch (imgError) {
+                console.error('[TASK_REVIEW] Failed to save image:', image.filename, imgError);
+              }
+            }
+            if (savedImages.length > 0) {
+              imageReferences = '\n\n## Reference Images\n\n' +
+                savedImages.map(imgPath => `![Feedback Image](${imgPath})`).join('\n\n');
+            }
+          } catch (dirError) {
+            console.error('[TASK_REVIEW] Failed to create images directory:', dirError);
+          }
+        }
+
         try {
           writeFileSync(
             fixRequestPath,
-            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}\n\nCreated at: ${new Date().toISOString()}\n`
+            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}${imageReferences}\n\nCreated at: ${new Date().toISOString()}\n`
           );
         } catch (error) {
           console.error('[TASK_REVIEW] Failed to write QA fix request:', error);
