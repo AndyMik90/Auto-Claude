@@ -11,32 +11,31 @@ Tests the security.py module functionality including:
 """
 
 import pytest
-
+from project_analyzer import BASE_COMMANDS, SecurityProfile
 from security import (
     extract_commands,
-    split_command_segments,
-    validate_command,
-    validate_pkill_command,
-    validate_kill_command,
-    validate_chmod_command,
-    validate_rm_command,
-    validate_git_commit,
-    validate_git_config,
-    validate_dropdb_command,
-    validate_dropuser_command,
-    validate_psql_command,
-    validate_mysql_command,
-    validate_redis_cli_command,
-    validate_mongosh_command,
-    validate_mysqladmin_command,
-    validate_bash_command,
-    validate_sh_command,
-    validate_zsh_command,
-    validate_shell_c_command,
     get_command_for_validation,
     reset_profile_cache,
+    split_command_segments,
+    validate_bash_command,
+    validate_chmod_command,
+    validate_command,
+    validate_dropdb_command,
+    validate_dropuser_command,
+    validate_git_commit,
+    validate_git_config,
+    validate_kill_command,
+    validate_mongosh_command,
+    validate_mysql_command,
+    validate_mysqladmin_command,
+    validate_pkill_command,
+    validate_psql_command,
+    validate_redis_cli_command,
+    validate_rm_command,
+    validate_sh_command,
+    validate_shell_c_command,
+    validate_zsh_command,
 )
-from project_analyzer import SecurityProfile, BASE_COMMANDS
 
 
 class TestCommandExtraction:
@@ -1397,8 +1396,9 @@ class TestInheritedSecurityProfile:
 
     def test_should_reanalyze_skips_inherited_profiles(self, tmp_path):
         """Tests that inherited profiles from valid parents are never re-analyzed."""
-        from project.analyzer import ProjectAnalyzer
         import json
+
+        from project.analyzer import ProjectAnalyzer
 
         # Set up a proper parent-child directory structure
         parent_dir = tmp_path / "parent"
@@ -1465,8 +1465,9 @@ class TestInheritedSecurityProfile:
 
     def test_should_reanalyze_validates_inherited_from_path(self, tmp_path):
         """Tests that inherited_from path is validated before trusting it."""
-        from project.analyzer import ProjectAnalyzer
         import json
+
+        from project.analyzer import ProjectAnalyzer
 
         # Create a child directory structure
         parent_dir = tmp_path / "parent"
@@ -1533,8 +1534,9 @@ class TestInheritedSecurityProfile:
 
     def test_should_reanalyze_rejects_non_ancestor_inherited_from(self, tmp_path):
         """Tests that non-ancestor inherited_from path triggers re-analysis."""
-        from project.analyzer import ProjectAnalyzer
         import json
+
+        from project.analyzer import ProjectAnalyzer
 
         # Create two unrelated directories
         dir_a = tmp_path / "dir_a"
