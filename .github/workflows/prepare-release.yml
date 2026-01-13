@@ -29,10 +29,13 @@ jobs:
       should_release: ${{ steps.check.outputs.should_release }}
       new_version: ${{ steps.check.outputs.new_version }}
     steps:
+      # IMPORTANT: Use PAT_TOKEN instead of GITHUB_TOKEN
+      # When GITHUB_TOKEN pushes a tag, it does NOT trigger other workflows (GitHub security feature)
+      # PAT_TOKEN allows the tag push to trigger release.yml automatically
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Get package version
         id: package
