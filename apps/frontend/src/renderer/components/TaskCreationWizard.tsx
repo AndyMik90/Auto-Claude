@@ -522,13 +522,13 @@ export function TaskCreationWizard({
     >
       <div className="space-y-6">
         {/* Worktree isolation info banner */}
-        <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 bg-info/10 border border-info/30 rounded-lg">
+          <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-medium text-blue-900 mb-1">
+            <h4 className="text-sm font-medium text-foreground mb-1">
               {t('tasks:wizard.worktreeNotice.title')}
             </h4>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-muted-foreground">
               {t('tasks:wizard.worktreeNotice.description')}
             </p>
           </div>
