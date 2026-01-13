@@ -179,7 +179,8 @@ export function ProjectTabBar({
             }
           >
             {isMaximized ? (
-              <Copy className="h-3 w-3 rotate-180" /> // Use Copy icon rotated to simulate restore/overlapping squares
+              // Use Copy icon rotated 180deg to simulate "Restore" (overlapping squares)
+              <Copy className="h-3 w-3 rotate-180" />
             ) : (
               <Square className="h-3 w-3" />
             )}

@@ -20,8 +20,7 @@ interface SortableProjectTabProps {
 
 // Detect if running on macOS for keyboard shortcut display
 const isMac =
-  typeof navigator !== "undefined" &&
-  navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  typeof navigator !== "undefined" && navigator.userAgent.includes("Macintosh");
 const modKey = isMac ? "⌘" : "Ctrl+";
 
 export function SortableProjectTab({
