@@ -784,6 +784,10 @@ export function registerTaskExecutionHandlers(
       // OR skipCleanup is requested (user wants to mark done without cleanup)
       // OR the worktree is in an invalid state (orphaned after GitHub PR merge)
       if (status === 'done') {
+        // Stop file watcher BEFORE any cleanup operations to release file handles
+        // This prevents file-locking issues on Windows where chokidar holds handles open
+        fileWatcher.unwatch(taskId);
+
         // If skipCleanup is requested, skip all worktree operations
         if (options?.skipCleanup) {
           console.warn(`[TASK_UPDATE_STATUS] Skipping worktree cleanup for task ${taskId} (user requested)`);
