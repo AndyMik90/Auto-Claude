@@ -206,6 +206,14 @@ export async function convertIdeaToTask(
       return { success: false, error: 'Idea not found' };
     }
 
+    // Check if already converted (idempotency check)
+    if (idea.linked_task_id) {
+      return {
+        success: false,
+        error: `Idea has already been converted to task: ${idea.linked_task_id}`
+      };
+    }
+
     // Get specs directory path
     const specsBaseDir = getSpecsDir(project.autoBuildPath);
     const specsDir = path.join(project.path, specsBaseDir);
