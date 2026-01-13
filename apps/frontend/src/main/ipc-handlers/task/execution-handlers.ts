@@ -9,7 +9,7 @@ import { AgentManager } from '../../agent';
 import { fileWatcher } from '../../file-watcher';
 import { findTaskAndProject } from './shared';
 import { checkGitStatus } from '../../project-initializer';
-import { getClaudeProfileManager } from '../../claude-profile-manager';
+import { initializeClaudeProfileManager } from '../../claude-profile-manager';
 import {
   getPlanPath,
   persistPlanStatus,
@@ -86,13 +86,17 @@ export function registerTaskExecutionHandlers(
    */
   ipcMain.on(
     IPC_CHANNELS.TASK_START,
-    (_, taskId: string, _options?: TaskStartOptions) => {
+    async (_, taskId: string, _options?: TaskStartOptions) => {
       console.warn('[TASK_START] Received request for taskId:', taskId);
       const mainWindow = getMainWindow();
       if (!mainWindow) {
         console.warn('[TASK_START] No main window found');
         return;
       }
+
+      // Ensure profile manager is initialized before checking auth
+      // This prevents race condition where auth check runs before profile data loads from disk
+      const profileManager = await initializeClaudeProfileManager();
 
       // Find task and project
       const { task, project } = findTaskAndProject(taskId);
@@ -129,7 +133,6 @@ export function registerTaskExecutionHandlers(
       }
 
       // Check authentication - Claude requires valid auth to run tasks
-      const profileManager = getClaudeProfileManager();
       if (!profileManager.hasValidAuth()) {
         console.warn('[TASK_START] No valid authentication for active profile');
         mainWindow.webContents.send(
@@ -609,7 +612,8 @@ export function registerTaskExecutionHandlers(
           }
 
           // Check authentication before auto-starting
-          const profileManager = getClaudeProfileManager();
+          // Ensure profile manager is initialized to prevent race condition
+          const profileManager = await initializeClaudeProfileManager();
           if (!profileManager.hasValidAuth()) {
             console.warn('[TASK_UPDATE_STATUS] No valid authentication for active profile');
             if (mainWindow) {
@@ -940,7 +944,8 @@ export function registerTaskExecutionHandlers(
           }
 
           // Check authentication before auto-restarting
-          const profileManager = getClaudeProfileManager();
+          // Ensure profile manager is initialized to prevent race condition
+          const profileManager = await initializeClaudeProfileManager();
           if (!profileManager.hasValidAuth()) {
             console.warn('[Recovery] Auth check failed, cannot auto-restart task');
             // Recovery succeeded but we can't restart without auth
