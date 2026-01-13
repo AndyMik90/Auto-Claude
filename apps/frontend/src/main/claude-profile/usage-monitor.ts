@@ -139,36 +139,36 @@ export class UsageMonitor extends EventEmitter {
         const sessionExceeded = usage.sessionPercent >= settings.sessionThreshold;
         const weeklyExceeded = usage.weeklyPercent >= settings.weeklyThreshold;
 
-      if (sessionExceeded || weeklyExceeded) {
-        if (this.isDebug) {
-          console.warn('[UsageMonitor:TRACE] Threshold exceeded', {
-            sessionPercent: usage.sessionPercent,
-            weekPercent: usage.weeklyPercent,
-            activeProfile: activeProfile?.id,
-            hasToken: !!decryptedToken
-          });
-        }
+        if (sessionExceeded || weeklyExceeded) {
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Threshold exceeded', {
+              sessionPercent: usage.sessionPercent,
+              weekPercent: usage.weeklyPercent,
+              activeProfile: activeProfile?.id,
+              hasToken: !!decryptedToken
+            });
+          }
 
-        console.warn('[UsageMonitor] Threshold exceeded:', {
-          sessionPercent: usage.sessionPercent,
-          sessionThreshold: settings.sessionThreshold,
-          weeklyPercent: usage.weeklyPercent,
-          weeklyThreshold: settings.weeklyThreshold
-        });
-
-        // Attempt proactive swap
-        await this.performProactiveSwap(
-          activeProfile?.id || usage.profileId,
-          sessionExceeded ? 'session' : 'weekly'
-        );
-      } else {
-        if (this.isDebug) {
-          console.warn('[UsageMonitor:TRACE] Usage OK', {
+          console.warn('[UsageMonitor] Threshold exceeded:', {
             sessionPercent: usage.sessionPercent,
-            weekPercent: usage.weeklyPercent
+            sessionThreshold: settings.sessionThreshold,
+            weeklyPercent: usage.weeklyPercent,
+            weeklyThreshold: settings.weeklyThreshold
           });
+
+          // Attempt proactive swap
+          await this.performProactiveSwap(
+            activeProfile?.id || usage.profileId,
+            sessionExceeded ? 'session' : 'weekly'
+          );
+        } else {
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Usage OK', {
+              sessionPercent: usage.sessionPercent,
+              weekPercent: usage.weeklyPercent
+            });
+          }
         }
-      }
       }
     } catch (error) {
       // Check for auth failure (401/403) from fetchUsageViaAPI
@@ -345,16 +345,10 @@ export class UsageMonitor extends EventEmitter {
         let timedOut = false;
         let timeoutId: NodeJS.Timeout;
 
-        // Build env object without undefined values (NodeJS.ProcessEnv allows string | undefined)
-        const env: NodeJS.ProcessEnv = { ...process.env };
-        for (const key in env) {
-          if (env[key] === undefined) {
-            delete env[key];
-          }
-        }
-
-        // Cast to Record<string, string> since we filtered out undefined values
-        const cleanEnv = env as Record<string, string>;
+        // Build env object without undefined values
+        const cleanEnv = Object.fromEntries(
+          Object.entries(process.env).filter(([_, value]) => value !== undefined)
+        ) as Record<string, string>;
 
         const proc = spawn(getSpawnCommand(claudeCmd), ['/usage'], getSpawnOptions(claudeCmd, {
           env: cleanEnv

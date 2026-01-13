@@ -9,16 +9,7 @@
  */
 
 import type { ClaudeUsageSnapshot } from '../../../shared/types/agent';
-
-// ============================================
-// Constants
-// ============================================
-
-/**
- * Sentinel value for "resetting soon" state
- * Frontend should map this to a localized string via i18n
- */
-export const RESETTING_SOON = '__RESETTING_SOON__' as const;
+import { RESETTING_SOON } from '../../../shared/types/agent';
 
 // ============================================
 // Provider Detection
@@ -68,9 +59,8 @@ export function detectProvider(baseUrl: string): UsageProvider {
     const url = new URL(baseUrl.trim());
     const hostname = url.hostname.toLowerCase();
 
-    // Check for Z.ai domains (api.z.ai or z.ai)
-    if (hostname === 'api.z.ai' || hostname === 'z.ai' ||
-        hostname.endsWith('.z.ai') || hostname.endsWith('.api.z.ai')) {
+    // Check for Z.ai domains (z.ai and subdomains)
+    if (hostname === 'z.ai' || hostname.endsWith('.z.ai')) {
       return 'zai';
     }
 
@@ -103,8 +93,7 @@ export async function fetchZaiUsage(
     const response = await fetch('https://api.z.ai/api/monitor/usage/quota/limit', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${apiKey}`
       }
     });
 
@@ -183,7 +172,6 @@ export async function fetchAnthropicOAuthUsage(
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${oauthToken}`,
-        'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01'
       }
     });
@@ -210,8 +198,8 @@ export async function fetchAnthropicOAuthUsage(
       : undefined;
 
     return {
-      sessionPercent: Math.round((data.five_hour_utilization || 0) * 100),
-      weeklyPercent: Math.round((data.seven_day_utilization || 0) * 100),
+      sessionPercent: Math.round(data.five_hour_utilization || 0),
+      weeklyPercent: Math.round(data.seven_day_utilization || 0),
       sessionResetTime: formatResetTimeFromTimestamp(fiveHourResetTimestamp),
       weeklyResetTime: formatResetTimeFromTimestamp(sevenDayResetTimestamp),
       sessionResetTimestamp: fiveHourResetTimestamp,
