@@ -368,7 +368,7 @@
     "taskNotFound": "Tâche non trouvée pour ce worktree",
     "stats": {
       "filesChanged": "fichiers modifiés",
-      "commitsAhead": "commits ahead"
+      "commitsAhead": "commits d'avance"
     },
     "actions": {
       "mergeTo": "Fusionner vers {{branch}}",

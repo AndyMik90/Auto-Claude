@@ -844,6 +844,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                           <li>{t('memory.graphitiBenefits.noDocker')}</li>
                         </ul>
                         <button
+                          type="button"
                           onClick={handleOpenDocs}
                           className="text-sm text-info hover:text-info/80 flex items-center gap-1"
                         >

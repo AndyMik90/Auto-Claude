@@ -602,6 +602,7 @@ export function GitHubSetupModal({
                      <Label>{t('githubSetup.visibility')}</Label>
                     <div className="flex gap-2" role="radiogroup" aria-label={t('common:accessibility.repositoryVisibilityAriaLabel')}>
                       <button
+                        type="button"
                         onClick={() => setIsPrivateRepo(true)}
                         className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
                           isPrivateRepo
@@ -617,6 +618,7 @@ export function GitHubSetupModal({
                          <span className="text-sm">{t('githubSetup.private')}</span>
                        </button>
                        <button
+                         type="button"
                          onClick={() => setIsPrivateRepo(false)}
                          className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
                            !isPrivateRepo
