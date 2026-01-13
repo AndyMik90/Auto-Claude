@@ -10,7 +10,6 @@ Tests the validation_complete flag functionality in ImplementationPlan:
 - Edge cases and race conditions
 """
 
-import pytest
 from pathlib import Path
 
 from implementation_plan import (
@@ -705,7 +704,7 @@ class TestValidationCompleteEdgeCases:
         assert plan.planStatus == "review"
 
     def test_validation_complete_with_integer_one(self):
-        """When validation_complete is 1 (truthy integer), Python treats it equal to True."""
+        """When validation_complete is 1 (integer), should not match 'is True' check."""
         plan = ImplementationPlan(
             feature="Test Feature",
             workflow_type=WorkflowType.FEATURE,
@@ -725,13 +724,13 @@ class TestValidationCompleteEdgeCases:
             ],
             qa_signoff={
                 "status": "approved",
-                "validation_complete": 1,  # Integer one (Python: 1 == True)
+                "validation_complete": 1,  # Integer one - 1 is True returns False
                 "timestamp": "2024-01-01T00:00:00",
             },
         )
 
         plan.update_status_from_subtasks()
 
-        # In Python, 1 == True evaluates to True, so this transitions to human_review
-        assert plan.status == "human_review"
+        # With 'is True' check, 1 is not the same object as True, so stays in ai_review
+        assert plan.status == "ai_review"
         assert plan.planStatus == "review"

@@ -35,19 +35,12 @@ export function getBestAvailableProfile(
   // 2. Lower weekly usage (more important than session)
   // 3. Lower session usage
   // 4. More recently authenticated
-  const isDebug = process.env.DEBUG === 'true';
-
-  if (isDebug) {
-    console.warn('[ProfileScorer] Evaluating', candidates.length, 'candidate profiles (excluding:', excludeProfileId, ')');
-  }
 
   const scoredProfiles: ScoredProfile[] = candidates.map(profile => {
     let score = 100;  // Base score
-    if (isDebug) console.warn('[ProfileScorer] Scoring profile:', profile.name, '(', profile.id, ')');
 
     // Check rate limit status
     const rateLimitStatus = isProfileRateLimited(profile);
-    if (isDebug) console.warn('[ProfileScorer]   Rate limit status:', rateLimitStatus);
     if (rateLimitStatus.limited) {
       // Severely penalize rate-limited profiles
       if (rateLimitStatus.type === 'weekly') {
@@ -80,14 +73,10 @@ export function getBestAvailableProfile(
     }
 
     // Check if authenticated
-    const isAuth = isProfileAuthenticated(profile);
-    if (isDebug) console.warn('[ProfileScorer]   isProfileAuthenticated:', isAuth, 'hasOAuthToken:', !!profile.oauthToken, 'hasConfigDir:', !!profile.configDir);
-    if (!isAuth) {
+    if (!isProfileAuthenticated(profile)) {
       score -= 500;  // Severely penalize unauthenticated profiles
-      if (isDebug) console.warn('[ProfileScorer]   Applied -500 penalty for no auth');
     }
 
-    if (isDebug) console.warn('[ProfileScorer]   Final score:', score);
     return { profile, score };
   });
 

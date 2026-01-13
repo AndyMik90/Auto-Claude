@@ -35,7 +35,6 @@ try:
         ReviewSeverity,
     )
     from .category_utils import map_category
-    from .io_utils import safe_print
     from .prompt_manager import PromptManager
     from .pydantic_models import FollowupReviewResponse
 except (ImportError, ValueError, SystemError):
@@ -48,7 +47,6 @@ except (ImportError, ValueError, SystemError):
         ReviewSeverity,
     )
     from services.category_utils import map_category
-    from services.io_utils import safe_print
     from services.prompt_manager import PromptManager
     from services.pydantic_models import FollowupReviewResponse
 
@@ -104,7 +102,7 @@ class FollowupReviewer:
                     "pr_number": pr_number,
                 }
             )
-        safe_print(f"[Followup] [{phase}] {message}")
+        print(f"[Followup] [{phase}] {message}", flush=True)
 
     async def review_followup(
         self,
@@ -693,7 +691,7 @@ Analyze this follow-up review context and provide your structured response.
             logger.debug(
                 f"[Followup] Using output_format schema: {list(schema.get('properties', {}).keys())}"
             )
-            safe_print(f"[Followup] SDK query with output_format, model={model}")
+            print(f"[Followup] SDK query with output_format, model={model}", flush=True)
 
             # Iterate through messages from the query
             # Note: max_turns=2 because structured output uses a tool call + response
@@ -728,7 +726,7 @@ Analyze this follow-up review context and provide your structured response.
                                     logger.info(
                                         "[Followup] Found StructuredOutput tool use"
                                     )
-                                    safe_print(
+                                    print(
                                         "[Followup] Using SDK structured output",
                                         flush=True,
                                     )
@@ -746,7 +744,7 @@ Analyze this follow-up review context and provide your structured response.
                         logger.info(
                             "[Followup] Found structured_output attribute on message"
                         )
-                        safe_print(
+                        print(
                             "[Followup] Using SDK structured output (direct attribute)",
                             flush=True,
                         )
@@ -770,7 +768,7 @@ Analyze this follow-up review context and provide your structured response.
         except ValueError as e:
             # OAuth token not found
             logger.warning(f"No OAuth token available for AI review: {e}")
-            safe_print("AI review failed: No OAuth token found")
+            print("AI review failed: No OAuth token found", flush=True)
             return None
         except Exception as e:
             logger.error(f"AI review with structured output failed: {e}")

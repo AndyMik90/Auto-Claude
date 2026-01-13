@@ -19,7 +19,6 @@ export interface AppUpdateAPI {
   downloadStableUpdate: () => Promise<IPCResult>;
   installAppUpdate: () => void;
   getAppVersion: () => Promise<string>;
-  getDownloadedAppUpdate: () => Promise<IPCResult<AppUpdateInfo | null>>;
 
   // Event Listeners
   onAppUpdateAvailable: (
@@ -56,9 +55,6 @@ export const createAppUpdateAPI = (): AppUpdateAPI => ({
 
   getAppVersion: (): Promise<string> =>
     invokeIpc(IPC_CHANNELS.APP_UPDATE_GET_VERSION),
-
-  getDownloadedAppUpdate: (): Promise<IPCResult<AppUpdateInfo | null>> =>
-    invokeIpc(IPC_CHANNELS.APP_UPDATE_GET_DOWNLOADED),
 
   // Event Listeners
   onAppUpdateAvailable: (

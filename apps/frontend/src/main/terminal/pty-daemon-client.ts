@@ -7,13 +7,8 @@
 
 import * as net from 'net';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { spawn, ChildProcess } from 'child_process';
 import { app } from 'electron';
-
-// ESM-compatible __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const SOCKET_PATH =
   process.platform === 'win32'

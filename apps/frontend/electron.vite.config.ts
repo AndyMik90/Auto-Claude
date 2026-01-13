@@ -11,15 +11,7 @@ export default defineConfig({
         'chokidar',
         'kuzu',
         'electron-updater',
-        '@electron-toolkit/utils',
-        // Sentry and its transitive dependencies (opentelemetry -> debug -> ms)
-        '@sentry/electron',
-        '@sentry/core',
-        '@sentry/node',
-        '@sentry/utils',
-        '@opentelemetry/instrumentation',
-        'debug',
-        'ms'
+        '@electron-toolkit/utils'
       ]
     })],
     build: {

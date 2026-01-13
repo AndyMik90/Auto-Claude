@@ -346,10 +346,10 @@ export function WorkspaceStatus({
         {/* Git Conflicts Details */}
         {hasGitConflicts && mergePreview?.gitConflicts && (
           <div className="text-xs text-muted-foreground pl-6">
-            {t('taskReview:merge.branchHasNewCommits', { branch: mergePreview.gitConflicts.baseBranch, count: mergePreview.gitConflicts.commitsBehind })}
+            Main branch has {mergePreview.gitConflicts.commitsBehind} new commit{mergePreview.gitConflicts.commitsBehind !== 1 ? 's' : ''}.
             {mergePreview.gitConflicts.conflictingFiles.length > 0 && (
               <span className="text-warning">
-                {' '}{t('taskReview:merge.filesNeedMerging', { count: mergePreview.gitConflicts.conflictingFiles.length })}
+                {' '}{mergePreview.gitConflicts.conflictingFiles.length} file{mergePreview.gitConflicts.conflictingFiles.length !== 1 ? 's' : ''} need merging.
               </span>
             )}
           </div>
@@ -358,15 +358,15 @@ export function WorkspaceStatus({
         {/* Branch Behind Details (no explicit conflicts but needs AI merge due to path mappings) */}
         {!hasGitConflicts && isBranchBehind && mergePreview?.gitConflicts && (
           <div className="text-xs text-muted-foreground pl-6">
-            {t('taskReview:merge.branchHasNewCommitsSinceBuild', { branch: mergePreview.gitConflicts.baseBranch, count: commitsBehind })}
+            Target branch has {commitsBehind} new commit{commitsBehind !== 1 ? 's' : ''} since this build started.
             {hasPathMappedMerges ? (
               <span className="text-warning">
-                {' '}{t(totalRenames === 1 ? 'taskReview:merge.filesNeedAIMergeDueToRenames' : 'taskReview:merge.filesNeedAIMergeDueToRenamesPlural', { renameCount: totalRenames, count: pathMappedAIMergeCount })}
+                {' '}{pathMappedAIMergeCount} file{pathMappedAIMergeCount !== 1 ? 's' : ''} need AI merge due to {totalRenames} file rename{totalRenames !== 1 ? 's' : ''}.
               </span>
             ) : totalRenames > 0 ? (
-              <span className="text-warning"> {t('taskReview:merge.fileRenamesDetected', { count: totalRenames })}</span>
+              <span className="text-warning"> {totalRenames} file rename{totalRenames !== 1 ? 's' : ''} detected - AI will handle the merge.</span>
             ) : (
-              <span className="text-warning"> {t('taskReview:merge.filesRenamedOrMoved')}</span>
+              <span className="text-warning"> Files may have been renamed or moved - AI will handle the merge.</span>
             )}
           </div>
         )}
@@ -427,20 +427,14 @@ export function WorkspaceStatus({
               {isMerging ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {hasGitConflicts || isBranchBehind || hasPathMappedMerges
-                    ? t('taskReview:merge.buttons.resolving')
-                    : stageOnly
-                      ? t('taskReview:merge.buttons.staging')
-                      : t('taskReview:merge.buttons.merging')}
+                  {hasGitConflicts || isBranchBehind || hasPathMappedMerges ? 'Resolving...' : stageOnly ? 'Staging...' : 'Merging...'}
                 </>
               ) : (
                 <>
                   <GitMerge className="mr-2 h-4 w-4" />
                   {hasGitConflicts || isBranchBehind || hasPathMappedMerges
-                    ? (stageOnly ? t('taskReview:merge.buttons.stageWithAIMerge') : t('taskReview:merge.buttons.mergeWithAI'))
-                    : (stageOnly
-                        ? t('taskReview:merge.buttons.stageTo', { branch: worktreeStatus.currentProjectBranch || worktreeStatus.baseBranch || 'main' })
-                        : t('taskReview:merge.buttons.mergeTo', { branch: worktreeStatus.currentProjectBranch || worktreeStatus.baseBranch || 'main' }))}
+                    ? (stageOnly ? 'Stage with AI Merge' : 'Merge with AI')
+                    : (stageOnly ? 'Stage to Main' : 'Merge to Main')}
                 </>
               )}
             </Button>

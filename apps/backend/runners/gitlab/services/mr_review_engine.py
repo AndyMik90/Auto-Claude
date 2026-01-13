@@ -34,17 +34,6 @@ except ImportError:
         ReviewSeverity,
     )
 
-# Import safe_print for BrokenPipeError handling
-try:
-    from core.io_utils import safe_print
-except ImportError:
-    # Fallback for direct script execution
-    import sys
-    from pathlib import Path as PathLib
-
-    sys.path.insert(0, str(PathLib(__file__).parent.parent.parent.parent))
-    from core.io_utils import safe_print
-
 
 @dataclass
 class ProgressCallback:
@@ -257,7 +246,7 @@ Provide your review in the following JSON format:
             return self._parse_review_result(result_text)
 
         except Exception as e:
-            safe_print(f"[AI] Review error: {e}")
+            print(f"[AI] Review error: {e}", flush=True)
             raise RuntimeError(f"Review failed: {e}") from e
 
     def _parse_review_result(
@@ -308,11 +297,14 @@ Provide your review in the following JSON format:
                                 f"{finding.title} ({finding.file}:{finding.line})"
                             )
                     except (ValueError, KeyError) as e:
-                        safe_print(f"[AI] Skipping invalid finding: {e}")
+                        print(f"[AI] Skipping invalid finding: {e}", flush=True)
 
             except json.JSONDecodeError as e:
-                safe_print(f"[AI] Failed to parse JSON: {e}")
-                safe_print(f"[AI] Raw response (first 500 chars): {result_text[:500]}")
+                print(f"[AI] Failed to parse JSON: {e}", flush=True)
+                print(
+                    f"[AI] Raw response (first 500 chars): {result_text[:500]}",
+                    flush=True,
+                )
                 summary = "Review completed but failed to parse structured output. Please re-run the review."
                 # Return with empty findings but keep verdict as READY_TO_MERGE
                 # since we couldn't determine if there are actual issues

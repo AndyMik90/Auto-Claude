@@ -40,7 +40,6 @@ try:
         ReviewSeverity,
     )
     from .category_utils import map_category
-    from .io_utils import safe_print
     from .pr_worktree_manager import PRWorktreeManager
     from .pydantic_models import ParallelOrchestratorResponse
     from .sdk_utils import process_sdk_stream
@@ -59,7 +58,6 @@ except (ImportError, ValueError, SystemError):
     )
     from phase_config import get_thinking_budget
     from services.category_utils import map_category
-    from services.io_utils import safe_print
     from services.pr_worktree_manager import PRWorktreeManager
     from services.pydantic_models import ParallelOrchestratorResponse
     from services.sdk_utils import process_sdk_stream
@@ -382,12 +380,12 @@ The SDK will run invoked agents in parallel automatically.
             agents: List of agent names that were invoked
         """
         if agents:
-            safe_print(
+            print(
                 f"[ParallelOrchestrator] Specialist agents invoked: {', '.join(agents)}",
                 flush=True,
             )
             for agent in agents:
-                safe_print(f"[Agent:{agent}] Analysis complete")
+                print(f"[Agent:{agent}] Analysis complete", flush=True)
 
     def _log_findings_summary(self, findings: list[PRReviewFinding]) -> None:
         """Log findings summary for verification.
@@ -396,13 +394,13 @@ The SDK will run invoked agents in parallel automatically.
             findings: List of findings to summarize
         """
         if findings:
-            safe_print(
+            print(
                 f"[ParallelOrchestrator] Parsed {len(findings)} findings from structured output",
                 flush=True,
             )
-            safe_print("[ParallelOrchestrator] Findings summary:")
+            print("[ParallelOrchestrator] Findings summary:", flush=True)
             for i, f in enumerate(findings, 1):
-                safe_print(
+                print(
                     f"  [{f.severity.value.upper()}] {i}. {f.title} ({f.file}:{f.line})",
                     flush=True,
                 )
@@ -476,15 +474,15 @@ The SDK will run invoked agents in parallel automatically.
             head_sha = context.head_sha or context.head_branch
 
             if DEBUG_MODE:
-                safe_print(
+                print(
                     f"[PRReview] DEBUG: context.head_sha='{context.head_sha}'",
                     flush=True,
                 )
-                safe_print(
+                print(
                     f"[PRReview] DEBUG: context.head_branch='{context.head_branch}'",
                     flush=True,
                 )
-                safe_print(f"[PRReview] DEBUG: resolved head_sha='{head_sha}'")
+                print(f"[PRReview] DEBUG: resolved head_sha='{head_sha}'", flush=True)
 
             # SECURITY: Validate the resolved head_sha (whether SHA or branch name)
             # This catches invalid refs early before subprocess calls
@@ -497,7 +495,7 @@ The SDK will run invoked agents in parallel automatically.
 
             if not head_sha:
                 if DEBUG_MODE:
-                    safe_print("[PRReview] DEBUG: No head_sha - using fallback")
+                    print("[PRReview] DEBUG: No head_sha - using fallback", flush=True)
                 logger.warning(
                     "[ParallelOrchestrator] No head_sha available, using current checkout"
                 )
@@ -509,7 +507,7 @@ The SDK will run invoked agents in parallel automatically.
                 )
             else:
                 if DEBUG_MODE:
-                    safe_print(
+                    print(
                         f"[PRReview] DEBUG: Creating worktree for head_sha={head_sha}",
                         flush=True,
                     )
@@ -519,14 +517,14 @@ The SDK will run invoked agents in parallel automatically.
                     )
                     project_root = worktree_path
                     if DEBUG_MODE:
-                        safe_print(
+                        print(
                             f"[PRReview] DEBUG: Using worktree as "
                             f"project_root={project_root}",
                             flush=True,
                         )
                 except (RuntimeError, ValueError) as e:
                     if DEBUG_MODE:
-                        safe_print(
+                        print(
                             f"[PRReview] DEBUG: Worktree creation FAILED: {e}",
                             flush=True,
                         )
@@ -566,7 +564,7 @@ The SDK will run invoked agents in parallel automatically.
             async with client:
                 await client.query(prompt)
 
-                safe_print(
+                print(
                     f"[ParallelOrchestrator] Running orchestrator ({model})...",
                     flush=True,
                 )
@@ -610,7 +608,7 @@ The SDK will run invoked agents in parallel automatically.
             logger.info(
                 f"[ParallelOrchestrator] Session complete. Agents invoked: {final_agents}"
             )
-            safe_print(
+            print(
                 f"[ParallelOrchestrator] Complete. Agents invoked: {final_agents}",
                 flush=True,
             )

@@ -185,16 +185,12 @@ class ImplementationPlan:
 
         # Determine status based on subtask states
         if completed_count == total_count:
-            # All subtasks completed - check if QA approved AND validation loop complete
-            if (
-                self.qa_signoff
-                and self.qa_signoff.get("status") == "approved"
-                and self.qa_signoff.get("validation_complete") == True
-            ):
+            # All subtasks completed - check if QA approved
+            if self.qa_signoff and self.qa_signoff.get("status") == "approved":
                 self.status = "human_review"
                 self.planStatus = "review"
             else:
-                # All subtasks done, waiting for QA completion
+                # All subtasks done, waiting for QA
                 self.status = "ai_review"
                 self.planStatus = "review"
         elif failed_count > 0:

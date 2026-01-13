@@ -33,8 +33,6 @@ from .criteria import (
     get_qa_iteration_count,
     get_qa_signoff_status,
     is_qa_approved,
-    load_implementation_plan,
-    save_implementation_plan,
 )
 from .fixer import run_qa_fixer_session
 from .report import (
@@ -293,26 +291,6 @@ async def run_qa_validation_loop(
             if linear_task and linear_task.task_id:
                 await linear_qa_approved(spec_dir)
                 print("\nLinear: Task marked as QA approved, awaiting human review")
-
-            # Set validation_complete flag to indicate loop has fully completed
-            debug(
-                "qa_loop",
-                "Setting validation_complete: True in qa_signoff",
-                spec_dir=str(spec_dir),
-            )
-            plan = load_implementation_plan(spec_dir)
-            if plan and plan.get("qa_signoff"):
-                plan["qa_signoff"]["validation_complete"] = True
-                save_implementation_plan(spec_dir, plan)
-                debug_success(
-                    "qa_loop",
-                    "QA validation loop completed successfully, set validation_complete=True",
-                )
-            else:
-                debug_warning(
-                    "qa_loop",
-                    "Could not set validation_complete flag - qa_signoff not found in plan",
-                )
 
             return True
 

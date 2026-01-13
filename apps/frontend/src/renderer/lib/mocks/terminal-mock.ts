@@ -92,12 +92,10 @@ export const terminalMock = {
   onTerminalOutput: () => () => {},
   onTerminalExit: () => () => {},
   onTerminalTitleChange: () => () => {},
-  onTerminalWorktreeConfigChange: () => () => {},
   onTerminalClaudeSession: () => () => {},
   onTerminalRateLimit: () => () => {},
   onTerminalOAuthToken: () => () => {},
   onTerminalAuthCreated: () => () => {},
   onTerminalClaudeBusy: () => () => {},
-  onTerminalClaudeExit: () => () => {},
   onTerminalPendingResume: () => () => {}
 };

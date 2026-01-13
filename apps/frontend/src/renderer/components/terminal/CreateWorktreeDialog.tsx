@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GitBranch, Loader2, FolderGit, ListTodo } from 'lucide-react';
 import {
@@ -20,37 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Combobox, type ComboboxOption } from '../ui/combobox';
 import type { Task, TerminalWorktreeConfig } from '../../../shared/types';
 import { useProjectStore } from '../../stores/project-store';
 
 // Special value to represent "use project default" since Radix UI Select doesn't allow empty string values
 const PROJECT_DEFAULT_BRANCH = '__project_default__';
-
-/**
- * Sanitizes a string into a valid worktree/branch name.
- * - Converts to lowercase
- * - Replaces spaces and invalid characters with hyphens
- * - Collapses consecutive hyphens
- * - Trims leading/trailing hyphens
- * - Ensures name ends with alphanumeric (matching backend WORKTREE_NAME_REGEX)
- */
-function sanitizeWorktreeName(value: string, maxLength?: number): string {
-  let sanitized = value
-    .toLowerCase()
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/[^a-z0-9_-]/g, '-') // Replace invalid chars (including dots) with hyphens
-    .replace(/-{2,}/g, '-') // Collapse consecutive hyphens
-    .replace(/^[-_]+|[-_]+$/g, ''); // Trim leading and trailing hyphens/underscores
-
-  if (maxLength) {
-    sanitized = sanitized.slice(0, maxLength);
-    // Trim trailing hyphens/underscores again after slicing
-    sanitized = sanitized.replace(/[-_]+$/, '');
-  }
-
-  return sanitized;
-}
 
 interface CreateWorktreeDialogProps {
   /** Whether the dialog is open */
@@ -95,50 +69,42 @@ export function CreateWorktreeDialog({
 
   // Fetch branches when dialog opens
   useEffect(() => {
-    if (!open || !projectPath) return;
-
-    let isMounted = true;
-
-    const fetchBranches = async () => {
-      setIsLoadingBranches(true);
-      try {
-        const result = await window.electronAPI.getGitBranches(projectPath);
-        if (!isMounted) return;
-
-        if (result.success && result.data) {
-          setBranches(result.data);
-        }
-
-        // Use project settings mainBranch if available, otherwise auto-detect
-        if (project?.settings?.mainBranch) {
-          setProjectDefaultBranch(project.settings.mainBranch);
-        } else {
-          // Fallback to auto-detect if no project setting
-          const defaultResult = await window.electronAPI.detectMainBranch(projectPath);
-          if (!isMounted) return;
-
-          if (defaultResult.success && defaultResult.data) {
-            setProjectDefaultBranch(defaultResult.data);
+    if (open && projectPath) {
+      const fetchBranches = async () => {
+        setIsLoadingBranches(true);
+        try {
+          const result = await window.electronAPI.getGitBranches(projectPath);
+          if (result.success && result.data) {
+            setBranches(result.data);
           }
-        }
-      } catch (err) {
-        console.error('Failed to fetch branches:', err);
-      } finally {
-        if (isMounted) {
+
+          // Use project settings mainBranch if available, otherwise auto-detect
+          if (project?.settings?.mainBranch) {
+            setProjectDefaultBranch(project.settings.mainBranch);
+          } else {
+            // Fallback to auto-detect if no project setting
+            const defaultResult = await window.electronAPI.detectMainBranch(projectPath);
+            if (defaultResult.success && defaultResult.data) {
+              setProjectDefaultBranch(defaultResult.data);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch branches:', err);
+        } finally {
           setIsLoadingBranches(false);
         }
-      }
-    };
-
-    fetchBranches();
-
-    return () => {
-      isMounted = false;
-    };
+      };
+      fetchBranches();
+    }
   }, [open, projectPath, project?.settings?.mainBranch]);
 
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const sanitized = sanitizeWorktreeName(e.target.value);
+    // Auto-sanitize: lowercase, replace spaces and invalid chars
+    const sanitized = e.target.value
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
     setName(sanitized);
     setError(null);
   }, []);
@@ -153,7 +119,12 @@ export function CreateWorktreeDialog({
     if (!name) {
       const task = backlogTasks.find(t => t.id === taskId);
       if (task) {
-        const autoName = sanitizeWorktreeName(task.title, 40);
+        // Convert task title to valid name
+        const autoName = task.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 30);
         setName(autoName);
       }
     }
@@ -165,9 +136,8 @@ export function CreateWorktreeDialog({
       return;
     }
 
-    // Validate name format - allow letters, numbers, dashes, and underscores
-    // Must start and end with letter or number (matching backend WORKTREE_NAME_REGEX)
-    if (!/^[a-z0-9][a-z0-9_-]*[a-z0-9]$/.test(name) && !/^[a-z0-9]$/.test(name)) {
+    // Validate name format
+    if (!/^[a-z0-9][a-z0-9_-]*[a-z0-9]$|^[a-z0-9]$/.test(name)) {
       setError(t('terminal:worktree.nameInvalid'));
       return;
     }
@@ -214,28 +184,6 @@ export function CreateWorktreeDialog({
     }
     onOpenChange(newOpen);
   };
-
-  // Memoized branch options for the Combobox
-  const branchOptions: ComboboxOption[] = useMemo(() => {
-    const regularBranchOptions = branches
-      .filter((b) => b !== projectDefaultBranch)
-      .map((branch) => ({ value: branch, label: branch }));
-
-    const options: ComboboxOption[] = [
-      {
-        value: PROJECT_DEFAULT_BRANCH,
-        label: t('terminal:worktree.useProjectDefault', { branch: projectDefaultBranch || 'main' }),
-      },
-      ...regularBranchOptions,
-    ];
-
-    // If the project default branch is not in the list of existing branches, add it as a selectable option
-    if (projectDefaultBranch && !branches.includes(projectDefaultBranch)) {
-      options.push({ value: projectDefaultBranch, label: projectDefaultBranch });
-    }
-
-    return options;
-  }, [branches, projectDefaultBranch, t]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -308,22 +256,39 @@ export function CreateWorktreeDialog({
             />
           </div>
 
-          {/* Base Branch Selection - Searchable */}
+          {/* Base Branch Selection */}
           <div className="space-y-2">
             <Label htmlFor="base-branch" className="flex items-center gap-2">
               <GitBranch className="h-4 w-4" />
               {t('terminal:worktree.baseBranch')}
             </Label>
-            <Combobox
-              id="base-branch"
+            <Select
               value={baseBranch}
               onValueChange={setBaseBranch}
-              options={branchOptions}
-              placeholder={t('terminal:worktree.selectBaseBranch')}
-              searchPlaceholder={t('terminal:worktree.searchBranch')}
-              emptyMessage={t('terminal:worktree.noBranchFound')}
               disabled={isCreating || isLoadingBranches}
-            />
+            >
+              <SelectTrigger id="base-branch">
+                <SelectValue placeholder={t('terminal:worktree.selectBaseBranch')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PROJECT_DEFAULT_BRANCH}>
+                  {t('terminal:worktree.useProjectDefault', { branch: projectDefaultBranch || 'main' })}
+                </SelectItem>
+                {branches
+                  .filter(b => b !== projectDefaultBranch)
+                  .slice(0, 15)
+                  .map((branch) => (
+                    <SelectItem key={branch} value={branch}>
+                      {branch}
+                    </SelectItem>
+                  ))}
+                {projectDefaultBranch && !branches.includes(projectDefaultBranch) && (
+                  <SelectItem value={projectDefaultBranch}>
+                    {projectDefaultBranch}
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
               {t('terminal:worktree.baseBranchHelp')}
             </p>
