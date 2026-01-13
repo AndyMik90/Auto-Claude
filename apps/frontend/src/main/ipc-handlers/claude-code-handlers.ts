@@ -7,22 +7,192 @@
  * - Open terminal with installation command
  */
 
-import { ipcMain, shell } from 'electron';
-import { execFileSync, spawn } from 'child_process';
-import { existsSync, statSync } from 'fs';
+import { ipcMain } from 'electron';
+import { execFileSync, spawn, execFile } from 'child_process';
+import { existsSync, promises as fsPromises } from 'fs';
 import path from 'path';
+import os from 'os';
+import { promisify } from 'util';
 import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import type { IPCResult } from '../../shared/types';
-import type { ClaudeCodeVersionInfo } from '../../shared/types/cli';
-import { getToolInfo } from '../cli-tool-manager';
-import { readSettingsFile } from '../settings-utils';
+import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationInfo } from '../../shared/types/cli';
+import { getToolInfo, configureTools, sortNvmVersionDirs } from '../cli-tool-manager';
+import { readSettingsFile, writeSettingsFile } from '../settings-utils';
 import semver from 'semver';
+
+const execFileAsync = promisify(execFile);
 
 // Cache for latest version (avoid hammering npm registry)
 let cachedLatestVersion: { version: string; timestamp: number } | null = null;
 let cachedVersionList: { versions: string[]; timestamp: number } | null = null;
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const VERSION_LIST_CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour for version list
+
+/**
+ * Validate a Claude CLI path and get its version
+ * @param cliPath - Path to the Claude CLI executable
+ * @returns Tuple of [isValid, version or null]
+ */
+async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string | null]> {
+  try {
+    const isWindows = process.platform === 'win32';
+
+    // Augment PATH with the CLI directory for proper resolution
+    const cliDir = path.dirname(cliPath);
+    const env = {
+      ...process.env,
+      PATH: cliDir ? `${cliDir}${path.delimiter}${process.env.PATH || ''}` : process.env.PATH,
+    };
+
+    let stdout: string;
+    // For Windows .cmd/.bat files, use cmd.exe with proper quoting
+    // /d = disable AutoRun registry commands
+    // /s = strip first and last quotes, preserving inner quotes
+    // /c = run command then terminate
+    if (isWindows && /\.(cmd|bat)$/i.test(cliPath)) {
+      // Get cmd.exe path from environment or use default
+      const cmdExe = process.env.ComSpec
+        || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
+      // Use double-quoted command line for paths with spaces
+      const cmdLine = `""${cliPath}" --version"`;
+      const result = await execFileAsync(cmdExe, ['/d', '/s', '/c', cmdLine], {
+        encoding: 'utf-8',
+        timeout: 5000,
+        windowsHide: true,
+        env,
+      });
+      stdout = result.stdout;
+    } else {
+      const result = await execFileAsync(cliPath, ['--version'], {
+        encoding: 'utf-8',
+        timeout: 5000,
+        windowsHide: true,
+        env,
+      });
+      stdout = result.stdout;
+    }
+
+    const version = String(stdout).trim();
+    const match = version.match(/(\d+\.\d+\.\d+)/);
+    return [true, match ? match[1] : version.split('\n')[0]];
+  } catch {
+    return [false, null];
+  }
+}
+
+/**
+ * Scan all known locations for Claude CLI installations
+ * Returns all found installations with their paths, versions, and sources
+ */
+async function scanClaudeInstallations(activePath: string | null): Promise<ClaudeInstallationInfo[]> {
+  const installations: ClaudeInstallationInfo[] = [];
+  const seenPaths = new Set<string>();
+  const homeDir = os.homedir();
+  const isWindows = process.platform === 'win32';
+
+  const addInstallation = async (
+    cliPath: string,
+    source: ClaudeInstallationInfo['source']
+  ) => {
+    // Normalize path for comparison
+    const normalizedPath = path.resolve(cliPath);
+    if (seenPaths.has(normalizedPath)) return;
+
+    if (!existsSync(cliPath)) return;
+
+    const [isValid, version] = await validateClaudeCliAsync(cliPath);
+    if (!isValid) return;
+
+    seenPaths.add(normalizedPath);
+    installations.push({
+      path: normalizedPath,
+      version,
+      source,
+      isActive: activePath ? path.resolve(activePath) === normalizedPath : false,
+    });
+  };
+
+  // 1. Check user-configured path first (if set)
+  if (activePath && existsSync(activePath)) {
+    await addInstallation(activePath, 'user-config');
+  }
+
+  // 2. Check system PATH via which/where
+  try {
+    if (isWindows) {
+      const result = await execFileAsync('where', ['claude'], { timeout: 5000 });
+      const paths = result.stdout.trim().split('\n').filter(p => p.trim());
+      for (const p of paths) {
+        await addInstallation(p.trim(), 'system-path');
+      }
+    } else {
+      const result = await execFileAsync('which', ['-a', 'claude'], { timeout: 5000 });
+      const paths = result.stdout.trim().split('\n').filter(p => p.trim());
+      for (const p of paths) {
+        await addInstallation(p.trim(), 'system-path');
+      }
+    }
+  } catch {
+    // which/where failed, continue with other methods
+  }
+
+  // 3. Homebrew paths (macOS)
+  if (process.platform === 'darwin') {
+    const homebrewPaths = [
+      '/opt/homebrew/bin/claude', // Apple Silicon
+      '/usr/local/bin/claude',    // Intel Mac
+    ];
+    for (const p of homebrewPaths) {
+      await addInstallation(p, 'homebrew');
+    }
+  }
+
+  // 4. NVM paths (Unix) - check Node.js version manager
+  if (!isWindows) {
+    const nvmDir = path.join(homeDir, '.nvm', 'versions', 'node');
+    if (existsSync(nvmDir)) {
+      try {
+        const entries = await fsPromises.readdir(nvmDir, { withFileTypes: true });
+        const versionDirs = sortNvmVersionDirs(entries);
+        for (const versionName of versionDirs) {
+          const nvmClaudePath = path.join(nvmDir, versionName, 'bin', 'claude');
+          await addInstallation(nvmClaudePath, 'nvm');
+        }
+      } catch {
+        // Failed to read NVM directory
+      }
+    }
+  }
+
+  // 5. Platform-specific standard locations
+  const platformPaths = isWindows
+    ? [
+        path.join(homeDir, 'AppData', 'Local', 'Programs', 'claude', 'claude.exe'),
+        path.join(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
+        path.join(homeDir, '.local', 'bin', 'claude.exe'),
+        'C:\\Program Files\\Claude\\claude.exe',
+        'C:\\Program Files (x86)\\Claude\\claude.exe',
+      ]
+    : [
+        path.join(homeDir, '.local', 'bin', 'claude'),
+        path.join(homeDir, 'bin', 'claude'),
+        path.join(homeDir, '.npm-global', 'bin', 'claude'),
+        path.join(homeDir, '.yarn', 'bin', 'claude'),
+        path.join(homeDir, '.claude', 'local', 'claude'),
+        path.join(homeDir, 'node_modules', '.bin', 'claude'),
+      ];
+
+  for (const p of platformPaths) {
+    await addInstallation(p, 'system-path');
+  }
+
+  // Mark the first installation as active if none is explicitly active
+  if (installations.length > 0 && !installations.some(i => i.isActive)) {
+    installations[0].isActive = true;
+  }
+
+  return installations;
+}
 
 /**
  * Fetch the latest version of Claude Code from npm registry
@@ -746,6 +916,80 @@ export function registerClaudeCodeHandlers(): void {
         return {
           success: false,
           error: `Failed to install version: ${errorMsg}`,
+        };
+      }
+    }
+  );
+
+  // Get all Claude CLI installations found on the system
+  ipcMain.handle(
+    IPC_CHANNELS.CLAUDE_CODE_GET_INSTALLATIONS,
+    async (): Promise<IPCResult<ClaudeInstallationList>> => {
+      try {
+        console.log('[Claude Code] Scanning for installations...');
+
+        // Get current active path from settings
+        const settings = readSettingsFile();
+        const activePath = settings?.claudePath as string | undefined;
+
+        const installations = await scanClaudeInstallations(activePath || null);
+        console.log('[Claude Code] Found', installations.length, 'installations');
+
+        return {
+          success: true,
+          data: {
+            installations,
+            activePath: activePath || (installations.length > 0 ? installations[0].path : null),
+          },
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Claude Code] Failed to scan installations:', errorMsg, error);
+        return {
+          success: false,
+          error: `Failed to scan Claude CLI installations: ${errorMsg}`,
+        };
+      }
+    }
+  );
+
+  // Set the active Claude CLI path
+  ipcMain.handle(
+    IPC_CHANNELS.CLAUDE_CODE_SET_ACTIVE_PATH,
+    async (_event, cliPath: string): Promise<IPCResult<{ path: string }>> => {
+      try {
+        console.log('[Claude Code] Setting active path:', cliPath);
+
+        // Validate the path exists and is executable
+        if (!existsSync(cliPath)) {
+          throw new Error('Claude CLI not found at specified path');
+        }
+
+        const [isValid, version] = await validateClaudeCliAsync(cliPath);
+        if (!isValid) {
+          throw new Error('Claude CLI at specified path is not valid or not executable');
+        }
+
+        // Save to settings
+        const settings = readSettingsFile() || {};
+        settings.claudePath = cliPath;
+        writeSettingsFile(settings);
+
+        // Update CLI tool manager cache
+        configureTools({ claudePath: cliPath });
+
+        console.log('[Claude Code] Active path set:', cliPath, 'version:', version);
+
+        return {
+          success: true,
+          data: { path: cliPath },
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Claude Code] Failed to set active path:', errorMsg, error);
+        return {
+          success: false,
+          error: `Failed to set active Claude CLI path: ${errorMsg}`,
         };
       }
     }

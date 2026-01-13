@@ -507,6 +507,8 @@ export const IPC_CHANNELS = {
   CLAUDE_CODE_INSTALL: 'claudeCode:install',
   CLAUDE_CODE_GET_VERSIONS: 'claudeCode:getVersions',
   CLAUDE_CODE_INSTALL_VERSION: 'claudeCode:installVersion',
+  CLAUDE_CODE_GET_INSTALLATIONS: 'claudeCode:getInstallations',
+  CLAUDE_CODE_SET_ACTIVE_PATH: 'claudeCode:setActivePath',
 
   // MCP Server health checks
   MCP_CHECK_HEALTH: 'mcp:checkHealth',           // Quick connectivity check

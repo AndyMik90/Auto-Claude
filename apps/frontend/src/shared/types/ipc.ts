@@ -769,6 +769,8 @@ export interface ElectronAPI {
   installClaudeCode: () => Promise<IPCResult<{ command: string }>>;
   getClaudeCodeVersions: () => Promise<IPCResult<import('./cli').ClaudeCodeVersionList>>;
   installClaudeCodeVersion: (version: string) => Promise<IPCResult<{ command: string; version: string }>>;
+  getClaudeCodeInstallations: () => Promise<IPCResult<import('./cli').ClaudeInstallationList>>;
+  setClaudeCodeActivePath: (cliPath: string) => Promise<IPCResult<{ path: string }>>;
 
   // Debug operations
   getDebugInfo: () => Promise<{
