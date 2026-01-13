@@ -108,6 +108,12 @@ async function setupMockXterm(overrides: {
       dispose: vi.fn(),
       write: vi.fn(),
       refresh: vi.fn(),
+      options: {
+        fontSize: 13,
+        fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
+        lineHeight: 1.2,
+        letterSpacing: 0
+      },
       cols: 80,
       rows: 24
     };
