@@ -15,10 +15,11 @@ pytest_runtest_setup in conftest.py.
 """
 
 import json
+import os
 import pytest
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # Import from spec.pipeline - SDK modules are pre-mocked by conftest.py
 from spec.pipeline import SpecOrchestrator, get_specs_dir
@@ -261,8 +262,6 @@ class TestCleanupOrphanedPendingFolders:
 
     def test_removes_empty_pending_folder(self, temp_dir: Path):
         """Removes empty pending folders older than 10 minutes."""
-        import os
-
         with patch('spec.pipeline.init_auto_claude_dir') as mock_init:
             mock_init.return_value = (temp_dir / ".auto-claude", False)
             specs_dir = temp_dir / ".auto-claude" / "specs"
@@ -292,8 +291,6 @@ class TestCleanupOrphanedPendingFolders:
 
     def test_keeps_folder_with_requirements(self, temp_dir: Path):
         """Keeps pending folder with requirements.json."""
-        import os
-
         with patch('spec.pipeline.init_auto_claude_dir') as mock_init:
             mock_init.return_value = (temp_dir / ".auto-claude", False)
             specs_dir = temp_dir / ".auto-claude" / "specs"
@@ -315,8 +312,6 @@ class TestCleanupOrphanedPendingFolders:
 
     def test_keeps_folder_with_spec(self, temp_dir: Path):
         """Keeps pending folder with spec.md."""
-        import os
-
         with patch('spec.pipeline.init_auto_claude_dir') as mock_init:
             mock_init.return_value = (temp_dir / ".auto-claude", False)
             specs_dir = temp_dir / ".auto-claude" / "specs"

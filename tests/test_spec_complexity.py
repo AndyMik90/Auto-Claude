@@ -16,7 +16,6 @@ SDK mocking is handled centrally by conftest.py - no inline mocking needed.
 import json
 import pytest
 from pathlib import Path
-from unittest.mock import patch, AsyncMock
 
 # SDK modules are pre-mocked by conftest.py before path setup
 # Path to apps/backend is also added by conftest.py

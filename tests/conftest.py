@@ -44,7 +44,8 @@ if 'claude_code_sdk' not in sys.modules:
 
 # Pre-mock google.generativeai if not installed
 if 'google.generativeai' not in sys.modules:
-    sys.modules['google'] = MagicMock()
+    if 'google' not in sys.modules:
+        sys.modules['google'] = MagicMock()
     sys.modules['google.generativeai'] = MagicMock()
 
 # Add apps/backend directory to path for imports
@@ -167,8 +168,9 @@ def pytest_runtest_setup(item):
 # ENVIRONMENT SAFEGUARDS - Prevent real API calls during tests
 # =============================================================================
 
-# API key environment variables that should be cleared during tests
-_API_KEY_ENV_VARS = [
+# Environment variables that should be cleared during tests to prevent real API calls.
+# Includes API keys, OAuth tokens, and feature flags that enable external services.
+_ENV_VARS_TO_CLEAR = [
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
     'CLAUDE_CODE_OAUTH_TOKEN',
@@ -176,7 +178,7 @@ _API_KEY_ENV_VARS = [
     'AZURE_OPENAI_API_KEY',
     'AZURE_OPENAI_ENDPOINT',
     'VOYAGE_API_KEY',
-    'GRAPHITI_ENABLED',
+    'GRAPHITI_ENABLED',  # Feature flag - also cleared to prevent Graphiti initialization
     'LINEAR_API_KEY',
     'GITHUB_TOKEN',
 ]
@@ -194,7 +196,7 @@ def prevent_real_api_calls(monkeypatch):
     The original environment is automatically restored after each test by
     pytest's monkeypatch fixture.
     """
-    for env_var in _API_KEY_ENV_VARS:
+    for env_var in _ENV_VARS_TO_CLEAR:
         monkeypatch.delenv(env_var, raising=False)
 
 
@@ -895,7 +897,6 @@ def mock_graphiti_providers():
 
         # Optionally install in sys.modules for module-level mocking
         if install_in_sys_modules:
-            import sys
             sys.modules['graphiti_providers'] = mock_providers
 
         return mock_providers
