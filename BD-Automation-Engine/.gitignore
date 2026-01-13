@@ -75,3 +75,4 @@ token.json
 
 # Auto Claude data directory
 .auto-claude/
+tmpclaude-*
