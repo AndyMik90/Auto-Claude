@@ -6,8 +6,10 @@ Main autonomous agent loop that runs the coder agent to implement subtasks.
 """
 
 import asyncio
+import json
 import logging
 import os
+from datetime import datetime
 from pathlib import Path
 
 from core.client import create_client
@@ -593,6 +595,25 @@ CRITICAL: Mark feedback as read when you have FULLY ADDRESSED it in any way:
                         success=False,
                         message="Planning failed: no valid implementation plan created",
                     )
+
+                # Update status to error in implementation plan so frontend shows error state
+                plan_file = spec_dir / "implementation_plan.json"
+                if plan_file.exists():
+                    try:
+                        with open(plan_file) as f:
+                            plan_data = json.load(f)
+                        plan_data["status"] = "error"
+                        plan_data["planStatus"] = "error"
+                        plan_data["error_message"] = (
+                            "Planning failed: no valid implementation plan created. Please review and improve the spec.md file."
+                        )
+                        plan_data["updated_at"] = datetime.now().isoformat()
+                        with open(plan_file, "w") as f:
+                            json.dump(plan_data, f, indent=2)
+                    except (OSError, json.JSONDecodeError) as e:
+                        print_status(
+                            f"Warning: Could not update plan status: {e}", "warning"
+                        )
 
                 status_manager.update(state=BuildState.ERROR)
                 return
