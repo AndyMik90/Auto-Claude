@@ -20,6 +20,11 @@ export function registerTerminalHandlers(
   terminalManager: TerminalManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  const registrationStartTime = Date.now();
+  console.warn(`[terminal-handlers:registerTerminalHandlers] ========== HANDLER REGISTRATION START ==========`);
+  console.warn(`[terminal-handlers:registerTerminalHandlers] Registration started at: ${new Date(registrationStartTime).toISOString()}`);
+  console.warn(`[terminal-handlers:registerTerminalHandlers] Timestamp: ${registrationStartTime}`);
+
   // ============================================
   // Terminal Operations
   // ============================================
@@ -184,6 +189,8 @@ export function registerTerminalHandlers(
       }
     }
   );
+
+  console.warn(`[terminal-handlers:registerTerminalHandlers] ✓ Registered CLAUDE_PROFILE_SAVE handler at ${Date.now() - registrationStartTime}ms`);
 
   ipcMain.handle(
     IPC_CHANNELS.CLAUDE_PROFILE_DELETE,
@@ -501,6 +508,8 @@ export function registerTerminalHandlers(
     }
   );
 
+  console.warn(`[terminal-handlers:registerTerminalHandlers] ✓ Registered CLAUDE_PROFILE_INITIALIZE handler at ${Date.now() - registrationStartTime}ms`);
+
   // Set OAuth token for a profile (used when capturing from terminal or manual input)
   ipcMain.handle(
     IPC_CHANNELS.CLAUDE_PROFILE_SET_TOKEN,
@@ -809,6 +818,14 @@ export function registerTerminalHandlers(
       }
     }
   );
+
+  const registrationEndTime = Date.now();
+  const totalTime = registrationEndTime - registrationStartTime;
+  console.warn(`[terminal-handlers:registerTerminalHandlers] ========== HANDLER REGISTRATION COMPLETE ==========`);
+  console.warn(`[terminal-handlers:registerTerminalHandlers] All handlers registered successfully`);
+  console.warn(`[terminal-handlers:registerTerminalHandlers] Total registration time: ${totalTime}ms`);
+  console.warn(`[terminal-handlers:registerTerminalHandlers] Completion timestamp: ${registrationEndTime}`);
+  console.warn(`[terminal-handlers:registerTerminalHandlers] Completed at: ${new Date(registrationEndTime).toISOString()}`);
 }
 
 /**
