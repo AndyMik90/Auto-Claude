@@ -126,25 +126,57 @@ export function registerTerminalHandlers(
   ipcMain.handle(
     IPC_CHANNELS.CLAUDE_PROFILE_SAVE,
     async (_, profile: ClaudeProfile): Promise<IPCResult<ClaudeProfile>> => {
+      debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] ========== PROFILE SAVE START ==========');
+      debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Received profile:', {
+        id: profile.id,
+        name: profile.name,
+        isDefault: profile.isDefault,
+        configDir: profile.configDir,
+        hasOAuthToken: !!profile.oauthToken,
+        email: profile.email
+      });
+
       try {
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Getting profile manager...');
         const profileManager = getClaudeProfileManager();
 
         // If this is a new profile without an ID, generate one
         if (!profile.id) {
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] No profile ID found, generating new ID...');
           profile.id = profileManager.generateProfileId(profile.name);
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Generated profile ID:', profile.id);
+        } else {
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Using existing profile ID:', profile.id);
         }
 
         // Ensure config directory exists for non-default profiles
         if (!profile.isDefault && profile.configDir) {
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Non-default profile, checking config directory:', profile.configDir);
           const { mkdirSync, existsSync } = await import('fs');
           if (!existsSync(profile.configDir)) {
+            debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Config directory does not exist, creating:', profile.configDir);
             mkdirSync(profile.configDir, { recursive: true });
+            debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Config directory created successfully');
+          } else {
+            debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Config directory already exists');
           }
+        } else {
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Default profile or no config dir, skipping directory creation');
         }
 
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Calling profileManager.saveProfile...');
         const savedProfile = profileManager.saveProfile(profile);
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] Profile saved successfully:', {
+          id: savedProfile.id,
+          name: savedProfile.name,
+          isDefault: savedProfile.isDefault
+        });
+
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_SAVE] ========== PROFILE SAVE SUCCESS ==========');
         return { success: true, data: savedProfile };
       } catch (error) {
+        debugError('[terminal-handlers:CLAUDE_PROFILE_SAVE] ========== PROFILE SAVE FAILED ==========');
+        debugError('[terminal-handlers:CLAUDE_PROFILE_SAVE] Error:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to save Claude profile'
@@ -322,25 +354,39 @@ export function registerTerminalHandlers(
   ipcMain.handle(
     IPC_CHANNELS.CLAUDE_PROFILE_INITIALIZE,
     async (_, profileId: string): Promise<IPCResult> => {
-      debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Handler called for profileId:', profileId);
+      debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] ========== PROFILE INITIALIZE START ==========');
+      debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Handler called for profileId:', profileId);
       try {
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Getting profile manager...');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Getting profile manager...');
         const profileManager = getClaudeProfileManager();
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Getting profile...');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Profile manager obtained');
+
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Getting profile...');
         const profile = profileManager.getProfile(profileId);
         if (!profile) {
-          debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Profile not found!');
+          debugError('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Profile not found!');
           return { success: false, error: 'Profile not found' };
         }
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Profile found:', profile.name);
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Profile found:', {
+          id: profile.id,
+          name: profile.name,
+          isDefault: profile.isDefault,
+          configDir: profile.configDir
+        });
 
         // Ensure the config directory exists for non-default profiles
         if (!profile.isDefault && profile.configDir) {
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Checking config directory:', profile.configDir);
           const { mkdirSync, existsSync } = await import('fs');
           if (!existsSync(profile.configDir)) {
+            debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Config directory does not exist, creating...');
             mkdirSync(profile.configDir, { recursive: true });
-            debugLog('[IPC] Created config directory:', profile.configDir);
+            debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Created config directory:', profile.configDir);
+          } else {
+            debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Config directory already exists');
           }
+        } else {
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Default profile or no config dir specified, skipping directory check');
         }
 
         // Create a terminal and run claude setup-token there
@@ -348,8 +394,9 @@ export function registerTerminalHandlers(
         const terminalId = `claude-login-${profileId}-${Date.now()}`;
         const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
 
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Creating terminal:', terminalId);
-        debugLog('[IPC] Initializing Claude profile:', {
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Preparing terminal creation:', {
+          terminalId,
+          homeDir,
           profileId,
           profileName: profile.name,
           configDir: profile.configDir,
@@ -357,29 +404,34 @@ export function registerTerminalHandlers(
         });
 
         // Create a new terminal for the login process
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Calling terminalManager.create...');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Calling terminalManager.create...');
         const createResult = await terminalManager.create({ id: terminalId, cwd: homeDir });
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Terminal created:', createResult.success);
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Terminal creation result:', {
+          success: createResult.success,
+          error: createResult.error
+        });
 
         // If terminal creation failed, return the error
         if (!createResult.success) {
+          debugError('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Terminal creation failed!');
           return {
             success: false,
             error: createResult.error || 'Failed to create terminal for authentication'
           };
         }
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Terminal created successfully');
 
         // Wait a moment for the terminal to initialize
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Waiting 500ms for terminal init...');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Waiting 500ms for terminal init...');
         await new Promise(resolve => setTimeout(resolve, 500));
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Wait complete');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Wait complete, terminal ready');
 
         // Build the login command with the profile's config dir
         // Use full path to claude CLI - no need to modify PATH since we have the absolute path
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Getting Claude CLI invocation...');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Getting Claude CLI invocation...');
         let loginCommand: string;
         const { command: claudeCmd } = await getClaudeCliInvocationAsync();
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Got Claude CLI:', claudeCmd);
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Got Claude CLI command:', claudeCmd);
 
         // Use the full path directly - escaping only needed for paths with spaces
         const shellClaudeCmd = process.platform === 'win32'
@@ -403,28 +455,34 @@ export function registerTerminalHandlers(
           loginCommand = `${shellClaudeCmd} setup-token`;
         }
 
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Built login command, length:', loginCommand.length);
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Login command:', loginCommand);
-        debugLog('[IPC] Sending login command to terminal:', loginCommand);
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Built login command:', {
+          length: loginCommand.length,
+          command: loginCommand,
+          platform: process.platform
+        });
 
         // Write the login command to the terminal
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Writing command to terminal...');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Writing command to terminal...');
         terminalManager.write(terminalId, `${loginCommand}\r`);
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Command written successfully');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Command written successfully to terminal');
 
         // Notify the renderer that an auth terminal was created
         // This allows the UI to display the terminal so users can see the OAuth flow
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Notifying renderer of auth terminal...');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Notifying renderer of auth terminal...');
         const mainWindow = getMainWindow();
         if (mainWindow) {
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Main window found, sending TERMINAL_AUTH_CREATED event');
           mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_AUTH_CREATED, {
             terminalId,
             profileId,
             profileName: profile.name
           });
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Event sent to renderer');
+        } else {
+          debugError('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Main window not found, cannot notify renderer!');
         }
 
-        debugLog('[IPC:CLAUDE_PROFILE_INITIALIZE] Returning success!');
+        debugLog('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] ========== PROFILE INITIALIZE SUCCESS ==========');
         return {
           success: true,
           data: {
@@ -433,7 +491,8 @@ export function registerTerminalHandlers(
           }
         };
       } catch (error) {
-        debugError('[IPC:CLAUDE_PROFILE_INITIALIZE] EXCEPTION:', error);
+        debugError('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] ========== PROFILE INITIALIZE FAILED ==========');
+        debugError('[terminal-handlers:CLAUDE_PROFILE_INITIALIZE] Exception:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to initialize Claude profile'
