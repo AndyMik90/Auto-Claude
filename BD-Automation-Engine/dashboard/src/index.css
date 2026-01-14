@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Custom design tokens */
+:root {
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+
+  /* BD Priority Colors */
+  --color-critical: #dc2626;
+  --color-high: #f97316;
+  --color-medium: #eab308;
+  --color-low: #22c55e;
+
+  /* Contact Tier Colors */
+  --color-tier-1: #7c3aed;
+  --color-tier-2: #2563eb;
+  --color-tier-3: #0891b2;
+  --color-tier-4: #059669;
+  --color-tier-5: #ca8a04;
+  --color-tier-6: #6b7280;
+}
+
+/* Base styles */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f8fafc;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

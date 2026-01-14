@@ -1,0 +1,34 @@
+{
+  "name": "@xmindltd/mapify-mcp-server",
+  "version": "1.0.1",
+  "main": "build/index.js",
+  "type": "module",
+  "bin": {
+    "mapify-mcp-server": "bin/cli.mjs"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/build-cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xmindltd/mapify-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xmindltd/mapify-mcp-server/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.2",
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@9.15.3+sha512.1f79bc245a66eb0b07c5d4d83131240774642caaa86ef7d0434ab47c0d16f66b04e21e0c086eb61e62c77efc4d7f7ec071afad3796af64892fae66509173893a",
+  "license": "MIT"
+}

@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-01-13T13:59:00.435233",
+  "statistics": {
+    "total_jobs": 531,
+    "total_programs": 401,
+    "total_contacts": 7339,
+    "total_contractors": 15,
+    "jobs_matched_to_programs": 0,
+    "jobs_matched_to_contacts": 0,
+    "contacts_matched_to_programs": 1142,
+    "contacts_with_relevant_jobs": 0,
+    "match_rates": {
+      "jobs_to_programs": 0.0,
+      "jobs_to_contacts": 0.0,
+      "contacts_to_programs": 15.6
+    }
+  },
+  "priority_distribution": {
+    "low": 529,
+    "critical": 2
+  },
+  "top_programs_by_jobs": [
+    {
+      "name": "Distributed Common Ground System (AF)",
+      "job_count": 0,
+      "contact_count": 0
+    },
+    {
+      "name": "PAC-3 MSE (Deep Detail Variant; Consolidated)",
+      "job_count": 0,
+      "contact_count": 0
+    },
+    {
+      "name": "Sentinel GBSD",
+      "job_count": 0,
+      "contact_count": 0
+    },
+    {
+      "name": "Defense Enclave Services (DoDNet)",
+      "job_count": 0,
+      "contact_count": 0
+    },
+    {
+      "name": "53rd Air Wing IT/EW Support",
+      "job_count": 0,
+      "contact_count": 0
+    },
+    {
+      "name": "DISA Supply Chain Mgmt (GDIT)",
+      "job_count": 0,
+      "contact_count": 1004
+    },
+    {
+      "name": "OASIS+ Multi-Agency Services",
+      "job_count": 0,
+      "contact_count": 0
+    },
+    {
+      "name": "DoD HPC Modernization Program Support (HITS-U)",
+      "job_count": 0,
+      "contact_count": 0
+    },
+    {
+      "name": "Army RS3 (Expanded PEO EIS Listing)",
+      "job_count": 0,
+      "contact_count": 0
+    },
+    {
+      "name": "Joint Warfighting Cloud Capability",
+      "job_count": 0,
+      "contact_count": 0
+    }
+  ],
+  "contacts_by_tier": {
+    "1": 752,
+    "2": 6,
+    "3": 439,
+    "4": 947,
+    "5": 607,
+    "6": 4588
+  }
+}
