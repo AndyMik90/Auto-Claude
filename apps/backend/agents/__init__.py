@@ -26,7 +26,6 @@ __all__ = [
     "debug_memory_system_status",
     "get_graphiti_context",
     "save_session_memory",
-    "save_session_to_graphiti",
     # Session
     "run_agent_session",
     "post_session_processing",
@@ -57,13 +56,11 @@ def __getattr__(name):
         "debug_memory_system_status",
         "get_graphiti_context",
         "save_session_memory",
-        "save_session_to_graphiti",
     ):
         from .memory_manager import (
             debug_memory_system_status,
             get_graphiti_context,
             save_session_memory,
-            save_session_to_graphiti,
         )
 
         return locals()[name]

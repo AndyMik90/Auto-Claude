@@ -38,7 +38,6 @@ from agents import (
     run_autonomous_agent,
     run_followup_planner,
     save_session_memory,
-    save_session_to_graphiti,
     sync_spec_to_source,
 )
 
@@ -49,7 +48,6 @@ __all__ = [
     "debug_memory_system_status",
     "get_graphiti_context",
     "save_session_memory",
-    "save_session_to_graphiti",
     "run_agent_session",
     "post_session_processing",
     "get_latest_commit",

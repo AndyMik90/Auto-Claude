@@ -439,26 +439,3 @@ async def save_session_memory(
         if is_debug_enabled():
             debug_error("memory", "File-based memory save FAILED", error=str(e))
         return False, "none"
-
-
-# Keep the old function name as an alias for backwards compatibility
-async def save_session_to_graphiti(
-    spec_dir: Path,
-    project_dir: Path,
-    subtask_id: str,
-    session_num: int,
-    success: bool,
-    subtasks_completed: list[str],
-    discoveries: dict | None = None,
-) -> bool:
-    """Backwards compatibility wrapper for save_session_memory."""
-    result, _ = await save_session_memory(
-        spec_dir,
-        project_dir,
-        subtask_id,
-        session_num,
-        success,
-        subtasks_completed,
-        discoveries,
-    )
-    return result

@@ -173,9 +173,3 @@ def _sync_directory(source_dir: Path, target_dir: Path) -> None:
         elif item.is_dir():
             # Recurse into subdirectories
             _sync_directory(item, target_item)
-
-
-# Keep the old name as an alias for backward compatibility
-def sync_plan_to_source(spec_dir: Path, source_spec_dir: Path | None) -> bool:
-    """Alias for sync_spec_to_source for backward compatibility."""
-    return sync_spec_to_source(spec_dir, source_spec_dir)

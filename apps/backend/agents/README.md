@@ -28,12 +28,11 @@ auto-claude/agents/
 - Plan management: `load_implementation_plan()`, `find_subtask_in_plan()`, `find_phase_for_subtask()`
 - Workspace sync: `sync_spec_to_source()`
 
-### `memory.py` (13 KB)
+### `memory_manager.py` (13 KB)
 - Dual-layer memory system (Graphiti primary, file-based fallback)
 - `debug_memory_system_status()` - Memory system diagnostics
 - `get_graphiti_context()` - Retrieve relevant context for subtasks
 - `save_session_memory()` - Save session insights to memory
-- `save_session_to_graphiti()` - Backwards compatibility wrapper
 
 ### `session.py` (17 KB)
 - `run_agent_session()` - Execute a single agent session
