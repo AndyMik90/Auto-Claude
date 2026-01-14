@@ -5,9 +5,45 @@
  *
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import type { ReactNode } from 'react';
 import type { Task } from '../../../shared/types';
+import { KanbanBoard } from '../KanbanBoard';
+import { ViewStateProvider } from '../../contexts/ViewStateContext';
+
+// Mock react-i18next
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en' }
+  }),
+  Trans: ({ children }: { children: React.ReactNode }) => children
+}));
+
+// Mock the toast hook
+vi.mock('../../hooks/use-toast', () => ({
+  useToast: () => ({ toast: vi.fn() })
+}));
+
+// Mock IntersectionObserver for components that use it (e.g., PhaseProgressIndicator)
+// Must be set up globally before component imports
+class MockIntersectionObserver {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+
+// Test wrapper with required providers
+function TestWrapper({ children }: { children: ReactNode }) {
+  return (
+    <ViewStateProvider>
+      {children}
+    </ViewStateProvider>
+  );
+}
 
 // Helper to create test tasks
 function createTestTask(overrides: Partial<Task> = {}): Task {
@@ -50,96 +86,105 @@ describe('KanbanBoard Drag-to-Scroll Logic', () => {
   });
 
   describe('Drag State Management', () => {
-    it('should initialize with isScrollDragging set to false', () => {
-      const isScrollDragging = false;
+    it('should render board region with cursor-grab class initially', () => {
+      const mockOnTaskClick = vi.fn();
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={mockOnTaskClick} />
+        </TestWrapper>
+      );
 
-      expect(isScrollDragging).toBe(false);
+      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
+      expect(boardRegion).toBeInTheDocument();
+      expect(boardRegion).toHaveClass('cursor-grab');
+      expect(boardRegion).not.toHaveClass('cursor-grabbing');
     });
 
-    it('should set isScrollDragging to true on valid mouse down', () => {
-      let isScrollDragging = false;
+    it('should add cursor-grabbing class on mouseDown', () => {
+      const mockOnTaskClick = vi.fn();
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={mockOnTaskClick} />
+        </TestWrapper>
+      );
 
-      // Simulate handleMouseDown logic
-      const setIsScrollDragging = (value: boolean) => {
-        isScrollDragging = value;
-      };
+      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
 
-      setIsScrollDragging(true);
+      // Fire mouseDown to start dragging
+      fireEvent.mouseDown(boardRegion, { clientX: 100 });
 
-      expect(isScrollDragging).toBe(true);
+      expect(boardRegion).toHaveClass('cursor-grabbing');
     });
 
-    it('should reset isScrollDragging to false on mouse up', () => {
-      let isScrollDragging = true;
+    it('should remove cursor-grabbing class on mouseUp', () => {
+      const mockOnTaskClick = vi.fn();
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={mockOnTaskClick} />
+        </TestWrapper>
+      );
 
-      // Simulate handleMouseUp logic
-      const setIsScrollDragging = () => {
-        isScrollDragging = false;
-      };
-
-      setIsScrollDragging();
-
-      expect(isScrollDragging).toBe(false);
-    });
-
-    it('should toggle isScrollDragging state correctly', () => {
-      let isScrollDragging = false;
-
-      const setIsScrollDragging = (value: boolean) => {
-        isScrollDragging = value;
-      };
-
-      // Initial state
-      expect(isScrollDragging).toBe(false);
+      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
 
       // Start dragging
-      setIsScrollDragging(true);
-      expect(isScrollDragging).toBe(true);
+      fireEvent.mouseDown(boardRegion, { clientX: 100 });
+      expect(boardRegion).toHaveClass('cursor-grabbing');
 
-      // Stop dragging
-      setIsScrollDragging(false);
-      expect(isScrollDragging).toBe(false);
-
-      // Multiple drag cycles
-      setIsScrollDragging(true);
-      expect(isScrollDragging).toBe(true);
-
-      setIsScrollDragging(false);
-      expect(isScrollDragging).toBe(false);
+      // Stop dragging via window mouseup
+      fireEvent.mouseUp(window);
+      expect(boardRegion).not.toHaveClass('cursor-grabbing');
+      expect(boardRegion).toHaveClass('cursor-grab');
     });
 
-    it('should store initial mouse position on drag start', () => {
-      const initialX = 100;
-      const dragStartX = initialX;
+    it('should handle multiple drag cycles correctly', () => {
+      const mockOnTaskClick = vi.fn();
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={mockOnTaskClick} />
+        </TestWrapper>
+      );
 
-      expect(dragStartX).toBe(100);
+      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
+
+      // First drag cycle
+      fireEvent.mouseDown(boardRegion, { clientX: 100 });
+      expect(boardRegion).toHaveClass('cursor-grabbing');
+      fireEvent.mouseUp(window);
+      expect(boardRegion).not.toHaveClass('cursor-grabbing');
+
+      // Second drag cycle
+      fireEvent.mouseDown(boardRegion, { clientX: 200 });
+      expect(boardRegion).toHaveClass('cursor-grabbing');
+      fireEvent.mouseUp(window);
+      expect(boardRegion).not.toHaveClass('cursor-grabbing');
+
+      // Third drag cycle
+      fireEvent.mouseDown(boardRegion, { clientX: 50 });
+      expect(boardRegion).toHaveClass('cursor-grabbing');
+      fireEvent.mouseUp(window);
+      expect(boardRegion).not.toHaveClass('cursor-grabbing');
     });
 
-    it('should store initial scroll position on drag start', () => {
-      const initialScrollLeft = 50;
-      const dragStartScrollLeft = initialScrollLeft;
+    it('should render with tasks and maintain drag behavior', () => {
+      const mockOnTaskClick = vi.fn();
+      const tasks = [
+        createTestTask({ id: 'task-1', title: 'Task 1', status: 'backlog' }),
+        createTestTask({ id: 'task-2', title: 'Task 2', status: 'in_progress' })
+      ];
 
-      expect(dragStartScrollLeft).toBe(50);
-    });
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={tasks} onTaskClick={mockOnTaskClick} />
+        </TestWrapper>
+      );
 
-    it('should update dragStartX on each drag start', () => {
-      let dragStartX = 0;
+      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
 
-      const setDragStartX = (x: number) => {
-        dragStartX = x;
-      };
-
-      // First drag
-      setDragStartX(100);
-      expect(dragStartX).toBe(100);
-
-      // Second drag (new position)
-      setDragStartX(250);
-      expect(dragStartX).toBe(250);
-
-      // Third drag (another position)
-      setDragStartX(50);
-      expect(dragStartX).toBe(50);
+      // Drag behavior should work with tasks present
+      fireEvent.mouseDown(boardRegion, { clientX: 150 });
+      expect(boardRegion).toHaveClass('cursor-grabbing');
+      fireEvent.mouseUp(window);
+      expect(boardRegion).not.toHaveClass('cursor-grabbing');
     });
   });
 
