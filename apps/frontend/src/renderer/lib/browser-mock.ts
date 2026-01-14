@@ -229,6 +229,44 @@ const browserMockAPI: ElectronAPI = {
     onAnalyzePreviewError: () => () => {}
   },
 
+  // Conda API
+  conda: {
+    detectConda: async () => ({ success: true, data: { found: false, installations: [], preferred: null } }),
+    refreshConda: async () => ({ success: true, data: { found: false, installations: [], preferred: null } }),
+    setupAutoClaudeEnv: async () => ({ success: true }),
+    checkAutoClaudeEnv: async () => ({ success: true, data: { valid: false } }),
+    setupProjectEnv: async (_projectPath: string, _projectName: string, _pythonVersion?: string) => ({ success: true }),
+    checkProjectEnv: async () => ({ success: true, data: { valid: false } }),
+    deleteProjectEnv: async () => ({ success: true }),
+    deleteActivationScripts: async () => ({ success: true }),
+    regenerateScripts: async () => ({ success: true, data: { workspacePath: '', initScriptPath: '' } }),
+    getPythonVersion: async () => ({ success: true, data: { version: '3.12', source: 'default' as const, constraint: 'minimum' as const, raw: '>=3.12' } }),
+    installDeps: async () => ({ success: true }),
+    getProjectPaths: async (_projectPath: string, projectName: string) => ({
+      success: true,
+      data: {
+        projectType: 'pure-python' as const,
+        pythonRoot: '',
+        pythonRootRelative: '',
+        envPath: `.envs/${projectName}/`,
+        envPathRelative: `.envs/${projectName}/`,
+        workspacePath: `${projectName}.code-workspace`,
+        workspaceFile: `${projectName}.code-workspace`,
+        scriptsPath: 'scripts/',
+        scriptsPathRelative: 'scripts/'
+      }
+    }),
+    listPythonVersions: async () => ({
+      success: true,
+      data: {
+        versions: ['3.13', '3.12', '3.11', '3.10', '3.9', '3.8'],
+        recommended: '3.12',
+        detectedVersion: '3.12'
+      }
+    }),
+    onSetupProgress: () => () => {}
+  },
+
   // Claude Code Operations
   checkClaudeCodeVersion: async () => ({
     success: true,
@@ -298,7 +336,19 @@ const browserMockAPI: ElectronAPI = {
   openLogsFolder: async () => ({ success: false, error: 'Not available in browser mode' }),
   copyDebugInfo: async () => ({ success: false, error: 'Not available in browser mode' }),
   getRecentErrors: async () => [],
-  listLogFiles: async () => []
+  listLogFiles: async () => [],
+
+  // Shell Operations
+  openExternal: async (_url: string) => {
+    console.warn('[Browser Mock] openExternal called');
+  },
+  openTerminal: async (_dirPath: string) => ({
+    success: false,
+    error: 'Not available in browser mode'
+  }),
+  showItemInFolder: async (_filePath: string) => {
+    console.warn('[Browser Mock] showItemInFolder called');
+  }
 };
 
 /**

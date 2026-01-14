@@ -26,6 +26,40 @@ function normalizePathForBash(envPath: string): string {
   return process.platform === 'win32' ? envPath.replace(/;/g, ':') : envPath;
 }
 
+/**
+ * Build the PATH prefix for shell commands.
+ * Only generates a prefix if PATH was actually modified (CLI dir wasn't already in PATH).
+ * On Windows PowerShell, we set $env:PATH instead of using bash-style PATH='...'
+ * On Unix, we use the standard PATH='...' inline assignment.
+ *
+ * @param claudeEnv - Environment containing PATH
+ * @param pathWasModified - Whether PATH was modified to include the CLI directory
+ * @returns Object with prefix string and cleanup command (if needed)
+ */
+function buildPathPrefix(claudeEnv: { PATH?: string }, pathWasModified: boolean): { prefix: string; cleanup: string } {
+  // Only set PATH if it was actually modified (CLI dir wasn't already in PATH)
+  // This avoids echoing the massive PATH string when it's not needed
+  if (!pathWasModified || !claudeEnv.PATH) {
+    return { prefix: '', cleanup: '' };
+  }
+
+  if (process.platform === 'win32') {
+    // PowerShell: Use $env:PATH assignment with semicolon command separator
+    // Note: We escape $ and backticks for PowerShell string interpolation
+    const escapedPath = claudeEnv.PATH.replace(/`/g, '``').replace(/"/g, '`"');
+    return {
+      prefix: `$env:PATH="${escapedPath}"; `,
+      cleanup: ''  // Don't bother resetting - terminal session will end with Claude
+    };
+  }
+
+  // Unix: Use inline PATH assignment (sets for just this command)
+  return {
+    prefix: `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `,
+    cleanup: ''
+  };
+}
+
 // ============================================================================
 // SHARED HELPERS - Used by both sync and async invokeClaude
 // ============================================================================
@@ -47,8 +81,13 @@ type ClaudeCommandConfig =
  * - 'temp-file': Sources OAuth token from temp file, then removes it
  * - 'config-dir': Sets CLAUDE_CONFIG_DIR for custom profile location
  *
- * All non-default methods include history-safe prefixes (HISTFILE=, HISTCONTROL=)
- * to prevent sensitive data from appearing in shell history.
+ * All non-default methods include history-safe prefixes:
+ * - Unix: HISTFILE=, HISTCONTROL=ignorespace
+ * - Windows: Uses PowerShell Set-PSReadLineOption (if available)
+ *
+ * Platform-specific implementations:
+ * - Windows PowerShell: Uses $env:VAR syntax, semicolon separators
+ * - Unix bash: Uses VAR=value syntax, && separators
  *
  * @param cwdCommand - Command to change directory (empty string if no change needed)
  * @param pathPrefix - PATH prefix for Claude CLI (empty string if not needed)
@@ -71,14 +110,29 @@ export function buildClaudeShellCommand(
   escapedClaudeCmd: string,
   config: ClaudeCommandConfig
 ): string {
+  const isWindows = process.platform === 'win32';
+
   switch (config.method) {
     case 'temp-file':
+      if (isWindows) {
+        // PowerShell: Source token file using dot-sourcing, then remove it
+        // The temp file should contain: $env:CLAUDE_CODE_OAUTH_TOKEN = 'token'
+        return `Clear-Host; ${cwdCommand}${pathPrefix}. ${config.escapedTempFile}; Remove-Item -Force ${config.escapedTempFile}; & ${escapedClaudeCmd}\r`;
+      }
       return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace ${pathPrefix}bash -c "source ${config.escapedTempFile} && rm -f ${config.escapedTempFile} && exec ${escapedClaudeCmd}"\r`;
 
     case 'config-dir':
+      if (isWindows) {
+        // PowerShell: Set CLAUDE_CONFIG_DIR environment variable
+        return `Clear-Host; ${cwdCommand}$env:CLAUDE_CONFIG_DIR=${config.escapedConfigDir}; ${pathPrefix}& ${escapedClaudeCmd}\r`;
+      }
       return `clear && ${cwdCommand}HISTFILE= HISTCONTROL=ignorespace CLAUDE_CONFIG_DIR=${config.escapedConfigDir} ${pathPrefix}bash -c "exec ${escapedClaudeCmd}"\r`;
 
     default:
+      if (isWindows) {
+        // PowerShell: Use & (call operator) to invoke the command
+        return `${cwdCommand}${pathPrefix}& ${escapedClaudeCmd}\r`;
+      }
       return `${cwdCommand}${pathPrefix}${escapedClaudeCmd}\r`;
   }
 }
@@ -151,6 +205,79 @@ export function finalizeClaudeInvoke(
   if (projectPath) {
     onSessionCapture(terminal.id, projectPath, startTime);
   }
+}
+
+/**
+ * CLI invocation result type (shared by sync and async)
+ */
+interface CliInvocationResult {
+  command: string;
+  env: { PATH?: string };
+  pathWasModified: boolean;
+}
+
+/**
+ * Execute resume Claude command with given CLI invocation result.
+ * Shared logic between resumeClaude and resumeClaudeAsync.
+ */
+function executeResumeCommand(
+  terminal: TerminalProcess,
+  cliResult: CliInvocationResult,
+  sessionId: string | undefined,
+  getWindow: WindowGetter,
+  logPrefix: string
+): void {
+  const escapedClaudeCmd = escapeShellArg(cliResult.command);
+  const { prefix: pathPrefix } = buildPathPrefix(cliResult.env, cliResult.pathWasModified);
+
+  // Clear claudeSessionId because --continue doesn't track specific sessions
+  terminal.claudeSessionId = undefined;
+
+  // Deprecation warning for callers still passing sessionId
+  if (sessionId) {
+    console.warn(`[ClaudeIntegration:${logPrefix}] sessionId parameter is deprecated and ignored; using claude --continue instead`);
+  }
+
+  // Build platform-appropriate command
+  const isWindows = process.platform === 'win32';
+  const command = isWindows
+    ? `${pathPrefix}& ${escapedClaudeCmd} --continue`  // PowerShell call operator
+    : `${pathPrefix}${escapedClaudeCmd} --continue`;   // Unix direct invocation
+
+  terminal.pty.write(`${command}\r`);
+
+  // Update terminal title in main process and notify renderer
+  terminal.title = 'Claude';
+  const win = getWindow();
+  if (win) {
+    win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, 'Claude');
+  }
+
+  // Persist session with updated title
+  if (terminal.projectPath) {
+    SessionHandler.persistSession(terminal);
+  }
+}
+
+/**
+ * Generate platform-specific token file content for OAuth token injection.
+ * Shared between invokeClaude and invokeClaudeAsync.
+ */
+function generateTokenFileContent(token: string): string {
+  const isWindows = process.platform === 'win32';
+  return isWindows
+    ? `$env:CLAUDE_CODE_OAUTH_TOKEN = '${token.replace(/'/g, "''")}'`  // PowerShell uses '' to escape '
+    : `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`;     // Bash export syntax
+}
+
+/**
+ * Generate a unique temp file path for OAuth token.
+ * Shared between invokeClaude and invokeClaudeAsync.
+ */
+function generateTempTokenPath(): string {
+  const nonce = crypto.randomBytes(8).toString('hex');
+  const isWindows = process.platform === 'win32';
+  return path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}${isWindows ? '.ps1' : ''}`);
 }
 
 /**
@@ -368,11 +495,9 @@ export function invokeClaude(
   });
 
   const cwdCommand = buildCdCommand(cwd);
-  const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
+  const { command: claudeCmd, env: claudeEnv, pathWasModified } = getClaudeCliInvocation();
   const escapedClaudeCmd = escapeShellArg(claudeCmd);
-  const pathPrefix = claudeEnv.PATH
-    ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
-    : '';
+  const { prefix: pathPrefix } = buildPathPrefix(claudeEnv, pathWasModified);
   const needsEnvOverride = profileId && profileId !== previousProfileId;
 
   debugLog('[ClaudeIntegration:invokeClaude] Environment override check:', {
@@ -389,15 +514,11 @@ export function invokeClaude(
     });
 
     if (token) {
-      const nonce = crypto.randomBytes(8).toString('hex');
-      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
+      const tempFile = generateTempTokenPath();
       const escapedTempFile = escapeShellArg(tempFile);
       debugLog('[ClaudeIntegration:invokeClaude] Writing token to temp file:', tempFile);
-      fs.writeFileSync(
-        tempFile,
-        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        { mode: 0o600 }
-      );
+
+      fs.writeFileSync(tempFile, generateTokenFileContent(token), { mode: 0o600 });
 
       const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile });
       debugLog('[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)');
@@ -449,46 +570,14 @@ export function invokeClaude(
  */
 export function resumeClaude(
   terminal: TerminalProcess,
-  _sessionId: string | undefined,
+  sessionId: string | undefined,
   getWindow: WindowGetter
 ): void {
   terminal.isClaudeMode = true;
   SessionHandler.releaseSessionId(terminal.id);
 
-  const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
-  const pathPrefix = claudeEnv.PATH
-    ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
-    : '';
-
-  // Always use --continue which resumes the most recent session in the current directory.
-  // This is more reliable than --resume with session IDs since Auto Claude already restores
-  // terminals to their correct cwd/projectPath.
-  //
-  // Note: We clear claudeSessionId because --continue doesn't track specific sessions,
-  // and we don't want stale IDs persisting through SessionHandler.persistSession().
-  terminal.claudeSessionId = undefined;
-
-  // Deprecation warning for callers still passing sessionId
-  if (_sessionId) {
-    console.warn('[ClaudeIntegration:resumeClaude] sessionId parameter is deprecated and ignored; using claude --continue instead');
-  }
-
-  const command = `${pathPrefix}${escapedClaudeCmd} --continue`;
-
-  terminal.pty.write(`${command}\r`);
-
-  // Update terminal title in main process and notify renderer
-  terminal.title = 'Claude';
-  const win = getWindow();
-  if (win) {
-    win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, 'Claude');
-  }
-
-  // Persist session with updated title
-  if (terminal.projectPath) {
-    SessionHandler.persistSession(terminal);
-  }
+  const cliResult = getClaudeCliInvocation();
+  executeResumeCommand(terminal, cliResult, sessionId, getWindow, 'resumeClaude');
 }
 
 // ============================================================================
@@ -539,11 +628,9 @@ export async function invokeClaudeAsync(
 
   // Async CLI invocation - non-blocking
   const cwdCommand = buildCdCommand(cwd);
-  const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
+  const { command: claudeCmd, env: claudeEnv, pathWasModified } = await getClaudeCliInvocationAsync();
   const escapedClaudeCmd = escapeShellArg(claudeCmd);
-  const pathPrefix = claudeEnv.PATH
-    ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
-    : '';
+  const { prefix: pathPrefix } = buildPathPrefix(claudeEnv, pathWasModified);
   const needsEnvOverride = profileId && profileId !== previousProfileId;
 
   debugLog('[ClaudeIntegration:invokeClaudeAsync] Environment override check:', {
@@ -560,15 +647,11 @@ export async function invokeClaudeAsync(
     });
 
     if (token) {
-      const nonce = crypto.randomBytes(8).toString('hex');
-      const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}`);
+      const tempFile = generateTempTokenPath();
       const escapedTempFile = escapeShellArg(tempFile);
       debugLog('[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:', tempFile);
-      await fsPromises.writeFile(
-        tempFile,
-        `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`,
-        { mode: 0o600 }
-      );
+
+      await fsPromises.writeFile(tempFile, generateTokenFileContent(token), { mode: 0o600 });
 
       const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', escapedTempFile });
       debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
@@ -622,38 +705,8 @@ export async function resumeClaudeAsync(
   SessionHandler.releaseSessionId(terminal.id);
 
   // Async CLI invocation - non-blocking
-  const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
-  const pathPrefix = claudeEnv.PATH
-    ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
-    : '';
-
-  // Always use --continue which resumes the most recent session in the current directory.
-  // This is more reliable than --resume with session IDs since Auto Claude already restores
-  // terminals to their correct cwd/projectPath.
-  //
-  // Note: We clear claudeSessionId because --continue doesn't track specific sessions,
-  // and we don't want stale IDs persisting through SessionHandler.persistSession().
-  terminal.claudeSessionId = undefined;
-
-  // Deprecation warning for callers still passing sessionId
-  if (sessionId) {
-    console.warn('[ClaudeIntegration:resumeClaudeAsync] sessionId parameter is deprecated and ignored; using claude --continue instead');
-  }
-
-  const command = `${pathPrefix}${escapedClaudeCmd} --continue`;
-
-  terminal.pty.write(`${command}\r`);
-
-  terminal.title = 'Claude';
-  const win = getWindow();
-  if (win) {
-    win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, 'Claude');
-  }
-
-  if (terminal.projectPath) {
-    SessionHandler.persistSession(terminal);
-  }
+  const cliResult = await getClaudeCliInvocationAsync();
+  executeResumeCommand(terminal, cliResult, sessionId, getWindow, 'resumeClaudeAsync');
 }
 
 /**

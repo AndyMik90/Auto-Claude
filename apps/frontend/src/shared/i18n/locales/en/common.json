@@ -92,6 +92,7 @@
     "required": "Required",
     "dismiss": "Dismiss"
   },
+  "recommended": "Recommended",
   "time": {
     "justNow": "Just now",
     "minutesAgo": "{{count}}m ago",

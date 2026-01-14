@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Settings,
@@ -19,7 +19,8 @@ import {
   Globe,
   Code,
   Bug,
-  Server
+  Server,
+  Terminal
 } from 'lucide-react';
 
 // GitLab icon component (lucide-react doesn't have one)
@@ -88,13 +89,17 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: 'debug', icon: Bug }
 ];
 
-const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
+// Base project nav items (always shown)
+const baseProjectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
   { id: 'general', icon: Settings2 },
   { id: 'linear', icon: Zap },
   { id: 'github', icon: Github },
   { id: 'gitlab', icon: GitLabIcon },
   { id: 'memory', icon: Database }
 ];
+
+// Python Env nav item (conditionally shown when useCondaEnv is enabled)
+const pythonEnvNavItem: NavItemConfig<ProjectSettingsSection> = { id: 'python-env', icon: Terminal };
 
 /**
  * Main application settings dialog container
@@ -132,6 +137,31 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
   // Project settings hook state (lifted from child)
   const [projectSettingsHook, setProjectSettingsHook] = useState<UseProjectSettingsReturn | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
+  // Track useCondaEnv state separately to ensure sidebar updates reactively
+  // (the proxy pattern doesn't trigger React updates when nested values change)
+  const [useCondaEnvState, setUseCondaEnvState] = useState<boolean | undefined>(undefined);
+
+  // Sync useCondaEnvState when project changes or hook initializes
+  // Note: projectSettingsHook is included to catch when hook loads for new project
+  useEffect(() => {
+    const hookValue = projectSettingsHook?.settings?.useCondaEnv;
+    const savedValue = selectedProject?.settings?.useCondaEnv;
+    const newValue = hookValue ?? savedValue;
+    // Only update if we have a definite value (not undefined)
+    if (newValue !== undefined) {
+      setUseCondaEnvState(newValue);
+    }
+  }, [selectedProject?.id, selectedProject?.settings?.useCondaEnv, projectSettingsHook]);
+
+  // Compute project nav items dynamically (conditionally include Python Env when useCondaEnv is enabled)
+  // Python Env appears 2nd (right after General) when enabled
+  const projectNavItemsConfig = useMemo(() => {
+    if (useCondaEnvState) {
+      const [general, ...rest] = baseProjectNavItemsConfig;
+      return [general, pythonEnvNavItem, ...rest];
+    }
+    return baseProjectNavItemsConfig;
+  }, [useCondaEnvState]);
 
   // Load app version on mount
   useEffect(() => {
@@ -217,6 +247,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         activeSection={projectSection}
         isOpen={open}
         onHookReady={handleProjectHookReady}
+        onUseCondaEnvChange={setUseCondaEnvState}
       />
     );
   };

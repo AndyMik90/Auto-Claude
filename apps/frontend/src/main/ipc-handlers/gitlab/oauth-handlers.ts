@@ -290,7 +290,8 @@ export function registerStartGlabAuth(): void {
 
           const glabProcess = spawn('glab', args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            env: getAugmentedEnv()
+            env: getAugmentedEnv(),
+            ...(process.platform === 'win32' && { windowsHide: true })
           });
 
           let output = '';

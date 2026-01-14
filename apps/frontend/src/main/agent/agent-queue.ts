@@ -311,7 +311,8 @@ export class AgentQueueManager {
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
     const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
       cwd,
-      env: finalEnv
+      env: finalEnv,
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     this.state.addProcess(projectId, {
@@ -638,7 +639,8 @@ export class AgentQueueManager {
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
     const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
       cwd,
-      env: finalEnv
+      env: finalEnv,
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     this.state.addProcess(projectId, {

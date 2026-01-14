@@ -511,6 +511,8 @@ export function getSpawnOptions(
   return {
     ...baseOptions,
     shell: shouldUseShell(command),
+    // Hide console window on Windows to prevent external windows from appearing
+    ...(process.platform === 'win32' && { windowsHide: baseOptions?.windowsHide ?? true }),
   };
 }
 

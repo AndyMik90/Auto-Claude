@@ -520,7 +520,8 @@ export class AgentProcessManager {
         ...pythonEnv, // Include Python environment (PYTHONPATH for bundled packages)
         ...oauthModeClearVars, // Clear stale ANTHROPIC_* vars when in OAuth mode
         ...apiProfileEnv // Include active API profile config (highest priority for ANTHROPIC_* vars)
-      }
+      },
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     this.state.addProcess(taskId, {

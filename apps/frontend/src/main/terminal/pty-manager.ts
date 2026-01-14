@@ -5,12 +5,15 @@
 
 import * as pty from '@lydell/node-pty';
 import * as os from 'os';
-import { existsSync } from 'fs';
+import * as path from 'path';
+import { existsSync, readFileSync } from 'fs';
 import type { TerminalProcess, WindowGetter } from './types';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { readSettingsFile } from '../settings-utils';
 import type { SupportedTerminal } from '../../shared/types/settings';
+import type { CondaActivationResult, CondaActivationError } from '../../shared/types/conda';
+import { getCondaPythonPath } from '../python-path-utils';
 
 /**
  * Windows shell paths for different terminal preferences
@@ -82,7 +85,10 @@ export function spawnPtyProcess(
     ? getWindowsShell(preferredTerminal)
     : process.env.SHELL || '/bin/zsh';
 
-  const shellArgs = process.platform === 'win32' ? [] : ['-l'];
+  // On Windows, use -NoProfile to prevent user profile scripts from running
+  // (which can spawn external windows or run slow/failing commands)
+  // On Unix, use -l for login shell
+  const shellArgs = process.platform === 'win32' ? ['-NoProfile'] : ['-l'];
 
   console.warn('[PtyManager] Spawning shell:', shell, shellArgs, '(preferred:', preferredTerminal || 'system', ')');
 
@@ -215,4 +221,224 @@ export function killPty(terminal: TerminalProcess): void {
 export function getActiveProfileEnv(): Record<string, string> {
   const profileManager = getClaudeProfileManager();
   return profileManager.getActiveProfileEnv();
+}
+
+// ============================================================================
+// Conda Environment Activation
+// ============================================================================
+
+/**
+ * Read the conda base path from the .conda_base file in an environment
+ * This file is created during environment setup and stores the path to the
+ * Conda installation used to create the environment.
+ * The file is located at {envPath}/activate/.conda_base
+ */
+export function readCondaBase(envPath: string): string | null {
+  // The .conda_base file is in the activate subdirectory
+  const condaBasePath = path.join(envPath, 'activate', '.conda_base');
+  if (existsSync(condaBasePath)) {
+    try {
+      return readFileSync(condaBasePath, 'utf-8').trim();
+    } catch (error) {
+      console.warn('[PtyManager] Failed to read .conda_base:', error);
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Options for getting activation command
+ */
+export interface ActivationOptions {
+  /** Path to the conda environment */
+  envPath: string;
+  /** Path to the python root (where scripts/ directory is located) */
+  pythonRoot?: string;
+  /** Project name (used in init script filename) */
+  projectName?: string;
+}
+
+/**
+ * Get the shell command to activate a conda environment
+ * Uses the generated init scripts in {pythonRoot}/scripts/
+ */
+export function getActivationCommand(options: ActivationOptions, platform: NodeJS.Platform): string | null {
+  const { envPath, pythonRoot, projectName } = options;
+
+  const condaBase = readCondaBase(envPath);
+  if (!condaBase) {
+    return null;
+  }
+
+  if (platform === 'win32') {
+    // Windows: Use the generated PowerShell init script
+    // This script is at {pythonRoot}/scripts/init-{projectName}.ps1
+    if (pythonRoot && projectName) {
+      const initScript = path.join(pythonRoot, 'scripts', `init-${projectName}.ps1`);
+      if (existsSync(initScript)) {
+        // Use & to invoke the script in PowerShell
+        return `& "${initScript}"`;
+      }
+    }
+
+    // Fallback: Try the activate script in the environment
+    const ps1Script = path.join(envPath, 'activate', 'activate.ps1');
+    if (existsSync(ps1Script)) {
+      return `& "${ps1Script}"`;
+    }
+
+    // Last resort: Use conda hook for PowerShell activation
+    return `& "${condaBase}\\shell\\condabin\\conda-hook.ps1" ; conda activate "${envPath}"`;
+  } else {
+    // Unix: Use the generated shell init script
+    if (pythonRoot && projectName) {
+      const initScript = path.join(pythonRoot, 'scripts', `init-${projectName}.sh`);
+      if (existsSync(initScript)) {
+        return `source "${initScript}"`;
+      }
+    }
+
+    // Fallback: Try the activate script in the environment
+    const shScript = path.join(envPath, 'activate', 'activate.sh');
+    if (existsSync(shScript)) {
+      return `source "${shScript}"`;
+    }
+
+    // Last resort: Source conda.sh and then activate the environment
+    return `source "${condaBase}/etc/profile.d/conda.sh" && conda activate "${envPath}"`;
+  }
+}
+
+/**
+ * Validate that a conda environment exists and is usable
+ */
+export async function validateCondaEnv(envPath: string): Promise<CondaActivationResult> {
+  // Check if environment directory exists
+  if (!existsSync(envPath)) {
+    return {
+      success: false,
+      error: 'env_not_found',
+      message: `Environment directory not found: ${envPath}`
+    };
+  }
+
+  // Check if .conda_base file exists (required for activation)
+  const condaBase = readCondaBase(envPath);
+  if (!condaBase) {
+    return {
+      success: false,
+      error: 'env_broken',
+      message: 'Missing .conda_base file - environment may need to be recreated'
+    };
+  }
+
+  // Check if conda base installation still exists
+  if (!existsSync(condaBase)) {
+    return {
+      success: false,
+      error: 'conda_not_found',
+      message: `Conda installation not found: ${condaBase}`
+    };
+  }
+
+  // Check for Python executable in the environment
+  const pythonPath = getCondaPythonPath(envPath);
+
+  if (!existsSync(pythonPath)) {
+    return {
+      success: false,
+      error: 'env_broken',
+      message: 'Python executable not found in environment'
+    };
+  }
+
+  return {
+    success: true,
+    message: 'Environment is valid and ready for activation'
+  };
+}
+
+/**
+ * Write conda activation warning to PTY
+ * Uses shell-specific echo commands to safely output warnings without
+ * the text being interpreted as commands (e.g., PowerShell [!] syntax)
+ */
+export function writeCondaWarning(
+  ptyProcess: pty.IPty,
+  error: CondaActivationError,
+  envPath: string
+): void {
+  const errorMessages: Record<CondaActivationError, string> = {
+    'env_not_found': 'Environment directory not found',
+    'env_broken': 'Environment is broken or corrupted',
+    'conda_not_found': 'Conda installation not found',
+    'activation_failed': 'Failed to activate environment',
+    'script_not_found': 'Activation script not found'
+  };
+
+  const message = errorMessages[error] || 'Unknown error';
+
+  // Use shell-specific echo to output warning without interpretation
+  // PowerShell interprets [!] as an invocation expression causing parse errors
+  if (process.platform === 'win32') {
+    // On Windows, use Write-Host to output warnings safely
+    // Escape single quotes in paths for PowerShell
+    const escapedPath = envPath.replace(/'/g, "''");
+    ptyProcess.write(`Write-Host -ForegroundColor Yellow '(!) Conda environment not available: ${message}'\r`);
+    ptyProcess.write(`Write-Host -ForegroundColor Yellow '    Path: ${escapedPath}'\r`);
+    ptyProcess.write(`Write-Host -ForegroundColor Yellow '    Run setup in Project Settings > Python Env to fix.'\r`);
+  } else {
+    // On Unix, use ANSI escape codes with echo
+    ptyProcess.write(`echo -e '\\033[33m[!] Conda environment not available: ${message}\\033[0m'\r`);
+    ptyProcess.write(`echo -e '\\033[33m    Path: ${envPath}\\033[0m'\r`);
+    ptyProcess.write(`echo -e '\\033[33m    Run setup in Project Settings > Python Env to fix.\\033[0m'\r`);
+  }
+}
+
+/**
+ * Options for conda activation injection
+ */
+export interface CondaActivationOptions {
+  /** Path to the conda environment */
+  envPath: string;
+  /** Path to the python root (where scripts/ directory is located) */
+  pythonRoot?: string;
+  /** Project name (used in init script filename) */
+  projectName?: string;
+}
+
+/**
+ * Inject conda activation command into PTY after shell initialization
+ * Returns true if activation was injected, false if validation failed
+ */
+export async function injectCondaActivation(
+  ptyProcess: pty.IPty,
+  options: CondaActivationOptions
+): Promise<boolean> {
+  const { envPath, pythonRoot, projectName } = options;
+
+  // Validate the environment first
+  const validation = await validateCondaEnv(envPath);
+
+  if (!validation.success) {
+    console.warn('[PtyManager] Conda environment validation failed:', validation.message);
+    writeCondaWarning(ptyProcess, validation.error!, envPath);
+    return false;
+  }
+
+  // Get the activation command
+  const command = getActivationCommand({ envPath, pythonRoot, projectName }, process.platform);
+  if (!command) {
+    writeCondaWarning(ptyProcess, 'activation_failed', envPath);
+    return false;
+  }
+
+  // Small delay to let shell initialize before injecting activation
+  setTimeout(() => {
+    console.warn('[PtyManager] Injecting conda activation command:', command);
+    ptyProcess.write(command + '\r');
+  }, 500);
+
+  return true;
 }

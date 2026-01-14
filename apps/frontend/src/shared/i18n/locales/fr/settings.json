@@ -48,6 +48,10 @@
     "debug": {
       "title": "Debug & Logs",
       "description": "Outils de dépannage"
+    },
+    "pythonEnv": {
+      "title": "Environnement Python",
+      "description": "Configurer un environnement conda Python isolé"
     }
   },
   "apiProfiles": {
@@ -328,6 +332,18 @@
       "useClaudeMd": "Utiliser CLAUDE.md",
       "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
     },
+    "autoBuild": {
+      "title": "Intégration Auto-Build",
+      "notInitialized": "Non initialisé",
+      "notInitializedDescription": "Initialisez Auto-Build pour activer la création de tâches et les workflows d'agents.",
+      "initializing": "Initialisation...",
+      "initialize": "Initialiser Auto-Build",
+      "initialized": "Initialisé",
+      "checkingStatus": "Vérification du statut..."
+    },
+    "agentConfig": {
+      "title": "Configuration de l'agent"
+    },
     "claude": {
       "title": "Auth Claude",
       "description": "Authentification Claude"
@@ -359,7 +375,89 @@
       "integrationTitle": "Mémoire",
       "integrationDescription": "Configurer la mémoire persistante inter-sessions pour les agents",
       "syncDescription": "Configurer la mémoire persistante"
+    },
+    "pythonEnv": {
+      "title": "Env Python",
+      "description": "Environnement Python isolé"
+    },
+    "python-env": {
+      "title": "Env Python",
+      "description": "Environnement Python isolé"
     }
+  },
+  "python": {
+    "title": "Python",
+    "condaInstallation": "Installation Conda",
+    "detected": "Détecté",
+    "detecting": "Détection...",
+    "notDetected": "Aucune installation conda trouvée",
+    "installMiniconda": "Installer Miniconda",
+    "refresh": "Actualiser",
+    "specifyPath": "Ou spécifier le chemin",
+    "browse": "Parcourir",
+    "autoClaudeEnv": "Environnement Auto Claude",
+    "projectEnv": "Environnement du projet",
+    "envLocation": "Emplacement de l'environnement",
+    "envLocationHint": "Autonome dans le projet (aucun chemin externe autorisé)",
+    "detectedPython": "Python détecté",
+    "pythonVersion": "Version Python",
+    "selectVersion": "Sélectionner la version",
+    "selectVersionPlaceholder": "Sélectionner la version Python",
+    "detectedFromProject": "Détecté depuis le projet",
+    "versionLockedHint": "La version ne peut pas être modifiée après la création de l'environnement. Supprimez et recréez pour utiliser une autre version.",
+    "versionChangeHint": "Sélectionnez une version différente et cliquez sur Réinstaller pour changer.",
+    "installedVersion": "Installé",
+    "status": "Statut",
+    "statusReady": "Prêt",
+    "statusNotConfigured": "Non configuré",
+    "statusCreating": "Configuration en cours...",
+    "statusBroken": "Cassé / Manquant",
+    "packagesInstalled": "{{count}} packages installés",
+    "setupEnv": "Configurer l'environnement",
+    "reinstallEnv": "Réinstaller l'environnement",
+    "vscodeIntegration": "Intégration VS Code",
+    "workspaceFile": "Fichier workspace",
+    "workspaceHint": "S'ouvre avec PowerShell + environnement conda auto-activé",
+    "openInVscode": "Ouvrir dans VS Code",
+    "showInFolder": "Afficher dans le dossier",
+    "activationScripts": "Scripts d'activation",
+    "initScript": "Script init VS Code",
+    "standaloneScripts": "Scripts autonomes",
+    "regenerateAll": "Tout régénérer",
+    "openScriptsFolder": "Ouvrir le dossier des scripts",
+    "terminalIntegration": "Intégration terminal",
+    "autoActivate": "Auto-activation dans les terminaux",
+    "autoActivateHint": "Activer automatiquement lors de l'ouverture des terminaux pour ce projet",
+    "useCondaEnv": "Utiliser un environnement Conda autonome",
+    "useCondaEnvHint": "Activer un environnement Python isolé pour ce projet",
+    "deleteEnvTitle": "Supprimer l'environnement ?",
+    "deleteEnvMessage": "Un environnement existe à :",
+    "deleteEnvPrompt": "Voulez-vous le supprimer ?",
+    "keepFiles": "Conserver les fichiers",
+    "deleteEnv": "Supprimer l'environnement",
+    "deleteActivationScripts": "Supprimer également les scripts d'activation",
+    "pathPlaceholder": "C:\\chemin\\vers\\conda"
+  },
+  "condaSetup": {
+    "title": "Configurer l'environnement Conda",
+    "steps": {
+      "detecting": "Détection de l'installation conda",
+      "analyzing": "Analyse des exigences du projet",
+      "creating": "Création de l'environnement",
+      "installingPython": "Installation de Python {{version}}",
+      "verifyingPython": "Vérification de l'installation Python",
+      "installingDeps": "Installation des dépendances",
+      "generatingScripts": "Génération des scripts d'activation",
+      "finalizing": "Finalisation de l'environnement",
+      "complete": "Configuration terminée",
+      "error": "La configuration a échoué"
+    },
+    "finalizingNote": "Cela peut prendre jusqu'à une minute pendant que Windows indexe les nouveaux fichiers",
+    "showLogs": "Afficher les logs",
+    "hideLogs": "Masquer les logs",
+    "continueInBackground": "Continuer en arrière-plan",
+    "cancel": "Annuler",
+    "retry": "Réessayer"
   },
   "agentProfile": {
     "label": "Profil d'agent",

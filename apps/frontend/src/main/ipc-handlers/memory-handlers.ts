@@ -308,6 +308,7 @@ async function executeOllamaDetector(
       // Use sanitized Python environment to prevent PYTHONHOME contamination
       // Fixes "Could not find platform independent libraries" error on Windows
       env: pythonEnvManager.getPythonEnv(),
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     let stdout = '';
@@ -784,6 +785,7 @@ export function registerMemoryHandlers(): void {
             // Use sanitized Python environment to prevent PYTHONHOME contamination
             // Fixes "Could not find platform independent libraries" error on Windows
             env: pythonEnvManager.getPythonEnv(),
+            ...(process.platform === 'win32' && { windowsHide: true })
           });
 
           let stdout = '';

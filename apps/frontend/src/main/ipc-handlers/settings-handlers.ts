@@ -554,9 +554,11 @@ export function registerSettingsHandlers(
     IPC_CHANNELS.SHELL_OPEN_EXTERNAL,
     async (_, url: string): Promise<void> => {
       // Validate URL scheme to prevent opening dangerous protocols
+      // Allow: http/https (web links), vscode (VS Code workspace opener)
       try {
         const parsedUrl = new URL(url);
-        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        const allowedProtocols = ['http:', 'https:', 'vscode:'];
+        if (!allowedProtocols.includes(parsedUrl.protocol)) {
           console.warn(`[SHELL_OPEN_EXTERNAL] Blocked URL with unsafe protocol: ${parsedUrl.protocol}`);
           throw new Error(`Unsafe URL protocol: ${parsedUrl.protocol}`);
         }
@@ -569,6 +571,21 @@ export function registerSettingsHandlers(
         }
         throw error;
       }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SHELL_SHOW_ITEM_IN_FOLDER,
+    async (_, filePath: string): Promise<void> => {
+      // Validate path exists and show it in the native file explorer
+      if (!filePath || typeof filePath !== 'string') {
+        throw new Error('File path is required');
+      }
+      const resolvedPath = path.resolve(filePath);
+      if (!existsSync(resolvedPath)) {
+        throw new Error(`Path does not exist: ${resolvedPath}`);
+      }
+      shell.showItemInFolder(resolvedPath);
     }
   );
 

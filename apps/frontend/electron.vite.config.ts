@@ -64,9 +64,11 @@ export default defineConfig({
           '**/.worktrees/**',
           '**/.auto-claude/**',
           '**/out/**',
+          '**/.envs/**', // Conda environments - can have hundreds of files
           // Ignore the parent autonomous-coding directory's worktrees
           resolve(__dirname, '../.worktrees/**'),
           resolve(__dirname, '../.auto-claude/**'),
+          resolve(__dirname, '../.envs/**'),
         ]
       }
     }

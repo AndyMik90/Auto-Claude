@@ -5,6 +5,8 @@
 
 import type { TerminalCreateOptions } from '../../shared/types';
 import type { TerminalSession } from '../terminal-session-store';
+import { projectStore } from '../project-store';
+import { getPythonEnvPath } from '../conda-project-structure';
 
 // Internal modules
 import type {
@@ -45,12 +47,35 @@ export class TerminalManager {
 
   /**
    * Create a new terminal process
+   *
+   * If projectPath is provided and the project has Conda auto-activation enabled,
+   * the terminal will automatically activate the project's Conda environment.
    */
   async create(
     options: TerminalCreateOptions & { projectPath?: string }
   ): Promise<TerminalOperationResult> {
+    // Compute condaEnvPath from project settings if not explicitly provided
+    let condaEnvPath = options.condaEnvPath;
+
+    if (!condaEnvPath && options.projectPath) {
+      // Find project by path to get settings
+      const projects = projectStore.getProjects();
+      const project = projects.find((p) => p.path === options.projectPath);
+
+      if (project?.settings) {
+        const { useCondaEnv, condaAutoActivate } = project.settings;
+
+        // Only activate if both useCondaEnv is true AND condaAutoActivate is not explicitly false
+        if (useCondaEnv && condaAutoActivate !== false) {
+          // Use getPythonEnvPath to get the correct path based on project structure
+          // (handles pure-python vs mixed projects like dotnet+python)
+          condaEnvPath = getPythonEnvPath(options.projectPath, project.name);
+        }
+      }
+    }
+
     return TerminalLifecycle.createTerminal(
-      options,
+      { ...options, condaEnvPath },
       this.terminals,
       this.getWindow,
       (terminal, data) => this.handleTerminalData(terminal, data)

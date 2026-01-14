@@ -3,6 +3,7 @@ import type { Project, ProjectSettings as ProjectSettingsType, AutoBuildVersionI
 import { SettingsSection } from '../SettingsSection';
 import { GeneralSettings } from '../../project-settings/GeneralSettings';
 import { SecuritySettings } from '../../project-settings/SecuritySettings';
+import { PythonEnvSettings } from '../../project-settings/PythonEnvSettings';
 import { LinearIntegration } from '../integrations/LinearIntegration';
 import { ProviderIntegration } from '../integrations/ProviderIntegration';
 import { InitializationGuard } from '../common/InitializationGuard';
@@ -36,6 +37,8 @@ interface SectionRouterProps {
   isCheckingLinear: boolean;
   handleInitialize: () => Promise<void>;
   onOpenLinearImport: () => void;
+  /** Callback when useCondaEnv setting changes (for sidebar reactivity) */
+  onUseCondaEnvChange?: (enabled: boolean) => void;
 }
 
 /**
@@ -69,7 +72,8 @@ export function SectionRouter({
   linearConnectionStatus,
   isCheckingLinear,
   handleInitialize,
-  onOpenLinearImport
+  onOpenLinearImport,
+  onUseCondaEnvChange
 }: SectionRouterProps) {
   const { t } = useTranslation('settings');
 
@@ -88,6 +92,7 @@ export function SectionRouter({
             isCheckingVersion={isCheckingVersion}
             isUpdating={isUpdating}
             handleInitialize={handleInitialize}
+            onUseCondaEnvChange={onUseCondaEnvChange}
           />
         </SettingsSection>
       );
@@ -186,6 +191,30 @@ export function SectionRouter({
               setShowOpenAIKey={setShowOpenAIKey}
               expanded={true}
               onToggle={() => {}}
+            />
+          </InitializationGuard>
+        </SettingsSection>
+      );
+
+    case 'python-env':
+      // Only render if useCondaEnv is enabled (nav item should only appear when enabled)
+      if (!settings.useCondaEnv) {
+        return null;
+      }
+      return (
+        <SettingsSection
+          title={t('projectSections.pythonEnv.title')}
+          description={t('projectSections.pythonEnv.description')}
+        >
+          <InitializationGuard
+            initialized={!!project.autoBuildPath}
+            title={t('projectSections.pythonEnv.title')}
+            description={t('projectSections.pythonEnv.description')}
+          >
+            <PythonEnvSettings
+              project={project}
+              settings={settings}
+              onSettingsChange={setSettings}
             />
           </InitializationGuard>
         </SettingsSection>

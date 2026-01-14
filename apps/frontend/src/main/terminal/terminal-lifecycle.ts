@@ -8,6 +8,8 @@ import { existsSync } from 'fs';
 import type { TerminalCreateOptions } from '../../shared/types';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { TerminalSession } from '../terminal-session-store';
+import { projectStore } from '../project-store';
+import { getPythonEnvPath, detectProjectStructure } from '../conda-project-structure';
 import * as PtyManager from './pty-manager';
 import * as SessionHandler from './session-handler';
 import type {
@@ -16,6 +18,33 @@ import type {
   TerminalOperationResult
 } from './types';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
+
+/**
+ * Compute conda environment path from project settings if available.
+ * Returns undefined if conda auto-activation is not enabled for the project.
+ */
+function computeCondaEnvPath(projectPath: string | undefined): string | undefined {
+  if (!projectPath) {
+    return undefined;
+  }
+
+  // Find project by path to get settings
+  const projects = projectStore.getProjects();
+  const project = projects.find((p) => p.path === projectPath);
+
+  if (project?.settings) {
+    const { useCondaEnv, condaAutoActivate } = project.settings;
+
+    // Only activate if both useCondaEnv is true AND condaAutoActivate is not explicitly false
+    if (useCondaEnv && condaAutoActivate !== false) {
+      // Use getPythonEnvPath to get the correct path based on project structure
+      // (handles pure-python vs mixed projects like dotnet+python)
+      return getPythonEnvPath(projectPath, project.name);
+    }
+  }
+
+  return undefined;
+}
 
 /**
  * Options for terminal restoration
@@ -42,9 +71,9 @@ export async function createTerminal(
   getWindow: WindowGetter,
   dataHandler: DataHandlerFn
 ): Promise<TerminalOperationResult> {
-  const { id, cwd, cols = 80, rows = 24, projectPath } = options;
+  const { id, cwd, cols = 80, rows = 24, projectPath, condaEnvPath } = options;
 
-  debugLog('[TerminalLifecycle] Creating terminal:', { id, cwd, cols, rows, projectPath });
+  debugLog('[TerminalLifecycle] Creating terminal:', { id, cwd, cols, rows, projectPath, condaEnvPath });
 
   if (terminals.has(id)) {
     debugLog('[TerminalLifecycle] Terminal already exists, returning success:', id);
@@ -96,11 +125,32 @@ export async function createTerminal(
       (term) => handleTerminalExit(term, terminals)
     );
 
-    // Send conda activation command if provided
-    if (initCommand) {
-      setTimeout(() => {
-        ptyProcess.write(initCommand);
-      }, 100);
+    // Inject conda activation if condaEnvPath is provided
+    if (condaEnvPath) {
+      debugLog('[TerminalLifecycle] Injecting conda activation for:', condaEnvPath);
+
+      // Get project info to find the correct activation script
+      let pythonRoot: string | undefined;
+      let projectName: string | undefined;
+      if (projectPath) {
+        const projects = projectStore.getProjects();
+        const project = projects.find((p) => p.path === projectPath);
+        if (project) {
+          projectName = project.name;
+          const structure = detectProjectStructure(projectPath);
+          pythonRoot = structure.pythonRoot;
+          debugLog('[TerminalLifecycle] Using project init script:', { projectName, pythonRoot });
+        }
+      }
+
+      // Fire and forget - activation happens asynchronously after shell init
+      PtyManager.injectCondaActivation(ptyProcess, {
+        envPath: condaEnvPath,
+        pythonRoot,
+        projectName
+      }).catch((error) => {
+        debugError('[TerminalLifecycle] Conda activation failed:', error);
+      });
     }
 
     if (projectPath) {
@@ -151,13 +201,17 @@ export async function restoreTerminal(
     effectiveCwd = session.projectPath || os.homedir();
   }
 
+  // Compute conda env path for restored sessions
+  const condaEnvPath = computeCondaEnvPath(session.projectPath);
+
   const result = await createTerminal(
     {
       id: session.id,
       cwd: effectiveCwd,
       cols,
       rows,
-      projectPath: session.projectPath
+      projectPath: session.projectPath,
+      condaEnvPath
     },
     terminals,
     getWindow,
