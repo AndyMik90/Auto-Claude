@@ -19,7 +19,7 @@ import json
 # Add parent directory to path to import analyzer
 sys.path.insert(0, str(Path(__file__).parent.parent / "Apps" / "backend"))
 
-from analyzer import ServiceAnalyzer
+from analysis.analyzer import ServiceAnalyzer
 
 
 def create_test_project(tmp_dir: Path, files: dict[str, str]) -> Path:

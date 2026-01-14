@@ -232,7 +232,7 @@ def handle_followup_command(
         verbose: Enable verbose output
     """
     # Lazy imports to avoid loading heavy modules
-    from agent import run_followup_planner
+    from core.agent import run_followup_planner
 
     from .utils import print_banner, validate_environment
 

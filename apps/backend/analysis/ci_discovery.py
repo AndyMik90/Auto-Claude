@@ -12,7 +12,7 @@ The CI discovery results are used by:
 - Planner: To align verification with CI
 
 Usage:
-    from ci_discovery import CIDiscovery
+    from analysis.ci_discovery import CIDiscovery
 
     discovery = CIDiscovery()
     result = discovery.discover(project_dir)
