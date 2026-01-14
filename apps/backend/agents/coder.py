@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 from core.client import create_client
-from linear_updater import (
+from integrations.linear.updater import (
     LinearTaskState,
     is_linear_enabled,
     linear_build_complete,

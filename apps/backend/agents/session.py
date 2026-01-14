@@ -12,7 +12,7 @@ from pathlib import Path
 from claude_agent_sdk import ClaudeSDKClient
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from analysis.insight_extractor import extract_session_insights
-from linear_updater import (
+from integrations.linear.updater import (
     linear_subtask_completed,
     linear_subtask_failed,
 )

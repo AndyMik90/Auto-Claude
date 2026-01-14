@@ -413,7 +413,7 @@ class SpecOrchestrator:
 
     async def _create_linear_task_if_enabled(self) -> None:
         """Create a Linear task if Linear integration is enabled."""
-        from linear_updater import create_linear_task, is_linear_enabled
+        from integrations.linear.updater import create_linear_task, is_linear_enabled
 
         if not is_linear_enabled():
             return

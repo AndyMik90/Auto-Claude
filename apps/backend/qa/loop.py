@@ -12,7 +12,7 @@ from pathlib import Path
 
 from core.client import create_client
 from debug import debug, debug_error, debug_section, debug_success, debug_warning
-from linear_updater import (
+from integrations.linear.updater import (
     LinearTaskState,
     is_linear_enabled,
     linear_qa_approved,

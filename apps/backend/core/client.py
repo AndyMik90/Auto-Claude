@@ -421,7 +421,7 @@ from agents.tools_pkg import (
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
 from core.auth import get_sdk_env_vars, require_auth_token
-from linear_updater import is_linear_enabled
+from integrations.linear.updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
 from security import bash_security_hook
 
