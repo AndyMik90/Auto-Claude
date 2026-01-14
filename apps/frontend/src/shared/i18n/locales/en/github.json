@@ -51,6 +51,20 @@
   "issuesList": {
     "moduleNotInstalled": "GitHub automation module not installed",
     "selectIssue": "Select an issue to view details",
-    "noIssuesFound": "No issues found"
+    "noIssuesFound": "No issues found",
+    "title": "GitHub Issues",
+    "openCount": "{{count}} open",
+    "searchPlaceholder": "Search issues...",
+    "analyzeGroupButton": "Analyze & Group Issues",
+    "analyzeGroupTooltip": "Analyze up to 200 open issues, group similar ones, and review proposed batches before creating tasks.",
+    "autoFixLabel": "Auto-Fix New",
+    "autoFixTooltip": "Automatically fix new issues as they come in.",
+    "processing": "Processing {{count}} issue...",
+    "processing_plural": "Processing {{count}} issues...",
+    "filters": {
+      "open": "Open",
+      "closed": "Closed",
+      "all": "All"
+    }
   }
 }

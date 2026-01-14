@@ -1,4 +1,13 @@
 {
+  "workspace": {
+    "buildReadyTitle": "Build prêt pour la relecture",
+    "viewButton": "Voir",
+    "filesLabel": "fichiers",
+    "commitsLabel": "commits",
+    "openInIDE": "Ouvrir dans {{ide}}",
+    "openInTerminal": "Ouvrir dans {{terminal}}",
+    "discardBuild": "Supprimer le build"
+  },
   "terminal": {
     "openTerminal": "Ouvrir le terminal",
     "openInbuilt": "Ouvrir dans le terminal intégré",

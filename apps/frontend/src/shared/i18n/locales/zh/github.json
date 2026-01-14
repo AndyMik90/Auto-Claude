@@ -51,6 +51,20 @@
   "issuesList": {
     "moduleNotInstalled": "GitHub 自动化模块未安装",
     "selectIssue": "选择一个问题以查看详情",
-    "noIssuesFound": "未找到问题"
+    "noIssuesFound": "未找到问题",
+    "title": "GitHub 问题",
+    "openCount": "{{count}} 打开",
+    "searchPlaceholder": "搜索问题...",
+    "analyzeGroupButton": "分析与分组",
+    "analyzeGroupTooltip": "分析多达 200 个打开的问题，将相似的问题分组，并在创建任务之前审查建议的批次。",
+    "autoFixLabel": "自动修复",
+    "autoFixTooltip": "自动修复新来的问题。",
+    "processing": "正在处理 {{count}} 个问题...",
+    "processing_plural": "正在处理 {{count}} 个问题...",
+    "filters": {
+      "open": "打开",
+      "closed": "已关闭",
+      "all": "全部"
+    }
   }
 }

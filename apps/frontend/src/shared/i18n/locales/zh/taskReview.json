@@ -1,4 +1,13 @@
 {
+  "workspace": {
+    "buildReadyTitle": "构建准备就绪，待审查",
+    "viewButton": "查看",
+    "filesLabel": "个文件",
+    "commitsLabel": "个提交",
+    "openInIDE": "在 {{ide}} 中打开",
+    "openInTerminal": "在 {{terminal}} 中打开",
+    "discardBuild": "丢弃构建"
+  },
   "terminal": {
     "openTerminal": "打开终端",
     "openInbuilt": "在内置终端中打开",
