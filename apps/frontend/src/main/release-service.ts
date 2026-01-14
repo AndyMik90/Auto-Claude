@@ -705,7 +705,8 @@ export class ReleaseService extends EventEmitter {
       const result = await new Promise<string>((resolve, reject) => {
         const child = spawn('gh', args, {
           cwd: projectPath,
-          stdio: ['pipe', 'pipe', 'pipe']
+          stdio: ['pipe', 'pipe', 'pipe'],
+          ...(process.platform === 'win32' && { windowsHide: true })
         });
 
         let stdout = '';

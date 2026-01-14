@@ -48,6 +48,10 @@
     "debug": {
       "title": "Debug & Logs",
       "description": "Troubleshooting tools"
+    },
+    "pythonEnv": {
+      "title": "Python Environment",
+      "description": "Configure isolated Python conda environment"
     }
   },
   "apiProfiles": {
@@ -319,6 +323,18 @@
       "useClaudeMd": "Use CLAUDE.md",
       "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context"
     },
+    "autoBuild": {
+      "title": "Auto-Build Integration",
+      "notInitialized": "Not Initialized",
+      "notInitializedDescription": "Initialize Auto-Build to enable task creation and agent workflows.",
+      "initializing": "Initializing...",
+      "initialize": "Initialize Auto-Build",
+      "initialized": "Initialized",
+      "checkingStatus": "Checking status..."
+    },
+    "agentConfig": {
+      "title": "Agent Configuration"
+    },
     "claude": {
       "title": "Claude Auth",
       "description": "Claude authentication"
@@ -350,7 +366,90 @@
       "integrationTitle": "Memory",
       "integrationDescription": "Configure persistent cross-session memory for agents",
       "syncDescription": "Configure persistent memory"
+    },
+    "pythonEnv": {
+      "title": "Python Env",
+      "description": "Isolated Python environment"
+    },
+    "python-env": {
+      "title": "Python Env",
+      "description": "Isolated Python environment"
     }
+  },
+  "python": {
+    "title": "Python",
+    "pathPlaceholder": "C:\\path\\to\\conda",
+    "condaInstallation": "Conda Installation",
+    "detected": "Detected",
+    "detecting": "Detecting...",
+    "notDetected": "No conda installation found",
+    "installMiniconda": "Install Miniconda",
+    "refresh": "Refresh",
+    "specifyPath": "Or specify path",
+    "browse": "Browse",
+    "autoClaudeEnv": "Auto Claude Environment",
+    "projectEnv": "Project Environment",
+    "envLocation": "Environment Location",
+    "envLocationHint": "Self-contained within project (no external paths allowed)",
+    "detectedPython": "Detected Python",
+    "pythonVersion": "Python Version",
+    "selectVersion": "Select version",
+    "selectVersionPlaceholder": "Select Python version",
+    "detectedFromProject": "Detected from project",
+    "versionLockedHint": "Version cannot be changed after environment is created. Delete and recreate to use a different version.",
+    "versionChangeHint": "Select a different version and click Reinstall to change.",
+    "installedVersion": "Installed",
+    "status": "Status",
+    "statusReady": "Ready",
+    "statusNotConfigured": "Not configured",
+    "statusCreating": "Setting up...",
+    "statusBroken": "Broken / Missing",
+    "packagesInstalled": "{{count}} packages installed",
+    "setupEnv": "Setup Environment",
+    "reinstallEnv": "Reinstall Environment",
+    "vscodeIntegration": "VS Code Integration",
+    "workspaceFile": "Workspace file",
+    "workspaceHint": "Opens with PowerShell + auto-activated conda env",
+    "openInVscode": "Open in VS Code",
+    "showInFolder": "Show in Folder",
+    "activationScripts": "Activation Scripts",
+    "initScript": "VS Code init script",
+    "standaloneScripts": "Standalone scripts",
+    "regenerateAll": "Regenerate All",
+    "openScriptsFolder": "Open Scripts Folder",
+    "terminalIntegration": "Terminal Integration",
+    "autoActivate": "Auto-activate in terminals",
+    "autoActivateHint": "Automatically activate when opening terminals for this project",
+    "useCondaEnv": "Use Self-Contained Conda Environment",
+    "useCondaEnvHint": "Enable isolated Python environment for this project",
+    "deleteEnvTitle": "Delete Environment?",
+    "deleteEnvMessage": "An environment exists at:",
+    "deleteEnvPrompt": "Do you want to delete it?",
+    "keepFiles": "Keep Files",
+    "deleteEnv": "Delete Environment",
+    "deleteActivationScripts": "Also remove activation scripts",
+    "pathPlaceholder": "C:\\path\\to\\conda"
+  },
+  "condaSetup": {
+    "title": "Setup Conda Environment",
+    "steps": {
+      "detecting": "Detecting conda installation",
+      "analyzing": "Analyzing project requirements",
+      "creating": "Creating environment",
+      "installingPython": "Installing Python {{version}}",
+      "verifyingPython": "Verifying Python installation",
+      "installingDeps": "Installing dependencies",
+      "generatingScripts": "Generating activation scripts",
+      "finalizing": "Finalizing environment",
+      "complete": "Setup complete",
+      "error": "Setup failed"
+    },
+    "finalizingNote": "This may take up to a minute while Windows indexes the new files",
+    "showLogs": "Show logs",
+    "hideLogs": "Hide logs",
+    "continueInBackground": "Continue in Background",
+    "cancel": "Cancel",
+    "retry": "Retry"
   },
   "agentProfile": {
     "label": "Agent Profile",

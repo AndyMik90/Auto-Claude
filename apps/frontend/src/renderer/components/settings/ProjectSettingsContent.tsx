@@ -10,13 +10,15 @@ import { SectionRouter } from './sections/SectionRouter';
 import { createHookProxy } from './utils/hookProxyFactory';
 import type { Project } from '../../../shared/types';
 
-export type ProjectSettingsSection = 'general' | 'linear' | 'github' | 'gitlab' | 'memory';
+export type ProjectSettingsSection = 'general' | 'linear' | 'github' | 'gitlab' | 'memory' | 'python-env';
 
 interface ProjectSettingsContentProps {
   project: Project | undefined;
   activeSection: ProjectSettingsSection;
   isOpen: boolean;
   onHookReady: (hook: UseProjectSettingsReturn | null) => void;
+  /** Callback when useCondaEnv setting changes (for sidebar reactivity) */
+  onUseCondaEnvChange?: (enabled: boolean) => void;
 }
 
 /**
@@ -27,7 +29,8 @@ export function ProjectSettingsContent({
   project,
   activeSection,
   isOpen,
-  onHookReady
+  onHookReady,
+  onUseCondaEnvChange
 }: ProjectSettingsContentProps) {
   const { t } = useTranslation('settings');
 
@@ -49,6 +52,7 @@ export function ProjectSettingsContent({
       activeSection={activeSection}
       isOpen={isOpen}
       onHookReady={onHookReady}
+      onUseCondaEnvChange={onUseCondaEnvChange}
     />
   );
 }
@@ -61,12 +65,14 @@ function ProjectSettingsContentInner({
   project,
   activeSection,
   isOpen,
-  onHookReady
+  onHookReady,
+  onUseCondaEnvChange
 }: {
   project: Project;
   activeSection: ProjectSettingsSection;
   isOpen: boolean;
   onHookReady: (hook: UseProjectSettingsReturn | null) => void;
+  onUseCondaEnvChange?: (enabled: boolean) => void;
 }) {
   const hook = useProjectSettings(project, isOpen);
 
@@ -148,6 +154,7 @@ function ProjectSettingsContentInner({
         isCheckingLinear={isCheckingLinear}
         handleInitialize={handleInitialize}
         onOpenLinearImport={() => setShowLinearImportModal(true)}
+        onUseCondaEnvChange={onUseCondaEnvChange}
       />
 
       <ErrorDisplay error={error} envError={envError} />

@@ -120,7 +120,8 @@ export class InsightsExecutor extends EventEmitter {
     // Spawn Python process
     const proc = spawn(this.config.getPythonPath(), args, {
       cwd: autoBuildSource,
-      env: processEnv
+      env: processEnv,
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     this.activeSessions.set(projectId, proc);

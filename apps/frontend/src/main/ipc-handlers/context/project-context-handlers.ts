@@ -179,7 +179,8 @@ export function registerProjectContextHandlers(
             '--output', indexOutputPath
           ], {
             cwd: project.path,
-            env: getAugmentedEnv()
+            env: getAugmentedEnv(),
+            ...(process.platform === 'win32' && { windowsHide: true })
           });
 
           proc.stdout?.on('data', (data) => {

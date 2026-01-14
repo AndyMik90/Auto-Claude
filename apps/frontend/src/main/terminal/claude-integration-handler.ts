@@ -115,6 +115,7 @@ function escapeShellCommand(cmd: string): string {
  */
 const YOLO_MODE_FLAG = ' --dangerously-skip-permissions';
 
+
 // ============================================================================
 // SHARED HELPERS - Used by both sync and async invokeClaude
 // ============================================================================
@@ -661,7 +662,7 @@ export function invokeClaude(
  */
 export function resumeClaude(
   terminal: TerminalProcess,
-  _sessionId: string | undefined,
+  sessionId: string | undefined,
   getWindow: WindowGetter
 ): void {
   // Track terminal state for cleanup on error
@@ -684,7 +685,7 @@ export function resumeClaude(
     terminal.claudeSessionId = undefined;
 
     // Deprecation warning for callers still passing sessionId
-    if (_sessionId) {
+    if (sessionId) {
       console.warn('[ClaudeIntegration:resumeClaude] sessionId parameter is deprecated and ignored; using claude --continue instead');
     }
 

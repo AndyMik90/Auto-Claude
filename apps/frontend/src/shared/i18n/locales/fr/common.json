@@ -93,6 +93,7 @@
     "required": "Requis",
     "dismiss": "Ignorer"
   },
+  "recommended": "Recommandé",
   "time": {
     "justNow": "À l'instant",
     "minutesAgo": "Il y a {{count}} min",

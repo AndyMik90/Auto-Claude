@@ -50,7 +50,11 @@ export const DEFAULT_APP_SETTINGS = {
   // Language preference (default to English)
   language: 'en' as const,
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
-  sentryEnabled: true
+  sentryEnabled: true,
+  // Conda configuration (detected during setup/onboarding)
+  condaPath: undefined as string | undefined,
+  autoClaudeEnvPath: undefined as string | undefined,
+  autoClaudeEnvStatus: 'none' as const
 };
 
 // ============================================

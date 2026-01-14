@@ -145,7 +145,8 @@ export class ChangelogGenerator extends EventEmitter {
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.pythonPath);
     const childProcess = spawn(pythonCommand, [...pythonBaseArgs, '-c', script], {
       cwd: this.autoBuildSourcePath,
-      env: spawnEnv
+      env: spawnEnv,
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     this.generationProcesses.set(projectId, childProcess);

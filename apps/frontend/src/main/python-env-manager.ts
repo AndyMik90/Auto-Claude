@@ -5,6 +5,7 @@ import { EventEmitter } from 'events';
 import { app } from 'electron';
 import { findPythonCommand, getBundledPythonPath } from './python-detector';
 import { isLinux, isWindows } from './platform';
+import { getVenvPythonPath as getVenvPythonPathUtil } from './python-path-utils';
 
 export interface PythonEnvStatus {
   ready: boolean;
@@ -67,12 +68,7 @@ export class PythonEnvManager extends EventEmitter {
     const venvPath = this.getVenvBasePath();
     if (!venvPath) return null;
 
-    const venvPython =
-      isWindows()
-        ? path.join(venvPath, 'Scripts', 'python.exe')
-        : path.join(venvPath, 'bin', 'python');
-
-    return venvPython;
+    return getVenvPythonPathUtil(venvPath);
   }
 
   /**
@@ -104,11 +100,11 @@ export class PythonEnvManager extends EventEmitter {
     const sitePackagesPath = path.join(process.resourcesPath, 'python-site-packages');
 
     if (existsSync(sitePackagesPath)) {
-      console.log(`[PythonEnvManager] Found bundled site-packages at: ${sitePackagesPath}`);
+      console.warn(`[PythonEnvManager] Found bundled site-packages at: ${sitePackagesPath}`);
       return sitePackagesPath;
     }
 
-    console.log(`[PythonEnvManager] Bundled site-packages not found at: ${sitePackagesPath}`);
+    console.warn(`[PythonEnvManager] Bundled site-packages not found at: ${sitePackagesPath}`);
     return null;
   }
 
@@ -160,7 +156,7 @@ export class PythonEnvManager extends EventEmitter {
 
     // Log missing packages for debugging
     for (const pkg of missingPackages) {
-      console.log(
+      console.warn(
         `[PythonEnvManager] Missing critical package: ${pkg} at ${path.join(sitePackagesPath, pkg)}`
       );
     }
@@ -176,9 +172,9 @@ export class PythonEnvManager extends EventEmitter {
       // Also check marker for logging purposes
       const markerPath = path.join(sitePackagesPath, '.bundled');
       if (existsSync(markerPath)) {
-        console.log(`[PythonEnvManager] Found bundle marker and all critical packages`);
+        console.warn(`[PythonEnvManager] Found bundle marker and all critical packages`);
       } else {
-        console.log(`[PythonEnvManager] Found critical packages (marker missing)`);
+        console.warn(`[PythonEnvManager] Found critical packages (marker missing)`);
       }
       return true;
     }
@@ -239,7 +235,7 @@ if sys.version_info >= (3, 12):
     // If this is the bundled Python path, use it directly
     const bundledPath = getBundledPythonPath();
     if (bundledPath && pythonCmd === bundledPath) {
-      console.log(`[PythonEnvManager] Using bundled Python: ${bundledPath}`);
+      console.warn(`[PythonEnvManager] Using bundled Python: ${bundledPath}`);
       return bundledPath;
     }
 
@@ -251,7 +247,7 @@ if sys.version_info >= (3, 12):
         timeout: 5000
       }).toString().trim();
 
-      console.log(`[PythonEnvManager] Found Python at: ${pythonPath}`);
+      console.warn(`[PythonEnvManager] Found Python at: ${pythonPath}`);
       return pythonPath;
     } catch (err) {
       console.error(`[PythonEnvManager] Failed to get Python path for ${pythonCmd}:`, err);
@@ -286,7 +282,8 @@ if sys.version_info >= (3, 12):
     return new Promise((resolve) => {
       const proc = spawn(systemPython, ['-m', 'venv', venvPath], {
         cwd: this.autoBuildSourcePath!,
-        stdio: 'pipe'
+        stdio: 'pipe',
+        ...(process.platform === 'win32' && { windowsHide: true })
       });
 
       // Track the process for cleanup on app exit
@@ -357,7 +354,8 @@ if sys.version_info >= (3, 12):
     return new Promise((resolve) => {
       const proc = spawn(venvPython, ['-m', 'ensurepip'], {
         cwd: this.autoBuildSourcePath!,
-        stdio: 'pipe'
+        stdio: 'pipe',
+        ...(process.platform === 'win32' && { windowsHide: true })
       });
 
       let stderr = '';
@@ -411,7 +409,8 @@ if sys.version_info >= (3, 12):
       // Use python -m pip for better compatibility across Python versions
       const proc = spawn(venvPython, ['-m', 'pip', 'install', '-r', requirementsPath], {
         cwd: this.autoBuildSourcePath!,
-        stdio: 'pipe'
+        stdio: 'pipe',
+        ...(process.platform === 'win32' && { windowsHide: true })
       });
 
       let stdout = '';
