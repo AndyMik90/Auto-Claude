@@ -15,7 +15,7 @@ import asyncio
 import time
 
 import pytest
-from rate_limiter import (
+from runners.github.rate_limiter import (
     CostLimitExceeded,
     CostTracker,
     RateLimiter,

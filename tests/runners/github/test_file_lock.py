@@ -11,7 +11,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from file_lock import (
+from runners.github.file_lock import (
     FileLock,
     FileLockTimeout,
     locked_json_read,

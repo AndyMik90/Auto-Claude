@@ -6,7 +6,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
-from gh_client import GHClient, GHCommandError, GHTimeoutError
+from runners.github.gh_client import GHClient, GHCommandError, GHTimeoutError
 
 
 class TestGHClient:

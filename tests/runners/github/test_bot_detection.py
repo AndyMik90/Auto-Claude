@@ -6,19 +6,12 @@ Tests the BotDetector class to ensure it correctly prevents infinite loops.
 """
 
 import json
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-# Use direct file import to avoid package import issues
-_github_dir = Path(__file__).parent
-if str(_github_dir) not in sys.path:
-    sys.path.insert(0, str(_github_dir))
-
-from bot_detection import BotDetectionState, BotDetector
+from runners.github.bot_detection import BotDetectionState, BotDetector
 
 
 @pytest.fixture

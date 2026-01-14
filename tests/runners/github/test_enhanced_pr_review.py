@@ -15,10 +15,8 @@ import json
 import sys
 from dataclasses import asdict
 
-from context_gatherer import AI_BOT_PATTERNS, AIBotComment
-
-# Direct imports (avoid parent __init__.py issues)
-from models import (
+from runners.github.context_gatherer import AI_BOT_PATTERNS, AIBotComment
+from runners.github.models import (
     AICommentTriage,
     AICommentVerdict,
     MergeVerdict,
