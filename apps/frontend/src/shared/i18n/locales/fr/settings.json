@@ -29,6 +29,10 @@
       "title": "Chemins",
       "description": "Outils CLI et chemins framework"
     },
+    "templates": {
+      "title": "Modèles",
+      "description": "Modèles de projet et secrets"
+    },
     "integrations": {
       "title": "Intégrations",
       "description": "Clés API & comptes Claude"

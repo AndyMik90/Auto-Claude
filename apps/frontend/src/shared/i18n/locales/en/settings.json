@@ -29,6 +29,10 @@
       "title": "Paths",
       "description": "CLI tools and framework paths"
     },
+    "templates": {
+      "title": "Templates",
+      "description": "Project templates and secrets"
+    },
     "integrations": {
       "title": "Integrations",
       "description": "API keys & Claude accounts"
