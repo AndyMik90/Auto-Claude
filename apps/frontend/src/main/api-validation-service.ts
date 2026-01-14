@@ -5,6 +5,8 @@
  * Used by the Graphiti memory integration for embedding and LLM operations.
  */
 
+import https from 'https';
+
 export interface ApiValidationResult {
   success: boolean;
   message: string;
@@ -42,8 +44,8 @@ export async function validateOpenAIApiKey(
     const startTime = Date.now();
 
     // Use native https module to avoid additional dependencies
+    // https is imported at top of file (ESM-compatible)
     const result = await new Promise<ApiValidationResult>((resolve) => {
-      const https = require('https');
 
       const options = {
         hostname: 'api.openai.com',

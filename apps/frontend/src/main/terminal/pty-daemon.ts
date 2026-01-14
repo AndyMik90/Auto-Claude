@@ -11,6 +11,7 @@
 import * as net from 'net';
 import * as fs from 'fs';
 import * as pty from '@lydell/node-pty';
+import { fileURLToPath } from 'url';
 
 const SOCKET_PATH =
   process.platform === 'win32'
@@ -485,8 +486,11 @@ class PtyDaemon {
   }
 }
 
-// Start daemon if this file is run directly
-if (require.main === module) {
+// Start daemon if this file is run directly (ESM-compatible check)
+const __filename = fileURLToPath(import.meta.url);
+const isMainModule = process.argv[1] === __filename;
+
+if (isMainModule) {
   try {
     new PtyDaemon();
     console.error('[PTY Daemon] Running - PID:', process.pid);
