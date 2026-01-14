@@ -91,7 +91,8 @@
     "noData": "无数据",
     "optional": "可选",
     "required": "必填",
-    "dismiss": "忽略"
+    "dismiss": "忽略",
+    "enterToOverride": "输入以覆盖全局密钥..."
   },
   "time": {
     "justNow": "刚刚",

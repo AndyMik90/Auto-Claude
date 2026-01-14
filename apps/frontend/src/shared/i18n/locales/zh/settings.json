@@ -579,5 +579,92 @@
 			"openai": "这看起来像 OpenAI API。您需要 API 密钥。",
 			"createOpenaiKey": "创建 OpenAI API 密钥"
 		}
+	},
+	"memory": {
+		"title": "内存",
+		"enableLabel": "启用内存",
+		"enableDescription": "使用嵌入式图数据库进行持久化跨会话内存",
+		"enabled": "已启用",
+		"disabled": "已禁用",
+		"fileBasedDescription": "使用基于文件的内存。会话信息存储在本地的 JSON 文件中。启用内存以获得持久化跨会话上下文和语义搜索。",
+		"agentAccess": {
+			"label": "启用代理内存访问",
+			"description": "允许代理通过 MCP 搜索和添加到知识图谱"
+		},
+		"mcpServer": {
+			"label": "Graphiti MCP 服务器 URL",
+			"description": "Graphiti MCP 服务器的 URL"
+		},
+		"embedding": {
+			"provider": "嵌入提供商",
+			"description": "语义搜索提供商（可选 - 不使用也可以进行关键词搜索）",
+			"selectPlaceholder": "选择嵌入提供商",
+			"providers": {
+				"ollama": "Ollama（本地 - 免费）",
+				"openai": "OpenAI",
+				"voyage": "Voyage AI",
+				"google": "Google AI",
+				"azureOpenai": "Azure OpenAI"
+			},
+			"model": "嵌入模型",
+			"dimension": "嵌入维度"
+		},
+		"ollama": {
+			"configuration": "Ollama 配置",
+			"baseUrl": "基础 URL",
+			"checking": "检查中...",
+			"connected": "已连接",
+			"notRunning": "未运行",
+			"recommended": "推荐：qwen3-embedding:4b（平衡），:8b（质量），:0.6b（快速）",
+			"dimensionRequired": "Ollama 嵌入所需（例如，nomic-embed-text 为 768）"
+		},
+		"openai": {
+			"apiKey": "OpenAI API 密钥",
+			"override": "（覆盖）",
+			"usingGlobalKey": "使用全局密钥",
+			"globalKeyDescription": "使用应用设置中的密钥。在下方输入项目特定密钥以覆盖。",
+			"required": "OpenAI 嵌入所需"
+		},
+		"voyage": {
+			"apiKey": "Voyage AI API 密钥",
+			"required": "Voyage AI 嵌入所需"
+		},
+		"google": {
+			"apiKey": "Google AI API 密钥",
+			"required": "Google AI 嵌入所需"
+		},
+		"azure": {
+			"configuration": "Azure OpenAI 配置",
+			"apiKey": "API 密钥",
+			"baseUrl": "基础 URL",
+			"deployment": "嵌入部署名称"
+		},
+		"database": {
+			"name": "数据库名称",
+			"nameDescription": "内存数据库的名称（存储在 ~/.auto-claude/memories/）",
+			"path": "数据库路径（可选）",
+			"pathDescription": "自定义存储位置。默认：~/.auto-claude/memories/"
+		}
+	},
+	"claudeAuth": {
+		"title": "Claude 认证",
+		"connected": "已连接",
+		"notConnected": "未连接",
+		"loading": "加载配置中...",
+		"claudeCli": "Claude CLI",
+		"checking": "检查中...",
+		"authenticated": "已通过 OAuth 认证",
+		"notAuthenticated": "未认证",
+		"statusUnknown": "状态未知",
+		"reauthenticate": "重新认证",
+		"setupOauth": "设置 OAuth",
+		"oauthToken": "OAuth 令牌",
+		"override": "（覆盖）",
+		"usingGlobalToken": "使用全局令牌",
+		"globalTokenDescription": "使用应用设置中的令牌。在下方输入项目特定令牌以覆盖。",
+		"pasteToken": "粘贴来自",
+		"setupTokenCommand": "claude setup-token",
+		"enterToOverride": "输入以覆盖全局令牌...",
+		"tokenPlaceholder": "your-oauth-token-here"
 	}
 }

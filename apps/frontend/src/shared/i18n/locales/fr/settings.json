@@ -587,5 +587,92 @@
       "openai": "Ceci ressemble à une API OpenAI. Vous aurez besoin d'une clé API.",
       "createOpenaiKey": "Créer une clé API OpenAI"
     }
+  },
+  "memory": {
+    "title": "Mémoire",
+    "enableLabel": "Activer la mémoire",
+    "enableDescription": "Mémoire persistante inter-sessions utilisant une base de données de graphe intégrée",
+    "enabled": "Activé",
+    "disabled": "Désactivé",
+    "fileBasedDescription": "Utilisation de la mémoire basée sur des fichiers. Les informations de session sont stockées localement dans des fichiers JSON. Activez la Mémoire pour un contexte persistant inter-sessions avec recherche sémantique.",
+    "agentAccess": {
+      "label": "Activer l'accès mémoire des agents",
+      "description": "Permettre aux agents de rechercher et d'ajouter au graphe de connaissances via MCP"
+    },
+    "mcpServer": {
+      "label": "URL du serveur MCP Graphiti",
+      "description": "URL du serveur MCP Graphiti"
+    },
+    "embedding": {
+      "provider": "Fournisseur d'embeddings",
+      "description": "Fournisseur pour la recherche sémantique (optionnel - la recherche par mots-clés fonctionne sans)",
+      "selectPlaceholder": "Sélectionner un fournisseur d'embeddings",
+      "providers": {
+        "ollama": "Ollama (Local - Gratuit)",
+        "openai": "OpenAI",
+        "voyage": "Voyage AI",
+        "google": "Google AI",
+        "azureOpenai": "Azure OpenAI"
+      },
+      "model": "Modèle d'embedding",
+      "dimension": "Dimension d'embedding"
+    },
+    "ollama": {
+      "configuration": "Configuration Ollama",
+      "baseUrl": "URL de base",
+      "checking": "Vérification...",
+      "connected": "Connecté",
+      "notRunning": "Pas en cours d'exécution",
+      "recommended": "Recommandé : qwen3-embedding:4b (équilibré), :8b (qualité), :0.6b (rapide)",
+      "dimensionRequired": "Requis pour les embeddings Ollama (ex : 768 pour nomic-embed-text)"
+    },
+    "openai": {
+      "apiKey": "Clé API OpenAI",
+      "override": "(Remplacer)",
+      "usingGlobalKey": "Utilisation de la clé globale",
+      "globalKeyDescription": "Utilisation de la clé des paramètres de l'application. Entrez une clé spécifique au projet ci-dessous pour remplacer.",
+      "required": "Requis pour les embeddings OpenAI"
+    },
+    "voyage": {
+      "apiKey": "Clé API Voyage AI",
+      "required": "Requis pour les embeddings Voyage AI"
+    },
+    "google": {
+      "apiKey": "Clé API Google AI",
+      "required": "Requis pour les embeddings Google AI"
+    },
+    "azure": {
+      "configuration": "Configuration Azure OpenAI",
+      "apiKey": "Clé API",
+      "baseUrl": "URL de base",
+      "deployment": "Nom du déploiement d'embedding"
+    },
+    "database": {
+      "name": "Nom de la base de données",
+      "nameDescription": "Nom de la base de données de mémoire (stockée dans ~/.auto-claude/memories/)",
+      "path": "Chemin de la base de données (Optionnel)",
+      "pathDescription": "Emplacement de stockage personnalisé. Par défaut : ~/.auto-claude/memories/"
+    }
+  },
+  "claudeAuth": {
+    "title": "Authentification Claude",
+    "connected": "Connecté",
+    "notConnected": "Non connecté",
+    "loading": "Chargement de la configuration...",
+    "claudeCli": "Claude CLI",
+    "checking": "Vérification...",
+    "authenticated": "Authentifié via OAuth",
+    "notAuthenticated": "Non authentifié",
+    "statusUnknown": "Statut inconnu",
+    "reauthenticate": "Réauthentifier",
+    "setupOauth": "Configurer OAuth",
+    "oauthToken": "Jeton OAuth",
+    "override": "(Remplacer)",
+    "usingGlobalToken": "Utilisation du jeton global",
+    "globalTokenDescription": "Utilisation du jeton des paramètres de l'application. Entrez un jeton spécifique au projet ci-dessous pour remplacer.",
+    "pasteToken": "Collez un jeton de",
+    "setupTokenCommand": "claude setup-token",
+    "enterToOverride": "Entrez pour remplacer le jeton global...",
+    "tokenPlaceholder": "votre-jeton-oauth-ici"
   }
 }
