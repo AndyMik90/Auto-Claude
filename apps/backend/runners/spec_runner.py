@@ -81,6 +81,12 @@ if sys.platform == "win32":
 # Add auto-claude to path (parent of runners/)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Validate platform-specific dependencies BEFORE any imports that might
+# trigger graphiti_core -> real_ladybug -> pywintypes import chain (ACS-253)
+from core.dependency_validator import validate_platform_dependencies
+
+validate_platform_dependencies()
+
 # Load .env file with centralized error handling
 from cli.utils import import_dotenv
 
@@ -92,6 +98,11 @@ if env_file.exists():
     load_dotenv(env_file)
 elif dev_env_file.exists():
     load_dotenv(dev_env_file)
+
+# Initialize Sentry early to capture any startup errors
+from core.sentry import capture_exception, init_sentry
+
+init_sentry(component="spec-runner")
 
 from debug import debug, debug_error, debug_section, debug_success
 from phase_config import resolve_model_id
@@ -369,6 +380,14 @@ Examples:
         print(
             f"To continue: python auto-claude/spec_runner.py --continue {orchestrator.spec_dir.name}"
         )
+        sys.exit(1)
+    except Exception as e:
+        # Capture unexpected errors to Sentry
+        capture_exception(
+            e, spec_dir=str(orchestrator.spec_dir) if orchestrator else None
+        )
+        debug_error("spec_runner", f"Unexpected error: {e}")
+        print(f"\n\nUnexpected error: {e}")
         sys.exit(1)
 
 

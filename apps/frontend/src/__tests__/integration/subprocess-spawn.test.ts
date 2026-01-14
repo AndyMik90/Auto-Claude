@@ -39,11 +39,14 @@ vi.mock('child_process', async (importOriginal) => {
 });
 
 // Mock claude-profile-manager to bypass auth checks in tests
+const mockProfileManager = {
+  hasValidAuth: () => true,
+  getActiveProfile: () => ({ profileId: 'default', profileName: 'Default' })
+};
+
 vi.mock('../../main/claude-profile-manager', () => ({
-  getClaudeProfileManager: () => ({
-    hasValidAuth: () => true,
-    getActiveProfile: () => ({ profileId: 'default', profileName: 'Default' })
-  })
+  getClaudeProfileManager: () => mockProfileManager,
+  initializeClaudeProfileManager: () => Promise.resolve(mockProfileManager)
 }));
 
 // Mock validatePythonPath to allow test paths (security validation is tested separately)
@@ -54,6 +57,16 @@ vi.mock('../../main/python-detector', async (importOriginal) => {
     validatePythonPath: (path: string) => ({ valid: true, sanitizedPath: path })
   };
 });
+
+// Mock python-env-manager for ensurePythonEnvReady (ACS-254)
+vi.mock('../../main/python-env-manager', () => ({
+  pythonEnvManager: {
+    isEnvReady: vi.fn(() => true),
+    initialize: vi.fn(() => Promise.resolve({ ready: true })),
+    getPythonEnv: vi.fn(() => ({}))
+  },
+  getConfiguredPythonPath: vi.fn(() => DETECTED_PYTHON_CMD)
+}));
 
 // Auto-claude source path (for getAutoBuildSourcePath to find)
 const AUTO_CLAUDE_SOURCE = path.join(TEST_DIR, 'auto-claude-source');

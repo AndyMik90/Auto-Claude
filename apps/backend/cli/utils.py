@@ -56,7 +56,9 @@ def import_dotenv():
 
 # Load .env with helpful error if dependencies not installed
 load_dotenv = import_dotenv()
-from graphiti_config import get_graphiti_status
+# NOTE: graphiti_config is imported lazily in validate_environment() to avoid
+# triggering graphiti_core -> real_ladybug -> pywintypes import chain before
+# platform dependency validation can run. See ACS-253.
 from linear_integration import LinearManager
 from linear_updater import is_linear_enabled
 from spec.pipeline import get_specs_dir
@@ -205,6 +207,9 @@ def validate_environment(spec_dir: Path) -> bool:
         print("Linear integration: DISABLED (set LINEAR_API_KEY to enable)")
 
     # Check Graphiti integration (optional but show status)
+    # Lazy import to avoid triggering pywintypes import before validation (ACS-253)
+    from graphiti_config import get_graphiti_status
+
     graphiti_status = get_graphiti_status()
     if graphiti_status["available"]:
         print("Graphiti memory: ENABLED")
@@ -255,3 +260,19 @@ def get_project_dir(provided_dir: Path | None) -> Path:
         project_dir = project_dir.parent.parent
 
     return project_dir
+
+
+def find_specs_dir(project_dir: Path) -> Path:
+    """
+    Find the specs directory for a project.
+
+    Returns the '.auto-claude/specs' directory path.
+    The directory is guaranteed to exist (get_specs_dir calls init_auto_claude_dir).
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Path to specs directory (always returns a valid Path)
+    """
+    return get_specs_dir(project_dir)

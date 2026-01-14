@@ -5,7 +5,7 @@ import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { AgentQueueManager } from './agent-queue';
-import { getClaudeProfileManager } from '../claude-profile-manager';
+import { getClaudeProfileManager, initializeClaudeProfileManager } from '../claude-profile-manager';
 import {
   SpecCreationMetadata,
   TaskExecutionOptions,
@@ -96,9 +96,24 @@ export class AgentManager extends EventEmitter {
     baseBranch?: string
   ): Promise<void> {
     // Pre-flight auth check: Verify active profile has valid authentication
-    const profileManager = getClaudeProfileManager();
+    // Ensure profile manager is initialized to prevent race condition
+    let profileManager;
+    try {
+      profileManager = await initializeClaudeProfileManager();
+    } catch (error) {
+      console.error('[AgentManager] Failed to initialize profile manager:', error);
+      this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
+      return;
+    }
     if (!profileManager.hasValidAuth()) {
       this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+      return;
+    }
+
+    // Ensure Python environment is ready before spawning process (prevents exit code 127 race condition)
+    const pythonStatus = await this.processManager.ensurePythonEnvReady('AgentManager');
+    if (!pythonStatus.ready) {
+      this.emit('error', taskId, `Python environment not ready: ${pythonStatus.error || 'initialization failed'}`);
       return;
     }
 
@@ -174,9 +189,24 @@ export class AgentManager extends EventEmitter {
     options: TaskExecutionOptions = {}
   ): Promise<void> {
     // Pre-flight auth check: Verify active profile has valid authentication
-    const profileManager = getClaudeProfileManager();
+    // Ensure profile manager is initialized to prevent race condition
+    let profileManager;
+    try {
+      profileManager = await initializeClaudeProfileManager();
+    } catch (error) {
+      console.error('[AgentManager] Failed to initialize profile manager:', error);
+      this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
+      return;
+    }
     if (!profileManager.hasValidAuth()) {
       this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+      return;
+    }
+
+    // Ensure Python environment is ready before spawning process (prevents exit code 127 race condition)
+    const pythonStatus = await this.processManager.ensurePythonEnvReady('AgentManager');
+    if (!pythonStatus.ready) {
+      this.emit('error', taskId, `Python environment not ready: ${pythonStatus.error || 'initialization failed'}`);
       return;
     }
 
@@ -234,6 +264,13 @@ export class AgentManager extends EventEmitter {
     projectPath: string,
     specId: string
   ): Promise<void> {
+    // Ensure Python environment is ready before spawning process (prevents exit code 127 race condition)
+    const pythonStatus = await this.processManager.ensurePythonEnvReady('AgentManager');
+    if (!pythonStatus.ready) {
+      this.emit('error', taskId, `Python environment not ready: ${pythonStatus.error || 'initialization failed'}`);
+      return;
+    }
+
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
 
     if (!autoBuildSource) {

@@ -1,7 +1,12 @@
 import { spawn } from 'child_process';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { existsSync, readFileSync } from 'fs';
 import { app } from 'electron';
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { EventEmitter } from 'events';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
@@ -297,6 +302,38 @@ export class AgentProcessManager {
   }
 
   /**
+   * Ensure Python environment is ready before spawning processes.
+   * This is a shared method used by AgentManager and AgentQueueManager
+   * to prevent race conditions where tasks start before venv initialization completes.
+   *
+   * @param context - Context identifier for logging (e.g., 'AgentManager', 'AgentQueue')
+   * @returns Object with ready status and optional error message
+   */
+  async ensurePythonEnvReady(context: string): Promise<{ ready: boolean; error?: string }> {
+    if (pythonEnvManager.isEnvReady()) {
+      return { ready: true };
+    }
+
+    console.log(`[${context}] Python environment not ready, waiting for initialization...`);
+
+    const autoBuildSource = this.getAutoBuildSourcePath();
+    if (!autoBuildSource) {
+      const error = 'auto-build source not found';
+      console.error(`[${context}] Cannot initialize Python - ${error}`);
+      return { ready: false, error };
+    }
+
+    const status = await pythonEnvManager.initialize(autoBuildSource);
+    if (!status.ready) {
+      console.error(`[${context}] Python environment initialization failed:`, status.error);
+      return { ready: false, error: status.error || 'initialization failed' };
+    }
+
+    console.log(`[${context}] Python environment now ready`);
+    return { ready: true };
+  }
+
+  /**
    * Get project-specific environment variables based on project settings
    */
   private getProjectEnvVars(projectPath: string): Record<string, string> {
@@ -457,7 +494,7 @@ export class AgentProcessManager {
     let sequenceNumber = 0;
     // FIX (ACS-203): Track completed phases to prevent phase overlaps
     // When a phase completes, it's added to this array before transitioning to the next phase
-    let completedPhases: CompletablePhase[] = [];
+    const completedPhases: CompletablePhase[] = [];
 
     this.emitter.emit('execution-progress', taskId, {
       phase: currentPhase,

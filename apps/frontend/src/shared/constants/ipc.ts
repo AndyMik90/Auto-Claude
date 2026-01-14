@@ -88,12 +88,14 @@ export const IPC_CHANNELS = {
   TERMINAL_OUTPUT: 'terminal:output',
   TERMINAL_EXIT: 'terminal:exit',
   TERMINAL_TITLE_CHANGE: 'terminal:titleChange',
+  TERMINAL_WORKTREE_CONFIG_CHANGE: 'terminal:worktreeConfigChange',  // Worktree config restored/changed (for sync on recovery)
   TERMINAL_CLAUDE_SESSION: 'terminal:claudeSession',  // Claude session ID captured
   TERMINAL_PENDING_RESUME: 'terminal:pendingResume',  // Terminal has pending Claude resume (for deferred activation)
   TERMINAL_RATE_LIMIT: 'terminal:rateLimit',  // Claude Code rate limit detected
   TERMINAL_OAUTH_TOKEN: 'terminal:oauthToken',  // OAuth token captured from setup-token output
   TERMINAL_AUTH_CREATED: 'terminal:authCreated',  // Auth terminal created for OAuth flow
   TERMINAL_CLAUDE_BUSY: 'terminal:claudeBusy',  // Claude Code busy state (for visual indicator)
+  TERMINAL_CLAUDE_EXIT: 'terminal:claudeExit',  // Claude Code exited (returned to shell)
 
   // Claude profile management (multi-account support)
   CLAUDE_PROFILES_GET: 'claude:profilesGet',
@@ -124,29 +126,6 @@ export const IPC_CHANNELS = {
   SETTINGS_SAVE: 'settings:save',
   SETTINGS_GET_CLI_TOOLS_INFO: 'settings:getCliToolsInfo',
 
-  // Templates
-  TEMPLATES_GET: 'templates:get',
-  TEMPLATES_SAVE: 'templates:save',
-  TEMPLATES_DELETE: 'templates:delete',
-  TEMPLATES_UPDATE: 'templates:update',
-  TEMPLATES_COPY: 'templates:copy',
-  TEMPLATES_COPY_WITH_NAME: 'templates:copyWithName',
-  TEMPLATES_PARSE_PARAMETERS: 'templates:parseParameters',
-  TEMPLATES_COPY_WITH_PARAMETERS: 'templates:copyWithParameters',
-
-  // Secrets (Encrypted storage - Group/Account model)
-  SECRETS_CHECK_ENCRYPTION: 'secrets:checkEncryption',
-  SECRETS_GET_GROUPS: 'secrets:getGroups',
-  SECRETS_GET_GROUP: 'secrets:getGroup',
-  SECRETS_CREATE_GROUP: 'secrets:createGroup',
-  SECRETS_UPDATE_GROUP: 'secrets:updateGroup',
-  SECRETS_DELETE_GROUP: 'secrets:deleteGroup',
-  SECRETS_ADD_ACCOUNT: 'secrets:addAccount',
-  SECRETS_UPDATE_ACCOUNT: 'secrets:updateAccount',
-  SECRETS_DELETE_ACCOUNT: 'secrets:deleteAccount',
-  SECRETS_DECRYPT_ACCOUNT: 'secrets:decryptAccount',
-  SECRETS_DECRYPT_ACCOUNT_KEY: 'secrets:decryptAccountKey',
-
   // API Profile management (custom Anthropic-compatible endpoints)
   PROFILES_GET: 'profiles:get',
   PROFILES_SAVE: 'profiles:save',
@@ -160,7 +139,6 @@ export const IPC_CHANNELS = {
 
   // Dialogs
   DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',
-  DIALOG_SELECT_FILE: 'dialog:selectFile',
   DIALOG_CREATE_PROJECT_FOLDER: 'dialog:createProjectFolder',
   DIALOG_GET_DEFAULT_PROJECT_LOCATION: 'dialog:getDefaultProjectLocation',
 
@@ -489,17 +467,12 @@ export const IPC_CHANNELS = {
   FILE_EXPLORER_LIST: 'fileExplorer:list',
   FILE_EXPLORER_READ: 'fileExplorer:read',
 
-  // File operations (for template parameter editor)
-  FILE_READ: 'file:read',
-  FILE_WRITE: 'file:write',
-
   // Git operations
   GIT_GET_BRANCHES: 'git:getBranches',
   GIT_GET_CURRENT_BRANCH: 'git:getCurrentBranch',
   GIT_DETECT_MAIN_BRANCH: 'git:detectMainBranch',
   GIT_CHECK_STATUS: 'git:checkStatus',
   GIT_INITIALIZE: 'git:initialize',
-  GIT_CLONE_REPOSITORY: 'git:cloneRepository',
 
   // App auto-update operations
   APP_UPDATE_CHECK: 'app-update:check',
@@ -507,6 +480,7 @@ export const IPC_CHANNELS = {
   APP_UPDATE_DOWNLOAD_STABLE: 'app-update:download-stable',  // Download stable version (for downgrade from beta)
   APP_UPDATE_INSTALL: 'app-update:install',
   APP_UPDATE_GET_VERSION: 'app-update:get-version',
+  APP_UPDATE_GET_DOWNLOADED: 'app-update:get-downloaded',  // Get downloaded update info (for showing Install button on Settings open)
 
   // App auto-update events (main -> renderer)
   APP_UPDATE_AVAILABLE: 'app-update:available',
@@ -534,6 +508,10 @@ export const IPC_CHANNELS = {
   // Claude Code CLI operations
   CLAUDE_CODE_CHECK_VERSION: 'claudeCode:checkVersion',
   CLAUDE_CODE_INSTALL: 'claudeCode:install',
+  CLAUDE_CODE_GET_VERSIONS: 'claudeCode:getVersions',
+  CLAUDE_CODE_INSTALL_VERSION: 'claudeCode:installVersion',
+  CLAUDE_CODE_GET_INSTALLATIONS: 'claudeCode:getInstallations',
+  CLAUDE_CODE_SET_ACTIVE_PATH: 'claudeCode:setActivePath',
 
   // MCP Server health checks
   MCP_CHECK_HEALTH: 'mcp:checkHealth',           // Quick connectivity check
@@ -542,15 +520,5 @@ export const IPC_CHANNELS = {
   // Sentry error reporting
   SENTRY_STATE_CHANGED: 'sentry:state-changed',  // Notify main process when setting changes
   GET_SENTRY_DSN: 'sentry:get-dsn',              // Get DSN from main process (env var)
-  GET_SENTRY_CONFIG: 'sentry:get-config',        // Get full Sentry config (DSN + sample rates)
-
-  // Template Editor (AI-powered template editing)
-  TEMPLATE_EDITOR_INITIALIZE: 'template-editor:initialize',
-  TEMPLATE_EDITOR_CHECK_INITIALIZED: 'template-editor:check-initialized',
-  TEMPLATE_EDITOR_SEND_MESSAGE: 'template-editor:send-message',
-  TEMPLATE_EDITOR_CLEAR_HISTORY: 'template-editor:clear-history',
-  // Template Editor events (main -> renderer)
-  TEMPLATE_EDITOR_STATUS: 'template-editor:status',
-  TEMPLATE_EDITOR_STREAM_CHUNK: 'template-editor:stream-chunk',
-  TEMPLATE_EDITOR_ERROR: 'template-editor:error'
+  GET_SENTRY_CONFIG: 'sentry:get-config'         // Get full Sentry config (DSN + sample rates)
 } as const;
