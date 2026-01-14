@@ -12,6 +12,7 @@
   },
   "connection": {
     "status": "连接状态",
+    "checking": "检查中...",
     "connectedTo": "已连接",
     "notConnected": "未连接",
     "tasksAvailable": "个任务可导入"

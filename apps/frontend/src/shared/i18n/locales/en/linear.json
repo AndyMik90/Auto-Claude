@@ -12,6 +12,7 @@
   },
   "connection": {
     "status": "Connection Status",
+    "checking": "Checking...",
     "connectedTo": "Connected",
     "notConnected": "Not connected",
     "tasksAvailable": "tasks available to import"

@@ -12,6 +12,7 @@
   },
   "connection": {
     "status": "Statut de connexion",
+    "checking": "Vérification...",
     "connectedTo": "Connecté",
     "notConnected": "Non connecté",
     "tasksAvailable": "tâches disponibles à importer"

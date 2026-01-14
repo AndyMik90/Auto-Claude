@@ -26,6 +26,7 @@
   },
   "connection": {
     "status": "Connection Status",
+    "checking": "Checking...",
     "connectedTo": "Connected to",
     "notConnected": "Not connected"
   },
@@ -39,5 +40,12 @@
   },
   "status": {
     "enabled": "Enabled"
+  },
+  "branch": {
+    "label": "Main Branch",
+    "description": "The base branch for creating task worktrees. All new tasks will branch from here.",
+    "selectPlaceholder": "Select main branch",
+    "loadingBranches": "Loading branches...",
+    "taskBranchDescription": "Tasks will be created on branches like {{example}} from {{baseBranch}}"
   }
 }

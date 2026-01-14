@@ -26,6 +26,7 @@
   },
   "connection": {
     "status": "Statut de connexion",
+    "checking": "Vérification...",
     "connectedTo": "Connecté à",
     "notConnected": "Non connecté"
   },
@@ -39,5 +40,12 @@
   },
   "status": {
     "enabled": "Activé"
+  },
+  "branch": {
+    "label": "Branche principale",
+    "description": "La branche de base pour créer les worktrees de tâches. Toutes les nouvelles tâches en découleront.",
+    "selectPlaceholder": "Sélectionner la branche principale",
+    "loadingBranches": "Chargement des branches...",
+    "taskBranchDescription": "Les tâches seront créées sur des branches comme {{example}} à partir de {{baseBranch}}"
   }
 }

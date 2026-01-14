@@ -26,6 +26,7 @@
   },
   "connection": {
     "status": "连接状态",
+    "checking": "检查中...",
     "connectedTo": "已连接到",
     "notConnected": "未连接"
   },
@@ -39,5 +40,12 @@
   },
   "status": {
     "enabled": "已启用"
+  },
+  "branch": {
+    "label": "主分支",
+    "description": "创建任务工作树的基准分支。所有新任务都将从此分支创建。",
+    "selectPlaceholder": "选择主分支",
+    "loadingBranches": "加载分支中...",
+    "taskBranchDescription": "任务将在像 {{example}} 这样的分支上创建，从 {{baseBranch}} 分出"
   }
 }
