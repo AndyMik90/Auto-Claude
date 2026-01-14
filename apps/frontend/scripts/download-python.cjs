@@ -851,17 +851,10 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
       } else {
         console.log(`[download-python] All critical packages verified`);
 
-        // Ensure .pth file exists (may be missing when upgrading from older versions)
+        // Ensure .pth file exists and is up-to-date (may be missing when upgrading from older versions)
+        // Always recreate to ensure consistency - operation is idempotent and fast
         const pythonDir = path.join(platformDir, 'python');
-        const internalSitePackages = info.nodePlatform === 'win32'
-          ? path.join(pythonDir, 'Lib', 'site-packages')
-          : path.join(pythonDir, 'lib', `python${PYTHON_VERSION.split('.').slice(0, 2).join('.')}`, 'site-packages');
-        const pthPath = path.join(internalSitePackages, 'bundled-packages.pth');
-
-        if (!fs.existsSync(pthPath)) {
-          console.log(`[download-python] .pth file missing, recreating...`);
-          createSitePackagesLink(pythonDir, sitePackagesDir, info.nodePlatform);
-        }
+        createSitePackagesLink(pythonDir, sitePackagesDir, info.nodePlatform);
 
         return { success: true, pythonPath: pythonBin, sitePackagesPath: sitePackagesDir };
       }
