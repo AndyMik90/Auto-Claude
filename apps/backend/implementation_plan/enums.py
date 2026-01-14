@@ -53,5 +53,4 @@ class VerificationType(str, Enum):
     NONE = "none"  # No verification needed (investigation)
 
 
-# Backwards compatibility aliases
 ChunkStatus = SubtaskStatus

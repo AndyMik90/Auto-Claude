@@ -298,6 +298,4 @@ def validate_git_commit_secrets(command_string: str) -> ValidationResult:
     return False, "\n".join(error_lines)
 
 
-# Backwards compatibility alias - the registry uses this name
-# Now delegates to the comprehensive validator
 validate_git_commit = validate_git_command
