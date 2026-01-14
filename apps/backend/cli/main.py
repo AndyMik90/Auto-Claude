@@ -44,6 +44,26 @@ from .workspace_commands import (
     handle_merge_command,
     handle_review_command,
 )
+from .tldr_commands import (
+    handle_tldr_command,
+    handle_tldr_index_command,
+    handle_tldr_stats_command,
+    handle_tldr_semantic_build_command,
+    handle_tldr_semantic_search_command,
+    handle_tldr_semantic_stats_command,
+)
+from .memory_commands import (
+    handle_memory_extract_command,
+    handle_memory_daemon_status_command,
+    handle_memory_insights_command,
+    handle_memory_stats_command,
+    handle_memory_clear_command,
+    handle_memory_index_build_command,
+    handle_memory_search_command,
+    handle_memory_context_command,
+    handle_memory_patterns_command,
+    handle_memory_index_stats_command,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -280,6 +300,103 @@ Environment Variables:
         help="Actually delete files in cleanup (not just preview)",
     )
 
+    # TLDR options (Phase 6)
+    parser.add_argument(
+        "--tldr",
+        type=str,
+        default=None,
+        metavar="FILE",
+        help="Get TLDR summary of a file",
+    )
+    parser.add_argument(
+        "--tldr-index",
+        action="store_true",
+        help="Build/rebuild TLDR index for project",
+    )
+    parser.add_argument(
+        "--tldr-stats",
+        action="store_true",
+        help="Show TLDR index statistics",
+    )
+    parser.add_argument(
+        "--tldr-semantic-index",
+        action="store_true",
+        help="Build semantic search index from TLDR cache",
+    )
+    parser.add_argument(
+        "--tldr-semantic-search",
+        type=str,
+        default=None,
+        metavar="QUERY",
+        help="Semantic search across codebase",
+    )
+    parser.add_argument(
+        "--tldr-semantic-stats",
+        action="store_true",
+        help="Show semantic index statistics",
+    )
+
+    # Memory options (Phase 7)
+    parser.add_argument(
+        "--memory-extract",
+        action="store_true",
+        help="Run memory extraction on transcripts",
+    )
+    parser.add_argument(
+        "--memory-status",
+        action="store_true",
+        help="Show memory daemon status",
+    )
+    parser.add_argument(
+        "--memory-insights",
+        action="store_true",
+        help="View extracted insights",
+    )
+    parser.add_argument(
+        "--memory-stats",
+        action="store_true",
+        help="Show memory system statistics",
+    )
+    parser.add_argument(
+        "--memory-clear",
+        action="store_true",
+        help="Clear extracted insights (requires --confirm)",
+    )
+    parser.add_argument(
+        "--memory-index-build",
+        action="store_true",
+        help="Build/rebuild memory search index",
+    )
+    parser.add_argument(
+        "--memory-search",
+        type=str,
+        default=None,
+        metavar="QUERY",
+        help="Search session memories",
+    )
+    parser.add_argument(
+        "--memory-context",
+        type=str,
+        default=None,
+        metavar="TASK",
+        help="Get relevant context for a task",
+    )
+    parser.add_argument(
+        "--memory-patterns",
+        action="store_true",
+        help="Discover recurring patterns across sessions",
+    )
+    parser.add_argument(
+        "--memory-index-stats",
+        action="store_true",
+        help="Show memory search index statistics",
+    )
+    parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Confirm destructive operations (e.g., --memory-clear)",
+    )
+
     return parser.parse_args()
 
 
@@ -332,6 +449,72 @@ def main() -> None:
 
     if args.batch_cleanup:
         handle_batch_cleanup_command(str(project_dir), dry_run=not args.no_dry_run)
+        return
+
+    # Handle TLDR commands (Phase 6)
+    if args.tldr:
+        handle_tldr_command(args.tldr)
+        return
+
+    if args.tldr_index:
+        handle_tldr_index_command(project_dir)
+        return
+
+    if args.tldr_stats:
+        handle_tldr_stats_command(project_dir)
+        return
+
+    if args.tldr_semantic_index:
+        handle_tldr_semantic_build_command()
+        return
+
+    if args.tldr_semantic_search:
+        handle_tldr_semantic_search_command(args.tldr_semantic_search)
+        return
+
+    if args.tldr_semantic_stats:
+        handle_tldr_semantic_stats_command()
+        return
+
+    # Handle Memory commands (Phase 7)
+    if args.memory_extract:
+        handle_memory_extract_command()
+        return
+
+    if args.memory_status:
+        handle_memory_daemon_status_command()
+        return
+
+    if args.memory_insights:
+        handle_memory_insights_command()
+        return
+
+    if args.memory_stats:
+        handle_memory_stats_command()
+        return
+
+    if args.memory_clear:
+        handle_memory_clear_command(confirm=args.confirm)
+        return
+
+    if args.memory_index_build:
+        handle_memory_index_build_command()
+        return
+
+    if args.memory_search:
+        handle_memory_search_command(args.memory_search)
+        return
+
+    if args.memory_context:
+        handle_memory_context_command(args.memory_context)
+        return
+
+    if args.memory_patterns:
+        handle_memory_patterns_command()
+        return
+
+    if args.memory_index_stats:
+        handle_memory_index_stats_command()
         return
 
     # Require --spec if not listing
