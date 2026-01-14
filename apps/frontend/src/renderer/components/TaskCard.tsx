@@ -84,6 +84,14 @@ function taskCardPropsAreEqual(prevProps: TaskCardProps, nextProps: TaskCardProp
   }
 
   // Compare only the fields that affect rendering
+  // DEBUG: Log message changes
+  if (prevTask.executionProgress?.message !== nextTask.executionProgress?.message) {
+    console.log('[TaskCard memo] Message changed:', { 
+      taskId: prevTask.id,
+      prev: prevTask.executionProgress?.message, 
+      next: nextTask.executionProgress?.message 
+    });
+  }
   const isEqual = (
     prevTask.id === nextTask.id &&
     prevTask.status === nextTask.status &&
@@ -128,7 +136,7 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
     interval: null
   });
 
-  const isRunning = task.status === 'in_progress';
+  const isRunning = task.status === 'in_progress' || task.status === 'ai_review';
   const executionPhase = task.executionProgress?.phase;
   const hasActiveExecution = executionPhase && executionPhase !== 'idle' && executionPhase !== 'complete' && executionPhase !== 'failed';
 
@@ -164,14 +172,16 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
   // Memoize live action status to avoid recreating on every render
   const liveActionStatus = useMemo(() => {
     const message = task.executionProgress?.message;
-    if (!message) return null;
+    const phase = task.executionProgress?.phase;
+    // Don't show live status for terminal phases (complete/failed)
+    if (!message || phase === 'complete' || phase === 'failed') return null;
     const toolStyle = getToolStyleFromMessage(message);
     return {
       icon: toolStyle?.icon ?? Loader2,
       colorClass: toolStyle?.color ?? 'text-muted-foreground bg-muted/50',
       message,
     };
-  }, [task.executionProgress?.message]);
+  }, [task.executionProgress?.message, task.executionProgress?.phase]);
 
   // Memoized stuck check function to avoid recreating on every render
   const performStuckCheck = useCallback(() => {
@@ -518,9 +528,9 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
 
         {/* Live action status - shows current tool activity */}
         {isRunning && !isStuck && liveActionStatus && (
-          <div className={cn("mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px]", liveActionStatus.colorClass)}>
-            <liveActionStatus.icon className="h-3 w-3 shrink-0 animate-pulse" />
-            <span className="truncate" title={liveActionStatus.message}>
+          <div className={cn("mt-2 flex items-start gap-1.5 rounded-md px-2 py-1.5 text-xs", liveActionStatus.colorClass)}>
+            <liveActionStatus.icon className="h-3.5 w-3.5 shrink-0 animate-pulse mt-0.5" />
+            <span className="break-all leading-tight">
               {liveActionStatus.message}
             </span>
           </div>
