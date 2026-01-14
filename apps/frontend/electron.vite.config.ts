@@ -20,31 +20,24 @@ const sentryDefines = {
 export default defineConfig({
   main: {
     define: sentryDefines,
-    plugins: [externalizeDepsPlugin({
-      // Bundle these packages into the main process (they won't be in node_modules in packaged app)
-      exclude: [
-        'uuid',
-        'chokidar',
-        'kuzu',
-        'electron-updater',
-        '@electron-toolkit/utils',
-        // Sentry and its transitive dependencies (opentelemetry -> debug -> ms)
-        '@sentry/electron',
-        '@sentry/core',
-        '@sentry/node',
-        '@sentry/utils',
-        '@opentelemetry/instrumentation',
-        'debug',
-        'ms'
-      ]
-    })],
+    plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/main/index.ts')
         },
-        // Only node-pty needs to be external (native module rebuilt by electron-builder)
-        external: ['@lydell/node-pty']
+        // Externalize all dependencies for electron compatibility
+        external: ['electron', '@lydell/node-pty', 'electron-log', 'chokidar', 'uuid', 'kuzu',
+                  'proper-lockfile', 'semver', 'dotenv', 'minimatch', '@anthropic-ai/sdk',
+                  '@sentry/electron', '@sentry/core', '@sentry/node', '@sentry/utils',
+                  '@opentelemetry/instrumentation', 'debug', 'ms',
+                  '@electron-toolkit/utils', 'electron-updater', '@electron-toolkit/preload'],
+        output: {
+          // Use CJS format for electron compatibility
+          format: 'cjs',
+          entryFileNames: '[name].js',
+          chunkFileNames: '[name]-[hash].js'
+        }
       }
     }
   },

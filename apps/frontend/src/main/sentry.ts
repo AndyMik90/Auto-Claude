@@ -10,9 +10,14 @@
  * - Usernames are masked from all file paths
  * - Project paths remain visible for debugging (this is expected)
  * - Tags, contexts, extra data, and user info are all sanitized
+ *
+ * NOTE: Sentry is temporarily disabled due to pnpm compatibility issues.
+ * The @sentry/electron package uses require('electron') which doesn't work
+ * properly with pnpm's module structure.
  */
 
-import * as Sentry from '@sentry/electron/main';
+// TODO: Fix Sentry for pnpm compatibility
+// import * as Sentry from '@sentry/electron/main';
 import { app, ipcMain } from 'electron';
 import { readSettingsFile } from './settings-utils';
 import { DEFAULT_APP_SETTINGS } from '../shared/constants';
@@ -34,6 +39,15 @@ declare const __SENTRY_PROFILES_SAMPLE_RATE__: string;
 
 // In-memory state for current setting (updated via IPC when user toggles)
 let sentryEnabledState = true;
+
+// Stub Sentry interface when Sentry is disabled
+const StubSentry = {
+  init: () => {},
+  on: () => {}
+};
+
+// Use stub if Sentry is not available
+const Sentry = (globalThis as any).Sentry || StubSentry;
 
 /**
  * Get Sentry DSN from build-time constant

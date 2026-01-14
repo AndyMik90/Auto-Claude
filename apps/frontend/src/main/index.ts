@@ -39,7 +39,8 @@ import { initializeAppUpdater } from './app-updater';
 import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
-import { initSentryMain } from './sentry';
+// TODO: Fix Sentry import for pnpm compatibility
+// import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
 import { initializeClaudeProfileManager } from './claude-profile-manager';
 import type { AppSettings } from '../shared/types';
@@ -65,7 +66,8 @@ const DEFAULT_SCREEN_HEIGHT: number = 1080;
 setupErrorLogging();
 
 // Initialize Sentry for error tracking (respects user's sentryEnabled setting)
-initSentryMain();
+// TODO: Fix Sentry for pnpm compatibility
+// initSentryMain();
 
 /**
  * Load app settings synchronously (for use during startup).
