@@ -13,12 +13,15 @@ import type { Task } from '../../../shared/types';
 function createTestTask(overrides: Partial<Task> = {}): Task {
   return {
     id: `task-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    specId: `spec-${Date.now()}`,
     title: 'Test Task',
     description: 'Test task description',
     status: 'backlog',
     projectId: 'test-project',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    subtasks: [],
+    logs: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
     ...overrides
   };
 }
@@ -466,7 +469,7 @@ describe('KanbanBoard Drag-to-Scroll Logic', () => {
 
     it('should not scroll when container ref is null', () => {
       let isScrollDragging = true;
-      const scrollContainerRef = { current: null };
+      const scrollContainerRef: { current: HTMLDivElement | null } = { current: null };
       const preventDefaultSpy = vi.fn();
 
       const handleMouseMove = (e: MouseEvent) => {
@@ -662,7 +665,7 @@ describe('KanbanBoard Drag-to-Scroll Logic', () => {
       let isScrollDragging = false;
       const dragStartX = { current: 0 };
       const dragStartScrollLeft = { current: 0 };
-      const scrollContainerRef = { current: null };
+      const scrollContainerRef: { current: HTMLDivElement | null } = { current: null };
 
       const handleMouseDown = (e: React.MouseEvent) => {
         if (e.target instanceof HTMLElement && (
