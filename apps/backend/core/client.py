@@ -669,15 +669,35 @@ def is_graphiti_mcp_enabled() -> bool:
     """
     Check if Graphiti MCP server integration is enabled.
 
-    Requires GRAPHITI_MCP_URL to be set (e.g., http://localhost:8000/mcp/)
+    Requires GRAPHITI_MCP_URL to be set to the Graphiti server endpoint.
     This is separate from GRAPHITI_ENABLED which controls the Python library integration.
     """
     return bool(os.environ.get("GRAPHITI_MCP_URL"))
 
 
 def get_graphiti_mcp_url() -> str:
-    """Get the Graphiti MCP server URL."""
-    return os.environ.get("GRAPHITI_MCP_URL", "http://localhost:8000/mcp/")
+    """
+    Get the Graphiti MCP server URL.
+
+    Returns:
+        The configured GRAPHITI_MCP_URL value.
+
+    Raises:
+        ValueError: If GRAPHITI_MCP_URL is not set. Use is_graphiti_mcp_enabled()
+                   to check before calling this function.
+
+    Note:
+        No default URL is provided intentionally - silently connecting to an
+        unconfigured endpoint would cause confusing failures.
+        Users must explicitly set GRAPHITI_MCP_URL when using Graphiti MCP.
+    """
+    url = os.environ.get("GRAPHITI_MCP_URL")
+    if not url:
+        raise ValueError(
+            "GRAPHITI_MCP_URL is not set. "
+            "Set this environment variable to the Graphiti server MCP endpoint."
+        )
+    return url
 
 
 def is_electron_mcp_enabled() -> bool:
