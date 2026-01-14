@@ -21,7 +21,7 @@ def is_graphiti_enabled() -> bool:
     This is a convenience re-export from graphiti_config.
     Returns True if GRAPHITI_ENABLED=true and provider credentials are valid.
     """
-    from graphiti_config import is_graphiti_enabled as _is_graphiti_enabled
+    from integrations.graphiti.config import is_graphiti_enabled as _is_graphiti_enabled
 
     return _is_graphiti_enabled()
 

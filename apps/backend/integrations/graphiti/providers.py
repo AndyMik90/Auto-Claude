@@ -18,8 +18,8 @@ The actual implementation has been refactored into a package structure:
 For backward compatibility, this module re-exports all public APIs.
 
 Usage:
-    from graphiti_providers import create_llm_client, create_embedder
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.providers import create_llm_client, create_embedder
+    from integrations.graphiti.config import GraphitiConfig
 
     config = GraphitiConfig.from_env()
     llm_client = create_llm_client(config)
@@ -27,7 +27,7 @@ Usage:
 """
 
 # Re-export all public APIs from the package
-from graphiti_providers import (
+from integrations.graphiti.providers_pkg import (
     # Models
     EMBEDDING_DIMENSIONS,
     # Exceptions

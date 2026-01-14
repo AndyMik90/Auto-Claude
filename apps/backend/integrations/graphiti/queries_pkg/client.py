@@ -9,7 +9,7 @@ import logging
 import sys
 from datetime import datetime, timezone
 
-from graphiti_config import GraphitiConfig, GraphitiState
+from integrations.graphiti.config import GraphitiConfig, GraphitiState
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ class GraphitiClient:
             from graphiti_core import Graphiti
 
             # Import our provider factory
-            from graphiti_providers import (
+            from integrations.graphiti.providers_pkg import (
                 ProviderError,
                 ProviderNotInstalled,
                 create_embedder,

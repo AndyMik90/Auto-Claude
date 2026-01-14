@@ -26,7 +26,7 @@ see graphiti/graphiti.py.
 from pathlib import Path
 
 # Import config utilities
-from graphiti_config import (
+from integrations.graphiti.config import (
     GraphitiConfig,
     is_graphiti_enabled,
 )
@@ -92,7 +92,7 @@ async def test_graphiti_connection() -> tuple[bool, str]:
     try:
         from graphiti_core import Graphiti
         from graphiti_core.driver.falkordb_driver import FalkorDriver
-        from graphiti_providers import ProviderError, create_embedder, create_llm_client
+        from integrations.graphiti.providers_pkg import ProviderError, create_embedder, create_llm_client
 
         # Create providers
         try:
@@ -138,7 +138,7 @@ async def test_provider_configuration() -> dict:
     Returns:
         Dict with test results for each component
     """
-    from graphiti_providers import (
+    from integrations.graphiti.providers_pkg import (
         test_embedder_connection,
         test_llm_connection,
         test_ollama_connection,

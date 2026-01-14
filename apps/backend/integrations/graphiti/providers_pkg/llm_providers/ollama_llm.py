@@ -8,7 +8,7 @@ Ollama LLM client implementation for Graphiti (using OpenAI-compatible interface
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.config import GraphitiConfig
 
 from ..exceptions import ProviderError, ProviderNotInstalled
 

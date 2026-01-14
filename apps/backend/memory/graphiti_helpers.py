@@ -30,7 +30,7 @@ def is_graphiti_memory_enabled() -> bool:
     See graphiti_config.py for detailed provider requirements.
     """
     try:
-        from graphiti_config import is_graphiti_enabled
+        from integrations.graphiti.config import is_graphiti_enabled
 
         return is_graphiti_enabled()
     except ImportError:

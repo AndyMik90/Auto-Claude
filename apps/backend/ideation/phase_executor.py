@@ -81,7 +81,7 @@ class PhaseExecutor:
             )
 
         # Check if Graphiti is enabled
-        from graphiti_providers import is_graphiti_enabled
+        from integrations.graphiti.providers_pkg import is_graphiti_enabled
 
         if not is_graphiti_enabled():
             print_status("Graphiti not enabled, skipping graph hints", "info")

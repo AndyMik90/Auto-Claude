@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from debug import debug, debug_error, debug_success
-from graphiti_providers import get_graph_hints, is_graphiti_enabled
+from integrations.graphiti.providers_pkg import get_graph_hints, is_graphiti_enabled
 from ui import print_status
 
 from .models import RoadmapPhaseResult

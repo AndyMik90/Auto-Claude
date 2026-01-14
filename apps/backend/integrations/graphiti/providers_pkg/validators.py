@@ -9,7 +9,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.config import GraphitiConfig
 
 from .exceptions import ProviderError, ProviderNotInstalled
 from .models import get_expected_embedding_dim

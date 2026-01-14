@@ -19,7 +19,7 @@ from debug import (
     debug_warning,
     is_debug_enabled,
 )
-from graphiti_config import get_graphiti_status, is_graphiti_enabled
+from integrations.graphiti.config import get_graphiti_status, is_graphiti_enabled
 
 # Import from parent memory package
 # Now safe since this module is named memory_manager (not memory)

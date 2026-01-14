@@ -8,7 +8,7 @@ Individual embedder provider implementations for Graphiti.
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.config import GraphitiConfig
 
 from .azure_openai_embedder import create_azure_openai_embedder
 from .google_embedder import create_google_embedder

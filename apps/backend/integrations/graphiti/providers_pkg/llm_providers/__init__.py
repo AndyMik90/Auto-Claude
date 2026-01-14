@@ -8,7 +8,7 @@ Individual LLM provider implementations for Graphiti.
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.config import GraphitiConfig
 
 from .anthropic_llm import create_anthropic_llm_client
 from .azure_openai_llm import create_azure_openai_llm_client

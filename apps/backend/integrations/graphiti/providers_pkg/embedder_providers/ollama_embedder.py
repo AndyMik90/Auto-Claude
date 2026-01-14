@@ -17,7 +17,7 @@ Supported models with known dimensions:
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.config import GraphitiConfig
 
 from ..exceptions import ProviderError, ProviderNotInstalled
 

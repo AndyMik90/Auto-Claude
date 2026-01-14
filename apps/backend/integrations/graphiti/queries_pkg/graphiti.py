@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from graphiti_config import GraphitiConfig, GraphitiState
+from integrations.graphiti.config import GraphitiConfig, GraphitiState
 
 from .client import GraphitiClient
 from .queries import GraphitiQueries

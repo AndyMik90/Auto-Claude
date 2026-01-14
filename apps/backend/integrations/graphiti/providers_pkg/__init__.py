@@ -14,8 +14,8 @@ This package provides:
 - Convenience functions for graph-based memory queries
 
 Usage:
-    from graphiti_providers import create_llm_client, create_embedder
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.providers_pkg import create_llm_client, create_embedder
+    from integrations.graphiti.config import GraphitiConfig
 
     config = GraphitiConfig.from_env()
     llm_client = create_llm_client(config)

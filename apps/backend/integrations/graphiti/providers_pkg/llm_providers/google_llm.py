@@ -14,7 +14,7 @@ from ..exceptions import ProviderError, ProviderNotInstalled
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.config import GraphitiConfig
 
 
 # Default model for Google LLM

@@ -20,7 +20,7 @@ from debug import (
     debug_success,
     debug_warning,
 )
-from graphiti_providers import get_graph_hints, is_graphiti_enabled
+from integrations.graphiti.providers_pkg import get_graph_hints, is_graphiti_enabled
 
 
 class ProjectAnalyzer:

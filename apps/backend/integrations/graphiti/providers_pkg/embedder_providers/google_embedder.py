@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 from ..exceptions import ProviderError, ProviderNotInstalled
 
 if TYPE_CHECKING:
-    from graphiti_config import GraphitiConfig
+    from integrations.graphiti.config import GraphitiConfig
 
 
 # Default embedding model for Google

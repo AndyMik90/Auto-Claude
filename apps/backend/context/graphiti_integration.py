@@ -7,7 +7,7 @@ Integration with Graphiti for historical hints and cross-session context.
 
 # Import graphiti providers for optional historical hints
 try:
-    from graphiti_providers import get_graph_hints, is_graphiti_enabled
+    from integrations.graphiti.providers_pkg import get_graph_hints, is_graphiti_enabled
 
     GRAPHITI_AVAILABLE = True
 except ImportError:
