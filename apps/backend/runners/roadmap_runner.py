@@ -8,9 +8,10 @@ Analyzes project structure, understands target audience, and generates
 a strategic feature roadmap.
 
 Usage:
-    python auto-claude/roadmap_runner.py --project /path/to/project
-    python auto-claude/roadmap_runner.py --project /path/to/project --refresh
-    python auto-claude/roadmap_runner.py --project /path/to/project --output roadmap.json
+    cd apps/backend
+    python runners/roadmap_runner.py --project /path/to/project
+    python runners/roadmap_runner.py --project /path/to/project --refresh
+    python runners/roadmap_runner.py --project /path/to/project --output roadmap.json
 """
 
 import asyncio
