@@ -29,6 +29,8 @@ interface TerminalHeaderProps {
   worktreeConfig?: TerminalWorktreeConfig;
   /** Project path for worktree operations */
   projectPath?: string;
+  /** Effective current working directory (includes worktree path if applicable) */
+  effectiveCwd?: string;
   /** Callback to open worktree creation dialog */
   onCreateWorktree?: () => void;
   /** Callback when an existing worktree is selected */
@@ -59,6 +61,7 @@ export function TerminalHeader({
   terminalCount = 1,
   worktreeConfig,
   projectPath,
+  effectiveCwd,
   onCreateWorktree,
   onSelectWorktree,
   onOpenInIDE,
@@ -162,10 +165,10 @@ export function TerminalHeader({
           </Button>
         )}
         {/* NPM Scripts dropdown - show when not in Claude mode and terminal is running */}
-        {!isClaudeMode && status !== 'exited' && projectPath && (
+        {!isClaudeMode && status !== 'exited' && effectiveCwd && (
           <NpmScriptSelector
             terminalId={terminalId}
-            projectPath={projectPath}
+            projectPath={effectiveCwd}
             terminalCount={terminalCount}
             disabled={false}
           />
