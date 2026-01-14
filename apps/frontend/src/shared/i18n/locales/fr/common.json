@@ -92,7 +92,8 @@
     "optional": "Optionnel",
     "required": "Requis",
     "dismiss": "Ignorer",
-    "enterToOverride": "Entrez pour remplacer la clé globale..."
+    "enterToOverride": "Entrez pour remplacer la clé globale...",
+    "getKeyFrom": "Obtenez votre clé auprès de"
   },
   "time": {
     "justNow": "À l'instant",

@@ -92,7 +92,8 @@
     "optional": "可选",
     "required": "必填",
     "dismiss": "忽略",
-    "enterToOverride": "输入以覆盖全局密钥..."
+    "enterToOverride": "输入以覆盖全局密钥...",
+    "getKeyFrom": "从以下获取密钥"
   },
   "time": {
     "justNow": "刚刚",

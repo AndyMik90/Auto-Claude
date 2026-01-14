@@ -652,6 +652,57 @@
       "nameDescription": "Name for the memory database (stored in ~/.auto-claude/memories/)",
       "path": "Database Path (Optional)",
       "pathDescription": "Custom storage location. Default: ~/.auto-claude/memories/"
+    },
+    "infrastructure": {
+      "title": "Memory Infrastructure",
+      "kuzuDatabase": "Kuzu Database",
+      "installed": "Installed",
+      "notAvailable": "Not Available",
+      "database": "Database",
+      "ready": "Ready",
+      "willBeCreated": "Will be created on first use",
+      "requiresKuzu": "Requires Kuzu",
+      "availableDatabases": "Available databases:",
+      "graphMemoryReady": "Graph memory is ready to use",
+      "requiresPython": "Graph memory requires Python 3.12+ with LadybugDB. No Docker needed."
+    },
+    "security": {
+      "ladybugdbDescription": "Persistent cross-session memory using LadybugDB (embedded database)",
+      "fileBasedDescription": "Using file-based memory. Session insights are stored locally in JSON files. Enable Memory for persistent cross-session context with semantic search.",
+      "agentAccess": {
+        "label": "Enable Agent Memory Access",
+        "description": "Allow agents to search and add to the knowledge graph via MCP"
+      },
+      "mcpServer": {
+        "label": "Graphiti MCP Server URL",
+        "description": "URL of the Graphiti MCP server for agent memory access"
+      },
+      "embedding": {
+        "provider": "Embedding Provider",
+        "description": "Provider for semantic search (optional - keyword search works without)",
+        "selectPlaceholder": "Select embedding provider"
+      },
+      "voyage": {
+        "modelOptional": "Embedding Model (optional)"
+      },
+      "aria": {
+        "hideOpenAIKey": "Hide OpenAI API key",
+        "showOpenAIKey": "Show OpenAI API key",
+        "hideVoyageKey": "Hide Voyage AI API key",
+        "showVoyageKey": "Show Voyage AI API key",
+        "hideGoogleKey": "Hide Google API key",
+        "showGoogleKey": "Show Google API key",
+        "hideAzureKey": "Hide Azure OpenAI API key",
+        "showAzureKey": "Show Azure OpenAI API key"
+      },
+      "links": {
+        "openai": "OpenAI",
+        "voyage": "Voyage AI",
+        "googleAIStudio": "Google AI Studio"
+      },
+      "database": {
+        "storedIn": "Stored in ~/.auto-claude/memories/"
+      }
     }
   },
   "claudeAuth": {

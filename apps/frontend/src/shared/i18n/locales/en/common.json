@@ -92,7 +92,8 @@
     "optional": "Optional",
     "required": "Required",
     "dismiss": "Dismiss",
-    "enterToOverride": "Enter to override global key..."
+    "enterToOverride": "Enter to override global key...",
+    "getKeyFrom": "Get your key from"
   },
   "time": {
     "justNow": "Just now",

@@ -644,6 +644,57 @@
 			"nameDescription": "内存数据库的名称（存储在 ~/.auto-claude/memories/）",
 			"path": "数据库路径（可选）",
 			"pathDescription": "自定义存储位置。默认：~/.auto-claude/memories/"
+		},
+		"infrastructure": {
+			"title": "内存基础设施",
+			"kuzuDatabase": "Kuzu 数据库",
+			"installed": "已安装",
+			"notAvailable": "不可用",
+			"database": "数据库",
+			"ready": "就绪",
+			"willBeCreated": "将在首次使用时创建",
+			"requiresKuzu": "需要 Kuzu",
+			"availableDatabases": "可用数据库：",
+			"graphMemoryReady": "图内存已准备就绪",
+			"requiresPython": "图内存需要 Python 3.12+ 和 LadybugDB。无需 Docker。"
+		},
+		"security": {
+			"ladybugdbDescription": "使用 LadybugDB（嵌入式数据库）的持久化跨会话内存",
+			"fileBasedDescription": "使用基于文件的内存。会话洞察本地存储在 JSON 文件中。启用内存以获得持久化跨会话上下文和语义搜索功能。",
+			"agentAccess": {
+				"label": "启用代理内存访问",
+				"description": "允许代理通过 MCP 搜索和添加到知识图谱"
+			},
+			"mcpServer": {
+				"label": "Graphiti MCP 服务器 URL",
+				"description": "代理内存访问的 Graphiti MCP 服务器 URL"
+			},
+			"embedding": {
+				"provider": "嵌入提供商",
+				"description": "语义搜索提供商（可选 - 不使用时关键词搜索仍有效）",
+				"selectPlaceholder": "选择嵌入提供商"
+			},
+			"voyage": {
+				"modelOptional": "嵌入模型（可选）"
+			},
+			"aria": {
+				"hideOpenAIKey": "隐藏 OpenAI API 密钥",
+				"showOpenAIKey": "显示 OpenAI API 密钥",
+				"hideVoyageKey": "隐藏 Voyage AI API 密钥",
+				"showVoyageKey": "显示 Voyage AI API 密钥",
+				"hideGoogleKey": "隐藏 Google API 密钥",
+				"showGoogleKey": "显示 Google API 密钥",
+				"hideAzureKey": "隐藏 Azure OpenAI API 密钥",
+				"showAzureKey": "显示 Azure OpenAI API 密钥"
+			},
+			"links": {
+				"openai": "OpenAI",
+				"voyage": "Voyage AI",
+				"googleAIStudio": "Google AI Studio"
+			},
+			"database": {
+				"storedIn": "存储在 ~/.auto-claude/memories/"
+			}
 		}
 	},
 	"claudeAuth": {
