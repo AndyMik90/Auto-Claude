@@ -45,18 +45,15 @@ def _verify_gh_executable(path: str) -> bool:
         return False
 
 
-def _run_where_command(command: str) -> str | None:
-    """Run a Windows 'where' command and return the first result.
-
-    Args:
-        command: The command to run (e.g., "where gh")
+def _run_where_command() -> str | None:
+    """Run Windows 'where gh' command to find gh executable.
 
     Returns:
         First path found, or None if command failed
     """
     try:
         result = subprocess.run(
-            command,
+            ["where", "gh"],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -68,6 +65,7 @@ def _run_where_command(command: str) -> str | None:
             if found_path and os.path.isfile(found_path):
                 return found_path
     except (subprocess.TimeoutExpired, OSError):
+        # 'where' command failed or timed out - fall through to return None
         pass
     return None
 
@@ -134,6 +132,6 @@ def _find_gh_executable() -> str | None:
                 return path
 
         # 5. Try 'where' command with shell=True (more reliable on Windows)
-        return _run_where_command("where gh")
+        return _run_where_command()
 
     return None
