@@ -10,7 +10,7 @@ Tests cover:
 - No validation on Python < 3.12
 """
 
-import builtins
+import ast
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
@@ -38,12 +38,13 @@ class TestValidatePlatformDependencies:
         This is the primary fix for ACS-253: ensure users get a clear error
         message instead of a cryptic pywintypes import error.
         """
+        import builtins
+
         with patch("sys.platform", "win32"), \
              patch("sys.version_info", (3, 12, 0)), \
              patch("core.dependency_validator._exit_with_pywin32_error") as mock_exit:
 
             # Mock pywintypes import to raise ImportError
-            import builtins
             original_import = builtins.__import__
 
             def mock_import(name, *args, **kwargs):
@@ -59,13 +60,20 @@ class TestValidatePlatformDependencies:
 
     def test_windows_python_312_with_pywin32_installed_continues(self):
         """Windows + Python 3.12+ with pywin32 installed should continue."""
+        import builtins
+
+        # Capture the original __import__ before any patching
+        original_import = builtins.__import__
+
+        def selective_mock(name, *args, **kwargs):
+            """Return mock for pywintypes, delegate everything else to original."""
+            if name == "pywintypes":
+                return MagicMock()
+            return original_import(name, *args, **kwargs)
+
         with patch("sys.platform", "win32"), \
              patch("sys.version_info", (3, 12, 0)), \
-             patch("builtins.__import__") as mock_import:
-            # Mock pywintypes as successfully importable
-            mock_pywintypes = MagicMock()
-            mock_import.return_value = mock_pywintypes
-
+             patch("builtins.__import__", side_effect=selective_mock):
             # Should not raise SystemExit
             validate_platform_dependencies()
 
@@ -104,16 +112,18 @@ class TestValidatePlatformDependencies:
 
     def test_windows_python_313_validates(self):
         """Windows + Python 3.13+ should validate pywin32."""
+        import builtins
+
         with patch("sys.platform", "win32"), \
              patch("sys.version_info", (3, 13, 0)), \
              patch("core.dependency_validator._exit_with_pywin32_error") as mock_exit:
 
-            import builtins
+            original_import = builtins.__import__
 
             def mock_import(name, *args, **kwargs):
                 if name == "pywintypes":
                     raise ImportError("No module named 'pywintypes'")
-                return builtins.__import__(name, *args, **kwargs)
+                return original_import(name, *args, **kwargs)
 
             with patch("builtins.__import__", side_effect=mock_import):
                 validate_platform_dependencies()
@@ -166,8 +176,9 @@ class TestExitWithPywin32Error:
             call_args = mock_exit.call_args[0][0]
             message = str(call_args)
 
-            # Should reference the venv Scripts/activate path
-            assert "/path/to/venv" in message or "Scripts" in message
+            # Should reference the full venv Scripts/activate path
+            assert "/path/to/venv" in message
+            assert "Scripts" in message
 
     def test_exit_message_contains_python_executable(self):
         """Error message should include the current Python executable."""
@@ -203,6 +214,8 @@ class TestImportOrderPreventsEarlyFailure:
         validator runs early and doesn't import modules that would trigger
         the graphiti_core -> real_ladybug -> pywintypes import chain.
         """
+        import builtins
+
         # Track imports made during validation
         imported_modules = set()
         original_import = builtins.__import__
@@ -235,48 +248,53 @@ class TestImportOrderPreventsEarlyFailure:
         modules imported by cli.utils (e.g., linear_integration, spec.pipeline).
         The key fix is that the DIRECT import from cli/utils.py is lazy.
         """
+        import ast
+
         # Read cli/utils.py to verify the import is NOT at module level
         backend_dir = Path(__file__).parent.parent / "apps" / "backend"
         utils_py = backend_dir / "cli" / "utils.py"
         utils_content = utils_py.read_text()
 
-        # Verify that graphiti_config is NOT imported at module level
-        # (before the first function definition)
-        lines = utils_content.split("\n")
+        # Parse the file with AST to find the first function definition
+        tree = ast.parse(utils_content)
 
-        # Find the first function definition
-        first_function_idx = None
-        for i, line in enumerate(lines):
-            if line.strip().startswith("def ") and not line.strip().startswith("def _"):
-                first_function_idx = i
+        # Find the line number of the first top-level function
+        first_function_lineno = None
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                first_function_lineno = node.lineno
                 break
+            elif isinstance(node, (ast.AsyncFunctionDef, ast.ClassDef)):
+                # Skip async functions and classes, find first regular function
+                continue
 
-        assert first_function_idx is not None, "Could not find first function in cli/utils.py"
+        assert first_function_lineno is not None, "Could not find first function in cli/utils.py"
 
-        # Check that graphiti_config is NOT imported before the first function
-        module_level_imports = "\n".join(lines[:first_function_idx])
+        # Check module-level imports (before the first function)
+        lines = utils_content.split("\n")
+        module_level_imports = "\n".join(lines[:first_function_lineno])
+
         assert "from graphiti_config import" not in module_level_imports, \
             "graphiti_config should not be imported at module level in cli/utils.py"
 
         # Verify that graphiti_config IS imported inside validate_environment()
-        validate_env_start = None
-        next_function_start = None
+        validate_env_lineno = None
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name == "validate_environment":
+                validate_env_lineno = node.lineno
+                # Find the end of the function (next top-level node or end of file)
+                node_index = tree.body.index(node)
+                if node_index + 1 < len(tree.body):
+                    next_node = tree.body[node_index + 1]
+                    validate_env_end_lineno = next_node.lineno
+                else:
+                    validate_env_end_lineno = len(lines)
+                break
 
-        for i, line in enumerate(lines):
-            # Find validate_environment function
-            if validate_env_start is None and "def validate_environment" in line:
-                validate_env_start = i
-            # Find the next function definition (to know where validate_environment ends)
-            elif validate_env_start is not None and next_function_start is None:
-                if line.strip().startswith("def ") and not line.strip().startswith("def _"):
-                    next_function_start = i
-                    break
+        assert validate_env_lineno is not None, "Could not find validate_environment function"
 
-        assert validate_env_start is not None, "Could not find validate_environment function"
-
-        # Look for the import from validate_env_start to the next function (or end of file)
-        end_idx = next_function_start if next_function_start else len(lines)
-        validate_env_block = "\n".join(lines[validate_env_start:end_idx])
+        # Look for the import within the function's body
+        validate_env_block = "\n".join(lines[validate_env_lineno - 1:validate_env_end_lineno])
         assert "from graphiti_config import get_graphiti_status" in validate_env_block, \
             "graphiti_config should be imported inside validate_environment()"
 
@@ -412,7 +430,7 @@ class TestCliUtilsGetProjectDir:
 class TestCliUtilsSetupEnvironment:
     """Tests for setup_environment function."""
 
-    def test_setup_environment_loads_dotenv(self):
+    def test_setup_environment_returns_backend_dir(self):
         """
         setup_environment returns the script directory (apps/backend).
 
@@ -429,14 +447,11 @@ class TestCliUtilsSetupEnvironment:
         assert script_dir.name == "backend"
         assert script_dir.parent.name == "apps"
 
-        # Verify script_dir is in sys.path
-        assert str(script_dir) in sys.path
-
-    def test_setup_environment_adds_to_path(self, temp_dir):
+    def test_setup_environment_adds_to_path(self):
         """Add script directory to sys.path."""
         from cli.utils import setup_environment
 
         script_dir = setup_environment()
 
         # Verify script_dir is in sys.path
-        assert str(script_dir) in sys.path or str(temp_dir) in sys.path
+        assert str(script_dir) in sys.path
