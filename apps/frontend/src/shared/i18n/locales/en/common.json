@@ -688,5 +688,8 @@
     "weeklyUsage": "Weekly Usage",
     "resets": "Resets:",
     "activeAccount": "Active Account"
+  },
+  "imageUpload": {
+    "largeFileWarning": "Large file - consider compressing"
   }
 }

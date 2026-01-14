@@ -677,5 +677,8 @@
     "weeklyUsage": "每周使用量",
     "resets": "重置：",
     "activeAccount": "活动账户"
+  },
+  "imageUpload": {
+    "largeFileWarning": "大文件 - 建议压缩"
   }
 }

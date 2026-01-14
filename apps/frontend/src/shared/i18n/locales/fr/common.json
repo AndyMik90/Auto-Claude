@@ -688,5 +688,8 @@
     "weeklyUsage": "Utilisation hebdomadaire",
     "resets": "Réinitialisation :",
     "activeAccount": "Compte actif"
+  },
+  "imageUpload": {
+    "largeFileWarning": "Fichier volumineux - envisagez de compresser"
   }
 }

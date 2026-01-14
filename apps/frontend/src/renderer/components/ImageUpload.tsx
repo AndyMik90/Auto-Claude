@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, type DragEvent, type ChangeEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, X, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -128,6 +129,7 @@ export function ImageUpload({
   disabled = false,
   className
 }: ImageUploadProps) {
+  const { t } = useTranslation('common');
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -378,7 +380,7 @@ export function ImageUpload({
               {image.size > MAX_IMAGE_SIZE && (
                 <div
                   className="absolute top-1 left-1 p-1 rounded-full bg-warning/90"
-                  title="Large file - consider compressing"
+                  title={t('imageUpload.largeFileWarning')}
                 >
                   <AlertCircle className="h-3 w-3 text-warning-foreground" />
                 </div>
