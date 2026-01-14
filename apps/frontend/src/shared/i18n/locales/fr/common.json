@@ -445,7 +445,10 @@
   },
   "fileExplorer": {
     "title": "Fichiers du projet",
-    "dragHint": "Faites glisser des fichiers dans un terminal pour insérer le chemin"
+    "dragHint": "Faites glisser des fichiers dans un terminal pour insérer le chemin",
+    "dragHintDrawer": "Faites glisser des fichiers pour les ajouter en référence",
+    "refresh": "Actualiser",
+    "close": "Fermer"
   },
   "worktrees": {
     "title": "Worktrees",
@@ -691,5 +694,23 @@
   },
   "imageUpload": {
     "largeFileWarning": "Fichier volumineux - envisagez de compresser"
+  },
+  "projectSelector": {
+    "selectProject": "Sélectionner un projet...",
+    "noProjectsYet": "Aucun projet",
+    "addProject": "Ajouter un projet..."
+  },
+  "memoryCard": {
+    "expand": "Développer",
+    "collapse": "Réduire",
+    "whatWorked": "Ce qui a fonctionné",
+    "whatFailed": "Ce qui a échoué",
+    "approach": "Approche",
+    "recommendations": "Recommandations",
+    "patterns": "Motifs",
+    "gotchas": "Pièges",
+    "changedFiles": "Fichiers modifiés",
+    "fileInsights": "Aperçus de fichiers",
+    "subtasksCompleted": "Sous-tâches terminées"
   }
 }

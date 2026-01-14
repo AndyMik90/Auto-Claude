@@ -1,4 +1,7 @@
 {
+  "claude": {
+    "label": "Claude"
+  },
   "expand": {
     "expand": "Agrandir le terminal",
     "collapse": "Reduire le terminal"

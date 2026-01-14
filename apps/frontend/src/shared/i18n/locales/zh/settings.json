@@ -183,7 +183,12 @@
 		"fineTuneDescription": "以 5% 的增量从 75% 调整到 200%",
 		"default": "默认",
 		"comfortable": "舒适",
-		"large": "大"
+		"large": "大",
+		"resetToDefault": "重置为默认值（100%）",
+		"decreaseScale": "减少 {{step}}%",
+		"increaseScale": "增加 {{step}}%",
+		"applyScaleChanges": "应用缩放更改",
+		"apply": "应用"
 	},
 	"general": {
 		"otherAgentSettings": "其他代理设置",
@@ -237,7 +242,12 @@
 		"dark": "暗色",
 		"system": "跟随系统",
 		"colorTheme": "颜色主题",
-		"colorThemeDescription": "选择您偏好的调色板"
+		"colorThemeDescription": "选择您偏好的调色板",
+		"appearanceMode": "外观模式",
+		"appearanceModeDescription": "选择亮色、暗色或跟随系统",
+		"selectColorPalette": "为界面选择调色板",
+		"backgroundColor": "背景颜色",
+		"accentColor": "强调颜色"
 	},
 	"devtools": {
 		"title": "开发工具",

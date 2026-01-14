@@ -183,7 +183,12 @@
     "fineTuneDescription": "Ajustez de 75% à 200% par incréments de 5%",
     "default": "Par défaut",
     "comfortable": "Confortable",
-    "large": "Grand"
+    "large": "Grand",
+    "resetToDefault": "Réinitialiser à 100 %",
+    "decreaseScale": "Diminuer l'échelle de {{step}} %",
+    "increaseScale": "Augmenter l'échelle de {{step}} %",
+    "applyScaleChanges": "Appliquer les changements d'échelle",
+    "apply": "Appliquer"
   },
   "general": {
     "otherAgentSettings": "Autres paramètres de l'agent",
@@ -237,7 +242,12 @@
     "dark": "Sombre",
     "system": "Système",
     "colorTheme": "Thème de couleur",
-    "colorThemeDescription": "Choisissez votre palette de couleurs préférée"
+    "colorThemeDescription": "Choisissez votre palette de couleurs préférée",
+    "appearanceMode": "Mode d'apparence",
+    "appearanceModeDescription": "Choisir clair, sombre, ou préférence système",
+    "selectColorPalette": "Sélectionner une palette de couleurs pour l'interface",
+    "backgroundColor": "Couleur d'arrière-plan",
+    "accentColor": "Couleur d'accent"
   },
   "devtools": {
     "title": "Outils de développement",

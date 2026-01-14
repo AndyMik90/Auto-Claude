@@ -1,4 +1,7 @@
 {
+  "claude": {
+    "label": "Claude"
+  },
   "expand": {
     "expand": "展开终端",
     "collapse": "折叠终端"

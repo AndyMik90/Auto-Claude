@@ -445,7 +445,10 @@
   },
   "fileExplorer": {
     "title": "Project Files",
-    "dragHint": "Drag files into a terminal to insert the path"
+    "dragHint": "Drag files into a terminal to insert the path",
+    "dragHintDrawer": "Drag files to add as references",
+    "refresh": "Refresh",
+    "close": "Close"
   },
   "worktrees": {
     "title": "Worktrees",
@@ -691,5 +694,23 @@
   },
   "imageUpload": {
     "largeFileWarning": "Large file - consider compressing"
+  },
+  "projectSelector": {
+    "selectProject": "Select a project...",
+    "noProjectsYet": "No projects yet",
+    "addProject": "Add Project..."
+  },
+  "memoryCard": {
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "whatWorked": "What Worked",
+    "whatFailed": "What Failed",
+    "approach": "Approach",
+    "recommendations": "Recommendations",
+    "patterns": "Patterns",
+    "gotchas": "Gotchas",
+    "changedFiles": "Changed Files",
+    "fileInsights": "File Insights",
+    "subtasksCompleted": "Subtasks Completed"
   }
 }

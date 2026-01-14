@@ -440,7 +440,10 @@
   },
   "fileExplorer": {
     "title": "项目文件",
-    "dragHint": "将文件拖放到终端中以插入路径"
+    "dragHint": "将文件拖放到终端中以插入路径",
+    "dragHintDrawer": "拖放文件以添加为引用",
+    "refresh": "刷新",
+    "close": "关闭"
   },
   "worktrees": {
     "title": "工作树",
@@ -680,5 +683,23 @@
   },
   "imageUpload": {
     "largeFileWarning": "大文件 - 建议压缩"
+  },
+  "projectSelector": {
+    "selectProject": "选择项目...",
+    "noProjectsYet": "还没有项目",
+    "addProject": "添加项目..."
+  },
+  "memoryCard": {
+    "expand": "展开",
+    "collapse": "折叠",
+    "whatWorked": "有效的做法",
+    "whatFailed": "失败的原因",
+    "approach": "方法",
+    "recommendations": "建议",
+    "patterns": "模式",
+    "gotchas": "注意事项",
+    "changedFiles": "更改的文件",
+    "fileInsights": "文件洞察",
+    "subtasksCompleted": "已完成的子任务"
   }
 }
