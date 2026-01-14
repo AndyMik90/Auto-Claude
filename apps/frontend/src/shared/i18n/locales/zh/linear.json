@@ -1,0 +1,38 @@
+{
+  "title": "Linear",
+  "integration": {
+    "title": "Linear 集成",
+    "enableLabel": "启用 Linear 同步",
+    "enableDescription": "自动创建和更新 Linear 问题"
+  },
+  "authentication": {
+    "apiKey": "API 密钥",
+    "getApiKeyFrom": "从以下位置获取您的 API 密钥",
+    "settingsLink": "Linear 设置"
+  },
+  "connection": {
+    "status": "连接状态",
+    "connectedTo": "已连接",
+    "notConnected": "未连接",
+    "tasksAvailable": "个任务可导入"
+  },
+  "import": {
+    "title": "导入现有任务",
+    "description": "选择要导入到 AutoBuild 作为任务的 Linear 问题。",
+    "buttonText": "从 Linear 导入任务"
+  },
+  "realtimeSync": {
+    "label": "实时同步",
+    "description": "自动导入在 Linear 中创建的新任务",
+    "warningMessage": "启用后，新的 Linear 问题将自动导入到 AutoBuild 中。请确保在下方配置您的团队/项目过滤器以控制导入哪些问题。"
+  },
+  "filters": {
+    "teamId": "团队 ID（可选）",
+    "projectId": "项目 ID（可选）",
+    "autoDetected": "自动检测",
+    "autoCreated": "自动创建"
+  },
+  "status": {
+    "enabled": "已启用"
+  }
+}

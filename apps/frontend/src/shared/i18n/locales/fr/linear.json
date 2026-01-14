@@ -1,0 +1,38 @@
+{
+  "title": "Linear",
+  "integration": {
+    "title": "Intégration Linear",
+    "enableLabel": "Activer la synchronisation Linear",
+    "enableDescription": "Créer et mettre à jour les issues Linear automatiquement"
+  },
+  "authentication": {
+    "apiKey": "Clé API",
+    "getApiKeyFrom": "Obtenez votre clé API depuis",
+    "settingsLink": "Paramètres Linear"
+  },
+  "connection": {
+    "status": "Statut de connexion",
+    "connectedTo": "Connecté",
+    "notConnected": "Non connecté",
+    "tasksAvailable": "tâches disponibles à importer"
+  },
+  "import": {
+    "title": "Importer des tâches existantes",
+    "description": "Sélectionnez les issues Linear à importer dans AutoBuild en tant que tâches.",
+    "buttonText": "Importer des tâches depuis Linear"
+  },
+  "realtimeSync": {
+    "label": "Synchronisation en temps réel",
+    "description": "Importer automatiquement les nouvelles tâches créées dans Linear",
+    "warningMessage": "Lorsqu'elle est activée, les nouvelles issues Linear seront automatiquement importées dans AutoBuild. Assurez-vous de configurer vos filtres d'équipe/projet ci-dessous pour contrôler les issues importées."
+  },
+  "filters": {
+    "teamId": "ID d'équipe (Optionnel)",
+    "projectId": "ID de projet (Optionnel)",
+    "autoDetected": "Détecté automatiquement",
+    "autoCreated": "Créé automatiquement"
+  },
+  "status": {
+    "enabled": "Activé"
+  }
+}

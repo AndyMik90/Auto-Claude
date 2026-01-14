@@ -1,0 +1,38 @@
+{
+  "title": "Linear",
+  "integration": {
+    "title": "Linear Integration",
+    "enableLabel": "Enable Linear Sync",
+    "enableDescription": "Create and update Linear issues automatically"
+  },
+  "authentication": {
+    "apiKey": "API Key",
+    "getApiKeyFrom": "Get your API key from",
+    "settingsLink": "Linear Settings"
+  },
+  "connection": {
+    "status": "Connection Status",
+    "connectedTo": "Connected",
+    "notConnected": "Not connected",
+    "tasksAvailable": "tasks available to import"
+  },
+  "import": {
+    "title": "Import Existing Tasks",
+    "description": "Select which Linear issues to import into AutoBuild as tasks.",
+    "buttonText": "Import Tasks from Linear"
+  },
+  "realtimeSync": {
+    "label": "Real-time Sync",
+    "description": "Automatically import new tasks created in Linear",
+    "warningMessage": "When enabled, new Linear issues will be automatically imported into AutoBuild. Make sure to configure your team/project filters below to control which issues are imported."
+  },
+  "filters": {
+    "teamId": "Team ID (Optional)",
+    "projectId": "Project ID (Optional)",
+    "autoDetected": "Auto-detected",
+    "autoCreated": "Auto-created"
+  },
+  "status": {
+    "enabled": "Enabled"
+  }
+}
