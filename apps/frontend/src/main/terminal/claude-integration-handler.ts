@@ -13,7 +13,7 @@ import { getClaudeProfileManager, initializeClaudeProfileManager } from '../clau
 import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
-import { escapeShellArg, escapeShellArgWindows, buildCdCommand } from '../../shared/utils/shell-escape';
+import { escapeShellArg, escapeShellArgWindows, escapeForWindowsSet, buildCdCommand } from '../../shared/utils/shell-escape';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import type {
   TerminalProcess,
@@ -110,8 +110,8 @@ export function buildClaudeShellCommand(
 
       case 'config-dir':
         // On Windows, use 'set "VAR=value"' syntax to handle paths with spaces correctly
-        // The quotes go around the entire assignment, not around the value
-        return `cls && ${cwdCommand}set "CLAUDE_CONFIG_DIR=${escapeShellArgWindows(config.rawConfigDir)}" && ${fullCmd}\r`;
+        // The quotes protect special characters, so we use escapeForWindowsSet (not escapeShellArgWindows)
+        return `cls && ${cwdCommand}set "CLAUDE_CONFIG_DIR=${escapeForWindowsSet(config.rawConfigDir)}" && ${fullCmd}\r`;
 
       default:
         // On Windows, don't use PATH= prefix syntax - the PTY already has correct PATH
@@ -488,7 +488,7 @@ export function invokeClaude(
 
       // Write platform-appropriate content
       const tempFileContent = isWindows
-        ? `@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArgWindows(token)}"\r\n`  // Windows batch file
+        ? `@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=${escapeForWindowsSet(token)}"\r\n`  // Windows batch file
         : `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`;  // Unix shell script
 
       fs.writeFileSync(tempFile, tempFileContent, { mode: 0o600 });
@@ -671,7 +671,7 @@ export async function invokeClaudeAsync(
 
       // Write platform-appropriate content
       const tempFileContent = isWindows
-        ? `@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArgWindows(token)}"\r\n`  // Windows batch file
+        ? `@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=${escapeForWindowsSet(token)}"\r\n`  // Windows batch file
         : `export CLAUDE_CODE_OAUTH_TOKEN=${escapeShellArg(token)}\n`;  // Unix shell script
 
       await fsPromises.writeFile(tempFile, tempFileContent, { mode: 0o600 });
