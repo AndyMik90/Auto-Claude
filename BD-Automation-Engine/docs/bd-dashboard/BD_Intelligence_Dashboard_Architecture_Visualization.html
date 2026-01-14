@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BD Intelligence Dashboard - Architecture Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        :root {
+            --pts-navy: #1e3a5f;
+            --pts-navy-light: #2c5282;
+            --pts-blue: #3182ce;
+            --priority-critical: #e53e3e;
+            --priority-high: #dd6b20;
+            --priority-medium: #d69e2e;
+            --priority-standard: #718096;
+            --program-af: #3182ce;
+            --program-army: #2f855a;
+            --program-navy: #2c5282;
+            --bg-light: #f7fafc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--pts-navy);
+            color: white;
+            border-radius: 12px;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .nav-tab {
+            padding: 12px 20px;
+            background: white;
+            border: 2px solid var(--pts-navy);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--pts-navy);
+            transition: all 0.2s;
+        }
+        
+        .nav-tab:hover {
+            background: var(--pts-navy-light);
+            color: white;
+        }
+        
+        .nav-tab.active {
+            background: var(--pts-navy);
+            color: white;
+        }
+        
+        .view-container {
+            display: none;
+        }
+        
+        .view-container.active {
+            display: block;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--pts-navy);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Pipeline Flow Visualization */
+        .pipeline-container {
+            overflow-x: auto;
+            padding: 20px 0;
+        }
+        
+        .pipeline {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            min-width: max-content;
+        }
+        
+        .pipeline-stage {
+            min-width: 200px;
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 16px;
+            border-left: 4px solid var(--pts-blue);
+        }
+        
+        .pipeline-stage h3 {
+            font-size: 14px;
+            color: var(--pts-navy);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .pipeline-item {
+            background: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .pipeline-arrow {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            color: var(--pts-blue);
+        }
+        
+        /* Dashboard Tabs Preview */
+        .tabs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        
+        .tab-card {
+            background: var(--bg-light);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid var(--pts-navy);
+            transition: all 0.2s;
+        }
+        
+        .tab-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .tab-card h4 {
+            font-size: 16px;
+            color: var(--pts-navy);
+            margin-bottom: 8px;
+        }
+        
+        .tab-card p {
+            font-size: 13px;
+            color: #4a5568;
+            margin-bottom: 12px;
+        }
+        
+        .tab-card .fields {
+            font-size: 12px;
+            color: #718096;
+        }
+        
+        .tab-card .fields span {
+            display: inline-block;
+            background: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin: 2px;
+        }
+        
+        /* Priority Colors */
+        .priority-critical { color: var(--priority-critical); }
+        .priority-high { color: var(--priority-high); }
+        .priority-medium { color: var(--priority-medium); }
+        .priority-standard { color: var(--priority-standard); }
+        
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .priority-badge.critical { background: #fff5f5; color: var(--priority-critical); }
+        .priority-badge.high { background: #fffaf0; color: var(--priority-high); }
+        .priority-badge.medium { background: #fffff0; color: var(--priority-medium); }
+        
+        /* Data Model Visualization */
+        .data-model {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            padding: 20px 0;
+        }
+        
+        .entity-box {
+            background: white;
+            border: 2px solid var(--pts-navy);
+            border-radius: 8px;
+            padding: 16px;
+            min-width: 160px;
+            text-align: center;
+        }
+        
+        .entity-box h5 {
+            color: var(--pts-navy);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .entity-box .count {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--pts-blue);
+        }
+        
+        .entity-box .desc {
+            font-size: 11px;
+            color: #718096;
+            margin-top: 4px;
+        }
+        
+        /* BD Formula Section */
+        .bd-formula {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
+        }
+        
+        .formula-step {
+            display: flex;
+            gap: 12px;
+            padding: 14px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            align-items: flex-start;
+        }
+        
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--pts-navy);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        
+        .step-content h5 {
+            font-size: 13px;
+            color: var(--pts-navy);
+            margin-bottom: 4px;
+        }
+        
+        .step-content p {
+            font-size: 12px;
+            color: #4a5568;
+        }
+        
+        /* Integration Points */
+        .integrations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        
+        .integration-card {
+            padding: 16px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .integration-card .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .integration-card h5 {
+            font-size: 14px;
+            color: var(--pts-navy);
+            margin-bottom: 4px;
+        }
+        
+        .integration-card p {
+            font-size: 12px;
+            color: #718096;
+        }
+        
+        /* Metrics Section */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        
+        .metric-card {
+            background: var(--pts-navy);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .metric-card .value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+        
+        .metric-card .label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+        
+        .metric-card.success {
+            background: #2f855a;
+        }
+        
+        .metric-card.warning {
+            background: var(--priority-high);
+        }
+        
+        /* Flowchart SVG Styles */
+        #flowchart {
+            width: 100%;
+            height: 500px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .node rect {
+            fill: var(--bg-light);
+            stroke: var(--pts-navy);
+            stroke-width: 2;
+            rx: 8;
+        }
+        
+        .node text {
+            fill: var(--pts-navy);
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .link {
+            fill: none;
+            stroke: var(--pts-blue);
+            stroke-width: 2;
+        }
+        
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--pts-navy);
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding: 16px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            background: var(--pts-blue);
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        
+        .timeline-item h5 {
+            font-size: 14px;
+            color: var(--pts-navy);
+            margin-bottom: 4px;
+        }
+        
+        .timeline-item p {
+            font-size: 13px;
+            color: #4a5568;
+        }
+        
+        .timeline-item .week {
+            font-size: 11px;
+            color: var(--pts-blue);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 BD Intelligence Dashboard Architecture</h1>
+            <p>Prime Technical Services | DCGS Business Development Automation Engine</p>
+        </div>
+        
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="showView('overview')">📊 Overview</div>
+            <div class="nav-tab" onclick="showView('pipeline')">🔄 Data Pipeline</div>
+            <div class="nav-tab" onclick="showView('tabs')">📑 Dashboard Tabs</div>
+            <div class="nav-tab" onclick="showView('formula')">📝 BD Formula</div>
+            <div class="nav-tab" onclick="showView('integrations')">🔌 Integrations</div>
+            <div class="nav-tab" onclick="showView('roadmap')">📅 Roadmap</div>
+        </div>
+        
+        <!-- OVERVIEW VIEW -->
+        <div id="overview" class="view-container active">
+            <div class="section">
+                <div class="section-title">📈 System Metrics (Target State)</div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="value">$950M</div>
+                        <div class="label">Total Contract Value</div>
+                    </div>
+                    <div class="metric-card success">
+                        <div class="value">127</div>
+                        <div class="label">Active Job Opportunities</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value">967</div>
+                        <div class="label">Contacts Classified</div>
+                    </div>
+                    <div class="metric-card warning">
+                        <div class="value">23</div>
+                        <div class="label">🔴 Critical Priority</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value">388</div>
+                        <div class="label">Programs Tracked</div>
+                    </div>
+                    <div class="metric-card success">
+                        <div class="value">15m</div>
+                        <div class="label">Daily Analysis Time</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">🗄️ Core Data Entities</div>
+                <div class="data-model">
+                    <div class="entity-box">
+                        <h5>📋 Jobs</h5>
+                        <div class="count">127</div>
+                        <div class="desc">Enriched opportunities</div>
+                    </div>
+                    <div class="entity-box">
+                        <h5>🏛️ Programs</h5>
+                        <div class="count">388</div>
+                        <div class="desc">Federal contracts</div>
+                    </div>
+                    <div class="entity-box">
+                        <h5>🏢 Primes</h5>
+                        <div class="count">15</div>
+                        <div class="desc">Contractor relationships</div>
+                    </div>
+                    <div class="entity-box">
+                        <h5>📍 Locations</h5>
+                        <div class="count">25</div>
+                        <div class="desc">Geographic sites</div>
+                    </div>
+                    <div class="entity-box">
+                        <h5>🎖️ Customers</h5>
+                        <div class="count">12</div>
+                        <div class="desc">Agencies/Commands</div>
+                    </div>
+                    <div class="entity-box">
+                        <h5>👤 Contacts</h5>
+                        <div class="count">967</div>
+                        <div class="desc">BD-ready profiles</div>
+                    </div>
+                    <div class="entity-box">
+                        <h5>👷 Contractors</h5>
+                        <div class="count">47</div>
+                        <div class="desc">PTS bench talent</div>
+                    </div>
+                    <div class="entity-box">
+                        <h5>🎯 Daily Playbook</h5>
+                        <div class="count">15</div>
+                        <div class="desc">Actions per day</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">🎯 Problem → Solution</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="background: #fff5f5; padding: 20px; border-radius: 8px;">
+                        <h4 style="color: #e53e3e; margin-bottom: 12px;">❌ Current State</h4>
+                        <ul style="font-size: 13px; color: #4a5568; list-style: disc inside;">
+                            <li>4+ hours daily manual analysis</li>
+                            <li>Data scattered across 6+ tools</li>
+                            <li>No personalized messaging at scale</li>
+                            <li>Manual call sheet creation</li>
+                            <li>Missed opportunities</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f0fff4; padding: 20px; border-radius: 8px;">
+                        <h4 style="color: #2f855a; margin-bottom: 12px;">✅ Target State</h4>
+                        <ul style="font-size: 13px; color: #4a5568; list-style: disc inside;">
+                            <li>15 minutes daily (automated)</li>
+                            <li>Single unified dashboard</li>
+                            <li>100% personalized BD Formula</li>
+                            <li>Auto-generated daily playbook</li>
+                            <li>Complete opportunity coverage</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PIPELINE VIEW -->
+        <div id="pipeline" class="view-container">
+            <div class="section">
+                <div class="section-title">🔄 End-to-End Data Pipeline</div>
+                <div class="pipeline-container">
+                    <div class="pipeline">
+                        <div class="pipeline-stage" style="border-color: #e53e3e;">
+                            <h3>📥 Stage 1: Ingestion</h3>
+                            <div class="pipeline-item">Apify Scrapers<br><small>Apex, Insight Global, TEK</small></div>
+                            <div class="pipeline-item">ZoomInfo Exports<br><small>Contact CSV files</small></div>
+                            <div class="pipeline-item">GDIT Bullhorn<br><small>700+ job feed</small></div>
+                            <div class="pipeline-item">Manual HUMINT<br><small>Pain point notes</small></div>
+                        </div>
+                        
+                        <div class="pipeline-arrow">→</div>
+                        
+                        <div class="pipeline-stage" style="border-color: #dd6b20;">
+                            <h3>⚙️ Stage 2: Processing</h3>
+                            <div class="pipeline-item">N8n Webhooks<br><small>Job import workflow</small></div>
+                            <div class="pipeline-item">LLM Standardization<br><small>GPT-4o 11-field schema</small></div>
+                            <div class="pipeline-item">Deduplication<br><small>Contact merging</small></div>
+                        </div>
+                        
+                        <div class="pipeline-arrow">→</div>
+                        
+                        <div class="pipeline-stage" style="border-color: #d69e2e;">
+                            <h3>🎯 Stage 3: Enrichment</h3>
+                            <div class="pipeline-item">Program Mapping<br><small>Multi-signal scoring</small></div>
+                            <div class="pipeline-item">Contact Classification<br><small>6-tier hierarchy</small></div>
+                            <div class="pipeline-item">BD Scoring<br><small>0-100 priority</small></div>
+                        </div>
+                        
+                        <div class="pipeline-arrow">→</div>
+                        
+                        <div class="pipeline-stage" style="border-color: #3182ce;">
+                            <h3>🔗 Stage 4: Correlation</h3>
+                            <div class="pipeline-item">Job ↔ Program<br><small>Location matching</small></div>
+                            <div class="pipeline-item">Job ↔ Contacts<br><small>Team linkage</small></div>
+                            <div class="pipeline-item">Job ↔ PTS<br><small>Past perf matching</small></div>
+                        </div>
+                        
+                        <div class="pipeline-arrow">→</div>
+                        
+                        <div class="pipeline-stage" style="border-color: #2f855a;">
+                            <h3>📤 Stage 5: Output</h3>
+                            <div class="pipeline-item">BD Formula Gen<br><small>6-step messaging</small></div>
+                            <div class="pipeline-item">Daily Playbook<br><small>Auto call list</small></div>
+                            <div class="pipeline-item">Dashboard JSON<br><small>8-tab data</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">📊 Data Transformation Flow</div>
+                <div style="background: var(--bg-light); padding: 20px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre;">
+RAW JOB SCRAPE                    ENRICHED JOB RECORD                   DASHBOARD OUTPUT
+────────────────                  ─────────────────────                 ────────────────
+{                                 {                                     {
+  "title": "Network Eng"    →       "job_title": "Network Engineer"   →   "job": {...},
+  "location": "San Diego"             "location": "San Diego, CA"           "program": {
+  "description": "..."                "clearance": "TS/SCI"                   "name": "AF DCGS - PACAF",
+}                                     "matched_program": "AF DCGS"            "pain_points": [...]
+                                      "bd_score": 92                        },
+                                      "bd_priority": "🔴 Critical"          "contacts": [{...}],
+                                      "pts_alignment": ["BICES"]            "pts_alignment": [...],
+                                      "contacts": [{...}]                   "bd_message": "..."
+                                  }                                     }
+</pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TABS VIEW -->
+        <div id="tabs" class="view-container">
+            <div class="section">
+                <div class="section-title">📑 Dashboard Tab Architecture (8 Tabs)</div>
+                <div class="tabs-grid">
+                    <div class="tab-card" style="border-color: var(--priority-critical);">
+                        <h4>📋 Jobs</h4>
+                        <p>Active opportunities with complete BD context - the primary action view</p>
+                        <div class="fields">
+                            <span>Job Title</span>
+                            <span>Location</span>
+                            <span>Clearance</span>
+                            <span>Program</span>
+                            <span>Task Order</span>
+                            <span>Customer</span>
+                            <span>Prime</span>
+                            <span>Site Lead</span>
+                            <span>Hiring Mgr</span>
+                            <span>Pain Points</span>
+                            <span>PTS Alignment</span>
+                            <span>BD Score</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-card" style="border-color: var(--program-af);">
+                        <h4>🏛️ Programs</h4>
+                        <p>Program intelligence hub with contract details and PTS positioning</p>
+                        <div class="fields">
+                            <span>Program Name</span>
+                            <span>Contract Value</span>
+                            <span>Prime/Sub</span>
+                            <span>Customer</span>
+                            <span>Pain Points</span>
+                            <span>Active Jobs</span>
+                            <span>Key Contacts</span>
+                            <span>PTS Alignment</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-card" style="border-color: #553c9a;">
+                        <h4>🏢 Primes/Clients</h4>
+                        <p>Company relationship intelligence across the portfolio</p>
+                        <div class="fields">
+                            <span>Company</span>
+                            <span>Total Value</span>
+                            <span>Programs</span>
+                            <span>PTS History</span>
+                            <span>Placements</span>
+                            <span>Hiring Activity</span>
+                            <span>Key Contacts</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-card" style="border-color: #2f855a;">
+                        <h4>📍 Locations</h4>
+                        <p>Geographic opportunity mapping by site</p>
+                        <div class="fields">
+                            <span>City/Site</span>
+                            <span>Programs</span>
+                            <span>Customer</span>
+                            <span>Active Jobs</span>
+                            <span>Contact Count</span>
+                            <span>Coverage Gaps</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-card" style="border-color: #d69e2e;">
+                        <h4>🎖️ Customers/Agencies</h4>
+                        <p>Agency/command intelligence for each program</p>
+                        <div class="fields">
+                            <span>Agency</span>
+                            <span>Command</span>
+                            <span>Mission Area</span>
+                            <span>Programs</span>
+                            <span>Contract Value</span>
+                            <span>PTS Positioning</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-card" style="border-color: var(--priority-high);">
+                        <h4>👤 Contacts</h4>
+                        <p>BD-ready contact database with personalized messaging</p>
+                        <div class="fields">
+                            <span>Name</span>
+                            <span>Title</span>
+                            <span>Tier</span>
+                            <span>Priority</span>
+                            <span>Program</span>
+                            <span>Phone/Email</span>
+                            <span>Pain Points</span>
+                            <span>BD Message</span>
+                            <span>Call Script</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-card" style="border-color: #3182ce;">
+                        <h4>👷 Contractors</h4>
+                        <p>PTS bench talent with job matching</p>
+                        <div class="fields">
+                            <span>Name</span>
+                            <span>Clearance</span>
+                            <span>Skills</span>
+                            <span>Availability</span>
+                            <span>Past Placements</span>
+                            <span>Job Matches</span>
+                            <span>Match Score</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-card" style="border-color: var(--priority-critical);">
+                        <h4>🎯 Daily Playbook</h4>
+                        <p>Today's action list with complete scripts</p>
+                        <div class="fields">
+                            <span>Call Sequence</span>
+                            <span>Contact Info</span>
+                            <span>Call Script</span>
+                            <span>Pain Points</span>
+                            <span>Jobs to Ref</span>
+                            <span>PTS Alignment</span>
+                            <span>Goal</span>
+                            <span>Status</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- BD FORMULA VIEW -->
+        <div id="formula" class="view-container">
+            <div class="section">
+                <div class="section-title">📝 The 6-Step BD Formula</div>
+                <p style="font-size: 14px; color: #4a5568; margin-bottom: 20px;">
+                    Every outreach follows this exact sequence to differentiate PTS from staffing competitors.
+                </p>
+                <div class="bd-formula">
+                    <div class="formula-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h5>Personalized Message</h5>
+                            <p>Role-specific icebreaker demonstrating knowledge of their work/program. Reference their specific site, team, or recent activity.</p>
+                        </div>
+                    </div>
+                    <div class="formula-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h5>Current Pain Points</h5>
+                            <p>Program-specific challenges sourced from HUMINT. "I understand [PROGRAM] teams are dealing with [PAIN POINT]..."</p>
+                        </div>
+                    </div>
+                    <div class="formula-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h5>Labor Gaps & Open Jobs</h5>
+                            <p>Current vacancies at their location showing awareness of their hiring challenges. Cross-reference job scrapes.</p>
+                        </div>
+                    </div>
+                    <div class="formula-step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h5>PTS Past Performance with GDIT</h5>
+                            <p>Direct partnership history: BICES, GSM-O II, NATO BICES. Establishes credibility immediately.</p>
+                        </div>
+                    </div>
+                    <div class="formula-step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h5>Relevant Past Performance to Program</h5>
+                            <p>Similar mission experience: SOCOM JICCENT (ISR), Platform One (USAF DevSecOps), DISA JRSS (Network).</p>
+                        </div>
+                    </div>
+                    <div class="formula-step">
+                        <div class="step-number">6</div>
+                        <div class="step-content">
+                            <h5>Past Performance Relevant to Job Title</h5>
+                            <p>Match PTS capabilities to their team function. If they need Network Engineers → PTS DISA/coalition experience.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">📊 Tier-Based Messaging Strategy</div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: var(--pts-navy); color: white;">
+                            <th style="padding: 12px; text-align: left;">Tier</th>
+                            <th style="padding: 12px; text-align: left;">Role Level</th>
+                            <th style="padding: 12px; text-align: left;">Tone</th>
+                            <th style="padding: 12px; text-align: left;">Length</th>
+                            <th style="padding: 12px; text-align: left;">Focus</th>
+                            <th style="padding: 12px; text-align: left;">CTA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background: #fff5f5;">
+                            <td style="padding: 12px;"><span class="priority-badge critical">🔴 Tier 1-2</span></td>
+                            <td style="padding: 12px;">Executives, Directors</td>
+                            <td style="padding: 12px;">Strategic, concise</td>
+                            <td style="padding: 12px;">Short</td>
+                            <td style="padding: 12px;">Value, partnership</td>
+                            <td style="padding: 12px;">"15-min strategy sync"</td>
+                        </tr>
+                        <tr style="background: #fffaf0;">
+                            <td style="padding: 12px;"><span class="priority-badge high">🟠 Tier 3</span></td>
+                            <td style="padding: 12px;">PMs, Site Leads</td>
+                            <td style="padding: 12px;">Professional, data-backed</td>
+                            <td style="padding: 12px;">Medium</td>
+                            <td style="padding: 12px;">Results, past perf</td>
+                            <td style="padding: 12px;">"Meet BD lead + brief"</td>
+                        </tr>
+                        <tr style="background: #fffff0;">
+                            <td style="padding: 12px;"><span class="priority-badge medium">🟡 Tier 4</span></td>
+                            <td style="padding: 12px;">Managers, Team Leads</td>
+                            <td style="padding: 12px;">Collaborative</td>
+                            <td style="padding: 12px;">Medium</td>
+                            <td style="padding: 12px;">Solutions</td>
+                            <td style="padding: 12px;">"30 min call"</td>
+                        </tr>
+                        <tr style="background: var(--bg-light);">
+                            <td style="padding: 12px;"><span class="priority-badge">⚪ Tier 5-6</span></td>
+                            <td style="padding: 12px;">Senior ICs, ICs</td>
+                            <td style="padding: 12px;">Friendly, curious</td>
+                            <td style="padding: 12px;">Short</td>
+                            <td style="padding: 12px;">Mission, team</td>
+                            <td style="padding: 12px;">"Coffee chat"</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- INTEGRATIONS VIEW -->
+        <div id="integrations" class="view-container">
+            <div class="section">
+                <div class="section-title">🔌 System Integrations</div>
+                <div class="integrations-grid">
+                    <div class="integration-card">
+                        <div class="icon">🕷️</div>
+                        <h5>Apify</h5>
+                        <p>Job scraping from Apex, Insight Global, TEKsystems</p>
+                    </div>
+                    <div class="integration-card">
+                        <div class="icon">⚡</div>
+                        <h5>N8n</h5>
+                        <p>Workflow automation, webhooks, scheduling</p>
+                    </div>
+                    <div class="integration-card">
+                        <div class="icon">📝</div>
+                        <h5>Notion</h5>
+                        <p>Primary database layer via MCP connector</p>
+                    </div>
+                    <div class="integration-card">
+                        <div class="icon">🤖</div>
+                        <h5>GPT-4o</h5>
+                        <p>LLM enrichment for job standardization</p>
+                    </div>
+                    <div class="integration-card">
+                        <div class="icon">🔍</div>
+                        <h5>ZoomInfo</h5>
+                        <p>Contact discovery and verification</p>
+                    </div>
+                    <div class="integration-card">
+                        <div class="icon">💼</div>
+                        <h5>LinkedIn</h5>
+                        <p>Profile verification, outreach channel</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">📊 Notion Database Schema</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+                    <div style="background: var(--bg-light); padding: 16px; border-radius: 8px;">
+                        <h5 style="color: var(--pts-navy); margin-bottom: 12px;">👤 DCGS Contacts Full</h5>
+                        <code style="font-size: 11px; color: #718096;">Collection: 2ccdef65-baa5-8087-a53b-000ba596128e</code>
+                        <ul style="font-size: 12px; margin-top: 8px; color: #4a5568;">
+                            <li>Program (Select)</li>
+                            <li>Hierarchy Tier (Select)</li>
+                            <li>BD Priority (Select)</li>
+                            <li>Location Hub (Select)</li>
+                            <li>Functional Area (Multi-Select)</li>
+                        </ul>
+                    </div>
+                    <div style="background: var(--bg-light); padding: 16px; border-radius: 8px;">
+                        <h5 style="color: var(--pts-navy); margin-bottom: 12px;">🧭 Program Mapping Hub</h5>
+                        <code style="font-size: 11px; color: #718096;">Collection: f57792c1-605b-424c-8830-23ab41c47137</code>
+                        <ul style="font-size: 12px; margin-top: 8px; color: #4a5568;">
+                            <li>Status (State machine)</li>
+                            <li>Priority Score (0-100)</li>
+                            <li>Confidence (0.0-1.0)</li>
+                            <li>Matched Program</li>
+                            <li>Clearance</li>
+                        </ul>
+                    </div>
+                    <div style="background: var(--bg-light); padding: 16px; border-radius: 8px;">
+                        <h5 style="color: var(--pts-navy); margin-bottom: 12px;">🏛️ Federal Programs</h5>
+                        <code style="font-size: 11px; color: #718096;">Collection: 06cd9b22-5d6b-4d37-b0d3-ba99da4971fa</code>
+                        <ul style="font-size: 12px; margin-top: 8px; color: #4a5568;">
+                            <li>PTS Involvement (Select)</li>
+                            <li>Priority Level (Select)</li>
+                            <li>Pain Points (Text)</li>
+                            <li>Contract Value</li>
+                            <li>Prime/Sub Structure</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ROADMAP VIEW -->
+        <div id="roadmap" class="view-container">
+            <div class="section">
+                <div class="section-title">📅 Implementation Roadmap</div>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <span class="week">PHASE 1: Week 1-2</span>
+                        <h5>Core Infrastructure</h5>
+                        <p>Data export scripts, correlation engine, dashboard shell (React), basic tab views, PTS design system implementation.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="week">PHASE 2: Week 3-4</span>
+                        <h5>Jobs & Contacts Intelligence</h5>
+                        <p>Complete Jobs tab with intelligence cards, complete Contacts tab with BD messaging, BD Formula generator engine, Excel call sheet export.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="week">PHASE 3: Week 5-6</span>
+                        <h5>Program & Company Intelligence</h5>
+                        <p>Programs tab with pain points, Primes/Clients relationship view, Customers agency profiles, cross-reference navigation.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="week">PHASE 4: Week 7-8</span>
+                        <h5>Locations, Contractors & Daily Playbook</h5>
+                        <p>Geographic view, PTS bench matching, daily playbook automation, full end-to-end pipeline, production deployment.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">✅ Success Criteria</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                    <div style="padding: 16px; background: #f0fff4; border-radius: 8px; border-left: 4px solid #2f855a;">
+                        <h5 style="color: #2f855a; margin-bottom: 8px;">⏱️ Time Savings</h5>
+                        <p style="font-size: 13px; color: #4a5568;">From 4+ hours/day manual analysis → 15 minutes/day automated</p>
+                    </div>
+                    <div style="padding: 16px; background: #f0fff4; border-radius: 8px; border-left: 4px solid #2f855a;">
+                        <h5 style="color: #2f855a; margin-bottom: 8px;">📊 Data Quality</h5>
+                        <p style="font-size: 13px; color: #4a5568;">100% of jobs have complete program/contact linkage</p>
+                    </div>
+                    <div style="padding: 16px; background: #f0fff4; border-radius: 8px; border-left: 4px solid #2f855a;">
+                        <h5 style="color: #2f855a; margin-bottom: 8px;">📝 Personalization</h5>
+                        <p style="font-size: 13px; color: #4a5568;">100% of outreach includes program-specific BD Formula</p>
+                    </div>
+                    <div style="padding: 16px; background: #f0fff4; border-radius: 8px; border-left: 4px solid #2f855a;">
+                        <h5 style="color: #2f855a; margin-bottom: 8px;">🎯 Coverage</h5>
+                        <p style="font-size: 13px; color: #4a5568;">No job opportunity goes untracked or unanalyzed</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showView(viewId) {
+            // Hide all views
+            document.querySelectorAll('.view-container').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // Remove active from all tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected view
+            document.getElementById(viewId).classList.add('active');
+            
+            // Add active to clicked tab
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
