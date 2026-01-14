@@ -772,12 +772,6 @@ def create_client(
     # Collect env vars to pass to SDK (ANTHROPIC_BASE_URL, etc.)
     sdk_env = get_sdk_env_vars()
 
-    # Pass thinking tokens via env var (works with older CLI versions)
-    # The SDK's --max-thinking-tokens flag requires CLI 2.1+
-    # But MAX_THINKING_TOKENS env var works with CLI 2.0.x and newer
-    if max_thinking_tokens is not None and max_thinking_tokens > 0:
-        sdk_env["MAX_THINKING_TOKENS"] = str(max_thinking_tokens)
-
     # Debug: Log git-bash path detection on Windows
     if "CLAUDE_CODE_GIT_BASH_PATH" in sdk_env:
         logger.info(f"Git Bash path found: {sdk_env['CLAUDE_CODE_GIT_BASH_PATH']}")
@@ -1114,9 +1108,8 @@ def create_client(
         "max_turns": 1000,
         "cwd": str(project_dir.resolve()),
         "settings": str(settings_file.resolve()),
-        "env": sdk_env,  # Pass ANTHROPIC_BASE_URL, MAX_THINKING_TOKENS etc. to subprocess
-        # Note: max_thinking_tokens passed via env var MAX_THINKING_TOKENS (see above)
-        # This is compatible with CLI 2.0.x which doesn't support --max-thinking-tokens flag
+        "env": sdk_env,  # Pass ANTHROPIC_BASE_URL etc. to subprocess
+        "max_thinking_tokens": max_thinking_tokens,
         "max_buffer_size": 10
         * 1024
         * 1024,  # 10MB buffer (default: 1MB) - fixes large tool results

@@ -85,22 +85,16 @@ def create_simple_client(
         thinking_level = get_default_thinking_level(agent_type)
         max_thinking_tokens = get_thinking_budget(thinking_level)
 
-    # Pass thinking tokens via env var (works with older CLI versions)
-    # The SDK's --max-thinking-tokens flag requires CLI 2.1+
-    if max_thinking_tokens is not None and max_thinking_tokens > 0:
-        sdk_env["MAX_THINKING_TOKENS"] = str(max_thinking_tokens)
-
     # Find Claude CLI path (handles non-standard installations)
     cli_path = find_claude_cli()
 
     # Build options dict
-    # Note: max_thinking_tokens passed via env var MAX_THINKING_TOKENS (see above)
-    # This is compatible with CLI 2.0.x which doesn't support --max-thinking-tokens flag
     options_kwargs = {
         "model": model,
         "system_prompt": system_prompt,
         "allowed_tools": allowed_tools,
         "max_turns": max_turns,
+        "max_thinking_tokens": max_thinking_tokens,
         "cwd": str(cwd.resolve()) if cwd else None,
         "env": sdk_env,
     }
