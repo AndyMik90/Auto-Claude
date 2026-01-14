@@ -124,8 +124,6 @@ def _find_gh_executable() -> str | None:
             os.path.expandvars(r"%PROGRAMFILES%\GitHub CLI\gh.exe"),
             os.path.expandvars(r"%PROGRAMFILES(X86)%\GitHub CLI\gh.exe"),
             os.path.expandvars(r"%LOCALAPPDATA%\Programs\GitHub CLI\gh.exe"),
-            r"C:\Program Files\GitHub CLI\gh.exe",
-            r"C:\Program Files (x86)\GitHub CLI\gh.exe",
         ]
         for path in windows_paths:
             if os.path.isfile(path) and _verify_gh_executable(path):
