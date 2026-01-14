@@ -161,7 +161,7 @@ async def run_qa_fixer_session(
 
                         # Safely extract tool input (handles None, non-dict, etc.)
                         inp = get_safe_tool_input(block)
-                        
+
                         # DEBUG: Print what keys are in inp
 
                         if inp:

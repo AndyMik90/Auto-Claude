@@ -229,7 +229,7 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
                             elif "command" in inp:
                                 tool_input_display = inp["command"]
                             elif "pattern" in inp:
-                                tool_input_display = f"/{inp["pattern"]}/"
+                                tool_input_display = f"/{inp['pattern']}/"
                             elif "path" in inp:
                                 tool_input_display = inp["path"]
                             elif "url" in inp:

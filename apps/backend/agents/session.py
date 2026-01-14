@@ -392,7 +392,6 @@ async def run_agent_session(
 
                         # Safely extract tool input (handles None, non-dict, etc.)
                         inp = get_safe_tool_input(block)
-                        
 
                         # Extract meaningful tool input for display
                         if inp:
@@ -401,7 +400,7 @@ async def run_agent_session(
                             elif "command" in inp:
                                 tool_input_display = inp["command"]
                             elif "pattern" in inp:
-                                tool_input_display = f"/{inp["pattern"]}/"
+                                tool_input_display = f"/{inp['pattern']}/"
                             elif "path" in inp:
                                 tool_input_display = inp["path"]
                             elif "url" in inp:
