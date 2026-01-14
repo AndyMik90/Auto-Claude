@@ -99,7 +99,8 @@ vi.mock('../python-detector', () => ({
 vi.mock('../python-env-manager', () => ({
   pythonEnvManager: {
     isEnvReady: vi.fn(() => true),
-    initialize: vi.fn(() => Promise.resolve({ ready: true }))
+    initialize: vi.fn(() => Promise.resolve({ ready: true })),
+    getPythonEnv: vi.fn(() => ({}))
   },
   getConfiguredPythonPath: vi.fn(() => 'python3')
 }));
@@ -109,6 +110,23 @@ vi.mock('electron', () => ({
     getAppPath: vi.fn(() => '/fake/app/path')
   }
 }));
+
+// Mock fs.existsSync for getAutoBuildSourcePath path validation
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    existsSync: vi.fn((path: string) => {
+      // Return true for the fake auto-build path and its expected files
+      if (path === '/fake/auto-build' ||
+          path === '/fake/auto-build/runners' ||
+          path === '/fake/auto-build/runners/spec_runner.py') {
+        return true;
+      }
+      return false;
+    })
+  };
+});
 
 // Import AFTER all mocks are set up
 import { AgentProcessManager } from './agent-process';
@@ -599,6 +617,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
 
       expect(result.ready).toBe(false);
       expect(result.error).toBe('initialization failed');
+      expect(pythonEnvManager.initialize).toHaveBeenCalledWith('/fake/auto-build');
     });
   });
 });
