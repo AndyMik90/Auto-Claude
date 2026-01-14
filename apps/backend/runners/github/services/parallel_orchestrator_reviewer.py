@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
@@ -33,15 +32,17 @@ try:
     from ..models import (
         BRANCH_BEHIND_BLOCKER_MSG,
         BRANCH_BEHIND_REASONING,
-        GitHubRunnerConfig,
         MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
         ReviewSeverity,
     )
+    from .base_parallel_reviewer import (
+        DEBUG_MODE,
+        BaseParallelReviewer,
+    )
     from .category_utils import map_category
     from .io_utils import safe_print
-    from .pr_worktree_manager import PRWorktreeManager
     from .pydantic_models import ParallelOrchestratorResponse
     from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
@@ -51,30 +52,26 @@ except (ImportError, ValueError, SystemError):
     from models import (
         BRANCH_BEHIND_BLOCKER_MSG,
         BRANCH_BEHIND_REASONING,
-        GitHubRunnerConfig,
         MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
         ReviewSeverity,
     )
     from phase_config import get_thinking_budget
+    from services.base_parallel_reviewer import (
+        DEBUG_MODE,
+        BaseParallelReviewer,
+    )
     from services.category_utils import map_category
     from services.io_utils import safe_print
-    from services.pr_worktree_manager import PRWorktreeManager
     from services.pydantic_models import ParallelOrchestratorResponse
     from services.sdk_utils import process_sdk_stream
 
 
 logger = logging.getLogger(__name__)
 
-# Check if debug mode is enabled
-DEBUG_MODE = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
 
-# Directory for PR review worktrees (inside github/pr for consistency)
-PR_WORKTREE_DIR = ".auto-claude/github/pr/worktrees"
-
-
-class ParallelOrchestratorReviewer:
+class ParallelOrchestratorReviewer(BaseParallelReviewer):
     """
     PR reviewer using SDK subagents for parallel specialist analysis.
 
@@ -86,89 +83,18 @@ class ParallelOrchestratorReviewer:
     Model Configuration:
     - Orchestrator uses user-configured model from frontend settings
     - Specialist agents use model="inherit" (same as orchestrator)
+
+    Inherits from BaseParallelReviewer:
+    - __init__: Standard initialization with project_dir, github_dir, config, progress_callback
+    - _report_progress: Progress callback handling
+    - _load_prompt: Load prompts from prompts/github directory
+    - _create_pr_worktree: Create isolated worktree for PR review
+    - _cleanup_pr_worktree: Clean up worktree after review
+    - _cleanup_stale_pr_worktrees: Clean up orphaned worktrees
+    - _deduplicate_findings: Remove duplicate findings
+    - _get_model_and_thinking_budget: Get model config
+    - _resolve_project_root: Resolve project root directory
     """
-
-    def __init__(
-        self,
-        project_dir: Path,
-        github_dir: Path,
-        config: GitHubRunnerConfig,
-        progress_callback=None,
-    ):
-        self.project_dir = Path(project_dir)
-        self.github_dir = Path(github_dir)
-        self.config = config
-        self.progress_callback = progress_callback
-        self.worktree_manager = PRWorktreeManager(project_dir, PR_WORKTREE_DIR)
-
-    def _report_progress(self, phase: str, progress: int, message: str, **kwargs):
-        """Report progress if callback is set."""
-        if self.progress_callback:
-            import sys
-
-            if "orchestrator" in sys.modules:
-                ProgressCallback = sys.modules["orchestrator"].ProgressCallback
-            else:
-                try:
-                    from ..orchestrator import ProgressCallback
-                except ImportError:
-                    from orchestrator import ProgressCallback
-
-            self.progress_callback(
-                ProgressCallback(
-                    phase=phase, progress=progress, message=message, **kwargs
-                )
-            )
-
-    def _load_prompt(self, filename: str) -> str:
-        """Load a prompt file from the prompts/github directory."""
-        prompt_file = (
-            Path(__file__).parent.parent.parent.parent / "prompts" / "github" / filename
-        )
-        if prompt_file.exists():
-            return prompt_file.read_text(encoding="utf-8")
-        logger.warning(f"Prompt file not found: {prompt_file}")
-        return ""
-
-    def _create_pr_worktree(self, head_sha: str, pr_number: int) -> Path:
-        """Create a temporary worktree at the PR head commit.
-
-        Args:
-            head_sha: The commit SHA of the PR head (validated before use)
-            pr_number: The PR number for naming
-
-        Returns:
-            Path to the created worktree
-
-        Raises:
-            RuntimeError: If worktree creation fails
-            ValueError: If head_sha fails validation (command injection prevention)
-        """
-        # SECURITY: Validate git ref before use in subprocess calls
-        if not _validate_git_ref(head_sha):
-            raise ValueError(
-                f"Invalid git ref: '{head_sha}'. "
-                "Must contain only alphanumeric characters, dots, slashes, underscores, and hyphens."
-            )
-
-        return self.worktree_manager.create_worktree(head_sha, pr_number)
-
-    def _cleanup_pr_worktree(self, worktree_path: Path) -> None:
-        """Remove a temporary PR review worktree with fallback chain.
-
-        Args:
-            worktree_path: Path to the worktree to remove
-        """
-        self.worktree_manager.remove_worktree(worktree_path)
-
-    def _cleanup_stale_pr_worktrees(self) -> None:
-        """Clean up orphaned, expired, and excess PR review worktrees on startup."""
-        stats = self.worktree_manager.cleanup_worktrees()
-        if stats["total"] > 0:
-            logger.info(
-                f"[PRReview] Cleanup: removed {stats['total']} worktrees "
-                f"(orphaned={stats['orphaned']}, expired={stats['expired']}, excess={stats['excess']})"
-            )
 
     def _define_specialist_agents(self) -> dict[str, AgentDefinition]:
         """
@@ -854,20 +780,7 @@ The SDK will run invoked agents in parallel automatically.
             return value / 100.0
         return float(value)
 
-    def _deduplicate_findings(
-        self, findings: list[PRReviewFinding]
-    ) -> list[PRReviewFinding]:
-        """Remove duplicate findings."""
-        seen = set()
-        unique = []
-
-        for f in findings:
-            key = (f.file, f.line, f.title.lower().strip())
-            if key not in seen:
-                seen.add(key)
-                unique.append(f)
-
-        return unique
+    # _deduplicate_findings is inherited from BaseParallelReviewer
 
     def _generate_verdict(
         self,
