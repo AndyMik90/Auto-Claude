@@ -23,12 +23,14 @@ export function getClaudeExecutablePath(): string[] {
   const paths: string[] = [];
 
   if (isWindows()) {
+    // Note: path.join('C:', 'foo') produces 'C:foo' (relative to C: drive), not 'C:\foo'
+    // We must use 'C:\\' or raw paths like 'C:\\Program Files' to get absolute paths
     paths.push(
       joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'claude', `claude${getExecutableExtension()}`),
       joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
       joinPaths(homeDir, '.local', 'bin', `claude${getExecutableExtension()}`),
-      joinPaths('C:', 'Program Files', 'Claude', `claude${getExecutableExtension()}`),
-      joinPaths('C:', 'Program Files (x86)', 'Claude', `claude${getExecutableExtension()}`)
+      joinPaths('C:\\Program Files', 'Claude', `claude${getExecutableExtension()}`),
+      joinPaths('C:\\Program Files (x86)', 'Claude', `claude${getExecutableExtension()}`)
     );
   } else {
     paths.push(
@@ -132,9 +134,11 @@ export function getWindowsShellPaths(): Record<string, string[]> {
 
   const systemRoot = process.env.SystemRoot || 'C:\\Windows';
 
+  // Note: path.join('C:', 'foo') produces 'C:foo' (relative to C: drive), not 'C:\foo'
+  // We must use 'C:\\' or raw paths like 'C:\\Program Files' to get absolute paths
   return {
     powershell: [
-      path.join('C:', 'Program Files', 'PowerShell', '7', 'pwsh.exe'),
+      path.join('C:\\Program Files', 'PowerShell', '7', 'pwsh.exe'),
       path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
     ],
     windowsterminal: [
@@ -144,14 +148,14 @@ export function getWindowsShellPaths(): Record<string, string[]> {
       path.join(systemRoot, 'System32', 'cmd.exe')
     ],
     gitbash: [
-      path.join('C:', 'Program Files', 'Git', 'bin', 'bash.exe'),
-      path.join('C:', 'Program Files (x86)', 'Git', 'bin', 'bash.exe')
+      path.join('C:\\Program Files', 'Git', 'bin', 'bash.exe'),
+      path.join('C:\\Program Files (x86)', 'Git', 'bin', 'bash.exe')
     ],
     cygwin: [
-      path.join('C:', 'cygwin64', 'bin', 'bash.exe')
+      path.join('C:\\cygwin64', 'bin', 'bash.exe')
     ],
     msys2: [
-      path.join('C:', 'msys64', 'usr', 'bin', 'bash.exe')
+      path.join('C:\\msys64', 'usr', 'bin', 'bash.exe')
     ],
     wsl: [
       path.join(systemRoot, 'System32', 'wsl.exe')

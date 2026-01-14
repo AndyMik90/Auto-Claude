@@ -213,9 +213,12 @@ describe('Platform Module', () => {
       mockPlatform('win32');
       const config = getShellConfig();
 
-      // Accept either PowerShell Core (pwsh.exe) or Windows PowerShell (powershell.exe)
-      const isPowerShell = config.executable.includes('pwsh.exe') || config.executable.includes('powershell.exe');
-      expect(isPowerShell).toBe(true);
+      // Accept either PowerShell Core (pwsh.exe), Windows PowerShell (powershell.exe),
+      // or cmd.exe fallback (when PowerShell paths don't exist, e.g., in test environments)
+      const isValidShell = config.executable.includes('pwsh.exe') ||
+                           config.executable.includes('powershell.exe') ||
+                           config.executable.includes('cmd.exe');
+      expect(isValidShell).toBe(true);
     });
 
     it('returns shell config on Unix', () => {

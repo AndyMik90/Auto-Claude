@@ -24,9 +24,9 @@ from pathlib import Path
 from typing import Any
 
 from core.platform import (
-    is_windows,
-    is_macos,
     get_comspec_path,
+    is_macos,
+    is_windows,
     validate_cli_path,
 )
 

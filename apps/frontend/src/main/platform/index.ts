@@ -21,9 +21,17 @@ export { getWindowsShellPaths } from './paths';
 
 /**
  * Get the current operating system
+ *
+ * Returns the OS enum if running on a supported platform (Windows, macOS, Linux),
+ * otherwise defaults to Linux for other Unix-like systems (e.g., FreeBSD, SunOS).
  */
 export function getCurrentOS(): OS {
-  return process.platform as OS;
+  const platform = process.platform;
+  if (platform === OS.Windows || platform === OS.macOS || platform === OS.Linux) {
+    return platform;
+  }
+  // Default to Linux for other Unix-like systems
+  return OS.Linux;
 }
 
 /**
@@ -185,9 +193,11 @@ function getWindowsShellConfig(preferredShell?: ShellType): ShellConfig {
   const homeDir = os.homedir();
 
   // Shell path candidates in order of preference
+  // Note: path.join('C:', 'foo') produces 'C:foo' (relative to C: drive), not 'C:\foo'
+  // We must use 'C:\\' or raw paths like 'C:\\Program Files' to get absolute paths
   const shellPaths: Record<ShellType, string[]> = {
     [ShellType.PowerShell]: [
-      path.join('C:', 'Program Files', 'PowerShell', '7', 'pwsh.exe'),
+      path.join('C:\\Program Files', 'PowerShell', '7', 'pwsh.exe'),
       path.join(homeDir, 'AppData', 'Local', 'Microsoft', 'WindowsApps', 'pwsh.exe'),
       path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
     ],
@@ -195,10 +205,10 @@ function getWindowsShellConfig(preferredShell?: ShellType): ShellConfig {
       path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe')
     ],
     [ShellType.Bash]: [
-      path.join('C:', 'Program Files', 'Git', 'bin', 'bash.exe'),
-      path.join('C:', 'Program Files (x86)', 'Git', 'bin', 'bash.exe'),
-      path.join('C:', 'msys64', 'usr', 'bin', 'bash.exe'),
-      path.join('C:', 'cygwin64', 'bin', 'bash.exe')
+      path.join('C:\\Program Files', 'Git', 'bin', 'bash.exe'),
+      path.join('C:\\Program Files (x86)', 'Git', 'bin', 'bash.exe'),
+      path.join('C:\\msys64', 'usr', 'bin', 'bash.exe'),
+      path.join('C:\\cygwin64', 'bin', 'bash.exe')
     ],
     [ShellType.Zsh]: [],
     [ShellType.Fish]: [],
@@ -373,11 +383,12 @@ export function findExecutable(
  * Create a platform-aware description for error messages
  */
 export function getPlatformDescription(): string {
+  const currentOS = getCurrentOS();
   const osName = {
     [OS.Windows]: 'Windows',
     [OS.macOS]: 'macOS',
     [OS.Linux]: 'Linux'
-  }[getCurrentOS()];
+  }[currentOS] || process.platform;
 
   const arch = os.arch();
   return `${osName} (${arch})`;

@@ -15,9 +15,8 @@ import os
 import platform
 import re
 import shutil
-from pathlib import Path
 from enum import Enum
-from typing import Optional, List, Dict
+from pathlib import Path
 
 # ============================================================================
 # Type Definitions
@@ -100,7 +99,7 @@ def with_executable_extension(base_name: str) -> str:
 # Binary Directories
 # ============================================================================
 
-def get_binary_directories() -> Dict[str, List[str]]:
+def get_binary_directories() -> dict[str, list[str]]:
     """
     Get common binary directories for the current platform.
 
@@ -150,7 +149,7 @@ def get_binary_directories() -> Dict[str, List[str]]:
     }
 
 
-def get_homebrew_path() -> Optional[str]:
+def get_homebrew_path() -> str | None:
     """
     Get Homebrew binary directory (macOS only).
 
@@ -176,7 +175,7 @@ def get_homebrew_path() -> Optional[str]:
 # Tool Detection
 # ============================================================================
 
-def find_executable(name: str, additional_paths: Optional[List[str]] = None) -> Optional[str]:
+def find_executable(name: str, additional_paths: list[str] | None = None) -> str | None:
     """
     Find an executable in standard locations.
 
@@ -230,7 +229,7 @@ def find_executable(name: str, additional_paths: Optional[List[str]] = None) -> 
     return None
 
 
-def get_claude_detection_paths() -> List[str]:
+def get_claude_detection_paths() -> list[str]:
     """
     Get platform-specific paths for Claude CLI detection.
 
@@ -263,7 +262,7 @@ def get_claude_detection_paths() -> List[str]:
     return paths
 
 
-def get_python_commands() -> List[str]:
+def get_python_commands() -> list[str]:
     """
     Get platform-specific Python command variations.
 
@@ -361,7 +360,7 @@ def get_comspec_path() -> str:
     return "/bin/sh"
 
 
-def build_windows_command(cli_path: str, args: List[str]) -> List[str]:
+def build_windows_command(cli_path: str, args: list[str]) -> list[str]:
     """
     Build a command array for Windows execution.
 
@@ -388,7 +387,7 @@ def build_windows_command(cli_path: str, args: List[str]) -> List[str]:
 # Environment Variables
 # ============================================================================
 
-def get_env_var(name: str, default: Optional[str] = None) -> Optional[str]:
+def get_env_var(name: str, default: str | None = None) -> str | None:
     """
     Get environment variable value with case-insensitive support on Windows.
 
