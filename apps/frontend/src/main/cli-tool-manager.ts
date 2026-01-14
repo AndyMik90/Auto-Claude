@@ -32,10 +32,10 @@ import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-p
 
 const execFileAsync = promisify(execFile);
 
-type ExecFileSyncOptionsWithVerbatim = import('child_process').ExecFileSyncOptions & {
+export type ExecFileSyncOptionsWithVerbatim = import('child_process').ExecFileSyncOptions & {
   windowsVerbatimArguments?: boolean;
 };
-type ExecFileAsyncOptionsWithVerbatim = import('child_process').ExecFileOptionsWithStringEncoding & {
+export type ExecFileAsyncOptionsWithVerbatim = import('child_process').ExecFileOptionsWithStringEncoding & {
   windowsVerbatimArguments?: boolean;
 };
 

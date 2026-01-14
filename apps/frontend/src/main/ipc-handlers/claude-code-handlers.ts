@@ -16,16 +16,12 @@ import { promisify } from 'util';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationInfo } from '../../shared/types/cli';
-import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths } from '../cli-tool-manager';
+import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
 import { isSecurePath } from '../utils/windows-paths';
 import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
-
-type ExecFileAsyncOptionsWithVerbatim = import('child_process').ExecFileOptionsWithStringEncoding & {
-  windowsVerbatimArguments?: boolean;
-};
 
 // Cache for latest version (avoid hammering npm registry)
 let cachedLatestVersion: { version: string; timestamp: number } | null = null;
@@ -41,6 +37,11 @@ const VERSION_LIST_CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour for version lis
 async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string | null]> {
   try {
     const isWindows = process.platform === 'win32';
+
+    // Security validation: reject paths with shell metacharacters or directory traversal
+    if (isWindows && !isSecurePath(cliPath)) {
+      throw new Error(`Claude CLI path failed security validation: ${cliPath}`);
+    }
 
     // Augment PATH with the CLI directory for proper resolution
     const cliDir = path.dirname(cliPath);
