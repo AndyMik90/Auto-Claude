@@ -359,16 +359,50 @@
     "starting": "Starting..."
   },
   "ideation": {
+    "title": "Ideation",
+    "subtitle": "AI-generated feature ideas for your project",
+    "ideas": "ideas",
+    "selected": "selected",
+    "delete": "Delete",
+    "addMore": "Add More",
+    "enabledTypes": "Enabled Ideation Types",
+    "generate": "Generate Ideas",
+    "noIdeasYet": "No Ideas Yet",
+    "emptyDescription": "Generate AI-powered feature ideas based on your project's context, existing patterns, and target audience.",
+    "tokenNotConfigured": "Claude token not configured. You'll be prompted to enter it when generating.",
+    "filters": {
+      "all": "All",
+      "codeImprovements": "Code",
+      "uiUxImprovements": "UI/UX",
+      "documentationGaps": "Docs",
+      "securityHardening": "Security",
+      "performanceOptimizations": "Performance"
+    },
     "converting": "Converting...",
     "convertToTask": "Convert to Auto-Build Task",
     "dismissIdea": "Dismiss Idea",
-    "description": "Description",
+    "ideaDescription": "Description",
     "rationale": "Rationale",
     "goToTask": "Go to Task",
     "conversionFailed": "Conversion failed",
     "conversionFailedDescription": "Failed to convert idea to task",
     "conversionError": "Conversion error",
-    "conversionErrorDescription": "An error occurred while converting the idea"
+    "conversionErrorDescription": "An error occurred while converting the idea",
+    "dialog": {
+      "configTitle": "Ideation Configuration",
+      "configDescription": "Configure which types of ideas to generate",
+      "typesTitle": "Ideation Types",
+      "contextSourcesTitle": "Context Sources",
+      "includeRoadmapContext": "Include Roadmap Context",
+      "includeKanbanContext": "Include Kanban Context",
+      "addMoreTitle": "Add More Ideas",
+      "addMoreDescription": "Select additional ideation types to generate. Your existing ideas will be preserved.",
+      "allTypesGenerated": "You've already generated all ideation types!",
+      "useRegenerateToRefresh": "Use \"Regenerate\" to refresh existing ideas.",
+      "selectedCount": "{{count}} selected",
+      "generateTypes": "Generate {{count}} Types",
+      "generateIdeas": "Generate Ideas"
+    }
   },
   "chatHistory": {
     "title": "Chat History",

@@ -359,16 +359,50 @@
     "starting": "Démarrage..."
   },
   "ideation": {
+    "title": "Idéation",
+    "subtitle": "Idées de fonctionnalités générées par l'IA pour votre projet",
+    "ideas": "idées",
+    "selected": "sélectionnées",
+    "delete": "Supprimer",
+    "addMore": "Ajouter plus",
+    "enabledTypes": "Types d'idéation activés",
+    "generate": "Générer des idées",
+    "noIdeasYet": "Aucune idée pour le moment",
+    "emptyDescription": "Générez des idées de fonctionnalités alimentées par l'IA basées sur le contexte de votre projet, les modèles existants et votre public cible.",
+    "tokenNotConfigured": "Jeton Claude non configuré. Il vous sera demandé de le saisir lors de la génération.",
+    "filters": {
+      "all": "Toutes",
+      "codeImprovements": "Code",
+      "uiUxImprovements": "UI/UX",
+      "documentationGaps": "Docs",
+      "securityHardening": "Sécurité",
+      "performanceOptimizations": "Performance"
+    },
     "converting": "Conversion...",
     "convertToTask": "Convertir en tâche Auto-Build",
     "dismissIdea": "Ignorer l'idée",
-    "description": "Description",
+    "ideaDescription": "Description",
     "rationale": "Justification",
     "goToTask": "Aller à la tâche",
     "conversionFailed": "Échec de la conversion",
     "conversionFailedDescription": "Impossible de convertir l'idée en tâche",
     "conversionError": "Erreur de conversion",
-    "conversionErrorDescription": "Une erreur s'est produite lors de la conversion de l'idée"
+    "conversionErrorDescription": "Une erreur s'est produite lors de la conversion de l'idée",
+    "dialog": {
+      "configTitle": "Configuration de l'idéation",
+      "configDescription": "Configurer les types d'idées à générer",
+      "typesTitle": "Types d'idéation",
+      "contextSourcesTitle": "Sources de contexte",
+      "includeRoadmapContext": "Inclure le contexte de la roadmap",
+      "includeKanbanContext": "Inclure le contexte du Kanban",
+      "addMoreTitle": "Ajouter plus d'idées",
+      "addMoreDescription": "Sélectionnez des types d'idéation supplémentaires à générer. Vos idées existantes seront conservées.",
+      "allTypesGenerated": "Vous avez déjà généré tous les types d'idéation !",
+      "useRegenerateToRefresh": "Utilisez \"Régénérer\" pour rafraîchir les idées existantes.",
+      "selectedCount": "{{count}} sélectionnées",
+      "generateTypes": "Générer {{count}} types",
+      "generateIdeas": "Générer des idées"
+    }
   },
   "chatHistory": {
     "title": "Historique des discussions",

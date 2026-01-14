@@ -382,7 +382,22 @@
     "conversionFailed": "转换失败",
     "conversionFailedDescription": "无法将想法转换为任务",
     "conversionError": "转换错误",
-    "conversionErrorDescription": "转换想法时发生错误"
+    "conversionErrorDescription": "转换想法时发生错误",
+    "dialog": {
+      "configTitle": "创意生成配置",
+      "configDescription": "配置要生成的创意类型",
+      "typesTitle": "创意类型",
+      "contextSourcesTitle": "上下文来源",
+      "includeRoadmapContext": "包含路线图上下文",
+      "includeKanbanContext": "包含看板上下文",
+      "addMoreTitle": "添加更多创意",
+      "addMoreDescription": "选择其他创意类型进行生成。您现有的创意将被保留。",
+      "allTypesGenerated": "您已经生成了所有创意类型！",
+      "useRegenerateToRefresh": "使用"重新生成"来刷新现有创意。",
+      "selectedCount": "已选择 {{count}} 项",
+      "generateTypes": "生成 {{count}} 种类型",
+      "generateIdeas": "生成创意"
+    }
   },
   "chatHistory": {
     "title": "聊天历史",
