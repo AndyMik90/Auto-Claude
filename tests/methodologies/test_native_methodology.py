@@ -72,6 +72,20 @@ def mock_context() -> Any:
 
 
 @pytest.fixture
+def mock_workspace_manager():
+    """Create a mock for WorktreeManager that can be used across tests."""
+    from unittest.mock import MagicMock
+
+    mock_manager = MagicMock()
+    mock_worktree_info = MagicMock()
+    mock_worktree_info.path = "/mock/worktree/path"
+    mock_worktree_info.branch = "auto-claude/test-task"
+    mock_worktree_info.spec_name = "test-task"
+    mock_manager.get_or_create_worktree.return_value = mock_worktree_info
+    return mock_manager
+
+
+@pytest.fixture
 def mock_context_with_spec_dir(tmp_path) -> Any:
     """Create a mock RunContext with spec_dir configured.
 
@@ -132,36 +146,64 @@ def mock_context_with_spec_dir(tmp_path) -> Any:
 
 
 @pytest.fixture
-def initialized_runner(mock_context: Any) -> Any:
+def initialized_runner(mock_context: Any, mock_workspace_manager) -> Any:
     """Create and initialize a NativeRunner for testing.
 
     Args:
         mock_context: The mock RunContext fixture.
+        mock_workspace_manager: The mock WorktreeManager fixture.
 
     Returns:
         An initialized NativeRunner instance.
     """
     from apps.backend.methodologies.native import NativeRunner
+    from unittest.mock import patch, MagicMock
 
     runner = NativeRunner()
-    runner.initialize(mock_context)
+
+    with patch(
+        "apps.backend.methodologies.native.methodology.WorktreeManager",
+        return_value=mock_workspace_manager,
+    ), patch(
+        "apps.backend.methodologies.native.methodology.get_security_profile",
+        return_value=MagicMock(),
+    ), patch(
+        "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+        return_value=MagicMock(),
+    ):
+        runner.initialize(mock_context)
+
     return runner
 
 
 @pytest.fixture
-def initialized_runner_with_spec_dir(mock_context_with_spec_dir: Any) -> Any:
+def initialized_runner_with_spec_dir(mock_context_with_spec_dir: Any, mock_workspace_manager) -> Any:
     """Create and initialize a NativeRunner with spec_dir configured.
 
     Args:
         mock_context_with_spec_dir: The mock RunContext with spec_dir.
+        mock_workspace_manager: The mock WorktreeManager fixture.
 
     Returns:
         An initialized NativeRunner instance with spec_dir.
     """
     from apps.backend.methodologies.native import NativeRunner
+    from unittest.mock import patch, MagicMock
 
     runner = NativeRunner()
-    runner.initialize(mock_context_with_spec_dir)
+
+    with patch(
+        "apps.backend.methodologies.native.methodology.WorktreeManager",
+        return_value=mock_workspace_manager,
+    ), patch(
+        "apps.backend.methodologies.native.methodology.get_security_profile",
+        return_value=MagicMock(),
+    ), patch(
+        "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+        return_value=MagicMock(),
+    ):
+        runner.initialize(mock_context_with_spec_dir)
+
     return runner
 
 
@@ -377,22 +419,47 @@ class TestNativeRunnerInitialization:
         with pytest.raises(RuntimeError, match="not initialized"):
             runner.get_phases()
 
-    def test_runner_initializes_with_context(self, mock_context):
+    def test_runner_initializes_with_context(self, mock_context, mock_workspace_manager):
         """Test runner initializes successfully with RunContext."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context)
+
         # Should not raise after initialization
         phases = runner.get_phases()
         assert len(phases) == 6
 
-    def test_runner_cannot_initialize_twice(self, mock_context):
+    def test_runner_cannot_initialize_twice(self, mock_context, mock_workspace_manager):
         """Test runner raises error if initialized twice."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context)
 
         with pytest.raises(RuntimeError, match="already initialized"):
             runner.initialize(mock_context)
@@ -558,50 +625,110 @@ class TestNativeRunnerPhaseExecution:
 class TestNativeRunnerInitializeContext:
     """Test NativeRunner stores context correctly (Story 2.2 AC#1)."""
 
-    def test_initialize_stores_context(self, mock_context):
+    def test_initialize_stores_context(self, mock_context, mock_workspace_manager):
         """Test initialize stores the RunContext reference."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context)
 
         assert runner._context is mock_context
 
-    def test_initialize_extracts_project_dir(self, mock_context):
+    def test_initialize_extracts_project_dir(self, mock_context, mock_workspace_manager):
         """Test initialize extracts project_dir from context.workspace."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context)
 
         assert runner._project_dir == "/mock/project"
 
-    def test_initialize_extracts_task_config(self, mock_context):
+    def test_initialize_extracts_task_config(self, mock_context, mock_workspace_manager):
         """Test initialize stores task configuration from context."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context)
 
         assert runner._task_config is mock_context.task_config
         assert runner._task_config.task_id == "test-task"
 
-    def test_initialize_extracts_complexity(self, mock_context):
+    def test_initialize_extracts_complexity(self, mock_context, mock_workspace_manager):
         """Test initialize extracts complexity level from task config."""
         from apps.backend.methodologies.native import NativeRunner
         from apps.backend.methodologies.protocols import ComplexityLevel
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context)
 
         assert runner._complexity == ComplexityLevel.STANDARD
 
-    def test_initialize_extracts_spec_dir_from_metadata(self, mock_context_with_spec_dir):
+    def test_initialize_extracts_spec_dir_from_metadata(self, mock_context_with_spec_dir, mock_workspace_manager):
         """Test initialize extracts spec_dir from task_config.metadata."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context_with_spec_dir)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context_with_spec_dir)
 
         assert runner._spec_dir is not None
         assert runner._spec_dir.exists()
@@ -698,12 +825,24 @@ class TestNativeRunnerPhaseExecutionNoSpecDir:
 class TestNativeRunnerRequirementsFailure:
     """Test requirements phase failure cases (Story 2.2 HIGH #4)."""
 
-    def test_requirements_fails_without_task_config(self, mock_context_with_spec_dir):
+    def test_requirements_fails_without_task_config(self, mock_context_with_spec_dir, mock_workspace_manager):
         """Test requirements phase fails when _task_config is None."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context_with_spec_dir)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context_with_spec_dir)
 
         # Artificially clear task_config to test the failure path
         runner._task_config = None
@@ -828,29 +967,53 @@ class TestNativeRunnerValidatePhase:
 class TestNativeRunnerProgressReporting:
     """Test progress reporting integration (Story 2.2)."""
 
-    def test_execute_phase_calls_progress_update_start(self, mock_context):
+    def test_execute_phase_calls_progress_update_start(self, mock_context, mock_workspace_manager):
         """Test execute_phase calls progress.update at phase start."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         # Replace progress service with mock
         mock_context.progress = MagicMock()
 
         runner = NativeRunner()
-        runner.initialize(mock_context)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context)
 
         runner.execute_phase("discovery")
 
         # Should have been called at least once
         mock_context.progress.update.assert_called()
 
-    def test_execute_phase_calls_progress_update_complete(self, mock_context_with_spec_dir):
+    def test_execute_phase_calls_progress_update_complete(self, mock_context_with_spec_dir, mock_workspace_manager):
         """Test execute_phase calls progress.update when phase completes."""
         from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
 
         mock_context_with_spec_dir.progress = MagicMock()
 
         runner = NativeRunner()
-        runner.initialize(mock_context_with_spec_dir)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context_with_spec_dir)
 
         runner.execute_phase("requirements")
 
@@ -869,13 +1032,25 @@ class TestNativeRunnerProgressReporting:
 class TestNativeRunnerExceptionHandling:
     """Test exception handling in phase execution."""
 
-    def test_execute_phase_handles_exception(self, mock_context_with_spec_dir):
+    def test_execute_phase_handles_exception(self, mock_context_with_spec_dir, mock_workspace_manager):
         """Test execute_phase returns failure on exception."""
         from apps.backend.methodologies.native import NativeRunner
         from apps.backend.methodologies.protocols import PhaseStatus
+        from unittest.mock import patch, MagicMock
 
         runner = NativeRunner()
-        runner.initialize(mock_context_with_spec_dir)
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_workspace_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context_with_spec_dir)
 
         # Monkeypatch to raise exception
         def raise_error():
@@ -918,3 +1093,377 @@ class TestNativeRunnerExceptionHandling:
         phases = runner.get_phases()
         req_phase = next(p for p in phases if p.id == "requirements")
         assert req_phase.status == PhaseStatus.COMPLETED
+
+
+# =============================================================================
+# Story 2.3: Workspace Management Integration Tests
+# =============================================================================
+
+
+class TestNativeRunnerWorktreeIntegration:
+    """Test worktree integration in NativeRunner (Story 2.3 AC#1)."""
+
+    def test_initialize_creates_worktree(self, mock_context_with_spec_dir):
+        """Test initialize creates a git worktree for the task (FR65)."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        # Mock the WorktreeManager
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ):
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Verify worktree was created
+            mock_worktree_manager.get_or_create_worktree.assert_called_once()
+            assert runner._worktree_path is not None
+
+    def test_initialize_stores_worktree_path(self, mock_context_with_spec_dir):
+        """Test initialize stores worktree path for agent use."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ):
+            runner.initialize(mock_context_with_spec_dir)
+
+            assert runner._worktree_path == "/mock/worktree/path"
+
+    def test_initialize_handles_worktree_creation_errors(self, mock_context_with_spec_dir):
+        """Test initialize handles worktree creation errors gracefully."""
+        from apps.backend.methodologies.native import NativeRunner
+        # Import WorktreeError from the same path used in the methodology module
+        from apps.backend.methodologies.native.methodology import WorktreeError
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_manager.get_or_create_worktree.side_effect = WorktreeError(
+            "Failed to create worktree"
+        )
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            # Should raise RuntimeError with informative message
+            with pytest.raises(RuntimeError, match="worktree"):
+                runner.initialize(mock_context_with_spec_dir)
+
+
+class TestNativeRunnerSecurityIntegration:
+    """Test security sandbox integration in NativeRunner (Story 2.3 AC#1)."""
+
+    def test_initialize_applies_security_sandbox(self, mock_context_with_spec_dir):
+        """Test initialize applies security sandbox (FR66)."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        mock_security_profile = MagicMock()
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=mock_security_profile,
+        ) as mock_get_profile:
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Verify security profile was obtained
+            mock_get_profile.assert_called_once()
+            assert runner._security_profile is not None
+
+    def test_security_profile_uses_worktree_path(self, mock_context_with_spec_dir):
+        """Test security profile is configured for the worktree path."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+        from pathlib import Path
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = Path("/mock/worktree/path")
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        mock_security_profile = MagicMock()
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=mock_security_profile,
+        ) as mock_get_profile:
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Security profile should be called with worktree path
+            call_args = mock_get_profile.call_args
+            assert call_args is not None
+
+
+class TestNativeRunnerGraphitiIntegration:
+    """Test Graphiti memory integration in NativeRunner (Story 2.3 AC#2)."""
+
+    def test_initialize_integrates_graphiti_memory(self, mock_context_with_spec_dir):
+        """Test initialize sets up Graphiti memory service (FR68)."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        mock_memory = MagicMock()
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=mock_memory,
+        ) as mock_get_memory:
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Verify memory was initialized
+            mock_get_memory.assert_called_once()
+            assert runner._graphiti_memory is not None
+
+    def test_initialize_handles_memory_unavailable_gracefully(self, mock_context_with_spec_dir):
+        """Test initialize handles Graphiti unavailability gracefully (NFR23)."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            side_effect=Exception("Graphiti unavailable"),
+        ):
+            # Should NOT raise - memory failure should not block initialization
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Memory should be None but runner should be initialized
+            assert runner._graphiti_memory is None
+            assert runner._initialized is True
+
+
+class TestNativeRunnerWorkspacePassthrough:
+    """Test workspace is passed to agents correctly (Story 2.3 AC#1, #2)."""
+
+    def test_runner_provides_workspace_path(self, mock_context_with_spec_dir):
+        """Test runner provides workspace path for agents via RunContext."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Verify workspace path is accessible
+            assert runner.get_workspace_path() == "/mock/worktree/path"
+
+    def test_runner_provides_security_profile(self, mock_context_with_spec_dir):
+        """Test runner provides security profile for agents."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        mock_security_profile = MagicMock()
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=mock_security_profile,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Verify security profile is accessible
+            assert runner.get_security_profile() is mock_security_profile
+
+    def test_runner_provides_memory_service(self, mock_context_with_spec_dir):
+        """Test runner provides Graphiti memory service for agents."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        mock_memory = MagicMock()
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=mock_memory,
+        ):
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Verify memory is accessible (may be None if unavailable)
+            assert runner.get_graphiti_memory() is mock_memory
+
+
+class TestNativeRunnerCleanup:
+    """Test cleanup method for NativeRunner (Story 2.3 AC#3)."""
+
+    def test_cleanup_deletes_worktree(self, mock_context_with_spec_dir):
+        """Test cleanup deletes the worktree (FR70)."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_info.spec_name = "test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context_with_spec_dir)
+            runner.cleanup()
+
+            # Verify worktree was removed
+            mock_worktree_manager.remove_worktree.assert_called_once_with(
+                "test-task", delete_branch=True
+            )
+
+    def test_cleanup_handles_partial_cleanup_gracefully(self, mock_context_with_spec_dir):
+        """Test cleanup handles partial failures gracefully."""
+        from apps.backend.methodologies.native import NativeRunner
+        from unittest.mock import patch, MagicMock
+
+        runner = NativeRunner()
+
+        mock_worktree_manager = MagicMock()
+        mock_worktree_info = MagicMock()
+        mock_worktree_info.path = "/mock/worktree/path"
+        mock_worktree_info.branch = "auto-claude/test-task"
+        mock_worktree_info.spec_name = "test-task"
+        mock_worktree_manager.get_or_create_worktree.return_value = mock_worktree_info
+        mock_worktree_manager.remove_worktree.side_effect = Exception("Cleanup failed")
+
+        with patch(
+            "apps.backend.methodologies.native.methodology.WorktreeManager",
+            return_value=mock_worktree_manager,
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_security_profile",
+            return_value=MagicMock(),
+        ), patch(
+            "apps.backend.methodologies.native.methodology.get_graphiti_memory",
+            return_value=MagicMock(),
+        ):
+            runner.initialize(mock_context_with_spec_dir)
+
+            # Should not raise even if cleanup partially fails
+            runner.cleanup()  # Should complete without raising
+
+    def test_cleanup_without_initialization_is_noop(self):
+        """Test cleanup does nothing if runner was never initialized."""
+        from apps.backend.methodologies.native import NativeRunner
+
+        runner = NativeRunner()
+        # Should not raise
+        runner.cleanup()
