@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TypedDict, TypeVar
 
+from core.gh_executable import get_gh_executable
 from core.git_executable import get_git_executable, run_git
 from debug import debug_warning
 
@@ -959,9 +960,17 @@ class WorktreeManager:
         # Get PR body from spec.md if available
         pr_body = self._extract_spec_summary(spec_name)
 
+        # Find gh executable before attempting PR creation
+        gh_executable = get_gh_executable()
+        if not gh_executable:
+            return PullRequestResult(
+                success=False,
+                error="GitHub CLI (gh) not found. Install from https://cli.github.com/",
+            )
+
         # Build gh pr create command
         gh_args = [
-            "gh",
+            gh_executable,
             "pr",
             "create",
             "--base",
@@ -1121,9 +1130,23 @@ class WorktreeManager:
         if not info:
             return None
 
+        gh_executable = get_gh_executable()
+        if not gh_executable:
+            # gh CLI not found - return None and let caller handle it
+            return None
+
         try:
             result = subprocess.run(
-                ["gh", "pr", "view", info.branch, "--json", "url", "--jq", ".url"],
+                [
+                    gh_executable,
+                    "pr",
+                    "view",
+                    info.branch,
+                    "--json",
+                    "url",
+                    "--jq",
+                    ".url",
+                ],
                 cwd=info.path,
                 capture_output=True,
                 text=True,
