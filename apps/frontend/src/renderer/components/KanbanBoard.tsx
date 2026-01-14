@@ -41,6 +41,7 @@ function isValidDropColumn(id: string): id is typeof TASK_STATUS_COLUMNS[number]
 
 interface KanbanBoardProps {
   tasks: Task[];
+  projectId: string;
   onTaskClick: (task: Task) => void;
   onNewTaskClick?: () => void;
   onRefresh?: () => void;
@@ -361,7 +362,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
   );
 }, droppableColumnPropsAreEqual);
 
-export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isRefreshing }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, projectId, onTaskClick, onNewTaskClick, onRefresh, isRefreshing }: KanbanBoardProps) {
   const { t } = useTranslation(['tasks', 'dialogs', 'common']);
   const { toast } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -443,12 +444,6 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
     return grouped;
   }, [filteredTasks]);
-
-  // Get projectId from any task (more reliable than tasks[0] when array might be empty)
-  const projectId = useMemo(() =>
-    tasks.find(task => task.projectId)?.projectId,
-    [tasks]
-  );
 
   const handleArchiveAll = async () => {
     if (!projectId) {
@@ -627,7 +622,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               onStatusChange={handleStatusChange}
               isOver={overColumnId === status}
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
-              onImportClick={status === 'backlog' && projectId ? () => setIsImportModalOpen(true) : undefined}
+              onImportClick={status === 'backlog' ? () => setIsImportModalOpen(true) : undefined}
               onArchiveAll={status === 'done' ? handleArchiveAll : undefined}
               archivedCount={status === 'done' ? archivedCount : undefined}
               showArchived={status === 'done' ? showArchived : undefined}
@@ -662,14 +657,12 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       />
 
       {/* Task file import modal */}
-      {projectId && (
-        <TaskFileImportModal
-          projectId={projectId}
-          open={isImportModalOpen}
-          onOpenChange={setIsImportModalOpen}
-          onImportComplete={() => onRefresh?.()}
-        />
-      )}
+      <TaskFileImportModal
+        projectId={projectId}
+        open={isImportModalOpen}
+        onOpenChange={setIsImportModalOpen}
+        onImportComplete={() => onRefresh?.()}
+      />
     </div>
   );
 }
