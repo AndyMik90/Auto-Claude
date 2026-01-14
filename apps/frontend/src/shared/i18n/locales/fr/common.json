@@ -88,6 +88,7 @@
     "initializing": "Initialisation...",
     "saving": "Enregistrement...",
     "creating": "Creation...",
+    "checking": "Vérification...",
     "noData": "Aucune donnée",
     "optional": "Optionnel",
     "required": "Requis",

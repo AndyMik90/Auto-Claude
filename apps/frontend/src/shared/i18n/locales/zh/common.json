@@ -88,6 +88,7 @@
     "initializing": "初始化中...",
     "saving": "保存中...",
     "creating": "创建中...",
+    "checking": "检查中...",
     "noData": "无数据",
     "optional": "可选",
     "required": "必填",

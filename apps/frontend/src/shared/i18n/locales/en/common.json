@@ -88,6 +88,7 @@
     "initializing": "Initializing...",
     "saving": "Saving...",
     "creating": "Creating...",
+    "checking": "Checking...",
     "noData": "No data",
     "optional": "Optional",
     "required": "Required",
