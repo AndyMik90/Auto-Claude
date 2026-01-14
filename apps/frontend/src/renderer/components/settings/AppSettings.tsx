@@ -62,6 +62,9 @@ import { ProjectSelector } from './ProjectSelector';
 import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
 import { useProjectStore } from '../../stores/project-store';
 import type { UseProjectSettingsReturn } from '../project-settings/hooks/useProjectSettings';
+import { AccountProfile } from './account/AccountProfile';
+import { AccountSecurity } from './account/AccountSecurity';
+import { AccountAuthSettings } from './account/AccountAuthSettings';
 
 interface AppSettingsDialogProps {
   open: boolean;
@@ -230,14 +233,13 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
   };
 
   const renderAccountSection = () => {
-    // TODO: Create actual account settings components
     switch (accountSection) {
       case 'profile':
-        return <div className="p-4"><p className="text-sm text-muted-foreground">Profile settings coming soon...</p></div>;
+        return <AccountProfile />;
       case 'security':
-        return <div className="p-4"><p className="text-sm text-muted-foreground">Security settings coming soon...</p></div>;
+        return <AccountSecurity />;
       case 'auth':
-        return <div className="p-4"><p className="text-sm text-muted-foreground">Authentication settings coming soon...</p></div>;
+        return <AccountAuthSettings settings={settings} onSettingsChange={setSettings} />;
       default:
         return null;
     }
