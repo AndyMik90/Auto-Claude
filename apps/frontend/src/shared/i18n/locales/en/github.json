@@ -1,0 +1,43 @@
+{
+  "title": "GitHub Issues",
+  "integration": {
+    "title": "GitHub Integration",
+    "enableLabel": "Enable GitHub Issues",
+    "enableDescription": "Sync issues from GitHub and create tasks automatically",
+    "projectSpecificConfig": "Project-Specific Configuration",
+    "projectSpecificConfigDescription": "This GitHub repository is configured only for {{projectName}}. Each project can have its own GitHub repository."
+  },
+  "authentication": {
+    "title": "GitHub Authentication",
+    "useManualToken": "Use Manual Token",
+    "useOAuthInstead": "Use OAuth Instead",
+    "authenticatedViaOAuth": "Authenticated via GitHub OAuth (gh CLI)",
+    "personalAccessToken": "Personal Access Token",
+    "tokenScope": "Create a token with",
+    "tokenScopeLink": "repo",
+    "tokenScopeFrom": "scope from",
+    "tokenLinkText": "GitHub Settings"
+  },
+  "repository": {
+    "title": "Repository",
+    "format": "Format:",
+    "formatExample": "(e.g., facebook/react)",
+    "placeholder": "owner/repository"
+  },
+  "connection": {
+    "status": "Connection Status",
+    "connectedTo": "Connected to",
+    "notConnected": "Not connected"
+  },
+  "issues": {
+    "available": "Issues Available",
+    "availableDescription": "Access GitHub Issues from the sidebar to view, investigate, and create tasks from issues."
+  },
+  "autoSync": {
+    "label": "Auto-Sync on Load",
+    "description": "Automatically fetch issues when the project loads"
+  },
+  "status": {
+    "enabled": "Enabled"
+  }
+}

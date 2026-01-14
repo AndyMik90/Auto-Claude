@@ -1,0 +1,43 @@
+{
+  "title": "GitHub 问题",
+  "integration": {
+    "title": "GitHub 集成",
+    "enableLabel": "启用 GitHub 问题",
+    "enableDescription": "从 GitHub 同步问题并自动创建任务",
+    "projectSpecificConfig": "项目特定配置",
+    "projectSpecificConfigDescription": "此 GitHub 仓库仅为 {{projectName}} 配置。每个项目可以有自己的 GitHub 仓库。"
+  },
+  "authentication": {
+    "title": "GitHub 认证",
+    "useManualToken": "使用手动令牌",
+    "useOAuthInstead": "改用 OAuth",
+    "authenticatedViaOAuth": "通过 GitHub OAuth 认证（gh CLI）",
+    "personalAccessToken": "个人访问令牌",
+    "tokenScope": "创建一个具有",
+    "tokenScopeLink": "repo",
+    "tokenScopeFrom": "权限范围的令牌，来自",
+    "tokenLinkText": "GitHub 设置"
+  },
+  "repository": {
+    "title": "仓库",
+    "format": "格式：",
+    "formatExample": "（例如：facebook/react）",
+    "placeholder": "所有者/仓库"
+  },
+  "connection": {
+    "status": "连接状态",
+    "connectedTo": "已连接到",
+    "notConnected": "未连接"
+  },
+  "issues": {
+    "available": "可用问题",
+    "availableDescription": "从侧边栏访问 GitHub 问题以查看、调查并从问题创建任务。"
+  },
+  "autoSync": {
+    "label": "加载时自动同步",
+    "description": "项目加载时自动获取问题"
+  },
+  "status": {
+    "enabled": "已启用"
+  }
+}

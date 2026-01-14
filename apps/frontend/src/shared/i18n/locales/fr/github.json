@@ -1,0 +1,43 @@
+{
+  "title": "Issues GitHub",
+  "integration": {
+    "title": "Intégration GitHub",
+    "enableLabel": "Activer les Issues GitHub",
+    "enableDescription": "Synchroniser les issues depuis GitHub et créer des tâches automatiquement",
+    "projectSpecificConfig": "Configuration spécifique au projet",
+    "projectSpecificConfigDescription": "Ce dépôt GitHub est configuré uniquement pour {{projectName}}. Chaque projet peut avoir son propre dépôt GitHub."
+  },
+  "authentication": {
+    "title": "Authentification GitHub",
+    "useManualToken": "Utiliser un jeton manuel",
+    "useOAuthInstead": "Utiliser OAuth à la place",
+    "authenticatedViaOAuth": "Authentifié via GitHub OAuth (gh CLI)",
+    "personalAccessToken": "Jeton d'accès personnel",
+    "tokenScope": "Créer un jeton avec",
+    "tokenScopeLink": "repo",
+    "tokenScopeFrom": "portée depuis",
+    "tokenLinkText": "Paramètres GitHub"
+  },
+  "repository": {
+    "title": "Dépôt",
+    "format": "Format :",
+    "formatExample": "(ex : facebook/react)",
+    "placeholder": "propriétaire/dépôt"
+  },
+  "connection": {
+    "status": "Statut de connexion",
+    "connectedTo": "Connecté à",
+    "notConnected": "Non connecté"
+  },
+  "issues": {
+    "available": "Issues disponibles",
+    "availableDescription": "Accédez aux Issues GitHub depuis la barre latérale pour visualiser, enquêter et créer des tâches à partir des issues."
+  },
+  "autoSync": {
+    "label": "Synchronisation automatique au chargement",
+    "description": "Récupérer automatiquement les issues lors du chargement du projet"
+  },
+  "status": {
+    "enabled": "Activé"
+  }
+}
