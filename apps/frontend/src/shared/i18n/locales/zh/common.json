@@ -472,5 +472,27 @@
     },
     "createdAt": "创建于 {{date}}",
     "branchWithName": "({{branch}})"
+  },
+  "roadmap": {
+    "emptyTitle": "尚无路线图",
+    "emptyDescription": "生成一个由 AI 驱动的路线图，了解您的项目目标受众并创建战略功能计划。",
+    "generate": "生成路线图",
+    "competitorAnalysis": "竞品分析",
+    "clickToViewDetailedAnalysis": "点击查看详细分析",
+    "analyzedCompetitors": "分析了 {{count}} 个竞争对手，发现 {{painPoints}} 个痛点",
+    "addFeature": "添加功能",
+    "addFeatureAriaLabel": "向路线图添加新功能",
+    "regenerate": "重新生成路线图",
+    "target": "目标：",
+    "morePersonas": "+{{count}} 个其他用户画像",
+    "secondaryPersonas": "次要用户画像：",
+    "features": "个功能",
+    "phases": "个阶段",
+    "kanban": "看板",
+    "phasesTab": "阶段",
+    "allFeatures": "所有功能",
+    "byPriority": "按优先级",
+    "insight": "洞察",
+    "impact": "影响"
   }
 }

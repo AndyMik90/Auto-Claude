@@ -477,5 +477,27 @@
     },
     "createdAt": "Created {{date}}",
     "branchWithName": "({{branch}})"
+  },
+  "roadmap": {
+    "emptyTitle": "No Roadmap Yet",
+    "emptyDescription": "Generate an AI-powered roadmap that understands your project's target audience and creates a strategic feature plan.",
+    "generate": "Generate Roadmap",
+    "competitorAnalysis": "Competitor Analysis",
+    "clickToViewDetailedAnalysis": "Click to view detailed analysis",
+    "analyzedCompetitors": "Analyzed {{count}} competitors with {{painPoints}} pain points identified",
+    "addFeature": "Add Feature",
+    "addFeatureAriaLabel": "Add a new feature to the roadmap",
+    "regenerate": "Regenerate Roadmap",
+    "target": "Target:",
+    "morePersonas": "+{{count}} more personas",
+    "secondaryPersonas": "Secondary Personas:",
+    "features": "features",
+    "phases": "phases",
+    "kanban": "Kanban",
+    "phasesTab": "Phases",
+    "allFeatures": "All Features",
+    "byPriority": "By Priority",
+    "insight": "Insight",
+    "impact": "impact"
   }
 }

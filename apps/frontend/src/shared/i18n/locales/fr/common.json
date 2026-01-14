@@ -477,5 +477,27 @@
     },
     "createdAt": "Créé le {{date}}",
     "branchWithName": "({{branch}})"
+  },
+  "roadmap": {
+    "emptyTitle": "Aucune roadmap pour le moment",
+    "emptyDescription": "Générez une roadmap propulsée par l'IA qui comprend votre public cible et crée un plan stratégique de fonctionnalités.",
+    "generate": "Générer la roadmap",
+    "competitorAnalysis": "Analyse concurrentielle",
+    "clickToViewDetailedAnalysis": "Cliquez pour voir l'analyse détaillée",
+    "analyzedCompetitors": "Analyse de {{count}} concurrents avec {{painPoints}} points de douleur identifiés",
+    "addFeature": "Ajouter une fonctionnalité",
+    "addFeatureAriaLabel": "Ajouter une nouvelle fonctionnalité à la roadmap",
+    "regenerate": "Régénérer la roadmap",
+    "target": "Cible :",
+    "morePersonas": "+{{count}} autres personas",
+    "secondaryPersonas": "Personas secondaires :",
+    "features": "fonctionnalités",
+    "phases": "phases",
+    "kanban": "Kanban",
+    "phasesTab": "Phases",
+    "allFeatures": "Toutes les fonctionnalités",
+    "byPriority": "Par priorité",
+    "insight": "Perspective",
+    "impact": "impact"
   }
 }

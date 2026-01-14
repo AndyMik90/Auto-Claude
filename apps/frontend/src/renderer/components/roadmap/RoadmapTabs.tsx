@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { TrendingUp } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
@@ -25,13 +26,14 @@ export function RoadmapTabs({
   onGoToTask,
   onSave,
 }: RoadmapTabsProps) {
+  const { t } = useTranslation('common');
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="h-full flex flex-col">
       <TabsList className="shrink-0 mx-4 mt-4">
-        <TabsTrigger value="kanban">Kanban</TabsTrigger>
-        <TabsTrigger value="phases">Phases</TabsTrigger>
-        <TabsTrigger value="features">All Features</TabsTrigger>
-        <TabsTrigger value="priorities">By Priority</TabsTrigger>
+        <TabsTrigger value="kanban">{t('roadmap.kanban')}</TabsTrigger>
+        <TabsTrigger value="phases">{t('roadmap.phasesTab')}</TabsTrigger>
+        <TabsTrigger value="features">{t('roadmap.allFeatures')}</TabsTrigger>
+        <TabsTrigger value="priorities">{t('roadmap.byPriority')}</TabsTrigger>
       </TabsList>
 
       {/* Kanban View */}
@@ -90,7 +92,7 @@ export function RoadmapTabs({
                   <Badge variant="outline" className={ROADMAP_PRIORITY_COLORS[priority]}>
                     {ROADMAP_PRIORITY_LABELS[priority]}
                   </Badge>
-                  <span className="text-sm text-muted-foreground">{features.length} features</span>
+                  <span className="text-sm text-muted-foreground">{features.length} {t('roadmap.features')}</span>
                 </div>
                 <div className="space-y-2">
                   {features.map((feature: RoadmapFeature) => (
@@ -111,12 +113,12 @@ export function RoadmapTabs({
                           variant="outline"
                           className={`text-xs ${ROADMAP_IMPACT_COLORS[feature.impact]}`}
                         >
-                          {feature.impact} impact
+                          {feature.impact} {t('roadmap.impact')}
                         </Badge>
                         {hasCompetitorInsight(feature) && (
                           <Badge variant="outline" className="text-xs text-primary border-primary/50">
                             <TrendingUp className="h-3 w-3 mr-1" />
-                            Insight
+                            {t('roadmap.insight')}
                           </Badge>
                         )}
                       </div>
