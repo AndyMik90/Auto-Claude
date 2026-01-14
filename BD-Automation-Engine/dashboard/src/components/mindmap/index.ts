@@ -15,6 +15,9 @@ export type { ContextMenuProps, ContextMenuPosition, AttachmentType } from './Co
 export { ControlBar } from './ControlBar';
 export type { ControlBarProps, LayoutMode, ColorByOption } from './ControlBar';
 
+export { AIMapGenerator } from './AIMapGenerator';
+export type { AIMapGeneratorProps } from './AIMapGenerator';
+
 export { AttachmentPanel } from './AttachmentPanel';
 export type {
   AttachmentPanelProps,

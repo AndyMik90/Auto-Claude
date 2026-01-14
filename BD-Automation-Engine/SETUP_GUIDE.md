@@ -180,7 +180,7 @@ The `.env.example` contains the actual PTS Notion database IDs:
 # These are pre-configured - verify they match your workspace
 NOTION_DB_DCGS_CONTACTS=2ccdef65-baa5-8087-a53b-000ba596128e
 NOTION_DB_GDIT_OTHER_CONTACTS=70ea1c94-211d-40e6-a994-e8d7c4807434
-NOTION_DB_GDIT_JOBS=2ccdef65-baa5-80b0-9a80-000bd2745f63
+NOTION_DB_GDIT_JOBS=2563119e7914442cbe0fb86904a957a1
 NOTION_DB_PROGRAM_MAPPING_HUB=f57792c1-605b-424c-8830-23ab41c47137
 NOTION_DB_BD_OPPORTUNITIES=2bcdef65-baa5-80ed-bd95-000b2f898e17
 NOTION_DB_FEDERAL_PROGRAMS=06cd9b22-5d6b-4d37-b0d3-ba99da4971fa
@@ -561,7 +561,7 @@ cat outputs/quick_test.json | python -m json.tool
 ```
 DCGS Contacts Full:     2ccdef65-baa5-8087-a53b-000ba596128e
 GDIT Other Contacts:    70ea1c94-211d-40e6-a994-e8d7c4807434
-GDIT Jobs:              2ccdef65-baa5-80b0-9a80-000bd2745f63
+GDIT Jobs:              2563119e7914442cbe0fb86904a957a1
 Program Mapping Hub:    f57792c1-605b-424c-8830-23ab41c47137
 Federal Programs:       06cd9b22-5d6b-4d37-b0d3-ba99da4971fa
 BD Opportunities:       2bcdef65-baa5-80ed-bd95-000b2f898e17

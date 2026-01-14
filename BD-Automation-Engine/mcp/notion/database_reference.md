@@ -8,7 +8,7 @@ Complete reference for PTS BD Intelligence System databases.
 |----------|---------------|---------|
 | DCGS Contacts | `2ccdef65-baa5-8087-a53b-000ba596128e` | 6,288 DCGS program contacts |
 | GDIT Other Contacts | `70ea1c94-211d-40e6-a994-e8d7c4807434` | Non-DCGS GDIT contacts |
-| GDIT Jobs | `2ccdef65-baa5-80b0-9a80-000bd2745f63` | Job postings from GDIT |
+| GDIT Jobs | `2563119e7914442cbe0fb86904a957a1` | Job postings from GDIT |
 | Program Mapping Hub | `f57792c1-605b-424c-8830-23ab41c47137` | Enriched job intelligence |
 | BD Opportunities | `2bcdef65-baa5-80ed-bd95-000b2f898e17` | BD pipeline opportunities |
 | Federal Programs | `06cd9b22-5d6b-4d37-b0d3-ba99da4971fa` | 388 federal programs |

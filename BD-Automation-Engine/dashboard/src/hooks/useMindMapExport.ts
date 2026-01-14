@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { toPng } from 'html-to-image';
+import JSZip from 'jszip';
 
 export type NodeType = 'JOB' | 'PROGRAM' | 'CONTACT' | 'PRIME' | 'LOCATION' | 'TASK_ORDER' | 'TEAM' | 'BD_EVENT';
 export type LayoutMode = 'radial' | 'hierarchical' | 'force';
@@ -28,6 +29,23 @@ export interface MindMapExportData {
   };
 }
 
+// XMind topic structure
+interface XMindTopic {
+  id: string;
+  class: string;
+  title: string;
+  structureClass?: string;
+  notes?: {
+    plain: {
+      content: string;
+    };
+  };
+  markers?: { markerId: string }[];
+  children?: {
+    attached: XMindTopic[];
+  };
+}
+
 interface UseMindMapExportOptions {
   canvasRef: React.RefObject<HTMLElement | null>;
   exportData: MindMapExportData | null;
@@ -37,6 +55,7 @@ interface UseMindMapExportOptions {
 interface UseMindMapExportReturn {
   exportToOPML: () => void;
   exportToJSON: () => void;
+  exportToXMind: () => Promise<void>;
   exportToPNG: () => Promise<void>;
   isExporting: boolean;
 }
@@ -138,6 +157,122 @@ ${rootOutline}
     downloadFile(jsonString, `${fileName}.json`, 'application/json');
   }, [exportData, downloadFile, fileName]);
 
+  // Build XMind topic structure recursively
+  const buildXMindTopic = useCallback((node: MindMapNode, edges: MindMapEdge[], allNodes: MindMapNode[]): XMindTopic => {
+    const childEdges = edges.filter(e => e.source === node.id);
+    const childNodes = childEdges
+      .map(e => allNodes.find(n => n.id === e.target))
+      .filter((n): n is MindMapNode => n !== undefined);
+
+    const noteContent = formatNodeNote(node);
+    const icon = getNodeIcon(node.type);
+
+    const topic: XMindTopic = {
+      id: node.id,
+      class: 'topic',
+      title: `${icon} ${node.label}`,
+      structureClass: 'org.xmind.ui.map.unbalanced',
+    };
+
+    // Add notes if available
+    if (noteContent) {
+      topic.notes = {
+        plain: {
+          content: noteContent,
+        },
+      };
+    }
+
+    // Add markers based on node type and priority
+    const markers: { markerId: string }[] = [];
+    if (node.type === 'JOB') {
+      markers.push({ markerId: 'priority-1' });
+    } else if (node.type === 'CONTACT') {
+      markers.push({ markerId: 'people-green' });
+    } else if (node.type === 'PROGRAM') {
+      markers.push({ markerId: 'task-done' });
+    }
+    if (markers.length > 0) {
+      topic.markers = markers;
+    }
+
+    // Add children recursively
+    if (childNodes.length > 0) {
+      topic.children = {
+        attached: childNodes.map(child => buildXMindTopic(child, edges, allNodes)),
+      };
+    }
+
+    return topic;
+  }, []);
+
+  // Export to XMind format (.xmind)
+  const exportToXMind = useCallback(async () => {
+    if (!exportData) return;
+
+    const { nativeNode, nodes, edges } = exportData;
+    const rootTopic = buildXMindTopic(nativeNode, edges, [nativeNode, ...nodes]);
+    const sheetId = generateId();
+    const timestamp = Date.now();
+
+    // XMind content.json structure
+    const contentJson = [
+      {
+        id: sheetId,
+        class: 'sheet',
+        title: `BD Mind Map - ${nativeNode.label}`,
+        rootTopic: rootTopic,
+        theme: {
+          id: generateId(),
+          importantColors: [
+            '#2196F3', // Blue
+            '#9C27B0', // Purple
+            '#4CAF50', // Green
+            '#FF9800', // Orange
+            '#F44336', // Red
+          ],
+        },
+      },
+    ];
+
+    // Manifest file
+    const manifest = {
+      'file-entries': {
+        'content.json': {},
+        'metadata.json': {},
+      },
+    };
+
+    // Metadata file
+    const metadata = {
+      creator: {
+        name: 'BD Intelligence Dashboard',
+        version: '1.0.0',
+      },
+      created: timestamp,
+      modified: timestamp,
+    };
+
+    // Create ZIP file with XMind structure
+    const zip = new JSZip();
+    zip.file('content.json', JSON.stringify(contentJson, null, 2));
+    zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+    zip.file('metadata.json', JSON.stringify(metadata, null, 2));
+
+    // Generate the ZIP blob
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.xmind.workbook' });
+
+    // Download the file
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${fileName}.xmind`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [exportData, buildXMindTopic, fileName]);
+
   const exportToPNG = useCallback(async () => {
     if (!canvasRef.current) {
       console.error('Canvas ref is not available');
@@ -179,9 +314,15 @@ ${rootOutline}
   return {
     exportToOPML,
     exportToJSON,
+    exportToXMind,
     exportToPNG,
     isExporting: false,
   };
+}
+
+// Generate unique ID for XMind elements
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
 function escapeXML(str: string): string {

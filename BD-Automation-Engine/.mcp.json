@@ -25,6 +25,14 @@
       "env": {
         "APIFY_TOKEN": "${APIFY_TOKEN}"
       }
+    },
+    "mapify": {
+      "command": "node",
+      "args": ["mcp/mapify-mcp-server/build/index.js"],
+      "timeout": 300000,
+      "env": {
+        "MAPIFY_API_KEY": "${MAPIFY_API_KEY}"
+      }
     }
   }
 }

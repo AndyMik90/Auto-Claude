@@ -3,11 +3,13 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+import { Sparkles } from 'lucide-react';
 import { useMindMapStore } from '../../stores/mindMapStore';
 import type { MindMapNode } from '../../stores/mindMapStore';
 import { useMindMapData, useGraphData } from '../../hooks/useMindMapData';
 import { NODE_TYPE_CONFIG, PRIORITY_COLORS } from './MindMapNode';
 import NotePanel from './NotePanel';
+import { AIMapGenerator } from './AIMapGenerator';
 
 // Force configuration from Part 3.6
 const FORCE_CONFIG = {
@@ -133,6 +135,8 @@ export function MindMapCanvas({ className = '' }: MindMapCanvasProps) {
   const graphRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [generatedMapUrl, setGeneratedMapUrl] = useState<string | null>(null);
 
   // Load data
   const { isLoading, error, reload, nodeCount, edgeCount } = useMindMapData();
@@ -296,6 +300,11 @@ export function MindMapCanvas({ className = '' }: MindMapCanvasProps) {
     }
   }, [nativeNodeId, graphData.nodes]);
 
+  // Handle AI map generated
+  const handleMapGenerated = useCallback((imageUrl: string, _editUrl: string) => {
+    setGeneratedMapUrl(imageUrl);
+  }, []);
+
   // Loading state
   if (isLoading) {
     return (
@@ -344,6 +353,13 @@ export function MindMapCanvas({ className = '' }: MindMapCanvasProps) {
 
   return (
     <div className={`flex h-full ${className}`}>
+      {/* AI Map Generator Modal */}
+      <AIMapGenerator
+        isOpen={showAIGenerator}
+        onClose={() => setShowAIGenerator(false)}
+        onMapGenerated={handleMapGenerated}
+      />
+
       {/* Graph Canvas */}
       <div ref={containerRef} className="flex-1 relative bg-gray-50">
         {/* Stats overlay */}
@@ -351,6 +367,33 @@ export function MindMapCanvas({ className = '' }: MindMapCanvasProps) {
           <span className="font-medium">{nodeCount}</span> nodes |{' '}
           <span className="font-medium">{edgeCount}</span> edges
         </div>
+
+        {/* AI Generate button */}
+        <button
+          onClick={() => setShowAIGenerator(true)}
+          className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm rounded-lg shadow-lg transition-all"
+          title="AI Mind Map Generator"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>AI Generate</span>
+        </button>
+
+        {/* Generated AI Map overlay */}
+        {generatedMapUrl && (
+          <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+            <img
+              src={generatedMapUrl}
+              alt="AI Generated Mind Map"
+              className="max-w-full max-h-[70%] rounded-lg shadow-xl"
+            />
+            <button
+              onClick={() => setGeneratedMapUrl(null)}
+              className="mt-4 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Close AI Map
+            </button>
+          </div>
+        )}
 
         {/* Zoom controls */}
         <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1">

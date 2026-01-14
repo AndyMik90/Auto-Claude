@@ -11,6 +11,7 @@ import {
   RotateCcw,
   ChevronDown,
   X,
+  Sparkles,
 } from 'lucide-react';
 import type { NodeType } from './ContextMenu';
 
@@ -35,7 +36,9 @@ export interface ControlBarProps {
   onFitToView: () => void;
   onExportOPML: () => void;
   onExportJSON: () => void;
+  onExportXMind: () => void;
   onExportPNG: () => void;
+  onOpenAIGenerator?: () => void;
 }
 
 const NODE_TYPES: { value: NodeType; label: string; icon: string }[] = [
@@ -105,7 +108,9 @@ export function ControlBar({
   onFitToView,
   onExportOPML,
   onExportJSON,
+  onExportXMind,
   onExportPNG,
+  onOpenAIGenerator,
 }: ControlBarProps) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
@@ -359,12 +364,22 @@ export function ControlBar({
         </div>
         <button
           onClick={() => {
+            onExportXMind();
+            setExportOpen(false);
+          }}
+          className="w-full flex flex-col px-3 py-2 text-left text-gray-200 hover:bg-gray-700"
+        >
+          <span className="text-sm font-medium">XMind (.xmind)</span>
+          <span className="text-xs text-gray-500">Native XMind format with full styling</span>
+        </button>
+        <button
+          onClick={() => {
             onExportOPML();
             setExportOpen(false);
           }}
           className="w-full flex flex-col px-3 py-2 text-left text-gray-200 hover:bg-gray-700"
         >
-          <span className="text-sm font-medium">OPML (XMind)</span>
+          <span className="text-sm font-medium">OPML</span>
           <span className="text-xs text-gray-500">Import into XMind, OmniOutliner</span>
         </button>
         <button
@@ -397,6 +412,21 @@ export function ControlBar({
       >
         <RotateCcw className="w-4 h-4" />
       </button>
+
+      {/* AI Generator */}
+      {onOpenAIGenerator && (
+        <>
+          <div className="h-5 border-l border-gray-700" />
+          <button
+            onClick={onOpenAIGenerator}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-md transition-all"
+            title="AI Mind Map Generator"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>AI Generate</span>
+          </button>
+        </>
+      )}
     </div>
   );
 }

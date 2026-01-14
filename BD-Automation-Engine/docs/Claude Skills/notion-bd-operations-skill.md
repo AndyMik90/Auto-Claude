@@ -17,7 +17,7 @@ Best practices for Notion database operations in BD intelligence systems. Includ
 |----------|---------------|---------|---------|
 | DCGS Contacts Full | `2ccdef65-baa5-8087-a53b-000ba596128e` | ~965 | Primary BD contacts |
 | GDIT Other Contacts | `70ea1c94-211d-40e6-a994-e8d7c4807434` | ~1,052 | Non-DCGS contacts |
-| GDIT Jobs | `2ccdef65-baa5-80b0-9a80-000bd2745f63` | ~700 | Job openings |
+| GDIT Jobs | `2563119e7914442cbe0fb86904a957a1` | ~700 | Job openings |
 | Program Mapping Hub | `f57792c1-605b-424c-8830-23ab41c47137` | Variable | Scraped job enrichment |
 | Federal Programs | `06cd9b22-5d6b-4d37-b0d3-ba99da4971fa` | 388 | Program reference |
 | BD Opportunities | `2bcdef65-baa5-80ed-bd95-000b2f898e17` | Variable | Qualified leads |

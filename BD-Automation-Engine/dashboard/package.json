@@ -16,6 +16,7 @@
     "d3-force": "^3.0.0",
     "date-fns": "^4.1.0",
     "html-to-image": "^1.11.13",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

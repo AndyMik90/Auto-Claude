@@ -4,22 +4,30 @@
       "command": "npx",
       "args": ["-y", "@notionhq/notion-mcp-server"],
       "env": {
-        "OPENAPI_MCP_HEADERS": "${OPENAPI_MCP_HEADERS}"
+        "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer YOUR_NOTION_TOKEN\", \"Notion-Version\": \"2022-06-28\"}"
       }
     },
     "apify": {
       "command": "npx",
       "args": ["-y", "@apify/actors-mcp-server"],
       "env": {
-        "APIFY_TOKEN": "${APIFY_TOKEN}"
+        "APIFY_TOKEN": "YOUR_APIFY_TOKEN"
       }
     },
     "n8n-mcp": {
       "command": "npx",
-      "args": ["-y", "n8n-mcp"],
+      "args": ["-y", "n8n-mcp@latest"],
       "env": {
-        "N8N_API_KEY": "${N8N_API_KEY}",
-        "N8N_API_URL": "${N8N_API_URL}"
+        "MCP_MODE": "stdio",
+        "N8N_API_KEY": "YOUR_N8N_API_KEY",
+        "N8N_API_URL": "https://your-n8n-instance/api/v1"
+      }
+    },
+    "mapify": {
+      "command": "node",
+      "args": ["mcp/mapify-mcp-server/build/index.js"],
+      "env": {
+        "MAPIFY_API_KEY": "YOUR_MAPIFY_API_KEY"
       }
     },
     "windows-mcp": {
