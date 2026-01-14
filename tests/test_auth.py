@@ -7,8 +7,6 @@ including the PYTHONPATH isolation fix for ACS-251.
 
 from unittest.mock import patch
 
-import pytest
-
 # Note: Path setup is already done in conftest.py, no need to repeat here
 
 
@@ -147,14 +145,13 @@ class TestGetSdkEnvVars:
         import platform
 
         # Mock platform.system to simulate Linux for cross-platform testing
+        # When platform is not Windows, _find_git_bash_path is never called
         with patch.object(platform, "system", return_value="Linux"):
-            # Mock _find_git_bash_path to return None (not found)
-            with patch("core.auth._find_git_bash_path", return_value=None):
-                monkeypatch.delenv("CLAUDE_CODE_GIT_BASH_PATH", raising=False)
+            monkeypatch.delenv("CLAUDE_CODE_GIT_BASH_PATH", raising=False)
 
-                from core.auth import get_sdk_env_vars
+            from core.auth import get_sdk_env_vars
 
-                result = get_sdk_env_vars()
+            result = get_sdk_env_vars()
 
-                # Should not have CLAUDE_CODE_GIT_BASH_PATH
-                assert "CLAUDE_CODE_GIT_BASH_PATH" not in result
+            # Should not have CLAUDE_CODE_GIT_BASH_PATH
+            assert "CLAUDE_CODE_GIT_BASH_PATH" not in result
