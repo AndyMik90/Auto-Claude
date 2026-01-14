@@ -164,9 +164,9 @@ class TestModuleIntegrity:
     def test_agent_module_imports(self):
         """Agent module imports without errors."""
         try:
-            import agent
+            from core import agent
         except ImportError as e:
-            pytest.fail(f"agent.py failed to import: {e}")
+            pytest.fail(f"core.agent failed to import: {e}")
 
     def test_run_module_valid_syntax(self):
         """Run module has valid Python syntax."""

@@ -22,7 +22,7 @@ _mocked_module_names = [
     'claude_code_sdk',
     'claude_code_sdk.types',
     'claude_agent_sdk',
-    'graphiti_providers',
+    'integrations.graphiti.providers_pkg',
     'validate_spec',
     'client',
 ]
@@ -50,7 +50,7 @@ sys.modules['claude_agent_sdk'] = mock_agent_sdk
 mock_graphiti = MagicMock()
 mock_graphiti.is_graphiti_enabled = MagicMock(return_value=False)
 mock_graphiti.get_graph_hints = AsyncMock(return_value=[])
-sys.modules['graphiti_providers'] = mock_graphiti
+sys.modules['integrations.graphiti.providers_pkg'] = mock_graphiti
 
 # Mock validate_spec module
 mock_validate_spec = MagicMock()
@@ -301,7 +301,7 @@ class TestPhaseHistoricalContext:
             ui_module=mock_ui_module,
         )
 
-        with patch('graphiti_providers.is_graphiti_enabled', return_value=False):
+        with patch('integrations.graphiti.providers_pkg.is_graphiti_enabled', return_value=False):
             result = await executor.phase_historical_context()
 
         assert result.success is True

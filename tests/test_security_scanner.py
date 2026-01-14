@@ -21,7 +21,7 @@ import pytest
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "Apps" / "backend"))
 
-from security_scanner import (
+from analysis.security_scanner import (
     SecurityVulnerability,
     SecurityScanResult,
     SecurityScanner,

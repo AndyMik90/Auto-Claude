@@ -13,7 +13,7 @@ Tests the scan_secrets.py module functionality including:
 import pytest
 from pathlib import Path
 
-from scan_secrets import (
+from security.scan_secrets import (
     scan_content,
     scan_files,
     is_false_positive,

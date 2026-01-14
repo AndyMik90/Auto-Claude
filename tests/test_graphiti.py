@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "Apps" / "backend"))
 
-from graphiti_config import is_graphiti_enabled, get_graphiti_status, GraphitiConfig
+from integrations.graphiti.config import is_graphiti_enabled, get_graphiti_status, GraphitiConfig
 
 
 class TestIsGraphitiEnabled:
@@ -302,7 +302,7 @@ class TestAvailableProviders:
 
     def test_available_providers_openai_only(self):
         """Only OpenAI available when only OpenAI key is set."""
-        from graphiti_config import get_available_providers
+        from integrations.graphiti.config import get_available_providers
 
         with patch.dict(os.environ, {
             "OPENAI_API_KEY": "sk-test"
@@ -315,7 +315,7 @@ class TestAvailableProviders:
 
     def test_available_providers_all_configured(self):
         """All providers available when all are configured."""
-        from graphiti_config import get_available_providers
+        from integrations.graphiti.config import get_available_providers
 
         with patch.dict(os.environ, {
             "OPENAI_API_KEY": "sk-test",
@@ -339,12 +339,12 @@ class TestGraphitiProviders:
 
     def test_provider_error_import(self):
         """ProviderError and ProviderNotInstalled can be imported."""
-        from graphiti_providers import ProviderError, ProviderNotInstalled
+        from integrations.graphiti.providers_pkg import ProviderError, ProviderNotInstalled
         assert issubclass(ProviderNotInstalled, ProviderError)
 
     def test_create_llm_client_unknown_provider(self):
         """create_llm_client raises ProviderError for unknown provider."""
-        from graphiti_providers import create_llm_client, ProviderError
+        from integrations.graphiti.providers_pkg import create_llm_client, ProviderError
 
         with patch.dict(os.environ, {
             "GRAPHITI_ENABLED": "true",
@@ -356,7 +356,7 @@ class TestGraphitiProviders:
 
     def test_create_embedder_unknown_provider(self):
         """create_embedder raises ProviderError for unknown provider."""
-        from graphiti_providers import create_embedder, ProviderError
+        from integrations.graphiti.providers_pkg import create_embedder, ProviderError
 
         with patch.dict(os.environ, {
             "GRAPHITI_ENABLED": "true",
@@ -368,7 +368,7 @@ class TestGraphitiProviders:
 
     def test_create_llm_client_missing_openai_key(self):
         """create_llm_client raises ProviderError when OpenAI key missing."""
-        from graphiti_providers import ProviderError, ProviderNotInstalled, create_llm_client
+        from integrations.graphiti.providers_pkg import ProviderError, ProviderNotInstalled, create_llm_client
 
         with patch.dict(os.environ, {
             "GRAPHITI_ENABLED": "true",
@@ -387,7 +387,7 @@ class TestGraphitiProviders:
 
     def test_create_embedder_missing_ollama_model(self):
         """create_embedder raises ProviderError when Ollama model missing."""
-        from graphiti_providers import ProviderError, ProviderNotInstalled, create_embedder
+        from integrations.graphiti.providers_pkg import ProviderError, ProviderNotInstalled, create_embedder
 
         with patch.dict(os.environ, {
             "GRAPHITI_ENABLED": "true",
@@ -407,7 +407,7 @@ class TestGraphitiProviders:
 
     def test_embedding_dimensions_lookup(self):
         """get_expected_embedding_dim returns correct dimensions."""
-        from graphiti_providers import get_expected_embedding_dim, EMBEDDING_DIMENSIONS
+        from integrations.graphiti.providers_pkg import get_expected_embedding_dim, EMBEDDING_DIMENSIONS
 
         # Test known models
         assert get_expected_embedding_dim("text-embedding-3-small") == 1536
@@ -422,7 +422,7 @@ class TestGraphitiProviders:
 
     def test_validate_embedding_config_ollama_no_dim(self):
         """validate_embedding_config fails for Ollama without dimension."""
-        from graphiti_providers import validate_embedding_config
+        from integrations.graphiti.providers_pkg import validate_embedding_config
 
         with patch.dict(os.environ, {
             "GRAPHITI_ENABLED": "true",
@@ -437,7 +437,7 @@ class TestGraphitiProviders:
 
     def test_validate_embedding_config_openai_valid(self):
         """validate_embedding_config succeeds for valid OpenAI config."""
-        from graphiti_providers import validate_embedding_config
+        from integrations.graphiti.providers_pkg import validate_embedding_config
 
         with patch.dict(os.environ, {
             "GRAPHITI_ENABLED": "true",
@@ -450,8 +450,8 @@ class TestGraphitiProviders:
 
     def test_is_graphiti_enabled_reexport(self):
         """is_graphiti_enabled is re-exported from graphiti_providers."""
-        from graphiti_providers import is_graphiti_enabled as provider_is_enabled
-        from graphiti_config import is_graphiti_enabled as config_is_enabled
+        from integrations.graphiti.providers_pkg import is_graphiti_enabled as provider_is_enabled
+        from integrations.graphiti.config import is_graphiti_enabled as config_is_enabled
 
         # Both should return same result
         with patch.dict(os.environ, {
@@ -466,7 +466,7 @@ class TestGraphitiState:
 
     def test_graphiti_state_to_dict(self):
         """GraphitiState serializes correctly."""
-        from graphiti_config import GraphitiState
+        from integrations.graphiti.config import GraphitiState
 
         state = GraphitiState(
             initialized=True,
@@ -485,7 +485,7 @@ class TestGraphitiState:
 
     def test_graphiti_state_from_dict(self):
         """GraphitiState deserializes correctly."""
-        from graphiti_config import GraphitiState
+        from integrations.graphiti.config import GraphitiState
 
         data = {
             "initialized": True,
@@ -506,7 +506,7 @@ class TestGraphitiState:
 
     def test_graphiti_state_record_error(self):
         """GraphitiState records errors correctly."""
-        from graphiti_config import GraphitiState
+        from integrations.graphiti.config import GraphitiState
 
         state = GraphitiState()
         state.record_error("Test error 1")
@@ -519,7 +519,7 @@ class TestGraphitiState:
 
     def test_graphiti_state_error_limit(self):
         """GraphitiState limits error log to 10 entries."""
-        from graphiti_config import GraphitiState
+        from integrations.graphiti.config import GraphitiState
 
         state = GraphitiState()
         for i in range(15):
