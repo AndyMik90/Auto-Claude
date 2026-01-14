@@ -390,5 +390,15 @@
     "invokeClaudeAll": "全部调用 Claude",
     "files": "文件",
     "terminal": "终端"
+  },
+  "agentProfiles": {
+    "title": "代理配置",
+    "subtitle": "选择模型和思考级别的预设配置",
+    "description": "代理配置为 Claude 模型和思考级别提供预设配置。创建新任务时，这些设置将用作默认值。您始终可以在任务创建向导中覆盖它们。",
+    "thinkingSuffix": "思考"
+  },
+  "fileExplorer": {
+    "title": "项目文件",
+    "dragHint": "将文件拖放到终端中以插入路径"
   }
 }

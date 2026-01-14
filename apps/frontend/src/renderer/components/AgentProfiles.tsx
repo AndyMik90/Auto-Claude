@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Brain, Scale, Zap, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { DEFAULT_AGENT_PROFILES, AVAILABLE_MODELS, THINKING_LEVELS } from '../../shared/constants';
@@ -18,6 +19,7 @@ const iconMap: Record<string, React.ElementType> = {
  * Displays preset agent profiles for quick model/thinking level configuration
  */
 export function AgentProfiles() {
+  const { t } = useTranslation('common');
   const settings = useSettingsStore((state) => state.settings);
   const selectedProfileId = settings.selectedAgentProfile || 'auto';
 
@@ -95,7 +97,7 @@ export function AgentProfiles() {
                 {getModelLabel(profile.model)}
               </span>
               <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                {getThinkingLabel(profile.thinkingLevel)} Thinking
+                {getThinkingLabel(profile.thinkingLevel)} {t('agentProfiles.thinkingSuffix')}
               </span>
             </div>
           </div>
@@ -110,9 +112,9 @@ export function AgentProfiles() {
       <div className="shrink-0 border-b border-border bg-background px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Agent Profiles</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('agentProfiles.title')}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Select a preset configuration for model and thinking level
+              {t('agentProfiles.subtitle')}
             </p>
           </div>
         </div>
@@ -124,9 +126,7 @@ export function AgentProfiles() {
           {/* Description */}
           <div className="rounded-lg bg-muted/50 p-4 mb-6">
             <p className="text-sm text-muted-foreground">
-              Agent profiles provide preset configurations for Claude model and thinking level.
-              When you create a new task, these settings will be used as defaults. You can always
-              override them in the task creation wizard.
+              {t('agentProfiles.description')}
             </p>
           </div>
 

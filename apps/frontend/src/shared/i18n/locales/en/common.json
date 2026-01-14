@@ -395,5 +395,15 @@
     "invokeClaudeAll": "Invoke Claude All",
     "files": "Files",
     "terminal": "Terminal"
+  },
+  "agentProfiles": {
+    "title": "Agent Profiles",
+    "subtitle": "Select a preset configuration for model and thinking level",
+    "description": "Agent profiles provide preset configurations for Claude model and thinking level. When you create a new task, these settings will be used as defaults. You can always override them in the task creation wizard.",
+    "thinkingSuffix": "Thinking"
+  },
+  "fileExplorer": {
+    "title": "Project Files",
+    "dragHint": "Drag files into a terminal to insert the path"
   }
 }
