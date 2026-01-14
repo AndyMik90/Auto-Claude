@@ -57,7 +57,8 @@ import {
   DEFAULT_FEATURE_MODELS,
   DEFAULT_FEATURE_THINKING,
   AVAILABLE_MODELS,
-  THINKING_LEVELS
+  THINKING_LEVELS,
+  DEFAULT_AGENT_PROFILES
 } from '../../shared/constants/models';
 import type { ModelTypeShort, ThinkingLevel } from '../../shared/types/settings';
 
@@ -971,9 +972,23 @@ export function AgentTools() {
     }
   }, []);
 
-  // Get phase and feature settings with defaults
-  const phaseModels = settings.customPhaseModels || DEFAULT_PHASE_MODELS;
-  const phaseThinking = settings.customPhaseThinking || DEFAULT_PHASE_THINKING;
+  // Get phase and feature settings with proper profile resolution
+  // Resolution order: custom overrides -> selected profile's config -> global defaults
+  const selectedProfileId = settings.selectedAgentProfile || 'auto';
+  const selectedProfile = useMemo(() =>
+    DEFAULT_AGENT_PROFILES.find(p => p.id === selectedProfileId) || DEFAULT_AGENT_PROFILES[0],
+    [selectedProfileId]
+  );
+
+  // Profile defaults (used when no custom overrides exist)
+  const profilePhaseModels = selectedProfile.phaseModels || DEFAULT_PHASE_MODELS;
+  const profilePhaseThinking = selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING;
+
+  // Effective phase config: custom overrides take priority over profile defaults
+  const phaseModels = settings.customPhaseModels || profilePhaseModels;
+  const phaseThinking = settings.customPhaseThinking || profilePhaseThinking;
+
+  // Feature settings (not tied to profiles, use custom or defaults)
   const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
   const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
 
