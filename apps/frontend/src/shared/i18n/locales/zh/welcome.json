@@ -13,5 +13,8 @@
     "emptyDescription": "创建一个新项目或打开一个现有项目以开始",
     "openFolder": "打开文件夹",
     "openProjectAriaLabel": "打开项目 {{name}}"
+  },
+  "status": {
+    "initialized": "已初始化"
   }
 }
