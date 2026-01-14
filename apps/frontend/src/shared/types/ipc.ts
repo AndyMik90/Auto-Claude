@@ -42,7 +42,8 @@ import type {
   TaskRecoveryOptions,
   TaskMetadata,
   TaskLogs,
-  TaskLogStreamChunk
+  TaskLogStreamChunk,
+  ImageAttachment
 } from './task';
 import type {
   TerminalCreateOptions,
@@ -158,7 +159,7 @@ export interface ElectronAPI {
   updateTask: (taskId: string, updates: { title?: string; description?: string }) => Promise<IPCResult<Task>>;
   startTask: (taskId: string, options?: TaskStartOptions) => void;
   stopTask: (taskId: string) => void;
-  submitReview: (taskId: string, approved: boolean, feedback?: string) => Promise<IPCResult>;
+  submitReview: (taskId: string, approved: boolean, feedback?: string, images?: ImageAttachment[]) => Promise<IPCResult>;
   updateTaskStatus: (taskId: string, status: TaskStatus, options?: { forceCleanup?: boolean }) => Promise<IPCResult & { worktreeExists?: boolean; worktreePath?: string }>;
   recoverStuckTask: (taskId: string, options?: TaskRecoveryOptions) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
@@ -219,6 +220,8 @@ export interface ElectronAPI {
   onTerminalOutput: (callback: (id: string, data: string) => void) => () => void;
   onTerminalExit: (callback: (id: string, exitCode: number) => void) => () => void;
   onTerminalTitleChange: (callback: (id: string, title: string) => void) => () => void;
+  /** Listen for worktree config changes (synced from main process during restoration) */
+  onTerminalWorktreeConfigChange: (callback: (id: string, config: TerminalWorktreeConfig | undefined) => void) => () => void;
   onTerminalClaudeSession: (callback: (id: string, sessionId: string) => void) => () => void;
   onTerminalRateLimit: (callback: (info: RateLimitInfo) => void) => () => void;
   /** Listen for OAuth authentication completion (token is auto-saved to profile, never exposed to frontend) */
@@ -238,6 +241,8 @@ export interface ElectronAPI {
   }) => void) => () => void;
   /** Listen for Claude busy state changes (for visual indicator: red=busy, green=idle) */
   onTerminalClaudeBusy: (callback: (id: string, isBusy: boolean) => void) => () => void;
+  /** Listen for Claude exit (user closed Claude within terminal, returned to shell) */
+  onTerminalClaudeExit: (callback: (id: string) => void) => () => void;
   /** Listen for pending Claude resume notifications (for deferred resume on tab activation) */
   onTerminalPendingResume: (callback: (id: string, sessionId?: string) => void) => () => void;
 
@@ -589,6 +594,7 @@ export interface ElectronAPI {
   downloadAppUpdate: () => Promise<IPCResult>;
   downloadStableUpdate: () => Promise<IPCResult>;
   installAppUpdate: () => void;
+  getDownloadedAppUpdate: () => Promise<IPCResult<AppUpdateInfo | null>>;
 
   // Electron app update event listeners
   onAppUpdateAvailable: (
@@ -767,6 +773,10 @@ export interface ElectronAPI {
   // Claude Code CLI operations
   checkClaudeCodeVersion: () => Promise<IPCResult<import('./cli').ClaudeCodeVersionInfo>>;
   installClaudeCode: () => Promise<IPCResult<{ command: string }>>;
+  getClaudeCodeVersions: () => Promise<IPCResult<import('./cli').ClaudeCodeVersionList>>;
+  installClaudeCodeVersion: (version: string) => Promise<IPCResult<{ command: string; version: string }>>;
+  getClaudeCodeInstallations: () => Promise<IPCResult<import('./cli').ClaudeInstallationList>>;
+  setClaudeCodeActivePath: (cliPath: string) => Promise<IPCResult<{ path: string }>>;
 
   // Debug operations
   getDebugInfo: () => Promise<{
