@@ -29,8 +29,6 @@ if TYPE_CHECKING:
 from claude_agent_sdk import AgentDefinition
 
 try:
-    from ...core.client import create_client
-    from ...phase_config import get_thinking_budget
     from ..context_gatherer import _validate_git_ref
     from ..gh_client import GHClient
     from ..models import (
@@ -51,7 +49,6 @@ try:
     from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
     from context_gatherer import _validate_git_ref
-    from core.client import create_client
     from gh_client import GHClient
     from models import (
         BRANCH_BEHIND_BLOCKER_MSG,
@@ -61,7 +58,6 @@ except (ImportError, ValueError, SystemError):
         PRReviewResult,
         ReviewSeverity,
     )
-    from phase_config import get_thinking_budget
     from services.base_parallel_reviewer import (
         DEBUG_MODE,
         BaseParallelReviewer,
@@ -381,12 +377,8 @@ The SDK will run invoked agents in parallel automatically.
             # Build orchestrator prompt
             prompt = self._build_orchestrator_prompt(context)
 
-            # Get project root - default to local checkout
-            project_root = (
-                self.project_dir.parent.parent
-                if self.project_dir.name == "backend"
-                else self.project_dir
-            )
+            # Get project root using inherited method
+            project_root = self._resolve_project_root()
 
             # Create temporary worktree at PR head commit for isolated review
             # This ensures agents read from the correct PR state, not the current checkout
@@ -423,28 +415,21 @@ The SDK will run invoked agents in parallel automatically.
                     "using local checkout"
                 )
 
-            # Use model and thinking level from config (user settings)
-            model = self.config.model or "claude-sonnet-4-5-20250929"
-            thinking_level = self.config.thinking_level or "medium"
-            thinking_budget = get_thinking_budget(thinking_level)
+            # Use inherited method to get model and thinking budget from config
+            model, thinking_budget = self._get_model_and_thinking_budget()
 
             logger.info(
                 f"[ParallelFollowup] Using model={model}, "
-                f"thinking_level={thinking_level}, thinking_budget={thinking_budget}"
+                f"thinking_budget={thinking_budget}"
             )
 
-            # Create client with subagents defined
-            client = create_client(
-                project_dir=project_root,
-                spec_dir=self.github_dir,
+            # Create client with subagents using inherited method
+            client = self._create_sdk_client(
+                project_root=project_root,
                 model=model,
+                thinking_budget=thinking_budget,
                 agent_type="pr_followup_parallel",
-                max_thinking_tokens=thinking_budget,
-                agents=self._define_specialist_agents(),
-                output_format={
-                    "type": "json_schema",
-                    "schema": ParallelFollowupResponse.model_json_schema(),
-                },
+                output_schema=ParallelFollowupResponse.model_json_schema(),
             )
 
             self._report_progress(

@@ -25,8 +25,6 @@ from typing import Any
 from claude_agent_sdk import AgentDefinition
 
 try:
-    from ...core.client import create_client
-    from ...phase_config import get_thinking_budget
     from ..context_gatherer import PRContext, _validate_git_ref
     from ..gh_client import GHClient
     from ..models import (
@@ -47,7 +45,6 @@ try:
     from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
     from context_gatherer import PRContext, _validate_git_ref
-    from core.client import create_client
     from gh_client import GHClient
     from models import (
         BRANCH_BEHIND_BLOCKER_MSG,
@@ -57,7 +54,6 @@ except (ImportError, ValueError, SystemError):
         PRReviewResult,
         ReviewSeverity,
     )
-    from phase_config import get_thinking_budget
     from services.base_parallel_reviewer import (
         DEBUG_MODE,
         BaseParallelReviewer,
@@ -248,31 +244,7 @@ The SDK will run invoked agents in parallel automatically.
 
         return base_prompt + pr_context
 
-    def _create_sdk_client(
-        self, project_root: Path, model: str, thinking_budget: int | None
-    ):
-        """Create SDK client with subagents and configuration.
-
-        Args:
-            project_root: Root directory of the project
-            model: Model to use for orchestrator
-            thinking_budget: Max thinking tokens budget
-
-        Returns:
-            Configured SDK client instance
-        """
-        return create_client(
-            project_dir=project_root,
-            spec_dir=self.github_dir,
-            model=model,
-            agent_type="pr_orchestrator_parallel",
-            max_thinking_tokens=thinking_budget,
-            agents=self._define_specialist_agents(),
-            output_format={
-                "type": "json_schema",
-                "schema": ParallelOrchestratorResponse.model_json_schema(),
-            },
-        )
+    # Uses inherited _create_sdk_client from BaseParallelReviewer
 
     def _extract_structured_output(
         self, structured_output: dict[str, Any] | None, result_text: str
@@ -467,19 +439,23 @@ The SDK will run invoked agents in parallel automatically.
                         else self.project_dir
                     )
 
-            # Use model and thinking level from config (user settings)
-            model = self.config.model or "claude-sonnet-4-5-20250929"
-            thinking_level = self.config.thinking_level or "medium"
-            thinking_budget = get_thinking_budget(thinking_level)
+            # Use inherited method to get model and thinking budget from config
+            model, thinking_budget = self._get_model_and_thinking_budget()
 
             logger.info(
                 f"[ParallelOrchestrator] Using model={model}, "
-                f"thinking_level={thinking_level}, thinking_budget={thinking_budget}"
+                f"thinking_budget={thinking_budget}"
             )
 
-            # Create client with subagents defined
+            # Create client with subagents using inherited method
             # SDK handles parallel execution when Claude invokes multiple Task tools
-            client = self._create_sdk_client(project_root, model, thinking_budget)
+            client = self._create_sdk_client(
+                project_root=project_root,
+                model=model,
+                thinking_budget=thinking_budget,
+                agent_type="pr_orchestrator_parallel",
+                output_schema=ParallelOrchestratorResponse.model_json_schema(),
+            )
 
             self._report_progress(
                 "orchestrating",
