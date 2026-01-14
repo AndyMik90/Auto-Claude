@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, AlertCircle, FileJson } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -30,6 +30,7 @@ import { cn } from '../lib/utils';
 import { persistTaskStatus, forceCompleteTask, archiveTasks } from '../stores/task-store';
 import { useToast } from '../hooks/use-toast';
 import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
+import { TaskFileImportModal } from './task-file-import';
 import type { Task, TaskStatus } from '../../shared/types';
 
 // Type guard for valid drop column targets - preserves literal type from TASK_STATUS_COLUMNS
@@ -53,6 +54,7 @@ interface DroppableColumnProps {
   onStatusChange: (taskId: string, newStatus: TaskStatus) => unknown;
   isOver: boolean;
   onAddClick?: () => void;
+  onImportClick?: () => void;
   onArchiveAll?: () => void;
   archivedCount?: number;
   showArchived?: boolean;
@@ -96,6 +98,7 @@ function droppableColumnPropsAreEqual(
   if (prevProps.onTaskClick !== nextProps.onTaskClick) return false;
   if (prevProps.onStatusChange !== nextProps.onStatusChange) return false;
   if (prevProps.onAddClick !== nextProps.onAddClick) return false;
+  if (prevProps.onImportClick !== nextProps.onImportClick) return false;
   if (prevProps.onArchiveAll !== nextProps.onArchiveAll) return false;
   if (prevProps.archivedCount !== nextProps.archivedCount) return false;
   if (prevProps.showArchived !== nextProps.showArchived) return false;
@@ -159,7 +162,7 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, archivedCount, showArchived, onToggleArchived }: DroppableColumnProps) {
+const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onImportClick, onArchiveAll, archivedCount, showArchived, onToggleArchived }: DroppableColumnProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { setNodeRef } = useDroppable({
     id: status
@@ -251,6 +254,24 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
             >
               <Plus className="h-4 w-4" />
             </Button>
+          )}
+          {status === 'backlog' && onImportClick && (
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:bg-primary/10 hover:text-primary transition-colors"
+                  onClick={onImportClick}
+                  aria-label={t('taskFileImport.title')}
+                >
+                  <FileJson className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('taskFileImport.title')}
+              </TooltipContent>
+            </Tooltip>
           )}
           {status === 'done' && onArchiveAll && tasks.length > 0 && !showArchived && (
             <Button
@@ -346,6 +367,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const { showArchived, toggleShowArchived } = useViewState();
+
+  // Task file import modal state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Worktree cleanup dialog state
   const [worktreeCleanupDialog, setWorktreeCleanupDialog] = useState<{
@@ -599,6 +623,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               onStatusChange={handleStatusChange}
               isOver={overColumnId === status}
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
+              onImportClick={status === 'backlog' ? () => setIsImportModalOpen(true) : undefined}
               onArchiveAll={status === 'done' ? handleArchiveAll : undefined}
               archivedCount={status === 'done' ? archivedCount : undefined}
               showArchived={status === 'done' ? showArchived : undefined}
@@ -631,6 +656,16 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         }}
         onConfirm={handleWorktreeCleanupConfirm}
       />
+
+      {/* Task file import modal */}
+      {tasks[0]?.projectId && (
+        <TaskFileImportModal
+          projectId={tasks[0].projectId}
+          open={isImportModalOpen}
+          onOpenChange={setIsImportModalOpen}
+          onImportComplete={() => onRefresh?.()}
+        />
+      )}
     </div>
   );
 }

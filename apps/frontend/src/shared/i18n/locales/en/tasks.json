@@ -240,5 +240,31 @@
   },
   "subtasks": {
     "untitled": "Untitled subtask"
+  },
+  "taskFileImport": {
+    "title": "Import Tasks from File",
+    "description": "Drop JSON task files or click to browse",
+    "dropzone": {
+      "title": "Drop JSON files here",
+      "hint": "or click to browse",
+      "formats": "Supports .json files"
+    },
+    "parsing": "Parsing files...",
+    "importing": "Importing...",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "selectedCount": "{{count}} of {{total}} selected",
+    "importButton": "Import {{count}} Task(s)",
+    "importMore": "Import More",
+    "success": {
+      "title": "Import successful",
+      "message": "{{count}} task(s) imported"
+    },
+    "errors": {
+      "invalidJson": "Invalid JSON file",
+      "noTasks": "No valid tasks found",
+      "missingFields": "Missing required fields",
+      "importFailed": "Some tasks failed to import"
+    }
   }
 }
