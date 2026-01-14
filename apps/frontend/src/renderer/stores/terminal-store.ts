@@ -56,7 +56,7 @@ interface TerminalState {
   setPendingClaudeResume: (id: string, pending: boolean) => void;
   clearAllTerminals: () => void;
   setHasRestoredSessions: (value: boolean) => void;
-  reorderTerminals: (activeId: string, overId: string) => void;
+  reorderTerminals: (activeId: string, overId: string, filteredTerminalIds?: string[]) => void;
 
   // Selectors
   getTerminal: (id: string) => Terminal | undefined;
@@ -274,18 +274,60 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     set({ hasRestoredSessions: value });
   },
 
-  reorderTerminals: (activeId: string, overId: string) => {
+  reorderTerminals: (activeId: string, overId: string, filteredTerminalIds?: string[]) => {
     set((state) => {
-      const oldIndex = state.terminals.findIndex((t) => t.id === activeId);
-      const newIndex = state.terminals.findIndex((t) => t.id === overId);
+      // If no filtered list provided, use the full list (legacy behavior)
+      if (!filteredTerminalIds) {
+        const oldIndex = state.terminals.findIndex((t) => t.id === activeId);
+        const newIndex = state.terminals.findIndex((t) => t.id === overId);
 
-      if (oldIndex === -1 || newIndex === -1) {
+        if (oldIndex === -1 || newIndex === -1) {
+          return state;
+        }
+
+        return {
+          terminals: arrayMove(state.terminals, oldIndex, newIndex),
+        };
+      }
+
+      // When a filtered view is provided, we need to reorder within that context
+      // but apply the changes to the full array
+      const filteredOldIndex = filteredTerminalIds.indexOf(activeId);
+      const filteredNewIndex = filteredTerminalIds.indexOf(overId);
+
+      if (filteredOldIndex === -1 || filteredNewIndex === -1) {
+        debugLog('[TerminalStore] reorderTerminals: IDs not found in filtered list', { activeId, overId });
         return state;
       }
 
-      return {
-        terminals: arrayMove(state.terminals, oldIndex, newIndex),
-      };
+      // Calculate the new order for the filtered items
+      const reorderedFilteredIds = arrayMove(filteredTerminalIds, filteredOldIndex, filteredNewIndex);
+
+      // Build the new terminals array:
+      // Keep non-filtered terminals in their original positions,
+      // only reorder the filtered terminals within their existing positions
+      const terminalMap = new Map(state.terminals.map(t => [t.id, t]));
+      const filteredSet = new Set(filteredTerminalIds);
+
+      // Find the positions where filtered terminals currently exist
+      const filteredPositions: number[] = [];
+      state.terminals.forEach((t, index) => {
+        if (filteredSet.has(t.id)) {
+          filteredPositions.push(index);
+        }
+      });
+
+      // Build result array by placing reordered filtered terminals at original filtered positions
+      const result: Terminal[] = [...state.terminals];
+
+      reorderedFilteredIds.forEach((id, i) => {
+        const terminal = terminalMap.get(id);
+        if (terminal && filteredPositions[i] !== undefined) {
+          result[filteredPositions[i]] = terminal;
+        }
+      });
+
+      return { terminals: result };
     });
   },
 

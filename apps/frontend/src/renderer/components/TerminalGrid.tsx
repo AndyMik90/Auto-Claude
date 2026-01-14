@@ -23,6 +23,7 @@ import {
 import { Plus, Sparkles, Grid2X2, FolderTree, File, Folder, History, ChevronDown, Loader2, TerminalSquare } from 'lucide-react';
 import { SortableTerminalWrapper } from './SortableTerminalWrapper';
 import { Button } from './ui/button';
+import { ErrorBoundary } from './ui/error-boundary';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -243,6 +244,9 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
     });
   }, [terminals, setClaudeMode, projectPath]);
 
+  // Terminal IDs for SortableContext - must be defined before handleDragEnd
+  const terminalIds = useMemo(() => terminals.map(t => t.id), [terminals]);
+
   // Handle drag start - store dragged item data
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current as {
@@ -269,46 +273,54 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
     const { active, over } = event;
     const activeData = active.data.current as { type?: string; path?: string } | undefined;
 
-    // Clear drag states
+    // Clear drag states immediately to prevent stale UI
     setActiveDragData(null);
     setDraggingTerminalId(null);
 
     if (!over) return;
 
-    // Handle terminal reordering
-    if (activeData?.type === 'terminal-panel') {
-      const activeId = active.id.toString();
-      let overId = over.id.toString();
+    try {
+      // Handle terminal reordering
+      if (activeData?.type === 'terminal-panel') {
+        const activeId = active.id.toString();
+        let overId = over.id.toString();
 
-      // Handle case where over is the file drop zone (terminal-xyz) instead of sortable item (xyz)
+        // Handle case where over is the file drop zone (terminal-xyz) instead of sortable item (xyz)
+        if (overId.startsWith('terminal-')) {
+          overId = overId.replace('terminal-', '');
+        }
+
+        // Validate both IDs exist in the current filtered view
+        if (activeId !== overId && terminalIds.includes(activeId) && terminalIds.includes(overId)) {
+          // Pass the filtered terminal IDs so the store can reorder correctly
+          // within the context of the currently visible terminals
+          reorderTerminals(activeId, overId, terminalIds);
+        }
+        return;
+      }
+
+      // Handle file drop on terminal
+      const overId = over.id.toString();
+      let terminalId: string | null = null;
+
       if (overId.startsWith('terminal-')) {
-        overId = overId.replace('terminal-', '');
+        terminalId = overId.replace('terminal-', '');
+      } else if (terminals.some(t => t.id === overId)) {
+        // closestCenter might return the sortable ID instead of droppable ID
+        terminalId = overId;
       }
 
-      if (activeId !== overId && terminals.some(t => t.id === overId)) {
-        reorderTerminals(activeId, overId);
+      if (terminalId && activeData?.path) {
+        // Quote the path if it contains spaces
+        const quotedPath = activeData.path.includes(' ') ? `"${activeData.path}"` : activeData.path;
+        // Insert the file path into the terminal with a trailing space
+        window.electronAPI.sendTerminalInput(terminalId, quotedPath + ' ');
       }
-      return;
+    } catch (error) {
+      console.error('[TerminalGrid] Error in handleDragEnd:', error);
+      // Don't rethrow - we've already cleared drag states, so UI should recover
     }
-
-    // Handle file drop on terminal
-    const overId = over.id.toString();
-    let terminalId: string | null = null;
-
-    if (overId.startsWith('terminal-')) {
-      terminalId = overId.replace('terminal-', '');
-    } else if (terminals.some(t => t.id === overId)) {
-      // closestCenter might return the sortable ID instead of droppable ID
-      terminalId = overId;
-    }
-
-    if (terminalId && activeData?.path) {
-      // Quote the path if it contains spaces
-      const quotedPath = activeData.path.includes(' ') ? `"${activeData.path}"` : activeData.path;
-      // Insert the file path into the terminal with a trailing space
-      window.electronAPI.sendTerminalInput(terminalId, quotedPath + ' ');
-    }
-  }, [reorderTerminals, terminals]);
+  }, [reorderTerminals, terminals, terminalIds]);
 
   // Calculate grid layout based on number of terminals
   const gridLayout = useMemo(() => {
@@ -334,8 +346,12 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
     return rows;
   }, [terminals, gridLayout]);
 
-  // Terminal IDs for SortableContext
-  const terminalIds = useMemo(() => terminals.map(t => t.id), [terminals]);
+  // Reset handler for error boundary - clears drag state to recover gracefully
+  // Must be defined before any early returns to satisfy React hooks rules
+  const handleDndErrorReset = useCallback(() => {
+    setActiveDragData(null);
+    setDraggingTerminalId(null);
+  }, []);
 
   // Empty state
   if (terminals.length === 0) {
@@ -362,13 +378,14 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex h-full flex-col">
+    <ErrorBoundary onReset={handleDndErrorReset}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex h-full flex-col">
         {/* Toolbar */}
         <div className="flex h-10 items-center justify-between border-b border-border bg-card/30 px-3">
           <div className="flex items-center gap-2">
@@ -554,5 +571,6 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
         </DragOverlay>
       </div>
     </DndContext>
+    </ErrorBoundary>
   );
 }
