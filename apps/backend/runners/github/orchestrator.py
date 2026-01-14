@@ -653,29 +653,104 @@ class GitHubOrchestrator:
             has_commits = bool(followup_context.commits_since_review)
             has_file_changes = bool(followup_context.files_changed_since_review)
 
+            # ALWAYS fetch current CI status to detect CI recovery
+            # This must happen BEFORE the early return check to avoid stale CI verdicts
+            ci_status = await self.gh_client.get_pr_checks_comprehensive(pr_number)
+            followup_context.ci_status = ci_status
+
             if not has_commits and not has_file_changes:
                 base_sha = previous_review.reviewed_commit_sha[:8]
+
+                # Check if CI status has changed since last review
+                # If CI was failing before but now passes, we need to update the verdict
+                current_failing = ci_status.get("failing", 0)
+                previous_was_blocked_by_ci = (
+                    previous_review.verdict == MergeVerdict.BLOCKED
+                    and any("CI" in b for b in getattr(previous_review, "blockers", []))
+                )
+
+                # Determine the appropriate verdict based on current CI status
+                if current_failing > 0:
+                    # CI is still failing - keep blocked verdict
+                    updated_verdict = MergeVerdict.BLOCKED
+                    updated_reasoning = (
+                        f"No code changes since last review. "
+                        f"{current_failing} CI check(s) still failing."
+                    )
+                    failed_checks = ci_status.get("failed_checks", [])
+                    ci_note = (
+                        f" Failing: {', '.join(failed_checks)}" if failed_checks else ""
+                    )
+                    no_change_summary = (
+                        f"No new commits since last review. "
+                        f"CI status: {current_failing} check(s) failing.{ci_note}"
+                    )
+                elif previous_was_blocked_by_ci and current_failing == 0:
+                    # CI has recovered! Update verdict to reflect this
+                    safe_print(
+                        f"[Followup] CI recovered - updating verdict from BLOCKED",
+                        flush=True,
+                    )
+                    # Use previous verdict if it wasn't blocked, otherwise check findings
+                    if previous_review.findings:
+                        # There are still code findings - needs review
+                        updated_verdict = MergeVerdict.REVIEWED_PENDING_POST
+                        updated_reasoning = (
+                            "CI checks now passing. Previous code findings still apply."
+                        )
+                    else:
+                        updated_verdict = MergeVerdict.READY_TO_MERGE
+                        updated_reasoning = (
+                            "CI checks now passing. No outstanding code issues."
+                        )
+                    no_change_summary = (
+                        "No new commits since last review. "
+                        "CI checks are now passing. Previous findings still apply."
+                    )
+                else:
+                    # No CI-related changes, keep previous verdict
+                    updated_verdict = previous_review.verdict
+                    updated_reasoning = "No changes since last review."
+                    no_change_summary = (
+                        "No new commits since last review. Previous findings still apply."
+                    )
+
                 safe_print(
                     f"[Followup] No changes since last review at {base_sha}",
                     flush=True,
                 )
-                # Return a result indicating no changes
-                no_change_summary = (
-                    "No new commits since last review. Previous findings still apply."
-                )
+
+                # Build blockers list - remove CI blockers if CI now passes
+                blockers = list(getattr(previous_review, "blockers", []))
+                if current_failing == 0:
+                    # Remove any CI-related blockers since CI is now passing
+                    blockers = [b for b in blockers if "CI" not in b]
+                else:
+                    # Add/update CI blockers
+                    failed_checks = ci_status.get("failed_checks", [])
+                    for check_name in failed_checks:
+                        blocker_msg = f"CI Failed: {check_name}"
+                        if blocker_msg not in blockers:
+                            blockers.append(blocker_msg)
+
                 result = PRReviewResult(
                     pr_number=pr_number,
                     repo=self.config.repo,
                     success=True,
                     findings=previous_review.findings,
                     summary=no_change_summary,
-                    overall_status=previous_review.overall_status,
-                    verdict=previous_review.verdict,
-                    verdict_reasoning="No changes since last review.",
+                    overall_status=(
+                        "request_changes"
+                        if updated_verdict == MergeVerdict.BLOCKED
+                        else previous_review.overall_status
+                    ),
+                    verdict=updated_verdict,
+                    verdict_reasoning=updated_reasoning,
                     reviewed_commit_sha=followup_context.current_commit_sha
                     or previous_review.reviewed_commit_sha,
                     is_followup_review=True,
                     unresolved_findings=[f.id for f in previous_review.findings],
+                    blockers=blockers,
                 )
                 await result.save(self.github_dir)
                 return result
@@ -696,9 +771,8 @@ class GitHubOrchestrator:
                 pr_number=pr_number,
             )
 
-            # Fetch CI status BEFORE calling reviewer so AI can factor it into verdict
-            ci_status = await self.gh_client.get_pr_checks_comprehensive(pr_number)
-            followup_context.ci_status = ci_status
+            # CI status already fetched above (before early return check)
+            # followup_context.ci_status is already populated
 
             # Use parallel orchestrator for follow-up if enabled
             if self.config.use_parallel_orchestrator:
