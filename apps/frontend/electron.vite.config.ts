@@ -25,7 +25,8 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/main/index.ts')
+          index: resolve(__dirname, 'src/main/index.ts'),
+          'pty-daemon': resolve(__dirname, 'src/main/terminal/pty-daemon.ts')
         },
         // Only node-pty needs to be external (native module rebuilt by electron-builder)
         external: ['@lydell/node-pty']
