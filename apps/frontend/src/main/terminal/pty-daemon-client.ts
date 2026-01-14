@@ -7,6 +7,7 @@
 
 import * as net from 'net';
 import * as path from 'path';
+import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import { spawn, ChildProcess } from 'child_process';
 import { app } from 'electron';
@@ -14,6 +15,35 @@ import { app } from 'electron';
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Get the path to the PTY daemon script.
+ * Handles both development and production environments.
+ */
+function getDaemonPath(): string {
+  // In production build, daemon is in same directory as main bundle
+  const productionPath = path.join(__dirname, 'pty-daemon.js');
+  if (fs.existsSync(productionPath)) {
+    return productionPath;
+  }
+
+  // In development, check the out/main directory
+  const devOutPath = path.join(__dirname, '..', '..', '..', '..', 'out', 'main', 'pty-daemon.js');
+  if (fs.existsSync(devOutPath)) {
+    return devOutPath;
+  }
+
+  // Fallback: try relative to app path
+  const appOutPath = path.join(app.getAppPath(), 'out', 'main', 'pty-daemon.js');
+  if (fs.existsSync(appOutPath)) {
+    return appOutPath;
+  }
+
+  // Last resort: return production path (will fail with clear error)
+  console.error('[PtyDaemonClient] Could not find pty-daemon.js in any expected location');
+  console.error('[PtyDaemonClient] Tried:', productionPath, devOutPath, appOutPath);
+  return productionPath;
+}
 
 const SOCKET_PATH =
   process.platform === 'win32'
@@ -123,8 +153,9 @@ class PtyDaemonClient {
    * Spawn a new daemon process
    */
   private async spawnDaemon(): Promise<void> {
-    // In production, the daemon file is in the same directory
-    const daemonPath = path.join(__dirname, 'pty-daemon.js');
+    // Get daemon path (handles dev and production modes)
+    const daemonPath = getDaemonPath();
+    console.warn(`[PtyDaemonClient] Using daemon path: ${daemonPath}`);
 
     try {
       // Spawn detached process that survives parent
