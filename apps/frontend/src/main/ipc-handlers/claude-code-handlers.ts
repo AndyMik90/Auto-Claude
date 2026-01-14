@@ -23,6 +23,10 @@ import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
 
+type ExecFileAsyncOptionsWithVerbatim = import('child_process').ExecFileOptionsWithStringEncoding & {
+  windowsVerbatimArguments?: boolean;
+};
+
 // Cache for latest version (avoid hammering npm registry)
 let cachedLatestVersion: { version: string; timestamp: number } | null = null;
 let cachedVersionList: { versions: string[]; timestamp: number } | null = null;
@@ -56,12 +60,14 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
         || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
       // Use double-quoted command line for paths with spaces
       const cmdLine = `""${cliPath}" --version"`;
-      const result = await execFileAsync(cmdExe, ['/d', '/s', '/c', cmdLine], {
+      const execOptions: ExecFileAsyncOptionsWithVerbatim = {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
+        windowsVerbatimArguments: true,
         env,
-      });
+      };
+      const result = await execFileAsync(cmdExe, ['/d', '/s', '/c', cmdLine], execOptions);
       stdout = result.stdout;
     } else {
       const result = await execFileAsync(cliPath, ['--version'], {
