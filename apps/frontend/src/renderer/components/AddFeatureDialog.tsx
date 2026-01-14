@@ -145,7 +145,7 @@ export function AddFeatureDialog({
       const newFeatureId = addFeature({
         title: title.trim(),
         description: description.trim(),
-        rationale: rationale.trim() || `User-created feature for ${title.trim()}`,
+        rationale: rationale.trim() || t('addFeature.userCreatedRationale', { title: title.trim() }),
         priority,
         complexity,
         impact,
@@ -163,7 +163,7 @@ export function AddFeatureDialog({
         // Get the project ID from the roadmap
         const result = await window.electronAPI.saveRoadmap(roadmap.projectId, roadmap);
         if (!result.success) {
-          throw new Error(result.error || 'Failed to save roadmap');
+          throw new Error(result.error || t('addFeature.failedToSaveRoadmap'));
         }
       }
 

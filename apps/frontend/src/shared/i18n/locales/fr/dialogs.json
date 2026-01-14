@@ -101,7 +101,9 @@
     "cancel": "Annuler",
     "adding": "Ajout en cours...",
     "addFeature": "Ajouter la fonctionnalité",
-    "failedToAdd": "Échec de l'ajout de la fonctionnalité. Veuillez réessayer."
+    "failedToAdd": "Échec de l'ajout de la fonctionnalité. Veuillez réessayer.",
+    "userCreatedRationale": "Fonctionnalité créée par l'utilisateur pour {{title}}",
+    "failedToSaveRoadmap": "Échec de l'enregistrement de la roadmap"
   },
   "addProject": {
     "title": "Ajouter un projet",

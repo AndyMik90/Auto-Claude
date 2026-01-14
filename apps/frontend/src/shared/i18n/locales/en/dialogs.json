@@ -101,7 +101,9 @@
     "cancel": "Cancel",
     "adding": "Adding...",
     "addFeature": "Add Feature",
-    "failedToAdd": "Failed to add feature. Please try again."
+    "failedToAdd": "Failed to add feature. Please try again.",
+    "userCreatedRationale": "User-created feature for {{title}}",
+    "failedToSaveRoadmap": "Failed to save roadmap"
   },
   "addProject": {
     "title": "Add Project",

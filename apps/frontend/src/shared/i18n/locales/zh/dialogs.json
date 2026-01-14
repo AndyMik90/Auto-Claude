@@ -101,7 +101,9 @@
     "cancel": "取消",
     "adding": "添加中...",
     "addFeature": "添加功能",
-    "failedToAdd": "添加功能失败。请重试。"
+    "failedToAdd": "添加功能失败。请重试。",
+    "userCreatedRationale": "用户创建的功能：{{title}}",
+    "failedToSaveRoadmap": "保存路线图失败"
   },
   "addProject": {
     "title": "添加项目",
