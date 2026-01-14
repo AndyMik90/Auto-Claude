@@ -426,12 +426,10 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       }
 
       // GitHub config - check GITHUB_ENABLED explicitly, fallback to GITHUB_TOKEN presence
-      if (vars['GITHUB_ENABLED']?.toLowerCase() === 'true') {
-        config.githubEnabled = true;
-      } else if (vars['GITHUB_ENABLED']?.toLowerCase() === 'false') {
-        config.githubEnabled = false;
+      const githubEnabledValue = vars['GITHUB_ENABLED']?.toLowerCase();
+      if (githubEnabledValue === 'true' || githubEnabledValue === 'false') {
+        config.githubEnabled = githubEnabledValue === 'true';
       } else if (vars['GITHUB_TOKEN']) {
-        // Legacy fallback: enabled if token exists
         config.githubEnabled = true;
       }
       if (vars['GITHUB_TOKEN']) {
