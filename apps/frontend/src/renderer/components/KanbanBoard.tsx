@@ -657,6 +657,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         <div
           ref={scrollContainerRef}
           onMouseDown={handleMouseDown}
+          role="region"
+          aria-label={t('tasks:kanban.boardRegion')}
           className={cn(
             "flex flex-1 gap-4 overflow-x-auto p-6 cursor-grab select-none",
             isScrollDragging && "cursor-grabbing active:cursor-grabbing"
