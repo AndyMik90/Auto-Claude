@@ -240,5 +240,75 @@
   },
   "subtasks": {
     "untitled": "Untitled subtask"
+  },
+  "logs": {
+    "title": "Logs",
+    "noLogsYet": "No logs yet",
+    "logsWillAppearHere": "Logs will appear here when the task runs",
+    "status": {
+      "running": "Running",
+      "pending": "Pending",
+      "complete": "Complete",
+      "failed": "Failed",
+      "interrupted": "Interrupted"
+    },
+    "tools": {
+      "reading": "Reading",
+      "searchingFiles": "Searching files",
+      "searchingCode": "Searching code",
+      "editing": "Editing",
+      "writing": "Writing",
+      "running": "Running",
+      "done": "Done"
+    },
+    "buttons": {
+      "showOutput": "Show output",
+      "hideOutput": "Hide output",
+      "more": "More",
+      "less": "Less"
+    },
+    "modelInfo": {
+      "model": "Model",
+      "thinking": "Thinking"
+    }
+  },
+  "actions": {
+    "start": "Start Task",
+    "stop": "Stop Task",
+    "resume": "Resume Task",
+    "recover": "Recover Task",
+    "recovering": "Recovering...",
+    "delete": "Delete Task",
+    "deleting": "Deleting...",
+    "deletePermanently": "Delete Permanently",
+    "taskCompleted": "Task completed successfully",
+    "deleteDialog": {
+      "title": "Delete Task",
+      "confirmMessage": "Are you sure you want to delete \"{{title}}\"?",
+      "warningMessage": "This action cannot be undone. All task files, including the spec, implementation plan, and any generated code will be permanently deleted from the project."
+    }
+  },
+  "progress": {
+    "title": "Progress",
+    "subtaskLabel": "Subtask",
+    "noSubtasks": "No subtasks yet",
+    "subtasksCompleted": "{{completed}}/{{total}} subtasks completed",
+    "phases": {
+      "planning": "Planning (0-20%)",
+      "coding": "Coding (20-80%)",
+      "qaReview": "AI Review (80-95%)",
+      "complete": "Complete (95-100%)"
+    }
+  },
+  "warnings": {
+    "stuck": {
+      "title": "Task Appears Stuck",
+      "message": "This task is marked as running but no active process was found. This can happen if the app crashed or the process was terminated unexpectedly.",
+      "recoverAndRestart": "Recover & Restart Task"
+    },
+    "incomplete": {
+      "title": "Task Incomplete",
+      "message": "This task has a spec and implementation plan but never completed any subtasks ({{completed}}/{{total}}). The process likely crashed during spec creation. Click Resume to continue implementation."
+    }
   }
 }

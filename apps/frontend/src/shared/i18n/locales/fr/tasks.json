@@ -240,5 +240,75 @@
   },
   "subtasks": {
     "untitled": "Sous-tâche sans titre"
+  },
+  "logs": {
+    "title": "Journaux",
+    "noLogsYet": "Aucun journal pour le moment",
+    "logsWillAppearHere": "Les journaux apparaîtront ici lors de l'exécution de la tâche",
+    "status": {
+      "running": "En cours",
+      "pending": "En attente",
+      "complete": "Terminé",
+      "failed": "Échoué",
+      "interrupted": "Interrompu"
+    },
+    "tools": {
+      "reading": "Lecture",
+      "searchingFiles": "Recherche de fichiers",
+      "searchingCode": "Recherche de code",
+      "editing": "Modification",
+      "writing": "Écriture",
+      "running": "Exécution",
+      "done": "Terminé"
+    },
+    "buttons": {
+      "showOutput": "Afficher la sortie",
+      "hideOutput": "Masquer la sortie",
+      "more": "Plus",
+      "less": "Moins"
+    },
+    "modelInfo": {
+      "model": "Modèle",
+      "thinking": "Réflexion"
+    }
+  },
+  "actions": {
+    "start": "Démarrer la tâche",
+    "stop": "Arrêter la tâche",
+    "resume": "Reprendre la tâche",
+    "recover": "Récupérer la tâche",
+    "recovering": "Récupération...",
+    "delete": "Supprimer la tâche",
+    "deleting": "Suppression...",
+    "deletePermanently": "Supprimer définitivement",
+    "taskCompleted": "Tâche terminée avec succès",
+    "deleteDialog": {
+      "title": "Supprimer la tâche",
+      "confirmMessage": "Êtes-vous sûr de vouloir supprimer \"{{title}}\" ?",
+      "warningMessage": "Cette action ne peut pas être annulée. Tous les fichiers de la tâche, y compris la spécification, le plan d'implémentation et tout code généré seront définitivement supprimés du projet."
+    }
+  },
+  "progress": {
+    "title": "Progression",
+    "subtaskLabel": "Sous-tâche",
+    "noSubtasks": "Aucune sous-tâche pour le moment",
+    "subtasksCompleted": "{{completed}}/{{total}} sous-tâches terminées",
+    "phases": {
+      "planning": "Planification (0-20%)",
+      "coding": "Codage (20-80%)",
+      "qaReview": "Révision IA (80-95%)",
+      "complete": "Terminé (95-100%)"
+    }
+  },
+  "warnings": {
+    "stuck": {
+      "title": "La tâche semble bloquée",
+      "message": "Cette tâche est marquée comme en cours mais aucun processus actif n'a été trouvé. Cela peut arriver si l'application a planté ou si le processus a été terminé de manière inattendue.",
+      "recoverAndRestart": "Récupérer et redémarrer la tâche"
+    },
+    "incomplete": {
+      "title": "Tâche incomplète",
+      "message": "Cette tâche a une spécification et un plan d'implémentation mais n'a jamais terminé de sous-tâches ({{completed}}/{{total}}). Le processus a probablement planté lors de la création de la spécification. Cliquez sur Reprendre pour continuer l'implémentation."
+    }
   }
 }

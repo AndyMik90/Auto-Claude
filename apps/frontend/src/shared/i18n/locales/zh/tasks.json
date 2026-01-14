@@ -236,5 +236,75 @@
   },
   "subtasks": {
     "untitled": "未命名的子任务"
+  },
+  "logs": {
+    "title": "日志",
+    "noLogsYet": "暂无日志",
+    "logsWillAppearHere": "任务运行时日志将出现在这里",
+    "status": {
+      "running": "运行中",
+      "pending": "等待中",
+      "complete": "完成",
+      "failed": "失败",
+      "interrupted": "已中断"
+    },
+    "tools": {
+      "reading": "读取",
+      "searchingFiles": "搜索文件",
+      "searchingCode": "搜索代码",
+      "editing": "编辑",
+      "writing": "写入",
+      "running": "运行",
+      "done": "完成"
+    },
+    "buttons": {
+      "showOutput": "显示输出",
+      "hideOutput": "隐藏输出",
+      "more": "更多",
+      "less": "更少"
+    },
+    "modelInfo": {
+      "model": "模型",
+      "thinking": "思考"
+    }
+  },
+  "actions": {
+    "start": "开始任务",
+    "stop": "停止任务",
+    "resume": "继续任务",
+    "recover": "恢复任务",
+    "recovering": "恢复中...",
+    "delete": "删除任务",
+    "deleting": "删除中...",
+    "deletePermanently": "永久删除",
+    "taskCompleted": "任务已成功完成",
+    "deleteDialog": {
+      "title": "删除任务",
+      "confirmMessage": "确定要删除「{{title}}」吗？",
+      "warningMessage": "此操作无法撤销。所有任务文件（包括规格说明、实施计划和任何生成的代码）将从项目中永久删除。"
+    }
+  },
+  "progress": {
+    "title": "进度",
+    "subtaskLabel": "子任务",
+    "noSubtasks": "暂无子任务",
+    "subtasksCompleted": "已完成 {{completed}}/{{total}} 个子任务",
+    "phases": {
+      "planning": "计划中 (0-20%)",
+      "coding": "编码中 (20-80%)",
+      "qaReview": "AI 审查 (80-95%)",
+      "complete": "完成 (95-100%)"
+    }
+  },
+  "warnings": {
+    "stuck": {
+      "title": "任务似乎已卡住",
+      "message": "此任务标记为正在运行，但未找到活动进程。这可能是由于应用程序崩溃或进程意外终止导致的。",
+      "recoverAndRestart": "恢复并重新启动任务"
+    },
+    "incomplete": {
+      "title": "任务未完成",
+      "message": "此任务有规格说明和实施计划，但从未完成任何子任务（{{completed}}/{{total}}）。进程可能在创建规格说明时崩溃了。点击继续以继续实施。"
+    }
   }
 }
