@@ -53,7 +53,7 @@ def _run_where_command() -> str | None:
     """
     try:
         result = subprocess.run(
-            ["where", "gh"],
+            "where gh",
             capture_output=True,
             text=True,
             encoding="utf-8",
