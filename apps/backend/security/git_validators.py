@@ -235,7 +235,7 @@ def validate_git_commit_secrets(command_string: str) -> ValidationResult:
 
     # Import the secret scanner
     try:
-        from scan_secrets import get_staged_files, mask_secret, scan_files
+        from security.scan_secrets import get_staged_files, mask_secret, scan_files
     except ImportError:
         # Scanner not available, allow commit (don't break the build)
         return True, ""
