@@ -267,9 +267,14 @@ export function useImageUpload({
    */
   const handleDrop = useCallback(
     async (e: DragEvent<HTMLTextAreaElement>) => {
-      setIsDragOver(false);
+      // Check disabled state first, before any state changes or preventDefault calls
+      // This ensures drops are properly rejected when the component is disabled
+      if (disabled) {
+        setIsDragOver(false);
+        return;
+      }
 
-      if (disabled) return;
+      setIsDragOver(false);
 
       // First, check for file reference drops from FileTreeItem
       // These have 'application/json' with type: 'file-reference' and 'text/plain' with @filename

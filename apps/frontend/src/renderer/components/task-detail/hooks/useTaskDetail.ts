@@ -295,6 +295,9 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   // Load merge preview (conflict detection) and refresh worktree status
   const loadMergePreview = useCallback(async () => {
     setIsLoadingPreview(true);
+    // Clear any previous workspace error before loading
+    setWorkspaceError(null);
+
     try {
       // Fetch both merge preview and updated worktree status in parallel
       // This ensures the branch information (currentProjectBranch) is refreshed
@@ -306,14 +309,19 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
         window.electronAPI.getWorktreeStatus(task.id)
       ]);
 
+      const errors: string[] = [];
+
       // Process merge preview result if fulfilled
       if (previewResult.status === 'fulfilled') {
         const result = previewResult.value;
         if (result.success && result.data?.preview) {
           setMergePreview(result.data.preview);
+        } else if (!result.success && result.error) {
+          errors.push(`Merge preview: ${result.error}`);
         }
       } else {
         console.error('[useTaskDetail] Failed to load merge preview:', previewResult.reason);
+        errors.push('Failed to load merge preview');
       }
 
       // Update worktree status with fresh branch information if fulfilled
@@ -321,12 +329,21 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
         const result = statusResult.value;
         if (result.success && result.data) {
           setWorktreeStatus(result.data);
+        } else if (!result.success && result.error) {
+          errors.push(`Worktree status: ${result.error}`);
         }
       } else {
         console.error('[useTaskDetail] Failed to load worktree status:', statusResult.reason);
+        errors.push('Failed to load worktree status');
+      }
+
+      // Set workspace error if any API calls failed
+      if (errors.length > 0) {
+        setWorkspaceError(errors.join('; '));
       }
     } catch (err) {
       console.error('[useTaskDetail] Unexpected error in loadMergePreview:', err);
+      setWorkspaceError('An unexpected error occurred while loading workspace information');
     } finally {
       hasLoadedPreviewRef.current = task.id;
       setIsLoadingPreview(false);

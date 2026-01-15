@@ -79,7 +79,8 @@ export function useTerminalFileDrop({
     if (e.currentTarget.contains(e.relatedTarget as Node)) {
       return;
     }
-    e.preventDefault();
+    // Note: dragleave is not cancelable, so preventDefault() has no effect
+    // We only call stopPropagation to prevent event bubbling
     e.stopPropagation();
     setIsNativeDragOver(false);
   }, []);

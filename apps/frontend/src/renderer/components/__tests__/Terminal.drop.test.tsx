@@ -682,3 +682,134 @@ describe('escapeShellArg Utility', () => {
     expect(escaped).toBe("'/path/to/file\nwith\nnewlines.ts'");
   });
 });
+
+/**
+ * Integration test using a minimal component wrapper
+ *
+ * This verifies that the useTerminalFileDrop hook works correctly when used
+ * in a component context with actual DOM event handlers attached.
+ *
+ * Note: Testing the full Terminal component would require extensive mocking
+ * of xterm.js, @dnd-kit, zustand stores, and electron APIs. Instead, we:
+ * 1. Test the hook directly using renderHook() (above)
+ * 2. Test a minimal component that uses the hook to verify DOM integration
+ *
+ * This approach follows the same pattern as useImageUpload.fileref.test.ts
+ * and ensures the actual drop handling logic is tested, not duplicated.
+ */
+import { render, fireEvent } from '@testing-library/react';
+import React from 'react';
+
+describe('Terminal File Drop - Component Integration', () => {
+  const mockSendInput = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Minimal component that uses the hook exactly like Terminal.tsx does
+  function TestDropZone({ terminalId }: { terminalId: string }) {
+    const { isNativeDragOver, handleNativeDragOver, handleNativeDragLeave, handleNativeDrop } =
+      useTerminalFileDrop({
+        terminalId,
+        sendTerminalInput: mockSendInput
+      });
+
+    return (
+      <div
+        data-testid="drop-zone"
+        onDragOver={handleNativeDragOver}
+        onDragLeave={handleNativeDragLeave}
+        onDrop={handleNativeDrop}
+        className={isNativeDragOver ? 'drag-over' : ''}
+      >
+        Drop files here
+      </div>
+    );
+  }
+
+  // Helper to create a native DragEvent for fireEvent
+  function createDropEvent(fileRefData: FileReferenceDropData | null): Partial<DragEvent> {
+    const getData = (type: string): string => {
+      if (type === 'application/json' && fileRefData) {
+        return JSON.stringify(fileRefData);
+      }
+      return '';
+    };
+
+    return {
+      dataTransfer: {
+        types: fileRefData ? ['application/json'] : [],
+        getData,
+        setData: vi.fn(),
+        effectAllowed: 'none',
+        dropEffect: 'none'
+      } as unknown as DataTransfer
+    };
+  }
+
+  it('should call sendTerminalInput when valid file is dropped on component', () => {
+    const { getByTestId } = render(<TestDropZone terminalId="test-terminal" />);
+    const dropZone = getByTestId('drop-zone');
+
+    const dropEvent = createDropEvent({
+      type: 'file-reference',
+      path: '/path/to/dropped-file.ts',
+      name: 'dropped-file.ts',
+      isDirectory: false
+    });
+
+    fireEvent.drop(dropZone, dropEvent);
+
+    expect(mockSendInput).toHaveBeenCalledWith('test-terminal', "'/path/to/dropped-file.ts' ");
+  });
+
+  it('should not call sendTerminalInput when invalid data is dropped', () => {
+    const { getByTestId } = render(<TestDropZone terminalId="test-terminal" />);
+    const dropZone = getByTestId('drop-zone');
+
+    const dropEvent = createDropEvent({
+      type: 'other-type',
+      path: '/path/to/file.ts',
+      name: 'file.ts',
+      isDirectory: false
+    } as unknown as FileReferenceDropData);
+
+    fireEvent.drop(dropZone, dropEvent);
+
+    expect(mockSendInput).not.toHaveBeenCalled();
+  });
+
+  it('should escape paths with spaces when dropped on component', () => {
+    const { getByTestId } = render(<TestDropZone terminalId="test-terminal" />);
+    const dropZone = getByTestId('drop-zone');
+
+    const dropEvent = createDropEvent({
+      type: 'file-reference',
+      path: '/path/to/my file.ts',
+      name: 'my file.ts',
+      isDirectory: false
+    });
+
+    fireEvent.drop(dropZone, dropEvent);
+
+    expect(mockSendInput).toHaveBeenCalledWith('test-terminal', "'/path/to/my file.ts' ");
+  });
+
+  it('should escape paths with single quotes when dropped on component', () => {
+    const { getByTestId } = render(<TestDropZone terminalId="test-terminal" />);
+    const dropZone = getByTestId('drop-zone');
+
+    const dropEvent = createDropEvent({
+      type: 'file-reference',
+      path: "/path/to/it's-a-file.ts",
+      name: "it's-a-file.ts",
+      isDirectory: false
+    });
+
+    fireEvent.drop(dropZone, dropEvent);
+
+    // Single quotes are escaped as '\''
+    expect(mockSendInput).toHaveBeenCalledWith('test-terminal', "'/path/to/it'\\''s-a-file.ts' ");
+  });
+});

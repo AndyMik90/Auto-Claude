@@ -378,7 +378,10 @@ describe('useImageUpload - File Reference Handling', () => {
         await result.current.handleDrop(mockEvent);
       });
 
+      // When disabled, the drop should be rejected without processing
       expect(mockOnFileReferenceDrop).not.toHaveBeenCalled();
+      // preventDefault should not be called when disabled - drop should be rejected
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
     });
   });
 
