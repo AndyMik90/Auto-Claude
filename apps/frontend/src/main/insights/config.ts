@@ -140,10 +140,28 @@ export class InsightsConfig {
     // are available even when app is launched from Finder/Dock.
     const augmentedEnv = getAugmentedEnv();
 
+    // FIX: Detect and pass Claude CLI path to Python backend
+    // Common issue: Claude CLI installed via Homebrew at /opt/homebrew/bin/claude (macOS)
+    // or other non-standard locations not in subprocess PATH when app launches from Finder/Dock
+    const claudeCliEnv: Record<string, string> = {};
+    if (!process.env.CLAUDE_CLI_PATH) {
+      try {
+        const { getToolInfo } = await import('../cli-tool-manager');
+        const claudeInfo = getToolInfo('claude');
+        if (claudeInfo.found && claudeInfo.path) {
+          claudeCliEnv['CLAUDE_CLI_PATH'] = claudeInfo.path;
+          console.log('[InsightsConfig] Setting CLAUDE_CLI_PATH:', claudeInfo.path, `(source: ${claudeInfo.source})`);
+        }
+      } catch (error) {
+        console.warn('[InsightsConfig] Failed to detect Claude CLI path:', error);
+      }
+    }
+
     return {
       ...augmentedEnv,
       ...pythonEnv, // Include PYTHONPATH for bundled site-packages
       ...autoBuildEnv,
+      ...claudeCliEnv, // FIX: Add Claude CLI path
       ...oauthModeClearVars,
       ...profileEnv,
       ...apiProfileEnv,
