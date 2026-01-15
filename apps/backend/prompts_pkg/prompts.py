@@ -12,6 +12,7 @@ import re
 import subprocess
 from pathlib import Path
 
+from core.language_injection import get_localized_prompt_path
 from .project_context import (
     detect_project_capabilities,
     get_mcp_tools_for_project,
@@ -159,13 +160,15 @@ def get_planner_prompt(spec_dir: Path) -> str:
     Load the planner agent prompt with spec path injected.
     The planner creates subtask-based implementation plans.
 
+    Uses localized prompt based on user language preference.
+
     Args:
         spec_dir: Directory containing the spec.md file
 
     Returns:
         The planner prompt content with spec path
     """
-    prompt_file = PROMPTS_DIR / "planner.md"
+    prompt_file = get_localized_prompt_path(PROMPTS_DIR, "planner.md")
 
     if not prompt_file.exists():
         raise FileNotFoundError(
@@ -202,13 +205,15 @@ def get_coding_prompt(spec_dir: Path) -> str:
     """
     Load the coding agent prompt with spec path injected.
 
+    Uses localized prompt based on user language preference.
+
     Args:
         spec_dir: Directory containing the spec.md and implementation_plan.json
 
     Returns:
         The coding agent prompt content with spec path
     """
-    prompt_file = PROMPTS_DIR / "coder.md"
+    prompt_file = get_localized_prompt_path(PROMPTS_DIR, "coder.md")
 
     if not prompt_file.exists():
         raise FileNotFoundError(
@@ -330,13 +335,15 @@ def get_followup_planner_prompt(spec_dir: Path) -> str:
     Load the follow-up planner agent prompt with spec path and key files injected.
     The follow-up planner adds new subtasks to an existing completed implementation plan.
 
+    Uses localized prompt based on user language preference.
+
     Args:
         spec_dir: Directory containing the completed spec and implementation_plan.json
 
     Returns:
         The follow-up planner prompt content with paths injected
     """
-    prompt_file = PROMPTS_DIR / "followup_planner.md"
+    prompt_file = get_localized_prompt_path(PROMPTS_DIR, "followup_planner.md")
 
     if not prompt_file.exists():
         raise FileNotFoundError(
@@ -412,18 +419,22 @@ def is_first_run(spec_dir: Path) -> bool:
 
 def _load_prompt_file(filename: str) -> str:
     """
-    Load a prompt file from the prompts directory.
+    Load a prompt file from the prompts directory with localization support.
+
+    This function automatically uses the localized version of the prompt
+    based on the user's language preference (e.g., prompts/zh/filename.md).
 
     Args:
         filename: Relative path to prompt file (e.g., "qa_reviewer.md" or "mcp_tools/electron_validation.md")
 
     Returns:
-        Content of the prompt file
+        Content of the prompt file (localized if available)
 
     Raises:
-        FileNotFoundError: If prompt file doesn't exist
+        FileNotFoundError: If prompt file doesn't exist in either localized or default location
     """
-    prompt_file = PROMPTS_DIR / filename
+    # Use localized path based on user language preference
+    prompt_file = get_localized_prompt_path(PROMPTS_DIR, filename)
     if not prompt_file.exists():
         raise FileNotFoundError(f"Prompt file not found: {prompt_file}")
     return prompt_file.read_text()
