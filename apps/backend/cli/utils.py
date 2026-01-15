@@ -56,7 +56,7 @@ def import_dotenv():
 
 # Load .env with helpful error if dependencies not installed
 load_dotenv = import_dotenv()
-from graphiti_config import get_graphiti_status
+from graphiti_config import get_graphiti_status, check_graphiti_health
 from linear_integration import LinearManager
 from linear_updater import is_linear_enabled
 from spec.pipeline import get_specs_dir
@@ -204,18 +204,27 @@ def validate_environment(spec_dir: Path) -> bool:
     else:
         print("Linear integration: DISABLED (set LINEAR_API_KEY to enable)")
 
-    # Check Graphiti integration (optional but show status)
-    graphiti_status = get_graphiti_status()
-    if graphiti_status["available"]:
-        print("Graphiti memory: ENABLED")
-        print(f"  Database: {graphiti_status['database']}")
-        if graphiti_status.get("db_path"):
-            print(f"  Path: {graphiti_status['db_path']}")
-    elif graphiti_status["enabled"]:
-        print(
-            f"Graphiti memory: CONFIGURED but unavailable ({graphiti_status['reason']})"
-        )
+    # Check Graphiti integration with full health check
+    graphiti_health = check_graphiti_health()
+    if graphiti_health["healthy"]:
+        driver = graphiti_health["details"].get("driver", "unknown")
+        db_path = graphiti_health["details"].get("db_path", "N/A")
+        llm = graphiti_health["details"].get("llm_provider", "N/A")
+        embedder = graphiti_health["details"].get("embedder_provider", "N/A")
+        print(f"Graphiti memory: ENABLED (driver: {driver})")
+        print(f"  Database path: {db_path}")
+        print(f"  Providers: LLM={llm}, Embedder={embedder}")
+    elif graphiti_health["checks"].get("config_valid"):
+        # Configured but something is wrong
+        print(f"Graphiti memory: ⚠ UNHEALTHY")
+        print(f"  Issue: {graphiti_health['message']}")
+        # Show which checks failed
+        failed_checks = [k for k, v in graphiti_health["checks"].items() if not v]
+        if failed_checks:
+            print(f"  Failed checks: {', '.join(failed_checks)}")
+        print("  Run: python run.py --check-graphiti for details")
     else:
+        # Not enabled
         print("Graphiti memory: DISABLED (set GRAPHITI_ENABLED=true to enable)")
 
     print()
