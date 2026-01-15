@@ -807,11 +807,12 @@ export function App() {
                   onProjectClose={handleProjectTabClose}
                   onAddProject={handleAddProject}
                   onSettingsClick={() => setIsSettingsDialogOpen(true)}
-                  onRefresh={handleRefreshTasks}
-                  isRefreshing={isLoadingTasks}
-                  showArchived={showArchived}
-                  onToggleArchived={handleToggleArchived}
-                  archivedCount={archivedCount}
+                  // Only show refresh/archived controls on kanban view
+                  onRefresh={activeView === 'kanban' ? handleRefreshTasks : undefined}
+                  isRefreshing={activeView === 'kanban' ? isLoadingTasks : undefined}
+                  showArchived={activeView === 'kanban' ? showArchived : undefined}
+                  onToggleArchived={activeView === 'kanban' ? handleToggleArchived : undefined}
+                  archivedCount={activeView === 'kanban' ? archivedCount : undefined}
                 />
               </SortableContext>
 
