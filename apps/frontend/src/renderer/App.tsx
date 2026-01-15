@@ -827,24 +827,25 @@ export function App() {
                         {check.checks && Object.keys(check.checks).length > 0 && (
                           <div className="px-3 py-2 space-y-1.5 bg-card">
                             {Object.entries(check.checks).map(([subKey, passed]) => {
-                              // Determine if this is a failure or just disabled
-                              const isFailure = !passed && !check.healthy;
-                              const isDisabled = !passed && check.healthy;
+                              // Format the label - if it ends with _enabled, show status explicitly
+                              let label = subKey.replace(/_/g, ' ');
+                              if (subKey.endsWith('_enabled')) {
+                                const baseName = subKey.replace(/_enabled$/, '').replace(/_/g, ' ');
+                                label = `${baseName}: ${passed ? 'enabled' : 'disabled'}`;
+                              }
 
                               return (
                                 <div key={subKey} className="flex items-center gap-2 text-sm">
                                   {passed ? (
                                     <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                                  ) : isFailure ? (
-                                    <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
                                   ) : (
-                                    <Minus className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                                    <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
                                   )}
                                   <span className={cn(
                                     "text-muted-foreground",
-                                    isFailure && "text-red-400"
+                                    !passed && "text-red-400"
                                   )}>
-                                    {subKey.replace(/_/g, ' ')}
+                                    {label}
                                   </span>
                                 </div>
                               );
