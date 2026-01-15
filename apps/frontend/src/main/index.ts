@@ -2,7 +2,8 @@
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
+import { homedir } from 'os';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -98,6 +99,69 @@ function cleanupStaleUpdateMetadata(): void {
       } catch (e) {
         console.warn(`[main] Failed to clean up stale metadata at ${stalePath}:`, e);
       }
+    }
+  }
+}
+
+/**
+ * Fix corrupted or empty known_marketplaces.json in Claude CLI config.
+ *
+ * On Windows, an empty or array-containing known_marketplaces.json file causes
+ * Claude CLI crashes. This file must contain a valid JSON object (at minimum `{}`).
+ *
+ * This fix runs before any Claude CLI calls to prevent crashes.
+ */
+function fixKnownMarketplacesJson(): void {
+  if (process.platform !== 'win32') {
+    return;
+  }
+
+  const pluginsDir = join(homedir(), '.claude', 'plugins');
+  const marketplacesPath = join(pluginsDir, 'known_marketplaces.json');
+
+  // Ensure plugins directory exists
+  if (!existsSync(pluginsDir)) {
+    try {
+      mkdirSync(pluginsDir, { recursive: true });
+      console.log('[main] Created Claude plugins directory:', pluginsDir);
+    } catch (e) {
+      console.warn('[main] Failed to create plugins directory:', e);
+      return;
+    }
+  }
+
+  // Check if file needs fixing
+  let needsFix = false;
+  if (!existsSync(marketplacesPath)) {
+    needsFix = true;
+  } else {
+    try {
+      const content = readFileSync(marketplacesPath, 'utf-8').trim();
+      // Fix if empty, contains only whitespace, or is an array instead of object
+      if (content === '' || content === '[]') {
+        needsFix = true;
+        console.log('[main] Detected corrupted known_marketplaces.json:', content || '(empty)');
+      } else {
+        // Validate it's a proper JSON object (not array)
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed)) {
+          needsFix = true;
+          console.log('[main] known_marketplaces.json contains array instead of object');
+        }
+      }
+    } catch (e) {
+      // If we can't read or parse it, try to fix it
+      needsFix = true;
+      console.warn('[main] Failed to read known_marketplaces.json:', e);
+    }
+  }
+
+  if (needsFix) {
+    try {
+      writeFileSync(marketplacesPath, '{}', 'utf-8');
+      console.log('[main] Fixed known_marketplaces.json with empty object');
+    } catch (e) {
+      console.warn('[main] Failed to fix known_marketplaces.json:', e);
     }
   }
 }
@@ -258,6 +322,10 @@ app.whenReady().then(() => {
       .then(() => console.log('[main] Cleared cache on startup'))
       .catch((err) => console.warn('[main] Failed to clear cache:', err));
   }
+
+  // Fix corrupted known_marketplaces.json on Windows before any Claude CLI calls
+  // This prevents crashes when the file is empty or contains [] instead of {}
+  fixKnownMarketplacesJson();
 
   // Clean up stale update metadata from the old source updater system
   // This prevents version display desync after electron-updater installs a new version
