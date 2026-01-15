@@ -56,9 +56,6 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
           // This restores the Better Auth client's internal session state
           if (storedAuthState.isAuthenticated && storedAuthState.session) {
             try {
-              console.log('[ConvexAuthProvider] Found stored session, verifying with server...');
-              console.log('[ConvexAuthProvider] Stored session keys:', Object.keys(storedAuthState.session));
-
               // Make a direct request to get-session endpoint to verify the session
               // The fetch interceptor will add the Bearer token automatically
               const response = await fetch(`${siteUrl}/api/auth/get-session`, {
@@ -70,9 +67,6 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
 
               if (response.ok) {
                 const data = await response.json();
-                console.log('[ConvexAuthProvider] Session verified successfully');
-                console.log('[ConvexAuthProvider] Response data keys:', data ? Object.keys(data) : 'null');
-                console.log('[ConvexAuthProvider] Response data:', data);
 
                 // Check the structure of the response
                 // Better Auth might return { user, session } or just { session } or other formats
@@ -80,13 +74,10 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
                   // If the response has a user object, use it
                   // Otherwise keep the existing user from stored session
                   if (data.user) {
-                    console.log('[ConvexAuthProvider] Response has user, updating session');
                     authStore.setSession(data);
                   } else if (data.session?.user) {
-                    console.log('[ConvexAuthProvider] Response has nested user, updating session');
                     authStore.setSession(data.session);
                   } else {
-                    console.log('[ConvexAuthProvider] Response has no user, keeping stored session');
                     // Session is valid, keep using the stored one
                     // Just update the token if provided
                     if (data.session?.token || data.token) {
@@ -100,35 +91,20 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
                   }
                 }
               } else if (response.status === 401) {
-                console.warn('[ConvexAuthProvider] Stored session is expired (401), clearing it');
                 authStore.clearSession();
-              } else {
-                console.warn('[ConvexAuthProvider] Session verification failed (HTTP ' + response.status + ')');
-                // Keep the stored session - might be a temporary server issue
               }
+              // Keep the stored session for other status codes - might be a temporary server issue
             } catch (error) {
-              console.warn('[ConvexAuthProvider] Failed to verify session with server:', error);
               // Don't clear the session on network error - it might be a temporary issue
               // The user can still use the app with the stored session
-              console.log('[ConvexAuthProvider] Keeping stored session despite verification failure');
             }
           }
 
           setAuthState(authStore.getState());
-
-          // Log the configuration for debugging
-          console.info('Convex initialized:', {
-            convexUrl,
-            siteUrl,
-            authBaseURL: `${siteUrl}/api/auth`,
-            hasStoredSession: storedAuthState.isAuthenticated
-          });
-
           setConvex(convexClient);
           setIsReady(true);
         } else {
           // No Convex URL found - run without auth
-          console.warn('Convex URL not found. Running without authentication.');
           setIsReady(true);
         }
       } catch (error) {

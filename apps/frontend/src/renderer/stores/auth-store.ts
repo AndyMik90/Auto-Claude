@@ -43,11 +43,9 @@ class AuthStore {
   loadFromStorage() {
     try {
       const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-      console.log('[AuthStore] loadFromStorage: Found saved data:', !!saved);
 
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log('[AuthStore] loadFromStorage: Parsed data keys:', parsed ? Object.keys(parsed) : 'null');
 
         // Check if we have a session object
         if (parsed.session) {
@@ -55,16 +53,12 @@ class AuthStore {
           if (parsed.session.expiresAt) {
             const expiresAt = new Date(parsed.session.expiresAt);
             const now = new Date();
-            console.log('[AuthStore] loadFromStorage: Session expires:', expiresAt, 'now:', now, 'valid:', expiresAt > now);
 
             if (expiresAt <= now) {
               // Session expired, clear it
-              console.log('[AuthStore] loadFromStorage: Session expired, clearing');
               this.clearSession();
               return;
             }
-          } else {
-            console.log('[AuthStore] loadFromStorage: Session has no expiration, treating as valid');
           }
 
           // Session is valid, load it
@@ -72,13 +66,7 @@ class AuthStore {
             session: parsed.session,
             isAuthenticated: true,
           };
-          console.log('[AuthStore] loadFromStorage: Session loaded successfully, user:', parsed.session?.user ? {
-            email: parsed.session.user.email,
-            name: parsed.session.user.name,
-          } : 'no user');
         }
-      } else {
-        console.log('[AuthStore] loadFromStorage: No saved session found');
       }
     } catch (error) {
       console.error('[AuthStore] Failed to load session:', error);
@@ -122,13 +110,7 @@ class AuthStore {
    * Get the authenticated user
    */
   getUser() {
-    const user = this.state.session?.user || null;
-    console.log('[AuthStore] getUser called, returning:', user ? {
-      email: user.email,
-      name: user.name,
-      hasImage: !!user.image,
-    } : null);
-    return user;
+    return this.state.session?.user || null;
   }
 
   /**
@@ -142,24 +124,12 @@ class AuthStore {
    * Set the session after successful login
    */
   setSession(session: Session | null) {
-    console.log('[AuthStore] setSession called with:', session ? {
-      hasToken: !!session.token,
-      hasUser: !!(session as any).user,
-      user: (session as any).user,
-      keys: Object.keys(session),
-    } : 'null');
-
     this.state = {
       session,
       isAuthenticated: !!session,
     };
     this.saveToStorage(session);
     this.notify();
-
-    console.log('[AuthStore] State after setSession:', {
-      isAuthenticated: this.state.isAuthenticated,
-      user: this.getUser(),
-    });
   }
 
   /**
@@ -180,14 +150,6 @@ class AuthStore {
   getToken(): string | null {
     const session = this.state.session;
     if (!session) return null;
-
-    // Log the session structure for debugging
-    console.log('[AuthStore] Session structure:', {
-      hasToken: !!session.token,
-      hasSessionToken: !!(session as any).sessionToken,
-      keys: Object.keys(session),
-      sessionKeys: session.session ? Object.keys(session.session) : [],
-    });
 
     // Try different possible token locations
     return session.token || (session as any).sessionToken || (session as any).session?.token || null;

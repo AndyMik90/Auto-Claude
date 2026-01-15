@@ -43,7 +43,6 @@ function getBearerToken(): string | null {
  */
 function installFetchInterceptor() {
   if (fetchInterceptorInstalled) {
-    console.log('[auth-client] Fetch interceptor already installed');
     return;
   }
 
@@ -57,9 +56,6 @@ function installFetchInterceptor() {
       const token = getBearerToken();
 
       if (token) {
-        console.log('[auth-client] Intercepted fetch for:', url);
-        console.log('[auth-client] Adding Bearer token to request');
-
         const headers = new Headers(init?.headers);
         headers.set('Authorization', `Bearer ${token}`);
 
@@ -67,8 +63,6 @@ function installFetchInterceptor() {
           ...init,
           headers,
         });
-      } else {
-        console.warn('[auth-client] No token found for auth request:', url);
       }
     }
 
@@ -76,7 +70,6 @@ function installFetchInterceptor() {
   };
 
   fetchInterceptorInstalled = true;
-  console.log('[auth-client] Global fetch interceptor installed');
 }
 
 /**
@@ -86,7 +79,6 @@ function installFetchInterceptor() {
 export function getAuthClient(convexUrl: string) {
   if (!authClientInstance) {
     const baseURL = `${convexUrl}/api/auth`;
-    console.log('[auth-client] Creating Better Auth client with baseURL:', baseURL);
 
     // Install global fetch interceptor first
     installFetchInterceptor();
@@ -97,8 +89,6 @@ export function getAuthClient(convexUrl: string) {
     });
 
     authClientInstance = client;
-
-    console.log('[auth-client] Auth client created with Bearer token authentication');
   }
   return authClientInstance;
 }

@@ -29,10 +29,6 @@ export function AccountProfile() {
 
   // Update form when user changes
   useEffect(() => {
-    console.log('[AccountProfile] Component mounted');
-    console.log('[AccountProfile] authStore state:', authStore.getState());
-    console.log('[AccountProfile] user from authStore:', user);
-
     if (user) {
       setName(user.name || '');
       setImage(user.image || '');
@@ -45,10 +41,6 @@ export function AccountProfile() {
     setError(null);
 
     try {
-      console.log('[AccountProfile] handleSave called');
-      console.log('[AccountProfile] Current authStore state:', authStore.getState());
-      console.log('[AccountProfile] Session from authStore:', authStore.getSession());
-
       // Get the current session from our authStore
       const session = authStore.getSession();
 
@@ -59,15 +51,11 @@ export function AccountProfile() {
         return;
       }
 
-      console.log('[AccountProfile] Calling authClient.updateUser with:', { name, image });
-
       // Update user profile using Better Auth
       const result = await authClient?.updateUser({
         name,
         image: image || undefined,
       });
-
-      console.log('[AccountProfile] updateUser result:', result);
 
       if (result?.error) {
         console.error('[AccountProfile] updateUser error:', result.error);
@@ -79,8 +67,6 @@ export function AccountProfile() {
         // Update local user data with the new values from the result
         // The result.data should contain the updated user
         if (result?.data) {
-          console.log('[AccountProfile] Update successful, result data:', result.data);
-
           // Update the user in our authStore with the new values
           const currentSession = authStore.getSession();
           if (currentSession && currentSession.user) {
@@ -93,7 +79,6 @@ export function AccountProfile() {
               },
             };
             authStore.setSession(updatedSession);
-            console.log('[AccountProfile] Updated session in authStore');
           }
         }
       }
