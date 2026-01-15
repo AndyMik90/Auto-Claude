@@ -1069,6 +1069,7 @@ def create_client(
     # Find Claude CLI path for SDK
     # This ensures the SDK can find the Claude Code binary even if it's not in PATH
     cli_path = find_claude_cli()
+
     if cli_path:
         print(f"   - Claude CLI: {cli_path}")
     else:

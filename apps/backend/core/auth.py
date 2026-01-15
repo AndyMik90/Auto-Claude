@@ -38,6 +38,10 @@ SDK_ENV_VARS = [
     "API_TIMEOUT_MS",
     # Windows-specific: Git Bash path for Claude Code CLI
     "CLAUDE_CODE_GIT_BASH_PATH",
+    # FIX: Claude CLI path detection (for non-standard install locations)
+    "CLAUDE_CLI_PATH",
+    # FIX: PATH environment variable (needed for subprocess to find tools)
+    "PATH",
 ]
 
 
