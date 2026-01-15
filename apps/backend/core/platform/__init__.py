@@ -44,8 +44,18 @@ class ShellType(Enum):
 # ============================================================================
 
 def get_current_os() -> OS:
-    """Get the current operating system."""
-    return OS(platform.system())
+    """Get the current operating system.
+    
+    Returns the OS enum for the current platform. For unsupported Unix-like
+    systems (e.g., FreeBSD, SunOS), defaults to Linux for compatibility.
+    """
+    system = platform.system()
+    if system == "Windows":
+        return OS.WINDOWS
+    elif system == "Darwin":
+        return OS.MACOS
+    # Default to Linux for other Unix-like systems (FreeBSD, SunOS, etc.)
+    return OS.LINUX
 
 
 def is_windows() -> bool:
