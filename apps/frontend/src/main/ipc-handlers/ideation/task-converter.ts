@@ -158,21 +158,20 @@ function createSpecFiles(
     JSON.stringify(initialPlan, null, 2)
   );
 
-  // Create initial spec.md
-  const specContent = `# ${idea.title}
-
-## Overview
-
-${idea.description}
-
-## Rationale
-
-${idea.rationale}
-
----
-*This spec was created from ideation and is pending detailed specification.*
-`;
-  writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE), specContent);
+  // Create requirements.json instead of spec.md
+  // This ensures the task goes through the full planning flow:
+  // 1. User starts task -> spec_runner.py reads requirements.json
+  // 2. spec_runner.py creates AI-generated spec.md with proper structure
+  // 3. spec_runner.py chains to run.py for implementation planning
+  // Creating spec.md here would cause run.py to be called directly, skipping spec creation
+  const requirements = {
+    task_description: `# ${idea.title}\n\n## Overview\n\n${idea.description}\n\n## Rationale\n\n${idea.rationale}`,
+    workflow_type: 'development'
+  };
+  writeFileSync(
+    path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
+    JSON.stringify(requirements, null, 2)
+  );
 }
 
 /**
