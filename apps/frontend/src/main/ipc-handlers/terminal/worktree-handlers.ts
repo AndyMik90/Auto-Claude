@@ -442,7 +442,7 @@ async function listTerminalWorktrees(projectPath: string): Promise<TerminalWorkt
     }
   }
 
-  // Auto-cleanup stale metadata files (async, don't block listing)
+  // Auto-cleanup stale metadata files (best-effort cleanup before returning)
   if (staleMetadataFiles.length > 0) {
     for (const filePath of staleMetadataFiles) {
       try {
