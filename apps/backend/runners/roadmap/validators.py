@@ -3,7 +3,11 @@ Dependency validators for roadmap features.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Set
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 from .models import RoadmapFeature
 
 
@@ -13,15 +17,15 @@ class ValidationResult:
 
     has_missing: bool
     has_circular: bool
-    missing_ids: List[str]
-    circular_paths: List[List[str]]
-    reverse_deps_map: Dict[str, List[str]]
+    missing_ids: list[str]
+    circular_paths: list[list[str]]
+    reverse_deps_map: dict[str, list[str]]
 
 
 class DependencyValidator:
     """Validates and enriches feature dependencies."""
 
-    def validate_all(self, features: List[RoadmapFeature]) -> ValidationResult:
+    def validate_all(self, features: list[RoadmapFeature]) -> ValidationResult:
         """
         Validates all dependencies in the roadmap.
 
@@ -45,10 +49,10 @@ class DependencyValidator:
             has_circular=len(circular_paths) > 0,
             missing_ids=missing_ids,
             circular_paths=circular_paths,
-            reverse_deps_map=reverse_deps_map
+            reverse_deps_map=reverse_deps_map,
         )
 
-    def _find_missing_deps(self, features: List[RoadmapFeature]) -> List[str]:
+    def _find_missing_deps(self, features: list[RoadmapFeature]) -> list[str]:
         """Find dependencies that reference non-existent features."""
         valid_ids = {f.id for f in features}
         missing = set()
@@ -58,15 +62,15 @@ class DependencyValidator:
                 if dep_id not in valid_ids:
                     missing.add(dep_id)
 
-        return sorted(list(missing))
+        return sorted(missing)
 
-    def _detect_circular_deps(self, features: List[RoadmapFeature]) -> List[List[str]]:
+    def _detect_circular_deps(self, features: list[RoadmapFeature]) -> list[list[str]]:
         """Detect circular dependencies using DFS."""
         graph = {f.id: f.dependencies for f in features}
         circular_paths = []
         seen_cycles = set()  # Track normalized cycles
 
-        def normalize_cycle(cycle: List[str]) -> str:
+        def normalize_cycle(cycle: list[str]) -> str:
             """Rotate cycle to start from smallest ID for deduplication."""
             if not cycle:
                 return ""
@@ -79,7 +83,7 @@ class DependencyValidator:
             rotated = cycle_without_dup[min_idx:] + cycle_without_dup[:min_idx]
             return ",".join(rotated)
 
-        def dfs(node: str, path: List[str], visited: Set[str]) -> bool:
+        def dfs(node: str, path: list[str], visited: set[str]) -> bool:
             if node in path:
                 # Found a cycle
                 cycle_start = path.index(node)
@@ -110,7 +114,7 @@ class DependencyValidator:
 
         return circular_paths
 
-    def _calculate_reverse_deps(self, features: List[RoadmapFeature]) -> Dict[str, List[str]]:
+    def _calculate_reverse_deps(self, features: list[RoadmapFeature]) -> dict[str, list[str]]:
         """Calculate which features depend on each feature."""
         reverse_deps = {}
 

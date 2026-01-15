@@ -9,7 +9,14 @@ import json
 from pathlib import Path
 
 from client import create_client
-from debug import debug, debug_detailed, debug_error, debug_section, debug_success, debug_warning
+from debug import (
+    debug,
+    debug_detailed,
+    debug_error,
+    debug_section,
+    debug_success,
+    debug_warning,
+)
 from init import init_auto_claude_dir
 from phase_config import get_thinking_budget
 from ui import Icons, box, icon, muted, print_section, print_status
