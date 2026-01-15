@@ -27,6 +27,7 @@ from agents.tools_pkg import get_agent_config, get_default_thinking_level
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from core.auth import get_sdk_env_vars, require_auth_token
 from core.client import find_claude_cli
+from core.language_injection import inject_language_strengthened
 from phase_config import get_thinking_budget
 
 
@@ -88,10 +89,13 @@ def create_simple_client(
     # Find Claude CLI path (handles non-standard installations)
     cli_path = find_claude_cli()
 
+    # Apply language injection to system prompt (use strengthened version)
+    final_prompt = inject_language_strengthened(system_prompt, agent_type)
+
     # Build options dict
     options_kwargs = {
         "model": model,
-        "system_prompt": system_prompt,
+        "system_prompt": final_prompt,
         "allowed_tools": allowed_tools,
         "max_turns": max_turns,
         "cwd": str(cwd.resolve()) if cwd else None,
