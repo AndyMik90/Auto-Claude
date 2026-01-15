@@ -438,10 +438,9 @@ class TaskLogger:
         )
 
         if print_to_console:
-            # Include truncated input for live status display
+            # Include input for live status display
             if display_input:
-                short_input = display_input
-                print(f"\n[Tool: {tool_name}] {short_input}", flush=True)
+                print(f"\n[Tool: {tool_name}] {display_input}", flush=True)
             else:
                 print(f"\n[Tool: {tool_name}]", flush=True)
 

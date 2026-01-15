@@ -87,14 +87,6 @@ function taskCardPropsAreEqual(prevProps: TaskCardProps, nextProps: TaskCardProp
   }
 
   // Compare only the fields that affect rendering
-  // DEBUG: Log message changes
-  if (prevTask.executionProgress?.message !== nextTask.executionProgress?.message) {
-    console.log('[TaskCard memo] Message changed:', { 
-      taskId: prevTask.id,
-      prev: prevTask.executionProgress?.message, 
-      next: nextTask.executionProgress?.message 
-    });
-  }
   const isEqual = (
     prevTask.id === nextTask.id &&
     prevTask.status === nextTask.status &&
@@ -531,9 +523,12 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
 
         {/* Live action status - shows current tool activity */}
         {isRunning && !isStuck && liveActionStatus && (
-          <div className={cn("mt-2 flex items-start gap-1.5 rounded-md px-2 py-1.5 text-xs", liveActionStatus.colorClass)}>
+          <div
+            className={cn("mt-2 flex items-start gap-1.5 rounded-md px-2 py-1.5 text-xs", liveActionStatus.colorClass)}
+            title={liveActionStatus.message}
+          >
             <liveActionStatus.icon className="h-3.5 w-3.5 shrink-0 animate-pulse mt-0.5" />
-            <span className="break-all leading-tight">
+            <span className="line-clamp-3 break-all leading-tight">
               {liveActionStatus.message}
             </span>
           </div>
