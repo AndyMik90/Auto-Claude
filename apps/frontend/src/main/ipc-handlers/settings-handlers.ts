@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { is } from '@electron-toolkit/utils';
+import { config as dotenvConfig } from 'dotenv';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -757,6 +758,64 @@ export function registerSettingsHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to check source token'
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Configuration Hot-Reload Operations
+  // ============================================
+
+  /**
+   * Reload configuration from .env files without restarting the app.
+   * Re-reads both frontend and backend .env files, updating process.env.
+   * Useful when CLAUDE_CODE_OAUTH_TOKEN or other env vars are changed.
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_RELOAD,
+    async (): Promise<IPCResult<{ reloadedFiles: string[] }>> => {
+      try {
+        const reloadedFiles: string[] = [];
+
+        // Reload frontend .env
+        const possibleFrontendEnvPaths = [
+          path.resolve(__dirname, '../../.env'),
+          path.resolve(__dirname, '../../../.env'),
+          path.resolve(process.cwd(), 'apps/frontend/.env'),
+        ];
+
+        for (const envPath of possibleFrontendEnvPaths) {
+          if (existsSync(envPath)) {
+            const result = dotenvConfig({ path: envPath, override: true });
+            if (!result.error) {
+              console.log(`[CONFIG_RELOAD] Reloaded frontend environment from: ${envPath}`);
+              reloadedFiles.push(envPath);
+            }
+            break;
+          }
+        }
+
+        // Reload backend .env
+        const { envPath: backendEnvPath } = getSourceEnvPath();
+        if (backendEnvPath && existsSync(backendEnvPath)) {
+          const result = dotenvConfig({ path: backendEnvPath, override: true });
+          if (!result.error) {
+            console.log(`[CONFIG_RELOAD] Reloaded backend environment from: ${backendEnvPath}`);
+            reloadedFiles.push(backendEnvPath);
+          }
+        }
+
+        if (reloadedFiles.length === 0) {
+          return { success: false, error: 'No .env files found to reload' };
+        }
+
+        return { success: true, data: { reloadedFiles } };
+      } catch (error) {
+        console.error('[CONFIG_RELOAD] Error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to reload configuration'
         };
       }
     }
