@@ -349,7 +349,8 @@ class SpecOrchestrator:
         await self._store_phase_summary("requirements")
 
         # Rename spec folder with better name from requirements
-        rename_spec_dir_from_requirements(self.spec_dir)
+        # Use method to ensure self.spec_dir is updated to the new path
+        self._rename_spec_dir_from_requirements()
 
         # Update task description from requirements
         req = requirements.load_requirements(self.spec_dir)
