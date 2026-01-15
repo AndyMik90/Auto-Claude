@@ -2,11 +2,9 @@
 
 import { useState, useEffect, createContext, useContext, type ReactNode } from "react";
 import { ConvexReactClient } from "convex/react";
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { ConvexProvider } from "convex/react";
+import type { ConvexClient as ConvexClientType } from "convex/react/client";
 import { getAuthClient } from "@shared/lib/convex/auth-client";
-
-// ConvexClient type is the instance type of ConvexReactClient
-type ConvexClientType = InstanceType<typeof ConvexReactClient>;
 
 interface AuthContextValue {
   convex: ConvexClientType | null;
@@ -23,12 +21,11 @@ const AuthContext = createContext<AuthContextValue>({
 /**
  * Convex Auth Provider Component
  *
- * Fetches the Convex URLs, initializes both Convex and Better Auth clients,
- * and provides auth context to the app.
+ * Provides Convex client for data queries and exposes auth state.
+ * Authentication is handled via Better Auth with session cookies.
  */
 export function ConvexAuthProvider({ children }: { children: ReactNode }) {
   const [convex, setConvex] = useState<ConvexClientType | null>(null);
-  const [authClient, setAuthClientState] = useState<ReturnType<typeof getAuthClient> | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -42,8 +39,8 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
           // Initialize Convex client with convexUrl (for WebSocket/real-time)
           const convexClient = new ConvexReactClient(convexUrl);
 
-          // Initialize Better Auth client with siteUrl (for auth actions like sign in/sign up)
-          const client = getAuthClient(siteUrl);
+          // Initialize Better Auth client with siteUrl (for auth actions)
+          getAuthClient(siteUrl);
 
           // Log the configuration for debugging
           console.info('Convex initialized:', {
@@ -53,7 +50,6 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
           });
 
           setConvex(convexClient);
-          setAuthClientState(client);
           setIsReady(true);
         } else {
           // No Convex URL found - run without auth
@@ -69,8 +65,7 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
     initializeConvex();
   }, []);
 
-  // If Convex is not configured or still loading, render children without auth
-  // The no-op auth client will prevent errors, but auth features won't work
+  // While loading, show loading state
   if (!isReady) {
     return (
       <AuthContext.Provider value={{ convex: null, isAuthenticated: false, isLoading: true }}>
@@ -79,9 +74,9 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // If Convex is not configured, render children without ConvexBetterAuthProvider
-  // Components should check isAuthenticated before using auth features
-  if (!convex || !authClient) {
+  // If Convex is not configured, render without Convex provider
+  // The app will work but auth features won't be available
+  if (!convex) {
     return (
       <AuthContext.Provider value={{ convex: null, isAuthenticated: false, isLoading: false }}>
         {children}
@@ -89,12 +84,14 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // Convex is configured - use ConvexProvider for data queries
+  // Auth is handled separately via Better Auth client
   return (
-    <ConvexBetterAuthProvider client={convex} authClient={authClient as any}>
-      <AuthContext.Provider value={{ convex, isAuthenticated: true, isLoading: false }}>
+    <ConvexProvider client={convex}>
+      <AuthContext.Provider value={{ convex, isAuthenticated: false, isLoading: false }}>
         {children}
       </AuthContext.Provider>
-    </ConvexBetterAuthProvider>
+    </ConvexProvider>
   );
 }
 
