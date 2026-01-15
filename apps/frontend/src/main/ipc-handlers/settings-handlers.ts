@@ -783,24 +783,30 @@ export function registerSettingsHandlers(
       try {
         const reloadedFiles: string[] = [];
 
-        // Reload frontend .env
-        // In dev mode, __dirname is apps/frontend/out/main/ipc-handlers
-        // So we need to go up 3 levels to reach apps/frontend/.env
-        // (ipc-handlers -> main -> out -> frontend)
-        const possibleFrontendEnvPaths = [
-          path.resolve(__dirname, '../../../.env'),     // From out/main/ipc-handlers to frontend/.env (3 levels up)
-          path.resolve(process.cwd(), 'apps/frontend/.env'),  // From repo root as fallback
-        ];
+        // Reload frontend .env (development only)
+        // In production, frontend env vars are baked in at build time and can't be hot-reloaded.
+        // The __dirname in production points inside app.asar where .env files don't exist.
+        if (is.dev) {
+          // In dev mode, __dirname is apps/frontend/out/main/ipc-handlers
+          // So we need to go up 3 levels to reach apps/frontend/.env
+          // (ipc-handlers -> main -> out -> frontend)
+          const possibleFrontendEnvPaths = [
+            path.resolve(__dirname, '../../../.env'),     // From out/main/ipc-handlers to frontend/.env (3 levels up)
+            path.resolve(process.cwd(), 'apps/frontend/.env'),  // From repo root as fallback
+          ];
 
-        for (const envPath of possibleFrontendEnvPaths) {
-          if (existsSync(envPath)) {
-            const result = dotenvConfig({ path: envPath, override: true });
-            if (!result.error) {
-              console.log(`[CONFIG_RELOAD] Reloaded frontend environment from: ${envPath}`);
-              reloadedFiles.push(envPath);
+          for (const envPath of possibleFrontendEnvPaths) {
+            if (existsSync(envPath)) {
+              const result = dotenvConfig({ path: envPath, override: true });
+              if (!result.error) {
+                console.log(`[CONFIG_RELOAD] Reloaded frontend environment from: ${envPath}`);
+                reloadedFiles.push(envPath);
+              }
+              break;
             }
-            break;
           }
+        } else {
+          console.log('[CONFIG_RELOAD] Skipping frontend .env reload in production (vars are baked in at build time)');
         }
 
         // Reload backend .env
