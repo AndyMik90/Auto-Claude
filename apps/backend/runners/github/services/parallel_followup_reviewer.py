@@ -43,7 +43,7 @@ try:
         DEBUG_MODE,
         BaseParallelReviewer,
     )
-    from .category_utils import map_category
+    from .category_utils import map_category, map_severity
     from .io_utils import safe_print
     from .pr_worktree_manager import PRWorktreeManager
     from .pydantic_models import ParallelFollowupResponse
@@ -63,7 +63,7 @@ except (ImportError, ValueError, SystemError):
         DEBUG_MODE,
         BaseParallelReviewer,
     )
-    from services.category_utils import map_category
+    from services.category_utils import map_category, map_severity
     from services.io_utils import safe_print
     from services.pr_worktree_manager import PRWorktreeManager
     from services.pydantic_models import ParallelFollowupResponse
@@ -71,19 +71,6 @@ except (ImportError, ValueError, SystemError):
 
 
 logger = logging.getLogger(__name__)
-
-# Severity mapping for AI responses
-_SEVERITY_MAPPING = {
-    "critical": ReviewSeverity.CRITICAL,
-    "high": ReviewSeverity.HIGH,
-    "medium": ReviewSeverity.MEDIUM,
-    "low": ReviewSeverity.LOW,
-}
-
-
-def _map_severity(severity_str: str) -> ReviewSeverity:
-    """Map severity string to ReviewSeverity enum."""
-    return _SEVERITY_MAPPING.get(severity_str.lower(), ReviewSeverity.MEDIUM)
 
 
 class ParallelFollowupReviewer(BaseParallelReviewer):
@@ -759,7 +746,7 @@ The SDK will run invoked agents in parallel automatically.
                 findings.append(
                     PRReviewFinding(
                         id=finding_id,
-                        severity=_map_severity(nf.severity),
+                        severity=map_severity(nf.severity),
                         category=map_category(nf.category),
                         title=nf.title,
                         description=nf.description,
@@ -779,7 +766,7 @@ The SDK will run invoked agents in parallel automatically.
                 findings.append(
                     PRReviewFinding(
                         id=finding_id,
-                        severity=_map_severity(cf.severity),
+                        severity=map_severity(cf.severity),
                         category=map_category(cf.category),
                         title=f"[FROM COMMENTS] {cf.title}",
                         description=cf.description,

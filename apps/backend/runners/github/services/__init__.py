@@ -11,6 +11,9 @@ The circular import chain was: orchestrator → context_gatherer → services.io
 
 from __future__ import annotations
 
+# Direct imports for simple types that don't cause circular imports
+from .callbacks import ProgressCallback
+
 # Lazy import mapping - classes are loaded on first access
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "AutoFixProcessor": (".autofix_processor", "AutoFixProcessor"),
@@ -22,6 +25,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 }
 
 __all__ = [
+    "ProgressCallback",
     "PromptManager",
     "ResponseParser",
     "PRReviewEngine",

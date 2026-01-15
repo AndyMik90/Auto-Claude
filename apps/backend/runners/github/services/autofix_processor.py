@@ -16,9 +16,11 @@ logger = logging.getLogger(__name__)
 try:
     from ..models import AutoFixState, AutoFixStatus, GitHubRunnerConfig
     from ..permissions import GitHubPermissionChecker
+    from .callbacks import ProgressCallback
 except (ImportError, ValueError, SystemError):
     from models import AutoFixState, AutoFixStatus, GitHubRunnerConfig
     from permissions import GitHubPermissionChecker
+    from services.callbacks import ProgressCallback
 
 
 class AutoFixProcessor:
@@ -39,18 +41,6 @@ class AutoFixProcessor:
     def _report_progress(self, phase: str, progress: int, message: str, **kwargs):
         """Report progress if callback is set."""
         if self.progress_callback:
-            # Import at module level to avoid circular import issues
-            import sys
-
-            if "orchestrator" in sys.modules:
-                ProgressCallback = sys.modules["orchestrator"].ProgressCallback
-            else:
-                # Fallback: try relative import
-                try:
-                    from ..orchestrator import ProgressCallback
-                except ImportError:
-                    from orchestrator import ProgressCallback
-
             self.progress_callback(
                 ProgressCallback(
                     phase=phase, progress=progress, message=message, **kwargs

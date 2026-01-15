@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from runners.github.context_gatherer import ChangedFile, PRContext, PRContextGatherer
+from runners.github.context_gatherer import PRContextGatherer
 
 
 @pytest.mark.asyncio

@@ -38,9 +38,8 @@ try:
     from ..models import (
         GitHubRunnerConfig,
         PRReviewFinding,
-        ReviewSeverity,
     )
-    from .io_utils import safe_print
+    from .callbacks import ProgressCallback
     from .pr_worktree_manager import PRWorktreeManager
 except (ImportError, ValueError, SystemError):
     # Fallback imports for running from runners/github directory
@@ -50,10 +49,9 @@ except (ImportError, ValueError, SystemError):
     from models import (
         GitHubRunnerConfig,
         PRReviewFinding,
-        ReviewSeverity,
     )
     from phase_config import get_thinking_budget
-    from services.io_utils import safe_print
+    from services.callbacks import ProgressCallback
     from services.pr_worktree_manager import PRWorktreeManager
 
 
@@ -113,16 +111,6 @@ class BaseParallelReviewer(ABC):
             **kwargs: Additional data to include in callback
         """
         if self.progress_callback:
-            import sys
-
-            if "orchestrator" in sys.modules:
-                ProgressCallback = sys.modules["orchestrator"].ProgressCallback
-            else:
-                try:
-                    from ..orchestrator import ProgressCallback
-                except ImportError:
-                    from orchestrator import ProgressCallback
-
             self.progress_callback(
                 ProgressCallback(
                     phase=phase, progress=progress, message=message, **kwargs

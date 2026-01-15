@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from runners.github.permissions import (
     GitHubPermissionChecker,
-    PermissionCheckResult,
     PermissionError,
 )
 

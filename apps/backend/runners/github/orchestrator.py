@@ -15,7 +15,6 @@ REFACTORED: Service layer architecture - orchestrator delegates to specialized s
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -46,6 +45,7 @@ try:
         PRReviewEngine,
         TriageEngine,
     )
+    from .services.callbacks import ProgressCallback
     from .services.io_utils import safe_print
 except (ImportError, ValueError, SystemError):
     # When imported directly (runner.py adds github dir to path)
@@ -75,18 +75,8 @@ except (ImportError, ValueError, SystemError):
         PRReviewEngine,
         TriageEngine,
     )
+    from services.callbacks import ProgressCallback
     from services.io_utils import safe_print
-
-
-@dataclass
-class ProgressCallback:
-    """Callback for progress updates."""
-
-    phase: str
-    progress: int  # 0-100
-    message: str
-    issue_number: int | None = None
-    pr_number: int | None = None
 
 
 class GitHubOrchestrator:

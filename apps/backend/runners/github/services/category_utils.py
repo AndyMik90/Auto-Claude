@@ -11,9 +11,31 @@ This module provides a centralized category mapping system used across all PR re
 from __future__ import annotations
 
 try:
-    from ..models import ReviewCategory
+    from ..models import ReviewCategory, ReviewSeverity
 except (ImportError, ValueError, SystemError):
-    from models import ReviewCategory
+    from models import ReviewCategory, ReviewSeverity
+
+
+# Severity mapping for AI responses
+SEVERITY_MAPPING: dict[str, ReviewSeverity] = {
+    "critical": ReviewSeverity.CRITICAL,
+    "high": ReviewSeverity.HIGH,
+    "medium": ReviewSeverity.MEDIUM,
+    "low": ReviewSeverity.LOW,
+}
+
+
+def map_severity(severity_str: str) -> ReviewSeverity:
+    """
+    Map an AI-generated severity string to a valid ReviewSeverity enum.
+
+    Args:
+        severity_str: Raw severity string from AI (e.g., "high", "MEDIUM", "Low")
+
+    Returns:
+        ReviewSeverity: Normalized severity enum value. Defaults to MEDIUM if unknown.
+    """
+    return SEVERITY_MAPPING.get(severity_str.lower(), ReviewSeverity.MEDIUM)
 
 
 # Map AI-generated category names to valid ReviewCategory enum values

@@ -22,7 +22,7 @@ from spec.critique import (
     format_critique_summary,
     CritiqueResult,
 )
-from implementation_plan import Chunk, ChunkStatus, Verification, VerificationType
+from implementation_plan import Subtask, SubtaskStatus, Verification, VerificationType
 
 
 def test_critique_data_structures():
@@ -134,14 +134,14 @@ def test_critique_response_parsing():
 
 
 def test_implementation_plan_integration():
-    """Test integration with implementation_plan.py Chunk class."""
+    """Test integration with implementation_plan.py Subtask class."""
     print("\nTesting implementation plan integration...")
 
-    # Create a chunk with critique result
-    chunk = Chunk(
-        id="test-chunk",
-        description="Test chunk with critique",
-        status=ChunkStatus.PENDING,
+    # Create a subtask with critique result
+    subtask = Subtask(
+        id="test-subtask",
+        description="Test subtask with critique",
+        status=SubtaskStatus.PENDING,
         service="backend",
         files_to_modify=["app/test.py"],
     )
@@ -153,18 +153,18 @@ def test_implementation_plan_integration():
         "improvements_made": ["Fixed error handling"],
         "recommendations": [],
     }
-    chunk.critique_result = critique_data
+    subtask.critique_result = critique_data
 
     # Test serialization
-    chunk_dict = chunk.to_dict()
-    assert "critique_result" in chunk_dict
-    assert chunk_dict["critique_result"]["passes"] == True
+    subtask_dict = subtask.to_dict()
+    assert "critique_result" in subtask_dict
+    assert subtask_dict["critique_result"]["passes"] == True
 
     # Test deserialization
-    chunk2 = Chunk.from_dict(chunk_dict)
-    assert chunk2.critique_result is not None
-    assert chunk2.critique_result["passes"] == True
-    assert len(chunk2.critique_result["improvements_made"]) == 1
+    subtask2 = Subtask.from_dict(subtask_dict)
+    assert subtask2.critique_result is not None
+    assert subtask2.critique_result["passes"] == True
+    assert len(subtask2.critique_result["improvements_made"]) == 1
 
     print("✓ Implementation plan integration works correctly")
 
@@ -217,8 +217,8 @@ def test_complete_workflow():
     assert "PASSED ✓" in summary
     assert "Subtask is ready to be marked complete" in summary
 
-    # 7. Store in chunk
-    chunk_obj = Chunk(
+    # 7. Store in subtask
+    subtask_obj = Subtask(
         id=chunk["id"],
         description=chunk["description"],
         service=chunk["service"],
@@ -227,8 +227,8 @@ def test_complete_workflow():
     )
 
     # 8. Verify storage
-    assert chunk_obj.critique_result is not None
-    assert chunk_obj.critique_result["passes"] == True
+    assert subtask_obj.critique_result is not None
+    assert subtask_obj.critique_result["passes"] == True
 
     print("✓ Complete workflow works correctly")
 
@@ -286,7 +286,7 @@ def main():
         print("\nKey components:")
         print("  - critique.py: Core critique logic")
         print("  - prompts/coder.md: Updated with STEP 6.5 (mandatory critique)")
-        print("  - implementation_plan.py: Chunk.critique_result field added")
+        print("  - implementation_plan.py: Subtask.critique_result field added")
 
     except AssertionError as e:
         print(f"\n✗ Test failed: {e}")

@@ -34,7 +34,7 @@ try:
         ReviewCategory,
         ReviewSeverity,
     )
-    from .category_utils import map_category
+    from .category_utils import map_category, map_severity, SEVERITY_MAPPING
     from .io_utils import safe_print
     from .prompt_manager import PromptManager
     from .pydantic_models import FollowupReviewResponse
@@ -47,20 +47,12 @@ except (ImportError, ValueError, SystemError):
         ReviewCategory,
         ReviewSeverity,
     )
-    from services.category_utils import map_category
+    from services.category_utils import map_category, map_severity, SEVERITY_MAPPING
     from services.io_utils import safe_print
     from services.prompt_manager import PromptManager
     from services.pydantic_models import FollowupReviewResponse
 
 logger = logging.getLogger(__name__)
-
-# Severity mapping for AI responses
-_SEVERITY_MAPPING = {
-    "critical": ReviewSeverity.CRITICAL,
-    "high": ReviewSeverity.HIGH,
-    "medium": ReviewSeverity.MEDIUM,
-    "low": ReviewSeverity.LOW,
-}
 
 
 class FollowupReviewer:
@@ -791,7 +783,7 @@ Analyze this follow-up review context and provide your structured response.
             new_findings.append(
                 PRReviewFinding(
                     id=f.id,
-                    severity=_SEVERITY_MAPPING.get(f.severity, ReviewSeverity.MEDIUM),
+                    severity=SEVERITY_MAPPING.get(f.severity, ReviewSeverity.MEDIUM),
                     category=map_category(f.category),
                     title=f.title,
                     description=f.description,
@@ -808,7 +800,7 @@ Analyze this follow-up review context and provide your structured response.
             comment_findings.append(
                 PRReviewFinding(
                     id=f.id,
-                    severity=_SEVERITY_MAPPING.get(f.severity, ReviewSeverity.LOW),
+                    severity=SEVERITY_MAPPING.get(f.severity, ReviewSeverity.LOW),
                     category=map_category(f.category),
                     title=f.title,
                     description=f.description,
