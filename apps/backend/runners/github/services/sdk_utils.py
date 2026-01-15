@@ -254,8 +254,44 @@ async def process_sdk_stream(
                                 if on_structured_output:
                                     on_structured_output(structured_data)
 
-                # Check for structured_output attribute
-                if hasattr(msg, "structured_output") and msg.structured_output:
+                # Check for ResultMessage with structured output (per Anthropic SDK docs)
+                # See: https://platform.claude.com/docs/en/agent-sdk/structured-outputs
+                if hasattr(msg, "type") and msg.type == "result":
+                    subtype = getattr(msg, "subtype", None)
+                    if subtype == "success":
+                        if hasattr(msg, "structured_output") and msg.structured_output:
+                            # Warn if overwriting existing structured output
+                            if structured_output is not None:
+                                logger.warning(
+                                    f"[{context_name}] Multiple StructuredOutput blocks received, "
+                                    f"overwriting previous output"
+                                )
+                            structured_output = msg.structured_output
+                            safe_print(
+                                f"[{context_name}] Received structured output from ResultMessage"
+                            )
+                            # Invoke callback
+                            if on_structured_output:
+                                on_structured_output(msg.structured_output)
+                    elif subtype == "error_max_structured_output_retries":
+                        # SDK failed to produce valid structured output after retries
+                        logger.warning(
+                            f"[{context_name}] Claude could not produce valid structured output "
+                            f"after maximum retries - schema validation failed"
+                        )
+                        safe_print(
+                            f"[{context_name}] WARNING: Structured output validation failed after retries"
+                        )
+                        # Set error so caller knows structured output isn't available
+                        if not stream_error:
+                            stream_error = "structured_output_validation_failed"
+                    elif DEBUG_MODE:
+                        safe_print(
+                            f"[DEBUG {context_name}] ResultMessage subtype: {subtype}"
+                        )
+                # Fallback: Check for structured_output attribute on any message type
+                # (handles legacy SDK versions or alternative message formats)
+                elif hasattr(msg, "structured_output") and msg.structured_output:
                     # Warn if overwriting existing structured output
                     if structured_output is not None:
                         logger.warning(
@@ -263,6 +299,9 @@ async def process_sdk_stream(
                             f"overwriting previous output"
                         )
                     structured_output = msg.structured_output
+                    safe_print(
+                        f"[{context_name}] Received structured output (fallback)"
+                    )
                     # Invoke callback
                     if on_structured_output:
                         on_structured_output(msg.structured_output)
