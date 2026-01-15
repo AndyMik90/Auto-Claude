@@ -84,10 +84,26 @@ function sanitizeNetworkData(data: string, maxLength = 1000000): string {
 const { debug: debugLog } = createContextLogger("GitHub PR");
 
 /**
+ * Sentinel value indicating a review is waiting for CI checks to complete.
+ * Used as a placeholder in runningReviews before the actual process is spawned.
+ */
+const CI_WAIT_PLACEHOLDER = Symbol("CI_WAIT_PLACEHOLDER");
+type CIWaitPlaceholder = typeof CI_WAIT_PLACEHOLDER;
+
+/**
  * Registry of running PR review processes
  * Key format: `${projectId}:${prNumber}`
+ * Value can be:
+ * - ChildProcess: actual running review process
+ * - CI_WAIT_PLACEHOLDER: review is waiting for CI checks to complete
  */
-const runningReviews = new Map<string, import("child_process").ChildProcess>();
+const runningReviews = new Map<string, import("child_process").ChildProcess | CIWaitPlaceholder>();
+
+/**
+ * Registry of abort controllers for CI wait cancellation
+ * Key format: `${projectId}:${prNumber}`
+ */
+const ciWaitAbortControllers = new Map<string, AbortController>();
 
 /**
  * Get the registry key for a PR review
@@ -399,6 +415,7 @@ interface CIWaitResult {
  * @param headSha The commit SHA to check CI status for
  * @param prNumber PR number (for progress updates)
  * @param sendProgress Callback to send progress updates to frontend
+ * @param abortSignal Optional abort signal for cancellation support
  * @returns CIWaitResult with final CI status
  */
 async function waitForCIChecks(
@@ -406,7 +423,8 @@ async function waitForCIChecks(
   repo: string,
   headSha: string,
   prNumber: number,
-  sendProgress: (progress: PRReviewProgress) => void
+  sendProgress: (progress: PRReviewProgress) => void,
+  abortSignal?: AbortSignal
 ): Promise<CIWaitResult> {
   const POLL_INTERVAL_MS = 20000; // 20 seconds
   const MAX_WAIT_MINUTES = 30;
@@ -422,6 +440,19 @@ async function waitForCIChecks(
   debugLog("Starting CI wait check", { prNumber, headSha, maxIterations: MAX_ITERATIONS });
 
   while (iteration < MAX_ITERATIONS) {
+    // Check for cancellation
+    if (abortSignal?.aborted) {
+      debugLog("CI wait cancelled by user", { prNumber, iteration });
+      return {
+        success: false,
+        hasInProgress: lastInProgressCount > 0,
+        inProgressCount: lastInProgressCount,
+        inProgressChecks: lastInProgressNames,
+        timedOut: false,
+        waitTimeSeconds: Math.floor((Date.now() - startTime) / 1000),
+      };
+    }
+
     try {
       // Fetch check runs for the commit
       const checkRuns = (await githubFetch(
@@ -500,8 +531,21 @@ async function waitForCIChecks(
         remainingMinutes,
       });
 
-      // Wait before next poll
+      // Wait before next poll (with abort check)
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+
+      // Check for cancellation after wait
+      if (abortSignal?.aborted) {
+        debugLog("CI wait cancelled by user during poll interval", { prNumber, iteration });
+        return {
+          success: false,
+          hasInProgress: lastInProgressCount > 0,
+          inProgressCount: lastInProgressCount,
+          inProgressChecks: lastInProgressNames,
+          timedOut: false,
+          waitTimeSeconds: Math.floor((Date.now() - startTime) / 1000),
+        };
+      }
     } catch (error) {
       // If we fail to fetch CI status, log and continue with the review
       // This prevents CI check failures from blocking reviews entirely
@@ -553,13 +597,16 @@ async function waitForCIChecks(
  * @param prNumber PR number
  * @param sendProgress Progress callback
  * @param reviewType Type of review for logging ("review" or "follow-up review")
+ * @param abortSignal Optional abort signal for cancellation support
+ * @returns true if the review should proceed, false if cancelled
  */
 async function performCIWaitCheck(
   config: { token: string; repo: string },
   prNumber: number,
   sendProgress: (progress: PRReviewProgress) => void,
-  reviewType: "review" | "follow-up review"
-): Promise<void> {
+  reviewType: "review" | "follow-up review",
+  abortSignal?: AbortSignal
+): Promise<boolean> {
   try {
     sendProgress({
       phase: "fetching",
@@ -579,8 +626,15 @@ async function performCIWaitCheck(
       config.repo,
       pr.head.sha,
       prNumber,
-      sendProgress
+      sendProgress,
+      abortSignal
     );
+
+    // Check if cancelled
+    if (abortSignal?.aborted || (!ciWaitResult.success && !ciWaitResult.timedOut)) {
+      debugLog(`CI wait cancelled, aborting ${reviewType}`, { prNumber });
+      return false;
+    }
 
     if (ciWaitResult.timedOut) {
       debugLog(`CI wait timed out, proceeding with ${reviewType}`, {
@@ -593,12 +647,14 @@ async function performCIWaitCheck(
         waitTimeSeconds: ciWaitResult.waitTimeSeconds,
       });
     }
+    return true;
   } catch (ciError) {
     // Don't fail the review if CI check fails, just log and proceed
     debugLog(`Failed to check CI status, proceeding with ${reviewType}`, {
       prNumber,
       error: ciError instanceof Error ? ciError.message : ciError,
     });
+    return true;
   }
 }
 
@@ -1375,6 +1431,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
       return;
     }
 
+    const reviewKey = getReviewKey(projectId, prNumber);
+
     try {
       await withProjectOrNull(projectId, async (project) => {
         const { sendProgress, sendComplete } = createIPCCommunicators<
@@ -1390,60 +1448,97 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           projectId
         );
 
-        debugLog("Starting PR review", { prNumber });
-        sendProgress({
-          phase: "fetching",
-          prNumber,
-          progress: 5,
-          message: "Assigning you to PR...",
-        });
+        // Check if already running
+        if (runningReviews.has(reviewKey)) {
+          debugLog("Review already running", { reviewKey });
+          return;
+        }
 
-        // Auto-assign current user to PR
-        const config = getGitHubConfig(project);
-        if (config) {
-          try {
-            // Get current user
-            const user = (await githubFetch(config.token, "/user")) as { login: string };
-            debugLog("Auto-assigning user to PR", { prNumber, username: user.login });
+        // Register as running BEFORE CI wait to prevent race conditions
+        // Use CI_WAIT_PLACEHOLDER sentinel until real process is spawned
+        runningReviews.set(reviewKey, CI_WAIT_PLACEHOLDER);
+        const abortController = new AbortController();
+        ciWaitAbortControllers.set(reviewKey, abortController);
+        debugLog("Registered review placeholder", { reviewKey });
 
-            // Assign to PR
-            await githubFetch(config.token, `/repos/${config.repo}/issues/${prNumber}/assignees`, {
-              method: "POST",
-              body: JSON.stringify({ assignees: [user.login] }),
-            });
-            debugLog("User assigned successfully", { prNumber, username: user.login });
-          } catch (assignError) {
-            // Don't fail the review if assignment fails, just log it
-            debugLog("Failed to auto-assign user", {
-              prNumber,
-              error: assignError instanceof Error ? assignError.message : assignError,
-            });
+        try {
+          debugLog("Starting PR review", { prNumber });
+          sendProgress({
+            phase: "fetching",
+            prNumber,
+            progress: 5,
+            message: "Assigning you to PR...",
+          });
+
+          // Auto-assign current user to PR
+          const config = getGitHubConfig(project);
+          if (config) {
+            try {
+              // Get current user
+              const user = (await githubFetch(config.token, "/user")) as { login: string };
+              debugLog("Auto-assigning user to PR", { prNumber, username: user.login });
+
+              // Assign to PR
+              await githubFetch(config.token, `/repos/${config.repo}/issues/${prNumber}/assignees`, {
+                method: "POST",
+                body: JSON.stringify({ assignees: [user.login] }),
+              });
+              debugLog("User assigned successfully", { prNumber, username: user.login });
+            } catch (assignError) {
+              // Don't fail the review if assignment fails, just log it
+              debugLog("Failed to auto-assign user", {
+                prNumber,
+                error: assignError instanceof Error ? assignError.message : assignError,
+              });
+            }
           }
+
+          // Wait for CI checks to complete before starting review
+          if (config) {
+            const shouldProceed = await performCIWaitCheck(
+              config,
+              prNumber,
+              sendProgress,
+              "review",
+              abortController.signal
+            );
+            if (!shouldProceed) {
+              debugLog("Review cancelled during CI wait", { reviewKey });
+              return;
+            }
+          }
+
+          // Clean up abort controller since CI wait is done
+          ciWaitAbortControllers.delete(reviewKey);
+
+          sendProgress({
+            phase: "fetching",
+            prNumber,
+            progress: 10,
+            message: "Fetching PR data...",
+          });
+
+          const result = await runPRReview(project, prNumber, mainWindow);
+
+          debugLog("PR review completed", { prNumber, findingsCount: result.findings.length });
+          sendProgress({
+            phase: "complete",
+            prNumber,
+            progress: 100,
+            message: "Review complete!",
+          });
+
+          sendComplete(result);
+        } finally {
+          // Clean up in case we exit before runPRReview was called (e.g., cancelled during CI wait)
+          // runPRReview also has its own cleanup, but delete is idempotent
+          // Only delete if still placeholder (don't delete actual process entry set by runPRReview)
+          const entry = runningReviews.get(reviewKey);
+          if (entry === CI_WAIT_PLACEHOLDER) {
+            runningReviews.delete(reviewKey);
+          }
+          ciWaitAbortControllers.delete(reviewKey);
         }
-
-        // Wait for CI checks to complete before starting review
-        if (config) {
-          await performCIWaitCheck(config, prNumber, sendProgress, "review");
-        }
-
-        sendProgress({
-          phase: "fetching",
-          prNumber,
-          progress: 10,
-          message: "Fetching PR data...",
-        });
-
-        const result = await runPRReview(project, prNumber, mainWindow);
-
-        debugLog("PR review completed", { prNumber, findingsCount: result.findings.length });
-        sendProgress({
-          phase: "complete",
-          prNumber,
-          progress: 100,
-          message: "Review complete!",
-        });
-
-        sendComplete(result);
       });
     } catch (error) {
       debugLog("PR review failed", {
@@ -1867,13 +1962,28 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
     async (_, projectId: string, prNumber: number): Promise<boolean> => {
       debugLog("cancelPRReview handler called", { projectId, prNumber });
       const reviewKey = getReviewKey(projectId, prNumber);
-      const childProcess = runningReviews.get(reviewKey);
+      const entry = runningReviews.get(reviewKey);
 
-      if (!childProcess) {
+      if (!entry) {
         debugLog("No running review found to cancel", { reviewKey });
         return false;
       }
 
+      // Handle CI wait placeholder - review is waiting for CI checks
+      if (entry === CI_WAIT_PLACEHOLDER) {
+        debugLog("Review is in CI wait phase, aborting wait", { reviewKey });
+        const abortController = ciWaitAbortControllers.get(reviewKey);
+        if (abortController) {
+          abortController.abort();
+          ciWaitAbortControllers.delete(reviewKey);
+        }
+        runningReviews.delete(reviewKey);
+        debugLog("CI wait cancelled", { reviewKey });
+        return true;
+      }
+
+      // Handle actual child process
+      const childProcess = entry;
       try {
         debugLog("Killing review process", { reviewKey, pid: childProcess.pid });
         childProcess.kill("SIGTERM");
@@ -2214,8 +2324,10 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           }
 
           // Register as running BEFORE CI wait to prevent race conditions
-          // Use null as placeholder until real process is spawned
-          runningReviews.set(reviewKey, null as unknown as import("child_process").ChildProcess);
+          // Use CI_WAIT_PLACEHOLDER sentinel until real process is spawned
+          runningReviews.set(reviewKey, CI_WAIT_PLACEHOLDER);
+          const abortController = new AbortController();
+          ciWaitAbortControllers.set(reviewKey, abortController);
           debugLog("Registered follow-up review placeholder", { reviewKey });
 
           try {
@@ -2230,8 +2342,21 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             // Wait for CI checks to complete before starting follow-up review
             const config = getGitHubConfig(project);
             if (config) {
-              await performCIWaitCheck(config, prNumber, sendProgress, "follow-up review");
+              const shouldProceed = await performCIWaitCheck(
+                config,
+                prNumber,
+                sendProgress,
+                "follow-up review",
+                abortController.signal
+              );
+              if (!shouldProceed) {
+                debugLog("Follow-up review cancelled during CI wait", { reviewKey });
+                return;
+              }
             }
+
+            // Clean up abort controller since CI wait is done
+            ciWaitAbortControllers.delete(reviewKey);
 
             const { model, thinkingLevel } = getGitHubPRSettings();
           const args = buildRunnerArgs(
@@ -2319,6 +2444,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           } finally {
             // Always clean up registry, whether we exit normally or via error
             runningReviews.delete(reviewKey);
+            ciWaitAbortControllers.delete(reviewKey);
             debugLog("Unregistered follow-up review process", { reviewKey });
           }
         });
