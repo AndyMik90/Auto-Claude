@@ -28,7 +28,7 @@ export { getWindowsShellPaths } from './paths';
 export function getCurrentOS(): OS {
   const platform = process.platform;
   if (platform === OS.Windows || platform === OS.macOS || platform === OS.Linux) {
-    return platform;
+    return platform as OS;
   }
   // Default to Linux for other Unix-like systems
   return OS.Linux;
