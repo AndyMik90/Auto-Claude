@@ -451,7 +451,12 @@ export function registerSettingsHandlers(
         };
       }
 
-      const pythonPath = settings?.pythonPath || 'python3';
+      // For health check, prefer venv Python which has all packages installed
+      // Fall back to settings.pythonPath if venv doesn't exist
+      const venvPythonPath = path.join(sourcePath, '.venv', 'bin', 'python');
+      const pythonPath = existsSync(venvPythonPath) ? venvPythonPath : (settings?.pythonPath || 'python3');
+      const usingVenv = existsSync(venvPythonPath);
+
       const healthCheckScript = path.join(sourcePath, 'check_health.py');
       console.log('[settings-handlers] Health check script path:', healthCheckScript);
 
@@ -463,10 +468,11 @@ export function registerSettingsHandlers(
         };
       }
 
-      console.log('[settings-handlers] Running health check with python:', pythonPath);
+      console.log('[settings-handlers] Running health check with python:', pythonPath, usingVenv ? '(venv)' : '(system)');
 
-      // Get Python environment for bundled packages
-      const pythonEnv = pythonEnvManager.getPythonEnv();
+      // Get Python environment
+      // If using venv, don't set PYTHONNOUSERSITE as venv has its own site-packages
+      const pythonEnv = usingVenv ? {} : pythonEnvManager.getPythonEnv();
 
       // Load project-specific environment variables if projectId provided
       let projectEnv: Record<string, string> = {};
