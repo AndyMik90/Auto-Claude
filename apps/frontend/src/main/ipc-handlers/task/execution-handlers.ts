@@ -1212,8 +1212,9 @@ export function registerTaskExecutionHandlers(
               encoding: 'utf-8',
               timeout: 30000
             }).trim();
-          } catch {
+          } catch (error) {
             // Use default branch name if rev-parse fails
+            console.warn(`[TASK_DELETE_AND_RETRY] Could not get branch name from worktree, using fallback: ${branch}`, error);
           }
 
           // Remove the worktree forcefully
@@ -1230,8 +1231,9 @@ export function registerTaskExecutionHandlers(
               encoding: 'utf-8',
               timeout: 30000
             });
-          } catch {
+          } catch (error) {
             // Branch may not exist or be the current branch
+            console.warn(`[TASK_DELETE_AND_RETRY] Could not delete branch '${branch}'. It may not exist or be the current branch.`, error);
           }
 
           // Prune dangling worktrees
@@ -1266,12 +1268,14 @@ export function registerTaskExecutionHandlers(
       // Optionally recreate the task for retry
       if (options?.recreate && taskTitle && taskDescription) {
         try {
+          const { readdir, mkdir, writeFile } = await import('fs/promises');
           const specsDir = path.join(project.path, getSpecsDir(project.autoBuildPath));
           let specNum = 1;
 
           // Find next spec number
           if (existsSync(specsDir)) {
-            const nums = readdirSync(specsDir, { withFileTypes: true })
+            const dirents = await readdir(specsDir, { withFileTypes: true });
+            const nums = dirents
               .filter(d => d.isDirectory())
               .map(d => {
                 const m = d.name.match(/^(\d+)/);
@@ -1292,11 +1296,11 @@ export function registerTaskExecutionHandlers(
           const newSpecId = `${String(specNum).padStart(3, '0')}-${slug}`;
           const newSpecDir = path.join(specsDir, newSpecId);
 
-          mkdirSync(newSpecDir, { recursive: true });
+          await mkdir(newSpecDir, { recursive: true });
 
           // Write basic files
           const now = new Date().toISOString();
-          writeFileSync(
+          await writeFile(
             path.join(newSpecDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
             JSON.stringify({
               feature: taskTitle,
@@ -1313,8 +1317,8 @@ export function registerTaskExecutionHandlers(
             sourceType: taskMetadata?.sourceType || 'manual',
             retriedFrom: task.specId
           };
-          writeFileSync(path.join(newSpecDir, 'task_metadata.json'), JSON.stringify(newMeta, null, 2));
-          writeFileSync(
+          await writeFile(path.join(newSpecDir, 'task_metadata.json'), JSON.stringify(newMeta, null, 2));
+          await writeFile(
             path.join(newSpecDir, AUTO_BUILD_PATHS.REQUIREMENTS),
             JSON.stringify({
               task_description: taskDescription,
@@ -1338,7 +1342,8 @@ export function registerTaskExecutionHandlers(
 
           projectStore.invalidateTasksCache(project.id);
           return { success: true, data: { deleted: true, recreatedTask: newTask, cleanedUpWorktree } };
-        } catch {
+        } catch (error) {
+          console.error('[TASK_DELETE_AND_RETRY] Task recreation failed:', error);
           // If recreation fails, still report successful deletion
           return { success: true, data: { deleted: true, cleanedUpWorktree } };
         }
