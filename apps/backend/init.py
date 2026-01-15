@@ -5,6 +5,7 @@ Handles first-time setup of .auto-claude directory and ensures proper gitignore 
 """
 
 import logging
+import os
 import subprocess
 from pathlib import Path
 
@@ -112,6 +113,9 @@ def _commit_gitignore(project_dir: Path) -> bool:
         return False
 
     try:
+        # Use LC_ALL=C to ensure English git output for reliable parsing
+        git_env = {**os.environ, "LC_ALL": "C"}
+
         # Stage .gitignore
         result = subprocess.run(
             ["git", "add", ".gitignore"],
@@ -119,6 +123,7 @@ def _commit_gitignore(project_dir: Path) -> bool:
             capture_output=True,
             text=True,
             timeout=30,
+            env=git_env,
         )
         if result.returncode != 0:
             return False
@@ -130,6 +135,7 @@ def _commit_gitignore(project_dir: Path) -> bool:
             capture_output=True,
             text=True,
             timeout=30,
+            env=git_env,
         )
         # Return True even if commit "fails" due to nothing to commit
         # Check both stdout and stderr as message location varies by git version
