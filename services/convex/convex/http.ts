@@ -4,7 +4,7 @@ import { authComponent, createAuth } from "./auth";
 const http = httpRouter();
 
 // Register Better Auth routes with Convex
-// This will handle CORS based on the trustedOrigins configuration in auth.ts
-authComponent.registerRoutes(http, createAuth);
+// Enable CORS for Electron cross-origin renderer
+authComponent.registerRoutes(http, createAuth, { cors: true });
 
 export default http;
