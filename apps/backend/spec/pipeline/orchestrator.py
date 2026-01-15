@@ -720,7 +720,8 @@ class SpecOrchestrator:
             for candidate in parent.iterdir():
                 if (
                     candidate.name.startswith(prefix)
-                    and "pending" not in candidate.name
+                    # Check for -pending suffix, not substring (task may contain "pending")
+                    and not candidate.name.endswith("-pending")
                 ):
                     self.spec_dir = candidate
                     break
