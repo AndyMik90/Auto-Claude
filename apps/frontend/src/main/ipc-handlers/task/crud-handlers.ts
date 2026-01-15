@@ -307,12 +307,18 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
 
             // FIX (#1085): Reset subtasks when description changes significantly
             // This allows users to update the description and re-run the task
+            // Only reset for tasks that are in re-plannable states (not done/pr_created/running)
             const oldDescription = plan.description || '';
             const newDescription = updates.description || oldDescription;
             const descriptionChanged = updates.description !== undefined &&
               oldDescription.trim() !== newDescription.trim();
 
-            if (descriptionChanged && plan.phases && plan.phases.length > 0) {
+            // Only reset status for tasks in states where re-planning makes sense
+            // Don't reset 'done' or 'pr_created' tasks as that would lose their completion state
+            const replanableStates = ['backlog', 'failed', 'in_progress'];
+            const canReplan = replanableStates.includes(task.status);
+
+            if (descriptionChanged && canReplan && plan.phases && plan.phases.length > 0) {
               console.warn('[TASK_UPDATE] Description changed, resetting subtasks for re-planning');
               // Reset all subtasks to pending so they can be re-processed
               for (const phase of plan.phases) {
@@ -328,6 +334,8 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
               // Reset plan status to trigger re-planning
               plan.planStatus = 'pending';
               plan.status = 'pending';
+            } else if (descriptionChanged && !canReplan) {
+              console.warn(`[TASK_UPDATE] Description changed but task status '${task.status}' prevents re-planning`);
             }
 
             if (finalTitle !== undefined) {
