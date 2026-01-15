@@ -771,6 +771,11 @@ export function registerSettingsHandlers(
    * Reload configuration from .env files without restarting the app.
    * Re-reads both frontend and backend .env files, updating process.env.
    * Useful when CLAUDE_CODE_OAUTH_TOKEN or other env vars are changed.
+   *
+   * IMPORTANT: This only updates process.env in the main Electron process.
+   * Already-running child processes (Python backends, etc.) will NOT see
+   * these changes - they inherit environment at spawn time. Users must
+   * restart running tasks/processes for changes to take effect.
    */
   ipcMain.handle(
     IPC_CHANNELS.CONFIG_RELOAD,
