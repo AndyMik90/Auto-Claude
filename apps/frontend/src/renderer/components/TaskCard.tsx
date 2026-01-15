@@ -50,24 +50,41 @@ const TOOL_STYLES: Array<{
   patterns: string[];
   icon: typeof FileText;
   color: string;
+  translationKey: string;
 }> = [
-  { patterns: ['reading'], icon: FileText, color: 'text-blue-500 bg-blue-500/10' },
-  { patterns: ['searching files', 'globbing'], icon: FolderSearch, color: 'text-amber-500 bg-amber-500/10' },
-  { patterns: ['searching web'], icon: Globe, color: 'text-indigo-500 bg-indigo-500/10' },
-  { patterns: ['searching'], icon: Search, color: 'text-green-500 bg-green-500/10' },
-  { patterns: ['fetching'], icon: Globe, color: 'text-indigo-500 bg-indigo-500/10' },
-  { patterns: ['editing'], icon: Pencil, color: 'text-purple-500 bg-purple-500/10' },
-  { patterns: ['writing'], icon: FileCode, color: 'text-cyan-500 bg-cyan-500/10' },
-  { patterns: ['running', 'executing'], icon: Terminal, color: 'text-orange-500 bg-orange-500/10' },
+  { patterns: ['reading'], icon: FileText, color: 'text-blue-500 bg-blue-500/10', translationKey: 'toolActions.reading' },
+  { patterns: ['searching files', 'globbing'], icon: FolderSearch, color: 'text-amber-500 bg-amber-500/10', translationKey: 'toolActions.searchingFiles' },
+  { patterns: ['searching web'], icon: Globe, color: 'text-indigo-500 bg-indigo-500/10', translationKey: 'toolActions.searchingWeb' },
+  { patterns: ['searching'], icon: Search, color: 'text-green-500 bg-green-500/10', translationKey: 'toolActions.searching' },
+  { patterns: ['fetching'], icon: Globe, color: 'text-indigo-500 bg-indigo-500/10', translationKey: 'toolActions.fetching' },
+  { patterns: ['editing'], icon: Pencil, color: 'text-purple-500 bg-purple-500/10', translationKey: 'toolActions.editing' },
+  { patterns: ['writing'], icon: FileCode, color: 'text-cyan-500 bg-cyan-500/10', translationKey: 'toolActions.writing' },
+  { patterns: ['running', 'executing'], icon: Terminal, color: 'text-orange-500 bg-orange-500/10', translationKey: 'toolActions.running' },
 ];
 
-// Helper to detect tool type from execution message and return styling
-function getToolStyleFromMessage(message: string): { icon: typeof FileText; color: string } | null {
+// Helper to detect tool type from execution message and return styling with translation key
+function getToolStyleFromMessage(message: string): {
+  icon: typeof FileText;
+  color: string;
+  translationKey: string;
+  details: string;
+} | null {
   const lowerMessage = message.toLowerCase();
   const match = TOOL_STYLES.find(style =>
     style.patterns.some(pattern => lowerMessage.startsWith(pattern))
   );
-  return match ? { icon: match.icon, color: match.color } : null;
+  if (!match) return null;
+
+  // Extract details by finding which pattern matched and removing it
+  const matchedPattern = match.patterns.find(p => lowerMessage.startsWith(p)) || '';
+  const details = message.slice(matchedPattern.length).trim() || '...';
+
+  return {
+    icon: match.icon,
+    color: match.color,
+    translationKey: match.translationKey,
+    details
+  };
 }
 
 interface TaskCardProps {
@@ -174,7 +191,9 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
     return {
       icon: toolStyle?.icon ?? Loader2,
       colorClass: toolStyle?.color ?? 'text-muted-foreground bg-muted/50',
-      message,
+      translationKey: toolStyle?.translationKey ?? 'toolActions.default',
+      details: toolStyle?.details ?? message,
+      message, // Keep original for tooltip
     };
   }, [task.executionProgress?.message, task.executionProgress?.phase]);
 
@@ -529,7 +548,7 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
           >
             <liveActionStatus.icon className="h-3.5 w-3.5 shrink-0 animate-pulse mt-0.5" />
             <span className="line-clamp-3 break-all leading-tight">
-              {liveActionStatus.message}
+              {t(liveActionStatus.translationKey, { details: liveActionStatus.details })}
             </span>
           </div>
         )}
