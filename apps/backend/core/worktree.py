@@ -399,7 +399,15 @@ class WorktreeManager:
         """
         # Step 1: Create worktree without checking out files
         result = self._run_git(
-            ["worktree", "add", "--no-checkout", "-b", branch_name, str(worktree_path), start_point]
+            [
+                "worktree",
+                "add",
+                "--no-checkout",
+                "-b",
+                branch_name,
+                str(worktree_path),
+                start_point,
+            ]
         )
         if result.returncode != 0:
             return result
@@ -414,7 +422,9 @@ class WorktreeManager:
                 # Try alternative: git reset followed by checkout-index
                 reset_result = self._run_git(["reset", "HEAD"], cwd=worktree_path)
                 if reset_result.returncode == 0:
-                    result = self._run_git(["checkout-index", "-a", "-f"], cwd=worktree_path)
+                    result = self._run_git(
+                        ["checkout-index", "-a", "-f"], cwd=worktree_path
+                    )
 
         # Single cleanup point for any failure after worktree creation
         if result.returncode != 0:
@@ -578,7 +588,10 @@ class WorktreeManager:
         if result.returncode != 0:
             # On Windows, git worktree add can fail with "Could not reset index file" error.
             # Use fallback approach: create worktree without checkout, then populate it.
-            if sys.platform == "win32" and "could not reset index" in result.stderr.lower():
+            if (
+                sys.platform == "win32"
+                and "could not reset index" in result.stderr.lower()
+            ):
                 print("Standard worktree creation failed, trying Windows fallback...")
                 result = self._create_worktree_windows_fallback(
                     branch_name, worktree_path, start_point
