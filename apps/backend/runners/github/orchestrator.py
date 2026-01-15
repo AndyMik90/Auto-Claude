@@ -664,37 +664,60 @@ class GitHubOrchestrator:
                 # Check if CI status has changed since last review
                 # If CI was failing before but now passes, we need to update the verdict
                 current_failing = ci_status.get("failing", 0)
+                current_awaiting = ci_status.get("awaiting_approval", 0)
+
+                # Helper to detect CI-related blockers (includes workflows pending)
+                def is_ci_blocker(b: str) -> bool:
+                    return b.startswith("CI Failed:") or b.startswith(
+                        "Workflows Pending:"
+                    )
+
+                previous_blockers = getattr(previous_review, "blockers", [])
                 previous_was_blocked_by_ci = (
                     previous_review.verdict == MergeVerdict.BLOCKED
-                    and any("CI" in b for b in getattr(previous_review, "blockers", []))
+                    and any(is_ci_blocker(b) for b in previous_blockers)
                 )
 
                 # Determine the appropriate verdict based on current CI status
-                if current_failing > 0:
-                    # CI is still failing - keep blocked verdict
+                # CI/Workflow status check (both block merging)
+                ci_or_workflow_blocking = current_failing > 0 or current_awaiting > 0
+
+                if ci_or_workflow_blocking:
+                    # CI is still failing or workflows pending - keep blocked verdict
                     updated_verdict = MergeVerdict.BLOCKED
-                    updated_reasoning = (
-                        f"No code changes since last review. "
-                        f"{current_failing} CI check(s) still failing."
-                    )
-                    failed_checks = ci_status.get("failed_checks", [])
-                    ci_note = (
-                        f" Failing: {', '.join(failed_checks)}" if failed_checks else ""
-                    )
-                    no_change_summary = (
-                        f"No new commits since last review. "
-                        f"CI status: {current_failing} check(s) failing.{ci_note}"
-                    )
-                elif previous_was_blocked_by_ci and current_failing == 0:
-                    # CI has recovered! Update verdict to reflect this
+                    if current_failing > 0:
+                        updated_reasoning = (
+                            f"No code changes since last review. "
+                            f"{current_failing} CI check(s) still failing."
+                        )
+                        failed_checks = ci_status.get("failed_checks", [])
+                        ci_note = (
+                            f" Failing: {', '.join(failed_checks)}"
+                            if failed_checks
+                            else ""
+                        )
+                        no_change_summary = (
+                            f"No new commits since last review. "
+                            f"CI status: {current_failing} check(s) failing.{ci_note}"
+                        )
+                    else:
+                        updated_reasoning = (
+                            f"No code changes since last review. "
+                            f"{current_awaiting} workflow(s) awaiting approval."
+                        )
+                        no_change_summary = (
+                            f"No new commits since last review. "
+                            f"{current_awaiting} workflow(s) awaiting maintainer approval."
+                        )
+                elif previous_was_blocked_by_ci and not ci_or_workflow_blocking:
+                    # CI/Workflows have recovered! Update verdict to reflect this
                     safe_print(
                         "[Followup] CI recovered - updating verdict from BLOCKED",
                         flush=True,
                     )
-                    # Check for remaining non-CI blockers
-                    previous_blockers = getattr(previous_review, "blockers", [])
+                    # Check for remaining non-CI blockers (use helper defined above)
                     non_ci_blockers = [
-                        b for b in previous_blockers if not b.startswith("CI Failed:")
+                        b for b in previous_blockers if not is_ci_blocker(b)
                     ]
 
                     # Determine verdict based on findings AND remaining blockers
@@ -706,11 +729,26 @@ class GitHubOrchestrator:
                             + ", ".join(non_ci_blockers[:3])
                         )
                     elif previous_review.findings:
-                        # There are still code findings - needs review
-                        updated_verdict = MergeVerdict.NEEDS_REVISION
-                        updated_reasoning = (
-                            "CI checks now passing. Previous code findings still apply."
-                        )
+                        # Check finding severity - only low severity is non-blocking
+                        findings = previous_review.findings
+                        high_medium = [
+                            f
+                            for f in findings
+                            if f.severity
+                            in (
+                                ReviewSeverity.HIGH,
+                                ReviewSeverity.MEDIUM,
+                                ReviewSeverity.CRITICAL,
+                            )
+                        ]
+                        if high_medium:
+                            # There are blocking findings - needs revision
+                            updated_verdict = MergeVerdict.NEEDS_REVISION
+                            updated_reasoning = f"CI checks now passing. {len(high_medium)} code finding(s) still require attention."
+                        else:
+                            # Only low-severity findings - safe to merge
+                            updated_verdict = MergeVerdict.READY_TO_MERGE
+                            updated_reasoning = f"CI checks now passing. {len(findings)} non-blocking suggestion(s) to consider."
                     else:
                         updated_verdict = MergeVerdict.READY_TO_MERGE
                         updated_reasoning = (
@@ -732,9 +770,9 @@ class GitHubOrchestrator:
                 )
 
                 # Build blockers list - always filter out CI blockers first, then add current
-                blockers = list(getattr(previous_review, "blockers", []))
-                # Remove ALL CI-related blockers (use specific prefix to avoid matching "Critical:")
-                blockers = [b for b in blockers if not b.startswith("CI Failed:")]
+                blockers = list(previous_blockers)
+                # Remove ALL CI-related blockers (CI Failed + Workflows Pending)
+                blockers = [b for b in blockers if not is_ci_blocker(b)]
 
                 # Add back only currently failing CI checks
                 if current_failing > 0:
@@ -743,6 +781,12 @@ class GitHubOrchestrator:
                         blocker_msg = f"CI Failed: {check_name}"
                         if blocker_msg not in blockers:
                             blockers.append(blocker_msg)
+
+                # Add back workflows pending if any
+                if current_awaiting > 0:
+                    blocker_msg = f"Workflows Pending: {current_awaiting} workflow(s) awaiting maintainer approval"
+                    if blocker_msg not in blockers:
+                        blockers.append(blocker_msg)
 
                 # Map verdict to overall_status (consistent with rest of codebase)
                 if updated_verdict == MergeVerdict.BLOCKED:
