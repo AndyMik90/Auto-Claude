@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.file_utils import write_json_atomic
+from spec.validate_pkg.auto_fix import auto_fix_plan
+
 try:
     from claude_agent_sdk import tool
 
@@ -118,14 +121,67 @@ def create_qa_tools(spec_dir: Path, project_dir: Path) -> list:
 
             plan["last_updated"] = datetime.now(timezone.utc).isoformat()
 
-            with open(plan_file, "w") as f:
-                json.dump(plan, f, indent=2)
+            # Use atomic write to prevent file corruption
+            write_json_atomic(plan_file, plan, indent=2)
 
             return {
                 "content": [
                     {
                         "type": "text",
                         "text": f"Updated QA status to '{status}' (session {qa_session})",
+                    }
+                ]
+            }
+
+        except json.JSONDecodeError as e:
+            # Attempt to auto-fix the plan and retry
+            if auto_fix_plan(spec_dir):
+                # Retry after fix
+                try:
+                    with open(plan_file) as f:
+                        plan = json.load(f)
+
+                    # Get current QA session number (retry)
+                    current_qa = plan.get("qa_signoff", {})
+                    qa_session = current_qa.get("qa_session", 0)
+                    if status in ["in_review", "rejected"]:
+                        qa_session += 1
+
+                    plan["qa_signoff"] = {
+                        "status": status,
+                        "qa_session": qa_session,
+                        "issues_found": issues,
+                        "tests_passed": tests_passed,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "ready_for_qa_revalidation": status == "fixes_applied",
+                    }
+
+                    if status == "approved":
+                        plan["status"] = "human_review"
+                        plan["planStatus"] = "review"
+                    elif status == "rejected":
+                        plan["status"] = "human_review"
+                        plan["planStatus"] = "review"
+
+                    plan["last_updated"] = datetime.now(timezone.utc).isoformat()
+                    write_json_atomic(plan_file, plan, indent=2)
+
+                    return {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"Updated QA status to '{status}' (session {qa_session}) (after auto-fix)",
+                            }
+                        ]
+                    }
+                except Exception:
+                    pass  # Fall through to error return
+
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Error: Invalid JSON in implementation_plan.json: {e}",
                     }
                 ]
             }

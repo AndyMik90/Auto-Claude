@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.file_utils import write_json_atomic
+from spec.validate_pkg.auto_fix import auto_fix_plan
+
 try:
     from claude_agent_sdk import tool
 
@@ -102,8 +105,8 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
             # Update plan metadata
             plan["last_updated"] = datetime.now(timezone.utc).isoformat()
 
-            with open(plan_file, "w") as f:
-                json.dump(plan, f, indent=2)
+            # Use atomic write to prevent file corruption
+            write_json_atomic(plan_file, plan, indent=2)
 
             return {
                 "content": [
@@ -115,6 +118,41 @@ def create_subtask_tools(spec_dir: Path, project_dir: Path) -> list:
             }
 
         except json.JSONDecodeError as e:
+            # Attempt to auto-fix the plan and retry
+            if auto_fix_plan(spec_dir):
+                # Retry after fix
+                try:
+                    with open(plan_file) as f:
+                        plan = json.load(f)
+
+                    # Find and update the subtask (retry)
+                    subtask_found = False
+                    for phase in plan.get("phases", []):
+                        for subtask in phase.get("subtasks", []):
+                            if subtask.get("id") == subtask_id:
+                                subtask["status"] = status
+                                if notes:
+                                    subtask["notes"] = notes
+                                subtask["updated_at"] = datetime.now(timezone.utc).isoformat()
+                                subtask_found = True
+                                break
+                        if subtask_found:
+                            break
+
+                    if subtask_found:
+                        plan["last_updated"] = datetime.now(timezone.utc).isoformat()
+                        write_json_atomic(plan_file, plan, indent=2)
+                        return {
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": f"Successfully updated subtask '{subtask_id}' to status '{status}' (after auto-fix)",
+                                }
+                            ]
+                        }
+                except Exception:
+                    pass  # Fall through to error return
+
             return {
                 "content": [
                     {
