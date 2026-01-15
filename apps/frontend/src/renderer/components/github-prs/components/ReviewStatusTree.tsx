@@ -180,7 +180,7 @@ export function ReviewStatusTree({
 
     // Step 4: Follow-up (only show when findings were POSTED and new commits happened after posting)
     // This prevents showing follow-up prompts when initial review was never posted to GitHub
-    const hasPostedFindings = postedCount > 0;
+    const hasPostedFindings = postedCount > 0 || reviewResult?.hasPostedFindings;
     if (!isReviewing && hasPostedFindings && newCommitsCheck?.hasNewCommits && newCommitsCheck?.hasCommitsAfterPosting) {
       steps.push({
         id: 'new_commits',
