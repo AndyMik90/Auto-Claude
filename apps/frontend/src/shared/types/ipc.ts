@@ -198,6 +198,8 @@ export interface ElectronAPI {
   generateTerminalName: (command: string, cwd?: string) => Promise<IPCResult<string>>;
   setTerminalTitle: (id: string, title: string) => void;
   setTerminalWorktreeConfig: (id: string, config: TerminalWorktreeConfig | undefined) => void;
+  getNpmScripts: (cwd: string) => Promise<IPCResult<{ hasPackageJson: boolean; scripts: Record<string, string> }>>;
+  runNpmScript: (terminalId: string, scriptName: string) => void;
 
   // Terminal session management (persistence/restore)
   getTerminalSessions: (projectPath: string) => Promise<IPCResult<TerminalSession[]>>;

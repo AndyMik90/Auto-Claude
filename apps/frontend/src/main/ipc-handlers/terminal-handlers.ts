@@ -111,24 +111,32 @@ export function registerTerminalHandlers(
   // ============================================
 
   // Get npm scripts from package.json
+  // Returns { hasPackageJson: true, scripts: {...} } when package.json exists
+  // Returns { hasPackageJson: false, scripts: {} } when package.json doesn't exist
   ipcMain.handle(
     IPC_CHANNELS.TERMINAL_GET_NPM_SCRIPTS,
-    async (_, cwd: string): Promise<IPCResult<Record<string, string>>> => {
+    async (_, cwd: string): Promise<IPCResult<{ hasPackageJson: boolean; scripts: Record<string, string> }>> => {
       try {
         const { readFile } = await import('fs/promises');
         const { join } = await import('path');
         const packageJsonPath = join(cwd, 'package.json');
 
+        debugLog('[terminal-handlers] Looking for package.json at:', packageJsonPath);
+
         const content = await readFile(packageJsonPath, 'utf-8');
         const packageJson = JSON.parse(content);
         const scripts = packageJson.scripts || {};
 
-        return { success: true, data: scripts };
+        debugLog('[terminal-handlers] Found package.json with scripts:', Object.keys(scripts));
+
+        return { success: true, data: { hasPackageJson: true, scripts } };
       } catch (error) {
-        // Not an error if package.json doesn't exist
+        // Not an error if package.json doesn't exist - just return empty scripts
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          return { success: true, data: {} };
+          debugLog('[terminal-handlers] No package.json found at:', cwd);
+          return { success: true, data: { hasPackageJson: false, scripts: {} } };
         }
+        debugError('[terminal-handlers] Error reading package.json:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to read package.json'

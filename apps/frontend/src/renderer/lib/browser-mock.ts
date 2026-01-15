@@ -293,6 +293,13 @@ const browserMockAPI: ElectronAPI = {
     error: 'Not available in browser mode'
   }),
 
+  // NPM Script Operations
+  getNpmScripts: async () => ({
+    success: true,
+    data: { hasPackageJson: false, scripts: {} }
+  }),
+  runNpmScript: () => {},
+
   // MCP Server Health Check Operations
   checkMcpHealth: async (server) => ({
     success: true,

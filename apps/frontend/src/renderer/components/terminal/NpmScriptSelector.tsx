@@ -35,13 +35,15 @@ export function NpmScriptSelector({
 
   // Fetch scripts when dropdown opens
   const fetchScripts = async () => {
-    if (!projectPath) return;
+    if (!projectPath) {
+      return;
+    }
     setIsLoading(true);
     try {
       const result = await window.electronAPI.getNpmScripts(projectPath);
       if (result.success && result.data) {
-        setScripts(result.data);
-        setHasPackageJson(Object.keys(result.data).length > 0);
+        setScripts(result.data.scripts);
+        setHasPackageJson(result.data.hasPackageJson);
       } else {
         setScripts({});
         setHasPackageJson(false);
