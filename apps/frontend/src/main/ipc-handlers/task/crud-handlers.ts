@@ -115,13 +115,14 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       const phaseModels = metadata?.phaseModels || settings.customPhaseModels;
 
       const taskMetadata: TaskMetadata = {
+        // Spread metadata first, then override with computed values
+        ...metadata,
         sourceType: 'manual',
         // Add model configuration so backend uses correct models
         model: (metadata?.model || modelFromSettings) as ModelType,
         isAutoProfile,
         phaseModels: phaseModels as PhaseModelConfig | undefined,
         thinkingLevel: metadata?.thinkingLevel || settings.thinkingLevel,
-        ...metadata
       };
 
       // Process and save attached images
