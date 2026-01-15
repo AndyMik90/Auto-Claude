@@ -83,6 +83,25 @@ function buildPathPrefix(pathEnv: string): string {
 }
 
 /**
+ * Escape a command for safe use in shell commands.
+ *
+ * On Windows, escapes special characters and wraps in double quotes for cmd.exe.
+ * On Unix/macOS, wraps in single quotes for bash.
+ *
+ * @param cmd - The command to escape
+ * @returns The escaped command safe for use in shell commands
+ */
+function escapeShellCommand(cmd: string): string {
+  if (process.platform === 'win32') {
+    // Windows: Escape special characters and wrap in double quotes for cmd.exe
+    const escapedCmd = escapeShellArgWindows(cmd);
+    return `"${escapedCmd}"`;
+  }
+  // Unix/macOS: Wrap in single quotes for bash
+  return escapeShellArg(cmd);
+}
+
+/**
  * Flag for YOLO mode (skip all permission prompts)
  * Extracted as constant to ensure consistency across invokeClaude and invokeClaudeAsync
  */
@@ -154,10 +173,9 @@ export function buildClaudeShellCommand(
         // The temp file on Windows is a .bat file that sets CLAUDE_CODE_OAUTH_TOKEN
         // We use 'cls' instead of 'clear', and 'call' to execute the batch file
         // After execution, delete the temp file using 'del' command
-        // Note: We don't escape the path here since it's used directly in cmd.exe
-        // and Windows paths with spaces need to be quoted, not escaped
-        const quotedTempFile = config.tempFile.includes(' ') ? `"${config.tempFile}"` : config.tempFile;
-        return `cls && ${cwdCommand}${pathPrefix}call ${quotedTempFile} && ${fullCmd} & del ${quotedTempFile}\r`;
+        // Use escapeShellArgWindows() to properly escape special characters
+        const escapedTempFile = escapeShellArgWindows(config.tempFile);
+        return `cls && ${cwdCommand}${pathPrefix}call ${escapedTempFile} && ${fullCmd} & del ${escapedTempFile}\r`;
       } else {
         // Unix/macOS: Use bash with source command and history-safe prefixes
         const escapedTempFile = escapeShellArg(config.tempFile);
@@ -167,8 +185,9 @@ export function buildClaudeShellCommand(
     case 'config-dir':
       if (isWindows) {
         // Windows: Set environment variable using double-quote syntax
-        const quotedConfigDir = config.configDir.includes(' ') ? `"${config.configDir}"` : config.configDir;
-        return `cls && ${cwdCommand}set "CLAUDE_CONFIG_DIR=${quotedConfigDir}" && ${pathPrefix}${fullCmd}\r`;
+        // Use escapeShellArgWindows() to properly escape special characters
+        const escapedConfigDir = escapeShellArgWindows(config.configDir);
+        return `cls && ${cwdCommand}set "CLAUDE_CONFIG_DIR=${escapedConfigDir}" && ${pathPrefix}${fullCmd}\r`;
       } else {
         // Unix/macOS: Use bash with config dir and history-safe prefixes
         const escapedConfigDir = escapeShellArg(config.configDir);
@@ -531,7 +550,7 @@ export function invokeClaude(
 
   const cwdCommand = buildCdCommand(cwd);
   const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const escapedClaudeCmd = escapeShellCommand(claudeCmd);
   const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
   const needsEnvOverride = profileId && profileId !== previousProfileId;
 
@@ -614,7 +633,7 @@ export function resumeClaude(
   SessionHandler.releaseSessionId(terminal.id);
 
   const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const escapedClaudeCmd = escapeShellCommand(claudeCmd);
   const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
 
   // Always use --continue which resumes the most recent session in the current directory.
@@ -716,10 +735,8 @@ export async function invokeClaudeAsync(
     );
     const { command: claudeCmd, env: claudeEnv } = await Promise.race([cliInvocationPromise, timeoutPromise]);
 
-    const escapedClaudeCmd = escapeShellArg(claudeCmd);
-    const pathPrefix = claudeEnv.PATH
-      ? `PATH=${escapeShellArg(normalizePathForBash(claudeEnv.PATH))} `
-      : '';
+    const escapedClaudeCmd = escapeShellCommand(claudeCmd);
+    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
     const needsEnvOverride = profileId && profileId !== previousProfileId;
 
     debugLog('[ClaudeIntegration:invokeClaudeAsync] Environment override check:', {
@@ -738,7 +755,6 @@ export async function invokeClaudeAsync(
       if (token) {
         const nonce = crypto.randomBytes(8).toString('hex');
         const tempFile = path.join(os.tmpdir(), `.claude-token-${Date.now()}-${nonce}${getTempFileExtension()}`);
-        const escapedTempFile = escapeShellArg(tempFile);
         debugLog('[ClaudeIntegration:invokeClaudeAsync] Writing token to temp file:', tempFile);
         await fsPromises.writeFile(
           tempFile,
@@ -754,7 +770,6 @@ export async function invokeClaudeAsync(
         debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
         return;
       } else if (activeProfile.configDir) {
-        const escapedConfigDir = escapeShellArg(activeProfile.configDir);
         const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', configDir: activeProfile.configDir }, extraFlags);
         debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
         terminal.pty.write(command);
@@ -812,7 +827,7 @@ export async function resumeClaudeAsync(
 
   // Async CLI invocation - non-blocking
   const { command: claudeCmd, env: claudeEnv } = await getClaudeCliInvocationAsync();
-  const escapedClaudeCmd = escapeShellArg(claudeCmd);
+  const escapedClaudeCmd = escapeShellCommand(claudeCmd);
   const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
 
   // Always use --continue which resumes the most recent session in the current directory.
