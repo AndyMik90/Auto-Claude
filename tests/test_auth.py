@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Tests for core/auth module.
 
@@ -5,9 +6,10 @@ Tests authentication token management and SDK environment variable handling,
 including the PYTHONPATH isolation fix for ACS-251.
 """
 
+import platform
 from unittest.mock import patch
 
-# Note: Path setup is already done in conftest.py, no need to repeat here
+from core.auth import get_sdk_env_vars
 
 
 class TestGetSdkEnvVars:
@@ -30,8 +32,6 @@ class TestGetSdkEnvVars:
         ]:
             monkeypatch.delenv(var, raising=False)
 
-        from core.auth import get_sdk_env_vars
-
         result = get_sdk_env_vars()
 
         # PYTHONPATH should always be present, even if empty
@@ -42,8 +42,6 @@ class TestGetSdkEnvVars:
         """Should include ANTHROPIC_BASE_URL when set."""
         monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.example.com")
 
-        from core.auth import get_sdk_env_vars
-
         result = get_sdk_env_vars()
 
         assert result.get("ANTHROPIC_BASE_URL") == "https://api.example.com"
@@ -51,8 +49,6 @@ class TestGetSdkEnvVars:
     def test_includes_anthropic_auth_token_when_set(self, monkeypatch):
         """Should include ANTHROPIC_AUTH_TOKEN when set."""
         monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "sk-test-token")
-
-        from core.auth import get_sdk_env_vars
 
         result = get_sdk_env_vars()
 
@@ -67,9 +63,10 @@ class TestGetSdkEnvVars:
         failures when working on external projects with different Python versions.
         """
         # Simulate parent process having a PYTHONPATH set
-        monkeypatch.setenv("PYTHONPATH", "/path/to/auto-claude/backend:/path/to/python3.12/site-packages")
-
-        from core.auth import get_sdk_env_vars
+        monkeypatch.setenv(
+            "PYTHONPATH",
+            "/path/to/auto-claude/backend:/path/to/python3.12/site-packages",
+        )
 
         result = get_sdk_env_vars()
 
@@ -78,29 +75,10 @@ class TestGetSdkEnvVars:
         assert "PYTHONPATH" in result
         assert result["PYTHONPATH"] == ""
 
-    def test_empty_pythonpath_overrides_parent_value(self, monkeypatch):
-        """
-        Empty PYTHONPATH string should override parent's value.
-
-        The SDK merges os.environ with the provided env dict using
-        {**os.environ, **user_env}, so our explicit PYTHONPATH=""
-        should override any inherited value.
-        """
-        monkeypatch.setenv("PYTHONPATH", "/some/random/path")
-
-        from core.auth import get_sdk_env_vars
-
-        result = get_sdk_env_vars()
-
-        # Empty string ensures Python doesn't add extra paths to sys.path
-        assert result["PYTHONPATH"] == ""
-
     def test_skips_empty_env_vars(self, monkeypatch):
         """Should not include env vars with empty values."""
         monkeypatch.setenv("ANTHROPIC_BASE_URL", "")
         monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "")
-
-        from core.auth import get_sdk_env_vars
 
         result = get_sdk_env_vars()
 
@@ -112,29 +90,27 @@ class TestGetSdkEnvVars:
 
     def test_on_windows_auto_detects_git_bash_path(self, monkeypatch):
         """On Windows, should auto-detect git-bash path if not set."""
-        import platform
-
         # Mock platform.system to simulate Windows for cross-platform testing
         with patch.object(platform, "system", return_value="Windows"):
             # Mock _find_git_bash_path to return a path
-            with patch("core.auth._find_git_bash_path", return_value="C:/Program Files/Git/bin/bash.exe"):
+            with patch(
+                "core.auth._find_git_bash_path",
+                return_value="C:/Program Files/Git/bin/bash.exe",
+            ):
                 monkeypatch.delenv("CLAUDE_CODE_GIT_BASH_PATH", raising=False)
-
-                from core.auth import get_sdk_env_vars
 
                 result = get_sdk_env_vars()
 
-                assert result.get("CLAUDE_CODE_GIT_BASH_PATH") == "C:/Program Files/Git/bin/bash.exe"
+                assert (
+                    result.get("CLAUDE_CODE_GIT_BASH_PATH")
+                    == "C:/Program Files/Git/bin/bash.exe"
+                )
 
     def test_preserves_existing_git_bash_path_on_windows(self, monkeypatch):
         """On Windows, should preserve existing CLAUDE_CODE_GIT_BASH_PATH."""
-        import platform
-
         # Mock platform.system to simulate Windows for cross-platform testing
         with patch.object(platform, "system", return_value="Windows"):
             monkeypatch.setenv("CLAUDE_CODE_GIT_BASH_PATH", "C:/Custom/bash.exe")
-
-            from core.auth import get_sdk_env_vars
 
             result = get_sdk_env_vars()
 
@@ -142,14 +118,10 @@ class TestGetSdkEnvVars:
 
     def test_on_non_windows_git_bash_not_added(self, monkeypatch):
         """On non-Windows platforms, CLAUDE_CODE_GIT_BASH_PATH should not be auto-added."""
-        import platform
-
         # Mock platform.system to simulate Linux for cross-platform testing
         # When platform is not Windows, _find_git_bash_path is never called
         with patch.object(platform, "system", return_value="Linux"):
             monkeypatch.delenv("CLAUDE_CODE_GIT_BASH_PATH", raising=False)
-
-            from core.auth import get_sdk_env_vars
 
             result = get_sdk_env_vars()
 
