@@ -1,55 +1,40 @@
-# Auto Claude
+# IDLE (Fork Auto-Claude)
 
 **Autonomous multi-agent coding framework that plans, builds, and validates software for you.**
 
+> 🔱 **This is a fork** of the original [Auto Claude](https://github.com/AndyMik90/Auto-Claude) project by Andre Mikalsen.
+
 ![Auto Claude Kanban Board](.github/assets/Auto-Claude-Kanban.png)
 
-[![License](https://img.shields.io/badge/license-AGPL--3.0-green?style=flat-square)](./agpl-3.0.txt)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
-[![YouTube](https://img.shields.io/badge/YouTube-Subscribe-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://www.youtube.com/@AndreMikalsen)
-[![CI](https://img.shields.io/github/actions/workflow/status/AndyMik90/Auto-Claude/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/AndyMik90/Auto-Claude/actions)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-green?style=flat-square)](./LICENSE)
+[![Original Project](https://img.shields.io/badge/original-Auto%20Claude-blue?style=flat-square)](https://github.com/AndyMik90/Auto-Claude)
 
 ---
 
-## Download
+## Installation
 
-### Stable Release
+### From Source
 
-<!-- STABLE_VERSION_BADGE -->
-[![Stable](https://img.shields.io/badge/stable-2.7.4-blue?style=flat-square)](https://github.com/AndyMik90/Auto-Claude/releases/tag/v2.7.4)
-<!-- STABLE_VERSION_BADGE_END -->
+This fork is distributed as source code. To build and run:
 
-<!-- STABLE_DOWNLOADS -->
-| Platform | Download |
-|----------|----------|
-| **Windows** | [Auto-Claude-2.7.4-win32-x64.exe](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.4/Auto-Claude-2.7.4-win32-x64.exe) |
-| **macOS (Apple Silicon)** | [Auto-Claude-2.7.4-darwin-arm64.dmg](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.4/Auto-Claude-2.7.4-darwin-arm64.dmg) |
-| **macOS (Intel)** | [Auto-Claude-2.7.4-darwin-x64.dmg](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.4/Auto-Claude-2.7.4-darwin-x64.dmg) |
-| **Linux** | [Auto-Claude-2.7.4-linux-x86_64.AppImage](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.4/Auto-Claude-2.7.4-linux-x86_64.AppImage) |
-| **Linux (Debian)** | [Auto-Claude-2.7.4-linux-amd64.deb](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.4/Auto-Claude-2.7.4-linux-amd64.deb) |
-| **Linux (Flatpak)** | [Auto-Claude-2.7.4-linux-x86_64.flatpak](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.4/Auto-Claude-2.7.4-linux-x86_64.flatpak) |
-<!-- STABLE_DOWNLOADS_END -->
+```bash
+# Clone the repository
+git clone <your-fork-url>
+cd Auto-Claude
 
-### Beta Release
+# Install dependencies
+npm run install:all
 
-> ⚠️ Beta releases may contain bugs and breaking changes. [View all releases](https://github.com/AndyMik90/Auto-Claude/releases)
+# Run in development mode
+npm run dev
 
-<!-- BETA_VERSION_BADGE -->
-[![Beta](https://img.shields.io/badge/beta-2.7.2--beta.10-orange?style=flat-square)](https://github.com/AndyMik90/Auto-Claude/releases/tag/v2.7.2-beta.10)
-<!-- BETA_VERSION_BADGE_END -->
+# Or build for production
+npm start
+```
 
-<!-- BETA_DOWNLOADS -->
-| Platform | Download |
-|----------|----------|
-| **Windows** | [Auto-Claude-2.7.2-beta.10-win32-x64.exe](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.2-beta.10/Auto-Claude-2.7.2-beta.10-win32-x64.exe) |
-| **macOS (Apple Silicon)** | [Auto-Claude-2.7.2-beta.10-darwin-arm64.dmg](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.2-beta.10/Auto-Claude-2.7.2-beta.10-darwin-arm64.dmg) |
-| **macOS (Intel)** | [Auto-Claude-2.7.2-beta.10-darwin-x64.dmg](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.2-beta.10/Auto-Claude-2.7.2-beta.10-darwin-x64.dmg) |
-| **Linux** | [Auto-Claude-2.7.2-beta.10-linux-x86_64.AppImage](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.2-beta.10/Auto-Claude-2.7.2-beta.10-linux-x86_64.AppImage) |
-| **Linux (Debian)** | [Auto-Claude-2.7.2-beta.10-linux-amd64.deb](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.2-beta.10/Auto-Claude-2.7.2-beta.10-linux-amd64.deb) |
-| **Linux (Flatpak)** | [Auto-Claude-2.7.2-beta.10-linux-x86_64.flatpak](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.2-beta.10/Auto-Claude-2.7.2-beta.10-linux-x86_64.flatpak) |
-<!-- BETA_DOWNLOADS_END -->
+### Download Original Releases
 
-> All releases include SHA256 checksums and VirusTotal scan results for security verification.
+For pre-built binaries, visit the [original project releases](https://github.com/AndyMik90/Auto-Claude/releases).
 
 ---
 
@@ -180,28 +165,7 @@ See [guides/CLI-USAGE.md](guides/CLI-USAGE.md) for complete CLI documentation.
 
 ## Development
 
-Want to build from source or contribute? See [CONTRIBUTING.md](CONTRIBUTING.md) for complete development setup instructions.
-
-For Linux-specific builds (Flatpak, AppImage), see [guides/linux.md](guides/linux.md).
-
----
-
-## Security
-
-Auto Claude uses a three-layer security model:
-
-1. **OS Sandbox** - Bash commands run in isolation
-2. **Filesystem Restrictions** - Operations limited to project directory
-3. **Dynamic Command Allowlist** - Only approved commands based on detected project stack
-
-All releases are:
-- Scanned with VirusTotal before publishing
-- Include SHA256 checksums for verification
-- Code-signed where applicable (macOS)
-
----
-
-## Available Scripts
+### Available Scripts
 
 | Command | Description |
 |---------|-------------|
@@ -217,23 +181,33 @@ All releases are:
 | `npm test` | Run frontend tests |
 | `npm run test:backend` | Run backend tests |
 
----
+### Building from Source
 
-## Contributing
+For complete development setup instructions, see the [original project documentation](https://github.com/AndyMik90/Auto-Claude).
 
-We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
-- Development setup instructions
-- Code style guidelines
-- Testing requirements
-- Pull request process
+For Linux-specific builds (Flatpak, AppImage), see [guides/linux.md](guides/linux.md).
 
 ---
 
-## Community
+## Security
 
-- **Discord** - [Join our community](https://discord.gg/KCXaPBr4Dj)
-- **Issues** - [Report bugs or request features](https://github.com/AndyMik90/Auto-Claude/issues)
-- **Discussions** - [Ask questions](https://github.com/AndyMik90/Auto-Claude/discussions)
+Auto Claude uses a three-layer security model:
+
+1. **OS Sandbox** - Bash commands run in isolation
+2. **Filesystem Restrictions** - Operations limited to project directory
+3. **Dynamic Command Allowlist** - Only approved commands based on detected project stack
+
+---
+
+## Original Project
+
+This is a fork of **Auto Claude** by Andre Mikalsen.
+
+- **Original Repository**: https://github.com/AndyMik90/Auto-Claude
+- **Discord Community**: https://discord.gg/KCXaPBr4Dj
+- **YouTube Channel**: https://www.youtube.com/@AndreMikalsen
+
+For issues related to the original project, please visit the [original repository](https://github.com/AndyMik90/Auto-Claude/issues).
 
 ---
 
@@ -241,14 +215,11 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 **AGPL-3.0** - GNU Affero General Public License v3.0
 
-Auto Claude is free to use. If you modify and distribute it, or run it as a service, your code must also be open source under AGPL-3.0.
+This project is licensed under AGPL-3.0, same as the original Auto Claude project. 
 
-Commercial licensing available for closed-source use cases.
+- You are free to use, modify, and distribute this software
+- If you modify and distribute it, or run it as a service, your code must also be open source under AGPL-3.0
+- See [LICENSE](LICENSE) for full terms
 
----
-
-## Star History
-
-[![GitHub Repo stars](https://img.shields.io/github/stars/AndyMik90/Auto-Claude?style=social)](https://github.com/AndyMik90/Auto-Claude/stargazers)
-
-[![Star History Chart](https://api.star-history.com/svg?repos=AndyMik90/Auto-Claude&type=Date)](https://star-history.com/#AndyMik90/Auto-Claude&Date)
+**Original Project**: Copyright © Andre Mikalsen  
+**This Fork**: _(Add your copyright notice here if making substantial modifications)_
