@@ -1,7 +1,7 @@
 import { writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import type * as pty from '@lydell/node-pty';
 import type { TerminalProcess } from '../types';
 import { buildCdCommand } from '../../../shared/utils/shell-escape';
@@ -247,6 +247,60 @@ describe('claude-integration-handler', () => {
     expect(mockPersistSession).toHaveBeenCalledWith(terminal);
 
     nowSpy.mockRestore();
+  });
+
+  it('uses Windows batch file syntax for temp token on Windows platform', async () => {
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
+
+    try {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+
+      const command = 'C:\\Tools\\claude\\claude.cmd';
+      const profileManager = {
+        getActiveProfile: vi.fn(),
+        getProfile: vi.fn(() => ({
+          id: 'prof-win',
+          name: 'Work',
+          isDefault: false,
+          oauthToken: 'windows-token-value',
+        })),
+        getProfileToken: vi.fn(() => 'windows-token-value'),
+        markProfileUsed: vi.fn(),
+      };
+
+      mockGetClaudeCliInvocation.mockReturnValue({
+        command,
+        env: { PATH: 'C:\\Tools\\claude;C:\\Windows' },
+      });
+      mockGetClaudeProfileManager.mockReturnValue(profileManager);
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(9999);
+
+      const terminal = createMockTerminal({ id: 'term-win' });
+
+      const { invokeClaude } = await import('../claude-integration-handler');
+      invokeClaude(terminal, 'C:\\Users\\test\\project', 'prof-win', () => null, vi.fn());
+
+      const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
+      const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
+      const tokenPrefix = path.join(tmpdir(), '.claude-token-9999-');
+      expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}\\.bat$`));
+      expect(tokenContents).toBe("@echo off\r\nset CLAUDE_CODE_OAUTH_TOKEN='windows-token-value'\r\n");
+      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      expect(written).toContain('cls && ');
+      expect(written).toContain(`call '${tokenPath}'`);
+      expect(written).toContain(`del '${tokenPath}'`);
+      expect(written).toContain(`'${command}'`);
+      expect(written).not.toContain('bash -c');
+      expect(written).not.toContain('source');
+      expect(profileManager.getProfile).toHaveBeenCalledWith('prof-win');
+      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+
+      nowSpy.mockRestore();
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(process, 'platform', originalPlatform);
+      }
+    }
   });
 
   it('prefers the temp token flow when profile has both oauth token and config dir', async () => {
@@ -498,6 +552,137 @@ describe('claude-integration-handler - Helper Functions', () => {
       expect(result).toContain('HISTFILE= HISTCONTROL=ignorespace');
       expect(result).not.toContain('cd ');
       expect(result).toContain("source '/tmp/.token'");
+    });
+
+    describe('Windows platform', () => {
+      const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
+
+      beforeAll(() => {
+        Object.defineProperty(process, 'platform', { value: 'win32' });
+      });
+
+      afterAll(() => {
+        if (originalPlatform) {
+          Object.defineProperty(process, 'platform', originalPlatform);
+        }
+      });
+
+      it('should build temp-file method command with Windows batch file syntax', async () => {
+        const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+        const result = buildClaudeShellCommand(
+          "cd 'C:\\Users\\test\\project' && ",
+          "PATH='C:\\Tools\\claude' ",
+          "'C:\\Tools\\claude\\claude.cmd'",
+          { method: 'temp-file', escapedTempFile: "'C:\\Users\\test\\AppData\\Local\\Temp\\token.bat'" }
+        );
+
+        expect(result).toContain('cls && ');
+        expect(result).toContain("cd 'C:\\Users\\test\\project' && ");
+        expect(result).toContain("PATH='C:\\Tools\\claude' ");
+        expect(result).toContain("call 'C:\\Users\\test\\AppData\\Local\\Temp\\token.bat'");
+        expect(result).toContain("'C:\\Tools\\claude\\claude.cmd'");
+        expect(result).toContain("del 'C:\\Users\\test\\AppData\\Local\\Temp\\token.bat'");
+        expect(result).not.toContain('bash -c');
+        expect(result).not.toContain('source');
+        expect(result).not.toContain('clear');
+      });
+
+      it('should build config-dir method command with Windows set syntax', async () => {
+        const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+        const result = buildClaudeShellCommand(
+          "cd 'C:\\Users\\test\\project' && ",
+          "PATH='C:\\Tools\\claude' ",
+          "'C:\\Tools\\claude\\claude.cmd'",
+          { method: 'config-dir', escapedConfigDir: "'C:\\Users\\test\\.claude-work'" }
+        );
+
+        expect(result).toContain('cls && ');
+        expect(result).toContain("cd 'C:\\Users\\test\\project' && ");
+        expect(result).toContain("set CLAUDE_CONFIG_DIR='C:\\Users\\test\\.claude-work'");
+        expect(result).toContain("PATH='C:\\Tools\\claude' ");
+        expect(result).toContain("'C:\\Tools\\claude\\claude.cmd'");
+        expect(result).not.toContain('bash -c');
+        expect(result).not.toContain('clear');
+        expect(result).not.toContain('exec');
+      });
+
+      it('should build default command without bash on Windows', async () => {
+        const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+        const result = buildClaudeShellCommand(
+          "cd 'C:\\Users\\test\\project' && ",
+          "PATH='C:\\Tools\\claude' ",
+          "'C:\\Tools\\claude\\claude.cmd'",
+          { method: 'default' }
+        );
+
+        expect(result).toBe("cd 'C:\\Users\\test\\project' && PATH='C:\\Tools\\claude' 'C:\\Tools\\claude\\claude.cmd'\r");
+        expect(result).not.toContain('bash');
+      });
+
+      it('should build temp-file method without cwd on Windows', async () => {
+        const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+        const result = buildClaudeShellCommand(
+          '',
+          '',
+          "'C:\\Tools\\claude\\claude.cmd'",
+          { method: 'temp-file', escapedTempFile: "'C:\\Users\\test\\AppData\\Local\\Temp\\token.bat'" }
+        );
+
+        expect(result).toContain('cls && ');
+        expect(result).not.toContain('cd ');
+        expect(result).toContain("call 'C:\\Users\\test\\AppData\\Local\\Temp\\token.bat'");
+        expect(result).toContain("'C:\\Tools\\claude\\claude.cmd'");
+        expect(result).toContain("del 'C:\\Users\\test\\AppData\\Local\\Temp\\token.bat'");
+      });
+    });
+
+    describe('Unix platform (non-Windows)', () => {
+      const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
+
+      beforeAll(() => {
+        Object.defineProperty(process, 'platform', { value: 'linux' });
+      });
+
+      afterAll(() => {
+        if (originalPlatform) {
+          Object.defineProperty(process, 'platform', originalPlatform);
+        }
+      });
+
+      it('should build temp-file method command with bash syntax on Unix', async () => {
+        const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+        const result = buildClaudeShellCommand(
+          "cd '/tmp/project' && ",
+          "PATH='/opt/bin' ",
+          "'/opt/bin/claude'",
+          { method: 'temp-file', escapedTempFile: "'/tmp/.token-123'" }
+        );
+
+        expect(result).toContain('clear && ');
+        expect(result).toContain('bash -c');
+        expect(result).toContain("source '/tmp/.token-123'");
+        expect(result).toContain("rm -f '/tmp/.token-123'");
+        expect(result).toContain("exec '/opt/bin/claude'");
+        expect(result).not.toContain('call');
+        expect(result).not.toContain('cls');
+      });
+
+      it('should build config-dir method command with bash syntax on Unix', async () => {
+        const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+        const result = buildClaudeShellCommand(
+          "cd '/tmp/project' && ",
+          "PATH='/opt/bin' ",
+          "'/opt/bin/claude'",
+          { method: 'config-dir', escapedConfigDir: "'/home/user/.claude-work'" }
+        );
+
+        expect(result).toContain('clear && ');
+        expect(result).toContain('bash -c');
+        expect(result).toContain("CLAUDE_CONFIG_DIR='/home/user/.claude-work'");
+        expect(result).toContain("exec '/opt/bin/claude'");
+        expect(result).not.toContain('set');
+        expect(result).not.toContain('cls');
+      });
     });
   });
 
