@@ -406,10 +406,12 @@ app.whenReady().then(() => {
         console.warn('[main] Usage monitor initialized and started (after profile load)');
 
         // Start task recovery service
-        if (taskRecoveryService) {
-          taskRecoveryService.start();
-          console.warn('[main] Task recovery service initialized and started');
-        }
+        // TEMPORARILY DISABLED: Debug high CPU usage
+        console.warn('[main] Task recovery service temporarily disabled for debugging');
+        // if (taskRecoveryService) {
+        //   taskRecoveryService.start();
+        //   console.warn('[main] Task recovery service initialized and started');
+        // }
       }
     })
     .catch((error) => {
@@ -421,10 +423,12 @@ app.whenReady().then(() => {
         usageMonitor.start();
 
         // Start task recovery service even if profile manager failed
-        if (taskRecoveryService) {
-          taskRecoveryService.start();
-          console.warn('[main] Task recovery service initialized and started (fallback)');
-        }
+        // TEMPORARILY DISABLED: Debug high CPU usage
+        console.warn('[main] Task recovery service temporarily disabled for debugging (fallback)');
+        // if (taskRecoveryService) {
+        //   taskRecoveryService.start();
+        //   console.warn('[main] Task recovery service initialized and started (fallback)');
+        // }
       }
     });
 

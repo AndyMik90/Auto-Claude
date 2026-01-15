@@ -150,6 +150,9 @@ def check_integrations() -> Dict[str, Any]:
     checks["graphiti_healthy"] = graphiti_health["healthy"]
     details["graphiti"] = graphiti_health
 
+    # Debug: log graphiti health result
+    print(f"DEBUG graphiti_health: healthy={graphiti_health['healthy']}, checks={graphiti_health['checks']}", file=sys.stderr)
+
     # Linear integration
     linear_enabled = is_linear_enabled()
     checks["linear_enabled"] = linear_enabled
