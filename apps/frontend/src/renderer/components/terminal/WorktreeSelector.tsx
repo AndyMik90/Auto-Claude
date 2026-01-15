@@ -170,21 +170,20 @@ export function WorktreeSelector({
           {t('terminal:worktree.createNew')}
         </DropdownMenuItem>
 
+        {/* Fixed separator between "Create New" and scrollable content */}
+        <DropdownMenuSeparator />
+
         {/* Scrollable content */}
         <ScrollArea className="max-h-[300px]">
           {isLoading ? (
-            <>
-              <DropdownMenuSeparator />
-              <div className="flex items-center justify-center py-2">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            </>
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
           ) : (
             <>
               {/* Terminal Worktrees Section */}
               {worktrees.length > 0 && (
                 <>
-                  <DropdownMenuSeparator />
                   <div className="px-2 py-1.5 text-xs text-muted-foreground">
                     {t('terminal:worktree.existing')}
                   </div>
