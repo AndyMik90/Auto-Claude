@@ -58,11 +58,15 @@ def _run_where_command() -> str | None:
             text=True,
             encoding="utf-8",
             timeout=5,
-            shell=True,
+            shell=True,  # Required: 'where' is a Windows shell builtin, not a standalone executable
         )
         if result.returncode == 0 and result.stdout.strip():
             found_path = result.stdout.strip().split("\n")[0].strip()
-            if found_path and os.path.isfile(found_path):
+            if (
+                found_path
+                and os.path.isfile(found_path)
+                and _verify_gh_executable(found_path)
+            ):
                 return found_path
     except (subprocess.TimeoutExpired, OSError):
         # 'where' command failed or timed out - fall through to return None
@@ -87,8 +91,8 @@ def get_gh_executable() -> str | None:
     """
     global _cached_gh_path
 
-    # Return cached result if available
-    if _cached_gh_path is not None:
+    # Return cached result if available AND still exists
+    if _cached_gh_path is not None and os.path.isfile(_cached_gh_path):
         return _cached_gh_path
 
     _cached_gh_path = _find_gh_executable()
@@ -133,3 +137,55 @@ def _find_gh_executable() -> str | None:
         return _run_where_command()
 
     return None
+
+
+def run_gh(
+    args: list[str],
+    cwd: str | None = None,
+    timeout: int = 60,
+    input_data: str | None = None,
+) -> subprocess.CompletedProcess:
+    """Run a gh command with proper executable finding.
+
+    Args:
+        args: gh command arguments (without 'gh' prefix)
+        cwd: Working directory for the command
+        timeout: Command timeout in seconds (default: 60)
+        input_data: Optional string data to pass to stdin
+
+    Returns:
+        CompletedProcess with command results.
+    """
+    gh = get_gh_executable()
+    if not gh:
+        return subprocess.CompletedProcess(
+            args=["gh"] + args,
+            returncode=-1,
+            stdout="",
+            stderr="GitHub CLI (gh) not found. Install from https://cli.github.com/",
+        )
+    try:
+        return subprocess.run(
+            [gh] + args,
+            cwd=cwd,
+            input=input_data,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(
+            args=[gh] + args,
+            returncode=-1,
+            stdout="",
+            stderr=f"Command timed out after {timeout} seconds",
+        )
+    except FileNotFoundError:
+        return subprocess.CompletedProcess(
+            args=[gh] + args,
+            returncode=-1,
+            stdout="",
+            stderr="GitHub CLI (gh) executable not found. Install from https://cli.github.com/",
+        )

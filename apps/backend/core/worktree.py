@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TypedDict, TypeVar
 
-from core.gh_executable import get_gh_executable
+from core.gh_executable import get_gh_executable, invalidate_gh_cache
 from core.git_executable import get_git_executable, run_git
 from debug import debug_warning
 
@@ -1072,7 +1072,8 @@ class WorktreeManager:
             )
 
         except FileNotFoundError:
-            # gh CLI not installed
+            # gh CLI not installed - invalidate cache in case it was reinstalled
+            invalidate_gh_cache()
             return PullRequestResult(
                 success=False,
                 error="gh CLI not found. Install from https://cli.github.com/",
