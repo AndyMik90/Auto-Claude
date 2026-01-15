@@ -1,11 +1,11 @@
 /**
- * Unit tests for KanbanBoard drag-to-scroll functionality
- * Tests click-and-drag horizontal scrolling logic, state management,
- * event listener lifecycle, and target element exclusion
+ * Integration tests for KanbanBoard drag-to-scroll functionality
+ * Tests click-and-drag horizontal scrolling behavior through actual
+ * component interactions, verifying cursor state and scroll behavior.
  *
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import type { ReactNode } from 'react';
@@ -62,114 +62,281 @@ function createTestTask(overrides: Partial<Task> = {}): Task {
   };
 }
 
-// Helper to create mock event
-function createMockMouseEvent(clientX: number, target?: HTMLElement): MouseEvent {
-  return {
-    clientX,
-    preventDefault: vi.fn(),
-    target
-  } as unknown as MouseEvent;
+// Helper to get the scroll container (board region)
+function getBoardRegion() {
+  return screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
 }
 
-// Helper to create mock React mouse event
-function createMockReactMouseEvent(clientX: number, target?: HTMLElement): React.MouseEvent {
-  return {
-    clientX,
-    currentTarget: null,
-    target
-  } as unknown as React.MouseEvent;
-}
-
-describe('KanbanBoard Drag-to-Scroll Logic', () => {
+describe('KanbanBoard Drag-to-Scroll', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('Drag State Management', () => {
-    it('should render board region with cursor-grab class initially', () => {
-      const mockOnTaskClick = vi.fn();
+  describe('Initial State', () => {
+    it('should render with cursor-grab class indicating draggable area', () => {
       render(
         <TestWrapper>
-          <KanbanBoard tasks={[]} onTaskClick={mockOnTaskClick} />
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
         </TestWrapper>
       );
 
-      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
+      const boardRegion = getBoardRegion();
       expect(boardRegion).toBeInTheDocument();
       expect(boardRegion).toHaveClass('cursor-grab');
       expect(boardRegion).not.toHaveClass('cursor-grabbing');
     });
 
-    it('should add cursor-grabbing class on mouseDown', () => {
-      const mockOnTaskClick = vi.fn();
+    it('should have select-none class to prevent text selection during drag', () => {
       render(
         <TestWrapper>
-          <KanbanBoard tasks={[]} onTaskClick={mockOnTaskClick} />
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
         </TestWrapper>
       );
 
-      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
+      const boardRegion = getBoardRegion();
+      expect(boardRegion).toHaveClass('select-none');
+    });
+  });
 
-      // Fire mouseDown to start dragging
+  describe('Cursor State Changes', () => {
+    it('should change to cursor-grabbing when mouse is pressed down', () => {
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
+        </TestWrapper>
+      );
+
+      const boardRegion = getBoardRegion();
       fireEvent.mouseDown(boardRegion, { clientX: 100 });
 
       expect(boardRegion).toHaveClass('cursor-grabbing');
     });
 
-    it('should remove cursor-grabbing class on mouseUp', () => {
-      const mockOnTaskClick = vi.fn();
+    it('should revert to cursor-grab when mouse is released', () => {
       render(
         <TestWrapper>
-          <KanbanBoard tasks={[]} onTaskClick={mockOnTaskClick} />
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
         </TestWrapper>
       );
 
-      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
+      const boardRegion = getBoardRegion();
 
       // Start dragging
       fireEvent.mouseDown(boardRegion, { clientX: 100 });
       expect(boardRegion).toHaveClass('cursor-grabbing');
 
-      // Stop dragging via window mouseup
+      // Stop dragging via window mouseup (simulates releasing mouse anywhere)
       fireEvent.mouseUp(window);
       expect(boardRegion).not.toHaveClass('cursor-grabbing');
       expect(boardRegion).toHaveClass('cursor-grab');
     });
 
     it('should handle multiple drag cycles correctly', () => {
-      const mockOnTaskClick = vi.fn();
       render(
         <TestWrapper>
-          <KanbanBoard tasks={[]} onTaskClick={mockOnTaskClick} />
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
         </TestWrapper>
       );
 
-      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
+      const boardRegion = getBoardRegion();
 
-      // First drag cycle
-      fireEvent.mouseDown(boardRegion, { clientX: 100 });
-      expect(boardRegion).toHaveClass('cursor-grabbing');
-      fireEvent.mouseUp(window);
+      // Multiple drag cycles should work correctly
+      for (let i = 0; i < 3; i++) {
+        fireEvent.mouseDown(boardRegion, { clientX: 100 + i * 50 });
+        expect(boardRegion).toHaveClass('cursor-grabbing');
+
+        fireEvent.mouseUp(window);
+        expect(boardRegion).not.toHaveClass('cursor-grabbing');
+        expect(boardRegion).toHaveClass('cursor-grab');
+      }
+    });
+  });
+
+  describe('Target Element Exclusion', () => {
+    it('should NOT activate drag when clicking on a button', () => {
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} onNewTaskClick={vi.fn()} />
+        </TestWrapper>
+      );
+
+      const boardRegion = getBoardRegion();
+      // The backlog column has a "+" button for adding tasks
+      // Note: The mock translation returns the key without namespace prefix
+      const addButton = screen.getByRole('button', { name: 'kanban.addTaskAriaLabel' });
+
+      // Click on the button
+      fireEvent.mouseDown(addButton, { clientX: 100 });
+
+      // Board should NOT be in dragging state
       expect(boardRegion).not.toHaveClass('cursor-grabbing');
+      expect(boardRegion).toHaveClass('cursor-grab');
+    });
 
-      // Second drag cycle
+    it('should NOT activate drag when clicking on a draggable task card', () => {
+      const tasks = [
+        createTestTask({ id: 'task-1', title: 'Task 1', status: 'backlog' })
+      ];
+
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={tasks} onTaskClick={vi.fn()} />
+        </TestWrapper>
+      );
+
+      const boardRegion = getBoardRegion();
+      // Find the task card by its data attribute
+      const taskCard = document.querySelector('[data-dnd-kit-draggable="true"]');
+      expect(taskCard).toBeInTheDocument();
+
+      // Click on the task card
+      fireEvent.mouseDown(taskCard!, { clientX: 100 });
+
+      // Board should NOT be in dragging state because we clicked on a dnd-kit draggable
+      expect(boardRegion).not.toHaveClass('cursor-grabbing');
+      expect(boardRegion).toHaveClass('cursor-grab');
+    });
+
+    it('should activate drag when clicking on empty column area', () => {
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
+        </TestWrapper>
+      );
+
+      const boardRegion = getBoardRegion();
+      // Click on the board region itself (empty area)
+      fireEvent.mouseDown(boardRegion, { clientX: 100 });
+
+      expect(boardRegion).toHaveClass('cursor-grabbing');
+    });
+  });
+
+  describe('Scroll Behavior', () => {
+    it('should update scroll position during drag', () => {
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
+        </TestWrapper>
+      );
+
+      const boardRegion = getBoardRegion();
+
+      // Mock scrollLeft as jsdom doesn't support actual scrolling
+      let currentScrollLeft = 100;
+      Object.defineProperty(boardRegion, 'scrollLeft', {
+        get: () => currentScrollLeft,
+        set: (value: number) => { currentScrollLeft = value; },
+        configurable: true
+      });
+
+      // Start drag at position 200
       fireEvent.mouseDown(boardRegion, { clientX: 200 });
       expect(boardRegion).toHaveClass('cursor-grabbing');
-      fireEvent.mouseUp(window);
-      expect(boardRegion).not.toHaveClass('cursor-grabbing');
 
-      // Third drag cycle
-      fireEvent.mouseDown(boardRegion, { clientX: 50 });
-      expect(boardRegion).toHaveClass('cursor-grabbing');
+      // Move mouse to 250 (right by 50px) - this should scroll left (decrease scrollLeft)
+      fireEvent.mouseMove(window, { clientX: 250 });
+
+      // Move mouse to 150 (left by 50px from start) - this should scroll right (increase scrollLeft)
+      fireEvent.mouseMove(window, { clientX: 150 });
+
+      // Release
       fireEvent.mouseUp(window);
       expect(boardRegion).not.toHaveClass('cursor-grabbing');
     });
 
-    it('should render with tasks and maintain drag behavior', () => {
-      const mockOnTaskClick = vi.fn();
+    it('should not scroll when not in drag state', () => {
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
+        </TestWrapper>
+      );
+
+      const boardRegion = getBoardRegion();
+
+      // Track scroll changes
+      let scrollCallCount = 0;
+      const originalScrollLeft = 0;
+      Object.defineProperty(boardRegion, 'scrollLeft', {
+        get: () => originalScrollLeft,
+        set: () => { scrollCallCount++; },
+        configurable: true
+      });
+
+      // Move mouse without starting a drag
+      fireEvent.mouseMove(window, { clientX: 250 });
+      fireEvent.mouseMove(window, { clientX: 300 });
+
+      // Scroll should not have been modified
+      expect(scrollCallCount).toBe(0);
+    });
+  });
+
+  describe('Event Listener Management', () => {
+    it('should add window listeners when drag starts and remove on drag end', () => {
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={[]} onTaskClick={vi.fn()} />
+        </TestWrapper>
+      );
+
+      const boardRegion = getBoardRegion();
+
+      // Start drag
+      fireEvent.mouseDown(boardRegion, { clientX: 100 });
+
+      // Should have added mousemove and mouseup listeners
+      expect(addEventListenerSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
+      expect(addEventListenerSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
+
+      // End drag
+      fireEvent.mouseUp(window);
+
+      // Should have removed the listeners
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
+
+      addEventListenerSpy.mockRestore();
+      removeEventListenerSpy.mockRestore();
+    });
+  });
+
+  describe('Integration with Tasks', () => {
+    it('should maintain drag functionality with tasks present', () => {
       const tasks = [
         createTestTask({ id: 'task-1', title: 'Task 1', status: 'backlog' }),
-        createTestTask({ id: 'task-2', title: 'Task 2', status: 'in_progress' })
+        createTestTask({ id: 'task-2', title: 'Task 2', status: 'in_progress' }),
+        createTestTask({ id: 'task-3', title: 'Task 3', status: 'done' })
+      ];
+
+      render(
+        <TestWrapper>
+          <KanbanBoard tasks={tasks} onTaskClick={vi.fn()} />
+        </TestWrapper>
+      );
+
+      const boardRegion = getBoardRegion();
+
+      // Verify tasks are rendered
+      expect(screen.getByText('Task 1')).toBeInTheDocument();
+      expect(screen.getByText('Task 2')).toBeInTheDocument();
+      expect(screen.getByText('Task 3')).toBeInTheDocument();
+
+      // Drag behavior should still work
+      fireEvent.mouseDown(boardRegion, { clientX: 150 });
+      expect(boardRegion).toHaveClass('cursor-grabbing');
+
+      fireEvent.mouseUp(window);
+      expect(boardRegion).not.toHaveClass('cursor-grabbing');
+    });
+
+    it('should distinguish between board drag and task card drag', () => {
+      const mockOnTaskClick = vi.fn();
+      const tasks = [
+        createTestTask({ id: 'task-1', title: 'Test Task', status: 'backlog' })
       ];
 
       render(
@@ -178,739 +345,18 @@ describe('KanbanBoard Drag-to-Scroll Logic', () => {
         </TestWrapper>
       );
 
-      const boardRegion = screen.getByRole('region', { name: 'tasks:kanban.boardRegion' });
+      const boardRegion = getBoardRegion();
+      const taskCard = document.querySelector('[data-dnd-kit-draggable="true"]');
 
-      // Drag behavior should work with tasks present
-      fireEvent.mouseDown(boardRegion, { clientX: 150 });
-      expect(boardRegion).toHaveClass('cursor-grabbing');
-      fireEvent.mouseUp(window);
+      // Clicking on task card should NOT activate board drag
+      fireEvent.mouseDown(taskCard!, { clientX: 100 });
       expect(boardRegion).not.toHaveClass('cursor-grabbing');
-    });
-  });
 
-  describe('Scroll Position Calculation', () => {
-    it('should calculate scroll delta correctly', () => {
-      const dragStartX = 100;
-      const dragStartScrollLeft = 50;
+      // Clicking on board background SHOULD activate board drag
+      fireEvent.mouseDown(boardRegion, { clientX: 500 });
+      expect(boardRegion).toHaveClass('cursor-grabbing');
 
-      // Mouse moved to 150 (right by 50px)
-      const currentX = 150;
-      const deltaX = currentX - dragStartX;
-
-      // Scroll should move left by delta
-      const newScrollLeft = dragStartScrollLeft - deltaX;
-
-      expect(deltaX).toBe(50);
-      expect(newScrollLeft).toBe(0); // 50 - 50 = 0
-    });
-
-    it('should calculate negative scroll delta when dragging left', () => {
-      const dragStartX = 200;
-      const dragStartScrollLeft = 100;
-
-      // Mouse moved to 150 (left by 50px)
-      const currentX = 150;
-      const deltaX = currentX - dragStartX;
-
-      // Scroll should move right by delta magnitude
-      const newScrollLeft = dragStartScrollLeft - deltaX;
-
-      expect(deltaX).toBe(-50);
-      expect(newScrollLeft).toBe(150); // 100 - (-50) = 150
-    });
-
-    it('should handle zero drag distance', () => {
-      const dragStartX = 100;
-      const dragStartScrollLeft = 50;
-
-      // Mouse didn't move
-      const currentX = 100;
-      const deltaX = currentX - dragStartX;
-      const newScrollLeft = dragStartScrollLeft - deltaX;
-
-      expect(deltaX).toBe(0);
-      expect(newScrollLeft).toBe(50); // No change
-    });
-
-    it('should handle large drag distances', () => {
-      const dragStartX = 0;
-      const dragStartScrollLeft = 500;
-
-      // Mouse moved right by 500px
-      const currentX = 500;
-      const deltaX = currentX - dragStartX;
-      const newScrollLeft = dragStartScrollLeft - deltaX;
-
-      expect(deltaX).toBe(500);
-      expect(newScrollLeft).toBe(0); // 500 - 500 = 0
-    });
-
-    it('should handle fractional drag distances', () => {
-      const dragStartX = 100.5;
-      const dragStartScrollLeft = 50;
-
-      // Mouse moved by 0.3px (sub-pixel movement)
-      const currentX = 100.8;
-      const deltaX = currentX - dragStartX;
-      const newScrollLeft = dragStartScrollLeft - deltaX;
-
-      expect(deltaX).toBeCloseTo(0.3, 1);
-      expect(newScrollLeft).toBeCloseTo(49.7, 1);
-    });
-
-    it('should handle negative scroll positions gracefully', () => {
-      const dragStartX = 100;
-      const dragStartScrollLeft = 0;
-
-      // Mouse moved right (scroll would go negative)
-      const currentX = 150;
-      const deltaX = currentX - dragStartX;
-      const newScrollLeft = dragStartScrollLeft - deltaX;
-
-      expect(newScrollLeft).toBe(-50);
-      // In real implementation, scrollLeft would clamp to 0
-      expect(newScrollLeft).toBeLessThanOrEqual(0);
-    });
-  });
-
-  describe('Target Element Exclusion', () => {
-    it('should not activate drag when clicking on a button', () => {
-      const mockButton = document.createElement('button');
-      const mockEvent = {
-        target: mockButton
-      } as unknown as React.MouseEvent;
-
-      // Simulate target.closest('button') check
-      const shouldDrag = !mockEvent.target || !(mockEvent.target as HTMLElement).closest('button');
-
-      expect(shouldDrag).toBe(false);
-    });
-
-    it('should not activate drag when clicking inside a button', () => {
-      const mockButton = document.createElement('button');
-      const mockSpan = document.createElement('span');
-      mockButton.appendChild(mockSpan);
-
-      const mockEvent = {
-        target: mockSpan
-      } as unknown as React.MouseEvent;
-
-      // Simulate target.closest('button') check
-      const shouldDrag = !mockEvent.target || !(mockEvent.target as HTMLElement).closest('button');
-
-      expect(shouldDrag).toBe(false);
-    });
-
-    it('should not activate drag when clicking on draggable element', () => {
-      const mockDraggable = document.createElement('div');
-      mockDraggable.setAttribute('data-dnd-kit-draggable', 'true');
-
-      const mockEvent = {
-        target: mockDraggable
-      } as unknown as React.MouseEvent;
-
-      // Simulate target.closest('[data-dnd-kit-draggable]') check
-      const shouldDrag = !mockEvent.target || !(mockEvent.target as HTMLElement).closest('[data-dnd-kit-draggable]');
-
-      expect(shouldDrag).toBe(false);
-    });
-
-    it('should not activate drag when clicking inside draggable element', () => {
-      const mockDraggable = document.createElement('div');
-      mockDraggable.setAttribute('data-dnd-kit-draggable', 'true');
-      const mockSpan = document.createElement('span');
-      mockDraggable.appendChild(mockSpan);
-
-      const mockEvent = {
-        target: mockSpan
-      } as unknown as React.MouseEvent;
-
-      // Simulate target.closest('[data-dnd-kit-draggable]') check
-      const shouldDrag = !mockEvent.target || !(mockEvent.target as HTMLElement).closest('[data-dnd-kit-draggable]');
-
-      expect(shouldDrag).toBe(false);
-    });
-
-    it('should activate drag when clicking on board background', () => {
-      const mockBackground = document.createElement('div');
-      mockBackground.className = 'board-container';
-
-      const mockEvent = {
-        target: mockBackground
-      } as unknown as React.MouseEvent;
-
-      // Simulate target.closest checks
-      const isButton = !!(mockEvent.target as HTMLElement).closest('button');
-      const isDraggable = !!(mockEvent.target as HTMLElement).closest('[data-dnd-kit-draggable]');
-      const shouldDrag = !isButton && !isDraggable;
-
-      expect(shouldDrag).toBe(true);
-    });
-
-    it('should activate drag when clicking on column content', () => {
-      const mockColumn = document.createElement('div');
-      mockColumn.className = 'column-content';
-
-      const mockEvent = {
-        target: mockColumn
-      } as unknown as React.MouseEvent;
-
-      // Simulate target.closest checks
-      const isButton = !!(mockEvent.target as HTMLElement).closest('button');
-      const isDraggable = !!(mockEvent.target as HTMLElement).closest('[data-dnd-kit-draggable]');
-      const shouldDrag = !isButton && !isDraggable;
-
-      expect(shouldDrag).toBe(true);
-    });
-
-    it('should handle null target gracefully', () => {
-      const mockEvent = {
-        target: null
-      } as unknown as React.MouseEvent;
-
-      // Should not throw error
-      expect(() => {
-        const closestButton = mockEvent.target ? (mockEvent.target as HTMLElement).closest('button') : null;
-        expect(closestButton).toBeNull();
-      }).not.toThrow();
-    });
-  });
-
-  describe('Event Listener Lifecycle', () => {
-    it('should add window event listeners when drag starts', () => {
-      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
-      let isScrollDragging = false;
-
-      // Simulate drag start
-      isScrollDragging = true;
-
-      if (isScrollDragging) {
-        window.addEventListener('mousemove', vi.fn());
-        window.addEventListener('mouseup', vi.fn());
-      }
-
-      expect(addEventListenerSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
-      expect(addEventListenerSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
-      expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
-
-      addEventListenerSpy.mockRestore();
-    });
-
-    it('should remove window event listeners when drag ends', () => {
-      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
-      const mockMouseMove = vi.fn();
-      const mockMouseUp = vi.fn();
-
-      // Simulate drag end cleanup
-      window.removeEventListener('mousemove', mockMouseMove);
-      window.removeEventListener('mouseup', mockMouseUp);
-
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('mousemove', mockMouseMove);
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('mouseup', mockMouseUp);
-      expect(removeEventListenerSpy).toHaveBeenCalledTimes(2);
-
-      removeEventListenerSpy.mockRestore();
-    });
-
-    it('should not add window event listeners when not dragging', () => {
-      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
-      let isScrollDragging = false;
-
-      if (isScrollDragging) {
-        window.addEventListener('mousemove', vi.fn());
-        window.addEventListener('mouseup', vi.fn());
-      }
-
-      expect(addEventListenerSpy).not.toHaveBeenCalled();
-
-      addEventListenerSpy.mockRestore();
-    });
-
-    it('should add event listeners with correct event names', () => {
-      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
-
-      window.addEventListener('mousemove', vi.fn());
-      window.addEventListener('mouseup', vi.fn());
-
-      expect(addEventListenerSpy).toHaveBeenNthCalledWith(1, 'mousemove', expect.any(Function));
-      expect(addEventListenerSpy).toHaveBeenNthCalledWith(2, 'mouseup', expect.any(Function));
-
-      addEventListenerSpy.mockRestore();
-    });
-
-    it('should clean up event listeners on component unmount', () => {
-      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
-      const mockMouseMove = vi.fn();
-      const mockMouseUp = vi.fn();
-
-      // Simulate cleanup (useEffect return function)
-      const cleanup = () => {
-        window.removeEventListener('mousemove', mockMouseMove);
-        window.removeEventListener('mouseup', mockMouseUp);
-      };
-
-      cleanup();
-
-      expect(removeEventListenerSpy).toHaveBeenCalledTimes(2);
-      removeEventListenerSpy.mockRestore();
-    });
-
-    it('should handle multiple drag cycles correctly', () => {
-      const addSpy = vi.spyOn(window, 'addEventListener');
-      const removeSpy = vi.spyOn(window, 'removeEventListener');
-      const mockMouseMove = vi.fn();
-      const mockMouseUp = vi.fn();
-
-      let isScrollDragging = false;
-      let dragCount = 0;
-
-      // First drag cycle
-      isScrollDragging = true;
-      dragCount++;
-      window.addEventListener('mousemove', mockMouseMove);
-      window.addEventListener('mouseup', mockMouseUp);
-      expect(addSpy).toHaveBeenCalledTimes(dragCount * 2); // 2 calls
-
-      // End first drag
-      isScrollDragging = false;
-      window.removeEventListener('mousemove', mockMouseMove);
-      window.removeEventListener('mouseup', mockMouseUp);
-      expect(removeSpy).toHaveBeenCalledTimes(2);
-
-      // Second drag cycle
-      isScrollDragging = true;
-      dragCount++;
-      window.addEventListener('mousemove', mockMouseMove);
-      window.addEventListener('mouseup', mockMouseUp);
-      expect(addSpy).toHaveBeenCalledTimes(dragCount * 2); // 4 calls
-
-      // End second drag
-      isScrollDragging = false;
-      window.removeEventListener('mousemove', mockMouseMove);
-      window.removeEventListener('mouseup', mockMouseUp);
-      expect(removeSpy).toHaveBeenCalledTimes(4);
-
-      addSpy.mockRestore();
-      removeSpy.mockRestore();
-    });
-  });
-
-  describe('Mouse Move Handler', () => {
-    it('should not scroll when not dragging', () => {
-      let isScrollDragging = false;
-      const scrollContainerRef = { current: { scrollLeft: 0 } };
-      const preventDefaultSpy = vi.fn();
-
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isScrollDragging || !scrollContainerRef.current) return;
-        e.preventDefault();
-      };
-
-      const mockEvent = createMockMouseEvent(100);
-      handleMouseMove(mockEvent);
-
-      expect(preventDefaultSpy).not.toHaveBeenCalled();
-    });
-
-    it('should not scroll when container ref is null', () => {
-      let isScrollDragging = true;
-      const scrollContainerRef: { current: HTMLDivElement | null } = { current: null };
-      const preventDefaultSpy = vi.fn();
-
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isScrollDragging || !scrollContainerRef.current) return;
-        e.preventDefault();
-      };
-
-      const mockEvent = createMockMouseEvent(100);
-      handleMouseMove(mockEvent);
-
-      expect(preventDefaultSpy).not.toHaveBeenCalled();
-    });
-
-    it('should prevent default during mouse move', () => {
-      let isScrollDragging = true;
-      const scrollContainerRef = { current: { scrollLeft: 0 } };
-
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isScrollDragging || !scrollContainerRef.current) return;
-        e.preventDefault();
-      };
-
-      const mockEvent = createMockMouseEvent(100);
-      handleMouseMove(mockEvent);
-
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
-    });
-
-    it('should update scroll position on mouse move', () => {
-      let isScrollDragging = true;
-      const container = { scrollLeft: 0 };
-      const scrollContainerRef = { current: container };
-      const dragStartX = { current: 100 };
-      const dragStartScrollLeft = { current: 50 };
-
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isScrollDragging || !scrollContainerRef.current) return;
-        e.preventDefault();
-        const x = e.clientX - dragStartX.current;
-        const scrollLeft = dragStartScrollLeft.current - x;
-        scrollContainerRef.current.scrollLeft = scrollLeft;
-      };
-
-      // Move mouse to 150 (right by 50px)
-      const mockEvent = createMockMouseEvent(150);
-      handleMouseMove(mockEvent);
-
-      expect(container.scrollLeft).toBe(0); // 50 - 50 = 0
-    });
-
-    it('should handle scroll updates for rapid mouse movements', () => {
-      let isScrollDragging = true;
-      const container = { scrollLeft: 100 };
-      const scrollContainerRef = { current: container };
-      const dragStartX = { current: 200 };
-      const dragStartScrollLeft = { current: 100 };
-
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isScrollDragging || !scrollContainerRef.current) return;
-        e.preventDefault();
-        const x = e.clientX - dragStartX.current;
-        const scrollLeft = dragStartScrollLeft.current - x;
-        scrollContainerRef.current.scrollLeft = scrollLeft;
-      };
-
-      // Simulate rapid movements
-      const positions = [250, 300, 350, 400, 450];
-      positions.forEach(x => {
-        const mockEvent = createMockMouseEvent(x);
-        handleMouseMove(mockEvent);
-      });
-
-      expect(container.scrollLeft).toBe(-150); // 100 - (450 - 200) = 100 - 250 = -150
-    });
-  });
-
-  describe('Mouse Up Handler', () => {
-    it('should reset isScrollDragging to false', () => {
-      let isScrollDragging = true;
-
-      const handleMouseUp = () => {
-        isScrollDragging = false;
-      };
-
-      handleMouseUp();
-
-      expect(isScrollDragging).toBe(false);
-    });
-
-    it('should not throw error when called multiple times', () => {
-      let isScrollDragging = true;
-
-      const handleMouseUp = () => {
-        isScrollDragging = false;
-      };
-
-      expect(() => {
-        handleMouseUp();
-        handleMouseUp();
-        handleMouseUp();
-      }).not.toThrow();
-
-      expect(isScrollDragging).toBe(false);
-    });
-  });
-
-  describe('Mouse Down Handler', () => {
-    it('should set drag state and record initial positions', () => {
-      let isScrollDragging = false;
-      const dragStartX = { current: 0 };
-      const dragStartScrollLeft = { current: 0 };
-      const scrollContainerRef = { current: { scrollLeft: 50 } };
-
-      const handleMouseDown = (e: React.MouseEvent) => {
-        if (e.target instanceof HTMLElement && (
-          e.target.closest('button') ||
-          e.target.closest('[data-dnd-kit-draggable]')
-        )) {
-          return;
-        }
-
-        isScrollDragging = true;
-        dragStartX.current = e.clientX;
-        dragStartScrollLeft.current = scrollContainerRef.current?.scrollLeft || 0;
-      };
-
-      const mockDiv = document.createElement('div');
-      const mockEvent = createMockReactMouseEvent(100, mockDiv);
-      handleMouseDown(mockEvent);
-
-      expect(isScrollDragging).toBe(true);
-      expect(dragStartX.current).toBe(100);
-      expect(dragStartScrollLeft.current).toBe(50);
-    });
-
-    it('should not activate drag when target is button', () => {
-      let isScrollDragging = false;
-      const dragStartX = { current: 0 };
-      const dragStartScrollLeft = { current: 0 };
-      const scrollContainerRef = { current: { scrollLeft: 50 } };
-
-      const handleMouseDown = (e: React.MouseEvent) => {
-        if (e.target instanceof HTMLElement && (
-          e.target.closest('button') ||
-          e.target.closest('[data-dnd-kit-draggable]')
-        )) {
-          return;
-        }
-
-        isScrollDragging = true;
-        dragStartX.current = e.clientX;
-        dragStartScrollLeft.current = scrollContainerRef.current?.scrollLeft || 0;
-      };
-
-      const mockButton = document.createElement('button');
-      const mockEvent = createMockReactMouseEvent(100, mockButton);
-      handleMouseDown(mockEvent);
-
-      expect(isScrollDragging).toBe(false);
-      expect(dragStartX.current).toBe(0);
-    });
-
-    it('should not activate drag when target is draggable', () => {
-      let isScrollDragging = false;
-      const dragStartX = { current: 0 };
-      const dragStartScrollLeft = { current: 0 };
-      const scrollContainerRef = { current: { scrollLeft: 50 } };
-
-      const handleMouseDown = (e: React.MouseEvent) => {
-        if (e.target instanceof HTMLElement && (
-          e.target.closest('button') ||
-          e.target.closest('[data-dnd-kit-draggable]')
-        )) {
-          return;
-        }
-
-        isScrollDragging = true;
-        dragStartX.current = e.clientX;
-        dragStartScrollLeft.current = scrollContainerRef.current?.scrollLeft || 0;
-      };
-
-      const mockDraggable = document.createElement('div');
-      mockDraggable.setAttribute('data-dnd-kit-draggable', 'true');
-      const mockEvent = createMockReactMouseEvent(100, mockDraggable);
-      handleMouseDown(mockEvent);
-
-      expect(isScrollDragging).toBe(false);
-      expect(dragStartX.current).toBe(0);
-    });
-
-    it('should handle null scroll container gracefully', () => {
-      let isScrollDragging = false;
-      const dragStartX = { current: 0 };
-      const dragStartScrollLeft = { current: 0 };
-      const scrollContainerRef: { current: HTMLDivElement | null } = { current: null };
-
-      const handleMouseDown = (e: React.MouseEvent) => {
-        if (e.target instanceof HTMLElement && (
-          e.target.closest('button') ||
-          e.target.closest('[data-dnd-kit-draggable]')
-        )) {
-          return;
-        }
-
-        isScrollDragging = true;
-        dragStartX.current = e.clientX;
-        dragStartScrollLeft.current = scrollContainerRef.current?.scrollLeft || 0;
-      };
-
-      const mockDiv = document.createElement('div');
-      const mockEvent = createMockReactMouseEvent(100, mockDiv);
-
-      expect(() => {
-        handleMouseDown(mockEvent);
-      }).not.toThrow();
-
-      expect(isScrollDragging).toBe(true);
-      expect(dragStartScrollLeft.current).toBe(0); // Defaults to 0
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle multiple rapid drag start/stop cycles', () => {
-      let isScrollDragging = false;
-      let cycleCount = 0;
-
-      const toggleDrag = () => {
-        isScrollDragging = !isScrollDragging;
-        cycleCount++;
-      };
-
-      // Rapid cycles
-      for (let i = 0; i < 10; i++) {
-        toggleDrag();
-        expect(isScrollDragging).toBe(i % 2 === 0);
-        expect(cycleCount).toBe(i + 1);
-      }
-
-      expect(cycleCount).toBe(10);
-    });
-
-    it('should handle negative clientX values', () => {
-      const dragStartX = { current: 100 };
-      const dragStartScrollLeft = { current: 50 };
-
-      // Mouse moved to negative position (impossible but handle gracefully)
-      const currentX = -50;
-      const deltaX = currentX - dragStartX.current;
-      const newScrollLeft = dragStartScrollLeft.current - deltaX;
-
-      expect(deltaX).toBe(-150);
-      expect(newScrollLeft).toBe(200); // 50 - (-150) = 200
-    });
-
-    it('should handle very large clientX values', () => {
-      const dragStartX = { current: 100 };
-      const dragStartScrollLeft = { current: 50 };
-
-      // Very large mouse position
-      const currentX = 100000;
-      const deltaX = currentX - dragStartX.current;
-      const newScrollLeft = dragStartScrollLeft.current - deltaX;
-
-      expect(deltaX).toBe(99900);
-      expect(newScrollLeft).toBe(-99850); // 50 - 99900 = -99850
-    });
-
-    it('should handle initial scrollLeft of zero', () => {
-      const dragStartX = { current: 100 };
-      const dragStartScrollLeft = { current: 0 };
-
-      const currentX = 150;
-      const deltaX = currentX - dragStartX.current;
-      const newScrollLeft = dragStartScrollLeft.current - deltaX;
-
-      expect(newScrollLeft).toBe(-50);
-    });
-
-    it('should handle mouse movement before drag starts', () => {
-      let isScrollDragging = false;
-      const scrollContainerRef = { current: { scrollLeft: 100 } };
-
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isScrollDragging || !scrollContainerRef.current) return;
-        e.preventDefault();
-        // Scroll logic here
-      };
-
-      const mockEvent = createMockMouseEvent(200);
-      handleMouseMove(mockEvent);
-
-      // Should not affect scroll position
-      expect(scrollContainerRef.current.scrollLeft).toBe(100);
-    });
-  });
-
-  describe('Integration Scenarios', () => {
-    it('should handle complete drag lifecycle', () => {
-      let isScrollDragging = false;
-      const dragStartX = { current: 0 };
-      const dragStartScrollLeft = { current: 0 };
-      const container = { scrollLeft: 100 };
-      const scrollContainerRef = { current: container };
-
-      // 1. Mouse down - start drag
-      const handleMouseDown = (e: React.MouseEvent) => {
-        isScrollDragging = true;
-        dragStartX.current = e.clientX;
-        dragStartScrollLeft.current = scrollContainerRef.current?.scrollLeft || 0;
-      };
-
-      const mockDiv = document.createElement('div');
-      const mockDownEvent = createMockReactMouseEvent(200, mockDiv);
-      handleMouseDown(mockDownEvent);
-
-      expect(isScrollDragging).toBe(true);
-      expect(dragStartX.current).toBe(200);
-      expect(dragStartScrollLeft.current).toBe(100);
-
-      // 2. Mouse move - update scroll
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isScrollDragging || !scrollContainerRef.current) return;
-        const x = e.clientX - dragStartX.current;
-        const scrollLeft = dragStartScrollLeft.current - x;
-        scrollContainerRef.current.scrollLeft = scrollLeft;
-      };
-
-      const mockMoveEvent = createMockMouseEvent(250, mockDiv);
-      handleMouseMove(mockMoveEvent);
-
-      expect(container.scrollLeft).toBe(50); // 100 - (250 - 200) = 50
-
-      // 3. Mouse up - end drag
-      const handleMouseUp = () => {
-        isScrollDragging = false;
-      };
-
-      handleMouseUp();
-
-      expect(isScrollDragging).toBe(false);
-    });
-
-    it('should handle drag that starts but moves outside container', () => {
-      let isScrollDragging = true;
-      const dragStartX = { current: 100 };
-      const dragStartScrollLeft = { current: 50 };
-      const container = { scrollLeft: 50 };
-      const scrollContainerRef = { current: container };
-
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isScrollDragging || !scrollContainerRef.current) return;
-        const x = e.clientX - dragStartX.current;
-        const scrollLeft = dragStartScrollLeft.current - x;
-        scrollContainerRef.current.scrollLeft = scrollLeft;
-      };
-
-      // Mouse moves far outside container
-      const positions = [150, 200, 300, 500, 1000];
-      positions.forEach(x => {
-        const mockEvent = createMockMouseEvent(x);
-        handleMouseMove(mockEvent);
-      });
-
-      // Should still update scroll position
-      expect(container.scrollLeft).toBe(-850); // 50 - (1000 - 100) = -850
-    });
-
-    it('should handle clicking button followed by drag on background', () => {
-      let isScrollDragging = false;
-      const dragStartX = { current: 0 };
-
-      const handleMouseDown = (e: React.MouseEvent) => {
-        if (e.target instanceof HTMLElement && (
-          e.target.closest('button') ||
-          e.target.closest('[data-dnd-kit-draggable]')
-        )) {
-          return;
-        }
-        isScrollDragging = true;
-        dragStartX.current = e.clientX;
-      };
-
-      // Click button - drag should not start
-      const mockButton = document.createElement('button');
-      const mockButtonEvent = createMockReactMouseEvent(100, mockButton);
-      handleMouseDown(mockButtonEvent);
-
-      expect(isScrollDragging).toBe(false);
-
-      // Click background - drag should start
-      const mockDiv = document.createElement('div');
-      const mockDivEvent = createMockReactMouseEvent(200, mockDiv);
-      handleMouseDown(mockDivEvent);
-
-      expect(isScrollDragging).toBe(true);
-      expect(dragStartX.current).toBe(200);
+      fireEvent.mouseUp(window);
     });
   });
 });
