@@ -405,9 +405,8 @@ class TestCliUtilsGetProjectDir:
         from cli.utils import get_project_dir
 
         result = get_project_dir(temp_dir)
-        # get_project_dir calls .resolve() which normalizes paths
-        # (resolves symlinks on macOS, short names on Windows)
-        assert result == temp_dir.resolve()
+        # Resolve symlinks for comparison (macOS /var -> /private/var)
+        assert result.resolve() == temp_dir.resolve()
 
     def test_get_project_dir_auto_detects_backend(self, temp_dir):
         """Auto-detect when running from apps/backend directory."""
@@ -425,7 +424,7 @@ class TestCliUtilsGetProjectDir:
             os.chdir(backend_dir)
             result = get_project_dir(None)
             # Should go up 2 levels from backend to project root
-            # Use resolve() on both sides to normalize paths (symlinks on macOS, short names on Windows)
+            # Resolve symlinks for comparison (macOS /var -> /private/var)
             assert result.resolve() == temp_dir.resolve()
         finally:
             os.chdir(original_cwd)
@@ -448,7 +447,7 @@ class TestCliUtilsSetupEnvironment:
         script_dir = setup_environment()
 
         # Verify script_dir is the apps/backend directory
-        # Use case-insensitive comparison for macOS (case-insensitive filesystem)
+        # Use case-insensitive comparison for macOS filesystem compatibility
         assert script_dir.name.lower() == "backend"
         assert script_dir.parent.name.lower() == "apps"
 
