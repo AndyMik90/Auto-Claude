@@ -842,8 +842,7 @@ export function App() {
                                   )}
                                   <span className={cn(
                                     "text-muted-foreground",
-                                    isFailure && "text-red-400",
-                                    isDisabled && "text-muted-foreground/60"
+                                    isFailure && "text-red-400"
                                   )}>
                                     {subKey.replace(/_/g, ' ')}
                                   </span>
