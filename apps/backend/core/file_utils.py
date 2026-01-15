@@ -140,8 +140,8 @@ def sanitize_filename(filename: str) -> str:
         Sanitized filename safe for Windows. Returns "_unnamed" if sanitization
         produces an empty string.
     """
-    if not filename:
-        return filename
+    if not filename or not filename.strip():
+        return "_unnamed"
 
     # Replace invalid characters
     sanitized = filename.translate(_WINDOWS_INVALID_CHARS_MAP)
