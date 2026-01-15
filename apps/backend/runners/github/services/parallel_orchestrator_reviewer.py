@@ -25,7 +25,6 @@ from typing import Any
 from claude_agent_sdk import AgentDefinition
 
 try:
-    from ...core.client import create_client
     from ...phase_config import get_thinking_budget
     from ..context_gatherer import PRContext, PRContextGatherer, _validate_git_ref
     from ..gh_client import GHClient
@@ -47,8 +46,6 @@ try:
     from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
     from context_gatherer import PRContext, PRContextGatherer, _validate_git_ref
-    from core.client import create_client
-    from phase_config import get_thinking_budget
     from gh_client import GHClient
     from models import (
         BRANCH_BEHIND_BLOCKER_MSG,
@@ -58,6 +55,7 @@ except (ImportError, ValueError, SystemError):
         PRReviewResult,
         ReviewSeverity,
     )
+    from phase_config import get_thinking_budget
     from services.base_parallel_reviewer import (
         DEBUG_MODE,
         BaseParallelReviewer,

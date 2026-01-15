@@ -30,7 +30,6 @@ from .conflict_resolver import ConflictResolver
 from .file_evolution import FileEvolutionTracker
 from .git_utils import find_worktree, get_file_from_branch
 from .merge_pipeline import MergePipeline
-
 from .models import MergeReport, MergeStats, TaskMergeRequest
 from .semantic_analyzer import SemanticAnalyzer
 from .types import (

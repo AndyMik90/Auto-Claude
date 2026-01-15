@@ -821,8 +821,8 @@
             "expected": "passed"
           },
           "status": "completed",
-          "notes": "Final verification completed. All acceptance criteria verified:\n\n1. **Zero shim files**: No files with 'Backward compatibility shim' as first line (0 found)\n2. **No bare except clauses**: All bare `except:` replaced with specific exception handling (0 found)\n3. **Test files moved**: 11 test files successfully moved to /tests/ directory\n4. **No backward compat comments**: All '# Backwards compatibility' comments removed (0 found)\n5. **Chunk aliases removed**: No 'chunks' references in implementation_plan/phase.py (0 found)\n6. **Chunk exports removed**: No 'Chunk' exports in implementation_plan/__init__.py (0 found)\n\n**Syntax verification**: All modified files pass Python syntax compilation check (py_compile):\n- run.py, core/client.py, core/agent.py\n- analysis/security_scanner.py, services/orchestrator.py, analysis/ci_discovery.py\n- runners/github/runner.py, runners/github/rate_limiter.py, runners/github/file_lock.py\n- runners/github/services/base_parallel_reviewer.py\n- prediction/predictor.py, project/analyzer.py, merge/orchestrator.py\n\n**CLI verification**: `python run.py --list` executes successfully and lists all specs.\n\n**Note**: pytest command blocked by security restrictions in this agent environment. Full test suite should be run manually before merge: `apps/backend/.venv/bin/pytest tests/ -v`",
-          "updated_at": "2026-01-14T13:15:00.000000+00:00"
+          "notes": "Final verification completed. All acceptance criteria verified: zero shim files, zero bare except clauses, 11 test files moved, no backward compat comments, chunk aliases removed, all modified files pass syntax check. pytest blocked by security restrictions - should be run manually before merge.",
+          "updated_at": "2026-01-14T12:13:07.697846+00:00"
         }
       ]
     }
@@ -930,10 +930,36 @@
       ]
     }
   },
-  "qa_signoff": null,
-  "status": "in_progress",
-  "planStatus": "in_progress",
-  "updated_at": "2026-01-14T12:10:36.293Z",
-  "last_updated": "2026-01-14T12:10:24.232944+00:00",
-  "recoveryNote": "Task recovered from stuck state at 2026-01-14T08:18:11.383Z"
+  "qa_signoff": {
+    "status": "approved",
+    "qa_session": 1,
+    "issues_found": [
+      {
+        "description": "Major (non-blocking): GRAPHITI_MCP_URL still has localhost default, some except Exception: patterns remain in defensive code paths"
+      }
+    ],
+    "tests_passed": {},
+    "timestamp": "2026-01-14T12:18:18.731776+00:00",
+    "ready_for_qa_revalidation": false
+  },
+  "status": "pr_created",
+  "planStatus": "pr_created",
+  "updated_at": "2026-01-14T16:47:04.846Z",
+  "last_updated": "2026-01-14T12:18:18.731786+00:00",
+  "recoveryNote": "Task recovered from stuck state at 2026-01-14T08:18:11.383Z",
+  "qa_iteration_history": [
+    {
+      "iteration": 1,
+      "status": "approved",
+      "timestamp": "2026-01-14T12:18:28.585002+00:00",
+      "issues": [],
+      "duration_seconds": 308.91
+    }
+  ],
+  "qa_stats": {
+    "total_iterations": 1,
+    "last_iteration": 1,
+    "last_status": "approved",
+    "issues_by_type": {}
+  }
 }

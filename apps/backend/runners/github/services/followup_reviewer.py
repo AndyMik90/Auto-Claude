@@ -34,7 +34,7 @@ try:
         ReviewCategory,
         ReviewSeverity,
     )
-    from .category_utils import map_category, map_severity, SEVERITY_MAPPING
+    from .category_utils import SEVERITY_MAPPING, map_category
     from .io_utils import safe_print
     from .prompt_manager import PromptManager
     from .pydantic_models import FollowupReviewResponse
@@ -47,7 +47,7 @@ except (ImportError, ValueError, SystemError):
         ReviewCategory,
         ReviewSeverity,
     )
-    from services.category_utils import map_category, map_severity, SEVERITY_MAPPING
+    from services.category_utils import SEVERITY_MAPPING, map_category
     from services.io_utils import safe_print
     from services.prompt_manager import PromptManager
     from services.pydantic_models import FollowupReviewResponse

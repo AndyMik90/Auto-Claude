@@ -9,6 +9,7 @@ Functions for finalizing workspaces and handling user choices after build comple
 import sys
 from pathlib import Path
 
+from core.worktree import WorktreeInfo, WorktreeManager
 from ui import (
     Icons,
     MenuOption,
@@ -23,7 +24,6 @@ from ui import (
     success,
     warning,
 )
-from core.worktree import WorktreeInfo, WorktreeManager
 
 from .display import show_build_summary, show_changed_files
 from .git_utils import get_existing_build_worktree

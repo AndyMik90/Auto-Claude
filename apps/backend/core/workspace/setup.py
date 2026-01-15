@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from core.git_executable import run_git
+from core.worktree import WorktreeManager
 from merge import FileTimelineTracker
 from security.constants import ALLOWLIST_FILENAME, PROFILE_FILENAME
 from ui import (
@@ -24,7 +25,6 @@ from ui import (
     select_menu,
     success,
 )
-from core.worktree import WorktreeManager
 
 from .git_utils import has_uncommitted_changes
 from .models import WorkspaceMode

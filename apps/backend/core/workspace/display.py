@@ -6,6 +6,7 @@ Workspace Display
 Functions for displaying workspace information and build summaries.
 """
 
+from core.worktree import WorktreeManager
 from ui import (
     bold,
     error,
@@ -13,7 +14,6 @@ from ui import (
     print_status,
     success,
 )
-from core.worktree import WorktreeManager
 
 
 def show_build_summary(manager: WorktreeManager, spec_name: str) -> None:

@@ -37,8 +37,8 @@ from prompts_pkg import (
     is_first_run,
     load_subtask_context,
 )
-from services.recovery import RecoveryManager
 from security.constants import PROJECT_DIR_ENV_VAR
+from services.recovery import RecoveryManager
 from task_logger import (
     LogPhase,
     get_task_logger,

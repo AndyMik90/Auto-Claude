@@ -92,7 +92,11 @@ async def test_graphiti_connection() -> tuple[bool, str]:
     try:
         from graphiti_core import Graphiti
         from graphiti_core.driver.falkordb_driver import FalkorDriver
-        from integrations.graphiti.providers_pkg import ProviderError, create_embedder, create_llm_client
+        from integrations.graphiti.providers_pkg import (
+            ProviderError,
+            create_embedder,
+            create_llm_client,
+        )
 
         # Create providers
         try:

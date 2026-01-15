@@ -23,7 +23,10 @@ class RequirementsPhaseMixin:
 
     async def phase_historical_context(self) -> PhaseResult:
         """Retrieve historical context from Graphiti knowledge graph (if enabled)."""
-        from integrations.graphiti.providers_pkg import get_graph_hints, is_graphiti_enabled
+        from integrations.graphiti.providers_pkg import (
+            get_graph_hints,
+            is_graphiti_enabled,
+        )
 
         hints_file = self.spec_dir / "graph_hints.json"
 

@@ -22,6 +22,7 @@ from pathlib import Path
 
 # Import git command helper for centralized logging and allowlist compliance
 from core.git_executable import run_git
+from core.worktree import WorktreeManager
 from ui import (
     Icons,
     bold,
@@ -34,7 +35,6 @@ from ui import (
     success,
     warning,
 )
-from core.worktree import WorktreeManager
 
 # Import debug utilities
 try:
