@@ -110,7 +110,9 @@ class DependencyValidator:
 
         return circular_paths
 
-    def _calculate_reverse_deps(self, features: list[RoadmapFeature]) -> dict[str, list[str]]:
+    def _calculate_reverse_deps(
+        self, features: list[RoadmapFeature]
+    ) -> dict[str, list[str]]:
         """Calculate which features depend on each feature."""
         reverse_deps = {}
 
