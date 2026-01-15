@@ -814,8 +814,8 @@ export function App() {
                               </>
                             ) : (
                               <>
-                                <XCircle className="h-4 w-4 text-red-500" />
-                                <span className="text-xs text-red-600 font-semibold">
+                                <XCircle className="h-4 w-4 text-red-400" />
+                                <span className="text-sm text-red-400 font-semibold">
                                   {t('common:health.failed')}
                                 </span>
                               </>
@@ -827,15 +827,15 @@ export function App() {
                         {check.checks && Object.keys(check.checks).length > 0 && (
                           <div className="px-3 py-2 space-y-1.5 bg-card">
                             {Object.entries(check.checks).map(([subKey, passed]) => (
-                              <div key={subKey} className="flex items-center gap-2 text-xs">
+                              <div key={subKey} className="flex items-center gap-2 text-sm">
                                 {passed ? (
-                                  <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
                                 ) : (
-                                  <XCircle className="h-3 w-3 text-red-500 shrink-0" />
+                                  <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
                                 )}
                                 <span className={cn(
                                   "text-muted-foreground",
-                                  !passed && "text-red-600"
+                                  !passed && "text-red-400"
                                 )}>
                                   {subKey.replace(/_/g, ' ')}
                                 </span>
@@ -856,9 +856,9 @@ export function App() {
                               <div className="mt-2 pt-2 border-t border-border">
                                 {check.details.inconsistencies && Array.isArray(check.details.inconsistencies) && check.details.inconsistencies.length > 0 && (
                                   <div className="space-y-1">
-                                    <p className="text-xs font-semibold text-red-600">Issues found:</p>
+                                    <p className="text-sm font-semibold text-red-400">Issues found:</p>
                                     {check.details.inconsistencies.map((item: any, idx: number) => (
-                                      <p key={idx} className="text-xs text-red-600 pl-2">
+                                      <p key={idx} className="text-sm text-red-400 pl-2">
                                         • {item.variable}: {item.issue}
                                       </p>
                                     ))}
