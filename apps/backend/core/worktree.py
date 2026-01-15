@@ -1165,6 +1165,8 @@ class WorktreeManager:
             # Silently ignore errors when fetching existing PR URL - this is a best-effort
             # lookup that may fail due to network issues, missing gh CLI, or auth problems.
             # Returning None allows the caller to handle missing URLs gracefully.
+            if isinstance(e, FileNotFoundError):
+                invalidate_gh_cache()
             debug_warning("worktree", f"Could not get existing PR URL: {e}")
 
         return None
