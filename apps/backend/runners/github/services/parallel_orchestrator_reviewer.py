@@ -516,12 +516,11 @@ The SDK will run invoked agents in parallel automatically.
                         head_sha, context.pr_number
                     )
                     project_root = worktree_path
-                    if DEBUG_MODE:
-                        safe_print(
-                            f"[PRReview] DEBUG: Using worktree as "
-                            f"project_root={project_root}",
-                            flush=True,
-                        )
+                    # Always log worktree creation (not gated by DEBUG_MODE)
+                    safe_print(
+                        f"[PRReview] Created worktree at {worktree_path.name} for PR review",
+                        flush=True,
+                    )
                 except (RuntimeError, ValueError) as e:
                     if DEBUG_MODE:
                         safe_print(
@@ -547,13 +546,17 @@ The SDK will run invoked agents in parallel automatically.
                     context.changed_files,
                     project_root,
                 )
+                # Always log rescan result (not gated by DEBUG_MODE)
                 if new_related_files:
                     context.related_files = new_related_files
                     safe_print(
-                        f"[PRReview] Rescanned: found {len(new_related_files)} related files"
+                        f"[PRReview] Rescanned in worktree: found {len(new_related_files)} related files"
                     )
-                elif DEBUG_MODE:
-                    safe_print("[PRReview] DEBUG: No related files found in worktree")
+                else:
+                    safe_print(
+                        f"[PRReview] Rescanned in worktree: found 0 related files "
+                        f"(initial scan found {len(context.related_files)})"
+                    )
 
             # Build orchestrator prompt AFTER worktree creation and related files rescan
             prompt = self._build_orchestrator_prompt(context)
