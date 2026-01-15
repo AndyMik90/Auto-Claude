@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, X, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
@@ -26,6 +26,9 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
+  // Ref to track current version for stable callbacks
+  const currentVersionRef = useRef<string | null>(null);
+
   // Check for updates
   const checkForUpdate = useCallback(async () => {
     try {
@@ -35,12 +38,16 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
 
       const result = await window.electronAPI.checkAppUpdate();
       if (result.success && result.data) {
+        const newVersion = result.data.version;
         // New update available - show banner (unless same version already dismissed)
-        if (!updateInfo || updateInfo.version !== result.data.version) {
+        if (currentVersionRef.current !== newVersion) {
           setIsDismissed(false);
+          // Reset downloaded state when a newer version is found
+          setIsDownloaded(false);
+          currentVersionRef.current = newVersion;
         }
         setUpdateInfo({
-          version: result.data.version,
+          version: newVersion,
           releaseNotes: result.data.releaseNotes,
           releaseDate: result.data.releaseDate,
         });
@@ -48,7 +55,7 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
     } catch (err) {
       // Silent failure - update check is non-critical
     }
-  }, [updateInfo]);
+  }, []);
 
   // Check if there's already a downloaded update on mount
   useEffect(() => {
@@ -59,6 +66,7 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
         }
         const result = await window.electronAPI.getDownloadedAppUpdate();
         if (result.success && result.data) {
+          currentVersionRef.current = result.data.version;
           setUpdateInfo({
             version: result.data.version,
             releaseNotes: result.data.releaseNotes,
@@ -91,9 +99,10 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
     }
 
     const cleanup = window.electronAPI.onAppUpdateAvailable((info) => {
-      // New update notification - reset dismiss state
-      if (!updateInfo || updateInfo.version !== info.version) {
+      // New update notification - reset dismiss state if new version
+      if (currentVersionRef.current !== info.version) {
         setIsDismissed(false);
+        currentVersionRef.current = info.version;
       }
       setUpdateInfo(info);
       setIsDownloading(false);
@@ -103,7 +112,7 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
     });
 
     return cleanup;
-  }, [updateInfo]);
+  }, []);
 
   // Listen for download progress
   useEffect(() => {
@@ -137,7 +146,7 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
   const handleUpdate = async () => {
     if (isDownloaded) {
       // Already downloaded - just install
-      window.electronAPI.installAppUpdate();
+      window.electronAPI?.installAppUpdate?.();
       return;
     }
 
@@ -146,6 +155,11 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
     setDownloadError(null);
 
     try {
+      if (!window.electronAPI?.downloadAppUpdate) {
+        setDownloadError(t("navigation:updateBanner.downloadError"));
+        setIsDownloading(false);
+        return;
+      }
       const result = await window.electronAPI.downloadAppUpdate();
       if (!result.success) {
         setDownloadError(result.error || t("navigation:updateBanner.downloadError"));
@@ -183,6 +197,7 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
           </span>
         </div>
         <button
+          type="button"
           onClick={handleDismiss}
           className="text-muted-foreground hover:text-foreground transition-colors"
           aria-label={t("navigation:updateBanner.dismiss")}
