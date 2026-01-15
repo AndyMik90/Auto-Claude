@@ -33,7 +33,9 @@ import { registerClaudeCodeHandlers } from './claude-code-handlers';
 import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
+import { registerTaskRecoveryHandlers } from './task-recovery-handlers';
 import { notificationService } from '../notification-service';
+import { getTaskRecoveryService } from '../index';
 
 /**
  * Setup all IPC handlers across all domains
@@ -117,6 +119,12 @@ export function setupIpcHandlers(
 
   // API Profile handlers (custom Anthropic-compatible endpoints)
   registerProfileHandlers();
+
+  // Task Recovery handlers (auto-recovery stats and config)
+  const recoveryService = getTaskRecoveryService();
+  if (recoveryService) {
+    registerTaskRecoveryHandlers(recoveryService);
+  }
 
   console.warn('[IPC] All handler modules registered successfully');
 }

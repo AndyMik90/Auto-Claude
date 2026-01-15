@@ -28,7 +28,7 @@ export function TaskLogStatusBar() {
 
   // Memoize running tasks to prevent infinite re-renders
   const runningTasks = useMemo(
-    () => tasks.filter((t) => t.status === 'in_progress'),
+    () => tasks.filter((t) => t.status === 'in_progress' || t.status === 'ai_review'),
     [tasks]
   );
 

@@ -27,6 +27,11 @@ export const IPC_CHANNELS = {
   TASK_UPDATE_STATUS: 'task:updateStatus',
   TASK_RECOVER_STUCK: 'task:recoverStuck',
   TASK_CHECK_RUNNING: 'task:checkRunning',
+  TASK_RECOVERY_STATS: 'task:recoveryStats',
+  TASK_RECOVERY_CONFIG_GET: 'task:recoveryConfigGet',
+  TASK_RECOVERY_CONFIG_UPDATE: 'task:recoveryConfigUpdate',
+  TASK_RECOVERY_HEALTHCHECK: 'task:recoveryHealthcheck',
+  TASK_RECOVERY_HEALTH_STATUS: 'task:recoveryHealthStatus',
 
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
