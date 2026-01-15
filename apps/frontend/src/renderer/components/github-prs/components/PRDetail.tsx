@@ -274,6 +274,10 @@ export function PRDetail({
     setCleanReviewError(null);
     setIsPostingCleanReview(false);
     setShowCleanReviewErrorDetails(false);
+    // Reset blocked status state as well
+    setBlockedStatusPosted(false);
+    setBlockedStatusError(null);
+    setIsPostingBlockedStatus(false);
   }, [pr.number]);
 
   // Check for workflows awaiting approval (fork PRs) when PR changes or review completes
