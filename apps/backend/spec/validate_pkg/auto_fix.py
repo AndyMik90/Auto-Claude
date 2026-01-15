@@ -8,6 +8,7 @@ Automated fixes for common implementation plan issues.
 import json
 from pathlib import Path
 
+from core.file_utils import safe_open
 from core.plan_normalization import normalize_subtask_aliases
 
 
@@ -171,7 +172,7 @@ def auto_fix_plan(spec_dir: Path) -> bool:
 
     if fixed:
         try:
-            with open(plan_file, "w", encoding="utf-8") as f:
+            with safe_open(plan_file, "w") as f:
                 json.dump(plan, f, indent=2, ensure_ascii=False)
         except OSError:
             return False
