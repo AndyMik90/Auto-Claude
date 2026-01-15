@@ -688,13 +688,26 @@ class GitHubOrchestrator:
                 elif previous_was_blocked_by_ci and current_failing == 0:
                     # CI has recovered! Update verdict to reflect this
                     safe_print(
-                        f"[Followup] CI recovered - updating verdict from BLOCKED",
+                        "[Followup] CI recovered - updating verdict from BLOCKED",
                         flush=True,
                     )
-                    # Use previous verdict if it wasn't blocked, otherwise check findings
-                    if previous_review.findings:
+                    # Check for remaining non-CI blockers
+                    previous_blockers = getattr(previous_review, "blockers", [])
+                    non_ci_blockers = [
+                        b for b in previous_blockers if not b.startswith("CI Failed:")
+                    ]
+
+                    # Determine verdict based on findings AND remaining blockers
+                    if non_ci_blockers:
+                        # There are still non-CI blockers - stay blocked
+                        updated_verdict = MergeVerdict.BLOCKED
+                        updated_reasoning = (
+                            "CI checks now passing. Non-CI blockers still remain: "
+                            + ", ".join(non_ci_blockers[:3])
+                        )
+                    elif previous_review.findings:
                         # There are still code findings - needs review
-                        updated_verdict = MergeVerdict.REVIEWED_PENDING_POST
+                        updated_verdict = MergeVerdict.NEEDS_REVISION
                         updated_reasoning = (
                             "CI checks now passing. Previous code findings still apply."
                         )
@@ -711,27 +724,35 @@ class GitHubOrchestrator:
                     # No CI-related changes, keep previous verdict
                     updated_verdict = previous_review.verdict
                     updated_reasoning = "No changes since last review."
-                    no_change_summary = (
-                        "No new commits since last review. Previous findings still apply."
-                    )
+                    no_change_summary = "No new commits since last review. Previous findings still apply."
 
                 safe_print(
                     f"[Followup] No changes since last review at {base_sha}",
                     flush=True,
                 )
 
-                # Build blockers list - remove CI blockers if CI now passes
+                # Build blockers list - always filter out CI blockers first, then add current
                 blockers = list(getattr(previous_review, "blockers", []))
-                if current_failing == 0:
-                    # Remove any CI-related blockers since CI is now passing
-                    blockers = [b for b in blockers if "CI" not in b]
-                else:
-                    # Add/update CI blockers
+                # Remove ALL CI-related blockers (use specific prefix to avoid matching "Critical:")
+                blockers = [b for b in blockers if not b.startswith("CI Failed:")]
+
+                # Add back only currently failing CI checks
+                if current_failing > 0:
                     failed_checks = ci_status.get("failed_checks", [])
                     for check_name in failed_checks:
                         blocker_msg = f"CI Failed: {check_name}"
                         if blocker_msg not in blockers:
                             blockers.append(blocker_msg)
+
+                # Map verdict to overall_status (consistent with rest of codebase)
+                if updated_verdict == MergeVerdict.BLOCKED:
+                    overall_status = "request_changes"
+                elif updated_verdict == MergeVerdict.NEEDS_REVISION:
+                    overall_status = "request_changes"
+                elif updated_verdict == MergeVerdict.MERGE_WITH_CHANGES:
+                    overall_status = "comment"
+                else:
+                    overall_status = "approve"
 
                 result = PRReviewResult(
                     pr_number=pr_number,
@@ -739,11 +760,7 @@ class GitHubOrchestrator:
                     success=True,
                     findings=previous_review.findings,
                     summary=no_change_summary,
-                    overall_status=(
-                        "request_changes"
-                        if updated_verdict == MergeVerdict.BLOCKED
-                        else previous_review.overall_status
-                    ),
+                    overall_status=overall_status,
                     verdict=updated_verdict,
                     verdict_reasoning=updated_reasoning,
                     reviewed_commit_sha=followup_context.current_commit_sha
