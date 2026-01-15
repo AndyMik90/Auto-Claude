@@ -291,10 +291,10 @@ describe('claude-integration-handler', () => {
       expect(tokenContents).toBe("@echo off\r\nset \"CLAUDE_CODE_OAUTH_TOKEN=windows-token-value\"\r\n");
       const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
       expect(written).toContain('cls && ');
-      // Windows call command uses the path directly (no bash-style quotes)
-      expect(written).toContain(`call ${tokenPath}`);
+      // Windows call command uses double quotes to handle paths with spaces
+      expect(written).toContain(`call "${tokenPath}"`);
       // Windows del command uses & separator to ensure cleanup even if command fails
-      expect(written).toContain(`& del ${tokenPath}`);
+      expect(written).toContain(`& del "${tokenPath}"`);
       expect(written).toContain(command);
       // Windows uses set "PATH=value" syntax
       expect(written).toContain('set "PATH=');
@@ -587,9 +587,9 @@ describe('claude-integration-handler - Helper Functions', () => {
         expect(result).toContain('cls && ');
         expect(result).toContain("cd 'C:\\Users\\test\\project' && ");
         expect(result).toContain('set "PATH=C:\\Tools\\claude" && ');
-        expect(result).toContain('call C:\\Users\\test\\AppData\\Local\\Temp\\token.bat');
+        expect(result).toContain('call "C:\\Users\\test\\AppData\\Local\\Temp\\token.bat"');
         expect(result).toContain("'C:\\Tools\\claude\\claude.cmd'");
-        expect(result).toContain('& del C:\\Users\\test\\AppData\\Local\\Temp\\token.bat');
+        expect(result).toContain('& del "C:\\Users\\test\\AppData\\Local\\Temp\\token.bat"');
         expect(result).not.toContain('bash -c');
         expect(result).not.toContain('source');
         expect(result).not.toContain('clear');
@@ -638,9 +638,9 @@ describe('claude-integration-handler - Helper Functions', () => {
 
         expect(result).toContain('cls && ');
         expect(result).not.toContain('cd ');
-        expect(result).toContain('call C:\\Users\\test\\AppData\\Local\\Temp\\token.bat');
+        expect(result).toContain('call "C:\\Users\\test\\AppData\\Local\\Temp\\token.bat"');
         expect(result).toContain("'C:\\Tools\\claude\\claude.cmd'");
-        expect(result).toContain('& del C:\\Users\\test\\AppData\\Local\\Temp\\token.bat');
+        expect(result).toContain('& del "C:\\Users\\test\\AppData\\Local\\Temp\\token.bat"');
       });
     });
 
