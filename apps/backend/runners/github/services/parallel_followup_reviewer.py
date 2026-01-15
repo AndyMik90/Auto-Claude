@@ -535,12 +535,20 @@ The SDK will run invoked agents in parallel automatically.
                 )
 
                 # Check for stream processing errors
-                if stream_result.get("error"):
+                # Allow fallback for structured_output_validation_failed - the caller
+                # can fall back to text parsing or partial data extraction
+                error = stream_result.get("error")
+                if error and error != "structured_output_validation_failed":
                     logger.error(
-                        f"[ParallelFollowup] SDK stream failed: {stream_result['error']}"
+                        f"[ParallelFollowup] SDK stream failed: {error}"
                     )
                     raise RuntimeError(
-                        f"SDK stream processing failed: {stream_result['error']}"
+                        f"SDK stream processing failed: {error}"
+                    )
+                elif error == "structured_output_validation_failed":
+                    logger.warning(
+                        "[ParallelFollowup] Structured output validation failed, "
+                        "will attempt fallback to text parsing"
                     )
 
                 result_text = stream_result["result_text"]
@@ -1063,6 +1071,18 @@ The SDK will run invoked agents in parallel automatically.
         resolved_ids = []
         unresolved_ids = []
         new_finding_ids = []
+        dismissed_ids = []
+
+        # First extract dismissed false positives from finding_validations
+        # These should be treated as resolved, not unresolved
+        finding_validations = data.get("finding_validations", [])
+        if isinstance(finding_validations, list):
+            for fv in finding_validations:
+                if isinstance(fv, dict):
+                    if fv.get("validation_status") == "dismissed_false_positive":
+                        finding_id = fv.get("finding_id")
+                        if finding_id:
+                            dismissed_ids.append(finding_id)
 
         # Try to extract resolution verifications
         resolution_verifications = data.get("resolution_verifications", [])
@@ -1072,7 +1092,10 @@ The SDK will run invoked agents in parallel automatically.
                     finding_id = rv.get("finding_id", "")
                     status = rv.get("status", "")
                     if finding_id:
-                        if status == "resolved":
+                        # Check if this finding was dismissed as false positive
+                        if finding_id in dismissed_ids:
+                            resolved_ids.append(finding_id)
+                        elif status == "resolved":
                             resolved_ids.append(finding_id)
                         elif status in (
                             "unresolved",
@@ -1103,13 +1126,13 @@ The SDK will run invoked agents in parallel automatically.
         verdict_reasoning = data.get("verdict_reasoning", "Extracted from partial data")
 
         # Only return if we got any useful data
-        if resolved_ids or unresolved_ids or new_finding_ids:
+        if resolved_ids or unresolved_ids or new_finding_ids or dismissed_ids:
             return {
                 "findings": [],  # Can't reliably extract full findings without validation
                 "resolved_ids": resolved_ids,
                 "unresolved_ids": unresolved_ids,
                 "new_finding_ids": new_finding_ids,
-                "dismissed_false_positive_ids": [],
+                "dismissed_false_positive_ids": dismissed_ids,
                 "confirmed_valid_count": 0,
                 "needs_human_review_count": 0,
                 "verdict": verdict,

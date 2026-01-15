@@ -612,12 +612,20 @@ The SDK will run invoked agents in parallel automatically.
                 )
 
                 # Check for stream processing errors
-                if stream_result.get("error"):
+                # Allow fallback for structured_output_validation_failed - the caller
+                # can fall back to text parsing or partial data extraction
+                error = stream_result.get("error")
+                if error and error != "structured_output_validation_failed":
                     logger.error(
-                        f"[ParallelOrchestrator] SDK stream failed: {stream_result['error']}"
+                        f"[ParallelOrchestrator] SDK stream failed: {error}"
                     )
                     raise RuntimeError(
-                        f"SDK stream processing failed: {stream_result['error']}"
+                        f"SDK stream processing failed: {error}"
+                    )
+                elif error == "structured_output_validation_failed":
+                    logger.warning(
+                        "[ParallelOrchestrator] Structured output validation failed, "
+                        "will attempt fallback to text parsing"
                     )
 
                 result_text = stream_result["result_text"]

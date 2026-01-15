@@ -188,9 +188,9 @@ async def process_sdk_stream(
                 # Log progress periodically so user knows AI is working
                 if msg_count - last_progress_log >= PROGRESS_LOG_INTERVAL:
                     if subagent_tool_ids:
-                        pending = len(subagent_tool_ids)
+                        invoked = len(subagent_tool_ids)
                         safe_print(
-                            f"[{context_name}] Processing... ({msg_count} messages, {pending} agents working)"
+                            f"[{context_name}] Processing... ({msg_count} messages, {invoked} agents invoked)"
                         )
                     else:
                         safe_print(
