@@ -537,6 +537,7 @@ export class AgentProcessManager {
     let allOutput = '';
     let stdoutBuffer = '';
     let stderrBuffer = '';
+    let stderrCollected = ''; // Collect stderr for meaningful error messages
     let sequenceNumber = 0;
     // FIX (ACS-203): Track completed phases to prevent phase overlaps
     // When a phase completes, it's added to this array before transitioning to the next phase
@@ -654,7 +655,10 @@ export class AgentProcessManager {
     });
 
     childProcess.stderr?.on('data', (data: Buffer) => {
-      stderrBuffer = processBufferedOutput(stderrBuffer, data.toString('utf8'));
+      const chunk = data.toString('utf8');
+      stderrBuffer = processBufferedOutput(stderrBuffer, chunk);
+      // Collect stderr for error messages (keep last 2KB for meaningful error extraction)
+      stderrCollected = (stderrCollected + chunk).slice(-2000);
     });
 
     childProcess.on('exit', (code: number | null) => {
@@ -684,14 +688,39 @@ export class AgentProcessManager {
       }
 
       if (code !== 0 && currentPhase !== 'complete' && currentPhase !== 'failed') {
+        // Extract meaningful error message from stderr
+        let errorMessage = `Process exited with code ${code}`;
+        if (stderrCollected.trim()) {
+          const stderrLines = stderrCollected.trim().split('\n').filter(line => line.trim());
+          // Look for error-like patterns
+          const errorPatterns = [
+            /error[:\s]/i, /exception/i, /failed/i, /invalid/i,
+            /unauthorized/i, /forbidden/i, /timeout/i, /traceback/i
+          ];
+          const errorLines = stderrLines.filter(line =>
+            errorPatterns.some(pattern => pattern.test(line))
+          );
+          // Use error lines if found, otherwise last few lines
+          const relevantLines = errorLines.length > 0
+            ? errorLines.slice(-3)
+            : stderrLines.slice(-3);
+          if (relevantLines.length > 0) {
+            const summary = relevantLines.join('\n').trim();
+            errorMessage = summary.length > 500 ? summary.substring(0, 500) + '...' : summary;
+          }
+        }
+
         this.emitter.emit('execution-progress', taskId, {
           phase: 'failed',
           phaseProgress: 0,
           overallProgress: this.events.calculateOverallProgress(currentPhase, phaseProgress),
-          message: `Process exited with code ${code}`,
+          message: errorMessage,
           sequenceNumber: ++sequenceNumber,
           completedPhases: [...completedPhases]
         });
+
+        // Also emit error event for UI
+        this.emitter.emit('error', taskId, errorMessage);
       }
 
       this.emitter.emit('exit', taskId, code, processType);
