@@ -4,6 +4,7 @@ Auto Claude project initialization utilities.
 Handles first-time setup of .auto-claude directory and ensures proper gitignore configuration.
 """
 
+import subprocess
 from pathlib import Path
 
 # All entries that should be added to .gitignore for auto-claude projects
@@ -76,7 +77,62 @@ def ensure_gitignore_entry(project_dir: Path, entry: str = ".auto-claude/") -> b
         return True
 
 
-def ensure_all_gitignore_entries(project_dir: Path) -> list[str]:
+def _is_git_repo(project_dir: Path) -> bool:
+    """Check if the directory is a git repository."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def _commit_gitignore(project_dir: Path) -> bool:
+    """
+    Commit .gitignore changes with a standard message.
+
+    FIX (#1087): Auto-commit .gitignore changes to prevent merge failures.
+    Without this, merging tasks fails with "local changes would be overwritten".
+
+    Args:
+        project_dir: The project root directory
+
+    Returns:
+        True if commit succeeded, False otherwise
+    """
+    if not _is_git_repo(project_dir):
+        return False
+
+    try:
+        # Stage .gitignore
+        result = subprocess.run(
+            ["git", "add", ".gitignore"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return False
+
+        # Commit with standard message
+        result = subprocess.run(
+            ["git", "commit", "-m", "chore: add auto-claude entries to .gitignore"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        # Return True even if commit "fails" due to nothing to commit
+        return result.returncode == 0 or "nothing to commit" in result.stdout
+
+    except Exception:
+        return False
+
+
+def ensure_all_gitignore_entries(project_dir: Path, auto_commit: bool = False) -> list[str]:
     """
     Ensure all auto-claude related entries exist in the project's .gitignore file.
 
@@ -84,6 +140,7 @@ def ensure_all_gitignore_entries(project_dir: Path) -> list[str]:
 
     Args:
         project_dir: The project root directory
+        auto_commit: If True, automatically commit the .gitignore changes
 
     Returns:
         List of entries that were added (empty if all already existed)
@@ -120,6 +177,11 @@ def ensure_all_gitignore_entries(project_dir: Path) -> list[str]:
         added_entries.append(entry)
 
     gitignore_path.write_text(content)
+
+    # Auto-commit if requested and entries were added
+    if auto_commit and added_entries:
+        _commit_gitignore(project_dir)
+
     return added_entries
 
 
@@ -143,16 +205,17 @@ def init_auto_claude_dir(project_dir: Path) -> tuple[Path, bool]:
     auto_claude_dir.mkdir(parents=True, exist_ok=True)
 
     # Ensure all auto-claude entries are in .gitignore (only on first creation)
+    # FIX (#1087): Auto-commit the changes to prevent merge failures
     gitignore_updated = False
     if dir_created:
-        added = ensure_all_gitignore_entries(project_dir)
+        added = ensure_all_gitignore_entries(project_dir, auto_commit=True)
         gitignore_updated = len(added) > 0
     else:
         # Even if dir exists, check gitignore on first run
         # Use a marker file to track if we've already checked
         marker = auto_claude_dir / ".gitignore_checked"
         if not marker.exists():
-            added = ensure_all_gitignore_entries(project_dir)
+            added = ensure_all_gitignore_entries(project_dir, auto_commit=True)
             gitignore_updated = len(added) > 0
             marker.touch()
 
@@ -200,8 +263,8 @@ def repair_gitignore(project_dir: Path) -> list[str]:
     if marker.exists():
         marker.unlink()
 
-    # Add all missing entries
-    added = ensure_all_gitignore_entries(project_dir)
+    # Add all missing entries and auto-commit
+    added = ensure_all_gitignore_entries(project_dir, auto_commit=True)
 
     # Re-create the marker
     if auto_claude_dir.exists():
