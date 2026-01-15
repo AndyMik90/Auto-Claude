@@ -2013,30 +2013,31 @@ export function registerWorktreeHandlers(
                 debug: isDebugMode
               });
 
-              // Check if merge might have succeeded before the hang
-              // Look for success indicators in the output
-              const mayHaveSucceeded = stdout.includes('staged') ||
-                                       stdout.includes('Successfully merged') ||
-                                       stdout.includes('Changes from');
+              // FIX (#1089): Don't assume success based on pattern matching
+              // Pattern matching stdout for "staged" or "Successfully merged" can cause false positives
+              // when the process times out partway through, leaving the repo in an inconsistent state.
+              // Instead, always treat timeout as a failure requiring user verification.
+              const hasOutput = stdout.length > 0 || stderr.length > 0;
+              debug('TIMEOUT: Process hung. stdout length:', stdout.length, 'stderr length:', stderr.length);
 
-              if (mayHaveSucceeded) {
-                debug('TIMEOUT: Process hung but merge may have succeeded based on output');
-                const isStageOnly = options?.noCommit === true;
-                resolve({
-                  success: true,
-                  data: {
-                    success: true,
-                    message: 'Changes staged (process timed out but merge appeared successful)',
-                    staged: isStageOnly,
-                    projectPath: isStageOnly ? project.path : undefined
+              // Build a helpful error message with context
+              let errorMessage = 'Merge process timed out.';
+              if (hasOutput) {
+                errorMessage += ' Some output was received - please run `git status` in your project directory to check if the merge completed partially.';
+                if (stderr.length > 0) {
+                  const lastStderrLine = stderr.trim().split('\n').pop() || '';
+                  if (lastStderrLine.length > 0 && lastStderrLine.length < 200) {
+                    errorMessage += ` Last error: ${lastStderrLine}`;
                   }
-                });
+                }
               } else {
-                resolve({
-                  success: false,
-                  error: 'Merge process timed out. Check git status to see if merge completed.'
-                });
+                errorMessage += ' No output received - the merge may not have started.';
               }
+
+              resolve({
+                success: false,
+                error: errorMessage
+              });
             }
           }, MERGE_TIMEOUT_MS);
 
@@ -2178,8 +2179,9 @@ export function registerWorktreeHandlers(
                         encoding: 'utf-8'
                       });
                       debug('Task branch deleted:', taskBranch);
-                    } catch {
-                      // Branch might not exist or already deleted
+                    } catch (branchDeleteErr) {
+                      // Branch might not exist or already deleted - log for debugging
+                      debug('Branch deletion skipped (non-fatal):', taskBranch, branchDeleteErr instanceof Error ? branchDeleteErr.message : branchDeleteErr);
                     }
                   }
                 } catch (cleanupErr) {
