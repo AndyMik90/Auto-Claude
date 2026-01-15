@@ -121,10 +121,11 @@ def sanitize_filename(filename: str) -> str:
         filename: The filename to sanitize (not a full path)
 
     Returns:
-        Sanitized filename safe for Windows
+        Sanitized filename safe for Windows. Returns "_" for empty or
+        whitespace-only input.
     """
-    if not filename:
-        return filename
+    if not filename or not filename.strip():
+        return "_"
 
     # Replace invalid characters
     sanitized = filename.translate(_WINDOWS_INVALID_CHARS_MAP)
@@ -138,7 +139,8 @@ def sanitize_filename(filename: str) -> str:
         return "_"
 
     # Handle reserved names by prefixing with underscore
-    name_part = sanitized.rsplit(".", 1)[0] if "." in sanitized else sanitized
+    # Use split (not rsplit) to get base name before any extension (e.g., LPT1.foo.bar -> LPT1)
+    name_part = sanitized.split(".", 1)[0] if "." in sanitized else sanitized
     if name_part.upper() in _WINDOWS_RESERVED_NAMES:
         sanitized = "_" + sanitized
 
