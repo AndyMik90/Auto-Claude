@@ -506,62 +506,12 @@ jobs:
 
       # Merge macOS manifests from Intel and ARM64 builds
       # See: https://github.com/electron-userland/electron-builder/issues/5592
-      # Both builds produce latest-mac.yml with only their architecture's files.
-      # We must merge them so electron-updater can find the correct architecture.
       - name: Merge macOS manifests
-        run: |
-          echo "=== Merging macOS update manifests ==="
-
-          # Find all latest-mac.yml files from different build artifacts
-          intel_manifest=$(find dist -path "*/macos-intel-builds/latest-mac.yml" -type f 2>/dev/null | head -1)
-          arm64_manifest=$(find dist -path "*/macos-arm64-builds/latest-mac.yml" -type f 2>/dev/null | head -1)
-
-          echo "Intel manifest: ${intel_manifest:-not found}"
-          echo "ARM64 manifest: ${arm64_manifest:-not found}"
-
-          if [ -n "$intel_manifest" ] && [ -n "$arm64_manifest" ]; then
-            echo "Both architectures found - merging manifests..."
-
-            # Install yq for YAML merging
-            if ! sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64; then
-              echo "::error::Failed to download yq"
-              exit 1
-            fi
-            sudo chmod +x /usr/local/bin/yq
-            yq --version
-
-            # Merge the files arrays from both manifests using eval-all
-            # This avoids shell expansion issues with multiline YAML
-            yq eval-all '
-              select(fileIndex == 0) * {"files": ([.[].files] | add)}
-            ' "$intel_manifest" "$arm64_manifest" > release-assets/latest-mac.yml
-
-            echo "Merged manifest contents:"
-            cat release-assets/latest-mac.yml
-
-          elif [ -n "$intel_manifest" ]; then
-            echo "Only Intel manifest found - using as-is"
-            cp "$intel_manifest" release-assets/latest-mac.yml
-          elif [ -n "$arm64_manifest" ]; then
-            echo "Only ARM64 manifest found - using as-is"
-            cp "$arm64_manifest" release-assets/latest-mac.yml
-          else
-            echo "::error::No macOS manifests found - this will cause auto-update to fail"
-            exit 1
-          fi
-
-          # Copy other manifests (Windows, Linux) - these don't have the duplicate issue
-          for manifest in latest.yml latest-linux.yml latest-linux-arm64.yml; do
-            found=$(find dist -name "$manifest" -type f 2>/dev/null | head -1)
-            if [ -n "$found" ]; then
-              echo "Copying $manifest"
-              cp "$found" release-assets/
-            fi
-          done
-
-          echo ""
-          echo "=== Manifest files in release-assets ==="
-          ls -la release-assets/*.yml 2>/dev/null || echo "No manifest files found"
+        uses: ./.github/actions/merge-macos-manifests
+        with:
+          dist-path: dist
+          output-path: release-assets
+          copy-other-manifests: 'true'
 
       - name: Validate manifests
         run: |
