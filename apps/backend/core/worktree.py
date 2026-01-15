@@ -579,7 +579,7 @@ class WorktreeManager:
             # On Windows, git worktree add can fail with "Could not reset index file" error.
             # Use fallback approach: create worktree without checkout, then populate it.
             if sys.platform == "win32" and "could not reset index" in result.stderr.lower():
-                print(f"Standard worktree creation failed, trying Windows fallback...")
+                print("Standard worktree creation failed, trying Windows fallback...")
                 result = self._create_worktree_windows_fallback(
                     branch_name, worktree_path, start_point
                 )
