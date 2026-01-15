@@ -395,9 +395,19 @@ class FullAutoExecutor:
             )
 
     def _calculate_percentage(self, completed_phases: int, total_phases: int) -> float:
-        """Calculate overall progress percentage.
+        """Calculate overall progress percentage based on phase count.
 
         Story Reference: Story 4.1 Task 3 - Report overall task percentage
+
+        NOTE: This method calculates coarse-grained progress based on phase count.
+        For granular within-phase progress, use phase-specific methods:
+        - calculate_subtask_percentage(): Coding phase (35-75% range)
+        - _calculate_validation_percentage(): Validation phase (75-100% range)
+
+        The overall progress breakdown is:
+        - Planning: 0-35% (calculated by this method when phases=1)
+        - Coding: 35-75% (detailed tracking via calculate_subtask_percentage)
+        - Validation: 75-100% (detailed tracking via _calculate_validation_percentage)
 
         Args:
             completed_phases: Number of phases completed
@@ -1148,3 +1158,664 @@ class FullAutoExecutor:
             "error": f"Escalated after {max_retries} failed attempts: {last_error}",
             "escalated": True,
         }
+
+    # =========================================================================
+    # Story 4.4: Validation Phase Execution Methods
+    # =========================================================================
+
+    async def execute_validation_phase(self, max_iterations: int = 5) -> dict[str, Any]:
+        """Execute the validation phase with QA reviewer/fixer loop.
+
+        Story Reference: Story 4.4 - Implement Validation Phase Execution
+
+        This method implements the validation loop that:
+        1. Runs QA reviewer to validate against acceptance criteria
+        2. Runs tests if present in the project
+        3. If issues found and fixable, invokes QA fixer
+        4. Re-runs validation after fixes
+        5. Loops until validation passes or max iterations reached
+        6. Updates task state to COMPLETED on success
+
+        Args:
+            max_iterations: Maximum number of fix loop iterations (default 5)
+
+        Returns:
+            Result dictionary with keys:
+            - status: "completed", "failed", or "escalated"
+            - iterations: Number of iterations performed
+            - qa_report_path: Path to generated QA report
+            - test_results: Summary of test execution
+            - error: Error message if failed
+        """
+        if not self._spec_dir:
+            self._log_warning("No spec_dir set for validation phase")
+            return {"status": "failed", "error": "No spec_dir configured"}
+
+        self._log_info("Starting validation phase", phase_id="validation")
+        self.update_task_state(TaskState.VALIDATION)
+
+        # Initialize validation phase
+        self._emit_progress_event(
+            phase_id="validation",
+            status=ProgressStatus.STARTED,
+            message="Starting validation phase",
+            percentage=self._calculate_validation_percentage(0, max_iterations),
+        )
+
+        qa_report_path: str | None = None
+        test_results: dict[str, Any] = {}
+
+        for iteration in range(1, max_iterations + 1):
+            self._log_info(
+                f"Validation iteration {iteration}/{max_iterations}",
+                phase_id="validation",
+            )
+
+            self._emit_progress_event(
+                phase_id="validation",
+                status=ProgressStatus.IN_PROGRESS,
+                message=f"Validation iteration {iteration}/{max_iterations}",
+                percentage=self._calculate_validation_percentage(
+                    iteration - 1, max_iterations
+                ),
+            )
+
+            # Run QA reviewer
+            qa_result = await self._run_qa_reviewer(iteration, max_iterations)
+
+            # Run tests if present
+            test_result = await self._run_tests()
+            test_results = test_result
+
+            # Generate QA report
+            qa_report_path = self._generate_qa_report(qa_result, test_result, iteration)
+
+            # Check if both QA and tests passed
+            if qa_result.get("passed") and test_result.get("passed"):
+                self._log_info("Validation passed!", phase_id="validation")
+
+                self.update_task_state(TaskState.COMPLETED)
+
+                self._emit_progress_event(
+                    phase_id="validation",
+                    status=ProgressStatus.COMPLETED,
+                    message="Validation passed - all acceptance criteria verified",
+                    percentage=100.0,
+                )
+
+                # Notify user of success
+                self._notify_validation_success(iteration)
+
+                return {
+                    "status": "completed",
+                    "iterations": iteration,
+                    "qa_report_path": qa_report_path,
+                    "test_results": test_results,
+                }
+
+            # Check if issues are fixable
+            if not qa_result.get("fixable", True):
+                self._log_error(
+                    "Issues are not auto-fixable, escalating to human",
+                    phase_id="validation",
+                )
+
+                self.update_task_state(TaskState.ESCALATED)
+
+                self._emit_progress_event(
+                    phase_id="validation",
+                    status=ProgressStatus.FAILED,
+                    message="Unfixable issues found - escalating to human review",
+                    percentage=self._calculate_validation_percentage(
+                        iteration, max_iterations
+                    ),
+                )
+
+                return {
+                    "status": "escalated",
+                    "iterations": iteration,
+                    "qa_report_path": qa_report_path,
+                    "test_results": test_results,
+                    "error": "Unfixable issues found - requires human intervention",
+                }
+
+            # Last iteration - no more retries
+            if iteration >= max_iterations:
+                self._log_error(
+                    f"Validation failed after {max_iterations} iterations",
+                    phase_id="validation",
+                )
+                break
+
+            # Attempt fix
+            issues = qa_result.get("issues", [])
+            self._log_info(
+                f"Attempting fix for {len(issues)} issues",
+                phase_id="validation",
+            )
+
+            self._emit_progress_event(
+                phase_id="validation",
+                status=ProgressStatus.IN_PROGRESS,
+                message=f"Fixing {len(issues)} issues (iteration {iteration})",
+                percentage=self._calculate_validation_percentage(
+                    iteration, max_iterations
+                ),
+            )
+
+            await self._run_qa_fixer(issues, iteration)
+
+        # Max iterations reached without passing
+        self._log_error(
+            f"Validation failed after {max_iterations} iterations",
+            phase_id="validation",
+        )
+
+        self.update_task_state(TaskState.FAILED)
+
+        self._emit_progress_event(
+            phase_id="validation",
+            status=ProgressStatus.FAILED,
+            message=f"Validation failed after {max_iterations} iterations",
+            percentage=self._calculate_validation_percentage(
+                max_iterations, max_iterations
+            ),
+        )
+
+        return {
+            "status": "failed",
+            "iterations": max_iterations,
+            "qa_report_path": qa_report_path,
+            "test_results": test_results,
+            "error": f"Validation failed after {max_iterations} iterations",
+        }
+
+    def _get_qa_config(self) -> tuple[Path, str, int]:
+        """Get common QA configuration for reviewer and fixer.
+
+        Returns:
+            Tuple of (project_dir, qa_model, thinking_budget)
+        """
+        from apps.backend.phase_config import get_phase_model, get_phase_thinking_budget
+
+        project_dir = (
+            Path(self._worktree_path)
+            if self._worktree_path
+            else Path(self._spec_dir).parent.parent.parent
+        )
+
+        # Get model from task_config or use default
+        model = "claude-sonnet-4-5-20250929"
+        if self.task_config and self.task_config.metadata:
+            model = self.task_config.metadata.get("model", model)
+
+        # Get phase-specific model and thinking budget
+        qa_model = get_phase_model(self._spec_dir, "qa", model)
+        thinking_budget = get_phase_thinking_budget(self._spec_dir, "qa")
+
+        return project_dir, qa_model, thinking_budget
+
+    async def _run_qa_reviewer(
+        self,
+        iteration: int,
+        max_iterations: int,
+    ) -> dict[str, Any]:
+        """Run the QA reviewer agent to validate against acceptance criteria.
+
+        Story Reference: Story 4.4 Task 2 - Run QA reviewer
+
+        Args:
+            iteration: Current iteration number
+            max_iterations: Maximum number of iterations
+
+        Returns:
+            Dictionary with keys:
+            - passed: Whether validation passed
+            - status: "approved" or "rejected"
+            - issues: List of issues found (if rejected)
+            - fixable: Whether issues are auto-fixable
+            - summary: Human-readable summary
+        """
+        self._log_info(
+            f"Running QA reviewer (iteration {iteration})",
+            phase_id="validation",
+        )
+
+        try:
+            # Import here to avoid circular imports
+            from apps.backend.core.client import create_client
+            from apps.backend.qa.criteria import get_qa_signoff_status
+            from apps.backend.qa.reviewer import run_qa_agent_session
+
+            # Get common QA configuration
+            project_dir, qa_model, qa_thinking_budget = self._get_qa_config()
+
+            client = create_client(
+                project_dir,
+                self._spec_dir,
+                qa_model,
+                agent_type="qa_reviewer",
+                max_thinking_tokens=qa_thinking_budget,
+            )
+
+            async with client:
+                status, response = await run_qa_agent_session(
+                    client,
+                    project_dir,
+                    self._spec_dir,
+                    iteration,
+                    max_iterations,
+                    verbose=False,
+                )
+
+            # Parse the result
+            if status == "approved":
+                return {
+                    "passed": True,
+                    "status": "approved",
+                    "issues": [],
+                    "fixable": True,
+                    "summary": "All acceptance criteria validated successfully",
+                }
+            elif status == "rejected":
+                # Get issues from implementation plan
+                qa_status = get_qa_signoff_status(self._spec_dir)
+                issues = qa_status.get("issues_found", []) if qa_status else []
+
+                return {
+                    "passed": False,
+                    "status": "rejected",
+                    "issues": issues,
+                    "fixable": True,  # Assume fixable unless escalated
+                    "summary": f"QA found {len(issues)} issues",
+                }
+            else:
+                # Error state
+                return {
+                    "passed": False,
+                    "status": "error",
+                    "issues": [{"title": "QA Error", "description": response}],
+                    "fixable": False,
+                    "summary": f"QA reviewer error: {response}",
+                }
+
+        except Exception as e:
+            self._log_error(f"QA reviewer failed: {e}", phase_id="validation")
+            return {
+                "passed": False,
+                "status": "error",
+                "issues": [{"title": "QA Exception", "description": str(e)}],
+                "fixable": False,
+                "summary": f"QA reviewer exception: {e}",
+            }
+
+    async def _run_tests(self) -> dict[str, Any]:
+        """Detect and run tests for the project.
+
+        Story Reference: Story 4.4 Task 3 - Run tests if present
+
+        Returns:
+            Dictionary with keys:
+            - passed: Whether tests passed (True if no tests found)
+            - skipped: Whether tests were skipped (no test framework)
+            - framework: Detected test framework
+            - output: Test output
+            - errors: Any error output
+            - summary: Human-readable summary
+        """
+        import subprocess
+
+        self._log_info("Detecting and running tests", phase_id="validation")
+
+        project_path = (
+            Path(self._worktree_path)
+            if self._worktree_path
+            else Path(self._spec_dir).parent.parent.parent
+        )
+
+        test_cmd: list[str] | None = None
+        framework: str | None = None
+
+        # Detect test framework
+        if (project_path / "pytest.ini").exists() or (
+            project_path / "pyproject.toml"
+        ).exists():
+            # Check for pytest in pyproject.toml
+            pyproject_path = project_path / "pyproject.toml"
+            if pyproject_path.exists():
+                content = pyproject_path.read_text()
+                if "pytest" in content or "[tool.pytest" in content:
+                    test_cmd = ["pytest", "-v", "--tb=short"]
+                    framework = "pytest"
+            if not test_cmd and (project_path / "pytest.ini").exists():
+                test_cmd = ["pytest", "-v", "--tb=short"]
+                framework = "pytest"
+
+        # Check for vitest BEFORE npm test (vitest projects also have package.json)
+        if not test_cmd:
+            vitest_configs = [
+                "vitest.config.ts",
+                "vitest.config.js",
+                "vitest.config.mts",
+                "vitest.config.mjs",
+            ]
+            for vitest_config in vitest_configs:
+                if (project_path / vitest_config).exists():
+                    test_cmd = ["npx", "vitest", "run"]
+                    framework = "vitest"
+                    break
+
+        # Fall back to npm test for other JS/TS projects
+        if not test_cmd and (project_path / "package.json").exists():
+            import json
+
+            try:
+                pkg = json.loads((project_path / "package.json").read_text())
+                scripts = pkg.get("scripts", {})
+                if "test" in scripts:
+                    test_cmd = ["npm", "test"]
+                    framework = "npm test"
+            except json.JSONDecodeError:
+                pass
+
+        if not test_cmd:
+            self._log_info(
+                "No test framework detected, skipping tests", phase_id="validation"
+            )
+            return {
+                "passed": True,
+                "skipped": True,
+                "framework": None,
+                "output": "",
+                "errors": "",
+                "summary": "No test framework detected - tests skipped",
+            }
+
+        self._log_info(f"Running tests with {framework}", phase_id="validation")
+
+        try:
+            result = subprocess.run(
+                test_cmd,
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout for tests
+            )
+
+            passed = result.returncode == 0
+            output = result.stdout
+            errors = result.stderr
+
+            if passed:
+                summary = f"Tests passed ({framework})"
+            else:
+                summary = f"Tests failed ({framework})"
+
+            return {
+                "passed": passed,
+                "skipped": False,
+                "framework": framework,
+                "output": output,
+                "errors": errors,
+                "summary": summary,
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                "passed": False,
+                "skipped": False,
+                "framework": framework,
+                "output": "",
+                "errors": "Test execution timed out (5 min limit)",
+                "summary": "Tests timed out",
+            }
+        except Exception as e:
+            return {
+                "passed": False,
+                "skipped": False,
+                "framework": framework,
+                "output": "",
+                "errors": str(e),
+                "summary": f"Test execution failed: {e}",
+            }
+
+    def _generate_qa_report(
+        self,
+        qa_result: dict[str, Any],
+        test_result: dict[str, Any],
+        iteration: int,
+    ) -> str:
+        """Generate qa_report.md artifact.
+
+        Story Reference: Story 4.4 Task 4 - Generate QA report
+
+        Args:
+            qa_result: Result from QA reviewer
+            test_result: Result from test execution
+            iteration: Current iteration number
+
+        Returns:
+            Path to the generated qa_report.md file
+        """
+        self._log_info("Generating QA report", phase_id="validation")
+
+        report_path = self._spec_dir / "qa_report.md"
+
+        qa_status = "PASSED" if qa_result.get("passed") else "FAILED"
+        test_status = (
+            "PASSED"
+            if test_result.get("passed")
+            else ("SKIPPED" if test_result.get("skipped") else "FAILED")
+        )
+
+        # Format issues - handle both 'fix_required' and 'description' keys
+        issues_text = ""
+        issues = qa_result.get("issues", [])
+        if issues:
+            formatted_issues = []
+            for issue in issues:
+                issue_type = issue.get("type", "unknown")
+                title = issue.get("title", "No title")
+                location = issue.get("location", "unknown")
+                # Try fix_required first, then description, then N/A
+                fix_info = (
+                    issue.get("fix_required") or issue.get("description") or "N/A"
+                )
+                formatted_issues.append(
+                    f"- **{issue_type}**: {title}\n  - Location: {location}\n  - Fix: {fix_info}"
+                )
+            issues_text = "\n".join(formatted_issues)
+        else:
+            issues_text = "No issues found"
+
+        # Format test output
+        test_output = test_result.get("output", "No tests run")
+        if len(test_output) > 2000:
+            test_output = test_output[:2000] + "\n... (truncated)"
+
+        report = f"""# QA Report
+
+## Summary
+- **Iteration:** {iteration}
+- **QA Status:** {qa_status}
+- **Test Status:** {test_status}
+- **Test Framework:** {test_result.get("framework", "N/A")}
+
+## Validation Results
+{qa_result.get("summary", "No summary available")}
+
+## Issues Found
+{issues_text}
+
+## Test Results
+```
+{test_output if not test_result.get("skipped") else "No tests configured"}
+```
+
+## Recommendations
+{self._get_recommendations(qa_result, test_result)}
+
+---
+Generated by FullAutoExecutor (Story 4.4)
+"""
+        report_path.write_text(report)
+
+        self._log_info(f"QA report generated: {report_path}", phase_id="validation")
+        return str(report_path)
+
+    def _get_recommendations(
+        self,
+        qa_result: dict[str, Any],
+        test_result: dict[str, Any],
+    ) -> str:
+        """Generate recommendations based on QA and test results.
+
+        Args:
+            qa_result: Result from QA reviewer
+            test_result: Result from test execution
+
+        Returns:
+            Human-readable recommendations string
+        """
+        recommendations = []
+
+        if not qa_result.get("passed"):
+            issues = qa_result.get("issues", [])
+            if issues:
+                recommendations.append(
+                    f"- Address {len(issues)} QA issue(s) before release"
+                )
+                # Prioritize by type
+                critical = [i for i in issues if i.get("type") == "critical"]
+                if critical:
+                    recommendations.append(
+                        f"  - {len(critical)} critical issue(s) require immediate attention"
+                    )
+
+        if not test_result.get("passed") and not test_result.get("skipped"):
+            recommendations.append("- Fix failing tests before proceeding")
+            if test_result.get("errors"):
+                recommendations.append("- Review test error output for details")
+
+        if test_result.get("skipped"):
+            recommendations.append(
+                "- Consider adding automated tests for the implementation"
+            )
+
+        if qa_result.get("passed") and test_result.get("passed"):
+            recommendations.append("- All validations passed - ready for human review")
+            recommendations.append(
+                "- Consider running code-review workflow with a different LLM"
+            )
+
+        return (
+            "\n".join(recommendations)
+            if recommendations
+            else "No specific recommendations"
+        )
+
+    async def _run_qa_fixer(
+        self,
+        issues: list[dict[str, Any]],
+        iteration: int,
+    ) -> dict[str, Any]:
+        """Run the QA fixer agent to resolve issues.
+
+        Story Reference: Story 4.4 Task 5 - Implement fix loop
+
+        Args:
+            issues: List of issues to fix
+            iteration: Current iteration number
+
+        Returns:
+            Dictionary with keys:
+            - fixed: Whether fixes were applied
+            - error: Error message if failed
+        """
+        self._log_info(
+            f"Running QA fixer for {len(issues)} issues (iteration {iteration})",
+            phase_id="validation",
+        )
+
+        try:
+            from apps.backend.core.client import create_client
+            from apps.backend.qa.fixer import run_qa_fixer_session
+
+            # Get common QA configuration
+            project_dir, qa_model, fixer_thinking_budget = self._get_qa_config()
+
+            client = create_client(
+                project_dir,
+                self._spec_dir,
+                qa_model,
+                agent_type="qa_fixer",
+                max_thinking_tokens=fixer_thinking_budget,
+            )
+
+            async with client:
+                status, response = await run_qa_fixer_session(
+                    client,
+                    self._spec_dir,
+                    iteration,
+                    verbose=False,
+                    project_dir=project_dir,
+                )
+
+            if status == "fixed":
+                self._log_info(
+                    "QA fixer applied fixes successfully", phase_id="validation"
+                )
+                return {"fixed": True}
+            else:
+                self._log_warning(
+                    f"QA fixer returned status: {status}", phase_id="validation"
+                )
+                return {"fixed": False, "error": response}
+
+        except Exception as e:
+            self._log_error(f"QA fixer failed: {e}", phase_id="validation")
+            return {"fixed": False, "error": str(e)}
+
+    def _calculate_validation_percentage(
+        self, iteration: int, max_iterations: int
+    ) -> float:
+        """Calculate progress percentage for validation phase.
+
+        Story Reference: Story 4.4 - Progress reporting
+
+        The validation phase spans 75-100% of overall progress (25% range).
+
+        Args:
+            iteration: Current iteration number
+            max_iterations: Maximum number of iterations
+
+        Returns:
+            Percentage as float (75.0 to 100.0)
+        """
+        if max_iterations == 0:
+            return 75.0  # Start of validation phase
+
+        # Validation phase is 75-100% (25% range)
+        base_percentage = 75.0
+        range_percentage = 25.0
+        return base_percentage + (iteration / max_iterations) * range_percentage
+
+    def _notify_validation_success(self, iterations: int) -> None:
+        """Notify user of successful validation.
+
+        Story Reference: Story 4.4 Task 7 - Notify user of success
+
+        Args:
+            iterations: Number of iterations it took to pass validation
+        """
+        self._log_info(
+            f"Validation completed successfully in {iterations} iteration(s)",
+            phase_id="validation",
+        )
+
+        # Log completion time
+        elapsed = self._get_elapsed_time()
+        self._log_info(
+            f"Total task execution time: {elapsed:.2f}s",
+            phase_id="validation",
+        )

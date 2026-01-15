@@ -1523,3 +1523,517 @@ class TestCodingPhaseCompletion:
                 # Should have logged completion
                 calls_str = str(mock_info.call_args_list)
                 assert "complete" in calls_str.lower() or "finished" in calls_str.lower() or len(mock_info.call_args_list) > 0
+
+
+# =============================================================================
+# Story 4.4: Validation Phase Execution Tests
+# =============================================================================
+
+
+class TestValidationPhaseEntry:
+    """Test validation phase entry point (Story 4.4 Task 1)."""
+
+    @pytest.mark.asyncio
+    async def test_validation_phase_exists(self, executor):
+        """Test that execute_validation_phase method exists."""
+        assert hasattr(executor, "execute_validation_phase")
+        assert callable(executor.execute_validation_phase)
+
+    @pytest.mark.asyncio
+    async def test_validation_phase_requires_spec_dir(self, executor):
+        """Test that validation fails gracefully without spec_dir."""
+        executor._spec_dir = None
+
+        result = await executor.execute_validation_phase()
+
+        assert result["status"] == "failed"
+        assert "spec_dir" in result.get("error", "").lower()
+
+    @pytest.mark.asyncio
+    async def test_validation_updates_state_to_validation(self, executor):
+        """Test that entering validation updates task state."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            # Mock the QA reviewer to return approval
+            async def mock_qa_reviewer(*args, **kwargs):
+                return {"passed": True, "status": "approved", "issues": [], "fixable": True, "summary": "OK"}
+
+            async def mock_tests(*args, **kwargs):
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=mock_qa_reviewer):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    await executor.execute_validation_phase(max_iterations=1)
+
+            # Should have transitioned through VALIDATION state
+            from apps.backend.core.executors.full_auto import TaskState
+            state = executor.get_task_state()
+            # Final state should be COMPLETED since we mocked approval
+            assert state in [TaskState.COMPLETED.value, TaskState.VALIDATION.value]
+
+
+class TestQAReviewerIntegration:
+    """Test QA reviewer invocation (Story 4.4 Task 2)."""
+
+    @pytest.mark.asyncio
+    async def test_qa_reviewer_called_in_validation(self, executor):
+        """Test that QA reviewer is called during validation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            qa_called = []
+
+            async def mock_qa_reviewer(iteration, max_iterations):
+                qa_called.append(iteration)
+                return {"passed": True, "status": "approved", "issues": [], "fixable": True, "summary": "OK"}
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=mock_qa_reviewer):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    await executor.execute_validation_phase(max_iterations=1)
+
+            assert len(qa_called) >= 1
+            assert 1 in qa_called
+
+    @pytest.mark.asyncio
+    async def test_qa_reviewer_rejection_triggers_fix(self, executor):
+        """Test that QA rejection triggers fixer invocation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            qa_calls = []
+            fixer_calls = []
+
+            async def mock_qa_reviewer(iteration, max_iterations):
+                qa_calls.append(iteration)
+                if iteration == 1:
+                    return {
+                        "passed": False,
+                        "status": "rejected",
+                        "issues": [{"title": "Test issue", "type": "bug"}],
+                        "fixable": True,
+                        "summary": "Issues found",
+                    }
+                return {"passed": True, "status": "approved", "issues": [], "fixable": True, "summary": "OK"}
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            async def mock_fixer(issues, iteration):
+                fixer_calls.append((issues, iteration))
+                return {"fixed": True}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=mock_qa_reviewer):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    with patch.object(executor, "_run_qa_fixer", side_effect=mock_fixer):
+                        await executor.execute_validation_phase(max_iterations=3)
+
+            # QA fixer should have been called after first rejection
+            assert len(fixer_calls) >= 1
+
+
+class TestTestDetectionAndExecution:
+    """Test automatic test detection and execution (Story 4.4 Task 3)."""
+
+    @pytest.mark.asyncio
+    async def test_no_tests_returns_skipped(self, executor):
+        """Test that projects without tests return skipped status."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            result = await executor._run_tests()
+
+            assert result["skipped"] is True
+            assert result["passed"] is True  # No tests = pass
+            assert result["framework"] is None
+
+    @pytest.mark.asyncio
+    async def test_pytest_detection(self, executor):
+        """Test that pytest framework is detected."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            # Create pytest.ini to indicate pytest project
+            (Path(tmpdir) / "pytest.ini").write_text("[pytest]\n")
+
+            # Mock subprocess.run to simulate pytest execution
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value.returncode = 0
+                mock_run.return_value.stdout = "All tests passed"
+                mock_run.return_value.stderr = ""
+
+                result = await executor._run_tests()
+
+            assert result["framework"] == "pytest"
+            assert result["passed"] is True
+            assert result["skipped"] is False
+
+    @pytest.mark.asyncio
+    async def test_npm_test_detection(self, executor):
+        """Test that npm test script is detected."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            # Create package.json with test script
+            pkg = {"scripts": {"test": "jest"}}
+            (Path(tmpdir) / "package.json").write_text(json.dumps(pkg))
+
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value.returncode = 0
+                mock_run.return_value.stdout = "Tests passed"
+                mock_run.return_value.stderr = ""
+
+                result = await executor._run_tests()
+
+            assert result["framework"] == "npm test"
+
+    @pytest.mark.asyncio
+    async def test_test_failure_detected(self, executor):
+        """Test that test failures are properly detected."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            (Path(tmpdir) / "pytest.ini").write_text("[pytest]\n")
+
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value.returncode = 1  # Non-zero = failure
+                mock_run.return_value.stdout = "1 failed"
+                mock_run.return_value.stderr = "AssertionError"
+
+                result = await executor._run_tests()
+
+            assert result["passed"] is False
+            assert result["framework"] == "pytest"
+
+
+class TestQAReportGeneration:
+    """Test QA report generation (Story 4.4 Task 4)."""
+
+    def test_qa_report_generated(self, executor):
+        """Test that qa_report.md is generated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+
+            qa_result = {
+                "passed": False,
+                "status": "rejected",
+                "issues": [{"type": "critical", "title": "Missing error handling", "location": "src/api.py:42"}],
+                "summary": "Found 1 issue",
+            }
+            test_result = {
+                "passed": True,
+                "skipped": False,
+                "framework": "pytest",
+                "output": "10 passed",
+                "errors": "",
+                "summary": "All tests passed",
+            }
+
+            report_path = executor._generate_qa_report(qa_result, test_result, iteration=1)
+
+            assert Path(report_path).exists()
+            content = Path(report_path).read_text()
+            assert "QA Report" in content
+            assert "FAILED" in content  # QA status
+            assert "critical" in content
+            assert "Missing error handling" in content
+
+    def test_qa_report_with_passed_status(self, executor):
+        """Test QA report content when validation passes."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+
+            qa_result = {"passed": True, "status": "approved", "issues": [], "summary": "All good"}
+            test_result = {"passed": True, "skipped": False, "framework": "pytest", "output": "5 passed", "errors": "", "summary": "OK"}
+
+            report_path = executor._generate_qa_report(qa_result, test_result, iteration=2)
+
+            content = Path(report_path).read_text()
+            assert "PASSED" in content
+            assert "No issues found" in content
+            assert "Iteration:** 2" in content
+
+
+class TestValidationFixLoop:
+    """Test fix loop implementation (Story 4.4 Task 5)."""
+
+    @pytest.mark.asyncio
+    async def test_fix_loop_iterates_on_failure(self, executor):
+        """Test that fix loop iterates when issues are found."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            iterations_run = []
+
+            async def mock_qa_reviewer(iteration, max_iterations):
+                iterations_run.append(iteration)
+                if iteration < 3:
+                    return {
+                        "passed": False,
+                        "status": "rejected",
+                        "issues": [{"title": f"Issue {iteration}"}],
+                        "fixable": True,
+                        "summary": f"Iteration {iteration}",
+                    }
+                return {"passed": True, "status": "approved", "issues": [], "fixable": True, "summary": "OK"}
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            async def mock_fixer(issues, iteration):
+                return {"fixed": True}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=mock_qa_reviewer):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    with patch.object(executor, "_run_qa_fixer", side_effect=mock_fixer):
+                        result = await executor.execute_validation_phase(max_iterations=5)
+
+            # Should have run 3 iterations before passing
+            assert len(iterations_run) == 3
+            assert result["status"] == "completed"
+            assert result["iterations"] == 3
+
+
+class TestLoopTermination:
+    """Test loop termination conditions (Story 4.4 Task 6)."""
+
+    @pytest.mark.asyncio
+    async def test_loop_terminates_on_max_iterations(self, executor):
+        """Test that loop terminates after max iterations."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            async def always_fail_qa(*args, **kwargs):
+                return {
+                    "passed": False,
+                    "status": "rejected",
+                    "issues": [{"title": "Always fails"}],
+                    "fixable": True,
+                    "summary": "Always fails",
+                }
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            async def mock_fixer(issues, iteration):
+                return {"fixed": True}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=always_fail_qa):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    with patch.object(executor, "_run_qa_fixer", side_effect=mock_fixer):
+                        result = await executor.execute_validation_phase(max_iterations=3)
+
+            assert result["status"] == "failed"
+            assert result["iterations"] == 3
+            assert "3 iterations" in result.get("error", "")
+
+    @pytest.mark.asyncio
+    async def test_unfixable_issues_trigger_escalation(self, executor):
+        """Test that unfixable issues trigger immediate escalation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            async def unfixable_qa(*args, **kwargs):
+                return {
+                    "passed": False,
+                    "status": "rejected",
+                    "issues": [{"title": "Requires human"}],
+                    "fixable": False,  # Not auto-fixable
+                    "summary": "Unfixable issue",
+                }
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=unfixable_qa):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    result = await executor.execute_validation_phase(max_iterations=5)
+
+            # Should escalate immediately, not iterate
+            assert result["status"] == "escalated"
+            assert result["iterations"] == 1  # Only one iteration
+
+
+class TestValidationStateUpdate:
+    """Test task state updates on validation success (Story 4.4 Task 7)."""
+
+    @pytest.mark.asyncio
+    async def test_successful_validation_sets_completed_state(self, executor):
+        """Test that successful validation updates state to COMPLETED."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            async def passing_qa(*args, **kwargs):
+                return {"passed": True, "status": "approved", "issues": [], "fixable": True, "summary": "OK"}
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=passing_qa):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    result = await executor.execute_validation_phase(max_iterations=3)
+
+            from apps.backend.core.executors.full_auto import TaskState
+
+            state = executor.get_task_state()
+            assert state == TaskState.COMPLETED.value
+            assert result["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_failed_validation_sets_failed_state(self, executor):
+        """Test that failed validation updates state to FAILED."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            async def always_fail_qa(*args, **kwargs):
+                return {
+                    "passed": False,
+                    "status": "rejected",
+                    "issues": [{"title": "Fails"}],
+                    "fixable": True,
+                    "summary": "Fails",
+                }
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            async def mock_fixer(*args, **kwargs):
+                return {"fixed": True}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=always_fail_qa):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    with patch.object(executor, "_run_qa_fixer", side_effect=mock_fixer):
+                        result = await executor.execute_validation_phase(max_iterations=2)
+
+            from apps.backend.core.executors.full_auto import TaskState
+
+            state = executor.get_task_state()
+            assert state == TaskState.FAILED.value
+
+
+class TestValidationProgressReporting:
+    """Test progress reporting during validation (Story 4.4)."""
+
+    @pytest.mark.asyncio
+    async def test_progress_events_emitted_during_validation(self, executor, mock_progress_service):
+        """Test that progress events are emitted during validation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+            executor.context.progress = mock_progress_service
+
+            async def passing_qa(*args, **kwargs):
+                return {"passed": True, "status": "approved", "issues": [], "fixable": True, "summary": "OK"}
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=passing_qa):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    await executor.execute_validation_phase(max_iterations=1)
+
+            # Should have started and completed events
+            events = mock_progress_service.events
+            assert len(events) >= 2
+
+            # Should have started event
+            started_events = [e for e in events if e.status == "started"]
+            assert len(started_events) >= 1
+
+            # Should have completed event
+            completed_events = [e for e in events if e.status == "completed"]
+            assert len(completed_events) >= 1
+
+    def test_validation_percentage_calculation(self, executor):
+        """Test that validation percentage is calculated correctly."""
+        # Validation phase is 75-100% (25% range)
+        # 0 of 5 iterations = 75%
+        assert executor._calculate_validation_percentage(0, 5) == 75.0
+
+        # 5 of 5 iterations = 100%
+        assert executor._calculate_validation_percentage(5, 5) == 100.0
+
+        # 2.5 of 5 iterations = 75 + 12.5 = 87.5%
+        assert executor._calculate_validation_percentage(2.5, 5) == 87.5
+
+
+class TestValidationEdgeCases:
+    """Test edge cases in validation phase."""
+
+    @pytest.mark.asyncio
+    async def test_tests_fail_but_qa_passes(self, executor):
+        """Test that validation fails if tests fail even when QA passes."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            async def passing_qa(*args, **kwargs):
+                return {"passed": True, "status": "approved", "issues": [], "fixable": True, "summary": "OK"}
+
+            async def failing_tests():
+                return {
+                    "passed": False,
+                    "skipped": False,
+                    "framework": "pytest",
+                    "output": "1 failed",
+                    "errors": "AssertionError",
+                    "summary": "Tests failed",
+                }
+
+            async def mock_fixer(*args, **kwargs):
+                return {"fixed": True}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=passing_qa):
+                with patch.object(executor, "_run_tests", side_effect=failing_tests):
+                    with patch.object(executor, "_run_qa_fixer", side_effect=mock_fixer):
+                        result = await executor.execute_validation_phase(max_iterations=3)
+
+            # Should fail because tests failed
+            assert result["status"] == "failed"
+
+    @pytest.mark.asyncio
+    async def test_empty_issues_list_treated_as_pass(self, executor):
+        """Test that empty issues with passed=True is a success."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor._spec_dir = Path(tmpdir)
+            executor._task_dir = Path(tmpdir)
+            executor._worktree_path = tmpdir
+
+            async def empty_issues_qa(*args, **kwargs):
+                return {"passed": True, "status": "approved", "issues": [], "fixable": True, "summary": "OK"}
+
+            async def mock_tests():
+                return {"passed": True, "skipped": True, "framework": None, "output": "", "errors": "", "summary": "Skipped"}
+
+            with patch.object(executor, "_run_qa_reviewer", side_effect=empty_issues_qa):
+                with patch.object(executor, "_run_tests", side_effect=mock_tests):
+                    result = await executor.execute_validation_phase(max_iterations=1)
+
+            assert result["status"] == "completed"
