@@ -70,6 +70,60 @@ def _short_model_name(model: str | None) -> str:
     return model[:20]  # Truncate if nothing else works
 
 
+def _get_tool_detail(tool_name: str, tool_input: dict[str, Any]) -> str:
+    """Extract meaningful detail from tool input for user-friendly logging.
+
+    Instead of "Using tool: Read", show "Reading sdk_utils.py"
+    Instead of "Using tool: Grep", show "Searching for 'pattern'"
+    """
+    if tool_name == "Read":
+        file_path = tool_input.get("file_path", "")
+        if file_path:
+            # Extract just the filename for brevity
+            filename = file_path.split("/")[-1] if "/" in file_path else file_path
+            return f"Reading {filename}"
+        return "Reading file"
+
+    if tool_name == "Grep":
+        pattern = tool_input.get("pattern", "")
+        if pattern:
+            # Truncate long patterns
+            pattern_preview = pattern[:40] + "..." if len(pattern) > 40 else pattern
+            return f"Searching for '{pattern_preview}'"
+        return "Searching codebase"
+
+    if tool_name == "Glob":
+        pattern = tool_input.get("pattern", "")
+        if pattern:
+            return f"Finding files matching '{pattern}'"
+        return "Finding files"
+
+    if tool_name == "Bash":
+        command = tool_input.get("command", "")
+        if command:
+            # Show first part of command
+            cmd_preview = command[:50] + "..." if len(command) > 50 else command
+            return f"Running: {cmd_preview}"
+        return "Running command"
+
+    if tool_name == "Edit":
+        file_path = tool_input.get("file_path", "")
+        if file_path:
+            filename = file_path.split("/")[-1] if "/" in file_path else file_path
+            return f"Editing {filename}"
+        return "Editing file"
+
+    if tool_name == "Write":
+        file_path = tool_input.get("file_path", "")
+        if file_path:
+            filename = file_path.split("/")[-1] if "/" in file_path else file_path
+            return f"Writing {filename}"
+        return "Writing file"
+
+    # Default fallback for unknown tools
+    return f"Using tool: {tool_name}"
+
+
 async def process_sdk_stream(
     client: Any,
     on_thinking: Callable[[str], None] | None = None,
@@ -199,9 +253,9 @@ async def process_sdk_stream(
                             f"[{context_name}] Invoking agent: {agent_name}{model_info}"
                         )
                     elif tool_name != "StructuredOutput":
-                        # Log other tool calls (Read, Grep, etc.) so user sees activity
-                        # Skip StructuredOutput tool - it's handled separately
-                        safe_print(f"[{context_name}] Using tool: {tool_name}")
+                        # Log meaningful tool info (not just tool name)
+                        tool_detail = _get_tool_detail(tool_name, tool_input)
+                        safe_print(f"[{context_name}] {tool_detail}")
 
                     # Invoke callback for all tool uses
                     if on_tool_use:
@@ -276,8 +330,9 @@ async def process_sdk_stream(
                                         f"[{context_name}] Invoking agent: {agent_name}{model_info}"
                                     )
                             elif tool_name != "StructuredOutput":
-                                # Log other tool calls, skip StructuredOutput
-                                safe_print(f"[{context_name}] Using tool: {tool_name}")
+                                # Log meaningful tool info (not just tool name)
+                                tool_detail = _get_tool_detail(tool_name, tool_input)
+                                safe_print(f"[{context_name}] {tool_detail}")
 
                             # Invoke callback
                             if on_tool_use:
