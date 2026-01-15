@@ -172,6 +172,12 @@ export interface NewCommitsCheck {
   currentHeadCommit?: string;
   /** Whether new commits happened AFTER findings were posted (for "Ready for Follow-up" status) */
   hasCommitsAfterPosting?: boolean;
+  /** Whether new commits touch files that had findings (requires verification) */
+  hasOverlapWithFindings?: boolean;
+  /** Files from new commits that overlap with finding files */
+  overlappingFiles?: string[];
+  /** Whether this appears to be a merge from base branch (develop/main) */
+  isMergeFromBase?: boolean;
 }
 
 /**
@@ -2112,11 +2118,12 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           }
 
           // Check if this looks like a merge from base branch (develop/main)
+          // Merge commits always have 2+ parents, so we check for that AND a merge-like message
+          // Pattern matches: "Merge branch", "Merge pull request", "Merge remote-tracking",
+          // "Merge 'develop' into", "Merge develop into", GitHub's "Update branch" button, etc.
           const isMergeFromBase = comparison.commits?.some((c) => {
             const hasTwoParents = (c.parents?.length ?? 0) >= 2;
-            const isMergeMessage = /merge\s+(branch|pull\s+request|remote-tracking)/i.test(
-              c.commit.message
-            );
+            const isMergeMessage = /^merge\s+/i.test(c.commit.message);
             return hasTwoParents && isMergeMessage;
           }) ?? false;
 
@@ -2163,6 +2170,9 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
               error: error instanceof Error ? error.message : error,
             }
           );
+          // Note: hasOverlapWithFindings, overlappingFiles, isMergeFromBase intentionally omitted
+          // since we can't determine them without the comparison API. UI defaults to safe behavior
+          // (hasOverlapWithFindings ?? true) which prompts user to verify.
           return {
             hasNewCommits: true,
             newCommitCount: 1, // Unknown count due to force push
