@@ -17,7 +17,7 @@ interface ProjectTabBarProps {
   className?: string;
   // Control props for active tab
   onSettingsClick?: () => void;
-  // Kanban board controls
+  // Kanban board controls (only displayed when Kanban view is active)
   onRefresh?: () => void;
   isRefreshing?: boolean;
   showArchived?: boolean;
