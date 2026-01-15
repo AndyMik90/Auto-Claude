@@ -1072,7 +1072,7 @@ class WorktreeManager:
             )
 
         except FileNotFoundError:
-            # gh CLI not installed - invalidate cache in case it was reinstalled
+            # Cached gh path became invalid - clear cache so next call re-discovers
             invalidate_gh_cache()
             return PullRequestResult(
                 success=False,
