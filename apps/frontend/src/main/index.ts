@@ -158,6 +158,9 @@ function fixKnownMarketplacesJson(): void {
 
   if (needsFix) {
     try {
+      // Note: There's a theoretical TOCTOU race between reading (line 137) and writing here,
+      // but it's benign: if another process fixed the file in between, we just overwrite
+      // valid JSON with `{}` which is also valid JSON. The write is idempotent.
       writeFileSync(marketplacesPath, '{}', 'utf-8');
       console.log('[main] Fixed known_marketplaces.json with empty object');
     } catch (e) {
