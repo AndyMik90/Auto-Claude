@@ -204,9 +204,7 @@ Current question: {message}"""
             options_kwargs["max_thinking_tokens"] = max_thinking_tokens
 
         # Create Claude SDK client with appropriate settings for insights
-        client = ClaudeSDKClient(
-            options=ClaudeAgentOptions(**options_kwargs)
-        )
+        client = ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
 
         # Use async context manager pattern
         async with client:
