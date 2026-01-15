@@ -90,13 +90,27 @@ export function MemoryBackendSection({
     }
   }, [embeddingProvider, envConfig.graphitiEnabled, detectOllamaModels]);
 
+  // Determine badge based on UI config AND runtime status
+  const isRuntimeWorking = infrastructureStatus?.ready ?? false;
+  const hasConfigError = envConfig.graphitiEnabled && !isRuntimeWorking && !isCheckingInfrastructure;
+
   const badge = (
     <span className={`px-2 py-0.5 text-xs rounded-full ${
-      envConfig.graphitiEnabled
+      hasConfigError
+        ? 'bg-destructive/10 text-destructive'
+        : envConfig.graphitiEnabled && isRuntimeWorking
         ? 'bg-success/10 text-success'
+        : envConfig.graphitiEnabled
+        ? 'bg-warning/10 text-warning'
         : 'bg-muted text-muted-foreground'
     }`}>
-      {envConfig.graphitiEnabled ? 'Enabled' : 'Disabled'}
+      {hasConfigError
+        ? 'Config Error'
+        : envConfig.graphitiEnabled && !isRuntimeWorking
+        ? 'Checking...'
+        : envConfig.graphitiEnabled
+        ? 'Enabled'
+        : 'Disabled'}
     </span>
   );
 
@@ -136,6 +150,31 @@ export function MemoryBackendSection({
 
       {envConfig.graphitiEnabled && (
         <>
+          {/* Configuration Warning - Show if enabled in UI but not actually working */}
+          {!infrastructureStatus?.ready && !isCheckingInfrastructure && (
+            <div className="rounded-lg border border-destructive bg-destructive/10 p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-destructive">
+                    Memory Configuration Error
+                  </p>
+                  <p className="text-xs text-destructive/90">
+                    Memory is enabled in settings but not working in runtime. This usually means:
+                  </p>
+                  <ul className="text-xs text-destructive/90 list-disc list-inside space-y-0.5 ml-2">
+                    <li>Missing GRAPHITI_ENABLED=true in .env file</li>
+                    <li>Missing Python dependencies (graphiti-core, ladybugdb)</li>
+                    <li>Database path not writable</li>
+                  </ul>
+                  <p className="text-xs text-destructive/90 mt-2">
+                    Check the System Health indicator (top bar) for details.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Infrastructure Status - LadybugDB check */}
           <InfrastructureStatus
             infrastructureStatus={infrastructureStatus}
