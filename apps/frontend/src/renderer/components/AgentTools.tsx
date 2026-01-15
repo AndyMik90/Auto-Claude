@@ -60,7 +60,7 @@ import {
   resolveAgentSettings as resolveAgentModelConfig,
   type AgentSettingsSource,
   type ResolvedAgentSettings,
-} from '../hooks/useResolvedAgentSettings';
+} from '../hooks';
 import type { ModelTypeShort, ThinkingLevel } from '../../shared/types/settings';
 
 // Agent configuration data - mirrors AGENT_CONFIGS from backend
