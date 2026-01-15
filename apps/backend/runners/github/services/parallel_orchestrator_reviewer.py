@@ -516,18 +516,25 @@ The SDK will run invoked agents in parallel automatically.
                         head_sha, context.pr_number
                     )
                     project_root = worktree_path
-                    # Count files in worktree to give user visibility
+                    # Count files in worktree to give user visibility (with limit to avoid slowdown)
+                    MAX_FILE_COUNT = 10000
                     try:
-                        file_count = sum(
-                            1
-                            for _ in worktree_path.rglob("*")
-                            if _.is_file() and ".git" not in _.parts
-                        )
+                        file_count = 0
+                        for f in worktree_path.rglob("*"):
+                            if f.is_file() and ".git" not in f.parts:
+                                file_count += 1
+                                if file_count >= MAX_FILE_COUNT:
+                                    break
                     except (OSError, PermissionError):
                         file_count = 0
+                    file_count_str = (
+                        f"{file_count:,}+"
+                        if file_count >= MAX_FILE_COUNT
+                        else f"{file_count:,}"
+                    )
                     # Always log worktree creation with file count (not gated by DEBUG_MODE)
                     safe_print(
-                        f"[PRReview] Created temporary worktree: {worktree_path.name} ({file_count:,} files)",
+                        f"[PRReview] Created temporary worktree: {worktree_path.name} ({file_count_str} files)",
                         flush=True,
                     )
                     safe_print(

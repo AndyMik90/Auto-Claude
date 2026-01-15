@@ -37,6 +37,20 @@ except (ImportError, ValueError, SystemError):
 SAFE_REF_PATTERN = re.compile(r"^[a-zA-Z0-9._/\-]+$")
 SAFE_PATH_PATTERN = re.compile(r"^[a-zA-Z0-9._/\-@]+$")
 
+# Common config file names to search for in project directories
+# Used by both _find_config_files() and find_related_files_for_root()
+CONFIG_FILE_NAMES = [
+    "tsconfig.json",
+    "package.json",
+    "pyproject.toml",
+    "setup.py",
+    ".eslintrc",
+    ".prettierrc",
+    "jest.config.js",
+    "vitest.config.ts",
+    "vite.config.ts",
+]
+
 
 def _validate_git_ref(ref: str) -> bool:
     """
@@ -942,20 +956,8 @@ class PRContextGatherer:
 
     def _find_config_files(self, directory: Path) -> set[str]:
         """Find configuration files in a directory."""
-        config_names = [
-            "tsconfig.json",
-            "package.json",
-            "pyproject.toml",
-            "setup.py",
-            ".eslintrc",
-            ".prettierrc",
-            "jest.config.js",
-            "vitest.config.ts",
-            "vite.config.ts",
-        ]
-
         found = set()
-        for name in config_names:
+        for name in CONFIG_FILE_NAMES:
             config_path = directory / name
             full_path = self.project_dir / config_path
             if full_path.exists() and full_path.is_file():
@@ -1016,19 +1018,7 @@ class PRContextGatherer:
                     related.add(str(test_path))
 
             # Find config files in same directory
-            config_names = [
-                "tsconfig.json",
-                "package.json",
-                "pyproject.toml",
-                "setup.py",
-                ".eslintrc",
-                ".prettierrc",
-                "jest.config.js",
-                "vitest.config.ts",
-                "vite.config.ts",
-            ]
-
-            for name in config_names:
+            for name in CONFIG_FILE_NAMES:
                 config_path = path.parent / name
                 full_path = project_root / config_path
                 if full_path.exists() and full_path.is_file():

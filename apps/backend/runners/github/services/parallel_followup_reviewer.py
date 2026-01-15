@@ -664,8 +664,11 @@ The SDK will run invoked agents in parallel automatically.
                         flush=True,
                     )
             elif pending_ci > 0:
-                # Pending CI prevents READY_TO_MERGE verdict
-                if verdict == MergeVerdict.READY_TO_MERGE:
+                # Pending CI prevents merge-ready verdicts
+                if verdict in (
+                    MergeVerdict.READY_TO_MERGE,
+                    MergeVerdict.MERGE_WITH_CHANGES,
+                ):
                     verdict = MergeVerdict.NEEDS_REVISION
                     verdict_reasoning = (
                         f"Ready once CI passes: {pending_ci} check(s) still pending. "

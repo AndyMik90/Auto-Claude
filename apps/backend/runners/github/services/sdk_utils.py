@@ -170,6 +170,7 @@ async def process_sdk_stream(
     stream_error = None
     # Track subagent tool IDs to log their results
     subagent_tool_ids: dict[str, str] = {}  # tool_id -> agent_name
+    completed_agent_tool_ids: set[str] = set()  # tool_ids of completed agents
 
     safe_print(f"[{context_name}] Processing SDK stream...")
     if DEBUG_MODE:
@@ -188,10 +189,15 @@ async def process_sdk_stream(
                 # Log progress periodically so user knows AI is working
                 if msg_count - last_progress_log >= PROGRESS_LOG_INTERVAL:
                     if subagent_tool_ids:
-                        pending = len(subagent_tool_ids)
-                        safe_print(
-                            f"[{context_name}] Processing... ({msg_count} messages, {pending} agents working)"
-                        )
+                        pending = len(subagent_tool_ids) - len(completed_agent_tool_ids)
+                        if pending > 0:
+                            safe_print(
+                                f"[{context_name}] Processing... ({msg_count} messages, {pending} agent{'s' if pending > 1 else ''} working)"
+                            )
+                        else:
+                            safe_print(
+                                f"[{context_name}] Processing... ({msg_count} messages)"
+                            )
                     else:
                         safe_print(
                             f"[{context_name}] Processing... ({msg_count} messages)"
@@ -278,6 +284,7 @@ async def process_sdk_stream(
                     # Check if this is a subagent result
                     if tool_id in subagent_tool_ids:
                         agent_name = subagent_tool_ids[tool_id]
+                        completed_agent_tool_ids.add(tool_id)  # Mark agent as completed
                         status = "ERROR" if is_error else "complete"
                         result_preview = (
                             str(result_content)[:600].replace("\n", " ").strip()
@@ -417,6 +424,9 @@ async def process_sdk_stream(
                             # Check if this is a subagent result
                             if tool_id in subagent_tool_ids:
                                 agent_name = subagent_tool_ids[tool_id]
+                                completed_agent_tool_ids.add(
+                                    tool_id
+                                )  # Mark agent as completed
                                 status = "ERROR" if is_error else "complete"
                                 result_preview = (
                                     str(result_content)[:600].replace("\n", " ").strip()

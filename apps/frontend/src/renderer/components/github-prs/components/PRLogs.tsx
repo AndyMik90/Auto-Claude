@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Terminal,
   Loader2,
@@ -388,6 +389,8 @@ interface OrchestratorActivitySectionProps {
 }
 
 function OrchestratorActivitySection({ entries, isExpanded, onToggle }: OrchestratorActivitySectionProps) {
+  const { t } = useTranslation(['common']);
+
   // Count different types of operations for summary
   const readCount = entries.filter(e => e.content.startsWith('Reading ')).length;
   const searchCount = entries.filter(e => e.content.startsWith('Searching for ')).length;
@@ -417,7 +420,7 @@ function OrchestratorActivitySection({ entries, isExpanded, onToggle }: Orchestr
             <ChevronRight className="h-3 w-3 text-muted-foreground" />
           )}
           <Activity className="h-3 w-3 text-orange-400" />
-          <span className="text-xs text-muted-foreground">Agent Activity</span>
+          <span className="text-xs text-muted-foreground">{t('common:prReview.logs.agentActivity')}</span>
         </div>
         <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-orange-500/10 text-orange-400 border-orange-500/30">
           {summary}
@@ -449,6 +452,7 @@ interface AgentLogGroupProps {
 }
 
 function AgentLogGroup({ group, isExpanded, onToggle }: AgentLogGroupProps) {
+  const { t } = useTranslation(['common']);
   const { agentName, entries } = group;
   const hasMultipleEntries = entries.length > 1;
   const firstEntry = entries[0];
@@ -485,12 +489,12 @@ function AgentLogGroup({ group, isExpanded, onToggle }: AgentLogGroupProps) {
               {isExpanded ? (
                 <>
                   <ChevronDown className="h-3 w-3" />
-                  <span>Hide {remainingEntries.length} more</span>
+                  <span>{t('common:prReview.logs.hideMore', { count: remainingEntries.length })}</span>
                 </>
               ) : (
                 <>
                   <ChevronRight className="h-3 w-3" />
-                  <span>Show {remainingEntries.length} more</span>
+                  <span>{t('common:prReview.logs.showMore', { count: remainingEntries.length })}</span>
                 </>
               )}
             </button>
