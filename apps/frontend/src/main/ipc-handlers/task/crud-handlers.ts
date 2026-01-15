@@ -315,8 +315,10 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
 
             // Only reset status for tasks in states where re-planning makes sense
             // Don't reset 'done' or 'pr_created' tasks as that would lose their completion state
+            // Also don't reset while agent is actively running to prevent corrupting execution state
             const replanableStates = ['backlog', 'failed', 'in_progress'];
-            const canReplan = replanableStates.includes(task.status);
+            const isAgentRunning = agentManager.isRunning(taskId);
+            const canReplan = replanableStates.includes(task.status) && !isAgentRunning;
 
             if (descriptionChanged && canReplan && plan.phases && plan.phases.length > 0) {
               console.warn('[TASK_UPDATE] Description changed, resetting subtasks for re-planning');
@@ -335,7 +337,10 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
               plan.planStatus = 'pending';
               plan.status = 'pending';
             } else if (descriptionChanged && !canReplan) {
-              console.warn(`[TASK_UPDATE] Description changed but task status '${task.status}' prevents re-planning`);
+              const reason = isAgentRunning
+                ? 'agent is currently running'
+                : `task status '${task.status}' prevents re-planning`;
+              console.warn(`[TASK_UPDATE] Description changed but ${reason}`);
             }
 
             if (finalTitle !== undefined) {
