@@ -305,6 +305,28 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
             const planContent = readFileSync(planPath, 'utf-8');
             const plan = JSON.parse(planContent);
 
+            // FIX (#1085): Reset subtasks when description changes significantly
+            // This allows users to update the description and re-run the task
+            const oldDescription = plan.description || '';
+            const newDescription = updates.description || oldDescription;
+            const descriptionChanged = updates.description !== undefined &&
+              oldDescription.trim() !== newDescription.trim();
+
+            if (descriptionChanged && plan.phases && plan.phases.length > 0) {
+              console.log('[TASK_UPDATE] Description changed, resetting subtasks for re-planning');
+              // Reset all subtasks to pending so they can be re-processed
+              for (const phase of plan.phases) {
+                if (phase.subtasks) {
+                  for (const subtask of phase.subtasks) {
+                    subtask.status = 'pending';
+                  }
+                }
+              }
+              // Reset plan status to trigger re-planning
+              plan.planStatus = 'pending';
+              plan.status = 'pending';
+            }
+
             if (finalTitle !== undefined) {
               plan.feature = finalTitle;
             }
