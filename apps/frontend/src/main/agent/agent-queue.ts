@@ -539,7 +539,8 @@ export class AgentQueueManager {
         }
       } else {
         debugError('[Agent Queue] Ideation generation failed:', { projectId, code });
-        this.emitter.emit('ideation-error', projectId, `Ideation generation failed with exit code ${code}`);
+        const errorMessage = extractErrorMessage(stderrCollected, code);
+        this.emitter.emit('ideation-error', projectId, errorMessage);
       }
     });
 
@@ -660,6 +661,8 @@ export class AgentQueueManager {
     let progressPercent = 10;
     // Collect output for rate limit detection
     let allRoadmapOutput = '';
+    // Collect stderr separately for error messages
+    let stderrCollected = '';
 
     // Helper to emit logs - split multi-line output into individual log lines
     const emitLogs = (log: string) => {
@@ -699,6 +702,8 @@ export class AgentQueueManager {
       const log = data.toString('utf8');
       // Collect stderr for rate limit detection too
       allRoadmapOutput = (allRoadmapOutput + log).slice(-10000);
+      // Collect stderr for error messages
+      stderrCollected = (stderrCollected + log).slice(-2000);
       console.error('[Roadmap STDERR]', log);
       emitLogs(log);
       this.emitter.emit('roadmap-progress', projectId, {
@@ -794,7 +799,8 @@ export class AgentQueueManager {
         }
       } else {
         debugError('[Agent Queue] Roadmap generation failed:', { projectId, code });
-        this.emitter.emit('roadmap-error', projectId, `Roadmap generation failed with exit code ${code}`);
+        const errorMessage = extractErrorMessage(stderrCollected, code);
+        this.emitter.emit('roadmap-error', projectId, errorMessage);
       }
     });
 
