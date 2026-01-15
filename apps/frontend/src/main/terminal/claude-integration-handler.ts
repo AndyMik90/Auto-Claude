@@ -175,7 +175,7 @@ export function buildClaudeShellCommand(
         // After execution, delete the temp file using 'del' command
         // Use escapeShellArgWindows() to properly escape special characters
         const escapedTempFile = escapeShellArgWindows(config.tempFile);
-        return `cls && ${cwdCommand}${pathPrefix}call ${escapedTempFile} && ${fullCmd} & del ${escapedTempFile}\r`;
+        return `cls && ${cwdCommand}${pathPrefix}call "${escapedTempFile}" && ${fullCmd} & del "${escapedTempFile}"\r`;
       } else {
         // Unix/macOS: Use bash with source command and history-safe prefixes
         const escapedTempFile = escapeShellArg(config.tempFile);
@@ -730,10 +730,14 @@ export async function invokeClaudeAsync(
 
     // Add timeout protection for CLI detection (10s timeout)
     const cliInvocationPromise = getClaudeCliInvocationAsync();
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('CLI invocation timeout after 10s')), 10000)
-    );
-    const { command: claudeCmd, env: claudeEnv } = await Promise.race([cliInvocationPromise, timeoutPromise]);
+    let timeoutId: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('CLI invocation timeout after 10s')), 10000);
+    });
+    const { command: claudeCmd, env: claudeEnv } = await Promise.race([cliInvocationPromise, timeoutPromise])
+      .finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
 
     const escapedClaudeCmd = escapeShellCommand(claudeCmd);
     const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
