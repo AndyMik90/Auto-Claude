@@ -13,6 +13,7 @@ from ui.capabilities import configure_safe_encoding
 configure_safe_encoding()
 
 from core.client import create_client
+from core.language_injection import get_localized_prompt_path
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from security.tool_input_validator import get_safe_tool_input
 from task_logger import (
@@ -75,7 +76,9 @@ class AgentRunner:
             interactive=interactive,
         )
 
-        prompt_path = Path(__file__).parent.parent.parent / "prompts" / prompt_file
+        # Use localized path based on user language preference
+        prompts_dir = Path(__file__).parent.parent.parent / "prompts"
+        prompt_path = get_localized_prompt_path(prompts_dir, prompt_file)
 
         if not prompt_path.exists():
             debug_error("agent_runner", f"Prompt file not found: {prompt_path}")

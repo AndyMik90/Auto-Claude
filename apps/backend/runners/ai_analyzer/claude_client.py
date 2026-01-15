@@ -14,6 +14,17 @@ try:
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
+# Import language injection (may fail if not in backend context)
+try:
+    from core.language_injection import inject_language_strengthened
+    # Alias for backwards compatibility
+    inject_language = inject_language_strengthened
+except ImportError:
+    # Fallback for standalone usage
+    def inject_language_strengthened(prompt: str, agent_type: str | None = None) -> str:
+        return prompt
+    inject_language = inject_language_strengthened
+
 
 class ClaudeAnalysisClient:
     """Wrapper for Claude SDK client with analysis-specific configuration."""
@@ -112,7 +123,7 @@ class ClaudeAnalysisClient:
         return ClaudeSDKClient(
             options=ClaudeAgentOptions(
                 model=resolve_model_id(self.DEFAULT_MODEL),  # Resolve via API Profile
-                system_prompt=system_prompt,
+                system_prompt=inject_language(system_prompt, agent_type="ai_analyzer"),
                 allowed_tools=self.ALLOWED_TOOLS,
                 max_turns=self.MAX_TURNS,
                 cwd=str(self.project_dir.resolve()),

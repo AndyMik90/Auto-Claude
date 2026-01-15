@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from core.language_injection import get_localized_prompt_path
 from debug import debug, debug_detailed, debug_error, debug_success
 
 
@@ -88,7 +89,8 @@ class AgentExecutor:
         additional_context: str = "",
     ) -> tuple[bool, str]:
         """Run an agent with the given prompt."""
-        prompt_path = self.prompts_dir / prompt_file
+        # Use localized path based on user language preference
+        prompt_path = get_localized_prompt_path(self.prompts_dir, prompt_file)
 
         debug_detailed(
             "roadmap_executor",
@@ -131,6 +133,7 @@ class AgentExecutor:
             self.project_dir,
             self.output_dir,
             self.model,
+            agent_type="roadmap",  # Specify agent type for language injection
             max_thinking_tokens=self.thinking_budget,
         )
 

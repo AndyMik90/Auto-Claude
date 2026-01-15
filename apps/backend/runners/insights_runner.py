@@ -40,6 +40,7 @@ except ImportError:
     ClaudeSDKClient = None
 
 from core.auth import ensure_claude_code_oauth_token, get_auth_token
+from core.language_injection import inject_language_strengthened
 from debug import (
     debug,
     debug_detailed,
@@ -115,7 +116,7 @@ def build_system_prompt(project_dir: str) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
 
-    return f"""You are an AI assistant helping developers understand and work with their codebase.
+    base_prompt = f"""You are an AI assistant helping developers understand and work with their codebase.
 You have access to the following project context:
 
 {context}
@@ -135,6 +136,9 @@ Valid impact: low, medium, high, critical
 
 Be conversational and helpful. Focus on providing actionable insights and clear explanations.
 Keep responses concise but informative."""
+
+    # Apply language injection for user-facing insights
+    return inject_language_strengthened(base_prompt, agent_type="insights")
 
 
 async def run_with_sdk(

@@ -23,6 +23,7 @@ from task_logger import (
 )
 
 from .criteria import get_qa_signoff_status
+from core.language_injection import get_localized_prompt_path
 
 # Configuration
 QA_PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
@@ -34,8 +35,8 @@ QA_PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
 
 def load_qa_fixer_prompt() -> str:
-    """Load the QA fixer agent prompt."""
-    prompt_file = QA_PROMPTS_DIR / "qa_fixer.md"
+    """Load the QA fixer agent prompt with localization support."""
+    prompt_file = get_localized_prompt_path(QA_PROMPTS_DIR, "qa_fixer.md")
     if not prompt_file.exists():
         raise FileNotFoundError(f"QA fixer prompt not found: {prompt_file}")
     return prompt_file.read_text()
