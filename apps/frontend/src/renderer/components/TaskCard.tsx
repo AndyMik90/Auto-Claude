@@ -216,6 +216,31 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
     };
   }, [task.id, isRunning, performStuckCheck]);
 
+  // Clear stuck flag immediately when receiving active execution progress
+  // This ensures the UI responds instantly when a task starts making progress,
+  // rather than waiting for the next periodic check interval
+  useEffect(() => {
+    if (!isStuck) return;
+
+    const currentPhase = task.executionProgress?.phase;
+    // If we have any active execution phase, clear stuck immediately
+    if (currentPhase && currentPhase !== 'idle' && currentPhase !== 'complete' && currentPhase !== 'failed') {
+      setIsStuck(false);
+    }
+  }, [task.executionProgress?.phase, isStuck]);
+
+  // Clear stuck flag when subtasks make progress (any subtask becomes in_progress or completed)
+  useEffect(() => {
+    if (!isStuck) return;
+
+    const hasActiveProgress = task.subtasks.some(
+      s => s.status === 'in_progress' || s.status === 'completed'
+    );
+    if (hasActiveProgress) {
+      setIsStuck(false);
+    }
+  }, [task.subtasks, isStuck]);
+
   // Add visibility change handler to re-validate on focus (debounced)
   useEffect(() => {
     let debounceTimeout: NodeJS.Timeout | null = null;
