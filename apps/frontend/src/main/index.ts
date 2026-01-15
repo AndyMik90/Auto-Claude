@@ -130,28 +130,28 @@ function fixKnownMarketplacesJson(): void {
     }
   }
 
-  // Check if file needs fixing
+  // Check if file needs fixing by trying to read it directly
+  // (avoids TOCTOU race condition from existsSync + readFileSync)
   let needsFix = false;
-  if (!existsSync(marketplacesPath)) {
-    needsFix = true;
-  } else {
-    try {
-      const content = readFileSync(marketplacesPath, 'utf-8').trim();
-      // Fix if empty, contains only whitespace, or is an array instead of object
-      if (content === '' || content === '[]') {
-        needsFix = true;
-        console.log('[main] Detected corrupted known_marketplaces.json:', content || '(empty)');
-      } else {
-        // Validate it's a proper JSON object (not array)
-        const parsed = JSON.parse(content);
-        if (Array.isArray(parsed)) {
-          needsFix = true;
-          console.log('[main] known_marketplaces.json contains array instead of object');
-        }
-      }
-    } catch (e) {
-      // If we can't read or parse it, try to fix it
+  try {
+    const content = readFileSync(marketplacesPath, 'utf-8').trim();
+    // Fix if empty, contains only whitespace, or is an array instead of object
+    if (content === '' || content === '[]') {
       needsFix = true;
+      console.log('[main] Detected corrupted known_marketplaces.json:', content || '(empty)');
+    } else {
+      // Validate it's a proper JSON object (not array)
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        needsFix = true;
+        console.log('[main] known_marketplaces.json contains array instead of object');
+      }
+    }
+  } catch (e) {
+    // File doesn't exist or can't be read/parsed - create it
+    needsFix = true;
+    const errCode = (e as NodeJS.ErrnoException).code;
+    if (errCode !== 'ENOENT') {
       console.warn('[main] Failed to read known_marketplaces.json:', e);
     }
   }
