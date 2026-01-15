@@ -81,6 +81,11 @@ export interface TaskAPI {
   unwatchTaskLogs: (specId: string) => Promise<IPCResult>;
   onTaskLogsChanged: (callback: (specId: string, logs: TaskLogs) => void) => () => void;
   onTaskLogsStream: (callback: (specId: string, chunk: TaskLogStreamChunk) => void) => () => void;
+
+  // Task Recovery
+  getRecoveryStats: () => Promise<IPCResult<import('../../../main/task-recovery-service').RecoveryStats>>;
+  getRecoveryConfig: () => Promise<IPCResult<import('../../../main/task-recovery-service').RecoveryConfig>>;
+  updateRecoveryConfig: (config: Partial<import('../../../main/task-recovery-service').RecoveryConfig>) => Promise<IPCResult<import('../../../main/task-recovery-service').RecoveryConfig>>;
 }
 
 export const createTaskAPI = (): TaskAPI => ({
@@ -301,5 +306,17 @@ export const createTaskAPI = (): TaskAPI => ({
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.TASK_LOGS_STREAM, handler);
     };
-  }
+  },
+
+  // Task Recovery
+  getRecoveryStats: (): Promise<IPCResult<import('../../../main/task-recovery-service').RecoveryStats>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_RECOVERY_STATS),
+
+  getRecoveryConfig: (): Promise<IPCResult<import('../../../main/task-recovery-service').RecoveryConfig>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_RECOVERY_CONFIG_GET),
+
+  updateRecoveryConfig: (
+    config: Partial<import('../../../main/task-recovery-service').RecoveryConfig>
+  ): Promise<IPCResult<import('../../../main/task-recovery-service').RecoveryConfig>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_RECOVERY_CONFIG_UPDATE, config)
 });

@@ -93,6 +93,14 @@ export class ProjectStore {
         existing.updatedAt = new Date();
         this.save();
       }
+      // Also check if .auto-claude was created externally after project was added
+      // If so, update autoBuildPath so UI doesn't prompt for initialization
+      else if (!existing.autoBuildPath && isInitialized(existing.path)) {
+        console.warn(`[ProjectStore] .auto-claude folder was created externally for project "${existing.name}" - setting autoBuildPath`);
+        existing.autoBuildPath = '.auto-claude';
+        existing.updatedAt = new Date();
+        this.save();
+      }
       return existing;
     }
 
@@ -191,23 +199,25 @@ export class ProjectStore {
     let hasChanges = false;
 
     for (const project of this.data.projects) {
-      // Skip projects that aren't initialized (autoBuildPath is empty)
-      if (!project.autoBuildPath) {
-        continue;
-      }
-
       // Check if the project path still exists
       if (!existsSync(project.path)) {
         console.warn(`[ProjectStore] Project path no longer exists: ${project.path}`);
         continue; // Don't reset - let user handle this case
       }
 
-      // Check if .auto-claude folder still exists
-      if (!isInitialized(project.path)) {
+      // Check if .auto-claude folder was deleted (had autoBuildPath but folder is gone)
+      if (project.autoBuildPath && !isInitialized(project.path)) {
         console.warn(`[ProjectStore] .auto-claude folder missing for project "${project.name}" at ${project.path}`);
         project.autoBuildPath = '';
         project.updatedAt = new Date();
         resetProjectIds.push(project.id);
+        hasChanges = true;
+      }
+      // Check if .auto-claude folder was created externally (no autoBuildPath but folder exists)
+      else if (!project.autoBuildPath && isInitialized(project.path)) {
+        console.warn(`[ProjectStore] .auto-claude folder found for project "${project.name}" at ${project.path} - auto-setting autoBuildPath`);
+        project.autoBuildPath = '.auto-claude';
+        project.updatedAt = new Date();
         hasChanges = true;
       }
     }
@@ -505,6 +515,28 @@ export class ProjectStore {
           const { status, reviewReason } = this.determineTaskStatusAndReason(plan, specPath, metadata);
           finalStatus = status;
           finalReviewReason = reviewReason;
+
+          // Check for circuit breaker errors in recoveryNote
+          const planWithRecovery = plan as unknown as { recoveryNote?: string; status?: string } | null;
+          if (planWithRecovery?.recoveryNote?.startsWith('[CIRCUIT BREAKER]') || planWithRecovery?.status === 'error') {
+            finalStatus = 'error';
+            // Determine error type from recovery note for appropriate i18n key
+            const recoveryNote = planWithRecovery?.recoveryNote || '';
+            let errorKey = 'errors:task.circuitBreaker';
+            if (recoveryNote.toLowerCase().includes('oauth') || recoveryNote.toLowerCase().includes('authentication') || recoveryNote.toLowerCase().includes('401')) {
+              errorKey = 'errors:task.authenticationError';
+            } else if (recoveryNote.toLowerCase().includes('rate limit') || recoveryNote.toLowerCase().includes('429')) {
+              errorKey = 'errors:task.rateLimitError';
+            }
+            finalErrorInfo = {
+              key: errorKey,
+              meta: {
+                specId: dir.name,
+                error: recoveryNote.replace('[CIRCUIT BREAKER] ', '')
+              }
+            };
+            console.warn(`[ProjectStore] Circuit breaker error for ${dir.name}:`, recoveryNote);
+          }
         }
 
         // Extract subtasks from plan (handle both 'subtasks' and 'chunks' naming)
@@ -544,11 +576,13 @@ export class ProjectStore {
         }
 
         // Extract QA report from plan's qa_signoff
+        // Note: issues_found can be either an array OR an object with { details: [...] }
+        type IssueItem = { title?: string; severity?: string; description?: string; file?: string; line?: number };
         const planWithQA = plan as unknown as {
           qa_signoff?: {
             status?: string;
             timestamp?: string;
-            issues_found?: Array<{ title?: string; severity?: string; description?: string; file?: string; line?: number }>;
+            issues_found?: IssueItem[] | { details?: IssueItem[]; critical?: number; major?: number; minor?: number };
             screenshots?: string[];
           };
         } | null;
@@ -556,9 +590,19 @@ export class ProjectStore {
         let qaReport: QAReport | undefined;
 
         if (qaSignoff && qaSignoff.status && ['approved', 'rejected'].includes(qaSignoff.status)) {
+          // Handle both array and object formats for issues_found
+          let issuesArray: IssueItem[] = [];
+          if (qaSignoff.issues_found) {
+            if (Array.isArray(qaSignoff.issues_found)) {
+              issuesArray = qaSignoff.issues_found;
+            } else if (qaSignoff.issues_found.details && Array.isArray(qaSignoff.issues_found.details)) {
+              issuesArray = qaSignoff.issues_found.details;
+            }
+          }
+
           qaReport = {
             status: qaSignoff.status === 'approved' ? 'passed' : 'failed',
-            issues: (qaSignoff.issues_found || []).map((issue, idx) => ({
+            issues: issuesArray.map((issue, idx) => ({
               id: `qa-${idx}`,
               severity: (issue.severity as 'critical' | 'major' | 'minor') || 'minor',
               description: issue.description || issue.title || 'No description',

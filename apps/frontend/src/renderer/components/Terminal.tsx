@@ -385,6 +385,7 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
         terminalCount={terminalCount}
         worktreeConfig={terminal?.worktreeConfig}
         projectPath={projectPath}
+        effectiveCwd={effectiveCwd}
         onCreateWorktree={handleCreateWorktree}
         onSelectWorktree={handleSelectWorktree}
         onOpenInIDE={handleOpenInIDE}

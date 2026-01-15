@@ -50,6 +50,7 @@ import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-sto
 import { initializeGitHubListeners } from './stores/github';
 import { initDownloadProgressListener } from './stores/download-store';
 import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
+import { TaskLogStatusBar } from './components/TaskLogStatusBar';
 import { useIpcListeners } from './hooks/useIpc';
 import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
 import type { Task, Project, ColorTheme } from '../shared/types';
@@ -947,6 +948,9 @@ export function App() {
               />
             )}
           </main>
+
+          {/* Task Log Status Bar - shows streaming logs from running tasks */}
+          <TaskLogStatusBar />
           </div>
         </div>
 

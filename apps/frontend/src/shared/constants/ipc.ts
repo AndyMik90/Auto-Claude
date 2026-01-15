@@ -27,6 +27,11 @@ export const IPC_CHANNELS = {
   TASK_UPDATE_STATUS: 'task:updateStatus',
   TASK_RECOVER_STUCK: 'task:recoverStuck',
   TASK_CHECK_RUNNING: 'task:checkRunning',
+  TASK_RECOVERY_STATS: 'task:recoveryStats',
+  TASK_RECOVERY_CONFIG_GET: 'task:recoveryConfigGet',
+  TASK_RECOVERY_CONFIG_UPDATE: 'task:recoveryConfigUpdate',
+  TASK_RECOVERY_HEALTHCHECK: 'task:recoveryHealthcheck',
+  TASK_RECOVERY_HEALTH_STATUS: 'task:recoveryHealthStatus',
 
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
@@ -83,6 +88,10 @@ export const IPC_CHANNELS = {
   TERMINAL_WORKTREE_CREATE: 'terminal:worktreeCreate',
   TERMINAL_WORKTREE_REMOVE: 'terminal:worktreeRemove',
   TERMINAL_WORKTREE_LIST: 'terminal:worktreeList',
+
+  // Terminal npm script operations
+  TERMINAL_GET_NPM_SCRIPTS: 'terminal:getNpmScripts',  // Get scripts from package.json
+  TERMINAL_RUN_NPM_SCRIPT: 'terminal:runNpmScript',    // Run npm script in terminal
 
   // Terminal events (main -> renderer)
   TERMINAL_OUTPUT: 'terminal:output',

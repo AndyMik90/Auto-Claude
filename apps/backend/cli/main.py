@@ -256,6 +256,13 @@ Environment Variables:
         help="Base branch for creating worktrees (default: auto-detect or current branch)",
     )
 
+    # Health checks
+    parser.add_argument(
+        "--check-graphiti",
+        action="store_true",
+        help="Run Graphiti memory health check (verify packages, drivers, and configuration)",
+    )
+
     # Batch task management
     parser.add_argument(
         "--batch-create",
@@ -355,6 +362,13 @@ def _run_cli() -> None:
     if args.batch_cleanup:
         handle_batch_cleanup_command(str(project_dir), dry_run=not args.no_dry_run)
         return
+
+    # Handle --check-graphiti command
+    if args.check_graphiti:
+        from graphiti_config import print_graphiti_health_report
+        print_banner()
+        healthy = print_graphiti_health_report()
+        sys.exit(0 if healthy else 1)
 
     # Require --spec if not listing
     if not args.spec:

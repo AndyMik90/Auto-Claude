@@ -379,12 +379,19 @@ export function registerChangelogHandlers(
     IPC_CHANNELS.CHANGELOG_READ_LOCAL_IMAGE,
     async (_, projectPath: string, relativePath: string): Promise<IPCResult<string>> => {
       try {
-        // Construct full path from project path and relative path
-        const fullPath = path.join(projectPath, relativePath);
+        // Resolve both paths to absolute normalized paths
+        const resolvedProjectPath = path.resolve(projectPath);
+        const fullPath = path.resolve(path.join(projectPath, relativePath));
+
+        // SECURITY: Ensure the resolved path is within the project directory
+        // This prevents path traversal attacks like ../../etc/passwd
+        if (!fullPath.startsWith(resolvedProjectPath + path.sep) && fullPath !== resolvedProjectPath) {
+          return { success: false, error: 'Access denied: path outside project directory' };
+        }
 
         // Verify the file exists
         if (!existsSync(fullPath)) {
-          return { success: false, error: `Image not found: ${relativePath}` };
+          return { success: false, error: 'Image not found' };
         }
 
         // Read the file and convert to base64
@@ -407,9 +414,10 @@ export function registerChangelogHandlers(
         const dataUrl = `data:${mimeType};base64,${base64}`;
         return { success: true, data: dataUrl };
       } catch (error) {
+        // Sanitize error - don't leak filesystem details
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to read image'
+          error: 'Failed to read image'
         };
       }
     }

@@ -94,9 +94,9 @@ def create_simple_client(
         "system_prompt": system_prompt,
         "allowed_tools": allowed_tools,
         "max_turns": max_turns,
+        "max_thinking_tokens": max_thinking_tokens,
         "cwd": str(cwd.resolve()) if cwd else None,
         "env": sdk_env,
-        "max_thinking_tokens": max_thinking_tokens,
     }
 
     # Add CLI path if found

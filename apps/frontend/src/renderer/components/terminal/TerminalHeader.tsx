@@ -9,6 +9,7 @@ import { STATUS_COLORS } from './types';
 import { TerminalTitle } from './TerminalTitle';
 import { TaskSelector } from './TaskSelector';
 import { WorktreeSelector } from './WorktreeSelector';
+import { NpmScriptSelector } from './NpmScriptSelector';
 
 interface TerminalHeaderProps {
   terminalId: string;
@@ -28,6 +29,8 @@ interface TerminalHeaderProps {
   worktreeConfig?: TerminalWorktreeConfig;
   /** Project path for worktree operations */
   projectPath?: string;
+  /** Effective current working directory (includes worktree path if applicable) */
+  effectiveCwd?: string;
   /** Callback to open worktree creation dialog */
   onCreateWorktree?: () => void;
   /** Callback when an existing worktree is selected */
@@ -58,6 +61,7 @@ export function TerminalHeader({
   terminalCount = 1,
   worktreeConfig,
   projectPath,
+  effectiveCwd,
   onCreateWorktree,
   onSelectWorktree,
   onOpenInIDE,
@@ -159,6 +163,15 @@ export function TerminalHeader({
             <ExternalLink className="h-3 w-3" />
             {terminalCount < 4 && t('terminal:worktree.openInIDE')}
           </Button>
+        )}
+        {/* NPM Scripts dropdown - show when not in Claude mode and terminal is running */}
+        {!isClaudeMode && status !== 'exited' && effectiveCwd && (
+          <NpmScriptSelector
+            terminalId={terminalId}
+            projectPath={effectiveCwd}
+            terminalCount={terminalCount}
+            disabled={false}
+          />
         )}
         {!isClaudeMode && status !== 'exited' && (
           <Button

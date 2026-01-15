@@ -630,12 +630,37 @@ def get_graphiti_status() -> dict:
 
     # Try importing the required Graphiti packages
     try:
-        # Attempt to import the main graphiti_memory module
+        # Attempt to import graphiti-core
         import graphiti_core  # noqa: F401
-        from graphiti_core.driver.falkordb_driver import FalkorDriver  # noqa: F401
+
+        # Check for LadybugDB (preferred) or native Kuzu driver
+        ladybug_available = False
+        kuzu_available = False
+        try:
+            import real_ladybug  # noqa: F401
+            ladybug_available = True
+        except ImportError:
+            pass
+
+        try:
+            import kuzu  # noqa: F401
+            kuzu_available = True
+        except ImportError:
+            pass
+
+        if not ladybug_available and not kuzu_available:
+            status["available"] = False
+            status["reason"] = (
+                "Graph database driver not installed. "
+                "Install with: pip install real_ladybug (requires Python 3.12+) "
+                "or pip install kuzu"
+            )
+            return status
 
         # If we got here, packages are importable
         status["available"] = True
+        status["driver"] = "ladybug" if ladybug_available else "kuzu"
+
     except ImportError as e:
         status["available"] = False
         status["reason"] = f"Graphiti packages not installed: {e}"
@@ -713,3 +738,129 @@ def validate_graphiti_config() -> tuple[bool, list[str]]:
         return False, errors
 
     return True, []
+
+
+def check_graphiti_health() -> dict:
+    """
+    Perform a comprehensive health check of Graphiti integration.
+
+    Checks:
+    1. Configuration is valid
+    2. Required packages are installed
+    3. Database driver can be initialized
+    4. Database path is writable
+
+    Returns:
+        Dict with health check results:
+            - healthy: bool (overall health status)
+            - checks: dict of individual check results
+            - message: str (summary message)
+    """
+    results = {
+        "healthy": False,
+        "checks": {
+            "config_valid": False,
+            "packages_installed": False,
+            "driver_available": False,
+            "db_path_writable": False,
+        },
+        "message": "",
+        "details": {},
+    }
+
+    # Check 1: Configuration
+    config = GraphitiConfig.from_env()
+    if not config.enabled:
+        results["message"] = "Graphiti is disabled (set GRAPHITI_ENABLED=true)"
+        return results
+
+    if config.is_valid():
+        results["checks"]["config_valid"] = True
+        results["details"]["llm_provider"] = config.llm_provider
+        results["details"]["embedder_provider"] = config.embedder_provider
+    else:
+        errors = config.get_validation_errors()
+        results["message"] = f"Configuration invalid: {errors[0] if errors else 'Unknown error'}"
+        return results
+
+    # Check 2: Packages installed
+    try:
+        import graphiti_core  # noqa: F401
+        results["checks"]["packages_installed"] = True
+        results["details"]["graphiti_version"] = getattr(graphiti_core, "__version__", "unknown")
+    except ImportError as e:
+        results["message"] = f"graphiti-core not installed: {e}"
+        return results
+
+    # Check 3: Driver available (LadybugDB or Kuzu)
+    driver_name = None
+    try:
+        import real_ladybug  # noqa: F401
+        driver_name = "ladybug"
+        results["checks"]["driver_available"] = True
+    except ImportError:
+        try:
+            import kuzu  # noqa: F401
+            driver_name = "kuzu"
+            results["checks"]["driver_available"] = True
+        except ImportError:
+            results["message"] = (
+                "No graph database driver installed. "
+                "Install: pip install real_ladybug (Python 3.12+) or pip install kuzu"
+            )
+            return results
+
+    results["details"]["driver"] = driver_name
+
+    # Check 4: Database path writable
+    try:
+        db_path = config.get_db_path()
+        results["details"]["db_path"] = str(db_path)
+
+        # Try to create a test file to verify write access
+        test_file = db_path.parent / ".graphiti_health_check"
+        test_file.touch()
+        test_file.unlink()
+        results["checks"]["db_path_writable"] = True
+    except (OSError, PermissionError) as e:
+        results["message"] = f"Database path not writable: {e}"
+        return results
+
+    # All checks passed
+    results["healthy"] = True
+    results["message"] = f"Graphiti healthy (driver: {driver_name})"
+
+    return results
+
+
+def print_graphiti_health_report() -> bool:
+    """
+    Print a detailed health report for Graphiti integration.
+
+    Returns:
+        True if healthy, False otherwise
+    """
+    health = check_graphiti_health()
+
+    print("\n=== Graphiti Health Check ===\n")
+
+    # Status icon
+    status_icon = "✓" if health["healthy"] else "✗"
+    status_color = "green" if health["healthy"] else "red"
+
+    print(f"Status: {status_icon} {health['message']}\n")
+
+    # Individual checks
+    print("Checks:")
+    for check_name, passed in health["checks"].items():
+        icon = "✓" if passed else "✗"
+        print(f"  {icon} {check_name.replace('_', ' ').title()}")
+
+    # Details
+    if health["details"]:
+        print("\nDetails:")
+        for key, value in health["details"].items():
+            print(f"  {key}: {value}")
+
+    print()
+    return health["healthy"]

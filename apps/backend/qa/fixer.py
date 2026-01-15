@@ -15,6 +15,7 @@ from pathlib import Path
 
 # Memory integration for cross-session learning
 from agents.memory_manager import get_graphiti_context, save_session_memory
+from agents.session import receive_with_timeout
 from claude_agent_sdk import ClaudeSDKClient
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from security.tool_input_validator import get_safe_tool_input
@@ -224,8 +225,24 @@ async def run_qa_fixer_session(
             prompt += f"**User provided {len(screenshot_blocks)} screenshot(s) showing the issues:**\n\n"
             prompt += "**IMPORTANT:** The screenshots below show the actual visual problems the user is reporting. Analyze each screenshot carefully to understand what needs to be fixed before making changes.\n\n"
 
+            # Create content blocks list with text + images
             content_blocks = [{"type": "text", "text": prompt}] + screenshot_blocks
-            await client.query(content_blocks)
+
+            # SDK expects AsyncIterable of message dictionaries, not content blocks
+            # We need to wrap content blocks in a proper message structure
+            async def multimodal_message():
+                """Send a single message with multimodal content (text + images)."""
+                yield {
+                    "type": "user",
+                    "message": {
+                        "role": "user",
+                        "content": content_blocks  # Content as list of blocks
+                    },
+                    "parent_tool_use_id": None,
+                    "session_id": "default"
+                }
+
+            await client.query(multimodal_message())
             debug_success(
                 "qa_fixer",
                 f"Query sent with feedback text and {len(screenshot_blocks)} screenshot(s)",
@@ -237,7 +254,7 @@ async def run_qa_fixer_session(
 
         response_text = ""
         debug("qa_fixer", "Starting to receive response stream...")
-        async for msg in client.receive_response():
+        async for msg in receive_with_timeout(client):
             msg_type = type(msg).__name__
             message_count += 1
             debug_detailed(

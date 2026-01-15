@@ -42,6 +42,8 @@ import { setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
 import { initializeClaudeProfileManager } from './claude-profile-manager';
+import { TaskRecoveryService, DEFAULT_RECOVERY_CONFIG } from './task-recovery-service';
+import { projectStore } from './project-store';
 import type { AppSettings } from '../shared/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,6 +130,15 @@ function getIconPath(): string {
 let mainWindow: BrowserWindow | null = null;
 let agentManager: AgentManager | null = null;
 let terminalManager: TerminalManager | null = null;
+let taskRecoveryService: TaskRecoveryService | null = null;
+
+/**
+ * Get the task recovery service instance
+ * Used by IPC handlers to access recovery stats and config
+ */
+export function getTaskRecoveryService(): TaskRecoveryService | null {
+  return taskRecoveryService;
+}
 
 function createWindow(): void {
   // Get the primary display's work area (accounts for taskbar, dock, etc.)
@@ -349,6 +360,20 @@ app.whenReady().then(() => {
   // Initialize terminal manager
   terminalManager = new TerminalManager(() => mainWindow);
 
+  // Initialize task recovery service
+  taskRecoveryService = new TaskRecoveryService(
+    agentManager,
+    DEFAULT_RECOVERY_CONFIG,
+    async () => {
+      // Provide projects list to recovery service
+      return projectStore.getProjects().map(p => ({
+        id: p.id,
+        path: p.path,
+        name: p.name
+      }));
+    }
+  );
+
   // Setup IPC handlers (pass pythonEnvManager for Python path management)
   setupIpcHandlers(agentManager, terminalManager, () => mainWindow, pythonEnvManager);
 
@@ -379,6 +404,12 @@ app.whenReady().then(() => {
         const usageMonitor = getUsageMonitor();
         usageMonitor.start();
         console.warn('[main] Usage monitor initialized and started (after profile load)');
+
+        // Start task recovery service
+        if (taskRecoveryService) {
+          taskRecoveryService.start();
+          console.warn('[main] Task recovery service initialized and started');
+        }
       }
     })
     .catch((error) => {
@@ -388,6 +419,12 @@ app.whenReady().then(() => {
         initializeUsageMonitorForwarding(mainWindow);
         const usageMonitor = getUsageMonitor();
         usageMonitor.start();
+
+        // Start task recovery service even if profile manager failed
+        if (taskRecoveryService) {
+          taskRecoveryService.start();
+          console.warn('[main] Task recovery service initialized and started (fallback)');
+        }
       }
     });
 
@@ -440,6 +477,12 @@ app.on('window-all-closed', () => {
 
 // Cleanup before quit
 app.on('before-quit', async () => {
+  // Stop task recovery service
+  if (taskRecoveryService) {
+    taskRecoveryService.stop();
+    console.warn('[main] Task recovery service stopped');
+  }
+
   // Stop usage monitor
   const usageMonitor = getUsageMonitor();
   usageMonitor.stop();
