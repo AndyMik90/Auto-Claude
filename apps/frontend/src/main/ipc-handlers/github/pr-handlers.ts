@@ -409,11 +409,15 @@ async function waitForCIChecks(
   sendProgress: (progress: PRReviewProgress) => void
 ): Promise<CIWaitResult> {
   const POLL_INTERVAL_MS = 20000; // 20 seconds
-  const MAX_WAIT_MS = 30 * 60 * 1000; // 30 minutes
+  const MAX_WAIT_MINUTES = 30;
+  const MAX_WAIT_MS = MAX_WAIT_MINUTES * 60 * 1000; // 30 minutes
   const MAX_ITERATIONS = Math.floor(MAX_WAIT_MS / POLL_INTERVAL_MS); // 90 iterations
 
   let iteration = 0;
   const startTime = Date.now();
+  // Track last known in-progress state for accurate timeout reporting
+  let lastInProgressCount = 0;
+  let lastInProgressNames: string[] = [];
 
   debugLog("Starting CI wait check", { prNumber, headSha, maxIterations: MAX_ITERATIONS });
 
@@ -440,6 +444,10 @@ async function waitForCIChecks(
 
       const inProgressCount = inProgressChecks.length;
       const inProgressNames = inProgressChecks.map((cr) => cr.name);
+
+      // Track last known state for timeout reporting
+      lastInProgressCount = inProgressCount;
+      lastInProgressNames = inProgressNames;
 
       debugLog("CI check status", {
         prNumber,
@@ -470,7 +478,7 @@ async function waitForCIChecks(
       // Checks are still running - send progress update and wait
       iteration++;
       const elapsedMinutes = Math.floor((Date.now() - startTime) / 60000);
-      const remainingMinutes = 30 - elapsedMinutes;
+      const remainingMinutes = MAX_WAIT_MINUTES - elapsedMinutes;
 
       const checkNames =
         inProgressNames.length <= 3
@@ -519,16 +527,79 @@ async function waitForCIChecks(
     prNumber,
     waitTimeSeconds,
     maxWaitSeconds: MAX_WAIT_MS / 1000,
+    lastInProgressCount,
+    lastInProgressNames,
   });
 
   return {
     success: false,
     hasInProgress: true,
-    inProgressCount: 0, // Unknown at this point
-    inProgressChecks: [],
+    inProgressCount: lastInProgressCount,
+    inProgressChecks: lastInProgressNames,
     timedOut: true,
     waitTimeSeconds,
   };
+}
+
+/**
+ * Perform CI wait check before starting a PR review.
+ *
+ * Encapsulates the common logic for waiting on CI checks, including:
+ * - Fetching the PR head SHA
+ * - Calling waitForCIChecks
+ * - Logging the result
+ *
+ * @param config GitHub config with token and repo
+ * @param prNumber PR number
+ * @param sendProgress Progress callback
+ * @param reviewType Type of review for logging ("review" or "follow-up review")
+ */
+async function performCIWaitCheck(
+  config: { token: string; repo: string },
+  prNumber: number,
+  sendProgress: (progress: PRReviewProgress) => void,
+  reviewType: "review" | "follow-up review"
+): Promise<void> {
+  try {
+    sendProgress({
+      phase: "fetching",
+      prNumber,
+      progress: 5,
+      message: "Checking CI status...",
+    });
+
+    // Get PR head SHA for CI status check
+    const pr = (await githubFetch(
+      config.token,
+      `/repos/${config.repo}/pulls/${prNumber}`
+    )) as { head: { sha: string } };
+
+    const ciWaitResult = await waitForCIChecks(
+      config.token,
+      config.repo,
+      pr.head.sha,
+      prNumber,
+      sendProgress
+    );
+
+    if (ciWaitResult.timedOut) {
+      debugLog(`CI wait timed out, proceeding with ${reviewType}`, {
+        prNumber,
+        waitTimeSeconds: ciWaitResult.waitTimeSeconds,
+      });
+    } else if (ciWaitResult.waitTimeSeconds > 0) {
+      debugLog(`CI checks completed, starting ${reviewType}`, {
+        prNumber,
+        waitTimeSeconds: ciWaitResult.waitTimeSeconds,
+      });
+    }
+  } catch (ciError) {
+    // Don't fail the review if CI check fails, just log and proceed
+    debugLog(`Failed to check CI status, proceeding with ${reviewType}`, {
+      prNumber,
+      error: ciError instanceof Error ? ciError.message : ciError,
+    });
+  }
 }
 
 /**
@@ -1352,46 +1423,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
         // Wait for CI checks to complete before starting review
         if (config) {
-          try {
-            sendProgress({
-              phase: "fetching",
-              prNumber,
-              progress: 5,
-              message: "Checking CI status...",
-            });
-
-            // Get PR head SHA for CI status check
-            const pr = (await githubFetch(
-              config.token,
-              `/repos/${config.repo}/pulls/${prNumber}`
-            )) as { head: { sha: string } };
-
-            const ciWaitResult = await waitForCIChecks(
-              config.token,
-              config.repo,
-              pr.head.sha,
-              prNumber,
-              sendProgress
-            );
-
-            if (ciWaitResult.timedOut) {
-              debugLog("CI wait timed out, proceeding with review", {
-                prNumber,
-                waitTimeSeconds: ciWaitResult.waitTimeSeconds,
-              });
-            } else if (ciWaitResult.waitTimeSeconds > 0) {
-              debugLog("CI checks completed, starting review", {
-                prNumber,
-                waitTimeSeconds: ciWaitResult.waitTimeSeconds,
-              });
-            }
-          } catch (ciError) {
-            // Don't fail the review if CI check fails, just log and proceed
-            debugLog("Failed to check CI status, proceeding with review", {
-              prNumber,
-              error: ciError instanceof Error ? ciError.message : ciError,
-            });
-          }
+          await performCIWaitCheck(config, prNumber, sendProgress, "review");
         }
 
         sendProgress({
@@ -2181,60 +2213,27 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             return;
           }
 
-          debugLog("Starting follow-up review", { prNumber });
-          sendProgress({
-            phase: "fetching",
-            prNumber,
-            progress: 5,
-            message: "Starting follow-up review...",
-          });
+          // Register as running BEFORE CI wait to prevent race conditions
+          // Use null as placeholder until real process is spawned
+          runningReviews.set(reviewKey, null as unknown as import("child_process").ChildProcess);
+          debugLog("Registered follow-up review placeholder", { reviewKey });
 
-          // Wait for CI checks to complete before starting follow-up review
-          const config = getGitHubConfig(project);
-          if (config) {
-            try {
-              sendProgress({
-                phase: "fetching",
-                prNumber,
-                progress: 5,
-                message: "Checking CI status...",
-              });
+          try {
+            debugLog("Starting follow-up review", { prNumber });
+            sendProgress({
+              phase: "fetching",
+              prNumber,
+              progress: 5,
+              message: "Starting follow-up review...",
+            });
 
-              // Get PR head SHA for CI status check
-              const pr = (await githubFetch(
-                config.token,
-                `/repos/${config.repo}/pulls/${prNumber}`
-              )) as { head: { sha: string } };
-
-              const ciWaitResult = await waitForCIChecks(
-                config.token,
-                config.repo,
-                pr.head.sha,
-                prNumber,
-                sendProgress
-              );
-
-              if (ciWaitResult.timedOut) {
-                debugLog("CI wait timed out, proceeding with follow-up review", {
-                  prNumber,
-                  waitTimeSeconds: ciWaitResult.waitTimeSeconds,
-                });
-              } else if (ciWaitResult.waitTimeSeconds > 0) {
-                debugLog("CI checks completed, starting follow-up review", {
-                  prNumber,
-                  waitTimeSeconds: ciWaitResult.waitTimeSeconds,
-                });
-              }
-            } catch (ciError) {
-              // Don't fail the review if CI check fails, just log and proceed
-              debugLog("Failed to check CI status, proceeding with follow-up review", {
-                prNumber,
-                error: ciError instanceof Error ? ciError.message : ciError,
-              });
+            // Wait for CI checks to complete before starting follow-up review
+            const config = getGitHubConfig(project);
+            if (config) {
+              await performCIWaitCheck(config, prNumber, sendProgress, "follow-up review");
             }
-          }
 
-          const { model, thinkingLevel } = getGitHubPRSettings();
+            const { model, thinkingLevel } = getGitHubPRSettings();
           const args = buildRunnerArgs(
             getRunnerPath(backendPath),
             project.path,
@@ -2285,11 +2284,10 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             },
           });
 
-          // Register the running process
+          // Update registry with actual process (replacing placeholder)
           runningReviews.set(reviewKey, childProcess);
           debugLog("Registered follow-up review process", { reviewKey, pid: childProcess.pid });
 
-          try {
             const result = await promise;
 
             if (!result.success) {
@@ -2319,6 +2317,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
             sendComplete(result.data!);
           } finally {
+            // Always clean up registry, whether we exit normally or via error
             runningReviews.delete(reviewKey);
             debugLog("Unregistered follow-up review process", { reviewKey });
           }
