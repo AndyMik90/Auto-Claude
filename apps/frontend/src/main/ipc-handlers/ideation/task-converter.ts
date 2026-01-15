@@ -166,7 +166,8 @@ function createSpecFiles(
   // Creating spec.md here would cause run.py to be called directly, skipping spec creation
   const requirements = {
     task_description: `# ${idea.title}\n\n## Overview\n\n${idea.description}\n\n## Rationale\n\n${idea.rationale}`,
-    workflow_type: 'development'
+    // Valid workflow types: feature, refactor, investigation, migration, simple, bugfix, bug_fix
+    workflow_type: 'feature'
   };
   writeFileSync(
     path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
