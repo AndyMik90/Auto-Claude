@@ -132,7 +132,9 @@ def _commit_gitignore(project_dir: Path) -> bool:
         return False
 
 
-def ensure_all_gitignore_entries(project_dir: Path, auto_commit: bool = False) -> list[str]:
+def ensure_all_gitignore_entries(
+    project_dir: Path, auto_commit: bool = False
+) -> list[str]:
     """
     Ensure all auto-claude related entries exist in the project's .gitignore file.
 
