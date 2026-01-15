@@ -24,7 +24,8 @@ export function TaskLogStatusBar() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [streamingLogs, setStreamingLogs] = useState<Map<string, string>>(new Map());
-  const lastLogRef = useRef<string>('');
+  // Track last log message per task to prevent duplicate updates
+  const lastLogRef = useRef<Map<string, string>>(new Map());
 
   // Memoize running tasks to prevent infinite re-renders
   const runningTasks = useMemo(
@@ -42,8 +43,9 @@ export function TaskLogStatusBar() {
       const content = chunk.content || '';
 
       const cleaned = cleanLogContent(content);
-      if (cleaned && cleaned.length > 5 && cleaned !== lastLogRef.current) {
-        lastLogRef.current = cleaned;
+      const lastLog = lastLogRef.current.get(specId);
+      if (cleaned && cleaned.length > 5 && cleaned !== lastLog) {
+        lastLogRef.current.set(specId, cleaned);
         setStreamingLogs((prev) => {
           const next = new Map(prev);
           next.set(specId, cleaned);

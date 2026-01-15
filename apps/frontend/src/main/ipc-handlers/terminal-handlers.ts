@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
+import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, TerminalCreateOptions, ClaudeProfile, ClaudeProfileSettings, ClaudeUsageSnapshot } from '../../shared/types';
 import { getClaudeProfileManager } from '../claude-profile-manager';
@@ -12,6 +13,45 @@ import { escapeShellArg, escapeShellArgWindows } from '../../shared/utils/shell-
 import { getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { readSettingsFileAsync } from '../settings-utils';
 
+/**
+ * Validates that a directory path is safe to use.
+ * Prevents path traversal attacks by ensuring the path is absolute and normalized.
+ */
+function validateProjectPath(dirPath: string): { valid: true; path: string } | { valid: false; error: string } {
+  // Must be a non-empty string
+  if (!dirPath || typeof dirPath !== 'string') {
+    return { valid: false, error: 'Invalid path' };
+  }
+
+  // Resolve to absolute path (handles .., ., ~, etc.)
+  const resolvedPath = path.resolve(dirPath);
+
+  // Must be absolute after resolution
+  if (!path.isAbsolute(resolvedPath)) {
+    return { valid: false, error: 'Path must be absolute' };
+  }
+
+  // After resolution, path should not contain .. segments
+  const segments = resolvedPath.split(path.sep);
+  if (segments.includes('..')) {
+    return { valid: false, error: 'Invalid path' };
+  }
+
+  return { valid: true, path: resolvedPath };
+}
+
+/**
+ * Validates that a script name is safe to run (alphanumeric, dash, underscore, colon only).
+ * Prevents command injection by ensuring no shell metacharacters.
+ */
+function validateScriptName(scriptName: string): boolean {
+  if (!scriptName || typeof scriptName !== 'string') {
+    return false;
+  }
+  // Allow only alphanumeric, dash, underscore, and colon (npm convention for namespaced scripts)
+  // This prevents shell injection via characters like &, |, ;, $, `, etc.
+  return /^[a-zA-Z0-9_:-]+$/.test(scriptName);
+}
 
 /**
  * Register all terminal-related IPC handlers
@@ -117,11 +157,17 @@ export function registerTerminalHandlers(
     IPC_CHANNELS.TERMINAL_GET_NPM_SCRIPTS,
     async (_, cwd: string): Promise<IPCResult<{ hasPackageJson: boolean; scripts: Record<string, string> }>> => {
       try {
-        const { readFile } = await import('fs/promises');
-        const { join } = await import('path');
-        const packageJsonPath = join(cwd, 'package.json');
+        // Validate path to prevent directory traversal
+        const validation = validateProjectPath(cwd);
+        if (!validation.valid) {
+          return { success: false, error: validation.error };
+        }
 
-        debugLog('[terminal-handlers] Looking for package.json at:', packageJsonPath);
+        const { readFile } = await import('fs/promises');
+        const packageJsonPath = path.join(validation.path, 'package.json');
+
+        // Log only the directory basename to avoid leaking full paths
+        debugLog('[terminal-handlers] Looking for package.json in:', path.basename(validation.path));
 
         const content = await readFile(packageJsonPath, 'utf-8');
         const packageJson = JSON.parse(content);
@@ -133,22 +179,31 @@ export function registerTerminalHandlers(
       } catch (error) {
         // Not an error if package.json doesn't exist - just return empty scripts
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          debugLog('[terminal-handlers] No package.json found at:', cwd);
+          debugLog('[terminal-handlers] No package.json found');
           return { success: true, data: { hasPackageJson: false, scripts: {} } };
         }
+        // Sanitize error message - don't leak filesystem paths or sensitive info
         debugError('[terminal-handlers] Error reading package.json:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to read package.json'
+          error: 'Failed to read package.json'
         };
       }
     }
   );
 
   // Run npm script in terminal
+  // Validates script name to prevent command injection
   ipcMain.on(
     IPC_CHANNELS.TERMINAL_RUN_NPM_SCRIPT,
     (_, id: string, scriptName: string) => {
+      // Validate script name to prevent command injection
+      if (!validateScriptName(scriptName)) {
+        debugError('[terminal-handlers] Invalid script name rejected:', scriptName);
+        // Don't execute invalid script names - this prevents shell injection
+        return;
+      }
+
       const command = `npm run ${scriptName}\r`;
       terminalManager.write(id, command);
     }

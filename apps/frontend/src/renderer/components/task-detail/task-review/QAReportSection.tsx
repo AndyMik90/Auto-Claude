@@ -22,25 +22,41 @@ function LocalScreenshot({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadImage = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        if (isMounted) {
+          setLoading(true);
+          setError(null);
+        }
+
         // Use the existing readLocalImage IPC which takes base path and relative path
         const result = await window.electronAPI.readLocalImage(specsPath, screenshotPath);
+
+        if (!isMounted) return;
+
         if (result.success && result.data) {
           setImageSrc(result.data);
         } else {
           setError(result.error || 'Failed to load screenshot');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load screenshot');
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load screenshot');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadImage();
+
+    return () => {
+      isMounted = false;
+    };
   }, [specsPath, screenshotPath]);
 
   if (loading) {
