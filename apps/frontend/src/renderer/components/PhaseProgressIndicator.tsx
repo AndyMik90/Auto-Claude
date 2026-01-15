@@ -9,7 +9,6 @@ interface PhaseProgressIndicatorProps {
   subtasks: Subtask[];
   phaseLogs?: TaskLogs | null;
   phaseProgressPercent?: number;  // 0-100 progress within current phase (from ExecutionProgress)
-  statusMessage?: string;  // Current status message (from ExecutionProgress)
   isStuck?: boolean;
   isRunning?: boolean;
   className?: string;
@@ -50,7 +49,6 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
   subtasks,
   phaseLogs,
   phaseProgressPercent,
-  statusMessage,
   isStuck = false,
   isRunning = false,
   className,

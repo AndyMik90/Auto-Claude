@@ -475,7 +475,6 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
               phase={executionPhase}
               subtasks={task.subtasks}
               phaseProgressPercent={task.executionProgress?.phaseProgress}
-              statusMessage={task.executionProgress?.message}
               isStuck={isStuck}
               isRunning={isRunning}
             />
