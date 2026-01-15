@@ -473,17 +473,36 @@ export function registerSettingsHandlers(
       if (projectId) {
         try {
           const project = projectStore.getProject(projectId);
-          if (project && project.autoBuildPath) {
-            // Load from project's .auto-claude/.env file (same as agent-process does)
-            const projectEnvPath = path.join(project.path, project.autoBuildPath, '.env');
-            console.log('[settings-handlers] Loading project env from:', projectEnvPath);
+          if (project) {
+            console.log('[settings-handlers] Loading project env for:', project.name);
 
-            if (existsSync(projectEnvPath)) {
-              projectEnv = parseEnvFile(projectEnvPath);
-              console.log('[settings-handlers] Loaded project env vars:', Object.keys(projectEnv));
-            } else {
-              console.log('[settings-handlers] Project .env file not found at:', projectEnvPath);
+            // First, load from project's .auto-claude/.env file if it exists
+            if (project.autoBuildPath) {
+              const projectEnvPath = path.join(project.path, project.autoBuildPath, '.env');
+              if (existsSync(projectEnvPath)) {
+                projectEnv = parseEnvFile(projectEnvPath);
+                console.log('[settings-handlers] Loaded project .env file:', Object.keys(projectEnv));
+              }
             }
+
+            // Then, override with ProjectSettings (these take precedence)
+            if (project.settings) {
+              // Memory backend setting
+              if (project.settings.memoryBackend === 'graphiti') {
+                projectEnv['GRAPHITI_ENABLED'] = 'true';
+                console.log('[settings-handlers] Set GRAPHITI_ENABLED=true from ProjectSettings');
+              }
+
+              // Graphiti MCP settings
+              if (project.settings.graphitiMcpEnabled) {
+                projectEnv['GRAPHITI_MCP_ENABLED'] = 'true';
+                if (project.settings.graphitiMcpUrl) {
+                  projectEnv['GRAPHITI_MCP_URL'] = project.settings.graphitiMcpUrl;
+                }
+              }
+            }
+
+            console.log('[settings-handlers] Final project env vars:', Object.keys(projectEnv));
           }
         } catch (error) {
           console.error('[settings-handlers] Failed to load project env:', error);
