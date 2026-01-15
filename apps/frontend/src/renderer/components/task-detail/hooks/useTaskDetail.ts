@@ -299,21 +299,34 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
       // Fetch both merge preview and updated worktree status in parallel
       // This ensures the branch information (currentProjectBranch) is refreshed
       // when the user clicks the refresh button after switching branches locally
-      const [previewResult, statusResult] = await Promise.all([
+      // Use Promise.allSettled to handle partial failures - if one API call fails,
+      // the other's result is still processed rather than being discarded
+      const [previewResult, statusResult] = await Promise.allSettled([
         window.electronAPI.mergeWorktreePreview(task.id),
         window.electronAPI.getWorktreeStatus(task.id)
       ]);
 
-      if (previewResult.success && previewResult.data?.preview) {
-        setMergePreview(previewResult.data.preview);
+      // Process merge preview result if fulfilled
+      if (previewResult.status === 'fulfilled') {
+        const result = previewResult.value;
+        if (result.success && result.data?.preview) {
+          setMergePreview(result.data.preview);
+        }
+      } else {
+        console.error('[useTaskDetail] Failed to load merge preview:', previewResult.reason);
       }
 
-      // Update worktree status with fresh branch information
-      if (statusResult.success && statusResult.data) {
-        setWorktreeStatus(statusResult.data);
+      // Update worktree status with fresh branch information if fulfilled
+      if (statusResult.status === 'fulfilled') {
+        const result = statusResult.value;
+        if (result.success && result.data) {
+          setWorktreeStatus(result.data);
+        }
+      } else {
+        console.error('[useTaskDetail] Failed to load worktree status:', statusResult.reason);
       }
     } catch (err) {
-      console.error('[useTaskDetail] Failed to load merge preview:', err);
+      console.error('[useTaskDetail] Unexpected error in loadMergePreview:', err);
     } finally {
       hasLoadedPreviewRef.current = task.id;
       setIsLoadingPreview(false);

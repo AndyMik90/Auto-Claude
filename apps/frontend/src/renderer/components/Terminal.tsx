@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, useMemo, type DragEvent } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useDroppable, useDndContext } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
 import { FileDown } from 'lucide-react';
@@ -14,7 +14,7 @@ import { useXterm } from './terminal/useXterm';
 import { usePtyProcess } from './terminal/usePtyProcess';
 import { useTerminalEvents } from './terminal/useTerminalEvents';
 import { useAutoNaming } from './terminal/useAutoNaming';
-import { escapeShellArg } from '../../shared/utils/shell-escape';
+import { useTerminalFileDrop } from './terminal/useTerminalFileDrop';
 
 // Minimum dimensions to prevent PTY creation with invalid sizes
 const MIN_COLS = 10;
@@ -74,54 +74,10 @@ export function Terminal({
   const { active } = useDndContext();
   const isDraggingTerminal = active?.data.current?.type === 'terminal-panel';
 
-  // Native HTML5 drag state for files dragged from FileTreeItem
-  // This is needed because FileTreeItem uses native HTML5 drag events,
-  // not @dnd-kit, so we must handle native drop events separately
-  const [isNativeDragOver, setIsNativeDragOver] = useState(false);
-
-  // Handle native drag over (for files from FileTreeItem)
-  const handleNativeDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
-    // Check if it's a file reference drag (from FileTreeItem)
-    if (e.dataTransfer.types.includes('application/json')) {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsNativeDragOver(true);
-    }
-  }, []);
-
-  // Handle native drag leave
-  const handleNativeDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
-    // Only reset if actually leaving the container, not just moving to a child element
-    // HTML5 drag events fire dragleave when moving from parent to child
-    if (e.currentTarget.contains(e.relatedTarget as Node)) {
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    setIsNativeDragOver(false);
-  }, []);
-
-  // Handle native drop (for files from FileTreeItem)
-  const handleNativeDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
-    setIsNativeDragOver(false);
-    const jsonData = e.dataTransfer.getData('application/json');
-    if (jsonData) {
-      try {
-        const data = JSON.parse(jsonData) as { type?: string; path?: string };
-        if (data.type === 'file-reference' && data.path) {
-          e.preventDefault();
-          e.stopPropagation();
-          // Use escapeShellArg to safely escape path for shell execution
-          // This handles all shell metacharacters (quotes, $, backticks, etc.)
-          const escapedPath = escapeShellArg(data.path);
-          // Insert the file path into the terminal with a trailing space
-          window.electronAPI.sendTerminalInput(id, escapedPath + ' ');
-        }
-      } catch {
-        // Failed to parse drag data, ignore
-      }
-    }
-  }, [id]);
+  // Use custom hook for native HTML5 file drop handling from FileTreeItem
+  // This hook is extracted to enable proper unit testing with renderHook()
+  const { isNativeDragOver, handleNativeDragOver, handleNativeDragLeave, handleNativeDrop } =
+    useTerminalFileDrop({ terminalId: id });
 
   // Only show file drop overlay when dragging files (via @dnd-kit or native), not terminals
   const showFileDropOverlay = (isOver && !isDraggingTerminal) || isNativeDragOver;
