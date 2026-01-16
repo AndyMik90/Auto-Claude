@@ -168,8 +168,10 @@ export function setupPtyHandlers(
     // Call custom exit handler
     onExitCallback(terminal);
 
-    // Only delete if still in map (destroyTerminal may have already removed it)
-    if (terminals.has(id)) {
+    // Only delete if this is the SAME terminal object (not a newly created one with same ID).
+    // This prevents a race where destroyTerminal() awaits PTY exit, a new terminal is created
+    // with the same ID during the await, and then the old PTY's onExit deletes the new terminal.
+    if (terminals.get(id) === terminal) {
       terminals.delete(id);
     }
   });
@@ -281,10 +283,23 @@ export function resizePty(terminal: TerminalProcess, cols: number, rows: number)
  * @param waitForExit If true, returns a promise that resolves when the PTY exits.
  *                    Used on Windows where PTY termination is async.
  */
+export function killPty(terminal: TerminalProcess, waitForExit: true): Promise<void>;
+export function killPty(terminal: TerminalProcess, waitForExit?: false): void;
 export function killPty(terminal: TerminalProcess, waitForExit?: boolean): Promise<void> | void {
   if (waitForExit) {
     const exitPromise = waitForPtyExit(terminal.id);
-    terminal.pty.kill();
+    try {
+      terminal.pty.kill();
+    } catch (error) {
+      // Clean up the pending promise if kill() throws
+      const pending = pendingExitPromises.get(terminal.id);
+      if (pending) {
+        clearTimeout(pending.timeoutId);
+        pendingExitPromises.delete(terminal.id);
+        pending.resolve();
+      }
+      throw error;
+    }
     return exitPromise;
   }
   terminal.pty.kill();

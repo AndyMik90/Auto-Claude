@@ -289,6 +289,9 @@ export async function destroyAllTerminals(
     promises.push(
       new Promise((resolve) => {
         try {
+          // Note: We intentionally don't wait for PTY exit here (unlike destroyTerminal)
+          // because this function is only called during app shutdown when no terminals
+          // will be recreated. Waiting would only delay shutdown unnecessarily.
           PtyManager.killPty(terminal);
         } catch {
           // Ignore errors during cleanup
