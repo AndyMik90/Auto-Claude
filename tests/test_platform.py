@@ -197,13 +197,15 @@ class TestPythonCommands:
     @patch('core.platform.is_windows', return_value=True)
     def test_windows_python_commands(self, mock_is_windows):
         commands = get_python_commands()
-        assert 'py -3' in commands
-        assert 'python' in commands
+        # Commands are now returned as argument sequences
+        assert ["py", "-3"] in commands
+        assert ["python"] in commands
 
     @patch('core.platform.is_windows', return_value=False)
     def test_unix_python_commands(self, mock_is_windows):
         commands = get_python_commands()
-        assert commands[0] == 'python3'
+        # Commands are now returned as argument sequences
+        assert commands[0] == ["python3"]
 
 
 # ============================================================================

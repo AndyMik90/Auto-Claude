@@ -53,15 +53,18 @@ export function getClaudeExecutablePath(): string[] {
 /**
  * Resolve Python executable path
  *
+ * Returns command arguments as sequences so callers can pass each entry
+ * directly to spawn/exec or use cmd[0] for executable lookup.
+ *
  * Returns platform-specific command variations:
- * - Windows: py -3, python, python3, py
- * - Unix: python3, python
+ * - Windows: ["py", "-3"], ["python"], ["python3"], ["py"]
+ * - Unix: ["python3"], ["python"]
  */
-export function getPythonCommands(): string[] {
+export function getPythonCommands(): string[][] {
   if (isWindows()) {
-    return ['py -3', 'python', 'python3', 'py'];
+    return [['py', '-3'], ['python'], ['python3'], ['py']];
   }
-  return ['python3', 'python'];
+  return [['python3'], ['python']];
 }
 
 /**

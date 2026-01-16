@@ -336,16 +336,26 @@ def get_claude_detection_paths_structured() -> dict[str, list[str] | str]:
     }
 
 
-def get_python_commands() -> list[str]:
+def get_python_commands() -> list[list[str]]:
     """
-    Get platform-specific Python command variations.
+    Get platform-specific Python command variations as argument sequences.
+
+    Returns command arguments as sequences so callers can pass each entry
+    directly to subprocess.run(cmd) or use cmd[0] with shutil.which().
 
     Returns:
-        List of Python commands to try, in order of preference.
+        List of command argument lists to try, in order of preference.
+        Each inner list contains the executable and any required arguments.
+
+    Example:
+        for cmd in get_python_commands():
+            if shutil.which(cmd[0]):
+                subprocess.run(cmd + ["--version"])
+                break
     """
     if is_windows():
-        return ["py -3", "python", "python3", "py"]
-    return ["python3", "python"]
+        return [["py", "-3"], ["python"], ["python3"], ["py"]]
+    return [["python3"], ["python"]]
 
 
 def validate_cli_path(cli_path: str) -> bool:
