@@ -163,6 +163,9 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
     // This prevents false-positive "stuck" indicators when the process exits normally or is starting up.
     const currentPhase = task.executionProgress?.phase;
     if (currentPhase === 'complete' || currentPhase === 'failed' || currentPhase === 'planning') {
+      if (window.DEBUG) {
+        console.log(`[TaskCard] Stuck check skipped for ${task.id} - phase is '${currentPhase}' (planning/terminal phases don't need process verification)`);
+      }
       setIsStuck(false);
       return;
     }
