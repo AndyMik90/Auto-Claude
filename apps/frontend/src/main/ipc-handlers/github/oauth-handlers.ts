@@ -7,7 +7,7 @@ import { ipcMain, shell, BrowserWindow } from 'electron';
 import { execSync, execFileSync, spawn } from 'child_process';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
-import { getAugmentedEnv, findExecutable } from '../../env-utils';
+import { getNonInteractiveGitEnv, findExecutable } from '../../env-utils';
 import { getToolPath } from '../../cli-tool-manager';
 
 /**
@@ -138,11 +138,16 @@ export function registerCheckGhCli(): void {
         debugLog('gh CLI found at:', ghPath);
 
         // Get version using augmented environment
+        // Disable interactive prompts from Git Credential Manager
         debugLog('Getting gh version...');
         const versionOutput = execFileSync(getToolPath('gh'), ['--version'], {
           encoding: 'utf-8',
           stdio: 'pipe',
-          env: getAugmentedEnv()
+          env: {
+            ...getAugmentedEnv(),
+            GIT_TERMINAL_PROMPT: '0',
+            GCM_INTERACTIVE: 'never'
+          }
         });
         const version = versionOutput.trim().split('\n')[0];
         debugLog('gh version:', version);
@@ -171,7 +176,7 @@ export function registerCheckGhAuth(): void {
     IPC_CHANNELS.GITHUB_CHECK_AUTH,
     async (): Promise<IPCResult<{ authenticated: boolean; username?: string }>> => {
       debugLog('checkGitHubAuth handler called');
-      const env = getAugmentedEnv();
+      const env = getNonInteractiveGitEnv();
       try {
         // Check auth status
         debugLog('Running: gh auth status');
@@ -244,7 +249,7 @@ export function registerStartGhAuth(): void {
 
           const ghProcess = spawn('gh', args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            env: getAugmentedEnv()
+            env: getNonInteractiveGitEnv()
           });
 
           let output = '';
@@ -402,7 +407,7 @@ export function registerGetGhToken(): void {
         const token = execFileSync(getToolPath('gh'), ['auth', 'token'], {
           encoding: 'utf-8',
           stdio: 'pipe',
-          env: getAugmentedEnv()
+          env: getNonInteractiveGitEnv()
         }).trim();
 
         if (!token) {
@@ -442,7 +447,7 @@ export function registerGetGhUser(): void {
         const userJson = execFileSync(getToolPath('gh'), ['api', 'user'], {
           encoding: 'utf-8',
           stdio: 'pipe',
-          env: getAugmentedEnv()
+          env: getNonInteractiveGitEnv()
         });
 
         debugLog('User API response received');
@@ -484,7 +489,7 @@ export function registerListUserRepos(): void {
           {
             encoding: 'utf-8',
             stdio: 'pipe',
-            env: getAugmentedEnv()
+            env: getNonInteractiveGitEnv()
           }
         );
 
@@ -591,7 +596,7 @@ export function registerGetGitHubBranches(): void {
           {
             encoding: 'utf-8',
             stdio: 'pipe',
-            env: getAugmentedEnv()
+            env: getNonInteractiveGitEnv()
           }
         );
 
@@ -639,7 +644,7 @@ export function registerCreateGitHubRepo(): void {
         const username = execFileSync(getToolPath('gh'), ['api', 'user', '--jq', '.login'], {
           encoding: 'utf-8',
           stdio: 'pipe',
-          env: getAugmentedEnv()
+          env: getNonInteractiveGitEnv()
         }).trim();
 
         // Determine the owner (personal account or organization)
@@ -670,7 +675,7 @@ export function registerCreateGitHubRepo(): void {
           encoding: 'utf-8',
           cwd: options.projectPath,
           stdio: 'pipe',
-          env: getAugmentedEnv()
+          env: getNonInteractiveGitEnv()
         });
 
         debugLog('gh repo create output:', output);
@@ -777,7 +782,7 @@ export function registerListGitHubOrgs(): void {
         const output = execFileSync(getToolPath('gh'), ['api', 'user/orgs', '--jq', '.[] | {login: .login, avatarUrl: .avatar_url}'], {
           encoding: 'utf-8',
           stdio: 'pipe',
-          env: getAugmentedEnv()
+          env: getNonInteractiveGitEnv()
         });
 
         // Parse the JSON lines output
