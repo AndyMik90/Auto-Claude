@@ -242,12 +242,19 @@ function symlinkNodeModulesToWorktree(projectPath: string, worktreePath: string)
     }
 
     try {
-      // Use 'junction' type for Windows compatibility (no admin rights required)
-      // On macOS/Linux, the type parameter is ignored and a regular symlink is created
-      // Junctions require absolute paths on Windows, so we use the absolute sourcePath
-      symlinkSync(sourcePath, targetPath, 'junction');
+      // Platform-specific symlink creation:
+      // - Windows: Use 'junction' type which requires absolute paths (no admin rights required)
+      // - Unix (macOS/Linux): Use relative paths for portability (worktree can be moved)
+      if (process.platform === 'win32') {
+        symlinkSync(sourcePath, targetPath, 'junction');
+        debugLog('[TerminalWorktree] Created junction (Windows):', targetRel, '->', sourcePath);
+      } else {
+        // On Unix, use relative symlinks for portability (matches Python implementation)
+        const relativePath = path.relative(path.dirname(targetPath), sourcePath);
+        symlinkSync(relativePath, targetPath);
+        debugLog('[TerminalWorktree] Created symlink (Unix):', targetRel, '->', relativePath);
+      }
       symlinked.push(targetRel);
-      debugLog('[TerminalWorktree] Created symlink:', targetRel, '->', sourcePath);
     } catch (error) {
       // Symlink creation can fail on some systems (e.g., FAT32 filesystem, or permission issues)
       // Log warning but don't fail - worktree is still usable, just without TypeScript checking

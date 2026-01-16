@@ -111,7 +111,7 @@ interface ProfileInfo {
  * This prevents aggressive renaming on every Claude invocation and
  * preserves user-customized terminal names.
  */
-function shouldAutoRenameTerminal(currentTitle: string): boolean {
+export function shouldAutoRenameTerminal(currentTitle: string): boolean {
   // Already has Claude title - don't rename again
   if (currentTitle === 'Claude' || currentTitle.startsWith('Claude (')) {
     return false;

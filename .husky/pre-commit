@@ -2,7 +2,7 @@
 
 # Preserve git worktree context - prevent HEAD corruption in worktrees
 if [ -f ".git" ]; then
-  WORKTREE_GIT_DIR=$(cat .git | sed 's/gitdir: //')
+  WORKTREE_GIT_DIR=$(sed 's/^gitdir: //' .git)
   if [ -n "$WORKTREE_GIT_DIR" ]; then
     export GIT_DIR="$WORKTREE_GIT_DIR"
     export GIT_WORK_TREE="$(pwd)"
