@@ -519,7 +519,9 @@ class SpecOrchestrator:
         try:
             with open(requirements_file, encoding="utf-8") as f:
                 req = json.load(f)
-                self.task_description = req.get("task_description", self.task_description)
+                self.task_description = req.get(
+                    "task_description", self.task_description
+                )
                 return f"""
 **Task Description**: {req.get("task_description", "Not provided")}
 **Workflow Type**: {req.get("workflow_type", "Not specified")}
