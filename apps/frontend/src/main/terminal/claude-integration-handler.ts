@@ -13,7 +13,7 @@ import { getClaudeProfileManager, initializeClaudeProfileManager } from '../clau
 import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
-import { escapeShellArg, escapeShellArgWindows, escapeForWindowsDoubleQuote, buildCdCommand } from '../../shared/utils/shell-escape';
+import { escapeShellArg, escapeForWindowsDoubleQuote, buildCdCommand } from '../../shared/utils/shell-escape';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { isWindows } from './platform';
 import type {
@@ -874,54 +874,66 @@ export async function resumeClaudeAsync(
   sessionId: string | undefined,
   getWindow: WindowGetter
 ): Promise<void> {
-  terminal.isClaudeMode = true;
-  SessionHandler.releaseSessionId(terminal.id);
+  // Track terminal state for cleanup on error
+  const wasClaudeMode = terminal.isClaudeMode;
+  const prevClaudeSessionId = terminal.claudeSessionId;
 
-  // Async CLI invocation - non-blocking
-  // Add timeout protection for CLI detection (10s timeout)
-  const cliInvocationPromise = getClaudeCliInvocationAsync();
-  let timeoutId: NodeJS.Timeout | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error('CLI invocation timeout after 10s')), 10000);
-  });
+  try {
+    terminal.isClaudeMode = true;
+    SessionHandler.releaseSessionId(terminal.id);
 
-  const { command: claudeCmd, env: claudeEnv } = await Promise.race([cliInvocationPromise, timeoutPromise])
-    .finally(() => {
-      if (timeoutId) clearTimeout(timeoutId);
+    // Async CLI invocation - non-blocking
+    // Add timeout protection for CLI detection (10s timeout)
+    const cliInvocationPromise = getClaudeCliInvocationAsync();
+    let timeoutId: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('CLI invocation timeout after 10s')), 10000);
     });
 
-  const escapedClaudeCmd = escapeShellCommand(claudeCmd);
-  const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
+    const { command: claudeCmd, env: claudeEnv } = await Promise.race([cliInvocationPromise, timeoutPromise])
+      .finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
 
-  // Always use --continue which resumes the most recent session in the current directory.
-  // This is more reliable than --resume with session IDs since Auto Claude already restores
-  // terminals to their correct cwd/projectPath.
-  //
-  // Note: We clear claudeSessionId because --continue doesn't track specific sessions,
-  // and we don't want stale IDs persisting through SessionHandler.persistSession().
-  terminal.claudeSessionId = undefined;
+    const escapedClaudeCmd = escapeShellCommand(claudeCmd);
+    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
 
-  // Deprecation warning for callers still passing sessionId
-  if (sessionId) {
-    console.warn('[ClaudeIntegration:resumeClaudeAsync] sessionId parameter is deprecated and ignored; using claude --continue instead');
-  }
+    // Always use --continue which resumes the most recent session in the current directory.
+    // This is more reliable than --resume with session IDs since Auto Claude already restores
+    // terminals to their correct cwd/projectPath.
+    //
+    // Note: We clear claudeSessionId because --continue doesn't track specific sessions,
+    // and we don't want stale IDs persisting through SessionHandler.persistSession().
+    terminal.claudeSessionId = undefined;
 
-  const command = `${pathPrefix}${escapedClaudeCmd} --continue`;
-
-  terminal.pty.write(`${command}\r`);
-
-  // Only auto-rename if terminal has default name
-  // This preserves user-customized names and prevents renaming on every resume
-  if (shouldAutoRenameTerminal(terminal.title)) {
-    terminal.title = 'Claude';
-    const win = getWindow();
-    if (win) {
-      win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, 'Claude');
+    // Deprecation warning for callers still passing sessionId
+    if (sessionId) {
+      console.warn('[ClaudeIntegration:resumeClaudeAsync] sessionId parameter is deprecated and ignored; using claude --continue instead');
     }
-  }
 
-  if (terminal.projectPath) {
-    SessionHandler.persistSession(terminal);
+    const command = `${pathPrefix}${escapedClaudeCmd} --continue`;
+
+    terminal.pty.write(`${command}\r`);
+
+    // Only auto-rename if terminal has default name
+    // This preserves user-customized names and prevents renaming on every resume
+    if (shouldAutoRenameTerminal(terminal.title)) {
+      terminal.title = 'Claude';
+      const win = getWindow();
+      if (win) {
+        win.webContents.send(IPC_CHANNELS.TERMINAL_TITLE_CHANGE, terminal.id, 'Claude');
+      }
+    }
+
+    if (terminal.projectPath) {
+      SessionHandler.persistSession(terminal);
+    }
+  } catch (error) {
+    // Reset terminal state on error to prevent inconsistent state
+    terminal.isClaudeMode = wasClaudeMode;
+    terminal.claudeSessionId = prevClaudeSessionId;
+    debugError('[ClaudeIntegration:resumeClaudeAsync] Resume failed:', error);
+    throw error; // Re-throw to allow caller to handle
   }
 }
 
