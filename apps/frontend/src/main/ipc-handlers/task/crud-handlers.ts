@@ -317,9 +317,9 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
             // Don't reset 'done', 'pr_created', or 'in_progress' tasks as that would lose progress
             // in_progress tasks might have partial work even if agent isn't actively running
             // Also check agentManager.isRunning() to prevent race condition during agent shutdown
-            const replanableStates = ['backlog', 'error'];
+            const replannableStates = ['backlog', 'error'];
             const isAgentRunning = agentManager.isRunning(taskId);
-            const canReplan = replanableStates.includes(task.status) && !isAgentRunning;
+            const canReplan = replannableStates.includes(task.status) && !isAgentRunning;
 
             if (descriptionChanged && canReplan && plan.phases && plan.phases.length > 0) {
               console.warn('[TASK_UPDATE] Description changed, resetting subtasks for re-planning');
