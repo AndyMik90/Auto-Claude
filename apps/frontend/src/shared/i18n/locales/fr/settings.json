@@ -95,7 +95,9 @@
       "label": "Tester la connexion",
       "testing": "Test en cours...",
       "success": "Connexion réussie",
-      "failure": "Échec de la connexion"
+      "successDescription": "Vos identifiants API sont valides.",
+      "failure": "Échec de la connexion",
+      "failureDescription": "Échec du test de connexion"
     },
     "models": {
       "title": "Optionnel : correspondance des noms de modèles",

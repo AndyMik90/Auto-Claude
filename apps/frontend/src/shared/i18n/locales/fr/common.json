@@ -719,7 +719,16 @@
     "activeAccount": "Compte actif"
   },
   "imageUpload": {
-    "largeFileWarning": "Fichier volumineux - envisagez de compresser"
+    "largeFileWarning": "Fichier volumineux - envisagez de compresser",
+    "dropImagesHere": "Déposez les images ici ou cliquez pour parcourir",
+    "maximumImagesReached": "Nombre maximum d'images atteint",
+    "allowedTypes": "{{types}} jusqu'à {{maxSize}} chacun ({{current}}/{{max}})",
+    "imagesMaximum": "{{max}} images maximum",
+    "maximumImagesAllowed": "Maximum de {{max}} images autorisé",
+    "onlyMoreImagesCanAdd": "Seulement {{count}} image(s) supplémentaire(s) peuvent être ajoutées. Certains fichiers ont été ignorés.",
+    "invalidImageType": "\"{{filename}}\" n'est pas un type d'image valide. Autorisé : {{types}}",
+    "largeFileWarningMessage": "\"{{filename}}\" est plus grand que {{maxSize}}. Envisagez de le compresser pour de meilleures performances.",
+    "failedToProcess": "Échec du traitement de \"{{filename}}\""
   },
   "projectSelector": {
     "selectProject": "Sélectionner un projet...",

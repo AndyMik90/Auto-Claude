@@ -719,7 +719,16 @@
     "activeAccount": "Active Account"
   },
   "imageUpload": {
-    "largeFileWarning": "Large file - consider compressing"
+    "largeFileWarning": "Large file - consider compressing",
+    "dropImagesHere": "Drop images here or click to browse",
+    "maximumImagesReached": "Maximum images reached",
+    "allowedTypes": "{{types}} up to {{maxSize}} each ({{current}}/{{max}})",
+    "imagesMaximum": "{{max}} images maximum",
+    "maximumImagesAllowed": "Maximum of {{max}} images allowed",
+    "onlyMoreImagesCanAdd": "Only {{count}} more image(s) can be added. Some files were skipped.",
+    "invalidImageType": "\"{{filename}}\" is not a valid image type. Allowed: {{types}}",
+    "largeFileWarningMessage": "\"{{filename}}\" is larger than {{maxSize}}. Consider compressing it for better performance.",
+    "failedToProcess": "Failed to process \"{{filename}}\""
   },
   "projectSelector": {
     "selectProject": "Select a project...",

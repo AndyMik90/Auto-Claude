@@ -95,7 +95,9 @@
       "label": "Test Connection",
       "testing": "Testing...",
       "success": "Connection Successful",
-      "failure": "Connection Failed"
+      "successDescription": "Your API credentials are valid.",
+      "failure": "Connection Failed",
+      "failureDescription": "Failed to test connection"
     },
     "models": {
       "title": "Optional: Model Name Mappings",

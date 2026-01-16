@@ -95,7 +95,9 @@
 			"label": "测试连接",
 			"testing": "测试中...",
 			"success": "连接成功",
-			"failure": "连接失败"
+			"successDescription": "您的 API 凭据有效。",
+			"failure": "连接失败",
+			"failureDescription": "连接测试失败"
 		},
 		"models": {
 			"title": "可选：模型名称映射",
