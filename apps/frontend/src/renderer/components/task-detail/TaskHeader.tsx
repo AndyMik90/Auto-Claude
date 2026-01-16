@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
-import { TASK_STATUS_LABELS } from '../../../shared/constants';
+import { TASK_STATUS_LABELS, JSON_ERROR_TITLE_SUFFIX } from '../../../shared/constants';
 import type { Task } from '../../../shared/types';
 
 interface TaskHeaderProps {
@@ -31,8 +31,8 @@ export function TaskHeader({
 
   // Handle JSON error suffix with i18n
   const displayTitle = useMemo(() => {
-    if (task.title.endsWith('__JSON_ERROR_SUFFIX__')) {
-      const baseName = task.title.slice(0, -'__JSON_ERROR_SUFFIX__'.length);
+    if (task.title.endsWith(JSON_ERROR_TITLE_SUFFIX)) {
+      const baseName = task.title.slice(0, -JSON_ERROR_TITLE_SUFFIX.length);
       return `${baseName} ${t('errors:task.jsonError.titleSuffix')}`;
     }
     return task.title;

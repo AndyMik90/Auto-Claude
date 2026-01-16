@@ -178,13 +178,13 @@ def create_qa_tools(spec_dir: Path, project_dir: Path) -> list:
                     }
                 except Exception as retry_err:
                     logging.warning(
-                        f"QA update retry failed after auto-fix: {retry_err}"
+                        f"QA update retry failed after auto-fix: {retry_err} (original error: {e})"
                     )
                     return {
                         "content": [
                             {
                                 "type": "text",
-                                "text": f"Error: QA update failed after auto-fix: {retry_err}",
+                                "text": f"Error: QA update failed after auto-fix: {retry_err} (original JSON error: {e})",
                             }
                         ]
                     }

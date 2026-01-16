@@ -27,6 +27,15 @@ def _repair_json_syntax(content: str) -> str | None:
     if not content or not content.strip():
         return None
 
+    # Defensive limit on input size to prevent processing extremely large malformed files.
+    # Implementation plans are typically <100KB; 1MB provides ample headroom.
+    max_content_size = 1024 * 1024  # 1 MB
+    if len(content) > max_content_size:
+        logging.warning(
+            f"JSON repair skipped: content size {len(content)} exceeds limit {max_content_size}"
+        )
+        return None
+
     repaired = content
 
     # Remove trailing commas before closing brackets/braces
@@ -58,7 +67,9 @@ def _repair_json_syntax(content: str) -> str | None:
         # Pattern: trailing incomplete string or number after last complete element
         repaired = re.sub(r',\s*"(?:[^"\\]|\\.)*$', "", repaired)  # Incomplete key
         repaired = re.sub(r",\s*$", "", repaired)  # Trailing comma
-        repaired = re.sub(r':\s*"(?:[^"\\]|\\.)*$', ': ""', repaired)  # Incomplete string value
+        repaired = re.sub(
+            r':\s*"(?:[^"\\]|\\.)*$', ': ""', repaired
+        )  # Incomplete string value
         repaired = re.sub(r":\s*[0-9.]+$", ": 0", repaired)  # Incomplete number
 
         # Close remaining open brackets in reverse order (stack-based)

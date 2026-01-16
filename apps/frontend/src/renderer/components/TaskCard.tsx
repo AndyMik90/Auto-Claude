@@ -26,7 +26,9 @@ import {
   EXECUTION_PHASE_LABELS,
   EXECUTION_PHASE_BADGE_COLORS,
   TASK_STATUS_COLUMNS,
-  TASK_STATUS_LABELS
+  TASK_STATUS_LABELS,
+  JSON_ERROR_PREFIX,
+  JSON_ERROR_TITLE_SUFFIX
 } from '../../shared/constants';
 import { startTask, stopTask, checkTaskRunning, recoverStuckTask, isIncompleteHumanReview, archiveTasks } from '../stores/task-store';
 import type { Task, TaskCategory, ReviewReason, TaskStatus } from '../../shared/types';
@@ -117,8 +119,8 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
   const sanitizedDescription = useMemo(() => {
     if (!task.description) return null;
     // Check for JSON error marker and use i18n
-    if (task.description.startsWith('__JSON_ERROR__:')) {
-      const errorMessage = task.description.slice('__JSON_ERROR__:'.length);
+    if (task.description.startsWith(JSON_ERROR_PREFIX)) {
+      const errorMessage = task.description.slice(JSON_ERROR_PREFIX.length);
       const translatedDesc = t('errors:task.jsonError.description', { error: errorMessage });
       return sanitizeMarkdownForDisplay(translatedDesc, 120);
     }
@@ -127,8 +129,8 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
 
   // Memoize title with JSON error suffix handling
   const displayTitle = useMemo(() => {
-    if (task.title.endsWith('__JSON_ERROR_SUFFIX__')) {
-      const baseName = task.title.slice(0, -'__JSON_ERROR_SUFFIX__'.length);
+    if (task.title.endsWith(JSON_ERROR_TITLE_SUFFIX)) {
+      const baseName = task.title.slice(0, -JSON_ERROR_TITLE_SUFFIX.length);
       return `${baseName} ${t('errors:task.jsonError.titleSuffix')}`;
     }
     return task.title;

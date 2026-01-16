@@ -29,7 +29,8 @@ import {
   TASK_IMPACT_COLORS,
   TASK_PRIORITY_LABELS,
   TASK_PRIORITY_COLORS,
-  IDEATION_TYPE_LABELS
+  IDEATION_TYPE_LABELS,
+  JSON_ERROR_PREFIX
 } from '../../../shared/constants';
 import type { Task, TaskCategory } from '../../../shared/types';
 
@@ -56,8 +57,8 @@ export function TaskMetadata({ task }: TaskMetadataProps) {
   // Handle JSON error description with i18n
   const displayDescription = (() => {
     if (!task.description) return null;
-    if (task.description.startsWith('__JSON_ERROR__:')) {
-      const errorMessage = task.description.slice('__JSON_ERROR__:'.length);
+    if (task.description.startsWith(JSON_ERROR_PREFIX)) {
+      const errorMessage = task.description.slice(JSON_ERROR_PREFIX.length);
       return t('errors:task.jsonError.description', { error: errorMessage });
     }
     return task.description;
