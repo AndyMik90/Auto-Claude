@@ -210,11 +210,14 @@ class TestBatchValidatorModelResolution:
         This is an implementation-detail test that guards against import patterns
         causing circular dependencies. The try/except pattern (relative imports
         falling back to absolute imports) is the established convention across
-        runners/github/services/ and ensures proper module caching in sys.modules.
+        runners/github/ and ensures proper module caching in sys.modules.
+
+        Note: batch_validator.py is in runners/github/ (not services/), so it uses
+        ..phase_config (2 dots) to reach apps/backend/phase_config.py.
         """
         content = batch_validator_file.read_text(encoding="utf-8")
         # Verify the try/except pattern IS present (relative import first)
-        assert "from .phase_config import resolve_model_id" in content
+        assert "from ..phase_config import resolve_model_id" in content
         # Verify fallback to absolute import is present
         assert "except (ImportError, ValueError, SystemError):" in content
         assert 'from phase_config import resolve_model_id' in content

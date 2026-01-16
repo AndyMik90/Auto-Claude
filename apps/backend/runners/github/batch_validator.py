@@ -130,7 +130,7 @@ class BatchValidator:
             # Use the established try/except pattern for imports (matching
             # parallel_orchestrator_reviewer.py and other files in runners/github/services/)
             # This ensures consistency across the codebase and proper caching in sys.modules.
-            from .phase_config import resolve_model_id
+            from ..phase_config import resolve_model_id
 
             return resolve_model_id(model)
         except (ImportError, ValueError, SystemError):

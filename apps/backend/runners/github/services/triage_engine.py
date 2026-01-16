@@ -11,7 +11,7 @@ from pathlib import Path
 
 try:
     from ..models import GitHubRunnerConfig, TriageCategory, TriageResult
-    from ..phase_config import resolve_model_id
+    from ...phase_config import resolve_model_id
     from .prompt_manager import PromptManager
     from .response_parsers import ResponseParser
 except (ImportError, ValueError, SystemError):

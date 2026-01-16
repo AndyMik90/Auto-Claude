@@ -26,10 +26,12 @@ try:
     from .batch_validator import BatchValidator
     from .duplicates import SIMILAR_THRESHOLD
     from .file_lock import locked_json_write
+    from ..phase_config import resolve_model_id
 except (ImportError, ValueError, SystemError):
     from batch_validator import BatchValidator
     from duplicates import SIMILAR_THRESHOLD
     from file_lock import locked_json_write
+    from phase_config import resolve_model_id
 
 
 class ClaudeBatchAnalyzer:
@@ -152,7 +154,6 @@ Respond with JSON only:
             # Using Sonnet for better analysis (still just 1 call)
             # Note: Model shorthand resolved via resolve_model_id() to respect env overrides
             from core.simple_client import create_simple_client
-            from phase_config import resolve_model_id
 
             model = resolve_model_id("sonnet")
             client = create_simple_client(
