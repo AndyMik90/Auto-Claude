@@ -577,6 +577,137 @@ describe('Task Order State Management', () => {
     });
   });
 
+  describe('localStorage persistence edge cases', () => {
+    it('should handle empty string in localStorage', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      localStorage.setItem('task-order-state-project-1', '');
+
+      useTaskStore.getState().loadTaskOrder('project-1');
+
+      // Empty string causes JSON.parse to throw - should fall back to empty order
+      expect(useTaskStore.getState().taskOrder).toEqual({
+        backlog: [],
+        in_progress: [],
+        ai_review: [],
+        human_review: [],
+        pr_created: [],
+        done: []
+      });
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle partial/incomplete JSON object', () => {
+      // JSON that parses but is missing some columns
+      const partialOrder = { backlog: ['task-1'], in_progress: ['task-2'] };
+      localStorage.setItem('task-order-state-project-1', JSON.stringify(partialOrder));
+
+      useTaskStore.getState().loadTaskOrder('project-1');
+
+      // Should load whatever was stored (partial data)
+      const order = useTaskStore.getState().taskOrder;
+      expect(order?.backlog).toEqual(['task-1']);
+      expect(order?.in_progress).toEqual(['task-2']);
+      // Missing columns will be undefined in the stored object
+    });
+
+    it('should handle null stored value', () => {
+      localStorage.setItem('task-order-state-project-1', JSON.stringify(null));
+
+      useTaskStore.getState().loadTaskOrder('project-1');
+
+      // null is valid JSON but not a valid TaskOrderState - store will set it as taskOrder
+      // This is expected behavior - the store trusts valid JSON
+      expect(useTaskStore.getState().taskOrder).toBeNull();
+    });
+
+    it('should handle array instead of object stored', () => {
+      localStorage.setItem('task-order-state-project-1', JSON.stringify(['task-1', 'task-2']));
+
+      useTaskStore.getState().loadTaskOrder('project-1');
+
+      // Array is valid JSON but wrong structure - store will set it
+      // Store actions should handle this gracefully
+      expect(Array.isArray(useTaskStore.getState().taskOrder)).toBe(true);
+    });
+
+    it('should round-trip save and load with exact data preservation', () => {
+      const order = createTestTaskOrder({
+        backlog: ['task-1', 'task-2', 'task-3'],
+        in_progress: ['task-4'],
+        ai_review: [],
+        human_review: ['task-5', 'task-6'],
+        pr_created: [],
+        done: ['task-7', 'task-8', 'task-9', 'task-10']
+      });
+      useTaskStore.setState({ taskOrder: order });
+
+      // Save
+      useTaskStore.getState().saveTaskOrder('round-trip-test');
+
+      // Clear state
+      useTaskStore.setState({ taskOrder: null });
+      expect(useTaskStore.getState().taskOrder).toBeNull();
+
+      // Load
+      useTaskStore.getState().loadTaskOrder('round-trip-test');
+
+      // Verify exact preservation
+      expect(useTaskStore.getState().taskOrder).toEqual(order);
+    });
+
+    it('should handle special characters in project ID', () => {
+      const order = createTestTaskOrder({ backlog: ['special-task'] });
+      useTaskStore.setState({ taskOrder: order });
+
+      const specialProjectId = 'project/with:special@chars!';
+      useTaskStore.getState().saveTaskOrder(specialProjectId);
+
+      useTaskStore.setState({ taskOrder: null });
+      useTaskStore.getState().loadTaskOrder(specialProjectId);
+
+      expect(useTaskStore.getState().taskOrder?.backlog).toEqual(['special-task']);
+    });
+
+    it('should isolate different projects completely', () => {
+      // Set up three different projects with different orders
+      const orders = {
+        'project-a': createTestTaskOrder({ backlog: ['a-task-1', 'a-task-2'] }),
+        'project-b': createTestTaskOrder({ in_progress: ['b-task-1'] }),
+        'project-c': createTestTaskOrder({ done: ['c-task-1', 'c-task-2', 'c-task-3'] })
+      };
+
+      // Save all three
+      for (const [projectId, order] of Object.entries(orders)) {
+        useTaskStore.setState({ taskOrder: order });
+        useTaskStore.getState().saveTaskOrder(projectId);
+      }
+
+      // Clear and verify each loads independently
+      for (const [projectId, expectedOrder] of Object.entries(orders)) {
+        useTaskStore.setState({ taskOrder: null });
+        useTaskStore.getState().loadTaskOrder(projectId);
+        expect(useTaskStore.getState().taskOrder).toEqual(expectedOrder);
+      }
+    });
+
+    it('should handle very long task ID arrays', () => {
+      // Create an order with many task IDs
+      const manyTaskIds = Array.from({ length: 100 }, (_, i) => `task-${i}`);
+      const order = createTestTaskOrder({ backlog: manyTaskIds });
+      useTaskStore.setState({ taskOrder: order });
+
+      useTaskStore.getState().saveTaskOrder('many-tasks-project');
+      useTaskStore.setState({ taskOrder: null });
+      useTaskStore.getState().loadTaskOrder('many-tasks-project');
+
+      expect(useTaskStore.getState().taskOrder?.backlog).toHaveLength(100);
+      expect(useTaskStore.getState().taskOrder?.backlog[0]).toBe('task-0');
+      expect(useTaskStore.getState().taskOrder?.backlog[99]).toBe('task-99');
+    });
+  });
+
   describe('integration: load, reorder, save cycle', () => {
     it('should persist reordering through load/save cycle', () => {
       // 1. Load empty order
