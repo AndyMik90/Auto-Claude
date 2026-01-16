@@ -130,6 +130,7 @@ export const TaskCard = memo(function TaskCard({
   const { toast } = useToast();
   const [isStuck, setIsStuck] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const stuckCheckRef = useRef<{ timeout: NodeJS.Timeout | null; interval: NodeJS.Timeout | null }>({
     timeout: null,
     interval: null
@@ -292,6 +293,23 @@ export const TaskCard = memo(function TaskCard({
     const result = await archiveTasks(task.projectId, [task.id]);
     if (!result.success) {
       console.error('[TaskCard] Failed to archive task:', task.id, result.error);
+    }
+  };
+
+  const handleResetToBacklog = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsResetting(true);
+    try {
+      const result = await resetToBacklog(task.id);
+      if (!result.success) {
+        toast({
+          title: t('errors:resetFailed') || 'Reset Failed',
+          description: result.error || t('errors:unknownError') || 'An unknown error occurred',
+          variant: 'destructive'
+        });
+      }
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -583,20 +601,15 @@ export const TaskCard = memo(function TaskCard({
                   variant="outline"
                   size="sm"
                   className="h-7 px-2.5"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const result = await resetToBacklog(task.id);
-                    if (!result.success) {
-                      toast({
-                        title: t('errors.resetFailed') || 'Reset Failed',
-                        description: result.error || t('errors.unknownError') || 'An unknown error occurred',
-                        variant: 'destructive'
-                      });
-                    }
-                  }}
+                  onClick={handleResetToBacklog}
+                  disabled={isResetting}
                   title={t('tooltips.resetToBacklog') || 'Reset to backlog to retry from scratch'}
                 >
-                  <RotateCcw className="h-3 w-3" />
+                  {isResetting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-3 w-3" />
+                  )}
                 </Button>
               </div>
             ) : task.status === 'pr_created' ? (
