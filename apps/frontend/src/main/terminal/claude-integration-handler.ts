@@ -666,7 +666,6 @@ export function resumeClaude(
 ): void {
   // Track terminal state for cleanup on error
   const wasClaudeMode = terminal.isClaudeMode;
-  const prevClaudeSessionId = terminal.claudeSessionId;
 
   try {
     terminal.isClaudeMode = true;
@@ -710,7 +709,7 @@ export function resumeClaude(
   } catch (error) {
     // Reset terminal state on error to prevent inconsistent state
     terminal.isClaudeMode = wasClaudeMode;
-    terminal.claudeSessionId = prevClaudeSessionId;
+    // Note: Don't restore claudeSessionId since --continue doesn't use session IDs
     debugError('[ClaudeIntegration:resumeClaude] Resume failed:', error);
     throw error; // Re-throw to allow caller to handle
   }
@@ -882,7 +881,6 @@ export async function resumeClaudeAsync(
 ): Promise<void> {
   // Track terminal state for cleanup on error
   const wasClaudeMode = terminal.isClaudeMode;
-  const prevClaudeSessionId = terminal.claudeSessionId;
 
   try {
     terminal.isClaudeMode = true;
@@ -937,7 +935,7 @@ export async function resumeClaudeAsync(
   } catch (error) {
     // Reset terminal state on error to prevent inconsistent state
     terminal.isClaudeMode = wasClaudeMode;
-    terminal.claudeSessionId = prevClaudeSessionId;
+    // Note: Don't restore claudeSessionId since --continue doesn't use session IDs
     debugError('[ClaudeIntegration:resumeClaudeAsync] Resume failed:', error);
     throw error; // Re-throw to allow caller to handle
   }
