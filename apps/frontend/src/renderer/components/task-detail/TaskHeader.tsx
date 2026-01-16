@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Pencil, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -26,7 +27,16 @@ export function TaskHeader({
   onClose,
   onEdit
 }: TaskHeaderProps) {
-  const { t } = useTranslation('tasks');
+  const { t } = useTranslation(['tasks', 'errors']);
+
+  // Handle JSON error suffix with i18n
+  const displayTitle = useMemo(() => {
+    if (task.title.endsWith('__JSON_ERROR_SUFFIX__')) {
+      const baseName = task.title.slice(0, -'__JSON_ERROR_SUFFIX__'.length);
+      return `${baseName} ${t('errors:task.jsonError.titleSuffix')}`;
+    }
+    return task.title;
+  }, [task.title, t]);
 
   return (
     <div className="flex items-start justify-between p-4 pb-3">
@@ -34,12 +44,12 @@ export function TaskHeader({
         <Tooltip>
           <TooltipTrigger asChild>
             <h2 className="font-semibold text-lg text-foreground line-clamp-2 leading-snug cursor-default">
-              {task.title}
+              {displayTitle}
             </h2>
           </TooltipTrigger>
-          {task.title.length > 40 && (
+          {displayTitle.length > 40 && (
             <TooltipContent side="bottom" className="max-w-xs">
-              <p className="text-sm">{task.title}</p>
+              <p className="text-sm">{displayTitle}</p>
             </TooltipContent>
           )}
         </Tooltip>

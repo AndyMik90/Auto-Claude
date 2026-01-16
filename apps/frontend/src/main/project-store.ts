@@ -460,8 +460,9 @@ export class ProjectStore {
         }
 
         // Determine task status and review reason from plan
+        // For JSON errors, store just the raw error - renderer will use i18n to format
         const finalDescription = hasJsonError
-          ? `⚠️ JSON Parse Error: ${jsonErrorMessage}\n\nThe implementation_plan.json file is malformed. Run the backend auto-fix or manually repair the file.`
+          ? `__JSON_ERROR__:${jsonErrorMessage}`
           : description;
         // Tasks with JSON errors go to human_review with errors reason
         const { status: finalStatus, reviewReason: finalReviewReason } = hasJsonError
@@ -486,8 +487,8 @@ export class ProjectStore {
         const stagedAt = planWithStaged?.stagedAt;
 
         // Determine title - check if feature looks like a spec ID (e.g., "054-something-something")
-        // For JSON error tasks, always use directory name as title
-        let title = hasJsonError ? `${dir.name} (JSON Error)` : (plan?.feature || plan?.title || dir.name);
+        // For JSON error tasks, use directory name with marker for i18n suffix
+        let title = hasJsonError ? `${dir.name}__JSON_ERROR_SUFFIX__` : (plan?.feature || plan?.title || dir.name);
         const looksLikeSpecId = /^\d{3}-/.test(title) && !hasJsonError;
         if (looksLikeSpecId && existsSync(specFilePath)) {
           try {

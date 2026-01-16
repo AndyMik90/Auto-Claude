@@ -56,9 +56,9 @@ def _repair_json_syntax(content: str) -> str | None:
         # Try to find a reasonable truncation point and close
         # First, strip any incomplete key-value pair at the end
         # Pattern: trailing incomplete string or number after last complete element
-        repaired = re.sub(r',\s*"[^"]*$', "", repaired)  # Incomplete key
+        repaired = re.sub(r',\s*"(?:[^"\\]|\\.)*$', "", repaired)  # Incomplete key
         repaired = re.sub(r",\s*$", "", repaired)  # Trailing comma
-        repaired = re.sub(r':\s*"[^"]*$', ': ""', repaired)  # Incomplete string value
+        repaired = re.sub(r':\s*"(?:[^"\\]|\\.)*$', ': ""', repaired)  # Incomplete string value
         repaired = re.sub(r":\s*[0-9.]+$", ": 0", repaired)  # Incomplete number
 
         # Close remaining open brackets in reverse order (stack-based)
@@ -70,11 +70,12 @@ def _repair_json_syntax(content: str) -> str | None:
                 repaired += "]"
 
     # Fix unquoted string values (common LLM error)
-    # Match: colon followed by unquoted word (not number, true, false, null, object, array)
-    # This is risky, so we only do it for common status-like values
+    # Match: quoted key followed by colon and unquoted word
+    # Require a quoted key to avoid matching inside string values
+    # (e.g., {"description": "status: pending review"} should not be modified)
     repaired = re.sub(
-        r":\s*(pending|in_progress|completed|failed|done|backlog)\s*([,}\]])",
-        r': "\1"\2',
+        r'("[^"]+"\s*):\s*(pending|in_progress|completed|failed|done|backlog)\s*([,}\]])',
+        r'\1: "\2"\3',
         repaired,
     )
 

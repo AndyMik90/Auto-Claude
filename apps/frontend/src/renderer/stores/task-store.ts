@@ -820,6 +820,9 @@ export function getTaskByGitHubIssue(issueNumber: number): Task | undefined {
 export function isIncompleteHumanReview(task: Task): boolean {
   if (task.status !== 'human_review') return false;
 
+  // JSON error tasks are intentionally in human_review with no subtasks - not incomplete
+  if (task.reviewReason === 'errors') return false;
+
   // If no subtasks defined, task hasn't been planned yet (shouldn't be in human_review)
   if (!task.subtasks || task.subtasks.length === 0) return true;
 

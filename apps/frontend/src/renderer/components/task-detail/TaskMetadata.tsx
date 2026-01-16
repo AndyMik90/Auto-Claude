@@ -51,7 +51,18 @@ interface TaskMetadataProps {
 }
 
 export function TaskMetadata({ task }: TaskMetadataProps) {
-  const { t } = useTranslation(['tasks']);
+  const { t } = useTranslation(['tasks', 'errors']);
+
+  // Handle JSON error description with i18n
+  const displayDescription = (() => {
+    if (!task.description) return null;
+    if (task.description.startsWith('__JSON_ERROR__:')) {
+      const errorMessage = task.description.slice('__JSON_ERROR__:'.length);
+      return t('errors:task.jsonError.description', { error: errorMessage });
+    }
+    return task.description;
+  })();
+
   const hasClassification = task.metadata && (
     task.metadata.category ||
     task.metadata.priority ||
@@ -141,14 +152,14 @@ export function TaskMetadata({ task }: TaskMetadataProps) {
       </div>
 
       {/* Description - Primary Content */}
-      {task.description && (
+      {displayDescription && (
         <div className="bg-muted/30 rounded-lg px-4 py-3 border border-border/50 overflow-hidden max-w-full">
           <div
             className="prose prose-sm prose-invert max-w-none overflow-hidden prose-p:text-foreground/90 prose-p:leading-relaxed prose-headings:text-foreground prose-strong:text-foreground prose-li:text-foreground/90 prose-ul:my-2 prose-li:my-0.5 prose-a:break-all prose-pre:overflow-x-auto prose-img:max-w-full [&_img]:!max-w-full [&_img]:h-auto [&_code]:break-all [&_code]:whitespace-pre-wrap [&_*]:max-w-full"
             style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
           >
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {task.description}
+              {displayDescription}
             </ReactMarkdown>
           </div>
         </div>
