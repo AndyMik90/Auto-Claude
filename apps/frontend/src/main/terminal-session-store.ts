@@ -447,6 +447,16 @@ export class TerminalSessionStore {
   }
 
   /**
+   * Save sessions to disk asynchronously (non-blocking)
+   *
+   * Public wrapper around saveAsync() for external callers that need
+   * non-blocking saves (e.g., during Electron app-quit handlers).
+   */
+  saveSessionAsync(): Promise<void> {
+    return this.saveAsync();
+  }
+
+  /**
    * Get all sessions (for debugging)
    */
   getAllSessions(): SessionData {
