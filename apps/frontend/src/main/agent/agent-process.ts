@@ -22,6 +22,7 @@ import { buildMemoryEnvVars } from '../memory-env-builder';
 import { readSettingsFile } from '../settings-utils';
 import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
+import { extractErrorMessage } from './error-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo } from '../cli-tool-manager';
 import { isWindows, killProcessGracefully } from '../platform';
@@ -688,27 +689,8 @@ export class AgentProcessManager {
       }
 
       if (code !== 0 && currentPhase !== 'complete' && currentPhase !== 'failed') {
-        // Extract meaningful error message from stderr
-        let errorMessage = `Process exited with code ${code}`;
-        if (stderrCollected.trim()) {
-          const stderrLines = stderrCollected.trim().split('\n').filter(line => line.trim());
-          // Look for error-like patterns
-          const errorPatterns = [
-            /error[:\s]/i, /exception/i, /failed/i, /invalid/i,
-            /unauthorized/i, /forbidden/i, /timeout/i, /traceback/i
-          ];
-          const errorLines = stderrLines.filter(line =>
-            errorPatterns.some(pattern => pattern.test(line))
-          );
-          // Use error lines if found, otherwise last few lines
-          const relevantLines = errorLines.length > 0
-            ? errorLines.slice(-3)
-            : stderrLines.slice(-3);
-          if (relevantLines.length > 0) {
-            const summary = relevantLines.join('\n').trim();
-            errorMessage = summary.length > 500 ? summary.substring(0, 500) + '...' : summary;
-          }
-        }
+        // Extract meaningful error message from stderr using shared utility
+        const errorMessage = extractErrorMessage(stderrCollected, code);
 
         this.emitter.emit('execution-progress', taskId, {
           phase: 'failed',
