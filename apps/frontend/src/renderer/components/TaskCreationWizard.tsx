@@ -151,7 +151,19 @@ export function TaskCreationWizard({
           setShowClassification(true);
         }
       } else {
-        // No draft - initialize from selected profile
+        // No draft - reset all form fields to defaults
+        setTitle('');
+        setDescription('');
+        setCategory('');
+        setPriority('');
+        setComplexity('');
+        setImpact('');
+        setImages([]);
+        setReferencedFiles([]);
+        setRequireReviewBeforeCoding(false);
+        setShowClassification(false);
+        setIsDraftRestored(false);
+        // Initialize model settings from selected profile
         setProfileId(settings.selectedAgentProfile || 'auto');
         setModel(selectedProfile.model);
         setThinkingLevel(selectedProfile.thinkingLevel);
