@@ -13,7 +13,7 @@ Tests the auth.py module functionality including:
 import json
 import os
 import platform
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from core.auth import (
