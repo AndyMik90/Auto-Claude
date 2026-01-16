@@ -131,7 +131,13 @@ def _commit_gitignore(project_dir: Path) -> bool:
         # Commit with standard message - explicitly specify .gitignore to avoid
         # committing other staged files the user may have
         result = subprocess.run(
-            ["git", "commit", ".gitignore", "-m", "chore: add auto-claude entries to .gitignore"],
+            [
+                "git",
+                "commit",
+                ".gitignore",
+                "-m",
+                "chore: add auto-claude entries to .gitignore",
+            ],
             cwd=project_dir,
             capture_output=True,
             text=True,
