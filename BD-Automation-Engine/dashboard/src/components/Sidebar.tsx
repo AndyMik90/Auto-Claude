@@ -14,6 +14,8 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
+  BarChart3,
 } from 'lucide-react';
 import type { TabId } from '../types';
 
@@ -29,6 +31,7 @@ interface SidebarProps {
 
 const tabs: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'executive', label: 'Executive Summary', icon: LayoutDashboard },
+  { id: 'intelligence', label: 'Job Intelligence', icon: Sparkles },
   { id: 'jobs', label: 'Jobs Pipeline', icon: Briefcase },
   { id: 'programs', label: 'Programs/Contracts', icon: Building2 },
   { id: 'contacts', label: 'Contact Intelligence', icon: Users },
@@ -39,6 +42,7 @@ const tabs: Array<{ id: TabId; label: string; icon: React.ComponentType<{ classN
   { id: 'enrichment', label: 'Auto-Enrichment', icon: Zap },
   { id: 'playbook', label: 'Daily Playbook', icon: CalendarCheck },
   { id: 'mindmap', label: 'Mind Map', icon: Network },
+  { id: 'dataquality', label: 'Data Quality', icon: BarChart3 },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

@@ -50,7 +50,7 @@ export interface UseAutoEnrichmentResult {
   refreshAll: () => Promise<void>;
 }
 
-const initialStats: EnrichmentStats = {
+const _initialStats: EnrichmentStats = {
   totalJobs: 0,
   totalContacts: 0,
   jobsByProgram: {},
@@ -61,6 +61,7 @@ const initialStats: EnrichmentStats = {
   highValueJobs: 0,
   criticalContacts: 0,
 };
+void _initialStats; // Suppress unused warning - preserved for future use
 
 export function useAutoEnrichment(): UseAutoEnrichmentResult {
   // Raw data from Notion

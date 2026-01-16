@@ -8,7 +8,8 @@
  * - BD Score (0-100)
  */
 
-import type { NotionJob, NotionProgram, NotionContact } from './notionApi';
+import type { NotionJob, NotionContact } from './notionApi';
+// NotionProgram available for future program-based enrichment
 
 // =============================================================================
 // LOCATION → PROGRAM MAPPING RULES
@@ -119,8 +120,9 @@ export function classifyTierByTitle(title: string): { tier: number; label: strin
 export function calculateBDPriority(
   tier: number,
   program?: string,
-  clearance?: string
+  _clearance?: string
 ): BDPriorityResult {
+  void _clearance; // Reserved for future clearance-based priority rules
   const reasons: string[] = [];
   const isPACAF = program?.includes('PACAF');
 

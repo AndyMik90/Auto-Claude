@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ExecutiveSummary } from './pages/ExecutiveSummary';
+import { JobIntelligence } from './pages/JobIntelligence';
 import { JobsPipeline } from './pages/JobsPipeline';
 import { Programs } from './pages/Programs';
 import { Contacts } from './pages/Contacts';
@@ -12,6 +13,7 @@ import { EnrichmentDashboard } from './pages/EnrichmentDashboard';
 import { DailyPlaybook } from './pages/DailyPlaybook';
 import { MindMap } from './pages/MindMap';
 import { Settings } from './pages/Settings';
+import { DataQualityDashboard } from './pages/DataQualityDashboard';
 import { useNotionDashboard } from './hooks/useNotionData';
 import type { TabId } from './types';
 import type { NativeNodeType } from './configs/nativeNodeConfigs';
@@ -113,6 +115,15 @@ function App() {
     switch (activeTab) {
       case 'executive':
         return <ExecutiveSummary summary={data?.summary ?? null} loading={loading} />;
+      case 'intelligence':
+        return (
+          <JobIntelligence
+            jobs={data?.jobs ?? []}
+            programs={data?.programs ?? []}
+            contacts={data?.contacts ?? {}}
+            loading={loading}
+          />
+        );
       case 'jobs':
         return (
           <JobsPipeline
@@ -191,6 +202,15 @@ function App() {
             initialEntityType={mindMapNav?.entityType}
             initialEntityId={mindMapNav?.entityId}
             initialEntityLabel={mindMapNav?.entityLabel}
+          />
+        );
+      case 'dataquality':
+        return (
+          <DataQualityDashboard
+            jobs={data?.jobs ?? []}
+            programs={data?.programs ?? []}
+            contacts={data?.contacts ?? {}}
+            loading={loading}
           />
         );
       case 'settings':

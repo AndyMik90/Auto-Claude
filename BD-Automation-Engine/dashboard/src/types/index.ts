@@ -72,6 +72,12 @@ export interface Contact {
   notes: string;
   source_db: string;
   matched_programs: string[];
+  // Legacy fields for backwards compatibility
+  last_name?: string;
+  linkedin_url?: string;
+  influence_tier?: number;
+  location?: string;
+  programs?: string[];
 }
 
 export interface Contractor {
@@ -123,6 +129,7 @@ export interface DashboardData {
 
 export type TabId =
   | 'executive'
+  | 'intelligence'
   | 'jobs'
   | 'programs'
   | 'contacts'
@@ -133,6 +140,7 @@ export type TabId =
   | 'enrichment'
   | 'playbook'
   | 'mindmap'
+  | 'dataquality'
   | 'settings';
 
 export interface Tab {
@@ -169,3 +177,6 @@ export const TIER_COLORS: Record<ContactTier, string> = {
   5: 'bg-amber-600',
   6: 'bg-gray-500',
 };
+
+// Contacts grouped by tier
+export type ContactsByTier = Record<number, Contact[]>;

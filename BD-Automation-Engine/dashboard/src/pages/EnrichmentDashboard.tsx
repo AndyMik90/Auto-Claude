@@ -28,8 +28,8 @@ export function EnrichmentDashboard({ loading: externalLoading }: EnrichmentDash
   const {
     jobs,
     contacts,
-    enrichedJobs,
-    enrichedContacts,
+    enrichedJobs: _enrichedJobs,
+    enrichedContacts: _enrichedContacts,
     stats,
     callSheet,
     isLoading,
@@ -41,6 +41,8 @@ export function EnrichmentDashboard({ loading: externalLoading }: EnrichmentDash
     exportCallSheet,
     refreshAll,
   } = useAutoEnrichment();
+  void _enrichedJobs; // Suppress unused warning - available for future use
+  void _enrichedContacts; // Suppress unused warning - available for future use
 
   const [autoRefresh, setAutoRefresh] = useState(false);
 
