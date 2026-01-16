@@ -239,7 +239,9 @@ describe('claude-integration-handler', () => {
     const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
     const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
     const tokenPrefix = path.join(tmpdir(), '.claude-token-1234-');
-    expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}$`));
+    // Platform-specific temp file extension: Windows uses .bat, Unix has no extension
+    const tokenExt = process.platform === 'win32' ? '.bat' : '';
+    expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
     // Platform-specific expectations: Windows vs Unix temp file format
     if (process.platform === 'win32') {
       expect(tokenContents).toBe('@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=token-value"\r\n');
@@ -355,7 +357,9 @@ describe('claude-integration-handler', () => {
     const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
     const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
     const tokenPrefix = path.join(tmpdir(), '.claude-token-5678-');
-    expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}$`));
+    // Platform-specific temp file extension: Windows uses .bat, Unix has no extension
+    const tokenExt = process.platform === 'win32' ? '.bat' : '';
+    expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
     // Platform-specific expectations: Windows vs Unix temp file format
     if (process.platform === 'win32') {
       expect(tokenContents).toBe('@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=token-value"\r\n');
@@ -573,13 +577,22 @@ describe('claude-integration-handler - Helper Functions', () => {
         { method: 'temp-file', tempFile: '/tmp/.token-123' }
       );
 
-      expect(result).toContain('clear && ');
+      // Platform-specific expectations
+      const clearCmd = process.platform === 'win32' ? 'cls' : 'clear';
+      const histPrefix = process.platform === 'win32' ? '' : 'HISTFILE= HISTCONTROL=ignorespace';
+      const tempCmd = process.platform === 'win32' ? 'call "/tmp/.token-123"' : "source '/tmp/.token-123'";
+      const cleanupCmd = process.platform === 'win32' ? '& del "/tmp/.token-123"' : "rm -f '/tmp/.token-123'";
+      const execCmd = process.platform === 'win32' ? '"/opt/bin/claude"' : "exec '/opt/bin/claude'";
+
+      expect(result).toContain(`${clearCmd} && `);
       expect(result).toContain("cd '/tmp/project' && ");
-      expect(result).toContain('HISTFILE= HISTCONTROL=ignorespace');
+      if (process.platform !== 'win32') {
+        expect(result).toContain(histPrefix);
+      }
       expect(result).toContain("PATH='/opt/bin' ");
-      expect(result).toContain("source '/tmp/.token-123'");
-      expect(result).toContain("rm -f '/tmp/.token-123'");
-      expect(result).toContain("exec '/opt/bin/claude'");
+      expect(result).toContain(tempCmd);
+      expect(result).toContain(cleanupCmd);
+      expect(result).toContain(execCmd);
     });
 
     it('should build config-dir method command with CLAUDE_CONFIG_DIR', async () => {
@@ -591,12 +604,22 @@ describe('claude-integration-handler - Helper Functions', () => {
         { method: 'config-dir', configDir: '/home/user/.claude-work' }
       );
 
-      expect(result).toContain('clear && ');
+      // Platform-specific expectations
+      const clearCmd = process.platform === 'win32' ? 'cls' : 'clear';
+      const histPrefix = process.platform === 'win32' ? '' : 'HISTFILE= HISTCONTROL=ignorespace';
+      const configDirVar = process.platform === 'win32'
+        ? 'set "CLAUDE_CONFIG_DIR=/home/user/.claude-work"'
+        : "CLAUDE_CONFIG_DIR='/home/user/.claude-work'";
+      const execCmd = process.platform === 'win32' ? '"/opt/bin/claude"' : "exec '/opt/bin/claude'";
+
+      expect(result).toContain(`${clearCmd} && `);
       expect(result).toContain("cd '/tmp/project' && ");
-      expect(result).toContain('HISTFILE= HISTCONTROL=ignorespace');
-      expect(result).toContain("CLAUDE_CONFIG_DIR='/home/user/.claude-work'");
+      if (process.platform !== 'win32') {
+        expect(result).toContain(histPrefix);
+      }
+      expect(result).toContain(configDirVar);
       expect(result).toContain("PATH='/opt/bin' ");
-      expect(result).toContain("exec '/opt/bin/claude'");
+      expect(result).toContain(execCmd);
     });
 
     it('should handle empty cwdCommand for temp-file method', async () => {
@@ -608,10 +631,17 @@ describe('claude-integration-handler - Helper Functions', () => {
         { method: 'temp-file', tempFile: '/tmp/.token' }
       );
 
-      expect(result).toContain('clear && ');
-      expect(result).toContain('HISTFILE= HISTCONTROL=ignorespace');
+      // Platform-specific expectations
+      const clearCmd = process.platform === 'win32' ? 'cls' : 'clear';
+      const histPrefix = process.platform === 'win32' ? '' : 'HISTFILE= HISTCONTROL=ignorespace';
+      const tempCmd = process.platform === 'win32' ? 'call "/tmp/.token"' : "source '/tmp/.token'";
+
+      expect(result).toContain(`${clearCmd} && `);
+      if (process.platform !== 'win32') {
+        expect(result).toContain(histPrefix);
+      }
       expect(result).not.toContain('cd ');
-      expect(result).toContain("source '/tmp/.token'");
+      expect(result).toContain(tempCmd);
     });
 
     describe('Windows platform', () => {
