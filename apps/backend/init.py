@@ -94,7 +94,8 @@ def _is_git_repo(project_dir: Path) -> bool:
             timeout=10,
         )
         return result.returncode == 0
-    except (subprocess.TimeoutExpired, Exception):
+    except (subprocess.TimeoutExpired, Exception) as e:
+        logger.debug("Git repo check failed: %s", e)
         return False
 
 
@@ -151,7 +152,8 @@ def _commit_gitignore(project_dir: Path) -> bool:
         combined_output = result.stdout + result.stderr
         return result.returncode == 0 or "nothing to commit" in combined_output
 
-    except (subprocess.TimeoutExpired, Exception):
+    except (subprocess.TimeoutExpired, Exception) as e:
+        logger.debug("Git commit failed: %s", e)
         return False
 
 
@@ -278,6 +280,7 @@ def repair_gitignore(project_dir: Path) -> list[str]:
     or when gitignore entries were manually removed.
 
     Also resets the .gitignore_checked marker to allow future updates.
+    Changes are automatically committed if the project is a git repository.
 
     Args:
         project_dir: The project root directory
