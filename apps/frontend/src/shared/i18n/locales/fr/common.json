@@ -93,6 +93,12 @@
     "required": "Requis",
     "dismiss": "Ignorer"
   },
+  "selection": {
+    "selected": "{{count}} sélectionné(s)",
+    "selectAll": "Tout sélectionner",
+    "clearSelection": "Effacer la sélection",
+    "deleteSelected": "Supprimer la sélection"
+  },
   "time": {
     "justNow": "À l'instant",
     "minutesAgo": "Il y a {{count}} min",
