@@ -32,6 +32,11 @@ from debug import debug_warning
 
 T = TypeVar("T")
 
+# Base branches that should be filtered out when listing worktrees
+# These indicate orphaned worktrees (e.g., after GitHub PR merge)
+# NOTE: Keep in sync with BASE_BRANCHES in apps/frontend/src/shared/constants/git.ts
+BASE_BRANCHES = frozenset({"main", "master", "develop", "head"})
+
 
 def _is_retryable_network_error(stderr: str) -> bool:
     """Check if an error is a retryable network/connection issue."""
@@ -648,29 +653,10 @@ class WorktreeManager:
         result = self._run_git(merge_args)
 
         if result.returncode != 0:
-            # Check if it's "already up to date" - not an error
-            output = (result.stdout + result.stderr).lower()
-            if "already up to date" in output or "already up-to-date" in output:
-                print(f"Branch {info.branch} is already up to date.")
-                if no_commit:
-                    print("No changes to stage.")
-                if delete_after:
-                    self.remove_worktree(spec_name, delete_branch=True)
-                return True
-            # Check for actual conflicts
-            if "conflict" in output:
-                print("Merge conflict! Aborting merge...")
-                self._run_git(["merge", "--abort"])
-                return False
-            # Other error - show details
-            stderr_msg = (
-                result.stderr[:200]
-                if result.stderr
-                else result.stdout[:200]
-                if result.stdout
-                else "<no output>"
+            error_detail = (
+                result.stderr.strip() or result.stdout.strip() or "Unknown error"
             )
-            print(f"Merge failed: {stderr_msg}")
+            print(f"Merge failed: {error_detail}")
             self._run_git(["merge", "--abort"])
             return False
 
@@ -720,7 +706,8 @@ class WorktreeManager:
             for item in self.worktrees_dir.iterdir():
                 if item.is_dir():
                     info = self.get_worktree_info(item.name)
-                    if info:
+                    # Skip worktrees on base branches (orphaned after GitHub merge)
+                    if info and info.branch.lower() not in BASE_BRANCHES:
                         worktrees.append(info)
                         seen_specs.add(item.name)
 
@@ -730,7 +717,8 @@ class WorktreeManager:
             for item in legacy_dir.iterdir():
                 if item.is_dir() and item.name not in seen_specs:
                     info = self.get_worktree_info(item.name)
-                    if info:
+                    # Skip worktrees on base branches (orphaned after GitHub merge)
+                    if info and info.branch.lower() not in BASE_BRANCHES:
                         worktrees.append(info)
 
         return worktrees

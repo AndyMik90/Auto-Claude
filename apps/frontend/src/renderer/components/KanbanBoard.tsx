@@ -27,7 +27,7 @@ import { TaskCard } from './TaskCard';
 import { SortableTaskCard } from './SortableTaskCard';
 import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
 import { cn } from '../lib/utils';
-import { persistTaskStatus, forceCompleteTask, archiveTasks } from '../stores/task-store';
+import { persistTaskStatus, forceCompleteTask, skipCleanupCompleteTask, archiveTasks } from '../stores/task-store';
 import { useToast } from '../hooks/use-toast';
 import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
 import type { Task, TaskStatus } from '../../shared/types';
@@ -348,21 +348,27 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const { showArchived, toggleShowArchived } = useViewState();
 
   // Worktree cleanup dialog state
-  const [worktreeCleanupDialog, setWorktreeCleanupDialog] = useState<{
+  type WorktreeCleanupDialogState = {
     open: boolean;
     taskId: string | null;
     taskTitle: string;
     worktreePath?: string;
     isProcessing: boolean;
     error?: string;
-  }>({
+    canSkipCleanup?: boolean;
+  };
+
+  const INITIAL_WORKTREE_DIALOG_STATE: WorktreeCleanupDialogState = {
     open: false,
     taskId: null,
     taskTitle: '',
     worktreePath: undefined,
     isProcessing: false,
-    error: undefined
-  });
+    error: undefined,
+    canSkipCleanup: false
+  };
+
+  const [worktreeCleanupDialog, setWorktreeCleanupDialog] = useState<WorktreeCleanupDialogState>(INITIAL_WORKTREE_DIALOG_STATE);
 
   // Calculate archived count for Done column button
   const archivedCount = useMemo(() =>
@@ -485,7 +491,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
           taskTitle: task?.title || t('tasks:untitled'),
           worktreePath: result.worktreePath,
           isProcessing: false,
-          error: undefined
+          error: undefined,
+          canSkipCleanup: false
         });
       } else {
         // Show error toast for other failures
@@ -504,21 +511,37 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const handleWorktreeCleanupConfirm = async () => {
     if (!worktreeCleanupDialog.taskId) return;
 
-    setWorktreeCleanupDialog(prev => ({ ...prev, isProcessing: true, error: undefined }));
+    setWorktreeCleanupDialog(prev => ({ ...prev, isProcessing: true, error: undefined, canSkipCleanup: false }));
 
     const result = await forceCompleteTask(worktreeCleanupDialog.taskId);
 
     if (result.success) {
-      setWorktreeCleanupDialog({
-        open: false,
-        taskId: null,
-        taskTitle: '',
-        worktreePath: undefined,
-        isProcessing: false,
-        error: undefined
-      });
+      setWorktreeCleanupDialog(INITIAL_WORKTREE_DIALOG_STATE);
     } else {
       // Keep dialog open with error state for retry - show actual error if available
+      // Check if the error allows skipping cleanup (e.g., files in use)
+      setWorktreeCleanupDialog(prev => ({
+        ...prev,
+        isProcessing: false,
+        error: result.error || t('dialogs:worktreeCleanup.errorDescription'),
+        canSkipCleanup: result.canSkipCleanup || false
+      }));
+    }
+  };
+
+  /**
+   * Handle skipping worktree cleanup (mark done without deleting worktree)
+   */
+  const handleWorktreeSkipCleanup = async () => {
+    if (!worktreeCleanupDialog.taskId) return;
+
+    setWorktreeCleanupDialog(prev => ({ ...prev, isProcessing: true, error: undefined, canSkipCleanup: false }));
+
+    const result = await skipCleanupCompleteTask(worktreeCleanupDialog.taskId);
+
+    if (result.success) {
+      setWorktreeCleanupDialog(INITIAL_WORKTREE_DIALOG_STATE);
+    } else {
       setWorktreeCleanupDialog(prev => ({
         ...prev,
         isProcessing: false,
@@ -624,12 +647,14 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         worktreePath={worktreeCleanupDialog.worktreePath}
         isProcessing={worktreeCleanupDialog.isProcessing}
         error={worktreeCleanupDialog.error}
+        canSkipCleanup={worktreeCleanupDialog.canSkipCleanup}
         onOpenChange={(open) => {
           if (!open && !worktreeCleanupDialog.isProcessing) {
-            setWorktreeCleanupDialog(prev => ({ ...prev, open: false, error: undefined }));
+            setWorktreeCleanupDialog(prev => ({ ...prev, open: false, error: undefined, canSkipCleanup: false }));
           }
         }}
         onConfirm={handleWorktreeCleanupConfirm}
+        onSkipCleanup={handleWorktreeSkipCleanup}
       />
     </div>
   );
