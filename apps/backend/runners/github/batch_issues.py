@@ -150,11 +150,14 @@ Respond with JSON only:
             )
 
             # Using Sonnet for better analysis (still just 1 call)
+            # Note: Model shorthand resolved via resolve_model_id() to respect env overrides
             from core.simple_client import create_simple_client
+            from phase_config import resolve_model_id
 
+            model = resolve_model_id("sonnet")
             client = create_simple_client(
                 agent_type="batch_analysis",
-                model="claude-sonnet-4-5-20250929",
+                model=model,
                 system_prompt="You are an expert at analyzing GitHub issues and grouping related ones. Respond ONLY with valid JSON. Do NOT use any tools.",
                 cwd=self.project_dir,
             )

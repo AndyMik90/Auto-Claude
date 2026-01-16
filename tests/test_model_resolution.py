@@ -259,6 +259,49 @@ class TestBatchIssuesModelResolution:
         assert 'validation_model: str = "sonnet"' in content
 
 
+class TestClaudeBatchAnalyzerModelResolution:
+    """Tests for ClaudeBatchAnalyzer model resolution in batch_issues.py.
+
+    Verifies that the hardcoded model ID in analyze_and_batch_issues()
+    has been replaced with resolve_model_id() pattern.
+    """
+
+    def test_batch_analyzer_resolves_model(self):
+        """ClaudeBatchAnalyzer uses resolve_model_id() instead of hardcoded model ID."""
+        batch_issues_file = (
+            Path(__file__).parent.parent
+            / "apps"
+            / "backend"
+            / "runners"
+            / "github"
+            / "batch_issues.py"
+        )
+        content = batch_issues_file.read_text()
+
+        # Verify the old hardcoded model is NOT present
+        assert 'model="claude-sonnet-4-5-20250929"' not in content
+        assert 'model = "claude-sonnet-4-5-20250929"' not in content
+
+        # Verify resolve_model_id is imported and used
+        assert "from phase_config import resolve_model_id" in content
+        assert "model = resolve_model_id" in content
+
+    def test_batch_analyzer_uses_sonnet_shorthand(self):
+        """ClaudeBatchAnalyzer uses 'sonnet' shorthand, not full model ID."""
+        batch_issues_file = (
+            Path(__file__).parent.parent
+            / "apps"
+            / "backend"
+            / "runners"
+            / "github"
+            / "batch_issues.py"
+        )
+        content = batch_issues_file.read_text()
+
+        # Verify the pattern: model = resolve_model_id("sonnet")
+        assert 'model = resolve_model_id("sonnet")' in content
+
+
 class TestParallelReviewerImportResolution:
     """Tests that parallel reviewers use proper model resolution patterns.
 
