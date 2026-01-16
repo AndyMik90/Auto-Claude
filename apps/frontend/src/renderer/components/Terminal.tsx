@@ -40,6 +40,10 @@ export function Terminal({
   // Track deliberate terminal recreation (e.g., worktree switching)
   // This prevents exit handlers from triggering auto-removal during controlled recreation
   const isRecreatingRef = useRef(false);
+  // Store pending worktree config during recreation to sync after PTY creation
+  // This fixes a race condition where IPC calls to set worktree config happen before
+  // the terminal exists in main process, causing the config to not be persisted
+  const pendingWorktreeConfigRef = useRef<TerminalWorktreeConfig | null>(null);
 
   // Worktree dialog state
   const [showWorktreeDialog, setShowWorktreeDialog] = useState(false);
@@ -147,6 +151,15 @@ export function Terminal({
     isRecreatingRef,
     onCreated: () => {
       isCreatedRef.current = true;
+      // If there's a pending worktree config from a recreation attempt,
+      // sync it to main process now that the terminal exists.
+      // This fixes the race condition where IPC calls happen before terminal creation.
+      if (pendingWorktreeConfigRef.current) {
+        const config = pendingWorktreeConfigRef.current;
+        window.electronAPI.setTerminalWorktreeConfig(id, config);
+        window.electronAPI.setTerminalTitle(id, config.name);
+        pendingWorktreeConfigRef.current = null;
+      }
     },
     onError: (error) => {
       writeln(`\r\n\x1b[31mError: ${error}\x1b[0m`);
@@ -280,18 +293,23 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     // This prevents exit handlers from triggering auto-removal during controlled recreation
     isRecreatingRef.current = true;
 
+    // Store pending config to be synced after PTY creation succeeds
+    // This fixes race condition where IPC calls happen before terminal exists in main process
+    pendingWorktreeConfigRef.current = config;
+
     // Set isCreatingRef BEFORE updating the store to prevent race condition
     // This prevents the PTY effect from running before destroyTerminal completes
     prepareForRecreate();
 
     // Update terminal store with worktree config
     setWorktreeConfig(id, config);
-    // Sync to main process so worktree config persists across hot reloads
+    // Try to sync to main process (may be ignored if terminal doesn't exist yet)
+    // The onCreated callback will re-sync using pendingWorktreeConfigRef
     window.electronAPI.setTerminalWorktreeConfig(id, config);
 
     // Update terminal title and cwd to worktree path
     updateTerminal(id, { title: config.name, cwd: config.worktreePath });
-    // Sync to main process so title persists across hot reloads
+    // Try to sync to main process (may be ignored if terminal doesn't exist yet)
     window.electronAPI.setTerminalTitle(id, config.name);
 
     // Destroy current PTY - a new one will be created in the worktree directory
@@ -309,15 +327,20 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     // This prevents exit handlers from triggering auto-removal during controlled recreation
     isRecreatingRef.current = true;
 
+    // Store pending config to be synced after PTY creation succeeds
+    // This fixes race condition where IPC calls happen before terminal exists in main process
+    pendingWorktreeConfigRef.current = config;
+
     // Set isCreatingRef BEFORE updating the store to prevent race condition
     prepareForRecreate();
 
     // Same logic as handleWorktreeCreated - attach terminal to existing worktree
     setWorktreeConfig(id, config);
-    // Sync to main process so worktree config persists across hot reloads
+    // Try to sync to main process (may be ignored if terminal doesn't exist yet)
+    // The onCreated callback will re-sync using pendingWorktreeConfigRef
     window.electronAPI.setTerminalWorktreeConfig(id, config);
     updateTerminal(id, { title: config.name, cwd: config.worktreePath });
-    // Sync to main process so title persists across hot reloads
+    // Try to sync to main process (may be ignored if terminal doesn't exist yet)
     window.electronAPI.setTerminalTitle(id, config.name);
 
     // Destroy current PTY - a new one will be created in the worktree directory
