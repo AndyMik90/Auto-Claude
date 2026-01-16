@@ -240,5 +240,33 @@
   },
   "subtasks": {
     "untitled": "Sous-tâche sans titre"
+  },
+  "taskFileImport": {
+    "title": "Importer des tâches depuis un fichier",
+    "description": "Déposez des fichiers JSON ou cliquez pour parcourir",
+    "dropzone": {
+      "title": "Déposez les fichiers JSON ici",
+      "hint": "ou cliquez pour parcourir",
+      "formats": "Fichiers .json pris en charge"
+    },
+    "parsing": "Analyse des fichiers...",
+    "importing": "Importation...",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
+    "selectedCount": "{{count}} sur {{total}} sélectionné(s)",
+    "importButton": "Importer {{count}} tâche(s)",
+    "importMore": "Importer plus",
+    "success": {
+      "title": "Importation réussie",
+      "message": "{{count}} tâche(s) importée(s)"
+    },
+    "errors": {
+      "invalidJson": "Fichier JSON invalide",
+      "noTasks": "Aucune tâche valide trouvée",
+      "missingFields": "Champs requis manquants",
+      "importFailed": "Certaines tâches n'ont pas pu être importées",
+      "failedCount": ", {{count}} échoué(s)",
+      "moreErrors": "...et {{count}} de plus"
+    }
   }
 }
