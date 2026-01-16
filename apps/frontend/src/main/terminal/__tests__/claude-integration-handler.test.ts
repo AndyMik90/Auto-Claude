@@ -7,7 +7,7 @@ import type { TerminalProcess } from '../types';
 import { buildCdCommand, escapeShellArg } from '../../../shared/utils/shell-escape';
 
 // Mock the platform module (main/platform/index.ts)
-vi.mock('../platform', () => ({
+vi.mock('../../platform', () => ({
   isWindows: vi.fn(() => false),
   isMacOS: vi.fn(() => false),
   isLinux: vi.fn(() => false),
@@ -15,7 +15,7 @@ vi.mock('../platform', () => ({
   getCurrentOS: vi.fn(() => 'linux'),
 }));
 
-import { isWindows } from '../platform';
+import { isWindows } from '../../platform';
 
 /** Escape special regex characters in a string for safe use in RegExp constructor */
 const escapeForRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
