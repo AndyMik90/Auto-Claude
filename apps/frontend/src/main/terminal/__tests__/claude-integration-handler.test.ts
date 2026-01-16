@@ -162,12 +162,15 @@ function getTempFileInvocation(platform: 'win32' | 'darwin' | 'linux', tokenPath
 
 /**
  * Helper to get platform-specific temp file cleanup
+ *
+ * Note: Windows now deletes BEFORE the command runs (synchronous)
+ * for security - environment variables persist in memory after deletion.
  */
 function getTempFileCleanup(platform: 'win32' | 'darwin' | 'linux', tokenPath: string): string {
   if (platform === 'win32') {
-    return `& del "${tokenPath}"`;
+    return `&& del "${tokenPath}" &&`;
   }
-  return `rm -f '${tokenPath}'`;
+  return `&& rm -f '${tokenPath}' &&`;
 }
 
 /**

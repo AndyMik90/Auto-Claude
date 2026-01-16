@@ -180,22 +180,16 @@ export function buildClaudeShellCommand(
         // Windows: Use batch file approach with 'call' command
         // The temp file on Windows is a .bat file that sets CLAUDE_CODE_OAUTH_TOKEN
         // We use 'cls' instead of 'clear', and 'call' to execute the batch file
-        // After execution, delete the temp file using 'del' command
         //
-        // SECURITY NOTE: Windows temp file cleanup limitation:
-        // The '& del' command runs AFTER the Claude command completes.
-        // If the terminal is closed, Claude crashes, or user presses Ctrl+C,
-        // the temp file containing the OAuth token may remain in %TEMP%.
-        // This is a known limitation of Windows cmd.exe (no equivalent to
-        // Unix 'rm -f' that runs before 'exec'). Temp files use random
-        // names with cryptographic nonces and have restrictive permissions
-        // (0600) to mitigate exposure risk.
+        // SECURITY: Environment variables set via 'call' persist in memory
+        // after the batch file is deleted, so we can safely delete the file
+        // immediately after sourcing it (before running Claude).
         //
         // For paths inside double quotes (call "..." and del "..."), use
         // escapeForWindowsDoubleQuote() instead of escapeShellArgWindows()
         // because caret is literal inside double quotes in cmd.exe.
         const escapedTempFile = escapeForWindowsDoubleQuote(config.tempFile);
-        return `cls && ${cwdCommand}${pathPrefix}call "${escapedTempFile}" && ${fullCmd} & del "${escapedTempFile}"\r`;
+        return `cls && ${cwdCommand}${pathPrefix}call "${escapedTempFile}" && del "${escapedTempFile}" && ${fullCmd}\r`;
       } else {
         // Unix/macOS: Use bash with source command and history-safe prefixes
         const escapedTempFile = escapeShellArg(config.tempFile);
