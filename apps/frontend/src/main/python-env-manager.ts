@@ -128,21 +128,26 @@ export class PythonEnvManager extends EventEmitter {
     // Note: Same list exists in download-python.cjs - keep them in sync
     // This validation assumes traditional Python packages with __init__.py (not PEP 420 namespace packages)
     // pywin32 is platform-critical for Windows (ACS-306) - required by MCP library
-    // Note: We check for 'pywintypes' instead of 'pywin32' because pywin32 installs
-    // top-level modules (pywintypes, win32api, win32con, win32com) without a pywin32/__init__.py
-    const criticalPackages = ['claude_agent_sdk', 'dotenv', 'pydantic_core']
-      .concat(isWindows() ? ['pywintypes'] : []);
+    // secretstorage is platform-critical for Linux (ACS-310) - required for OAuth token storage
+    const platformCriticalPackages: Record<string, string[]> = {
+      win32: ['pywintypes'],   // Check for 'pywintypes' instead of 'pywin32' (pywin32 installs top-level modules)
+      linux: ['secretstorage'] // Linux OAuth token storage via Freedesktop.org Secret Service
+    };
+    const criticalPackages = [
+      'claude_agent_sdk',
+      'dotenv',
+      'pydantic_core',
+      ...(platformCriticalPackages[process.platform] || [])
+    ];
 
-    // Check each package exists with valid structure
-    // For traditional packages: directory + __init__.py
-    // For single-file modules (like pywintypes.py): just the .py file
+    // Check each package exists with valid structure (directory + __init__.py or single-file module)
     const missingPackages = criticalPackages.filter((pkg) => {
       const pkgPath = path.join(sitePackagesPath, pkg);
       const initPath = path.join(pkgPath, '__init__.py');
       // For single-file modules (like pywintypes.py), check for the file directly
       const moduleFile = path.join(sitePackagesPath, `${pkg}.py`);
       // Package is valid if directory+__init__.py exists OR single-file module exists
-      return !existsSync(initPath) && !existsSync(moduleFile);
+      return !existsSync(pkgPath) && !existsSync(moduleFile);
     });
 
     // Log missing packages for debugging

@@ -8,6 +8,8 @@ Validates platform-specific dependencies are installed before running agents.
 import sys
 from pathlib import Path
 
+from core.platform import is_linux, is_windows
+
 
 def validate_platform_dependencies() -> None:
     """
@@ -18,13 +20,20 @@ def validate_platform_dependencies() -> None:
                    with helpful installation instructions.
     """
     # Check Windows-specific dependencies
-    # pywin32 is required on all Python versions on Windows (ACS-306)
-    # The MCP library unconditionally imports win32api on Windows
-    if sys.platform == "win32":
+    if is_windows() and sys.version_info >= (3, 12):
         try:
             import pywintypes  # noqa: F401
         except ImportError:
             _exit_with_pywin32_error()
+
+    # Check Linux-specific dependencies (ACS-310)
+    # Note: secretstorage is optional for app functionality (falls back to .env),
+    # but we validate it to ensure proper OAuth token storage via keyring
+    if is_linux():
+        try:
+            import secretstorage  # noqa: F401
+        except ImportError:
+            _exit_with_secretstorage_warning()
 
 
 def _exit_with_pywin32_error() -> None:
@@ -76,3 +85,38 @@ def _exit_with_pywin32_error() -> None:
         "\n"
         f"Current Python: {sys.executable}\n"
     )
+
+
+def _exit_with_secretstorage_warning() -> None:
+    """Exit with helpful warning message for missing secretstorage.
+
+    Note: This is a warning, not a hard error - the app will fall back to .env
+    file storage for OAuth tokens. We warn users to ensure they understand the
+    security implications.
+    """
+    # Use sys.prefix to detect the virtual environment path
+    venv_activate = Path(sys.prefix) / "bin" / "activate"
+
+    sys.stderr.write(
+        "Warning: Linux dependency 'secretstorage' is not installed.\n"
+        "\n"
+        "Auto Claude can use secretstorage for secure OAuth token storage via\n"
+        "the system keyring (gnome-keyring, kwallet, etc.). Without it, tokens\n"
+        "will be stored in plaintext in your .env file.\n"
+        "\n"
+        "To enable keyring integration:\n"
+        "1. Activate your virtual environment:\n"
+        f"   source {venv_activate}\n"
+        "\n"
+        "2. Install secretstorage:\n"
+        "   pip install 'secretstorage>=3.3.3'\n"
+        "\n"
+        "   Or reinstall all dependencies:\n"
+        "   pip install -r requirements.txt\n"
+        "\n"
+        "Note: The app will continue to work, but OAuth tokens will be stored\n"
+        "in your .env file instead of the system keyring.\n"
+        "\n"
+        f"Current Python: {sys.executable}\n"
+    )
+    # Continue execution - this is a warning, not a blocking error
