@@ -191,6 +191,16 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     }
   }, [isActive, focus]);
 
+  // Refit terminal when expansion state changes
+  // This ensures terminal content fills the new container size after expand/collapse
+  useEffect(() => {
+    // Small delay to allow the DOM to update before fitting
+    const timeoutId = setTimeout(() => {
+      fit();
+    }, 50);
+    return () => clearTimeout(timeoutId);
+  }, [isExpanded, fit]);
+
   // Trigger deferred Claude resume when terminal becomes active
   // This ensures Claude sessions are only resumed when the user actually views the terminal,
   // preventing all terminals from resuming simultaneously on app startup (which can crash the app)
