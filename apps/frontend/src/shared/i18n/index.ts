@@ -27,18 +27,18 @@ import frTaskReview from './locales/fr/taskReview.json';
 import frTerminal from './locales/fr/terminal.json';
 import frErrors from './locales/fr/errors.json';
 
-// Import Chinese translation resources
-import zhCommon from './locales/zh/common.json';
-import zhNavigation from './locales/zh/navigation.json';
-import zhSettings from './locales/zh/settings.json';
-import zhTasks from './locales/zh/tasks.json';
-import zhWelcome from './locales/zh/welcome.json';
-import zhOnboarding from './locales/zh/onboarding.json';
-import zhDialogs from './locales/zh/dialogs.json';
-import zhGitlab from './locales/zh/gitlab.json';
-import zhTaskReview from './locales/zh/taskReview.json';
-import zhTerminal from './locales/zh/terminal.json';
-import zhErrors from './locales/zh/errors.json';
+// Import Chinese (Simplified) translation resources
+import zhCnCommon from './locales/zh-CN/common.json';
+import zhCnNavigation from './locales/zh-CN/navigation.json';
+import zhCnSettings from './locales/zh-CN/settings.json';
+import zhCnTasks from './locales/zh-CN/tasks.json';
+import zhCnWelcome from './locales/zh-CN/welcome.json';
+import zhCnOnboarding from './locales/zh-CN/onboarding.json';
+import zhCnDialogs from './locales/zh-CN/dialogs.json';
+import zhCnGitlab from './locales/zh-CN/gitlab.json';
+import zhCnTaskReview from './locales/zh-CN/taskReview.json';
+import zhCnTerminal from './locales/zh-CN/terminal.json';
+import zhCnErrors from './locales/zh-CN/errors.json';
 
 export const defaultNS = 'common';
 
@@ -69,18 +69,18 @@ export const resources = {
     terminal: frTerminal,
     errors: frErrors
   },
-  zh: {
-    common: zhCommon,
-    navigation: zhNavigation,
-    settings: zhSettings,
-    tasks: zhTasks,
-    welcome: zhWelcome,
-    onboarding: zhOnboarding,
-    dialogs: zhDialogs,
-    gitlab: zhGitlab,
-    taskReview: zhTaskReview,
-    terminal: zhTerminal,
-    errors: zhErrors
+  'zh-CN': {
+    common: zhCnCommon,
+    navigation: zhCnNavigation,
+    settings: zhCnSettings,
+    tasks: zhCnTasks,
+    welcome: zhCnWelcome,
+    onboarding: zhCnOnboarding,
+    dialogs: zhCnDialogs,
+    gitlab: zhCnGitlab,
+    taskReview: zhCnTaskReview,
+    terminal: zhCnTerminal,
+    errors: zhCnErrors
   }
 } as const;
 
