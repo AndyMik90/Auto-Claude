@@ -5,6 +5,7 @@ import {
   Send,
   XCircle,
   Loader2,
+  GitBranch,
   GitMerge,
   CheckCircle,
   RefreshCw,
