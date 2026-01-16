@@ -27,6 +27,7 @@ interface TaskState {
   // Task order actions for kanban drag-and-drop reordering
   setTaskOrder: (order: TaskOrderState) => void;
   reorderTasksInColumn: (status: TaskStatus, activeId: string, overId: string) => void;
+  moveTaskToColumnTop: (taskId: string, targetStatus: TaskStatus, sourceStatus?: TaskStatus) => void;
   loadTaskOrder: (projectId: string) => void;
   saveTaskOrder: (projectId: string) => void;
   clearTaskOrder: (projectId: string) => void;
@@ -459,6 +460,33 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           [status]: arrayMove(columnOrder, oldIndex, newIndex)
         }
       };
+    });
+  },
+
+  moveTaskToColumnTop: (taskId, targetStatus, sourceStatus) => {
+    set((state) => {
+      if (!state.taskOrder) return state;
+
+      // Create a copy of the task order to modify
+      const newTaskOrder = { ...state.taskOrder };
+
+      // Remove from source column if provided
+      if (sourceStatus && newTaskOrder[sourceStatus]) {
+        newTaskOrder[sourceStatus] = newTaskOrder[sourceStatus].filter(id => id !== taskId);
+      }
+
+      // Add to top of target column
+      if (newTaskOrder[targetStatus]) {
+        // Remove from target column first (in case it already exists there)
+        newTaskOrder[targetStatus] = newTaskOrder[targetStatus].filter(id => id !== taskId);
+        // Add to top (index 0)
+        newTaskOrder[targetStatus] = [taskId, ...newTaskOrder[targetStatus]];
+      } else {
+        // Initialize column order array if it doesn't exist
+        newTaskOrder[targetStatus] = [taskId];
+      }
+
+      return { taskOrder: newTaskOrder };
     });
   },
 

@@ -560,6 +560,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   // Get task order actions from store
   const reorderTasksInColumn = useTaskStore((state) => state.reorderTasksInColumn);
+  const moveTaskToColumnTop = useTaskStore((state) => state.moveTaskToColumnTop);
   const saveTaskOrder = useTaskStore((state) => state.saveTaskOrder);
   const loadTaskOrder = useTaskStore((state) => state.loadTaskOrder);
 
@@ -589,6 +590,14 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       const task = tasks.find((t) => t.id === activeTaskId);
 
       if (task && task.status !== newStatus) {
+        // Move task to top of target column's order array
+        moveTaskToColumnTop(activeTaskId, newStatus, task.status);
+
+        // Persist task order
+        if (projectId) {
+          saveTaskOrder(projectId);
+        }
+
         // Persist status change to file and update local state
         handleStatusChange(activeTaskId, newStatus, task).catch((err) =>
           console.error('[KanbanBoard] Status change failed:', err)
@@ -617,6 +626,14 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       }
 
       // Different column: move to that task's column (status change)
+      // Move task to top of target column's order array
+      moveTaskToColumnTop(activeTaskId, overTask.status, task.status);
+
+      // Persist task order
+      if (projectId) {
+        saveTaskOrder(projectId);
+      }
+
       handleStatusChange(activeTaskId, overTask.status, task).catch((err) =>
         console.error('[KanbanBoard] Status change failed:', err)
       );
