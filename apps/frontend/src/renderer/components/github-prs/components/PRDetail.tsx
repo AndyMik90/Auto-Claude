@@ -809,6 +809,41 @@ ${t('prReview.blockedStatusMessageFooter')}`;
                       </li>
                     ))}
                   </ul>
+                  {/* Update Branch button - only show when branch is behind base */}
+                  {mergeReadiness.isBehind && (
+                    <div className="flex items-center gap-3 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-warning/50 text-warning hover:bg-warning/20"
+                        onClick={handleUpdateBranch}
+                        disabled={isUpdatingBranch}
+                      >
+                        {isUpdatingBranch ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            {t('prReview.updatingBranch')}
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            {t('prReview.updateBranch')}
+                          </>
+                        )}
+                      </Button>
+                      {branchUpdateSuccess && (
+                        <span className="text-xs text-success flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          {t('prReview.branchUpdated')}
+                        </span>
+                      )}
+                      {branchUpdateError && (
+                        <span className="text-xs text-destructive">
+                          {branchUpdateError}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <p className="text-xs text-warning/70 mt-2">
                     {t('prReview.rerunReviewSuggestion', 'Consider re-running the review after resolving these issues.')}
                   </p>
