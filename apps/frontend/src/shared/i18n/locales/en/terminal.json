@@ -12,6 +12,7 @@
     "createNew": "New Worktree",
     "existing": "Terminal Worktrees",
     "taskWorktrees": "Task Worktrees",
+    "otherWorktrees": "Others",
     "createTitle": "Create Terminal Worktree",
     "createDescription": "Create an isolated workspace for this terminal. All work will happen in the worktree directory.",
     "name": "Worktree Name",

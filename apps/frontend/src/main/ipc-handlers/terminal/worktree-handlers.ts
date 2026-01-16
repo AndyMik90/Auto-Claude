@@ -5,6 +5,7 @@ import type {
   CreateTerminalWorktreeRequest,
   TerminalWorktreeConfig,
   TerminalWorktreeResult,
+  OtherWorktreeInfo,
 } from '../../../shared/types';
 import path from 'path';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, symlinkSync, lstatSync } from 'fs';
@@ -551,6 +552,110 @@ async function listTerminalWorktrees(projectPath: string): Promise<TerminalWorkt
   return configs;
 }
 
+/**
+ * List "other" worktrees - worktrees not managed by Auto Claude
+ * These are discovered via `git worktree list` excluding:
+ * - Main worktree (project root)
+ * - .auto-claude/worktrees/terminal/*
+ * - .auto-claude/worktrees/tasks/*
+ * - .auto-claude/worktrees/pr/*
+ */
+async function listOtherWorktrees(projectPath: string): Promise<OtherWorktreeInfo[]> {
+  // Validate projectPath against registered projects
+  if (!isValidProjectPath(projectPath)) {
+    debugError('[TerminalWorktree] Invalid project path for listing other worktrees:', projectPath);
+    return [];
+  }
+
+  const results: OtherWorktreeInfo[] = [];
+
+  // Paths to exclude (normalize for comparison)
+  const normalizedProjectPath = path.resolve(projectPath);
+  const excludePrefixes = [
+    path.join(normalizedProjectPath, '.auto-claude', 'worktrees', 'terminal'),
+    path.join(normalizedProjectPath, '.auto-claude', 'worktrees', 'tasks'),
+    path.join(normalizedProjectPath, '.auto-claude', 'worktrees', 'pr'),
+  ];
+
+  try {
+    const output = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 30000,
+    });
+
+    // Parse porcelain output
+    // Format:
+    // worktree /path/to/worktree
+    // HEAD abc123...
+    // branch refs/heads/branch-name (or "detached" line)
+    // (blank line)
+
+    let currentWorktree: { path?: string; head?: string; branch?: string } = {};
+
+    for (const line of output.split('\n')) {
+      if (line.startsWith('worktree ')) {
+        // Save previous worktree if complete
+        if (currentWorktree.path && currentWorktree.head) {
+          processOtherWorktree(currentWorktree, normalizedProjectPath, excludePrefixes, results);
+        }
+        currentWorktree = { path: line.substring(9) }; // "worktree ".length = 9
+      } else if (line.startsWith('HEAD ')) {
+        currentWorktree.head = line.substring(5); // "HEAD ".length = 5
+      } else if (line.startsWith('branch ')) {
+        // Extract branch name from "refs/heads/branch-name"
+        const fullRef = line.substring(7); // "branch ".length = 7
+        currentWorktree.branch = fullRef.replace('refs/heads/', '');
+      } else if (line === 'detached') {
+        currentWorktree.branch = 'detached';
+      }
+    }
+
+    // Process final worktree
+    if (currentWorktree.path && currentWorktree.head) {
+      processOtherWorktree(currentWorktree, normalizedProjectPath, excludePrefixes, results);
+    }
+  } catch (error) {
+    debugError('[TerminalWorktree] Error listing other worktrees:', error);
+  }
+
+  return results;
+}
+
+function processOtherWorktree(
+  wt: { path?: string; head?: string; branch?: string },
+  mainWorktreePath: string,
+  excludePrefixes: string[],
+  results: OtherWorktreeInfo[]
+): void {
+  if (!wt.path || !wt.head) return;
+
+  const normalizedPath = path.resolve(wt.path);
+
+  // Exclude main worktree
+  if (normalizedPath === mainWorktreePath) {
+    return;
+  }
+
+  // Check if this path starts with any excluded prefix
+  for (const excludePrefix of excludePrefixes) {
+    if (normalizedPath.startsWith(excludePrefix + path.sep) || normalizedPath === excludePrefix) {
+      return; // Skip this worktree
+    }
+  }
+
+  // Extract display name from path (last directory component)
+  const displayName = path.basename(normalizedPath);
+
+  results.push({
+    path: normalizedPath,
+    branch: wt.branch || 'detached',
+    commitSha: wt.head.substring(0, 8),
+    displayName,
+  });
+}
+
 async function removeTerminalWorktree(
   projectPath: string,
   name: string,
@@ -661,6 +766,21 @@ export function registerTerminalWorktreeHandlers(): void {
       deleteBranch: boolean
     ): Promise<IPCResult> => {
       return removeTerminalWorktree(projectPath, name, deleteBranch);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TERMINAL_WORKTREE_LIST_OTHER,
+    async (_, projectPath: string): Promise<IPCResult<OtherWorktreeInfo[]>> => {
+      try {
+        const worktrees = await listOtherWorktrees(projectPath);
+        return { success: true, data: worktrees };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to list other worktrees',
+        };
+      }
     }
   );
 }
