@@ -124,9 +124,9 @@ export function WorktreeSelector({
     const config: TerminalWorktreeConfig = {
       name: otherWt.displayName,
       worktreePath: otherWt.path,
-      branchName: otherWt.branch !== 'detached' ? otherWt.branch : '',
+      branchName: otherWt.branch ?? '',
       baseBranch: '', // Unknown for external worktrees
-      hasGitBranch: otherWt.branch !== 'detached',
+      hasGitBranch: otherWt.branch !== null,
       createdAt: new Date().toISOString(),
       terminalId,
     };
@@ -300,7 +300,7 @@ export function WorktreeSelector({
                       <div className="flex flex-col min-w-0 flex-1">
                         <span className="truncate font-medium">{wt.displayName}</span>
                         <span className="text-[10px] text-muted-foreground truncate">
-                          {wt.branch !== 'detached' ? wt.branch : `${wt.commitSha} (detached)`}
+                          {wt.branch !== null ? wt.branch : `${wt.commitSha} ${t('terminal:worktree.detached')}`}
                         </span>
                       </div>
                     </DropdownMenuItem>

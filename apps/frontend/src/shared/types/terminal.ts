@@ -196,8 +196,8 @@ export interface TerminalWorktreeResult {
 export interface OtherWorktreeInfo {
   /** Full path to the worktree */
   path: string;
-  /** Git branch name (or "detached" if in detached HEAD state) */
-  branch: string;
+  /** Git branch name, or null if in detached HEAD state */
+  branch: string | null;
   /** Short commit SHA (first 8 chars) */
   commitSha: string;
   /** Display name (last directory component of path) */

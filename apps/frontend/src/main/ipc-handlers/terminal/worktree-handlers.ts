@@ -9,7 +9,8 @@ import type {
 } from '../../../shared/types';
 import path from 'path';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, symlinkSync, lstatSync } from 'fs';
-import { execFileSync } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
+import { promisify } from 'util';
 import { minimatch } from 'minimatch';
 import { debugLog, debugError } from '../../../shared/utils/debug-logger';
 import { projectStore } from '../../project-store';
@@ -21,12 +22,24 @@ import {
   getTerminalWorktreeMetadataPath,
 } from '../../worktree-paths';
 
+// Promisify execFile for async operations
+const execFileAsync = promisify(execFile);
+
 // Shared validation regex for worktree names - lowercase alphanumeric with dashes/underscores
 // Must start and end with alphanumeric character
 const WORKTREE_NAME_REGEX = /^[a-z0-9][a-z0-9_-]*[a-z0-9]$|^[a-z0-9]$/;
 
 // Validation regex for git branch names - allows alphanumeric, dots, slashes, dashes, underscores
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
+
+// Git worktree list porcelain output parsing constants
+const GIT_PORCELAIN = {
+  WORKTREE_PREFIX: 'worktree ',
+  HEAD_PREFIX: 'HEAD ',
+  BRANCH_PREFIX: 'branch ',
+  DETACHED_LINE: 'detached',
+  COMMIT_SHA_LENGTH: 8,
+} as const;
 
 /**
  * Fix repositories that are incorrectly marked with core.bare=true.
@@ -578,10 +591,9 @@ async function listOtherWorktrees(projectPath: string): Promise<OtherWorktreeInf
   ];
 
   try {
-    const output = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+    const { stdout: output } = await execFileAsync('git', ['worktree', 'list', '--porcelain'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 30000,
     });
 
@@ -592,23 +604,23 @@ async function listOtherWorktrees(projectPath: string): Promise<OtherWorktreeInf
     // branch refs/heads/branch-name (or "detached" line)
     // (blank line)
 
-    let currentWorktree: { path?: string; head?: string; branch?: string } = {};
+    let currentWorktree: { path?: string; head?: string; branch?: string | null } = {};
 
     for (const line of output.split('\n')) {
-      if (line.startsWith('worktree ')) {
+      if (line.startsWith(GIT_PORCELAIN.WORKTREE_PREFIX)) {
         // Save previous worktree if complete
         if (currentWorktree.path && currentWorktree.head) {
           processOtherWorktree(currentWorktree, normalizedProjectPath, excludePrefixes, results);
         }
-        currentWorktree = { path: line.substring(9) }; // "worktree ".length = 9
-      } else if (line.startsWith('HEAD ')) {
-        currentWorktree.head = line.substring(5); // "HEAD ".length = 5
-      } else if (line.startsWith('branch ')) {
+        currentWorktree = { path: line.substring(GIT_PORCELAIN.WORKTREE_PREFIX.length) };
+      } else if (line.startsWith(GIT_PORCELAIN.HEAD_PREFIX)) {
+        currentWorktree.head = line.substring(GIT_PORCELAIN.HEAD_PREFIX.length);
+      } else if (line.startsWith(GIT_PORCELAIN.BRANCH_PREFIX)) {
         // Extract branch name from "refs/heads/branch-name"
-        const fullRef = line.substring(7); // "branch ".length = 7
+        const fullRef = line.substring(GIT_PORCELAIN.BRANCH_PREFIX.length);
         currentWorktree.branch = fullRef.replace('refs/heads/', '');
-      } else if (line === 'detached') {
-        currentWorktree.branch = 'detached';
+      } else if (line === GIT_PORCELAIN.DETACHED_LINE) {
+        currentWorktree.branch = null; // Use null for detached HEAD state
       }
     }
 
@@ -624,7 +636,7 @@ async function listOtherWorktrees(projectPath: string): Promise<OtherWorktreeInf
 }
 
 function processOtherWorktree(
-  wt: { path?: string; head?: string; branch?: string },
+  wt: { path?: string; head?: string; branch?: string | null },
   mainWorktreePath: string,
   excludePrefixes: string[],
   results: OtherWorktreeInfo[]
@@ -650,8 +662,8 @@ function processOtherWorktree(
 
   results.push({
     path: normalizedPath,
-    branch: wt.branch || 'detached',
-    commitSha: wt.head.substring(0, 8),
+    branch: wt.branch ?? null, // null indicates detached HEAD state
+    commitSha: wt.head.substring(0, GIT_PORCELAIN.COMMIT_SHA_LENGTH),
     displayName,
   });
 }
