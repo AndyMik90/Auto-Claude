@@ -23,6 +23,13 @@ Usage:
     )
 
     success = await orchestrator.run()
+
+Note:
+    SpecOrchestrator and get_specs_dir are lazy-imported to avoid circular
+    dependencies between spec.pipeline and core.client. The import chain:
+    spec.pipeline.agent_runner imports core.client, which imports
+    agents.tools_pkg, which imports from spec.validate_pkg, causing a cycle
+    when spec/__init__.py imports SpecOrchestrator at module level.
 """
 
 from .complexity import (
@@ -33,7 +40,6 @@ from .complexity import (
     save_assessment,
 )
 from .phases import PhaseExecutor, PhaseResult
-from .pipeline import SpecOrchestrator, get_specs_dir
 
 __all__ = [
     # Main orchestrator
@@ -49,3 +55,21 @@ __all__ = [
     "PhaseExecutor",
     "PhaseResult",
 ]
+
+
+def __getattr__(name: str):
+    """Lazy imports to avoid circular dependencies with core.client.
+
+    The spec.pipeline module imports from core.client (via agent_runner.py),
+    which imports from agents.tools_pkg, which imports from spec.validate_pkg.
+    This creates a circular dependency when spec/__init__.py imports
+    SpecOrchestrator at module level.
+
+    By deferring these imports via __getattr__, the import chain only
+    executes when these symbols are actually accessed, breaking the cycle.
+    """
+    if name in ("SpecOrchestrator", "get_specs_dir"):
+        from .pipeline import SpecOrchestrator, get_specs_dir
+
+        return locals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
