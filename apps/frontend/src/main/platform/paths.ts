@@ -7,7 +7,7 @@
 
 import * as path from 'path';
 import * as os from 'os';
-import { existsSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension } from './index';
 
 /**
@@ -65,18 +65,49 @@ export function getPythonCommands(): string[] {
 }
 
 /**
+ * Expand a directory pattern like "Python3*" by scanning the parent directory
+ * Returns matching directory paths or empty array if none found
+ */
+function expandDirPattern(parentDir: string, pattern: string): string[] {
+  if (!existsSync(parentDir)) {
+    return [];
+  }
+
+  try {
+    // Convert glob pattern to regex (only support simple * wildcard)
+    const regexPattern = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$', 'i');
+    const entries = readdirSync(parentDir, { withFileTypes: true });
+
+    return entries
+      .filter((entry) => entry.isDirectory() && regexPattern.test(entry.name))
+      .map((entry) => joinPaths(parentDir, entry.name));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Resolve Python installation paths
+ *
+ * Returns actual existing directory paths (expands glob patterns on Windows)
  */
 export function getPythonPaths(): string[] {
   const homeDir = os.homedir();
   const paths: string[] = [];
 
   if (isWindows()) {
-    paths.push(
-      joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'Python'),
-      joinPaths(process.env.ProgramFiles || 'C:\\Program Files', 'Python3*'),
-      joinPaths(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Python3*')
-    );
+    // User-local Python installation
+    const userPythonPath = joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'Python');
+    if (existsSync(userPythonPath)) {
+      paths.push(userPythonPath);
+    }
+
+    // System Python installations (expand Python3* patterns)
+    const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+    const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
+    paths.push(...expandDirPattern(programFiles, 'Python3*'));
+    paths.push(...expandDirPattern(programFilesX86, 'Python3*'));
   } else if (isMacOS()) {
     const brewPath = getHomebrewPath();
     if (brewPath) {

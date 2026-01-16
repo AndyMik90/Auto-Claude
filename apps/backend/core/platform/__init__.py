@@ -315,16 +315,9 @@ def get_claude_detection_paths_structured() -> dict[str, list[str] | str]:
 
     if is_windows():
         platform_paths = [
-            str(
-                home_dir
-                / "AppData"
-                / "Local"
-                / "Programs"
-                / "claude"
-                / "claude.exe"
-            ),
-            str(home_dir / "AppData" / "Roaming" / "npm" / "claude.cmd"),
-            str(home_dir / ".local" / "bin" / "claude.exe"),
+            str(home_dir / "AppData/Local/Programs/claude/claude.exe"),
+            str(home_dir / "AppData/Roaming/npm/claude.cmd"),
+            str(home_dir / ".local/bin/claude.exe"),
             r"C:\Program Files\Claude\claude.exe",
             r"C:\Program Files (x86)\Claude\claude.exe",
         ]
