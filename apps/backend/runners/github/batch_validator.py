@@ -134,13 +134,20 @@ class BatchValidator:
 
             return resolve_model_id(model)
         except (ImportError, ValueError, SystemError):
-            from phase_config import resolve_model_id
-
-            return resolve_model_id(model)
+            # Fallback to absolute import - wrap in try/except for safety
+            try:
+                from phase_config import resolve_model_id
+                return resolve_model_id(model)
+            except Exception as e:
+                # Log and return original model as final fallback
+                logger.debug(
+                    f"Fallback import failed, using original model '{model}': {e}"
+                )
+                return model
         except Exception as e:
             # Log at debug level to aid diagnosis without polluting normal output
             logger.debug(
-                f"Model resolution via phase_config failed, using original model: {e}"
+                f"Model resolution via phase_config failed, using original model '{model}': {e}"
             )
             # Fallback to returning the original model string
             return model
