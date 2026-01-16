@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
 
 from core.dependency_validator import (
     _exit_with_pywin32_error,
-    _exit_with_secretstorage_warning,
+    _warn_missing_secretstorage,
     validate_platform_dependencies,
 )
 
@@ -45,7 +45,7 @@ class TestValidatePlatformDependencies:
              patch("core.dependency_validator.is_linux", return_value=False), \
              patch("sys.version_info", (3, 12, 0)), \
              patch("core.dependency_validator._exit_with_pywin32_error") as mock_exit, \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning:
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning:
 
             # Mock pywintypes import to raise ImportError
             original_import = builtins.__import__
@@ -82,7 +82,7 @@ class TestValidatePlatformDependencies:
         with patch("core.dependency_validator.is_windows", return_value=True), \
              patch("core.dependency_validator.is_linux", return_value=False), \
              patch("sys.version_info", (3, 12, 0)), \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning, \
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning, \
              patch("builtins.__import__", side_effect=selective_mock):
             # Should not raise SystemExit
             validate_platform_dependencies()
@@ -94,7 +94,7 @@ class TestValidatePlatformDependencies:
         with patch("core.dependency_validator.is_windows", return_value=True), \
              patch("core.dependency_validator.is_linux", return_value=False), \
              patch("sys.version_info", (3, 11, 0)), \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning, \
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning, \
              patch("builtins.__import__") as mock_import:
             # Even if pywintypes is not available, should not exit
             mock_import.side_effect = ImportError("No module named 'pywintypes'")
@@ -118,7 +118,7 @@ class TestValidatePlatformDependencies:
         with patch("core.dependency_validator.is_windows", return_value=False), \
              patch("core.dependency_validator.is_linux", return_value=True), \
              patch("sys.version_info", (3, 12, 0)), \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning, \
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning, \
              patch("builtins.__import__", side_effect=mock_import):
             # Should not call pywin32 error, but should call secretstorage warning
             validate_platform_dependencies()
@@ -129,7 +129,7 @@ class TestValidatePlatformDependencies:
         with patch("core.dependency_validator.is_windows", return_value=False), \
              patch("core.dependency_validator.is_linux", return_value=False), \
              patch("sys.version_info", (3, 12, 0)), \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning, \
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning, \
              patch("builtins.__import__") as mock_import:
             # Even if pywintypes is not available, should not exit
             mock_import.side_effect = ImportError("No module named 'pywintypes'")
@@ -147,7 +147,7 @@ class TestValidatePlatformDependencies:
              patch("core.dependency_validator.is_linux", return_value=False), \
              patch("sys.version_info", (3, 13, 0)), \
              patch("core.dependency_validator._exit_with_pywin32_error") as mock_exit, \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning:
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning:
 
             original_import = builtins.__import__
 
@@ -170,7 +170,7 @@ class TestValidatePlatformDependencies:
         with patch("core.dependency_validator.is_windows", return_value=True), \
              patch("core.dependency_validator.is_linux", return_value=False), \
              patch("sys.version_info", (3, 10, 0)), \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning, \
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning, \
              patch("builtins.__import__") as mock_import:
             mock_import.side_effect = ImportError("No module named 'pywintypes'")
 
@@ -198,8 +198,9 @@ class TestLinuxSecretstorageValidation:
         """
         import builtins
 
-        with patch("core.dependency_validator.is_linux", return_value=True), \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning:
+        with patch("core.dependency_validator.is_windows", return_value=False), \
+             patch("core.dependency_validator.is_linux", return_value=True), \
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning:
 
             original_import = builtins.__import__
 
@@ -226,7 +227,8 @@ class TestLinuxSecretstorageValidation:
                 return MagicMock()
             return original_import(name, *args, **kwargs)
 
-        with patch("core.dependency_validator.is_linux", return_value=True), \
+        with patch("core.dependency_validator.is_windows", return_value=False), \
+             patch("core.dependency_validator.is_linux", return_value=True), \
              patch("builtins.__import__", side_effect=selective_mock):
             # Should not call warning function
             validate_platform_dependencies()
@@ -247,7 +249,7 @@ class TestLinuxSecretstorageValidation:
             return original_import(name, *args, **kwargs)
 
         with patch("core.dependency_validator.is_linux", return_value=False), \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning, \
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning, \
              patch("builtins.__import__", side_effect=mock_import):
             # Should not call warning function
             validate_platform_dependencies()
@@ -267,7 +269,7 @@ class TestLinuxSecretstorageValidation:
 
         with patch("core.dependency_validator.is_linux", return_value=False), \
              patch("core.dependency_validator.is_windows", return_value=False), \
-             patch("core.dependency_validator._exit_with_secretstorage_warning") as mock_warning, \
+             patch("core.dependency_validator._warn_missing_secretstorage") as mock_warning, \
              patch("builtins.__import__", side_effect=mock_import):
             # Should not call warning function
             validate_platform_dependencies()
@@ -275,16 +277,16 @@ class TestLinuxSecretstorageValidation:
 
 
 # =============================================================================
-# TESTS FOR _exit_with_secretstorage_warning (ACS-310)
+# TESTS FOR _warn_missing_secretstorage (ACS-310)
 # =============================================================================
 
 
 class TestExitWithSecretstorageWarning:
-    """Tests for _exit_with_secretstorage_warning function (ACS-310)."""
+    """Tests for _warn_missing_secretstorage function (ACS-310)."""
 
     def test_warning_message_contains_helpful_instructions(self, capsys):
         """Warning message should include installation instructions."""
-        _exit_with_secretstorage_warning()
+        _warn_missing_secretstorage()
 
         # Get stderr output
         captured = capsys.readouterr()
@@ -298,7 +300,7 @@ class TestExitWithSecretstorageWarning:
 
     def test_warning_message_mentions_fallback_behavior(self, capsys):
         """Warning should explain that app continues with .env fallback."""
-        _exit_with_secretstorage_warning()
+        _warn_missing_secretstorage()
 
         captured = capsys.readouterr()
         message = captured.err
@@ -310,7 +312,7 @@ class TestExitWithSecretstorageWarning:
     def test_warning_message_contains_venv_path(self, capsys):
         """Warning message should include the virtual environment path."""
         with patch("sys.prefix", "/path/to/venv"):
-            _exit_with_secretstorage_warning()
+            _warn_missing_secretstorage()
 
             captured = capsys.readouterr()
             message = captured.err
@@ -324,7 +326,7 @@ class TestExitWithSecretstorageWarning:
         """Warning function should write to stderr but not exit."""
         # This function should NOT call sys.exit
         with patch("sys.exit") as mock_exit:
-            _exit_with_secretstorage_warning()
+            _warn_missing_secretstorage()
 
             # Should NOT have called sys.exit
             mock_exit.assert_not_called()
