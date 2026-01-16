@@ -9,11 +9,12 @@ Contains:
 - Factory functions for creating test data
 """
 
+import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -164,7 +165,7 @@ class Greeter:
 # =============================================================================
 
 @pytest.fixture
-def temp_project(tmp_path: Path) -> Path:
+def temp_project(tmp_path: Path) -> Generator[Path, None, None]:
     """Create a temporary project directory with git repo.
 
     IMPORTANT: This fixture properly isolates git operations by clearing
@@ -221,7 +222,7 @@ def temp_project(tmp_path: Path) -> Path:
         # Ensure branch is named 'main' (some git configs default to 'master')
         subprocess.run(["git", "branch", "-M", "main"], cwd=tmp_path, capture_output=True)
 
-        return tmp_path
+        yield tmp_path
     finally:
         # Restore original environment variables
         for key, value in orig_env.items():
