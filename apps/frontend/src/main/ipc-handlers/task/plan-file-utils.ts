@@ -111,8 +111,14 @@ export async function persistPlanStatus(planPath: string, status: TaskStatus, pr
       plan.planStatus = mapStatusToPlanStatus(status);
       plan.updated_at = new Date().toISOString();
 
+      // When resetting to backlog, clear the phases array to force re-planning
+      // This prevents stale subtasks from being reused when a task restarts
+      if (status === 'backlog') {
+        plan.phases = [];
+      }
+
       writeFileSync(planPath, JSON.stringify(plan, null, 2));
-      console.warn(`[plan-file-utils] Successfully persisted status: ${status} to implementation_plan.json`);
+      console.warn(`[plan-file-utils] Successfully persisted status: ${status} to implementation_plan.json${status === 'backlog' ? ' (phases cleared)' : ''}`);
 
       // Invalidate tasks cache since status changed
       if (projectId) {
@@ -166,6 +172,12 @@ export function persistPlanStatusSync(planPath: string, status: TaskStatus, proj
     plan.status = status;
     plan.planStatus = mapStatusToPlanStatus(status);
     plan.updated_at = new Date().toISOString();
+
+    // When resetting to backlog, clear the phases array to force re-planning
+    // This prevents stale subtasks from being reused when a task restarts
+    if (status === 'backlog') {
+      plan.phases = [];
+    }
 
     writeFileSync(planPath, JSON.stringify(plan, null, 2));
 
