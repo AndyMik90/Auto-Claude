@@ -145,6 +145,16 @@ const CHECKSUMS = {
   'linux-arm64': 'fb983ec85952513f5f013674fcbf4306b1a142c50fcfd914c2c3f00c61a874b0',
 };
 
+// Platform-specific critical packages that must be bundled
+// pywin32 is platform-critical for Windows (ACS-306) - required by MCP library
+// secretstorage is platform-critical for Linux (ACS-310) - required for OAuth token storage
+// NOTE: python-env-manager.ts treats secretstorage as optional (falls back to .env)
+// while this script validates it during build to ensure it's bundled
+const PLATFORM_CRITICAL_PACKAGES = {
+  'win32': ['pywintypes'],   // Check for 'pywintypes' instead of 'pywin32' (pywin32 installs top-level modules)
+  'linux': ['secretstorage'] // Linux OAuth token storage via Freedesktop.org Secret Service
+};
+
 // Map Node.js platform names to electron-builder platform names
 function toElectronBuilderPlatform(nodePlatform) {
   const map = {
@@ -707,16 +717,11 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
 
       // Verify critical packages exist (fixes GitHub issue #416)
       // Without this check, corrupted caches with missing packages would be accepted
-      // Note: Same list exists in python-env-manager.ts - keep them in sync
       // This validation assumes traditional Python packages with __init__.py (not PEP 420 namespace packages)
-      // pywin32 is platform-critical for Windows (ACS-306) - required by MCP library
-      // secretstorage is platform-critical for Linux (ACS-310) - required for OAuth token storage
-      const platformCriticalPackages = {
-        'win32': ['pywintypes'],   // Check for 'pywintypes' instead of 'pywin32' (pywin32 installs top-level modules)
-        'linux': ['secretstorage'] // Linux OAuth token storage via Freedesktop.org Secret Service
-      };
+      // NOTE: python-env-manager.ts treats secretstorage as optional (falls back to .env)
+      // while this script validates it during build to ensure it's bundled
       const criticalPackages = ['claude_agent_sdk', 'dotenv', 'pydantic_core']
-        .concat(platformCriticalPackages[info.nodePlatform] || []);
+        .concat(PLATFORM_CRITICAL_PACKAGES[info.nodePlatform] || []);
       const missingPackages = criticalPackages.filter(pkg => {
         const pkgPath = path.join(sitePackagesDir, pkg);
         const initPath = path.join(pkgPath, '__init__.py');
@@ -819,16 +824,11 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
       installPackages(pythonBin, requirementsPath, sitePackagesDir);
 
       // Verify critical packages were installed before creating marker (fixes #416)
-      // Note: Same list exists in python-env-manager.ts - keep them in sync
       // This validation assumes traditional Python packages with __init__.py (not PEP 420 namespace packages)
-      // pywin32 is platform-critical for Windows (ACS-306) - required by MCP library
-      // secretstorage is platform-critical for Linux (ACS-310) - required for OAuth token storage
-      const platformCriticalPackages = {
-        'win32': ['pywintypes'],   // Check for 'pywintypes' instead of 'pywin32' (pywin32 installs top-level modules)
-        'linux': ['secretstorage'] // Linux OAuth token storage via Freedesktop.org Secret Service
-      };
+      // NOTE: python-env-manager.ts treats secretstorage as optional (falls back to .env)
+      // while this script validates it during build to ensure it's bundled
       const criticalPackages = ['claude_agent_sdk', 'dotenv', 'pydantic_core']
-        .concat(platformCriticalPackages[info.nodePlatform] || []);
+        .concat(PLATFORM_CRITICAL_PACKAGES[info.nodePlatform] || []);
       const postInstallMissing = criticalPackages.filter(pkg => {
         const pkgPath = path.join(sitePackagesDir, pkg);
         const initPath = path.join(pkgPath, '__init__.py');

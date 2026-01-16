@@ -96,22 +96,30 @@ class TestValidatePlatformDependencies:
             # Linux warning should not be called on Windows
             mock_warning.assert_not_called()
 
-    def test_windows_python_311_skips_validation(self):
-        """Windows + Python < 3.12 should skip pywin32 validation."""
+    def test_windows_python_311_validates_pywin32(self):
+        """Windows + Python 3.11 should validate pywin32 (ACS-306)."""
+        import builtins
+
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == "pywintypes":
+                raise ImportError("No module named 'pywintypes'")
+            return original_import(name, *args, **kwargs)
+
         with (
             patch("core.dependency_validator.is_windows", return_value=True),
             patch("core.dependency_validator.is_linux", return_value=False),
             patch("sys.version_info", (3, 11, 0)),
+            patch("core.dependency_validator._exit_with_pywin32_error") as mock_exit,
             patch(
                 "core.dependency_validator._warn_missing_secretstorage"
             ) as mock_warning,
-            patch("builtins.__import__") as mock_import,
+            patch("builtins.__import__", side_effect=mock_import),
         ):
-            # Even if pywintypes is not available, should not exit
-            mock_import.side_effect = ImportError("No module named 'pywintypes'")
-
-            # Should not raise SystemExit
+            # Should call exit error function
             validate_platform_dependencies()
+            mock_exit.assert_called_once()
             # Linux warning should not be called on Windows
             mock_warning.assert_not_called()
 
@@ -187,21 +195,30 @@ class TestValidatePlatformDependencies:
             mock_exit.assert_called_once()
             mock_warning.assert_not_called()
 
-    def test_windows_python_310_skips_validation(self):
-        """Windows + Python 3.10 should skip pywin32 validation."""
+    def test_windows_python_310_validates_pywin32(self):
+        """Windows + Python 3.10 should validate pywin32 (ACS-306)."""
+        import builtins
+
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == "pywintypes":
+                raise ImportError("No module named 'pywintypes'")
+            return original_import(name, *args, **kwargs)
+
         with (
             patch("core.dependency_validator.is_windows", return_value=True),
             patch("core.dependency_validator.is_linux", return_value=False),
             patch("sys.version_info", (3, 10, 0)),
+            patch("core.dependency_validator._exit_with_pywin32_error") as mock_exit,
             patch(
                 "core.dependency_validator._warn_missing_secretstorage"
             ) as mock_warning,
-            patch("builtins.__import__") as mock_import,
+            patch("builtins.__import__", side_effect=mock_import),
         ):
-            mock_import.side_effect = ImportError("No module named 'pywintypes'")
-
-            # Should not raise SystemExit
+            # Should call exit error function
             validate_platform_dependencies()
+            mock_exit.assert_called_once()
             # Linux warning should not be called on Windows
             mock_warning.assert_not_called()
 

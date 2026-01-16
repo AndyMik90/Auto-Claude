@@ -19,8 +19,9 @@ def validate_platform_dependencies() -> None:
         SystemExit: If required platform-specific dependencies are missing,
                    with helpful installation instructions.
     """
-    # Check Windows-specific dependencies
-    if is_windows() and sys.version_info >= (3, 12):
+    # Check Windows-specific dependencies (all Python versions per ACS-306)
+    # pywin32 is required on all Python versions on Windows - MCP library unconditionally imports win32api
+    if is_windows():
         try:
             import pywintypes  # noqa: F401
         except ImportError:
@@ -102,6 +103,12 @@ def _warn_missing_secretstorage() -> None:
         if venv_activate.exists()
         else ""
     )
+    # Adjust step number based on whether activation step is included
+    install_step = (
+        "2. Install secretstorage:\n"
+        if activation_prefix
+        else "Install secretstorage:\n"
+    )
 
     sys.stderr.write(
         "Warning: Linux dependency 'secretstorage' is not installed.\n"
@@ -112,7 +119,7 @@ def _warn_missing_secretstorage() -> None:
         "\n"
         "To enable keyring integration:\n"
         f"{activation_prefix}"
-        "2. Install secretstorage:\n"
+        f"{install_step}"
         "   pip install 'secretstorage>=3.3.3'\n"
         "\n"
         "   Or reinstall all dependencies:\n"
