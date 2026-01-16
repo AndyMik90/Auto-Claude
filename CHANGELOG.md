@@ -389,6 +389,8 @@
 
 @AndyMik90, @Andy, @Adam Slaker, @TamerineSky, @StillKnotKnown, @Test User, @youngmrz, @VDT-91, @kaigler, @Alexander Penzin, @Antti, @Alex, @Michael Ludlow, @Umaru
 
+---
+
 ## 2.7.4 - Terminal & Workflow Enhancements
 
 ### ✨ New Features

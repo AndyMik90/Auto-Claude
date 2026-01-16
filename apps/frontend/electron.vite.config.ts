@@ -51,8 +51,18 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.ts')
         },
-        // Only node-pty needs to be external (native module rebuilt by electron-builder)
-        external: ['@lydell/node-pty']
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].js'
+        },
+        // External modules that should not be bundled
+        external: [
+          '@lydell/node-pty', // Native module
+          '@sentry/electron',  // Sentry main (causes WSL2 issues when bundled)
+          '@sentry/core',
+          '@sentry/node',
+          '@electron-toolkit/utils' // Electron utilities (access app before ready)
+        ]
       }
     }
   },
@@ -62,6 +72,10 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/preload/index.ts')
+        },
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].js'
         }
       }
     }

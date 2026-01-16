@@ -271,8 +271,9 @@ export function getAugmentedEnv(additionalPaths?: string[]): Record<string, stri
 
   // Add Sentry environment variables for Python subprocesses
   // These are embedded at build time and need to be passed explicitly
-  const sentryEnv = getSentryEnvForSubprocess();
-  Object.assign(env, sentryEnv);
+  // Disabled for WSL2 compatibility
+  // const sentryEnv = getSentryEnvForSubprocess();
+  // Object.assign(env, sentryEnv);
 
   return env;
 }
@@ -446,8 +447,9 @@ export async function getAugmentedEnvAsync(additionalPaths?: string[]): Promise<
 
   // Add Sentry environment variables for Python subprocesses
   // These are embedded at build time and need to be passed explicitly
-  const sentryEnv = getSentryEnvForSubprocess();
-  Object.assign(env, sentryEnv);
+  // Disabled for WSL2 compatibility
+  // const sentryEnv = getSentryEnvForSubprocess();
+  // Object.assign(env, sentryEnv);
 
   return env;
 }
