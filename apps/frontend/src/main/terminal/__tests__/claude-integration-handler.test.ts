@@ -50,7 +50,7 @@ const createMockTerminal = (overrides: Partial<TerminalProcess> = {}): TerminalP
   isClaudeMode: false,
   claudeSessionId: undefined,
   claudeProfileId: undefined,
-  title: 'Claude',
+  title: 'Terminal 1',  // Use default terminal name pattern to match production behavior
   cwd: '/tmp/project',
   projectPath: '/tmp/project',
   ...overrides,
@@ -798,6 +798,51 @@ describe('claude-integration-handler - Helper Functions', () => {
           vi.fn()
         );
       }).not.toThrow();
+    });
+  });
+
+  describe('shouldAutoRenameTerminal', () => {
+    it('should return true for default terminal names', async () => {
+      const { shouldAutoRenameTerminal } = await import('../claude-integration-handler');
+
+      expect(shouldAutoRenameTerminal('Terminal 1')).toBe(true);
+      expect(shouldAutoRenameTerminal('Terminal 2')).toBe(true);
+      expect(shouldAutoRenameTerminal('Terminal 99')).toBe(true);
+      expect(shouldAutoRenameTerminal('Terminal 123')).toBe(true);
+    });
+
+    it('should return false for terminals already named Claude', async () => {
+      const { shouldAutoRenameTerminal } = await import('../claude-integration-handler');
+
+      expect(shouldAutoRenameTerminal('Claude')).toBe(false);
+      expect(shouldAutoRenameTerminal('Claude (Work)')).toBe(false);
+      expect(shouldAutoRenameTerminal('Claude (Profile Name)')).toBe(false);
+    });
+
+    it('should return false for user-customized terminal names', async () => {
+      const { shouldAutoRenameTerminal } = await import('../claude-integration-handler');
+
+      expect(shouldAutoRenameTerminal('My Custom Terminal')).toBe(false);
+      expect(shouldAutoRenameTerminal('Dev Server')).toBe(false);
+      expect(shouldAutoRenameTerminal('Backend')).toBe(false);
+    });
+
+    it('should return false for edge cases that do not match the pattern', async () => {
+      const { shouldAutoRenameTerminal } = await import('../claude-integration-handler');
+
+      // Terminal 0 is not a valid default (terminals start at 1)
+      expect(shouldAutoRenameTerminal('Terminal 0')).toBe(true);  // Pattern matches \d+, so this is valid
+
+      // Lowercase doesn't match
+      expect(shouldAutoRenameTerminal('terminal 1')).toBe(false);
+
+      // Extra whitespace doesn't match
+      expect(shouldAutoRenameTerminal('Terminal  1')).toBe(false);
+      expect(shouldAutoRenameTerminal(' Terminal 1')).toBe(false);
+      expect(shouldAutoRenameTerminal('Terminal 1 ')).toBe(false);
+
+      // Tab instead of space doesn't match
+      expect(shouldAutoRenameTerminal('Terminal\t1')).toBe(false);
     });
   });
 });
