@@ -540,7 +540,7 @@ export function resumeClaude(
   // terminals to their correct cwd/projectPath.
   //
   // Note: We clear claudeSessionId because --continue doesn't track specific sessions,
-  // and we don't want stale IDs persisting through SessionHandler.persistSession().
+  // and we don't want stale IDs persisting through SessionHandler.persistSessionAsync().
   terminal.claudeSessionId = undefined;
 
   // Deprecation warning for callers still passing sessionId
@@ -717,7 +717,7 @@ export async function resumeClaudeAsync(
   // terminals to their correct cwd/projectPath.
   //
   // Note: We clear claudeSessionId because --continue doesn't track specific sessions,
-  // and we don't want stale IDs persisting through SessionHandler.persistSession().
+  // and we don't want stale IDs persisting through SessionHandler.persistSessionAsync().
   terminal.claudeSessionId = undefined;
 
   // Deprecation warning for callers still passing sessionId
