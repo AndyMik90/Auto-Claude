@@ -15,6 +15,7 @@ import type {
   WindowGetter,
   TerminalOperationResult
 } from './types';
+import { isWindows } from '../platform';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 
 /**
@@ -228,7 +229,9 @@ export async function restoreTerminal(
 }
 
 /**
- * Destroy a terminal process
+ * Destroy a terminal process.
+ * On Windows, waits for the PTY to actually exit before returning to prevent
+ * race conditions when recreating terminals (e.g., worktree switching).
  */
 export async function destroyTerminal(
   id: string,
@@ -245,8 +248,18 @@ export async function destroyTerminal(
     // Release any claimed session ID for this terminal
     SessionHandler.releaseSessionId(id);
     onCleanup(id);
-    PtyManager.killPty(terminal);
+
+    // Delete from map BEFORE killing to prevent race with onExit handler
     terminals.delete(id);
+
+    // On Windows, wait for PTY to actually exit before returning
+    // This prevents race conditions when recreating terminals
+    if (isWindows()) {
+      await PtyManager.killPty(terminal, true);
+    } else {
+      PtyManager.killPty(terminal);
+    }
+
     return { success: true };
   } catch (error) {
     return {
