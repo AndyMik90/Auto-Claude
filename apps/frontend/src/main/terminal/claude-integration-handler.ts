@@ -157,11 +157,11 @@ type ClaudeCommandConfig =
  * // Returns: 'cd /path && PATH=/bin claude\r'
  *
  * // Temp file method (Unix/macOS)
- * buildClaudeShellCommand('', '', 'claude', { method: 'temp-file', escapedTempFile: '/tmp/token' });
+ * buildClaudeShellCommand('', '', 'claude', { method: 'temp-file', tempFile: '/tmp/token' });
  * // Returns: 'clear && HISTFILE= HISTCONTROL=ignorespace bash -c "source /tmp/token && rm -f /tmp/token && exec claude"\r'
  *
  * // Temp file method (Windows)
- * buildClaudeShellCommand('', '', 'claude.cmd', { method: 'temp-file', escapedTempFile: 'C:\\Users\\...\\token.bat' });
+ * buildClaudeShellCommand('', '', 'claude.cmd', { method: 'temp-file', tempFile: 'C:\\Users\\...\\token.bat' });
  * // Returns: 'cls && call C:\\Users\\...\\token.bat && claude.cmd\r'
  */
 export function buildClaudeShellCommand(
@@ -547,6 +547,7 @@ export function invokeClaude(
 
   // Track terminal state for cleanup on error
   const wasClaudeMode = terminal.isClaudeMode;
+  const previousProfileId = terminal.claudeProfileId;
 
   try {
     terminal.isClaudeMode = true;
@@ -563,7 +564,6 @@ export function invokeClaude(
       ? profileManager.getProfile(profileId)
       : profileManager.getActiveProfile();
 
-    const previousProfileId = terminal.claudeProfileId;
     terminal.claudeProfileId = activeProfile?.id;
 
     debugLog('[ClaudeIntegration:invokeClaude] Profile resolution:', {
@@ -641,6 +641,7 @@ export function invokeClaude(
     // Reset terminal state on error to prevent inconsistent state
     terminal.isClaudeMode = wasClaudeMode;
     terminal.claudeSessionId = undefined;
+    terminal.claudeProfileId = previousProfileId;
     debugError('[ClaudeIntegration:invokeClaude] Invocation failed:', error);
     debugError('[ClaudeIntegration:invokeClaude] Error details:', {
       terminalId: terminal.id,
@@ -730,6 +731,7 @@ export async function invokeClaudeAsync(
 ): Promise<void> {
   // Track terminal state for cleanup on error
   const wasClaudeMode = terminal.isClaudeMode;
+  const previousProfileId = terminal.claudeProfileId;
 
   const startTime = Date.now();
 
@@ -757,7 +759,6 @@ export async function invokeClaudeAsync(
       ? profileManager.getProfile(profileId)
       : profileManager.getActiveProfile();
 
-    const previousProfileId = terminal.claudeProfileId;
     terminal.claudeProfileId = activeProfile?.id;
 
     debugLog('[ClaudeIntegration:invokeClaudeAsync] Profile resolution:', {
@@ -847,6 +848,7 @@ export async function invokeClaudeAsync(
     // Reset terminal state on error to prevent inconsistent state
     terminal.isClaudeMode = wasClaudeMode;
     terminal.claudeSessionId = undefined;
+    terminal.claudeProfileId = previousProfileId;
     const elapsed = Date.now() - startTime;
     debugError('[ClaudeIntegration:invokeClaudeAsync] Invocation failed:', error);
     debugError('[ClaudeIntegration:invokeClaudeAsync] Error details:', {

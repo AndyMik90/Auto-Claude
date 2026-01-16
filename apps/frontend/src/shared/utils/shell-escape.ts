@@ -103,7 +103,7 @@ export function escapeShellArgWindows(arg: string): string {
  * Inside double quotes in cmd.exe, the escaping rules are different:
  * - Caret (^) is a LITERAL character, not an escape character
  * - Only double quotes need escaping, done by doubling them ("")
- * - Other special chars (& | < > %) are protected by the surrounding quotes
+ * - Percent signs (%) must be escaped as %% to prevent variable expansion
  * - Newlines/carriage returns still need removal (command terminators)
  *
  * Use this for values in set commands like: set "VAR=value"
@@ -113,16 +113,19 @@ export function escapeShellArgWindows(arg: string): string {
  * - "it's" → "it's"
  * - 'path with "quotes"' → 'path with ""quotes""'
  * - "C:\Company & Co" → "C:\Company & Co" (ampersand protected by quotes)
+ * - "%PATH%" → "%%PATH%%" (percent escaped)
  *
  * @param arg - The argument to escape
  * @returns The escaped argument (caller should wrap in double quotes)
  */
 export function escapeForWindowsDoubleQuote(arg: string): string {
   // Inside double quotes, only escape embedded double quotes by doubling them.
+  // Also escape percent signs to prevent variable expansion.
   // Also remove newlines/carriage returns as they terminate commands.
   const escaped = arg
     .replace(/\r/g, '')        // Remove carriage returns (command terminators)
     .replace(/\n/g, '')        // Remove newlines (command terminators)
+    .replace(/%/g, '%%')       // Escape percent (variable expansion in cmd.exe)
     .replace(/"/g, '""');      // Escape double quotes by doubling
 
   return escaped;
