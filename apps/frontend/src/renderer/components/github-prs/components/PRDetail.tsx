@@ -285,6 +285,9 @@ export function PRDetail({
     setBlockedStatusPosted(false);
     setBlockedStatusError(null);
     setIsPostingBlockedStatus(false);
+    // Reset branch update state as well
+    setBranchUpdateError(null);
+    setBranchUpdateSuccess(false);
   }, [pr.number]);
 
   // Check for workflows awaiting approval (fork PRs) when PR changes or review completes
