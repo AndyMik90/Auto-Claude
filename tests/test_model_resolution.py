@@ -149,7 +149,7 @@ class TestGitHubRunnerConfigModelDefaults:
             / "github"
             / "models.py"
         )
-        content = models_file.read_text()
+        content = models_file.read_text(encoding="utf-8")
         # Verify the default is "sonnet" (shorthand), not a hardcoded full model ID
         assert 'model: str = "sonnet"' in content
         # Verify the old hardcoded fallback is NOT present
@@ -165,7 +165,7 @@ class TestGitHubRunnerConfigModelDefaults:
             / "github"
             / "models.py"
         )
-        content = models_file.read_text()
+        content = models_file.read_text(encoding="utf-8")
         # Verify load_settings uses "sonnet" (shorthand) as fallback
         assert 'model=settings.get("model", "sonnet")' in content
 
@@ -187,7 +187,7 @@ class TestBatchValidatorModelResolution:
             / "github"
             / "batch_validator.py"
         )
-        content = batch_validator_file.read_text()
+        content = batch_validator_file.read_text(encoding="utf-8")
         # Verify DEFAULT_MODEL is "sonnet" (shorthand)
         assert 'DEFAULT_MODEL = "sonnet"' in content
 
@@ -201,7 +201,7 @@ class TestBatchValidatorModelResolution:
             / "github"
             / "batch_validator.py"
         )
-        content = batch_validator_file.read_text()
+        content = batch_validator_file.read_text(encoding="utf-8")
         # Verify the new importlib pattern is used
         assert "importlib.util.find_spec" in content
         # Verify the old absolute import pattern is NOT present
@@ -217,7 +217,7 @@ class TestBatchValidatorModelResolution:
             / "github"
             / "batch_validator.py"
         )
-        content = batch_validator_file.read_text()
+        content = batch_validator_file.read_text(encoding="utf-8")
         # Verify _resolve_model method exists
         assert "def _resolve_model(self, model: str)" in content
         # Verify it calls resolve_model_id on the imported module
@@ -233,7 +233,7 @@ class TestBatchValidatorModelResolution:
             / "github"
             / "batch_validator.py"
         )
-        content = batch_validator_file.read_text()
+        content = batch_validator_file.read_text(encoding="utf-8")
         # Verify __init__ resolves the model
         assert "self.model = self._resolve_model(model)" in content
 
@@ -254,7 +254,7 @@ class TestBatchIssuesModelResolution:
             / "github"
             / "batch_issues.py"
         )
-        content = batch_issues_file.read_text()
+        content = batch_issues_file.read_text(encoding="utf-8")
         # Verify validation_model default is "sonnet" (shorthand)
         assert 'validation_model: str = "sonnet"' in content
 
@@ -276,7 +276,7 @@ class TestClaudeBatchAnalyzerModelResolution:
             / "github"
             / "batch_issues.py"
         )
-        content = batch_issues_file.read_text()
+        content = batch_issues_file.read_text(encoding="utf-8")
 
         # Verify the old hardcoded model is NOT present
         assert 'model="claude-sonnet-4-5-20250929"' not in content
@@ -296,7 +296,7 @@ class TestClaudeBatchAnalyzerModelResolution:
             / "github"
             / "batch_issues.py"
         )
-        content = batch_issues_file.read_text()
+        content = batch_issues_file.read_text(encoding="utf-8")
 
         # Verify the pattern: model = resolve_model_id("sonnet")
         assert 'model = resolve_model_id("sonnet")' in content
@@ -350,8 +350,8 @@ class TestParallelReviewerImportResolution:
             / "parallel_followup_reviewer.py"
         )
 
-        orchestrator_content = orchestrator_file.read_text()
-        followup_content = followup_file.read_text()
+        orchestrator_content = orchestrator_file.read_text(encoding="utf-8")
+        followup_content = followup_file.read_text(encoding="utf-8")
 
         # Verify the old hardcoded fallback is NOT present (negative assertion)
         assert 'or "claude-sonnet-4-5-20250929"' not in orchestrator_content
