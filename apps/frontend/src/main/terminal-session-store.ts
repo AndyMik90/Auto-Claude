@@ -75,6 +75,24 @@ function getDateLabel(dateStr: string): string {
 export class TerminalSessionStore {
   private storePath: string;
   private data: SessionData;
+  /**
+   * Tracks session IDs that are being deleted to prevent async writes from
+   * resurrecting them. This fixes a race condition where saveSessionAsync()
+   * could complete after removeSession() and re-add deleted sessions.
+   */
+  private pendingDelete: Set<string> = new Set();
+  /**
+   * Write serialization state - prevents concurrent async writes from
+   * interleaving and potentially losing data.
+   */
+  private writeInProgress = false;
+  private writePending = false;
+  /**
+   * Failure tracking for async writes - helps detect persistent write issues
+   * that might otherwise go unnoticed in fire-and-forget scenarios.
+   */
+  private consecutiveFailures = 0;
+  private static readonly MAX_FAILURES_BEFORE_WARNING = 3;
 
   constructor() {
     const sessionsDir = join(app.getPath('userData'), 'sessions');
@@ -143,12 +161,41 @@ export class TerminalSessionStore {
    * Save sessions to disk asynchronously (non-blocking)
    *
    * Safe to call from Electron main process without blocking the event loop.
+   * Uses write serialization to prevent concurrent writes from losing data.
+   * Tracks consecutive failures and logs warnings for persistent issues.
    */
   private async saveAsync(): Promise<void> {
+    // If a write is in progress, mark that another write is needed
+    if (this.writeInProgress) {
+      this.writePending = true;
+      return;
+    }
+
+    this.writeInProgress = true;
     try {
       await fsPromises.writeFile(this.storePath, JSON.stringify(this.data, null, 2));
+      // Reset failure counter on success
+      this.consecutiveFailures = 0;
     } catch (error) {
+      this.consecutiveFailures++;
       console.error('[TerminalSessionStore] Error saving sessions:', error);
+
+      // Warn about persistent failures that might indicate a real problem
+      if (this.consecutiveFailures >= TerminalSessionStore.MAX_FAILURES_BEFORE_WARNING) {
+        console.error(
+          `[TerminalSessionStore] WARNING: ${this.consecutiveFailures} consecutive save failures. ` +
+          'Session data may not be persisting. Check disk space and permissions.'
+        );
+      }
+    } finally {
+      this.writeInProgress = false;
+
+      // If another write was requested while we were writing, do it now
+      if (this.writePending) {
+        this.writePending = false;
+        // Use setImmediate to avoid stack overflow with many rapid calls
+        setImmediate(() => this.saveAsync());
+      }
     }
   }
 
@@ -188,9 +235,17 @@ export class TerminalSessionStore {
   }
 
   /**
-   * Save a terminal session (to today's bucket)
+   * Update session in memory (shared logic for saveSession and saveSessionAsync)
+   *
+   * Returns false if the session is pending deletion and should not be saved.
    */
-  saveSession(session: TerminalSession): void {
+  private updateSessionInMemory(session: TerminalSession): boolean {
+    // Check if session was deleted - skip if pending deletion
+    if (this.pendingDelete.has(session.id)) {
+      console.warn('[TerminalSessionStore] Skipping save for deleted session:', session.id);
+      return false;
+    }
+
     const { projectPath } = session;
     const todaySessions = this.getTodaysSessions();
 
@@ -216,7 +271,16 @@ export class TerminalSessionStore {
       });
     }
 
-    this.save();
+    return true;
+  }
+
+  /**
+   * Save a terminal session (to today's bucket)
+   */
+  saveSession(session: TerminalSession): void {
+    if (this.updateSessionInMemory(session)) {
+      this.save();
+    }
   }
 
   /**
@@ -371,8 +435,15 @@ export class TerminalSessionStore {
 
   /**
    * Remove a session (from today's sessions)
+   *
+   * Adds the session ID to pendingDelete to prevent async writes from
+   * resurrecting the session if saveSessionAsync() is in-flight.
    */
   removeSession(projectPath: string, sessionId: string): void {
+    // Mark as pending delete BEFORE modifying data to prevent race condition
+    // with in-flight saveSessionAsync() calls
+    this.pendingDelete.add(sessionId);
+
     const todaySessions = this.getTodaysSessions();
     if (todaySessions[projectPath]) {
       todaySessions[projectPath] = todaySessions[projectPath].filter(
@@ -380,6 +451,12 @@ export class TerminalSessionStore {
       );
       this.save();
     }
+
+    // Keep the ID in pendingDelete for a short time to handle any in-flight
+    // async operations, then clean up to prevent memory leaks
+    setTimeout(() => {
+      this.pendingDelete.delete(sessionId);
+    }, 5000);
   }
 
   /**
@@ -451,34 +528,15 @@ export class TerminalSessionStore {
    *
    * Mirrors saveSession() but uses async disk write to avoid blocking
    * the main process. Use this for fire-and-forget session persistence.
+   *
+   * Uses shared updateSessionInMemory() which checks pendingDelete to avoid
+   * resurrecting sessions that have been removed while this async operation
+   * was queued/in-flight.
    */
   async saveSessionAsync(session: TerminalSession): Promise<void> {
-    const { projectPath } = session;
-    const todaySessions = this.getTodaysSessions();
-
-    if (!todaySessions[projectPath]) {
-      todaySessions[projectPath] = [];
+    if (this.updateSessionInMemory(session)) {
+      await this.saveAsync();
     }
-
-    // Update existing or add new
-    const existingIndex = todaySessions[projectPath].findIndex(s => s.id === session.id);
-    if (existingIndex >= 0) {
-      todaySessions[projectPath][existingIndex] = {
-        ...session,
-        // Limit output buffer size
-        outputBuffer: session.outputBuffer.slice(-MAX_OUTPUT_BUFFER),
-        lastActiveAt: new Date().toISOString()
-      };
-    } else {
-      todaySessions[projectPath].push({
-        ...session,
-        outputBuffer: session.outputBuffer.slice(-MAX_OUTPUT_BUFFER),
-        createdAt: new Date().toISOString(),
-        lastActiveAt: new Date().toISOString()
-      });
-    }
-
-    await this.saveAsync();
   }
 
   /**

@@ -263,7 +263,7 @@ export async function destroyAllTerminals(
   terminals: Map<string, TerminalProcess>,
   saveTimer: NodeJS.Timeout | null
 ): Promise<NodeJS.Timeout | null> {
-  SessionHandler.persistAllSessions(terminals);
+  await SessionHandler.persistAllSessionsAsync(terminals);
 
   if (saveTimer) {
     clearInterval(saveTimer);

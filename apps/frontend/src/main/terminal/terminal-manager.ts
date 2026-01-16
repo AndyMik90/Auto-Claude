@@ -40,7 +40,9 @@ export class TerminalManager {
 
     // Periodically save session data (every 30 seconds)
     this.saveTimer = setInterval(() => {
-      SessionHandler.persistAllSessions(this.terminals);
+      SessionHandler.persistAllSessionsAsync(this.terminals).catch((error) => {
+        console.error('[TerminalManager] Failed to persist sessions:', error);
+      });
     }, 30000);
   }
 
