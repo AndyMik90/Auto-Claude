@@ -277,9 +277,13 @@ class TestLinuxSecretstorageValidation:
             patch("core.dependency_validator.is_windows", return_value=False),
             patch("core.dependency_validator.is_linux", return_value=True),
             patch("builtins.__import__", side_effect=selective_mock),
+            patch(
+                "core.dependency_validator._warn_missing_secretstorage"
+            ) as mock_warning,
         ):
-            # Should not call warning function
+            # Should not call warning function when secretstorage is installed
             validate_platform_dependencies()
+            mock_warning.assert_not_called()
 
     def test_windows_skips_secretstorage_validation(self):
         """Windows should skip secretstorage validation."""
