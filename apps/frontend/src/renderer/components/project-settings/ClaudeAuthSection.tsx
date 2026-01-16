@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Key, ExternalLink, Loader2, Globe } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { StatusBadge } from './StatusBadge';
@@ -29,6 +30,8 @@ export function ClaudeAuthSection({
   onClaudeSetup,
   onUpdateConfig,
 }: ClaudeAuthSectionProps) {
+  const { t } = useTranslation(['settings']);
+
   const badge = authStatus === 'authenticated' ? (
     <StatusBadge status="success" label="Connected" />
   ) : authStatus === 'not_authenticated' ? (
@@ -37,7 +40,7 @@ export function ClaudeAuthSection({
 
   return (
     <CollapsibleSection
-      title="Claude Authentication"
+      title={t('settings:projectSections.claude.title')}
       icon={<Key className="h-4 w-4" />}
       isExpanded={isExpanded}
       onToggle={onToggle}

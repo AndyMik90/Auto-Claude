@@ -1,0 +1,65 @@
+{
+  "types": {
+    "code_improvements": "代码改进",
+    "ui_ux_improvements": "UI/UX 改进",
+    "documentation_gaps": "文档",
+    "security_hardening": "安全",
+    "performance_optimizations": "性能",
+    "code_quality": "代码质量"
+  },
+  "typeDescriptions": {
+    "code_improvements": "从模式、架构和基础设施分析中发现的代码改进机会",
+    "ui_ux_improvements": "通过应用分析识别的视觉和交互改进",
+    "documentation_gaps": "需要关注的缺失或过时文档",
+    "security_hardening": "安全漏洞和加固机会",
+    "performance_optimizations": "性能瓶颈和优化机会",
+    "code_quality": "重构机会、大文件、代码异味和最佳实践违规"
+  },
+  "uiuxCategories": {
+    "usability": "可用性",
+    "accessibility": "可访问性",
+    "performance": "性能",
+    "visual": "视觉设计",
+    "interaction": "交互"
+  },
+  "documentationCategories": {
+    "readme": "README",
+    "api_docs": "API 文档",
+    "inline_comments": "内联注释",
+    "examples": "示例和教程",
+    "architecture": "架构文档",
+    "troubleshooting": "故障排除指南"
+  },
+  "securityCategories": {
+    "authentication": "身份验证",
+    "authorization": "授权",
+    "input_validation": "输入验证",
+    "data_protection": "数据保护",
+    "dependencies": "依赖项",
+    "configuration": "配置",
+    "secrets_management": "密钥管理"
+  },
+  "performanceCategories": {
+    "bundle_size": "包大小",
+    "runtime": "运行时性能",
+    "memory": "内存使用",
+    "database": "数据库查询",
+    "network": "网络请求",
+    "rendering": "渲染",
+    "caching": "缓存"
+  },
+  "codeQualityCategories": {
+    "large_files": "大文件",
+    "code_smells": "代码异味",
+    "complexity": "高复杂度",
+    "duplication": "代码重复",
+    "naming": "命名约定",
+    "structure": "文件结构",
+    "linting": "Lint 问题",
+    "testing": "测试覆盖率",
+    "types": "类型安全",
+    "dependencies": "依赖问题",
+    "dead_code": "死代码",
+    "git_hygiene": "Git 卫生"
+  }
+}

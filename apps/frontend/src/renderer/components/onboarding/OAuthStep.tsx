@@ -529,7 +529,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                               size="icon"
                               onClick={() => startEditingProfile(profile)}
                               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                              title="Rename profile"
+                              title={tCommon("titles.renameProfile")}
                             >
                               <Pencil className="h-3 w-3" />
                             </Button>
@@ -540,7 +540,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                                 onClick={() => handleDeleteProfile(profile.id)}
                                 disabled={deletingProfileId === profile.id}
                                 className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                title="Delete profile"
+                                title={tCommon("titles.deleteProfile")}
                               >
                                 {deletingProfileId === profile.id ? (
                                   <Loader2 className="h-3 w-3 animate-spin" />

@@ -2,6 +2,7 @@
  * Team and project selection dropdowns
  */
 
+import { useTranslation } from 'react-i18next';
 import { Label } from '../../ui/label';
 import {
   Select,
@@ -33,6 +34,8 @@ export function TeamProjectSelector({
   onTeamChange,
   onProjectChange
 }: TeamProjectSelectorProps) {
+  const { t } = useTranslation(['common']);
+
   return (
     <div className="flex gap-4 shrink-0">
       <div className="flex-1 space-y-2">
@@ -43,7 +46,7 @@ export function TeamProjectSelector({
           disabled={isLoadingTeams}
         >
           <SelectTrigger>
-            <SelectValue placeholder={isLoadingTeams ? 'Loading...' : 'Select a team'} />
+            <SelectValue placeholder={isLoadingTeams ? t('common:labels.loading') : t('common:placeholders.selectTeam')} />
           </SelectTrigger>
           <SelectContent>
             {teams.map(team => (
@@ -63,10 +66,10 @@ export function TeamProjectSelector({
           disabled={isLoadingProjects || !selectedTeamId}
         >
           <SelectTrigger>
-            <SelectValue placeholder={isLoadingProjects ? 'Loading...' : 'All projects'} />
+            <SelectValue placeholder={isLoadingProjects ? t('common:labels.loading') : t('common:placeholders.allProjects')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">All projects</SelectItem>
+            <SelectItem value="__all__">{t('common:placeholders.allProjects')}</SelectItem>
             {projects.map(project => (
               <SelectItem key={project.id} value={project.id}>
                 {project.name}

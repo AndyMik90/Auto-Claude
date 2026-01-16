@@ -96,7 +96,9 @@
       "reviewing": "Reviewing",
       "fixing": "Fixing",
       "complete": "Complete",
-      "failed": "Failed"
+      "failed": "Failed",
+      "qa_review": "AI Review",
+      "qa_fixing": "Fixing Issues"
     },
     "labels": {
       "interrupted": "Interrupted",
@@ -214,7 +216,11 @@
           "bug_fix": "Bug Fix",
           "refactoring": "Refactoring",
           "documentation": "Docs",
-          "security": "Security"
+          "security": "Security",
+          "performance": "Performance",
+          "ui_ux": "UI/UX",
+          "infrastructure": "Infrastructure",
+          "testing": "Testing"
         },
         "priority": {
           "low": "Low",
@@ -239,6 +245,104 @@
     }
   },
   "subtasks": {
-    "untitled": "Untitled subtask"
+    "untitled": "Untitled subtask",
+    "noSubtasks": "No subtasks defined",
+    "noSubtasksHint": "Implementation subtasks will appear here after planning",
+    "completedOf": "{{completed}} of {{total}} completed"
+  },
+  "subtaskStatus": {
+    "pending": "Pending",
+    "in_progress": "In Progress",
+    "completed": "Completed",
+    "failed": "Failed"
+  },
+  "logs": {
+    "noLogsYet": "No logs yet",
+    "noLogsHint": "Logs will appear here when the task runs",
+    "entries": "entries",
+    "interrupted": "Interrupted",
+    "running": "Running",
+    "complete": "Complete",
+    "failed": "Failed",
+    "pending": "Pending",
+    "phases": {
+      "planning": "Planning",
+      "coding": "Coding",
+      "validation": "Validation"
+    },
+    "tools": {
+      "reading": "Reading",
+      "searchingFiles": "Searching files",
+      "searchingCode": "Searching code",
+      "editing": "Editing",
+      "writing": "Writing",
+      "running": "Running"
+    },
+    "done": "Done",
+    "hideOutput": "Hide output",
+    "showOutput": "Show output",
+    "less": "Less",
+    "more": "More"
+  },
+  "taskActions": {
+    "recovering": "Recovering...",
+    "recoverTask": "Recover Task",
+    "resumeTask": "Resume Task",
+    "stopTask": "Stop Task",
+    "startTask": "Start Task",
+    "taskCompleted": "Task completed successfully",
+    "deleteTask": "Delete Task",
+    "deleteConfirmTitle": "Delete Task",
+    "deleteConfirmMessage": "Are you sure you want to delete",
+    "deleteWarning": "This action cannot be undone. All task files, including the spec, implementation plan, and any generated code will be permanently deleted from the project.",
+    "cancel": "Cancel",
+    "deleting": "Deleting...",
+    "deletePermanently": "Delete Permanently"
+  },
+  "mergePreview": {
+    "branchDiverged": "Branch Diverged - AI Will Resolve",
+    "noConflicts": "No Conflicts Detected",
+    "conflictsFound": "Conflict",
+    "conflictsFound_plural": "Conflicts",
+    "found": "Found",
+    "viewDetails": "View Details",
+    "branchDivergedWarning": "Branch has diverged - AI will resolve",
+    "aiWillResolve": "AI will automatically merge these conflicts when you click Stage Changes.",
+    "filesToMerge": "Files to merge",
+    "aiWillResolveConflicts": "AI will resolve conflicts",
+    "autoMergeable": "Auto-mergeable",
+    "aiResolved": "AI resolved",
+    "manualReview": "Manual review",
+    "readyToMerge": "Ready to merge"
+  },
+  "imageUpload": {
+    "dropOrClick": "Drop images here or click to browse",
+    "maxReached": "Maximum images reached",
+    "allowedTypes": "{{types}} up to 10MB each ({{current}}/{{max}})",
+    "maxImages": "{{max}} images maximum",
+    "onlyMoreCanBeAdded": "Only {{count}} more image(s) can be added. Some files were skipped.",
+    "invalidType": "\"{{filename}}\" is not a valid image type. Allowed: {{types}}",
+    "tooLarge": "\"{{filename}}\" is larger than 10MB. Consider compressing it for better performance.",
+    "processFailed": "Failed to process \"{{filename}}\"",
+    "largeFileWarning": "Large file - consider compressing"
+  },
+  "linearImport": {
+    "selectTeam": "Select a team to view issues",
+    "noIssuesMatch": "No issues match your filters",
+    "noIssuesFound": "No issues found"
+  },
+  "fileAutocomplete": {
+    "noFilesFound": "No files found",
+    "navigate": "navigate",
+    "select": "select",
+    "close": "close"
+  },
+  "progress": {
+    "phaseLabels": {
+      "planning": "Planning (0-20%)",
+      "coding": "Coding (20-80%)",
+      "aiReview": "AI Review (80-95%)",
+      "complete": "Complete (95-100%)"
+    }
   }
 }

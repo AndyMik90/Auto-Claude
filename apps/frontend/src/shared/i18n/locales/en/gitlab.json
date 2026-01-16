@@ -204,5 +204,25 @@
       "performance": "Performance",
       "logic": "Logic"
     }
+  },
+  "createMR": {
+    "title": "Create Merge Request",
+    "description": "Create a new merge request in GitLab",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Merge request title",
+    "sourceBranch": "Source Branch",
+    "sourceBranchPlaceholder": "feature/my-feature",
+    "targetBranch": "Target Branch",
+    "targetBranchPlaceholder": "main",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "Describe the changes in this merge request...",
+    "requiredFieldsError": "Title, source branch, and target branch are required",
+    "createError": "Failed to create merge request",
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "createButton": "Create Merge Request"
+  },
+  "issueList": {
+    "noIssuesFound": "No issues found"
   }
 }

@@ -1,0 +1,56 @@
+{
+  "projectStructure": "项目结构",
+  "reanalyze": "重新分析项目结构",
+  "failedToLoad": "加载项目索引失败",
+  "noIndexFound": "未找到项目索引",
+  "overview": "概览",
+  "dockerServices": "Docker 服务",
+  "memory": {
+    "total": "总计",
+    "prReviews": "PR 审查",
+    "sessions": "会话",
+    "codebase": "代码库",
+    "patterns": "模式",
+    "gotchas": "注意事项",
+    "notConfigured": "Graphiti 内存未配置",
+    "enableInstructions": "要启用图形内存，请在项目设置中设置 GRAPHITI_ENABLED=true。",
+    "searchPlaceholder": "搜索模式、见解、注意事项..."
+  },
+  "prReview": {
+    "keyFindings": "关键发现",
+    "gotchas": "发现的注意事项",
+    "patterns": "识别的模式"
+  },
+  "service": {
+    "testing": "测试",
+    "orm": "ORM",
+    "port": "端口",
+    "styling": "样式",
+    "state": "状态",
+    "appleFrameworks": "Apple 框架",
+    "keyDirectories": "关键目录"
+  },
+  "externalServices": {
+    "databases": "数据库",
+    "email": "邮件",
+    "payments": "支付",
+    "cache": "缓存"
+  },
+  "monitoring": {
+    "metrics": "指标",
+    "health": "健康状态"
+  },
+  "memoryCard": {
+    "whatWorked": "成功经验",
+    "whatFailed": "失败经验",
+    "approach": "方法",
+    "recommendations": "建议",
+    "patterns": "模式",
+    "gotchas": "注意事项",
+    "changedFiles": "已更改文件",
+    "fileInsights": "文件洞察",
+    "subtasksCompleted": "已完成子任务",
+    "collapse": "收起",
+    "expand": "展开"
+  }
+}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Github, RefreshCw, KeyRound, Info, CheckCircle2 } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { StatusBadge } from './StatusBadge';
@@ -31,6 +32,8 @@ export function GitHubIntegrationSection({
   isCheckingGitHub,
   projectName,
 }: GitHubIntegrationSectionProps) {
+  const { t } = useTranslation(['settings', 'common']);
+
   // Show OAuth flow if user previously used OAuth, or if there's no token yet
   const [showOAuthFlow, setShowOAuthFlow] = useState(
     envConfig.githubAuthMethod === 'oauth' || (!envConfig.githubToken && !envConfig.githubAuthMethod)
@@ -51,7 +54,7 @@ export function GitHubIntegrationSection({
 
   return (
     <CollapsibleSection
-      title="GitHub Integration"
+      title={t('settings:projectSections.github.title')}
       icon={<Github className="h-4 w-4" />}
       isExpanded={isExpanded}
       onToggle={onToggle}
@@ -174,7 +177,7 @@ export function GitHubIntegrationSection({
             <ConnectionStatus
               isChecking={isCheckingGitHub}
               isConnected={gitHubConnectionStatus?.connected || false}
-              title="Connection Status"
+              title={t('common:integrations.connectionStatus')}
               successMessage={`Connected to ${gitHubConnectionStatus?.repoFullName}`}
               errorMessage={gitHubConnectionStatus?.error || 'Not connected'}
               additionalInfo={gitHubConnectionStatus?.repoDescription}

@@ -36,7 +36,7 @@ export function IssueListHeader({
   onAnalyzeAndGroup,
   isAnalyzing,
 }: IssueListHeaderProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['github', 'common']);
 
   return (
     <div className="shrink-0 p-4 border-b border-border">
@@ -47,7 +47,7 @@ export function IssueListHeader({
           </div>
           <div>
             <h2 className="text-lg font-semibold text-foreground">
-              GitHub Issues
+              {t('github:issues.title')}
             </h2>
             <p className="text-xs text-muted-foreground">
               {repoFullName}
@@ -56,7 +56,7 @@ export function IssueListHeader({
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">
-            {openIssuesCount} open
+            {openIssuesCount} {t('github:issues.open')}
           </Badge>
           <Button
             variant="ghost"
@@ -89,11 +89,11 @@ export function IssueListHeader({
                   ) : (
                     <Layers className="h-4 w-4 mr-2" />
                   )}
-                  Analyze & Group Issues
+                  {t('github:issues.batchReview.button')}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs">
-                <p>Analyze up to 200 open issues, group similar ones, and review proposed batches before creating tasks.</p>
+                <p>{t('github:issues.batchReview.tooltip')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -112,7 +112,7 @@ export function IssueListHeader({
                       <Wand2 className="h-4 w-4 text-muted-foreground" />
                     )}
                     <Label htmlFor="auto-fix-toggle" className="text-sm cursor-pointer whitespace-nowrap">
-                      Auto-Fix New
+                      {t('github:issues.autoFix.autoFixNew')}
                     </Label>
                     <Switch
                       id="auto-fix-toggle"
@@ -123,9 +123,9 @@ export function IssueListHeader({
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
-                  <p>Automatically fix new issues as they come in.</p>
+                  <p>{t('github:issues.autoFix.autoFixNewTooltip')}</p>
                   {autoFixRunning && autoFixProcessing !== undefined && autoFixProcessing > 0 && (
-                    <p className="mt-1 text-primary">Processing {autoFixProcessing} issue{autoFixProcessing > 1 ? 's' : ''}...</p>
+                    <p className="mt-1 text-primary">{t(`github:issues.autoFix.processingCount${autoFixProcessing > 1 ? '_plural' : ''}`, { count: autoFixProcessing })}</p>
                   )}
                 </TooltipContent>
               </Tooltip>
@@ -139,7 +139,7 @@ export function IssueListHeader({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search issues..."
+            placeholder={t('github:issues.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
@@ -151,9 +151,9 @@ export function IssueListHeader({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="open">{t('github:issues.filterOpen')}</SelectItem>
+            <SelectItem value="closed">{t('github:issues.filterClosed')}</SelectItem>
+            <SelectItem value="all">{t('github:issues.filterAll')}</SelectItem>
           </SelectContent>
         </Select>
       </div>

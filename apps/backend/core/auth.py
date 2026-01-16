@@ -334,6 +334,47 @@ def get_sdk_env_vars() -> dict[str, str]:
     return env
 
 
+
+
+def apply_api_profile_to_env() -> bool:
+    """
+    Apply active API profile to environment variables (if configured).
+
+    Loads the active profile from the Electron frontend's profiles.json
+    and sets ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, and any custom
+    model mappings to os.environ.
+
+    This should be called early in the application lifecycle, before
+    create_client() is invoked.
+
+    Returns:
+        True if an API profile was applied, False if using OAuth
+    """
+    try:
+        # Lazy import to avoid circular dependency
+        from config.api_profiles import get_profile_manager
+
+        manager = get_profile_manager()
+        profile = manager.get_active_profile()
+
+        if profile is None:
+            logger.debug("No active API profile - using OAuth token")
+            return False
+
+        # Apply profile environment variables
+        env_vars = manager.get_profile_env_vars(profile)
+        for key, value in env_vars.items():
+            os.environ[key] = value
+            logger.debug(f"Set {key} from API profile '{profile.name}'")
+
+        logger.info(f"Applied API profile: {profile.name} ({profile.base_url})")
+        return True
+
+    except Exception as e:
+        logger.warning(f"Failed to load API profile: {e}")
+        return False
+
+
 def ensure_claude_code_oauth_token() -> None:
     """
     Ensure CLAUDE_CODE_OAUTH_TOKEN is set (for SDK compatibility).

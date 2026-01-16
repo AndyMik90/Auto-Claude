@@ -1,4 +1,5 @@
 import { User, MessageCircle, Tag, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import type { IssueListItemProps } from '../types';
@@ -15,6 +16,8 @@ const GITLAB_ISSUE_STATE_LABELS: Record<string, string> = {
 };
 
 export function IssueListItem({ issue, isSelected, onClick, onInvestigate }: IssueListItemProps) {
+  const { t } = useTranslation('common');
+
   return (
     <div
       role="button"
@@ -73,7 +76,7 @@ export function IssueListItem({ issue, isSelected, onClick, onInvestigate }: Iss
             e.stopPropagation();
             onInvestigate();
           }}
-          aria-label="Investigate issue"
+          aria-label={t('accessibility.investigateIssueAriaLabel')}
         >
           <Sparkles className="h-4 w-4" />
         </Button>

@@ -17,7 +17,7 @@ export function IssueList({
   onInvestigate,
   onLoadMore
 }: IssueListProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['github', 'common']);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 
   // Intersection Observer for infinite scroll
@@ -67,7 +67,7 @@ export function IssueList({
   }
 
   if (issues.length === 0) {
-    return <EmptyState message="No issues found" />;
+    return <EmptyState message={t('github:issues.noIssuesFound')} />;
   }
 
   return (
@@ -96,15 +96,15 @@ export function IssueList({
             {isLoadingMore ? (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">{t('issues.loadingMore', 'Loading more...')}</span>
+                <span className="text-sm">{t('common:issues.loadingMore')}</span>
               </div>
             ) : hasMore ? (
               <span className="text-xs text-muted-foreground opacity-50">
-                {t('issues.scrollForMore', 'Scroll for more')}
+                {t('common:issues.scrollForMore')}
               </span>
             ) : issues.length > 0 ? (
               <span className="text-xs text-muted-foreground opacity-50">
-                {t('issues.allLoaded', 'All issues loaded')}
+                {t('common:issues.allLoaded')}
               </span>
             ) : null}
           </div>

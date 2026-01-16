@@ -7,6 +7,7 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Key, Lock } from 'lucide-react';
 import {
   Tooltip,
@@ -17,6 +18,7 @@ import {
 import { useSettingsStore } from '../stores/settings-store';
 
 export function AuthStatusIndicator() {
+  const { t } = useTranslation('common');
   // Subscribe to profile state from settings store
   const { profiles, activeProfileId } = useSettingsStore();
 
@@ -28,10 +30,10 @@ export function AuthStatusIndicator() {
         return { type: 'profile' as const, name: activeProfile.name };
       }
       // Profile ID set but profile not found - fallback to OAuth
-      return { type: 'oauth' as const, name: 'OAuth' };
+      return { type: 'oauth' as const, name: t('authStatus.oauth') };
     }
-    return { type: 'oauth' as const, name: 'OAuth' };
-  }, [activeProfileId, profiles]);
+    return { type: 'oauth' as const, name: t('authStatus.oauth') };
+  }, [activeProfileId, profiles, t]);
 
   const isOAuth = authStatus.type === 'oauth';
   const Icon = isOAuth ? Lock : Key;
@@ -54,14 +56,14 @@ export function AuthStatusIndicator() {
         <TooltipContent side="bottom" className="text-xs max-w-xs">
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground font-medium">Authentication</span>
-              <span className="font-semibold">{isOAuth ? 'OAuth' : 'API Profile'}</span>
+              <span className="text-muted-foreground font-medium">{t('authStatus.authentication')}</span>
+              <span className="font-semibold">{isOAuth ? t('authStatus.oauth') : t('authStatus.apiProfile')}</span>
             </div>
             {!isOAuth && authStatus.name && (
               <>
                 <div className="h-px bg-border" />
                 <div className="text-[10px] text-muted-foreground">
-                  Using profile: <span className="text-foreground font-medium">{authStatus.name}</span>
+                  {t('authStatus.usingProfile')} <span className="text-foreground font-medium">{authStatus.name}</span>
                 </div>
               </>
             )}

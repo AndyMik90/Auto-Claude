@@ -214,5 +214,25 @@
       "performance": "Performance",
       "logic": "Logique"
     }
+  },
+  "createMR": {
+    "title": "Créer une Merge Request",
+    "description": "Créer une nouvelle merge request dans GitLab",
+    "titleLabel": "Titre",
+    "titlePlaceholder": "Titre de la merge request",
+    "sourceBranch": "Branche source",
+    "sourceBranchPlaceholder": "feature/ma-fonctionnalite",
+    "targetBranch": "Branche cible",
+    "targetBranchPlaceholder": "main",
+    "descriptionLabel": "Description (optionnelle)",
+    "descriptionPlaceholder": "Décrivez les modifications de cette merge request...",
+    "requiredFieldsError": "Le titre, la branche source et la branche cible sont requis",
+    "createError": "Échec de la création de la merge request",
+    "cancel": "Annuler",
+    "creating": "Création...",
+    "createButton": "Créer la Merge Request"
+  },
+  "issueList": {
+    "noIssuesFound": "Aucune issue trouvée"
   }
 }

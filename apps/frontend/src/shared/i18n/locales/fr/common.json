@@ -52,7 +52,11 @@
     "hideTokenEntryAriaLabel": "Masquer la saisie du jeton",
     "enterTokenManuallyAriaLabel": "Saisir le jeton manuellement",
     "renameProfileAriaLabel": "Renommer le profil",
-    "deleteProfileAriaLabel": "Supprimer le profil"
+    "deleteProfileAriaLabel": "Supprimer le profil",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "recommendedAriaLabel": "Recommandé",
+    "claudeUsageStatusAriaLabel": "État d'utilisation de Claude",
+    "investigateIssueAriaLabel": "Enquêter sur le problème"
   },
   "buttons": {
     "save": "Enregistrer",
@@ -79,10 +83,13 @@
     "add": "Ajouter",
     "gotIt": "Compris",
     "continue": "Continuer",
-    "saving": "Enregistrement..."
+    "saving": "Enregistrement...",
+    "discardBuild": "Abandonner la construction"
   },
   "labels": {
     "loading": "Chargement...",
+    "loadingImage": "Chargement de l'image...",
+    "loadingCommits": "Chargement des commits...",
     "error": "Erreur",
     "success": "Succès",
     "initializing": "Initialisation...",
@@ -181,7 +188,27 @@
       "whatHappenedDesc": "L'opération {{source}} a été arrêtée car votre compte Claude ({{account}}) a atteint sa limite d'utilisation.",
       "switchRetryOrAdd": "Vous pouvez passer à un autre compte et réessayer, ou ajouter plus de comptes ci-dessus.",
       "addOrWait": "Ajoutez un autre compte Claude ci-dessus pour continuer à travailler, ou attendez la réinitialisation de la limite.",
-      "close": "Fermer"
+      "close": "Fermer",
+      "profileLabel": "Profil : {{name}}",
+      "recommendedProfile": "Recommandé : <strong>{{name}}</strong> a plus de capacité disponible.",
+      "switchToAnotherAccount": "Passez à un autre compte Claude et réessayez l'opération :",
+      "selectAccountPlaceholder": "Sélectionner un compte...",
+      "addNewAccountOption": "Ajouter un nouveau compte...",
+      "addAnotherAccountLabel": "Ajouter un autre compte :",
+      "connectAccountLabel": "Connecter un compte Claude :",
+      "accountNamePlaceholder": "Nom du compte (ex. Travail, Personnel)",
+      "willOpenLoginWindow": "Cela ouvrira la connexion Claude pour authentifier le nouveau compte.",
+      "upgradeForMoreUsage": "Passez à la version supérieure pour plus d'utilisation",
+      "upgradeSubscriptionDesc": "Mettez à niveau votre abonnement Claude pour des limites d'utilisation plus élevées.",
+      "upgradeSubscriptionButton": "Mettre à niveau l'abonnement",
+      "sourceNames": {
+        "changelog": "Génération de changelog",
+        "task": "Exécution de tâche",
+        "roadmap": "Génération de feuille de route",
+        "ideation": "Idéation",
+        "titleGenerator": "Génération de titre",
+        "default": "Opération Claude"
+      }
     }
   },
   "prReview": {
@@ -357,7 +384,20 @@
     "logs": {
       "agentActivity": "Activité des agents",
       "showMore": "Afficher {{count}} de plus",
-      "hideMore": "Masquer {{count}}"
+      "hideMore": "Masquer {{count}}",
+      "waitingForLogs": "En attente des journaux...",
+      "reviewStarting": "La révision démarre",
+      "noLogsAvailable": "Aucun journal disponible",
+      "runReviewToGenerate": "Lancez une révision pour générer des journaux",
+      "noLogsYet": "Aucun journal pour le moment",
+      "entries": "entrées",
+      "streaming": "Diffusion en cours",
+      "running": "En cours",
+      "pending": "En attente",
+      "complete": "Terminé",
+      "failed": "Échoué",
+      "more": "Plus",
+      "less": "Moins"
     }
   },
   "downloads": {
@@ -389,5 +429,95 @@
     "loadingMore": "Chargement...",
     "scrollForMore": "Défiler pour plus",
     "allLoaded": "Toutes les issues chargées"
+  },
+  "fileExplorer": {
+    "projectFiles": "Fichiers du projet",
+    "dragHint": "Glissez les fichiers dans un terminal pour insérer le chemin",
+    "noFilesFound": "Aucun fichier trouvé"
+  },
+  "chatHistory": {
+    "title": "Historique des conversations",
+    "noConversations": "Aucune conversation",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "daysAgo": "Il y a {{count}} jours",
+    "messageCount": "{{count}} message",
+    "messageCount_plural": "{{count}} messages",
+    "rename": "Renommer",
+    "delete": "Supprimer",
+    "deleteConfirmTitle": "Supprimer la conversation ?",
+    "deleteConfirmDescription": "Cela supprimera définitivement cette conversation et tous ses messages. Cette action est irréversible."
+  },
+  "envConfig": {
+    "title": "Authentification Claude requise",
+    "description": "Un jeton OAuth Claude Code est requis pour utiliser les fonctionnalités IA comme l'Idéation et la génération de feuille de route.",
+    "useExistingAccount": "Utiliser un compte existant",
+    "authenticateWithBrowser": "Authentifier avec le navigateur",
+    "authenticateNewAccount": "Authentifier un nouveau compte",
+    "enterTokenManually": "Saisir le jeton manuellement",
+    "tokenConfigured": "Jeton configuré avec succès",
+    "tokenConfiguredDescription": "Vous pouvez maintenant utiliser les fonctionnalités IA comme l'Idéation et la génération de feuille de route.",
+    "steps": "Étapes :",
+    "step1": "Installez Claude Code CLI si ce n'est pas déjà fait",
+    "step2": "Exécutez",
+    "step3": "Copiez le jeton et collez-le ci-dessous",
+    "claudeOAuthToken": "Jeton OAuth Claude Code",
+    "tokenPlaceholder": "Saisissez votre jeton...",
+    "tokenSavedTo": "Le jeton sera enregistré dans",
+    "existingTokenInfo": "Un jeton est déjà configuré.",
+    "replaceToken": "Saisissez un nouveau jeton ci-dessus pour le remplacer.",
+    "authenticateAgain": "Authentifiez-vous à nouveau pour le remplacer.",
+    "selectAccount": "Sélectionner un compte",
+    "useThisAccount": "Utiliser ce compte",
+    "saving": "Enregistrement...",
+    "or": "ou",
+    "addNewAccount": "Ajoutez un nouveau compte Claude en vous connectant avec votre navigateur.",
+    "clickToAuthenticate": "Cliquez ci-dessous pour ouvrir votre navigateur et vous connecter avec votre compte Claude.",
+    "waitingForAuth": "En attente d'authentification...",
+    "browserWindowInfo": "Une fenêtre de navigateur devrait s'ouvrir. Complétez l'authentification là-bas, puis revenez ici.",
+    "hideToken": "Masquer le jeton",
+    "showToken": "Afficher le jeton",
+    "saveToken": "Enregistrer le jeton",
+    "accountsAvailable": "Vous avez {{count}} compte Claude authentifié",
+    "accountsAvailable_plural": "Vous avez {{count}} comptes Claude authentifiés",
+    "selectOneToUse": "Sélectionnez-en un à utiliser :",
+    "default": "(Par défaut)"
+  },
+  "authStatus": {
+    "authentication": "Authentification",
+    "oauth": "OAuth",
+    "apiProfile": "Profil API",
+    "usingProfile": "Utilisation du profil :"
+  },
+  "titles": {
+    "hideTokenEntry": "Masquer la saisie du jeton",
+    "enterTokenManually": "Saisir le jeton manuellement",
+    "renameProfile": "Renommer le profil",
+    "deleteProfile": "Supprimer le profil",
+    "hideSidebar": "Masquer la barre latérale",
+    "showSidebar": "Afficher la barre latérale"
+  },
+  "placeholders": {
+    "searchMergeRequests": "Rechercher des merge requests...",
+    "searchTasks": "Rechercher des tâches...",
+    "searchRepositories": "Rechercher des dépôts...",
+    "searchBranches": "Rechercher des branches...",
+    "askAboutCodebase": "Posez des questions sur votre code...",
+    "selectTeam": "Sélectionner une équipe",
+    "allProjects": "Tous les projets",
+    "autoDetected": "Détecté automatiquement",
+    "autoCreated": "Créé automatiquement"
+  },
+  "hints": {
+    "pressEnterToSend": "Appuyez sur Entrée pour envoyer, Maj+Entrée pour une nouvelle ligne"
+  },
+  "states": {
+    "opened": "ouvert",
+    "merged": "fusionné",
+    "closed": "fermé",
+    "all": "tous"
+  },
+  "integrations": {
+    "connectionStatus": "État de la connexion"
   }
 }

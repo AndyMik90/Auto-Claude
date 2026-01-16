@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Activity, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   Collapsible,
@@ -12,6 +13,7 @@ interface MonitoringSectionProps {
 }
 
 export function MonitoringSection({ monitoring }: MonitoringSectionProps) {
+  const { t } = useTranslation('context');
   const [expanded, setExpanded] = useState(false);
 
   if (!monitoring) {
@@ -33,10 +35,10 @@ export function MonitoringSection({ monitoring }: MonitoringSectionProps) {
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-2 space-y-2 text-xs text-muted-foreground">
         {monitoring.metrics_endpoint && (
-          <div>Metrics: <code className="text-xs">{monitoring.metrics_endpoint}</code> ({monitoring.metrics_type})</div>
+          <div>{t('monitoring.metrics')}: <code className="text-xs">{monitoring.metrics_endpoint}</code> ({monitoring.metrics_type})</div>
         )}
         {monitoring.health_checks && monitoring.health_checks.length > 0 && (
-          <div>Health: {monitoring.health_checks.join(', ')}</div>
+          <div>{t('monitoring.health')}: {monitoring.health_checks.join(', ')}</div>
         )}
       </CollapsibleContent>
     </Collapsible>

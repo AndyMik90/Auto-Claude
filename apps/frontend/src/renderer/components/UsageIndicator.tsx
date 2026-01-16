@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Activity, TrendingUp, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Tooltip,
   TooltipContent,
@@ -16,6 +17,7 @@ import {
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function UsageIndicator() {
+  const { t } = useTranslation('common');
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -63,7 +65,7 @@ export function UsageIndicator() {
         <TooltipTrigger asChild>
           <button
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${colorClasses}`}
-            aria-label="Claude usage status"
+            aria-label={t('accessibility.claudeUsageStatusAriaLabel')}
           >
             <Icon className="h-3.5 w-3.5" />
             <span className="text-xs font-semibold font-mono">

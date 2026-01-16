@@ -1,3 +1,62 @@
+## 2.7.5 - API Profile Configuration & Build System Improvements
+
+### ✨ New Features
+
+#### API Profile 配置管理系统
+- **客户端 API 配置管理**: 新增完整的 API Profile 管理系统，支持在 UI 中配置和切换多个 API 端点
+- **一键切换功能**: 无需编辑环境变量，在设置中一键切换不同的 API 配置
+- **连接测试**: 内置连接测试功能，验证配置是否有效
+- **自定义模型映射**: 每个 Profile 可以配置自定义的模型名称映射
+- **完整中文支持**: API Profile 界面完全支持中文（zh-CN）
+
+#### 支持的使用场景
+- **new-api 集成**: 支持通过 new-api 代理连接中国大模型（智谱AI、百度文心、阿里通义等）
+- **litellm 网关**: 支持 litellm 多提供商网关
+- **OpenRouter**: 支持 OpenRouter 统一 API
+- **自托管实例**: 支持企业内部 Claude 实例
+
+### 🛠️ Improvements
+
+- 优化 Python 依赖打包，减少 74.6% 体积（445 MB → 111 MB）
+- 添加自动化测试脚本（test-dist.ps1, test-dist.js）验证构建产物
+- 添加构建体积分析工具（analyze-bundle.js）监控包大小
+- 改进构建文档和发布流程
+
+### 🐛 Bug Fixes
+
+- 修复 `ThemeSelector.tsx` 语法错误（缺少注释结束标签）
+
+### 📦 Build System
+
+- 添加 Windows 安装包构建（NSIS + ZIP）
+- 优化 Python 3.12.8 运行时打包
+- 自动验证关键依赖包（claude-agent-sdk, graphiti-core 等）
+- 新增构建文档 `docs/BUILDING.md`
+- 新增测试清单 `docs/TEST_CHECKLIST.md`
+- 新增安装指南 `docs/INSTALLATION.md`
+
+### 🔐 Security
+
+- API Key 加密存储在配置文件中
+- 配置文件权限控制（600）
+- 输入验证（URL 格式、Token 格式）
+
+### 📚 Documentation
+
+- 新增 `guides/API_PROFILES.md` - 完整的 API Profile 配置指南
+- 更新 `CLAUDE.md` - 添加 API Profiles 使用说明
+- 更新 `.env.example` - 添加 new-api 配置示例
+- 新增中文翻译 `zh-CN/settings.json` - API Profile 界面中文化
+
+### 📊 Technical Details
+
+- **配置存储**: `~/.config/Auto-Claude/profiles.json`（Windows: `%APPDATA%\Auto-Claude\profiles.json`）
+- **配置优先级**: API Profile > 环境变量 > OAuth Token
+- **后端集成**: `apps/backend/config/api_profiles.py` + `apps/backend/core/auth.py`
+- **前端组件**: `ProfileList.tsx`, `ProfileEditDialog.tsx`
+
+---
+
 ## 2.7.4 - Terminal & Workflow Enhancements
 
 ### ✨ New Features

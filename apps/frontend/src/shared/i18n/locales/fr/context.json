@@ -1,0 +1,56 @@
+{
+  "projectStructure": "Structure du projet",
+  "reanalyze": "Réanalyser la structure du projet",
+  "failedToLoad": "Échec du chargement de l'index du projet",
+  "noIndexFound": "Aucun index de projet trouvé",
+  "overview": "Aperçu",
+  "dockerServices": "Services Docker",
+  "memory": {
+    "total": "Total",
+    "prReviews": "Revues de PR",
+    "sessions": "Sessions",
+    "codebase": "Base de code",
+    "patterns": "Modèles",
+    "gotchas": "Pièges",
+    "notConfigured": "La mémoire Graphiti n'est pas configurée",
+    "enableInstructions": "Pour activer la mémoire graphique, définissez GRAPHITI_ENABLED=true dans les paramètres du projet.",
+    "searchPlaceholder": "Rechercher des modèles, des insights, des pièges..."
+  },
+  "prReview": {
+    "keyFindings": "Principales conclusions",
+    "gotchas": "Pièges découverts",
+    "patterns": "Modèles identifiés"
+  },
+  "service": {
+    "testing": "Tests",
+    "orm": "ORM",
+    "port": "Port",
+    "styling": "Style",
+    "state": "État",
+    "appleFrameworks": "Frameworks Apple",
+    "keyDirectories": "Répertoires clés"
+  },
+  "externalServices": {
+    "databases": "Bases de données",
+    "email": "Email",
+    "payments": "Paiements",
+    "cache": "Cache"
+  },
+  "monitoring": {
+    "metrics": "Métriques",
+    "health": "Santé"
+  },
+  "memoryCard": {
+    "whatWorked": "Ce qui a fonctionné",
+    "whatFailed": "Ce qui a échoué",
+    "approach": "Approche",
+    "recommendations": "Recommandations",
+    "patterns": "Modèles",
+    "gotchas": "Pièges",
+    "changedFiles": "Fichiers modifiés",
+    "fileInsights": "Informations sur les fichiers",
+    "subtasksCompleted": "Sous-tâches terminées",
+    "collapse": "Réduire",
+    "expand": "Développer"
+  }
+}

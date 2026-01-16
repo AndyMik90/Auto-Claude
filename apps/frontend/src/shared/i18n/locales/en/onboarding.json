@@ -195,6 +195,16 @@
     },
     "learnMore": "Learn more about Claude Code"
   },
+  "authChoice": {
+    "title": "Choose Your Authentication Method",
+    "description": "Select how you want to authenticate with Claude. You can change this later in Settings.",
+    "oauthTitle": "Sign in with Anthropic",
+    "oauthDescription": "Use your Anthropic account to authenticate. Simple and secure OAuth flow.",
+    "apiKeyTitle": "Use Custom API Key",
+    "apiKeyDescription": "Bring your own API key from Anthropic or a compatible API provider. ⚠️ Highly experimental — may incur significant costs.",
+    "bothOptionsInfo": "Both options provide full access to Claude Code features. Choose based on your preference.",
+    "skipForNow": "Skip for now"
+  },
   "devtools": {
     "title": "Developer Tools",
     "description": "Choose your preferred IDE and terminal for working with Auto Claude worktrees",
@@ -205,17 +215,21 @@
     "ide": {
       "label": "Preferred IDE",
       "description": "Auto Claude will open worktrees in this editor",
-      "customPath": "Custom IDE Path"
+      "customPath": "Custom IDE Path",
+      "placeholder": "Select IDE..."
     },
     "terminal": {
       "label": "Preferred Terminal",
       "description": "Auto Claude will open terminal sessions here",
-      "customPath": "Custom Terminal Path"
+      "customPath": "Custom Terminal Path",
+      "placeholder": "Select terminal..."
     },
     "detectedSummary": "Detected on your system:",
     "noToolsDetected": "No additional tools detected (VS Code and system terminal will be used)",
     "custom": "Custom...",
-    "saveAndContinue": "Save & Continue"
+    "saveAndContinue": "Save & Continue",
+    "saving": "Saving...",
+    "back": "Back"
   },
   "ollama": {
     "notInstalled": {

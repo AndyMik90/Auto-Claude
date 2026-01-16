@@ -61,6 +61,45 @@ claude setup-token
 # Add to apps/backend/.env: CLAUDE_CODE_OAUTH_TOKEN=your-token
 ```
 
+
+### API Profiles (Recommended for Custom Endpoints)
+
+**Auto Claude provides a user-friendly API Profile system for managing custom API endpoints (new-api, litellm, etc.).**
+
+Instead of editing environment variables, use the Electron UI to configure and switch between API endpoints:
+
+1. **Open Settings**: Launch Auto Claude UI → Settings → API Profiles
+2. **Create Profile**: Click "Add Profile"
+   - Name: e.g., "Local new-api"
+   - Base URL: e.g., `http://localhost:3000`
+   - API Key: Your API key for the endpoint
+   - (Optional) Custom Model Mappings: Override default model names
+3. **Activate Profile**: Click "Set Active" to use this configuration
+4. **Test Connection**: Click "Test Connection" to verify the endpoint
+
+**Supported Use Cases:**
+- **new-api**: Local proxy for Chinese API providers (智谱AI, 百度文心, 阿里通义等)
+- **litellm**: Multi-provider gateway with unified interface
+- **OpenRouter**: Access multiple LLM providers through one API
+- **Self-hosted Claude**: Your own Claude instance
+
+**Benefits:**
+- Switch profiles with one click (no restart required)
+- Secure API key storage (encrypted)
+- Per-profile custom model mappings
+- Connection testing UI
+- Chinese UI support (中文界面)
+
+**Configuration Storage:**
+- Profiles: 
+- Backend automatically loads active profile from this file
+
+**Priority Order:**
+1. Active API Profile (if set)
+2. Environment variables (, )
+3. OAuth token from system keychain
+
+
 ### Creating and Running Specs
 ```bash
 cd apps/backend

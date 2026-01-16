@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Database, Globe, RefreshCw, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { InfrastructureStatus } from './InfrastructureStatus';
@@ -43,6 +44,8 @@ export function MemoryBackendSection({
   infrastructureStatus,
   isCheckingInfrastructure,
 }: MemoryBackendSectionProps) {
+  const { t } = useTranslation(['settings', 'common']);
+
   // Ollama model detection state
   const [ollamaModels, setOllamaModels] = useState<OllamaEmbeddingModel[]>([]);
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'checking' | 'connected' | 'disconnected'>('idle');
@@ -102,7 +105,7 @@ export function MemoryBackendSection({
 
   return (
     <CollapsibleSection
-      title="Memory"
+      title={t('settings:projectSections.memory.title')}
       icon={<Database className="h-4 w-4" />}
       isExpanded={isExpanded}
       onToggle={onToggle}

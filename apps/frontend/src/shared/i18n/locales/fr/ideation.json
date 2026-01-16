@@ -1,0 +1,65 @@
+{
+  "types": {
+    "code_improvements": "Améliorations du Code",
+    "ui_ux_improvements": "Améliorations UI/UX",
+    "documentation_gaps": "Documentation",
+    "security_hardening": "Sécurité",
+    "performance_optimizations": "Performance",
+    "code_quality": "Qualité du Code"
+  },
+  "typeDescriptions": {
+    "code_improvements": "Opportunités révélées par le code à partir de l'analyse des modèles, de l'architecture et de l'infrastructure",
+    "ui_ux_improvements": "Améliorations visuelles et d'interaction identifiées par l'analyse de l'application",
+    "documentation_gaps": "Documentation manquante ou obsolète nécessitant une attention",
+    "security_hardening": "Vulnérabilités de sécurité et opportunités de renforcement",
+    "performance_optimizations": "Goulots d'étranglement de performance et opportunités d'optimisation",
+    "code_quality": "Opportunités de refactoring, fichiers volumineux, code smells et violations des meilleures pratiques"
+  },
+  "uiuxCategories": {
+    "usability": "Utilisabilité",
+    "accessibility": "Accessibilité",
+    "performance": "Performance",
+    "visual": "Design Visuel",
+    "interaction": "Interaction"
+  },
+  "documentationCategories": {
+    "readme": "README",
+    "api_docs": "Documentation API",
+    "inline_comments": "Commentaires en Ligne",
+    "examples": "Exemples & Tutoriels",
+    "architecture": "Documentation Architecture",
+    "troubleshooting": "Guide de Dépannage"
+  },
+  "securityCategories": {
+    "authentication": "Authentification",
+    "authorization": "Autorisation",
+    "input_validation": "Validation des Entrées",
+    "data_protection": "Protection des Données",
+    "dependencies": "Dépendances",
+    "configuration": "Configuration",
+    "secrets_management": "Gestion des Secrets"
+  },
+  "performanceCategories": {
+    "bundle_size": "Taille du Bundle",
+    "runtime": "Performance d'Exécution",
+    "memory": "Utilisation de la Mémoire",
+    "database": "Requêtes de Base de Données",
+    "network": "Requêtes Réseau",
+    "rendering": "Rendu",
+    "caching": "Mise en Cache"
+  },
+  "codeQualityCategories": {
+    "large_files": "Fichiers Volumineux",
+    "code_smells": "Code Smells",
+    "complexity": "Haute Complexité",
+    "duplication": "Duplication de Code",
+    "naming": "Conventions de Nommage",
+    "structure": "Structure de Fichiers",
+    "linting": "Problèmes de Linting",
+    "testing": "Couverture de Tests",
+    "types": "Sécurité des Types",
+    "dependencies": "Problèmes de Dépendances",
+    "dead_code": "Code Mort",
+    "git_hygiene": "Hygiène Git"
+  }
+}

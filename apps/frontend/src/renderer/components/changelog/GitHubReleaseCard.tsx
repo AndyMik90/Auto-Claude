@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Github, RefreshCw, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
@@ -14,6 +15,7 @@ export function GitHubReleaseCard({
   version,
   generatedChangelog
 }: GitHubReleaseCardProps) {
+  const { t } = useTranslation('changelog');
   const [isCreatingRelease, setIsCreatingRelease] = useState(false);
   const [releaseUrl, setReleaseUrl] = useState<string | null>(null);
   const [releaseError, setReleaseError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export function GitHubReleaseCard({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Github className="h-5 w-5" />
-          <CardTitle className="text-base">Create GitHub Release</CardTitle>
+          <CardTitle className="text-base">{t('createGithubRelease')}</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
@@ -54,7 +56,7 @@ export function GitHubReleaseCard({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-success">
               <CheckCircle className="h-4 w-4" />
-              <span className="text-sm">Release created successfully!</span>
+              <span className="text-sm">{t('releaseCreatedSuccess')}</span>
             </div>
             <Button
               variant="outline"
@@ -63,13 +65,13 @@ export function GitHubReleaseCard({
               onClick={() => window.open(releaseUrl, '_blank')}
             >
               <ExternalLink className="mr-2 h-4 w-4" />
-              View Release on GitHub
+              {t('viewReleaseOnGithub')}
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Create a new release {tag} on GitHub with the changelog as release notes.
+              {t('createGithubReleaseDescription', { tag })}
             </p>
             {releaseError && (
               <div className="flex items-start gap-2 text-destructive text-sm">
@@ -85,12 +87,12 @@ export function GitHubReleaseCard({
               {isCreatingRelease ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Release...
+                  {t('creatingRelease')}
                 </>
               ) : (
                 <>
                   <Github className="mr-2 h-4 w-4" />
-                  Create Release {tag}
+                  {t('createRelease', { tag })}
                 </>
               )}
             </Button>

@@ -22,6 +22,10 @@
     "fileRenamesDetected": "{{count}} renommage de fichier détecté - l'IA gérera la fusion.",
     "fileRenamesDetected_other": "{{count}} renommages de fichiers détectés - l'IA gérera la fusion.",
     "filesRenamedOrMoved": "Des fichiers ont peut-être été renommés ou déplacés - l'IA gérera la fusion.",
+    "status": {
+      "branchDiverged": "Branche divergée",
+      "aiWillResolve": "L'IA résoudra"
+    },
     "buttons": {
       "stageWithAIMerge": "Préparer avec fusion IA",
       "mergeWithAI": "Fusionner avec IA",
@@ -62,5 +66,18 @@
       "targetBranch": "Laissez vide pour utiliser la branche par défaut",
       "prTitle": "Laissez vide pour utiliser le titre de la tâche"
     }
+  },
+  "staged": {
+    "title": "Modifications préparées avec succès",
+    "aiCommitMessage": "Message de commit généré par IA",
+    "copied": "Copié !",
+    "copy": "Copier",
+    "commitPlaceholder": "Message de commit...",
+    "editHint": "Modifiez si nécessaire, puis copiez et utilisez avec",
+    "nextSteps": "Prochaines étapes :",
+    "step1": "Ouvrez votre projet dans votre IDE ou terminal",
+    "step2": "Examinez les modifications préparées avec",
+    "step2And": "et",
+    "step3": "Commitez quand vous êtes prêt :"
   }
 }

@@ -1,0 +1,75 @@
+{
+  "title": "路线图",
+  "emptyState": {
+    "title": "暂无路线图",
+    "description": "生成一个了解项目目标受众并创建战略功能计划的 AI 驱动路线图。",
+    "generateButton": "生成路线图"
+  },
+  "header": {
+    "competitorAnalysis": "竞争对手分析",
+    "clickToView": "点击查看详细分析",
+    "analyzedCompetitors": "已分析 {{count}} 个竞争对手，识别出 {{painPoints}} 个痛点",
+    "addFeature": "添加功能",
+    "addFeatureTooltip": "向路线图添加新功能",
+    "regenerate": "重新生成路线图",
+    "target": "目标：",
+    "morePersonas": "+{{count}} 个角色",
+    "secondaryPersonas": "次要角色：",
+    "features": "个功能",
+    "phases": "个阶段"
+  },
+  "tabs": {
+    "kanban": "看板",
+    "phases": "阶段",
+    "allFeatures": "所有功能",
+    "byPriority": "按优先级",
+    "insight": "洞察",
+    "impact": "影响"
+  },
+  "featureDetail": {
+    "description": "描述",
+    "rationale": "理由",
+    "complexity": "复杂度",
+    "impact": "影响",
+    "dependencies": "依赖项",
+    "userStories": "用户故事",
+    "acceptanceCriteria": "验收标准",
+    "competitorInsights": "解决竞争对手痛点",
+    "severity": "严重性",
+    "goToTask": "前往任务",
+    "convertToTask": "转换为自动构建任务",
+    "deleteFeature": "删除功能？",
+    "deleteConfirm": "这将永久从路线图中删除\"{{title}}\"。",
+    "cancel": "取消",
+    "delete": "删除"
+  },
+  "competitorAnalysis": {
+    "dialog": {
+      "title": "启用竞争对手分析？",
+      "description": "通过竞争对手产品的洞察增强您的路线图",
+      "whatItDoes": "竞争对手分析的作用：",
+      "identifyCompetitors": "根据您的项目类型识别 3-5 个主要竞争对手",
+      "searchFeedback": "搜索应用商店、论坛和社交媒体以获取用户反馈和痛点",
+      "suggestFeatures": "建议解决竞争对手产品差距的功能",
+      "privacyTitle": "将执行网络搜索",
+      "privacyDescription": "此功能将执行网络搜索以收集竞争对手信息。您的项目名称和类型将用于搜索查询。不会共享代码或敏感数据。",
+      "optionalInfo": "如果您愿意，可以在不进行竞争对手分析的情况下生成路线图。路线图仍将基于您的项目结构和最佳实践。",
+      "decline": "否，跳过分析",
+      "accept": "是，启用分析"
+    },
+    "viewer": {
+      "title": "竞争对手分析结果",
+      "description": "已分析 {{count}} 个竞争对手以识别市场差距和机会",
+      "painPoints": "已识别的痛点（{{count}}）",
+      "noPainPoints": "未识别到痛点",
+      "source": "来源：",
+      "frequency": "频率：{{frequency}}",
+      "opportunity": "机会：",
+      "marketInsights": "市场洞察摘要",
+      "topPainPoints": "主要痛点：",
+      "differentiatorOpportunities": "差异化机会：",
+      "marketTrends": "市场趋势：",
+      "visit": "访问"
+    }
+  }
+}

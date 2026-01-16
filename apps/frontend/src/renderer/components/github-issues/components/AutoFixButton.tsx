@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Wand2, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Progress } from '../../ui/progress';
@@ -13,6 +14,7 @@ interface AutoFixButtonProps {
 }
 
 export function AutoFixButton({ issue, projectId, config, queueItem }: AutoFixButtonProps) {
+  const { t } = useTranslation(['github', 'common']);
   const [isStarting, setIsStarting] = useState(false);
   const [progress, setProgress] = useState<AutoFixProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export function AutoFixButton({ issue, projectId, config, queueItem }: AutoFixBu
     return (
       <div className="flex items-center gap-2 text-success text-sm">
         <CheckCircle2 className="h-4 w-4" />
-        <span>Spec created from issue</span>
+        <span>{t('github:issues.autoFix.specCreated')}</span>
       </div>
     );
   }
@@ -95,11 +97,11 @@ export function AutoFixButton({ issue, projectId, config, queueItem }: AutoFixBu
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-destructive text-sm">
           <AlertCircle className="h-4 w-4" />
-          <span>{error || queueItem?.error || 'Auto-fix failed'}</span>
+          <span>{error || queueItem?.error || t('github:issues.autoFix.failed')}</span>
         </div>
         <Button size="sm" variant="outline" onClick={handleStartAutoFix}>
           <Wand2 className="h-4 w-4 mr-2" />
-          Retry Auto Fix
+          {t('github:issues.autoFix.retry')}
         </Button>
       </div>
     );
@@ -111,7 +113,7 @@ export function AutoFixButton({ issue, projectId, config, queueItem }: AutoFixBu
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>{progress?.message || 'Processing...'}</span>
+          <span>{progress?.message || t('github:issues.autoFix.processing')}</span>
         </div>
         {progress && (
           <Progress value={progress.progress} className="h-1" />
@@ -128,7 +130,7 @@ export function AutoFixButton({ issue, projectId, config, queueItem }: AutoFixBu
       onClick={handleStartAutoFix}
     >
       <Wand2 className="h-4 w-4 mr-2" />
-      Auto Fix
+      {t('github:issues.autoFix.button')}
     </Button>
   );
 }

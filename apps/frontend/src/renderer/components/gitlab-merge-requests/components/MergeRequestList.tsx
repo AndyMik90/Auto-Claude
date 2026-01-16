@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, RefreshCw, GitPullRequest } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -25,6 +26,7 @@ export function MergeRequestList({
   stateFilter,
   onStateFilterChange
 }: MergeRequestListProps) {
+  const { t } = useTranslation(['common']);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredMrs = mergeRequests.filter((mr) => {
@@ -58,7 +60,7 @@ export function MergeRequestList({
         </div>
 
         <Input
-          placeholder="Search merge requests..."
+          placeholder={t('common:placeholders.searchMergeRequests')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="h-8 text-sm"
@@ -73,7 +75,7 @@ export function MergeRequestList({
               onClick={() => onStateFilterChange(state)}
               className="h-7 text-xs capitalize"
             >
-              {state}
+              {t(`common:states.${state}`)}
             </Button>
           ))}
         </div>

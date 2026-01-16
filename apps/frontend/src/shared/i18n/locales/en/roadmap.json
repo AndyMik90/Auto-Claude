@@ -1,0 +1,75 @@
+{
+  "title": "Roadmap",
+  "emptyState": {
+    "title": "No Roadmap Yet",
+    "description": "Generate an AI-powered roadmap that understands your project's target audience and creates a strategic feature plan.",
+    "generateButton": "Generate Roadmap"
+  },
+  "header": {
+    "competitorAnalysis": "Competitor Analysis",
+    "clickToView": "Click to view detailed analysis",
+    "analyzedCompetitors": "Analyzed {{count}} competitors with {{painPoints}} pain points identified",
+    "addFeature": "Add Feature",
+    "addFeatureTooltip": "Add a new feature to the roadmap",
+    "regenerate": "Regenerate Roadmap",
+    "target": "Target:",
+    "morePersonas": "+{{count}} more personas",
+    "secondaryPersonas": "Secondary Personas:",
+    "features": "features",
+    "phases": "phases"
+  },
+  "tabs": {
+    "kanban": "Kanban",
+    "phases": "Phases",
+    "allFeatures": "All Features",
+    "byPriority": "By Priority",
+    "insight": "Insight",
+    "impact": "impact"
+  },
+  "featureDetail": {
+    "description": "Description",
+    "rationale": "Rationale",
+    "complexity": "Complexity",
+    "impact": "Impact",
+    "dependencies": "Dependencies",
+    "userStories": "User Stories",
+    "acceptanceCriteria": "Acceptance Criteria",
+    "competitorInsights": "Addresses Competitor Pain Points",
+    "severity": "severity",
+    "goToTask": "Go to Task",
+    "convertToTask": "Convert to Auto-Build Task",
+    "deleteFeature": "Delete Feature?",
+    "deleteConfirm": "This will permanently remove \"{{title}}\" from your roadmap.",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "competitorAnalysis": {
+    "dialog": {
+      "title": "Enable Competitor Analysis?",
+      "description": "Enhance your roadmap with insights from competitor products",
+      "whatItDoes": "What competitor analysis does:",
+      "identifyCompetitors": "Identifies 3-5 main competitors based on your project type",
+      "searchFeedback": "Searches app stores, forums, and social media for user feedback and pain points",
+      "suggestFeatures": "Suggests features that address gaps in competitor products",
+      "privacyTitle": "Web searches will be performed",
+      "privacyDescription": "This feature will perform web searches to gather competitor information. Your project name and type will be used in search queries. No code or sensitive data is shared.",
+      "optionalInfo": "You can generate a roadmap without competitor analysis if you prefer. The roadmap will still be based on your project structure and best practices.",
+      "decline": "No, Skip Analysis",
+      "accept": "Yes, Enable Analysis"
+    },
+    "viewer": {
+      "title": "Competitor Analysis Results",
+      "description": "Analyzed {{count}} competitors to identify market gaps and opportunities",
+      "painPoints": "Identified Pain Points ({{count}})",
+      "noPainPoints": "No pain points identified",
+      "source": "Source:",
+      "frequency": "Frequency: {{frequency}}",
+      "opportunity": "Opportunity:",
+      "marketInsights": "Market Insights Summary",
+      "topPainPoints": "Top Pain Points:",
+      "differentiatorOpportunities": "Differentiator Opportunities:",
+      "marketTrends": "Market Trends:",
+      "visit": "Visit"
+    }
+  }
+}
