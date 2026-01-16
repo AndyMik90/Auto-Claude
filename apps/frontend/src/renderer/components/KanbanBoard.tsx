@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewState } from '../contexts/ViewStateContext';
 import {
@@ -561,6 +561,17 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   // Get task order actions from store
   const reorderTasksInColumn = useTaskStore((state) => state.reorderTasksInColumn);
   const saveTaskOrder = useTaskStore((state) => state.saveTaskOrder);
+  const loadTaskOrder = useTaskStore((state) => state.loadTaskOrder);
+
+  // Get projectId from tasks (all tasks in KanbanBoard share the same project)
+  const projectId = useMemo(() => tasks[0]?.projectId ?? null, [tasks]);
+
+  // Load task order on mount and when project changes
+  useEffect(() => {
+    if (projectId) {
+      loadTaskOrder(projectId);
+    }
+  }, [projectId, loadTaskOrder]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
