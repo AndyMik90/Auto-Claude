@@ -86,6 +86,8 @@ export function useGitHubPRs(
   const hasLoadedRef = useRef(false);
   // Track the current PR being fetched (for race condition prevention)
   const currentFetchPRNumberRef = useRef<number | null>(null);
+  // AbortController for cancelling pending checkNewCommits calls on rapid PR switching
+  const checkNewCommitsAbortRef = useRef<AbortController | null>(null);
 
   // Get PR review state from the global store
   const prReviews = usePRReviewStore((state) => state.prReviews);
@@ -249,7 +251,23 @@ export function useGitHubPRs(
     setPrs([]);
     setSelectedPRNumber(null);
     setSelectedPRDetails(null);
+    currentFetchPRNumberRef.current = null;
+    // Cancel any pending checkNewCommits request
+    if (checkNewCommitsAbortRef.current) {
+      checkNewCommitsAbortRef.current.abort();
+      checkNewCommitsAbortRef.current = null;
+    }
   }, [projectId]);
+
+  // Cleanup abort controller on unmount to prevent memory leaks
+  // and avoid state updates on unmounted components
+  useEffect(() => {
+    return () => {
+      if (checkNewCommitsAbortRef.current) {
+        checkNewCommitsAbortRef.current.abort();
+      }
+    };
+  }, []);
 
   // No need for local IPC listeners - they're handled globally in github-store
 
@@ -261,6 +279,13 @@ export function useGitHubPRs(
         projectId,
         timestamp: new Date().toISOString(),
       });
+
+      // Abort any pending checkNewCommits request from previous PR selection
+      // This prevents stale data from appearing when user switches PRs rapidly
+      if (checkNewCommitsAbortRef.current) {
+        checkNewCommitsAbortRef.current.abort();
+        checkNewCommitsAbortRef.current = null;
+      }
 
       setSelectedPRNumber(prNumber);
       // Note: Don't reset review result - it comes from the store now
@@ -300,6 +325,7 @@ export function useGitHubPRs(
 
         // Helper function to check for new commits with race condition protection
         // This is called after review state is available (from store or disk)
+        // Uses AbortController pattern to cancel pending checks when user switches PRs rapidly
         const checkNewCommitsForPR = (reviewedCommitSha: string | undefined, source: string) => {
           // Skip if no commit SHA to compare against
           if (!reviewedCommitSha) {
@@ -317,6 +343,13 @@ export function useGitHubPRs(
             return;
           }
 
+          // Cancel any pending checkNewCommits request before starting a new one
+          if (checkNewCommitsAbortRef.current) {
+            checkNewCommitsAbortRef.current.abort();
+          }
+          checkNewCommitsAbortRef.current = new AbortController();
+          const currentAbortController = checkNewCommitsAbortRef.current;
+
           console.log(
             `[DEBUG useGitHubPRs] selectPR: Calling checkNewCommits (${source})`
           );
@@ -324,6 +357,14 @@ export function useGitHubPRs(
           window.electronAPI.github
             .checkNewCommits(projectId, prNumber)
             .then((newCommitsResult) => {
+              // Check if request was aborted (user switched PRs)
+              if (currentAbortController.signal.aborted) {
+                console.log(
+                  `[DEBUG useGitHubPRs] checkNewCommits: Aborted, discarding result for #${prNumber}`
+                );
+                return;
+              }
+
               // Final race condition check before updating store
               if (prNumber !== currentFetchPRNumberRef.current) {
                 console.log(
@@ -346,6 +387,10 @@ export function useGitHubPRs(
               setNewCommitsCheckAction(projectId, prNumber, newCommitsResult);
             })
             .catch((err) => {
+              // Don't log errors for aborted requests
+              if (currentAbortController.signal.aborted) {
+                return;
+              }
               console.warn(`Failed to check new commits for PR #${prNumber}:`, err);
             });
         };
