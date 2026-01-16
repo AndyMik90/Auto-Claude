@@ -374,8 +374,13 @@ Examples:
             # On Windows, os.execv() spawns a new process instead of replacing the current one,
             # which causes issues with process management. Use subprocess.run() instead.
             if sys.platform == "win32":
-                result = subprocess.run(run_cmd)
-                sys.exit(result.returncode)
+                try:
+                    result = subprocess.run(run_cmd)
+                    sys.exit(result.returncode)
+                except KeyboardInterrupt:
+                    # Exit with standard Unix signal code for SIGINT (128 + 2)
+                    # Don't fall through to outer handler which shows spec continuation message
+                    sys.exit(130)
             else:
                 # On Unix, replace current process for cleaner process tree
                 os.execv(sys.executable, run_cmd)
