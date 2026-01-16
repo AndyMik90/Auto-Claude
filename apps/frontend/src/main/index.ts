@@ -2,7 +2,7 @@
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync } from 'fs';
 import { homedir } from 'os';
 
 // ESM-compatible __dirname
@@ -28,7 +28,7 @@ for (const envPath of possibleEnvPaths) {
 
 import { app, BrowserWindow, shell, nativeImage, session, screen } from 'electron';
 import { join } from 'path';
-import { accessSync, readFileSync, writeFileSync, rmSync } from 'fs';
+import { accessSync, readFileSync, writeFileSync, rmSync, mkdirSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { setupIpcHandlers } from './ipc-setup';
 import { AgentManager } from './agent';
@@ -120,15 +120,12 @@ function fixKnownMarketplacesJson(): void {
   const pluginsDir = join(homedir(), '.claude', 'plugins');
   const marketplacesPath = join(pluginsDir, 'known_marketplaces.json');
 
-  // Ensure plugins directory exists
-  if (!existsSync(pluginsDir)) {
-    try {
-      mkdirSync(pluginsDir, { recursive: true });
-      console.log('[main] Created Claude plugins directory:', pluginsDir);
-    } catch (e) {
-      console.warn('[main] Failed to create plugins directory:', e);
-      return;
-    }
+  // Ensure plugins directory exists (mkdirSync with recursive is idempotent)
+  try {
+    mkdirSync(pluginsDir, { recursive: true });
+  } catch (e) {
+    console.warn('[main] Failed to create plugins directory:', e);
+    return;
   }
 
   // Check if file needs fixing by trying to read it directly
