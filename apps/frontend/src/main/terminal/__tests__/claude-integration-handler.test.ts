@@ -12,6 +12,7 @@ const escapeForRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/
 const mockGetClaudeCliInvocation = vi.fn();
 const mockGetClaudeProfileManager = vi.fn();
 const mockPersistSession = vi.fn();
+const mockPersistSessionAsync = vi.fn();
 const mockReleaseSessionId = vi.fn();
 
 const createMockDisposable = (): pty.IDisposable => ({ dispose: vi.fn() });
@@ -63,6 +64,7 @@ vi.mock('fs', async (importOriginal) => {
 
 vi.mock('../session-handler', () => ({
   persistSession: mockPersistSession,
+  persistSessionAsync: mockPersistSessionAsync,
   releaseSessionId: mockReleaseSessionId,
 }));
 
@@ -79,6 +81,7 @@ describe('claude-integration-handler', () => {
     mockGetClaudeCliInvocation.mockClear();
     mockGetClaudeProfileManager.mockClear();
     mockPersistSession.mockClear();
+    mockPersistSessionAsync.mockClear();
     mockReleaseSessionId.mockClear();
     vi.mocked(writeFileSync).mockClear();
   });
@@ -106,7 +109,7 @@ describe('claude-integration-handler', () => {
     expect(written).toContain("PATH='/opt/claude/bin:/usr/bin' ");
     expect(written).toContain("'/opt/claude bin/claude'\\''s'");
     expect(mockReleaseSessionId).toHaveBeenCalledWith('term-1');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+    expect(mockPersistSessionAsync).toHaveBeenCalledWith(terminal);
     expect(profileManager.getActiveProfile).toHaveBeenCalled();
     expect(profileManager.markProfileUsed).toHaveBeenCalledWith('default');
   });
@@ -244,7 +247,7 @@ describe('claude-integration-handler', () => {
     expect(written).toContain(`rm -f '${tokenPath}'`);
     expect(written).toContain(`exec '${command}'`);
     expect(profileManager.getProfile).toHaveBeenCalledWith('prof-1');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+    expect(mockPersistSessionAsync).toHaveBeenCalledWith(terminal);
 
     nowSpy.mockRestore();
   });
@@ -287,7 +290,7 @@ describe('claude-integration-handler', () => {
     expect(written).toContain(`exec '${command}'`);
     expect(written).not.toContain('CLAUDE_CONFIG_DIR=');
     expect(profileManager.getProfile).toHaveBeenCalledWith('prof-both');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+    expect(mockPersistSessionAsync).toHaveBeenCalledWith(terminal);
     expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-both');
 
     nowSpy.mockRestore();
@@ -350,7 +353,7 @@ describe('claude-integration-handler', () => {
     expect(written).toContain(`exec '${command}'`);
     expect(profileManager.getProfile).toHaveBeenCalledWith('prof-2');
     expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-2');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+    expect(mockPersistSessionAsync).toHaveBeenCalledWith(terminal);
   });
 
   it('uses profile switching when a non-default profile is requested', async () => {
@@ -382,7 +385,7 @@ describe('claude-integration-handler', () => {
     expect(written).toContain("PATH='/opt/claude/bin:/usr/bin' ");
     expect(profileManager.getProfile).toHaveBeenCalledWith('prof-3');
     expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-3');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+    expect(mockPersistSessionAsync).toHaveBeenCalledWith(terminal);
   });
 
   it('uses --continue regardless of sessionId (sessionId is deprecated)', async () => {
@@ -409,10 +412,10 @@ describe('claude-integration-handler', () => {
     // sessionId is cleared because --continue doesn't track specific sessions
     expect(terminal.claudeSessionId).toBeUndefined();
     expect(terminal.isClaudeMode).toBe(true);
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+    expect(mockPersistSessionAsync).toHaveBeenCalledWith(terminal);
 
     vi.mocked(terminal.pty.write).mockClear();
-    mockPersistSession.mockClear();
+    mockPersistSessionAsync.mockClear();
     terminal.projectPath = undefined;
     terminal.isClaudeMode = false;
     resumeClaude(terminal, undefined, () => null);
@@ -420,7 +423,7 @@ describe('claude-integration-handler', () => {
     expect(continueCall).toContain("'/opt/claude/bin/claude' --continue");
     expect(terminal.isClaudeMode).toBe(true);
     expect(terminal.claudeSessionId).toBeUndefined();
-    expect(mockPersistSession).not.toHaveBeenCalled();
+    expect(mockPersistSessionAsync).not.toHaveBeenCalled();
   });
 });
 
@@ -628,7 +631,7 @@ describe('claude-integration-handler - Helper Functions', () => {
         vi.fn()
       );
 
-      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+      expect(mockPersistSessionAsync).toHaveBeenCalledWith(terminal);
     });
 
     it('should call onSessionCapture when projectPath is provided', async () => {
