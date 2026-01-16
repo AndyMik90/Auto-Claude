@@ -1,10 +1,21 @@
 import { writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { describe, expect, it, vi, beforeEach, beforeAll, afterAll } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type * as pty from '@lydell/node-pty';
 import type { TerminalProcess } from '../types';
 import { buildCdCommand } from '../../../shared/utils/shell-escape';
+
+// Mock the platform module
+vi.mock('../platform', () => ({
+  isWindows: vi.fn(() => false),
+  isMac: vi.fn(() => false),
+  isLinux: vi.fn(() => false),
+  isUnix: vi.fn(() => false),
+  getCurrentPlatform: vi.fn(() => 'linux'),
+}));
+
+import { isWindows } from '../platform';
 
 /** Escape special regex characters in a string for safe use in RegExp constructor */
 const escapeForRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -74,6 +85,109 @@ vi.mock('os', async (importOriginal) => {
   };
 });
 
+/**
+ * Helper to set the current platform for testing
+ */
+function mockPlatform(platform: 'win32' | 'darwin' | 'linux') {
+  const mockIsWindows = vi.mocked(isWindows);
+  mockIsWindows.mockReturnValue(platform === 'win32');
+}
+
+/**
+ * Helper to get platform-specific expectations for PATH prefix
+ */
+function getPathPrefixExpectation(platform: 'win32' | 'darwin' | 'linux', pathValue: string): string {
+  if (platform === 'win32') {
+    // Windows: set "PATH=value" &&
+    return `set "PATH=${pathValue}" && `;
+  }
+  // Unix/macOS: PATH='value' '
+  return `PATH='${pathValue}' `;
+}
+
+/**
+ * Helper to get platform-specific expectations for command quoting
+ */
+function getQuotedCommand(platform: 'win32' | 'darwin' | 'linux', command: string): string {
+  if (platform === 'win32') {
+    // Windows: double quotes
+    return `"${command}"`;
+  }
+  // Unix/macOS: single quotes
+  return `'${command}'`;
+}
+
+/**
+ * Helper to get platform-specific clear command
+ */
+function getClearCommand(platform: 'win32' | 'darwin' | 'linux'): string {
+  return platform === 'win32' ? 'cls' : 'clear';
+}
+
+/**
+ * Helper to get platform-specific history prefix
+ */
+function getHistoryPrefix(platform: 'win32' | 'darwin' | 'linux'): string {
+  return platform === 'win32' ? '' : 'HISTFILE= HISTCONTROL=ignorespace ';
+}
+
+/**
+ * Helper to get platform-specific temp file extension
+ */
+function getTempFileExtension(platform: 'win32' | 'darwin' | 'linux'): string {
+  return platform === 'win32' ? '.bat' : '';
+}
+
+/**
+ * Helper to get platform-specific token file content
+ */
+function getTokenFileContent(platform: 'win32' | 'darwin' | 'linux', token: string): string {
+  if (platform === 'win32') {
+    return `@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=${token}"\r\n`;
+  }
+  return `export CLAUDE_CODE_OAUTH_TOKEN='${token}'\n`;
+}
+
+/**
+ * Helper to get platform-specific temp file invocation
+ */
+function getTempFileInvocation(platform: 'win32' | 'darwin' | 'linux', tokenPath: string): string {
+  if (platform === 'win32') {
+    return `call "${tokenPath}"`;
+  }
+  return `source '${tokenPath}'`;
+}
+
+/**
+ * Helper to get platform-specific temp file cleanup
+ */
+function getTempFileCleanup(platform: 'win32' | 'darwin' | 'linux', tokenPath: string): string {
+  if (platform === 'win32') {
+    return `& del "${tokenPath}"`;
+  }
+  return `rm -f '${tokenPath}'`;
+}
+
+/**
+ * Helper to get platform-specific exec command
+ */
+function getExecCommand(platform: 'win32' | 'darwin' | 'linux', command: string): string {
+  if (platform === 'win32') {
+    return command; // Windows doesn't use exec
+  }
+  return `exec ${command}`;
+}
+
+/**
+ * Helper to get platform-specific config dir command
+ */
+function getConfigDirCommand(platform: 'win32' | 'darwin' | 'linux', configDir: string): string {
+  if (platform === 'win32') {
+    return `set "CLAUDE_CONFIG_DIR=${configDir}"`;
+  }
+  return `CLAUDE_CONFIG_DIR='${configDir}'`;
+}
+
 describe('claude-integration-handler', () => {
   beforeEach(() => {
     mockGetClaudeCliInvocation.mockClear();
@@ -83,42 +197,15 @@ describe('claude-integration-handler', () => {
     vi.mocked(writeFileSync).mockClear();
   });
 
-  it('uses the resolved CLI path and PATH prefix when invoking Claude', async () => {
-    mockGetClaudeCliInvocation.mockReturnValue({
-      command: "/opt/claude bin/claude's",
-      env: { PATH: '/opt/claude/bin:/usr/bin' },
+  describe.each(['win32', 'darwin', 'linux'] as const)('on %s', (platform) => {
+    beforeEach(() => {
+      mockPlatform(platform);
     });
-    const profileManager = {
-      getActiveProfile: vi.fn(() => ({ id: 'default', name: 'Default', isDefault: true })),
-      getProfile: vi.fn(),
-      getProfileToken: vi.fn(() => null),
-      markProfileUsed: vi.fn(),
-    };
-    mockGetClaudeProfileManager.mockReturnValue(profileManager);
 
-    const terminal = createMockTerminal();
-
-    const { invokeClaude } = await import('../claude-integration-handler');
-    invokeClaude(terminal, '/tmp/project', undefined, () => null, vi.fn());
-
-    const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    expect(written).toContain(buildCdCommand('/tmp/project'));
-    expect(written).toContain("PATH='/opt/claude/bin:/usr/bin' ");
-    expect(written).toContain("'/opt/claude bin/claude'\\''s'");
-    expect(mockReleaseSessionId).toHaveBeenCalledWith('term-1');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
-    expect(profileManager.getActiveProfile).toHaveBeenCalled();
-    expect(profileManager.markProfileUsed).toHaveBeenCalledWith('default');
-  });
-
-  it('uses Windows cmd.exe syntax with semicolon PATH separators on Windows', async () => {
-    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
-    Object.defineProperty(process, 'platform', { value: 'win32' });
-
-    try {
+    it('uses the resolved CLI path and PATH prefix when invoking Claude', async () => {
       mockGetClaudeCliInvocation.mockReturnValue({
-        command: 'C:\\Tools\\claude\\claude.exe',
-        env: { PATH: 'C:\\Tools\\claude;C:\\Windows' },
+        command: "/opt/claude bin/claude's",
+        env: { PATH: '/opt/claude/bin:/usr/bin' },
       });
       const profileManager = {
         getActiveProfile: vi.fn(() => ({ id: 'default', name: 'Default', isDefault: true })),
@@ -134,16 +221,245 @@ describe('claude-integration-handler', () => {
       invokeClaude(terminal, '/tmp/project', undefined, () => null, vi.fn());
 
       const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-      // Windows uses cmd.exe syntax: set "PATH=value" with semicolon separators
-      expect(written).toContain('set "PATH=C:\\Tools\\claude;C:\\Windows"');
-      // Should not use bash-style PATH= prefix
-      expect(written).not.toMatch(/^PATH=/);
-      expect(written).not.toContain('bash -c');
-    } finally {
-      if (originalPlatform) {
-        Object.defineProperty(process, 'platform', originalPlatform);
-      }
-    }
+      expect(written).toContain(buildCdCommand('/tmp/project'));
+      expect(written).toContain(getPathPrefixExpectation(platform, '/opt/claude/bin:/usr/bin'));
+      expect(written).toContain("'/opt/claude bin/claude'\\''s'");
+      expect(mockReleaseSessionId).toHaveBeenCalledWith('term-1');
+      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+      expect(profileManager.getActiveProfile).toHaveBeenCalled();
+      expect(profileManager.markProfileUsed).toHaveBeenCalledWith('default');
+    });
+
+    it('uses the temp token flow when the active profile has an oauth token', async () => {
+      const command = '/opt/claude/bin/claude';
+      const profileManager = {
+        getActiveProfile: vi.fn(),
+        getProfile: vi.fn(() => ({
+          id: 'prof-1',
+          name: 'Work',
+          isDefault: false,
+          oauthToken: 'token-value',
+        })),
+        getProfileToken: vi.fn(() => 'token-value'),
+        markProfileUsed: vi.fn(),
+      };
+
+      mockGetClaudeCliInvocation.mockReturnValue({
+        command,
+        env: { PATH: '/opt/claude/bin:/usr/bin' },
+      });
+      mockGetClaudeProfileManager.mockReturnValue(profileManager);
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1234);
+
+      const terminal = createMockTerminal({ id: 'term-3' });
+
+      const { invokeClaude } = await import('../claude-integration-handler');
+      invokeClaude(terminal, '/tmp/project', 'prof-1', () => null, vi.fn());
+
+      const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
+      const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
+      const tokenPrefix = path.join(tmpdir(), '.claude-token-1234-');
+      const tokenExt = getTempFileExtension(platform);
+      expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
+      expect(tokenContents).toBe(getTokenFileContent(platform, 'token-value'));
+
+      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const clearCmd = getClearCommand(platform);
+      const histPrefix = getHistoryPrefix(platform);
+      const cmdQuote = platform === 'win32' ? '"' : "'";
+
+      expect(written).toContain(histPrefix);
+      expect(written).toContain(clearCmd);
+      expect(written).toContain(getTempFileInvocation(platform, tokenPath));
+      expect(written).toContain(getTempFileCleanup(platform, tokenPath));
+      expect(written).toContain(`${cmdQuote}${command}${cmdQuote}`);
+      expect(profileManager.getProfile).toHaveBeenCalledWith('prof-1');
+      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+
+      nowSpy.mockRestore();
+    });
+
+    it('prefers the temp token flow when profile has both oauth token and config dir', async () => {
+      const command = '/opt/claude/bin/claude';
+      const profileManager = {
+        getActiveProfile: vi.fn(),
+        getProfile: vi.fn(() => ({
+          id: 'prof-both',
+          name: 'Work',
+          isDefault: false,
+          oauthToken: 'token-value',
+          configDir: '/tmp/claude-config',
+        })),
+        getProfileToken: vi.fn(() => 'token-value'),
+        markProfileUsed: vi.fn(),
+      };
+
+      mockGetClaudeCliInvocation.mockReturnValue({
+        command,
+        env: { PATH: '/opt/claude/bin:/usr/bin' },
+      });
+      mockGetClaudeProfileManager.mockReturnValue(profileManager);
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(5678);
+
+      const terminal = createMockTerminal({ id: 'term-both' });
+
+      const { invokeClaude } = await import('../claude-integration-handler');
+      invokeClaude(terminal, '/tmp/project', 'prof-both', () => null, vi.fn());
+
+      const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
+      const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
+      const tokenPrefix = path.join(tmpdir(), '.claude-token-5678-');
+      const tokenExt = getTempFileExtension(platform);
+      expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
+      expect(tokenContents).toBe(getTokenFileContent(platform, 'token-value'));
+
+      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      expect(written).toContain(getTempFileInvocation(platform, tokenPath));
+      expect(written).toContain(getTempFileCleanup(platform, tokenPath));
+      expect(written).toContain(getQuotedCommand(platform, command));
+      expect(written).not.toContain('CLAUDE_CONFIG_DIR=');
+      expect(profileManager.getProfile).toHaveBeenCalledWith('prof-both');
+      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+      expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-both');
+
+      nowSpy.mockRestore();
+    });
+
+    it('handles missing profiles by falling back to the default command', async () => {
+      const command = '/opt/claude/bin/claude';
+      const profileManager = {
+        getActiveProfile: vi.fn(),
+        getProfile: vi.fn(() => undefined),
+        getProfileToken: vi.fn(() => null),
+        markProfileUsed: vi.fn(),
+      };
+
+      mockGetClaudeCliInvocation.mockReturnValue({
+        command,
+        env: { PATH: '/opt/claude/bin:/usr/bin' },
+      });
+      mockGetClaudeProfileManager.mockReturnValue(profileManager);
+
+      const terminal = createMockTerminal({ id: 'term-6' });
+
+      const { invokeClaude } = await import('../claude-integration-handler');
+      invokeClaude(terminal, '/tmp/project', 'missing', () => null, vi.fn());
+
+      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      expect(written).toContain(getQuotedCommand(platform, command));
+      expect(profileManager.getProfile).toHaveBeenCalledWith('missing');
+      expect(profileManager.markProfileUsed).not.toHaveBeenCalled();
+    });
+
+    it('uses the config dir flow when the active profile has a config dir', async () => {
+      const command = '/opt/claude/bin/claude';
+      const profileManager = {
+        getActiveProfile: vi.fn(),
+        getProfile: vi.fn(() => ({
+          id: 'prof-2',
+          name: 'Work',
+          isDefault: false,
+          configDir: '/tmp/claude-config',
+        })),
+        getProfileToken: vi.fn(() => null),
+        markProfileUsed: vi.fn(),
+      };
+
+      mockGetClaudeCliInvocation.mockReturnValue({
+        command,
+        env: { PATH: '/opt/claude/bin:/usr/bin' },
+      });
+      mockGetClaudeProfileManager.mockReturnValue(profileManager);
+
+      const terminal = createMockTerminal({ id: 'term-4' });
+
+      const { invokeClaude } = await import('../claude-integration-handler');
+      invokeClaude(terminal, '/tmp/project', 'prof-2', () => null, vi.fn());
+
+      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const clearCmd = getClearCommand(platform);
+      const histPrefix = getHistoryPrefix(platform);
+      const configDir = getConfigDirCommand(platform, '/tmp/claude-config');
+
+      expect(written).toContain(histPrefix);
+      expect(written).toContain(configDir);
+      expect(written).toContain(getPathPrefixExpectation(platform, '/opt/claude/bin:/usr/bin'));
+      expect(written).toContain(getQuotedCommand(platform, command));
+      expect(written).toContain(clearCmd);
+      expect(profileManager.getProfile).toHaveBeenCalledWith('prof-2');
+      expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-2');
+      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+    });
+
+    it('uses profile switching when a non-default profile is requested', async () => {
+      const command = '/opt/claude/bin/claude';
+      const profileManager = {
+        getActiveProfile: vi.fn(),
+        getProfile: vi.fn(() => ({
+          id: 'prof-3',
+          name: 'Team',
+          isDefault: false,
+        })),
+        getProfileToken: vi.fn(() => null),
+        markProfileUsed: vi.fn(),
+      };
+
+      mockGetClaudeCliInvocation.mockReturnValue({
+        command,
+        env: { PATH: '/opt/claude/bin:/usr/bin' },
+      });
+      mockGetClaudeProfileManager.mockReturnValue(profileManager);
+
+      const terminal = createMockTerminal({ id: 'term-5' });
+
+      const { invokeClaude } = await import('../claude-integration-handler');
+      invokeClaude(terminal, '/tmp/project', 'prof-3', () => null, vi.fn());
+
+      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      expect(written).toContain(getQuotedCommand(platform, command));
+      expect(written).toContain(getPathPrefixExpectation(platform, '/opt/claude/bin:/usr/bin'));
+      expect(profileManager.getProfile).toHaveBeenCalledWith('prof-3');
+      expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-3');
+      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+    });
+
+    it('uses --continue regardless of sessionId (sessionId is deprecated)', async () => {
+      mockGetClaudeCliInvocation.mockReturnValue({
+        command: '/opt/claude/bin/claude',
+        env: { PATH: '/opt/claude/bin:/usr/bin' },
+      });
+
+      const terminal = createMockTerminal({
+        id: 'term-2',
+        cwd: undefined,
+        projectPath: '/tmp/project',
+      });
+
+      const { resumeClaude } = await import('../claude-integration-handler');
+
+      // Even when sessionId is passed, it should be ignored and --continue used
+      resumeClaude(terminal, 'abc123', () => null);
+
+      const resumeCall = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      expect(resumeCall).toContain(getPathPrefixExpectation(platform, '/opt/claude/bin:/usr/bin'));
+      expect(resumeCall).toContain(getQuotedCommand(platform, '/opt/claude/bin/claude') + ' --continue');
+      expect(resumeCall).not.toContain('--resume');
+      // sessionId is cleared because --continue doesn't track specific sessions
+      expect(terminal.claudeSessionId).toBeUndefined();
+      expect(terminal.isClaudeMode).toBe(true);
+      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
+
+      vi.mocked(terminal.pty.write).mockClear();
+      mockPersistSession.mockClear();
+      terminal.projectPath = undefined;
+      terminal.isClaudeMode = false;
+      resumeClaude(terminal, undefined, () => null);
+      const continueCall = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      expect(continueCall).toContain(getQuotedCommand(platform, '/opt/claude/bin/claude') + ' --continue');
+      expect(terminal.isClaudeMode).toBe(true);
+      expect(terminal.claudeSessionId).toBeUndefined();
+      expect(mockPersistSession).not.toHaveBeenCalled();
+    });
   });
 
   it('throws when invokeClaude cannot resolve the CLI invocation', async () => {
@@ -209,337 +525,6 @@ describe('claude-integration-handler', () => {
     expect(() => invokeClaude(terminal, '/tmp/project', 'prof-err', () => null, vi.fn())).toThrow('disk full');
     expect(terminal.pty.write).not.toHaveBeenCalled();
   });
-
-  it('uses the temp token flow when the active profile has an oauth token', async () => {
-    const command = '/opt/claude/bin/claude';
-    const profileManager = {
-      getActiveProfile: vi.fn(),
-      getProfile: vi.fn(() => ({
-        id: 'prof-1',
-        name: 'Work',
-        isDefault: false,
-        oauthToken: 'token-value',
-      })),
-      getProfileToken: vi.fn(() => 'token-value'),
-      markProfileUsed: vi.fn(),
-    };
-
-    mockGetClaudeCliInvocation.mockReturnValue({
-      command,
-      env: { PATH: '/opt/claude/bin:/usr/bin' },
-    });
-    mockGetClaudeProfileManager.mockReturnValue(profileManager);
-    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1234);
-
-    const terminal = createMockTerminal({ id: 'term-3' });
-
-    const { invokeClaude } = await import('../claude-integration-handler');
-    invokeClaude(terminal, '/tmp/project', 'prof-1', () => null, vi.fn());
-
-    const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
-    const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
-    const tokenPrefix = path.join(tmpdir(), '.claude-token-1234-');
-    // Platform-specific temp file extension: Windows uses .bat, Unix has no extension
-    const tokenExt = process.platform === 'win32' ? '.bat' : '';
-    expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
-    // Platform-specific expectations: Windows vs Unix temp file format
-    if (process.platform === 'win32') {
-      expect(tokenContents).toBe('@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=token-value"\r\n');
-    } else {
-      expect(tokenContents).toBe("export CLAUDE_CODE_OAUTH_TOKEN='token-value'\n");
-    }
-    const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    const clearCmd = process.platform === 'win32' ? 'cls' : 'clear';
-    const histPrefix = process.platform === 'win32' ? '' : "HISTFILE= HISTCONTROL=ignorespace ";
-    const cmdQuote = process.platform === 'win32' ? '"' : "'";
-    expect(written).toContain(histPrefix);
-    expect(written).toContain(clearCmd);
-    if (process.platform === 'win32') {
-      expect(written).toContain(`call "${tokenPath}"`);
-      expect(written).toContain(`& del "${tokenPath}"`);
-    } else {
-      expect(written).toContain(`source '${tokenPath}'`);
-      expect(written).toContain(`rm -f '${tokenPath}'`);
-    }
-    expect(written).toContain(`${cmdQuote}${command}${cmdQuote}`);
-    expect(profileManager.getProfile).toHaveBeenCalledWith('prof-1');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
-
-    nowSpy.mockRestore();
-  });
-
-  it('uses Windows batch file syntax for temp token on Windows platform', async () => {
-    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
-
-    try {
-      Object.defineProperty(process, 'platform', { value: 'win32' });
-
-      const command = 'C:\\Tools\\claude\\claude.cmd';
-      const profileManager = {
-        getActiveProfile: vi.fn(),
-        getProfile: vi.fn(() => ({
-          id: 'prof-win',
-          name: 'Work',
-          isDefault: false,
-          oauthToken: 'windows-token-value',
-        })),
-        getProfileToken: vi.fn(() => 'windows-token-value'),
-        markProfileUsed: vi.fn(),
-      };
-
-      mockGetClaudeCliInvocation.mockReturnValue({
-        command,
-        env: { PATH: 'C:\\Tools\\claude;C:\\Windows' },
-      });
-      mockGetClaudeProfileManager.mockReturnValue(profileManager);
-      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(9999);
-
-      const terminal = createMockTerminal({ id: 'term-win' });
-
-      const { invokeClaude } = await import('../claude-integration-handler');
-      invokeClaude(terminal, 'C:\\Users\\test\\project', 'prof-win', () => null, vi.fn());
-
-      const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
-      const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
-      const tokenPrefix = path.join(tmpdir(), '.claude-token-9999-');
-      expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}\\.bat$`));
-      // Windows temp file uses double-quote syntax: set "VAR=value"
-      expect(tokenContents).toBe("@echo off\r\nset \"CLAUDE_CODE_OAUTH_TOKEN=windows-token-value\"\r\n");
-      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-      expect(written).toContain('cls && ');
-      // Windows call command uses double quotes to handle paths with spaces
-      expect(written).toContain(`call "${tokenPath}"`);
-      // Windows del command uses & separator to ensure cleanup even if command fails
-      expect(written).toContain(`& del "${tokenPath}"`);
-      expect(written).toContain(command);
-      // Windows uses set "PATH=value" syntax
-      expect(written).toContain('set "PATH=');
-      expect(written).not.toContain('bash -c');
-      expect(written).not.toContain('source');
-      expect(profileManager.getProfile).toHaveBeenCalledWith('prof-win');
-      expect(mockPersistSession).toHaveBeenCalledWith(terminal);
-
-      nowSpy.mockRestore();
-    } finally {
-      if (originalPlatform) {
-        Object.defineProperty(process, 'platform', originalPlatform);
-      }
-    }
-  });
-
-  it('prefers the temp token flow when profile has both oauth token and config dir', async () => {
-    const command = '/opt/claude/bin/claude';
-    const profileManager = {
-      getActiveProfile: vi.fn(),
-      getProfile: vi.fn(() => ({
-        id: 'prof-both',
-        name: 'Work',
-        isDefault: false,
-        oauthToken: 'token-value',
-        configDir: '/tmp/claude-config',
-      })),
-      getProfileToken: vi.fn(() => 'token-value'),
-      markProfileUsed: vi.fn(),
-    };
-
-    mockGetClaudeCliInvocation.mockReturnValue({
-      command,
-      env: { PATH: '/opt/claude/bin:/usr/bin' },
-    });
-    mockGetClaudeProfileManager.mockReturnValue(profileManager);
-    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(5678);
-
-    const terminal = createMockTerminal({ id: 'term-both' });
-
-    const { invokeClaude } = await import('../claude-integration-handler');
-    invokeClaude(terminal, '/tmp/project', 'prof-both', () => null, vi.fn());
-
-    const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
-    const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
-    const tokenPrefix = path.join(tmpdir(), '.claude-token-5678-');
-    // Platform-specific temp file extension: Windows uses .bat, Unix has no extension
-    const tokenExt = process.platform === 'win32' ? '.bat' : '';
-    expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
-    // Platform-specific expectations: Windows vs Unix temp file format
-    if (process.platform === 'win32') {
-      expect(tokenContents).toBe('@echo off\r\nset "CLAUDE_CODE_OAUTH_TOKEN=token-value"\r\n');
-    } else {
-      expect(tokenContents).toBe("export CLAUDE_CODE_OAUTH_TOKEN='token-value'\n");
-    }
-    const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    const cmdQuote = process.platform === 'win32' ? '"' : "'";
-    if (process.platform === 'win32') {
-      expect(written).toContain(`call "${tokenPath}"`);
-      expect(written).toContain(`& del "${tokenPath}"`);
-    } else {
-      expect(written).toContain(`source '${tokenPath}'`);
-      expect(written).toContain(`rm -f '${tokenPath}'`);
-    }
-    expect(written).toContain(`${cmdQuote}${command}${cmdQuote}`);
-    expect(written).not.toContain('CLAUDE_CONFIG_DIR=');
-    expect(profileManager.getProfile).toHaveBeenCalledWith('prof-both');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
-    expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-both');
-
-    nowSpy.mockRestore();
-  });
-
-  it('handles missing profiles by falling back to the default command', async () => {
-    const command = '/opt/claude/bin/claude';
-    const profileManager = {
-      getActiveProfile: vi.fn(),
-      getProfile: vi.fn(() => undefined),
-      getProfileToken: vi.fn(() => null),
-      markProfileUsed: vi.fn(),
-    };
-
-    mockGetClaudeCliInvocation.mockReturnValue({
-      command,
-      env: { PATH: '/opt/claude/bin:/usr/bin' },
-    });
-    mockGetClaudeProfileManager.mockReturnValue(profileManager);
-
-    const terminal = createMockTerminal({ id: 'term-6' });
-
-    const { invokeClaude } = await import('../claude-integration-handler');
-    invokeClaude(terminal, '/tmp/project', 'missing', () => null, vi.fn());
-
-    const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    // Platform-specific expectations: Windows uses double quotes, Unix uses single quotes
-    const cmdQuote = process.platform === 'win32' ? '"' : "'";
-    expect(written).toContain(`${cmdQuote}${command}${cmdQuote}`);
-    expect(profileManager.getProfile).toHaveBeenCalledWith('missing');
-    expect(profileManager.markProfileUsed).not.toHaveBeenCalled();
-  });
-
-  it('uses the config dir flow when the active profile has a config dir', async () => {
-    const command = '/opt/claude/bin/claude';
-    const profileManager = {
-      getActiveProfile: vi.fn(),
-      getProfile: vi.fn(() => ({
-        id: 'prof-2',
-        name: 'Work',
-        isDefault: false,
-        configDir: '/tmp/claude-config',
-      })),
-      getProfileToken: vi.fn(() => null),
-      markProfileUsed: vi.fn(),
-    };
-
-    mockGetClaudeCliInvocation.mockReturnValue({
-      command,
-      env: { PATH: '/opt/claude/bin:/usr/bin' },
-    });
-    mockGetClaudeProfileManager.mockReturnValue(profileManager);
-
-    const terminal = createMockTerminal({ id: 'term-4' });
-
-    const { invokeClaude } = await import('../claude-integration-handler');
-    invokeClaude(terminal, '/tmp/project', 'prof-2', () => null, vi.fn());
-
-    const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    // Platform-specific expectations: Windows uses double quotes, Unix uses single quotes
-    const cmdQuote = process.platform === 'win32' ? '"' : "'";
-    const pathPrefix = process.platform === 'win32'
-      ? 'set "PATH=/opt/claude/bin:/usr/bin" && '
-      : "PATH='/opt/claude/bin:/usr/bin' ";
-    const configDir = process.platform === 'win32'
-      ? 'set "CLAUDE_CONFIG_DIR=/tmp/claude-config"'
-      : "CLAUDE_CONFIG_DIR='/tmp/claude-config'";
-    const clearCmd = process.platform === 'win32' ? 'cls' : 'clear';
-    const histPrefix = process.platform === 'win32' ? '' : "HISTFILE= HISTCONTROL=ignorespace ";
-
-    expect(written).toContain(histPrefix);
-    expect(written).toContain(configDir);
-    expect(written).toContain(pathPrefix);
-    expect(written).toContain(`${cmdQuote}${command}${cmdQuote}`);
-    expect(written).toContain(clearCmd);
-    expect(profileManager.getProfile).toHaveBeenCalledWith('prof-2');
-    expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-2');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
-  });
-
-  it('uses profile switching when a non-default profile is requested', async () => {
-    const command = '/opt/claude/bin/claude';
-    const profileManager = {
-      getActiveProfile: vi.fn(),
-      getProfile: vi.fn(() => ({
-        id: 'prof-3',
-        name: 'Team',
-        isDefault: false,
-      })),
-      getProfileToken: vi.fn(() => null),
-      markProfileUsed: vi.fn(),
-    };
-
-    mockGetClaudeCliInvocation.mockReturnValue({
-      command,
-      env: { PATH: '/opt/claude/bin:/usr/bin' },
-    });
-    mockGetClaudeProfileManager.mockReturnValue(profileManager);
-
-    const terminal = createMockTerminal({ id: 'term-5' });
-
-    const { invokeClaude } = await import('../claude-integration-handler');
-    invokeClaude(terminal, '/tmp/project', 'prof-3', () => null, vi.fn());
-
-    const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    // Platform-specific expectations: Windows uses double quotes, Unix uses single quotes
-    const cmdQuote = process.platform === 'win32' ? '"' : "'";
-    const pathPrefix = process.platform === 'win32'
-      ? 'set "PATH=/opt/claude/bin:/usr/bin" && '
-      : "PATH='/opt/claude/bin:/usr/bin' ";
-    expect(written).toContain(`${cmdQuote}${command}${cmdQuote}`);
-    expect(written).toContain(pathPrefix);
-    expect(profileManager.getProfile).toHaveBeenCalledWith('prof-3');
-    expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-3');
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
-  });
-
-  it('uses --continue regardless of sessionId (sessionId is deprecated)', async () => {
-    mockGetClaudeCliInvocation.mockReturnValue({
-      command: '/opt/claude/bin/claude',
-      env: { PATH: '/opt/claude/bin:/usr/bin' },
-    });
-
-    const terminal = createMockTerminal({
-      id: 'term-2',
-      cwd: undefined,
-      projectPath: '/tmp/project',
-    });
-
-    const { resumeClaude } = await import('../claude-integration-handler');
-
-    // Even when sessionId is passed, it should be ignored and --continue used
-    resumeClaude(terminal, 'abc123', () => null);
-
-    const resumeCall = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    // Platform-specific expectations: Windows uses double quotes, Unix uses single quotes
-    const cmdQuote = process.platform === 'win32' ? '"' : "'";
-    const pathPrefix = process.platform === 'win32'
-      ? 'set "PATH=/opt/claude/bin:/usr/bin" && '
-      : "PATH='/opt/claude/bin:/usr/bin' ";
-    expect(resumeCall).toContain(pathPrefix);
-    expect(resumeCall).toContain(`${cmdQuote}/opt/claude/bin/claude${cmdQuote} --continue`);
-    expect(resumeCall).not.toContain('--resume');
-    // sessionId is cleared because --continue doesn't track specific sessions
-    expect(terminal.claudeSessionId).toBeUndefined();
-    expect(terminal.isClaudeMode).toBe(true);
-    expect(mockPersistSession).toHaveBeenCalledWith(terminal);
-
-    vi.mocked(terminal.pty.write).mockClear();
-    mockPersistSession.mockClear();
-    terminal.projectPath = undefined;
-    terminal.isClaudeMode = false;
-    resumeClaude(terminal, undefined, () => null);
-    const continueCall = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
-    // Platform-specific expectations: Windows uses double quotes, Unix uses single quotes
-    // (cmdQuote already declared above in this function scope)
-    expect(continueCall).toContain(`${cmdQuote}/opt/claude/bin/claude${cmdQuote} --continue`);
-    expect(terminal.isClaudeMode).toBe(true);
-    expect(terminal.claudeSessionId).toBeUndefined();
-    expect(mockPersistSession).not.toHaveBeenCalled();
-  });
 });
 
 /**
@@ -547,199 +532,33 @@ describe('claude-integration-handler', () => {
  */
 describe('claude-integration-handler - Helper Functions', () => {
   describe('buildClaudeShellCommand', () => {
-    it('should build default command without cwd or PATH prefix', async () => {
-      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand('', '', "'/opt/bin/claude'", { method: 'default' });
-
-      expect(result).toBe("'/opt/bin/claude'\r");
-    });
-
-    it('should build command with cwd', async () => {
-      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand("cd '/tmp/project' && ", '', "'/opt/bin/claude'", { method: 'default' });
-
-      expect(result).toBe("cd '/tmp/project' && '/opt/bin/claude'\r");
-    });
-
-    it('should build command with PATH prefix', async () => {
-      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand('', "PATH='/custom/path' ", "'/opt/bin/claude'", { method: 'default' });
-
-      expect(result).toBe("PATH='/custom/path' '/opt/bin/claude'\r");
-    });
-
-    it('should build temp-file method command with history-safe prefixes', async () => {
-      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand(
-        "cd '/tmp/project' && ",
-        "PATH='/opt/bin' ",
-        "'/opt/bin/claude'",
-        { method: 'temp-file', tempFile: '/tmp/.token-123' }
-      );
-
-      // Platform-specific expectations
-      const clearCmd = process.platform === 'win32' ? 'cls' : 'clear';
-      const histPrefix = process.platform === 'win32' ? '' : 'HISTFILE= HISTCONTROL=ignorespace';
-      const tempCmd = process.platform === 'win32' ? 'call "/tmp/.token-123"' : "source '/tmp/.token-123'";
-      const cleanupCmd = process.platform === 'win32' ? '& del "/tmp/.token-123"' : "rm -f '/tmp/.token-123'";
-      const execCmd = process.platform === 'win32' ? '"/opt/bin/claude"' : "exec '/opt/bin/claude'";
-
-      expect(result).toContain(`${clearCmd} && `);
-      expect(result).toContain("cd '/tmp/project' && ");
-      if (process.platform !== 'win32') {
-        expect(result).toContain(histPrefix);
-      }
-      expect(result).toContain("PATH='/opt/bin' ");
-      expect(result).toContain(tempCmd);
-      expect(result).toContain(cleanupCmd);
-      expect(result).toContain(execCmd);
-    });
-
-    it('should build config-dir method command with CLAUDE_CONFIG_DIR', async () => {
-      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand(
-        "cd '/tmp/project' && ",
-        "PATH='/opt/bin' ",
-        "'/opt/bin/claude'",
-        { method: 'config-dir', configDir: '/home/user/.claude-work' }
-      );
-
-      // Platform-specific expectations
-      const clearCmd = process.platform === 'win32' ? 'cls' : 'clear';
-      const histPrefix = process.platform === 'win32' ? '' : 'HISTFILE= HISTCONTROL=ignorespace';
-      const configDirVar = process.platform === 'win32'
-        ? 'set "CLAUDE_CONFIG_DIR=/home/user/.claude-work"'
-        : "CLAUDE_CONFIG_DIR='/home/user/.claude-work'";
-      const execCmd = process.platform === 'win32' ? '"/opt/bin/claude"' : "exec '/opt/bin/claude'";
-
-      expect(result).toContain(`${clearCmd} && `);
-      expect(result).toContain("cd '/tmp/project' && ");
-      if (process.platform !== 'win32') {
-        expect(result).toContain(histPrefix);
-      }
-      expect(result).toContain(configDirVar);
-      expect(result).toContain("PATH='/opt/bin' ");
-      expect(result).toContain(execCmd);
-    });
-
-    it('should handle empty cwdCommand for temp-file method', async () => {
-      const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-      const result = buildClaudeShellCommand(
-        '',
-        '',
-        "'/opt/bin/claude'",
-        { method: 'temp-file', tempFile: '/tmp/.token' }
-      );
-
-      // Platform-specific expectations
-      const clearCmd = process.platform === 'win32' ? 'cls' : 'clear';
-      const histPrefix = process.platform === 'win32' ? '' : 'HISTFILE= HISTCONTROL=ignorespace';
-      const tempCmd = process.platform === 'win32' ? 'call "/tmp/.token"' : "source '/tmp/.token'";
-
-      expect(result).toContain(`${clearCmd} && `);
-      if (process.platform !== 'win32') {
-        expect(result).toContain(histPrefix);
-      }
-      expect(result).not.toContain('cd ');
-      expect(result).toContain(tempCmd);
-    });
-
-    describe('Windows platform', () => {
-      const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
-
-      beforeAll(() => {
-        Object.defineProperty(process, 'platform', { value: 'win32' });
+    describe.each(['win32', 'darwin', 'linux'] as const)('on %s', (platform) => {
+      beforeEach(() => {
+        mockPlatform(platform);
       });
 
-      afterAll(() => {
-        if (originalPlatform) {
-          Object.defineProperty(process, 'platform', originalPlatform);
-        }
-      });
-
-      it('should build temp-file method command with Windows batch file syntax', async () => {
+      it('should build default command without cwd or PATH prefix', async () => {
         const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-        const result = buildClaudeShellCommand(
-          "cd 'C:\\Users\\test\\project' && ",
-          'set "PATH=C:\\Tools\\claude" && ',
-          "'C:\\Tools\\claude\\claude.cmd'",
-          { method: 'temp-file', tempFile: 'C:\\Users\\test\\AppData\\Local\\Temp\\token.bat' }
-        );
+        const result = buildClaudeShellCommand('', '', "'/opt/bin/claude'", { method: 'default' });
 
-        expect(result).toContain('cls && ');
-        expect(result).toContain("cd 'C:\\Users\\test\\project' && ");
-        expect(result).toContain('set "PATH=C:\\Tools\\claude" && ');
-        expect(result).toContain('call "C:\\Users\\test\\AppData\\Local\\Temp\\token.bat"');
-        expect(result).toContain("'C:\\Tools\\claude\\claude.cmd'");
-        expect(result).toContain('& del "C:\\Users\\test\\AppData\\Local\\Temp\\token.bat"');
-        expect(result).not.toContain('bash -c');
-        expect(result).not.toContain('source');
-        expect(result).not.toContain('clear');
+        expect(result).toBe("'/opt/bin/claude'\r");
       });
 
-      it('should build config-dir method command with Windows set syntax', async () => {
+      it('should build command with cwd', async () => {
         const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-        const result = buildClaudeShellCommand(
-          "cd 'C:\\Users\\test\\project' && ",
-          'set "PATH=C:\\Tools\\claude" && ',
-          "'C:\\Tools\\claude\\claude.cmd'",
-          { method: 'config-dir', configDir: 'C:\\Users\\test\\.claude-work' }
-        );
+        const result = buildClaudeShellCommand("cd '/tmp/project' && ", '', "'/opt/bin/claude'", { method: 'default' });
 
-        expect(result).toContain('cls && ');
-        expect(result).toContain("cd 'C:\\Users\\test\\project' && ");
-        expect(result).toContain('set "CLAUDE_CONFIG_DIR=C:\\Users\\test\\.claude-work"');
-        expect(result).toContain('set "PATH=C:\\Tools\\claude" && ');
-        expect(result).toContain("'C:\\Tools\\claude\\claude.cmd'");
-        expect(result).not.toContain('bash -c');
-        expect(result).not.toContain('clear');
-        expect(result).not.toContain('exec');
+        expect(result).toBe("cd '/tmp/project' && '/opt/bin/claude'\r");
       });
 
-      it('should build default command without bash on Windows', async () => {
+      it('should build command with PATH prefix', async () => {
         const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-        const result = buildClaudeShellCommand(
-          "cd 'C:\\Users\\test\\project' && ",
-          'set "PATH=C:\\Tools\\claude" && ',
-          "'C:\\Tools\\claude\\claude.cmd'",
-          { method: 'default' }
-        );
+        const result = buildClaudeShellCommand('', "PATH='/custom/path' ", "'/opt/bin/claude'", { method: 'default' });
 
-        expect(result).toBe("cd 'C:\\Users\\test\\project' && set \"PATH=C:\\Tools\\claude\" && 'C:\\Tools\\claude\\claude.cmd'\r");
-        expect(result).not.toContain('bash');
+        expect(result).toBe("PATH='/custom/path' '/opt/bin/claude'\r");
       });
 
-      it('should build temp-file method without cwd on Windows', async () => {
-        const { buildClaudeShellCommand } = await import('../claude-integration-handler');
-        const result = buildClaudeShellCommand(
-          '',
-          '',
-          "'C:\\Tools\\claude\\claude.cmd'",
-          { method: 'temp-file', tempFile: 'C:\\Users\\test\\AppData\\Local\\Temp\\token.bat' }
-        );
-
-        expect(result).toContain('cls && ');
-        expect(result).not.toContain('cd ');
-        expect(result).toContain('call "C:\\Users\\test\\AppData\\Local\\Temp\\token.bat"');
-        expect(result).toContain("'C:\\Tools\\claude\\claude.cmd'");
-        expect(result).toContain('& del "C:\\Users\\test\\AppData\\Local\\Temp\\token.bat"');
-      });
-    });
-
-    describe('Unix platform (non-Windows)', () => {
-      const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
-
-      beforeAll(() => {
-        Object.defineProperty(process, 'platform', { value: 'linux' });
-      });
-
-      afterAll(() => {
-        if (originalPlatform) {
-          Object.defineProperty(process, 'platform', originalPlatform);
-        }
-      });
-
-      it('should build temp-file method command with bash syntax on Unix', async () => {
+      it('should build temp-file method command with history-safe prefixes', async () => {
         const { buildClaudeShellCommand } = await import('../claude-integration-handler');
         const result = buildClaudeShellCommand(
           "cd '/tmp/project' && ",
@@ -748,16 +567,24 @@ describe('claude-integration-handler - Helper Functions', () => {
           { method: 'temp-file', tempFile: '/tmp/.token-123' }
         );
 
-        expect(result).toContain('clear && ');
-        expect(result).toContain('bash -c');
-        expect(result).toContain("source '/tmp/.token-123'");
-        expect(result).toContain("rm -f '/tmp/.token-123'");
-        expect(result).toContain("exec '/opt/bin/claude'");
-        expect(result).not.toContain('call');
-        expect(result).not.toContain('cls');
+        const clearCmd = getClearCommand(platform);
+        const histPrefix = getHistoryPrefix(platform);
+        const tempCmd = getTempFileInvocation(platform, '/tmp/.token-123');
+        const cleanupCmd = getTempFileCleanup(platform, '/tmp/.token-123');
+        const execCmd = getExecCommand(platform, "'/opt/bin/claude'");
+
+        expect(result).toContain(`${clearCmd} && `);
+        expect(result).toContain("cd '/tmp/project' && ");
+        if (platform !== 'win32') {
+          expect(result).toContain(histPrefix);
+        }
+        expect(result).toContain("PATH='/opt/bin' ");
+        expect(result).toContain(tempCmd);
+        expect(result).toContain(cleanupCmd);
+        expect(result).toContain(execCmd);
       });
 
-      it('should build config-dir method command with bash syntax on Unix', async () => {
+      it('should build config-dir method command with CLAUDE_CONFIG_DIR', async () => {
         const { buildClaudeShellCommand } = await import('../claude-integration-handler');
         const result = buildClaudeShellCommand(
           "cd '/tmp/project' && ",
@@ -766,12 +593,40 @@ describe('claude-integration-handler - Helper Functions', () => {
           { method: 'config-dir', configDir: '/home/user/.claude-work' }
         );
 
-        expect(result).toContain('clear && ');
-        expect(result).toContain('bash -c');
-        expect(result).toContain("CLAUDE_CONFIG_DIR='/home/user/.claude-work'");
-        expect(result).toContain("exec '/opt/bin/claude'");
-        expect(result).not.toContain('set');
-        expect(result).not.toContain('cls');
+        const clearCmd = getClearCommand(platform);
+        const histPrefix = getHistoryPrefix(platform);
+        const configDirVar = getConfigDirCommand(platform, '/home/user/.claude-work');
+        const execCmd = getExecCommand(platform, "'/opt/bin/claude'");
+
+        expect(result).toContain(`${clearCmd} && `);
+        expect(result).toContain("cd '/tmp/project' && ");
+        if (platform !== 'win32') {
+          expect(result).toContain(histPrefix);
+        }
+        expect(result).toContain(configDirVar);
+        expect(result).toContain("PATH='/opt/bin' ");
+        expect(result).toContain(execCmd);
+      });
+
+      it('should handle empty cwdCommand for temp-file method', async () => {
+        const { buildClaudeShellCommand } = await import('../claude-integration-handler');
+        const result = buildClaudeShellCommand(
+          '',
+          '',
+          "'/opt/bin/claude'",
+          { method: 'temp-file', tempFile: '/tmp/.token' }
+        );
+
+        const clearCmd = getClearCommand(platform);
+        const histPrefix = getHistoryPrefix(platform);
+        const tempCmd = getTempFileInvocation(platform, '/tmp/.token');
+
+        expect(result).toContain(`${clearCmd} && `);
+        if (platform !== 'win32') {
+          expect(result).toContain(histPrefix);
+        }
+        expect(result).not.toContain('cd ');
+        expect(result).toContain(tempCmd);
       });
     });
   });

@@ -15,6 +15,7 @@ import * as SessionHandler from './session-handler';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { escapeShellArg, escapeShellArgWindows, escapeForWindowsDoubleQuote, buildCdCommand } from '../../shared/utils/shell-escape';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
+import { isWindows } from './platform';
 import type {
   TerminalProcess,
   WindowGetter,
@@ -23,7 +24,7 @@ import type {
 } from './types';
 
 function normalizePathForBash(envPath: string): string {
-  return process.platform === 'win32' ? envPath.replace(/;/g, ':') : envPath;
+  return isWindows() ? envPath.replace(/;/g, ':') : envPath;
 }
 
 /**
@@ -36,7 +37,7 @@ function normalizePathForBash(envPath: string): string {
  * @returns Content string for the temp file
  */
 function generateTokenTempFileContent(token: string): string {
-  if (process.platform === 'win32') {
+  if (isWindows()) {
     // Windows: Use double-quote syntax for set command to handle special characters
     // Format: set "VARNAME=value" - quotes allow spaces and special chars in value
     // For values inside double quotes, use escapeForWindowsDoubleQuote() because
@@ -54,7 +55,7 @@ function generateTokenTempFileContent(token: string): string {
  * @returns File extension including the dot (e.g., '.bat' on Windows, '' on Unix)
  */
 function getTempFileExtension(): string {
-  return process.platform === 'win32' ? '.bat' : '';
+  return isWindows() ? '.bat' : '';
 }
 
 /**
@@ -71,7 +72,7 @@ function buildPathPrefix(pathEnv: string): string {
     return '';
   }
 
-  if (process.platform === 'win32') {
+  if (isWindows()) {
     // Windows: Use semicolon-separated PATH with double-quote escaping
     // Format: set "PATH=value" where value uses semicolons
     // For values inside double quotes, use escapeForWindowsDoubleQuote() because
@@ -98,7 +99,7 @@ function buildPathPrefix(pathEnv: string): string {
  * @returns The escaped command safe for use in shell commands
  */
 function escapeShellCommand(cmd: string): string {
-  if (process.platform === 'win32') {
+  if (isWindows()) {
     // Windows: Wrap in double quotes and escape only embedded double quotes
     // Inside double quotes, caret is literal, so use escapeForWindowsDoubleQuote()
     const escapedCmd = escapeForWindowsDoubleQuote(cmd);
@@ -171,11 +172,11 @@ export function buildClaudeShellCommand(
   extraFlags?: string
 ): string {
   const fullCmd = extraFlags ? `${escapedClaudeCmd}${extraFlags}` : escapedClaudeCmd;
-  const isWindows = process.platform === 'win32';
+  const isWin = isWindows();
 
   switch (config.method) {
     case 'temp-file':
-      if (isWindows) {
+      if (isWin) {
         // Windows: Use batch file approach with 'call' command
         // The temp file on Windows is a .bat file that sets CLAUDE_CODE_OAUTH_TOKEN
         // We use 'cls' instead of 'clear', and 'call' to execute the batch file
@@ -202,7 +203,7 @@ export function buildClaudeShellCommand(
       }
 
     case 'config-dir':
-      if (isWindows) {
+      if (isWin) {
         // Windows: Set environment variable using double-quote syntax
         // For values inside double quotes (set "VAR=value"), use
         // escapeForWindowsDoubleQuote() because caret is literal inside

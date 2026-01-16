@@ -51,6 +51,9 @@ export function buildCdCommand(path: string | undefined): string {
   }
 
   // Windows cmd.exe uses double quotes, Unix shells use single quotes
+  // Note: This function is used by both main process and tests, so we check
+  // process.platform directly here. The platform abstraction is used by
+  // terminal-specific code to enable test mocking.
   if (process.platform === 'win32') {
     // On Windows, escape cmd.exe metacharacters (& | < > ^) that could enable command injection,
     // then wrap in double quotes. Using escapeShellArgWindows for proper escaping.
