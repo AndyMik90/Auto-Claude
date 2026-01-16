@@ -11,6 +11,7 @@ Tests the recovery system functionality including:
 """
 
 import json
+import os
 import sys
 import tempfile
 import shutil
@@ -24,7 +25,13 @@ from recovery import RecoveryManager, FailureType, RecoveryAction
 
 
 def setup_test_environment():
-    """Create temporary directories for testing."""
+    """Create temporary directories for testing.
+
+    IMPORTANT: This function properly isolates git operations by clearing
+    git environment variables that may be set by pre-commit hooks. Without
+    this isolation, git operations could affect the parent repository when
+    tests run inside a git worktree (e.g., during pre-commit validation).
+    """
     temp_dir = Path(tempfile.mkdtemp())
     spec_dir = temp_dir / "spec"
     project_dir = temp_dir / "project"
@@ -32,8 +39,26 @@ def setup_test_environment():
     spec_dir.mkdir(parents=True)
     project_dir.mkdir(parents=True)
 
-    # Initialize git repo in project dir
+    # Clear git environment variables that may be set by pre-commit hooks
+    # to avoid git operations affecting the parent repository
     import subprocess
+    git_vars_to_clear = [
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    ]
+
+    saved_env = {}
+    for key in git_vars_to_clear:
+        saved_env[key] = os.environ.pop(key, None)
+
+    # Set GIT_CEILING_DIRECTORIES to prevent git from discovering parent .git
+    saved_env["GIT_CEILING_DIRECTORIES"] = os.environ.get("GIT_CEILING_DIRECTORIES")
+    os.environ["GIT_CEILING_DIRECTORIES"] = str(temp_dir)
+
+    # Initialize git repo in project dir
     subprocess.run(["git", "init"], cwd=project_dir, capture_output=True)
     subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=project_dir, capture_output=True)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=project_dir, capture_output=True)
@@ -43,6 +68,13 @@ def setup_test_environment():
     test_file.write_text("Initial content")
     subprocess.run(["git", "add", "."], cwd=project_dir, capture_output=True)
     subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_dir, capture_output=True)
+
+    # Restore environment (note: caller should call cleanup which handles this)
+    for key, value in saved_env.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
 
     return temp_dir, spec_dir, project_dir
 
