@@ -2890,7 +2890,7 @@ export function registerWorktreeHandlers(
 
           // Handle spawn errors
           let spawnFailed = false;
-          let spawnError: Error | null = null;
+          let spawnError: Error | undefined;
           proc.once('error', (err) => {
             spawnFailed = true;
             spawnError = err;
@@ -2902,7 +2902,7 @@ export function registerWorktreeHandlers(
           if (spawnFailed) {
             return {
               success: false,
-              error: `Failed to launch terminal: ${spawnError?.message || 'Unknown error'}`
+              error: `Failed to launch terminal: ${spawnError?.message ?? 'Unknown error'}`
             };
           }
 
@@ -2923,7 +2923,7 @@ export function registerWorktreeHandlers(
 
           // Handle spawn errors
           let spawnFailed = false;
-          let spawnError: Error | null = null;
+          let spawnError: Error | undefined;
           proc.once('error', (err) => {
             spawnFailed = true;
             spawnError = err;
@@ -2935,7 +2935,7 @@ export function registerWorktreeHandlers(
           if (spawnFailed) {
             return {
               success: false,
-              error: `Failed to launch terminal: ${spawnError?.message || 'Unknown error'}`
+              error: `Failed to launch terminal: ${spawnError?.message ?? 'Unknown error'}`
             };
           }
 
