@@ -711,7 +711,7 @@
     "largeFileWarning": "大文件 - 建议压缩",
     "dropImagesHere": "将图片拖放到此处或点击浏览",
     "maximumImagesReached": "已达到最大图片数量",
-    "allowedTypes": "{{types}} 每个，最大 {{maxSize}} ({{current}}/{{max}})",
+    "allowedTypes": "支持 {{types}} 格式，每个文件最大 {{maxSize}} ({{current}}/{{max}})",
     "imagesMaximum": "最多 {{max}} 张图片",
     "maximumImagesAllowed": "最多允许 {{max}} 张图片",
     "onlyMoreImagesCanAdd": "只能再添加 {{count}} 张图片。部分文件已被跳过。",
