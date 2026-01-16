@@ -3,6 +3,8 @@
  */
 
 import type { IPCResult } from './common';
+// Re-export IPCResult for convenience
+export type { IPCResult };
 import type { SupportedIDE, SupportedTerminal } from './settings';
 import type {
   Project,
@@ -163,6 +165,8 @@ export interface ElectronAPI {
   updateTaskStatus: (taskId: string, status: TaskStatus, options?: { forceCleanup?: boolean }) => Promise<IPCResult & { worktreeExists?: boolean; worktreePath?: string }>;
   recoverStuckTask: (taskId: string, options?: TaskRecoveryOptions) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
+  getTaskMetadata: (taskId: string) => Promise<IPCResult<TaskMetadata | null>>;
+  updateTaskMetadata: (taskId: string, metadata: Partial<TaskMetadata>) => Promise<IPCResult<void>>;
 
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
