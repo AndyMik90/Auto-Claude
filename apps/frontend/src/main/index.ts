@@ -279,7 +279,7 @@ app.whenReady().then(() => {
   // Set app name (in case pre-init failed on WSL2)
   try {
     app.setName('Auto Claude');
-    if (process.platform === 'darwin') {
+    if (isMacOS()) {
       app.name = 'Auto Claude';
     }
   } catch (e) {
