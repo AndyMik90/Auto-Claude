@@ -33,7 +33,7 @@ def validate_platform_dependencies() -> None:
         try:
             import secretstorage  # noqa: F401
         except ImportError:
-            _exit_with_secretstorage_warning()
+            _warn_missing_secretstorage()
 
 
 def _exit_with_pywin32_error() -> None:
@@ -87,8 +87,8 @@ def _exit_with_pywin32_error() -> None:
     )
 
 
-def _exit_with_secretstorage_warning() -> None:
-    """Exit with helpful warning message for missing secretstorage.
+def _warn_missing_secretstorage() -> None:
+    """Emit warning message for missing secretstorage.
 
     Note: This is a warning, not a hard error - the app will fall back to .env
     file storage for OAuth tokens. We warn users to ensure they understand the
@@ -119,4 +119,5 @@ def _exit_with_secretstorage_warning() -> None:
         "\n"
         f"Current Python: {sys.executable}\n"
     )
+    sys.stderr.flush()
     # Continue execution - this is a warning, not a blocking error

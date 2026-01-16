@@ -719,10 +719,11 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
         .concat(platformCriticalPackages[info.nodePlatform] || []);
       const missingPackages = criticalPackages.filter(pkg => {
         const pkgPath = path.join(sitePackagesDir, pkg);
+        const initPath = path.join(pkgPath, '__init__.py');
         // For single-file modules (like pywintypes.py), check for the file directly
         const moduleFile = path.join(sitePackagesDir, pkg + '.py');
         // Package is valid if directory+__init__.py exists OR single-file module exists
-        return !fs.existsSync(pkgPath) && !fs.existsSync(moduleFile);
+        return !(fs.existsSync(pkgPath) && fs.existsSync(initPath)) && !fs.existsSync(moduleFile);
       });
 
       if (missingPackages.length > 0) {
@@ -830,10 +831,11 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
         .concat(platformCriticalPackages[info.nodePlatform] || []);
       const postInstallMissing = criticalPackages.filter(pkg => {
         const pkgPath = path.join(sitePackagesDir, pkg);
+        const initPath = path.join(pkgPath, '__init__.py');
         // For single-file modules (like pywintypes.py), check for the file directly
         const moduleFile = path.join(sitePackagesDir, pkg + '.py');
         // Package is valid if directory+__init__.py exists OR single-file module exists
-        return !fs.existsSync(pkgPath) && !fs.existsSync(moduleFile);
+        return !(fs.existsSync(pkgPath) && fs.existsSync(initPath)) && !fs.existsSync(moduleFile);
       });
 
       if (postInstallMissing.length > 0) {

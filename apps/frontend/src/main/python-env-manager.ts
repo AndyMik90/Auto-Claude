@@ -4,7 +4,7 @@ import path from 'path';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
 import { findPythonCommand, getBundledPythonPath } from './python-detector';
-import { isWindows } from './platform';
+import { isLinux, isWindows } from './platform';
 
 export interface PythonEnvStatus {
   ready: boolean;
@@ -137,7 +137,8 @@ export class PythonEnvManager extends EventEmitter {
       'claude_agent_sdk',
       'dotenv',
       'pydantic_core',
-      ...(platformCriticalPackages[process.platform] || [])
+      ...(isWindows() ? platformCriticalPackages.win32 : []),
+      ...(isLinux() ? platformCriticalPackages.linux : [])
     ];
 
     // Check each package exists with valid structure (directory + __init__.py or single-file module)
@@ -147,7 +148,7 @@ export class PythonEnvManager extends EventEmitter {
       // For single-file modules (like pywintypes.py), check for the file directly
       const moduleFile = path.join(sitePackagesPath, `${pkg}.py`);
       // Package is valid if directory+__init__.py exists OR single-file module exists
-      return !existsSync(pkgPath) && !existsSync(moduleFile);
+      return !(existsSync(pkgPath) && existsSync(initPath)) && !existsSync(moduleFile);
     });
 
     // Log missing packages for debugging
