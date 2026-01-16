@@ -7,6 +7,12 @@ This script handles:
 3. Database cleanup and property optimization
 
 Uses direct Notion API calls since MCP server has limitations.
+
+Updated for Notion API version 2025-09-03 with multi-source database support.
+Key changes:
+- Database retrieval now returns data_sources array
+- Schema updates (properties) go to /v1/data_sources/:id endpoint
+- Database creation uses initial_data_source[properties] structure
 """
 
 import os
@@ -21,7 +27,7 @@ load_dotenv()
 
 # Configuration
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-NOTION_VERSION = "2022-06-28"
+NOTION_VERSION = "2025-09-03"  # Updated from 2022-06-28 for data source support
 
 # Database IDs from .env
 DATABASE_IDS = {
@@ -55,10 +61,18 @@ class PropertyDefinition:
 
 
 class NotionSchemaManager:
-    """Manager for Notion database schema operations"""
+    """Manager for Notion database schema operations.
+
+    Updated for Notion API 2025-09-03 with multi-source database support.
+    Key changes:
+    - get_database() now returns data_sources array
+    - update_data_source() updates properties via /v1/data_sources/:id
+    - create_database() uses initial_data_source[properties] structure
+    """
 
     def __init__(self):
         self.base_url = "https://api.notion.com/v1"
+        self._data_source_cache: Dict[str, str] = {}  # database_id -> data_source_id
 
     def _make_request(self, method: str, endpoint: str, data: Dict = None) -> Dict:
         """Make API request to Notion"""
@@ -82,31 +96,105 @@ class NotionSchemaManager:
                 print(f"Response: {e.response.text}")
             return None
 
+    # ============================================
+    # DATA SOURCE DISCOVERY (API 2025-09-03)
+    # ============================================
+
+    def get_data_source_id(self, database_id: str) -> Optional[str]:
+        """Get the primary data_source_id for a database.
+
+        In API 2025-09-03, databases can have multiple data sources.
+        Returns the first (primary) data source ID.
+        """
+        if database_id in self._data_source_cache:
+            return self._data_source_cache[database_id]
+
+        db = self.get_database(database_id)
+        if not db:
+            return None
+
+        data_sources = db.get('data_sources', [])
+        if not data_sources:
+            print(f"  [WARN] No data sources found for database {database_id}")
+            return None
+
+        data_source_id = data_sources[0]['id']
+        self._data_source_cache[database_id] = data_source_id
+        return data_source_id
+
+    def get_data_source(self, data_source_id: str) -> Dict:
+        """Get data source info including properties (schema).
+
+        In API 2025-09-03, use /v1/data_sources/:id to get schema details.
+        """
+        return self._make_request("GET", f"data_sources/{data_source_id}")
+
+    # ============================================
+    # DATABASE OPERATIONS
+    # ============================================
+
     def get_database(self, database_id: str) -> Dict:
-        """Get database schema"""
+        """Get database info including data_sources list.
+
+        In API 2025-09-03, this returns data_sources array but not properties.
+        Use get_data_source() to get the schema (properties).
+        """
         return self._make_request("GET", f"databases/{database_id}")
 
     def update_database(self, database_id: str, properties: Dict[str, Any]) -> Dict:
-        """Update database with new properties"""
+        """Update database schema (properties) via data source endpoint.
+
+        In API 2025-09-03, schema updates go to /v1/data_sources/:id
+        not /v1/databases/:id.
+
+        This is a convenience method that resolves the data_source_id
+        and calls update_data_source().
+        """
+        data_source_id = self.get_data_source_id(database_id)
+        if not data_source_id:
+            print(f"  [ERROR] Could not get data_source_id for database {database_id}")
+            return None
+
+        return self.update_data_source(data_source_id, properties)
+
+    def update_data_source(self, data_source_id: str, properties: Dict[str, Any]) -> Dict:
+        """Update data source properties (schema).
+
+        In API 2025-09-03, this is the endpoint for schema modifications.
+        """
         data = {"properties": properties}
-        return self._make_request("PATCH", f"databases/{database_id}", data)
+        return self._make_request("PATCH", f"data_sources/{data_source_id}", data)
 
     def create_database(self, parent_page_id: str, title: str, properties: Dict[str, Any], icon: str = None) -> Dict:
-        """Create a new database"""
+        """Create a new database with initial data source.
+
+        In API 2025-09-03, properties go under initial_data_source[properties]
+        instead of at the top level.
+        """
         data = {
             "parent": {"page_id": parent_page_id},
             "title": [{"type": "text", "text": {"content": title}}],
-            "properties": properties
+            "initial_data_source": {
+                "properties": properties
+            }
         }
         if icon:
             data["icon"] = {"type": "emoji", "emoji": icon}
         return self._make_request("POST", "databases", data)
 
     def get_existing_properties(self, database_id: str) -> List[str]:
-        """Get list of existing property names"""
-        db = self.get_database(database_id)
-        if db:
-            return list(db.get("properties", {}).keys())
+        """Get list of existing property names from the data source.
+
+        In API 2025-09-03, we need to get properties from the data source,
+        not from the database directly.
+        """
+        data_source_id = self.get_data_source_id(database_id)
+        if not data_source_id:
+            return []
+
+        ds = self.get_data_source(data_source_id)
+        if ds:
+            return list(ds.get("properties", {}).keys())
         return []
 
 
@@ -423,15 +511,24 @@ def get_pts_bench_schema() -> Dict[str, Any]:
 # =============================================================================
 
 def get_cleanup_recommendations(manager: NotionSchemaManager) -> Dict[str, List[str]]:
-    """Analyze databases and return cleanup recommendations"""
+    """Analyze databases and return cleanup recommendations.
+
+    Updated for API 2025-09-03: Gets properties from data source, not database.
+    """
     recommendations = {}
 
     for db_name, db_id in DATABASE_IDS.items():
-        db = manager.get_database(db_id)
-        if not db:
+        # Get data source ID first
+        data_source_id = manager.get_data_source_id(db_id)
+        if not data_source_id:
             continue
 
-        props = db.get("properties", {})
+        # Get properties from data source (API 2025-09-03)
+        ds = manager.get_data_source(data_source_id)
+        if not ds:
+            continue
+
+        props = ds.get("properties", {})
         issues = []
 
         # Check for duplicate/similar property names

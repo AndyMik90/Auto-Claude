@@ -119,18 +119,19 @@ export function Opportunities({ jobs, programs, contacts, summary, loading }: Op
 
     // 2. Programs with high contact count (connected programs)
     const connectedPrograms = programs
-      .filter((p) => p.contact_count > 10)
-      .sort((a, b) => b.contact_count - a.contact_count)
+      .filter((p) => (p.contact_count ?? 0) > 10)
+      .sort((a, b) => (b.contact_count ?? 0) - (a.contact_count ?? 0))
       .slice(0, 5);
 
     connectedPrograms.forEach((program) => {
+      const contactCount = program.contact_count ?? 0;
       opps.push({
         id: `program-${program.id}`,
         type: 'connected_program',
         title: `Well-Connected: ${program.name}`,
-        description: `Program with ${program.contact_count} known contacts. Strong network position for BD activities.`,
+        description: `Program with ${contactCount} known contacts. Strong network position for BD activities.`,
         priority: 'high',
-        score: Math.min(100, Math.round(50 + program.contact_count * 2)),
+        score: Math.min(100, Math.round(50 + contactCount * 2)),
         actions: [
           'Map key stakeholders and decision makers',
           'Schedule informational meetings',
@@ -263,7 +264,7 @@ export function Opportunities({ jobs, programs, contacts, summary, loading }: Op
               <Briefcase className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{programs.filter((p) => p.contact_count > 10).length}</p>
+              <p className="text-2xl font-bold text-slate-900">{programs.filter((p) => (p.contact_count ?? 0) > 10).length}</p>
               <p className="text-xs text-slate-500">Connected Programs</p>
             </div>
           </div>

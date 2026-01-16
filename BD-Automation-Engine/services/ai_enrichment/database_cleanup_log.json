@@ -1,0 +1,151 @@
+{
+  "cleanup_date": "2026-01-14",
+  "summary": "Removed empty/duplicate properties from all Notion databases",
+
+  "databases_cleaned": [
+    {
+      "name": "Federal Programs",
+      "id": "9db40fce-0781-42b9-902c-d4b0263b1e23",
+      "before": 41,
+      "after": 19,
+      "removed": 22
+    },
+    {
+      "name": "DCGS Contacts Full",
+      "id": "2ccdef65-baa5-80d0-9b66-c67d66e7a54d",
+      "before": 24,
+      "after": 14,
+      "removed": 10
+    },
+    {
+      "name": "GDIT PTS Contacts",
+      "id": "ff111f82-fdbd-4353-ad59-ea4de70a058b",
+      "before": 16,
+      "after": 15,
+      "removed": 1
+    },
+    {
+      "name": "GDIT Other Contacts",
+      "id": "c1b1d358-9d82-4f03-b77c-db43d9795c6f",
+      "before": 20,
+      "after": 14,
+      "removed": 6
+    },
+    {
+      "name": "Program Mapping Intelligence Hub",
+      "id": "0a0d7e46-3d88-40b6-853a-3c9680347644",
+      "before": 74,
+      "after": 22,
+      "removed": 52
+    },
+    {
+      "name": "Contractors Database",
+      "id": "ca67175b-df3d-442d-a2e7-cc24e9a1bf78",
+      "before": 21,
+      "after": 6,
+      "removed": 15
+    },
+    {
+      "name": "Contract Vehicles Master",
+      "id": "e1166305-1b1f-4812-b665-bcfa6a87a2ab",
+      "before": 11,
+      "after": 4,
+      "removed": 7
+    },
+    {
+      "name": "BD Events",
+      "id": "782080b1-d182-4410-bef5-8a952dc8ca85",
+      "before": 14,
+      "after": 10,
+      "removed": 4
+    },
+    {
+      "name": "BD Opportunities",
+      "id": "2bcdef65-baa5-8015-bf09-c01813f24b0a",
+      "before": 17,
+      "after": 14,
+      "removed": 3
+    },
+    {
+      "name": "BD IntelliRepo File Management",
+      "id": "ae926965-ca42-4c64-a2f9-f3236ae94a99",
+      "before": 8,
+      "after": 7,
+      "removed": 1
+    }
+  ],
+
+  "databases_no_cleanup_needed": [
+    {
+      "name": "GBSD Contact Chart",
+      "id": "264def65-baa5-8025-8ac9-dab7ba5fa747",
+      "records": 72,
+      "properties": 11,
+      "empty_properties": 0
+    },
+    {
+      "name": "Lockheed Contact CSV",
+      "id": "294def65-baa5-80c3-b774-c0ad8dec5962",
+      "records": 100,
+      "properties": 11,
+      "empty_properties": 0
+    },
+    {
+      "name": "GDIT Jobs",
+      "id": "2ccdef65-baa5-8066-9cb6-ee688ede23f4",
+      "records": 100,
+      "properties": 15,
+      "empty_properties": 0
+    },
+    {
+      "name": "DCGS Contact Sorted",
+      "id": "2ccdef65-baa5-80e4-aa41-ea3ba9948049",
+      "records": 100,
+      "properties": 10,
+      "empty_properties": 0
+    },
+    {
+      "name": "Insight Global Jobs - Program Mapped",
+      "id": "1ccb65ff-7d9f-4358-9d02-407cb32121ac",
+      "records": 20,
+      "properties": 14,
+      "empty_properties": 0
+    },
+    {
+      "name": "Insight Global Jobs (Dec 2025)",
+      "id": "2563119e-7914-442c-be0f-b86904a957a1",
+      "records": 100,
+      "properties": 13,
+      "empty_properties": 0
+    }
+  ],
+
+  "databases_kept_for_future": [
+    {
+      "name": "PTS Past Performance",
+      "reason": "0 records, keeping structure"
+    },
+    {
+      "name": "Enrichment Runs Log",
+      "id": "9b9328d2-f969-40e3-9d33-a4168620fb1b",
+      "reason": "0 records, keeping structure for logging"
+    },
+    {
+      "name": "Knowledge Base & Playbooks",
+      "id": "bbb74f1e-410c-4032-846d-49b55662746b",
+      "reason": "0 records, keeping structure"
+    },
+    {
+      "name": "Job Database",
+      "id": "158df828-5be2-46bc-81e2-9bd6be860d31",
+      "reason": "0 records, keeping structure"
+    },
+    {
+      "name": "Monitoring Dashboard",
+      "id": "633a8d59-9a0d-40cd-b8da-675380f592ec",
+      "reason": "0 records, keeping structure"
+    }
+  ],
+
+  "total_properties_removed": 121
+}

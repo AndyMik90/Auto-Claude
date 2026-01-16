@@ -15,15 +15,22 @@
       "args": ["-y", "@notionhq/notion-mcp-server"],
       "timeout": 300000,
       "env": {
-        "OPENAPI_MCP_HEADERS": "${OPENAPI_MCP_HEADERS}"
+        "OPENAPI_MCP_HEADERS": "${OPENAPI_MCP_HEADERS}",
+        "NOTION_TOKEN": "${NOTION_TOKEN}"
       }
+    },
+    "notion-remote": {
+      "url": "https://mcp.notion.com/mcp",
+      "type": "remote",
+      "timeout": 300000,
+      "description": "Hosted Notion MCP - OAuth-based, no API key needed"
     },
     "apify": {
       "command": "npx",
       "args": ["-y", "@apify/actors-mcp-server"],
       "timeout": 300000,
       "env": {
-        "APIFY_TOKEN": "${APIFY_TOKEN}"
+        "APIFY_TOKEN": "${APIFY_API_TOKEN}"
       }
     },
     "mapify": {

@@ -178,7 +178,7 @@ export function MindMap({
         ) : (
           <EntityPicker
             entityType={nativeNodeType}
-            onSelect={(id, label) => setNativeNode(nativeNodeType, id)}
+            onSelect={(id, _label) => setNativeNode(nativeNodeType, id)}
           />
         )}
       </div>

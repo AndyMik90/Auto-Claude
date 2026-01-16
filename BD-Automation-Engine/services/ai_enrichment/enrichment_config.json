@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-14T17:10:00Z",
+  "status": "ready",
+
+  "databases": {
+    "program_mapping_hub": {
+      "id": "0a0d7e46-3d88-40b6-853a-3c9680347644",
+      "name": "Program Mapping Intelligence Hub",
+      "enrichment_type": "job",
+      "properties_added": ["Mapped Programs", "BD Score", "BD Priority"],
+      "status_property": "Status",
+      "pending_status": "pending_enrichment",
+      "enriched_status": "enriched",
+      "records_enriched": 2
+    },
+    "dcgs_contacts": {
+      "id": "2ccdef65-baa5-80d0-9b66-c67d66e7a54d",
+      "name": "DCGS Contacts Full",
+      "enrichment_type": "contact",
+      "properties_added": ["Tier", "Contact Value"],
+      "estimated_records": 6287,
+      "records_enriched": 0
+    },
+    "gdit_other_contacts": {
+      "id": "c1b1d358-9d82-4f03-b77c-db43d9795c6f",
+      "name": "GDIT Other Contacts",
+      "enrichment_type": "contact",
+      "properties_added": ["Tier", "Contact Value"],
+      "records_enriched": 0
+    },
+    "gdit_pts_contacts": {
+      "id": "ff111f82-fdbd-4353-ad59-ea4de70a058b",
+      "name": "GDIT PTS Contacts",
+      "enrichment_type": "contact",
+      "properties_added": ["Tier", "Contact Value"],
+      "records_enriched": 0
+    },
+    "bd_opportunities": {
+      "id": "2bcdef65-baa5-8015-bf09-c01813f24b0a",
+      "name": "BD Opportunities",
+      "enrichment_type": "opportunity",
+      "properties_to_add": ["Win Probability", "Revenue Potential"],
+      "records_enriched": 0
+    },
+    "enrichment_log": {
+      "id": "9b9328d2-f969-40e3-9d33-a4168620fb1b",
+      "name": "Enrichment Runs Log",
+      "purpose": "logging"
+    }
+  },
+
+  "enrichment_rules": {
+    "bd_score": {
+      "max_score": 100,
+      "components": {
+        "location": {"max": 40, "description": "DCGS-aligned locations"},
+        "clearance": {"max": 25, "description": "TS/SCI highest"},
+        "keywords": {"max": 20, "description": "DCGS/ISR keywords"},
+        "prime_contractor": {"max": 15, "description": "Known prime contractors"}
+      }
+    },
+    "bd_priority": {
+      "critical": {"min_score": 80},
+      "high": {"min_score": 60},
+      "medium": {"min_score": 40},
+      "standard": {"min_score": 0}
+    },
+    "contact_tiers": {
+      "tier_1": "C-Suite, Flag Officers",
+      "tier_2": "Directors, Senior Leaders",
+      "tier_3": "Managers, Mid-Level",
+      "tier_4": "Senior Individual Contributors",
+      "tier_5": "Individual Contributors",
+      "tier_6": "Support, Entry Level"
+    }
+  },
+
+  "run_history": [
+    {
+      "run_id": "20260114_165559",
+      "timestamp": "2026-01-14T16:55:59Z",
+      "jobs_processed": 2,
+      "successful": 1,
+      "failed": 1,
+      "duration_minutes": 1.16
+    }
+  ],
+
+  "api_status": {
+    "notion": {
+      "status": "degraded",
+      "issue": "504 Gateway Timeout on page updates",
+      "last_check": "2026-01-14T17:05:00Z"
+    },
+    "anthropic": {
+      "status": "not_configured",
+      "issue": "Placeholder API key in .env"
+    }
+  }
+}

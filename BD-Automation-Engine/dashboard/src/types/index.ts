@@ -1,37 +1,59 @@
 // BD Dashboard Type Definitions
+// Aligned with Notion database schemas
 
+// Job interface aligned with Insight Global Jobs database
 export interface Job {
   id: string;
   title: string;
-  company: string;
-  location: string;
+  program: string;
+  agency: string;
+  bd_priority: number | null;
   clearance: string;
+  functional_area: string;
   status: string;
-  source: string;
+  location: string;
+  city: string;
+  company: string;
+  task_order: string;
   source_url: string;
-  program_name: string;
-  contract_naics: string;
-  bd_priority: number | string;
-  bd_score: number;
-  matched_programs: string[];
-  matched_contacts: string[];
+  scraped_at: string;
+  dcgs_relevance: boolean;
+  // Legacy fields for backward compatibility
+  source?: string;
+  program_name?: string;
+  contract_naics?: string;
+  bd_score?: number;
+  matched_programs?: string[];
+  matched_contacts?: string[];
   created_at?: string;
 }
 
+// Program interface aligned with Federal Programs database
 export interface Program {
   id: string;
   name: string;
-  description: string;
+  acronym: string;
   agency: string;
   prime_contractor: string;
+  prime_contractor_ids: string[];
+  bd_priority: string;
+  program_type: string;
   contract_vehicle: string;
-  contract_value: number;
+  contract_value: string;
   location: string;
-  status: string;
-  priority: string;
-  naics_code: string;
-  job_count: number;
-  contact_count: number;
+  clearance_requirements: string[];
+  period_of_performance: string;
+  recompete_date: string;
+  hiring_velocity: string;
+  pts_involvement: string;
+  notes: string;
+  // Legacy/computed fields
+  description?: string;
+  status?: string;
+  priority?: string;
+  naics_code?: string;
+  job_count?: number;
+  contact_count?: number;
 }
 
 export interface Contact {
@@ -108,6 +130,7 @@ export type TabId =
   | 'locations'
   | 'events'
   | 'opportunities'
+  | 'enrichment'
   | 'playbook'
   | 'mindmap'
   | 'settings';

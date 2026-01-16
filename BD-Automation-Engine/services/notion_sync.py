@@ -1,19 +1,25 @@
 """
 Notion Sync Service - Synchronize BD automation data with Notion databases.
 Manages job postings, review queues, and dashboard updates.
+
+Updated for Notion API version 2025-09-03 with multi-source database support.
 """
 
 import os
 import json
 import logging
+import requests
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
 load_dotenv()
 
 logger = logging.getLogger('BD-NotionSync')
+
+# API Version - Updated from 2022-06-28 to 2025-09-03 for data source support
+NOTION_API_VERSION = '2025-09-03'
 
 # Try to import Notion client
 try:
@@ -40,11 +46,19 @@ class NotionConfig:
 
 
 class NotionSyncService:
-    """Manages synchronization between BD Automation and Notion."""
+    """Manages synchronization between BD Automation and Notion.
+
+    Updated for Notion API 2025-09-03 with multi-source database support.
+    Key changes:
+    - Page creation uses data_source_id parent instead of database_id
+    - Database queries route through data_sources endpoint
+    - Data source IDs are cached to minimize API calls
+    """
 
     def __init__(self, config: NotionConfig = None):
         self.config = config or NotionConfig()
         self._client = None
+        self._data_source_cache: Dict[str, str] = {}  # database_id -> data_source_id
 
     @property
     def client(self):
@@ -58,6 +72,95 @@ class NotionSyncService:
             self._client = Client(auth=self.config.token)
 
         return self._client
+
+    # ============================================
+    # DATA SOURCE DISCOVERY (API 2025-09-03)
+    # ============================================
+
+    def _get_headers(self) -> Dict[str, str]:
+        """Get headers for direct API calls."""
+        return {
+            "Authorization": f"Bearer {self.config.token}",
+            "Notion-Version": NOTION_API_VERSION,
+            "Content-Type": "application/json"
+        }
+
+    def get_data_source_id(self, database_id: str) -> str:
+        """Get the primary data_source_id for a database.
+
+        In API 2025-09-03, databases can have multiple data sources.
+        We fetch the database info and return the first data source ID.
+        Results are cached to avoid repeated API calls.
+        """
+        # Check cache first
+        if database_id in self._data_source_cache:
+            return self._data_source_cache[database_id]
+
+        # Fetch database info to get data sources
+        url = f"https://api.notion.com/v1/databases/{database_id}"
+        response = requests.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        db_info = response.json()
+
+        data_sources = db_info.get('data_sources', [])
+        if not data_sources:
+            raise ValueError(f"No data sources found for database {database_id}")
+
+        # Use the first (primary) data source
+        data_source_id = data_sources[0]['id']
+
+        # Cache it
+        self._data_source_cache[database_id] = data_source_id
+        logger.debug(f"Cached data_source_id {data_source_id} for database {database_id}")
+
+        return data_source_id
+
+    def clear_data_source_cache(self):
+        """Clear the data source cache."""
+        self._data_source_cache.clear()
+
+    def get_all_data_sources(self, database_id: str) -> List[Dict]:
+        """Get all data sources for a database."""
+        url = f"https://api.notion.com/v1/databases/{database_id}"
+        response = requests.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        db_info = response.json()
+        return db_info.get('data_sources', [])
+
+    # ============================================
+    # QUERY OPERATIONS (Updated for 2025-09-03)
+    # ============================================
+
+    def query_data_source(self, data_source_id: str, filter_obj: Dict = None,
+                          sorts: List[Dict] = None, page_size: int = 100,
+                          start_cursor: str = None) -> Dict:
+        """Query a data source directly.
+
+        In API 2025-09-03, queries go to /v1/data_sources/:id/query
+        instead of /v1/databases/:id/query.
+        """
+        url = f"https://api.notion.com/v1/data_sources/{data_source_id}/query"
+        body = {"page_size": page_size}
+
+        if filter_obj:
+            body["filter"] = filter_obj
+        if sorts:
+            body["sorts"] = sorts
+        if start_cursor:
+            body["start_cursor"] = start_cursor
+
+        response = requests.post(url, headers=self._get_headers(), json=body)
+        response.raise_for_status()
+        return response.json()
+
+    def query_database(self, database_id: str, filter_obj: Dict = None,
+                       sorts: List[Dict] = None, page_size: int = 100) -> Dict:
+        """Query a database by its database ID (convenience wrapper).
+
+        Automatically resolves the data_source_id and queries it.
+        """
+        data_source_id = self.get_data_source_id(database_id)
+        return self.query_data_source(data_source_id, filter_obj, sorts, page_size)
 
     def _format_rich_text(self, text: str) -> List[Dict]:
         """Format text as Notion rich text."""
@@ -99,8 +202,36 @@ class NotionSyncService:
     # JOB OPERATIONS
     # ============================================
 
+    def _create_page_with_data_source(self, database_id: str, properties: Dict) -> Optional[str]:
+        """Create a page using data_source_id parent (API 2025-09-03).
+
+        In the new API, pages are created with data_source_id parent instead of database_id.
+        """
+        try:
+            data_source_id = self.get_data_source_id(database_id)
+
+            url = "https://api.notion.com/v1/pages"
+            body = {
+                "parent": {"data_source_id": data_source_id},
+                "properties": properties
+            }
+
+            response = requests.post(url, headers=self._get_headers(), json=body)
+            response.raise_for_status()
+            result = response.json()
+
+            page_id = result.get('id')
+            logger.info(f"Created Notion page: {page_id}")
+            return page_id
+        except Exception as e:
+            logger.error(f"Failed to create Notion page: {e}")
+            return None
+
     def create_job_page(self, job: Dict) -> Optional[str]:
-        """Create a new job page in Notion."""
+        """Create a new job page in Notion.
+
+        Updated for API 2025-09-03: Uses data_source_id parent instead of database_id.
+        """
         if not self.config.db_jobs:
             logger.warning("Jobs database ID not configured")
             return None
@@ -150,17 +281,8 @@ class NotionSyncService:
             status = "Raw Import"
         properties["Status"] = {"select": self._format_select(status)}
 
-        try:
-            response = self.client.pages.create(
-                parent={"database_id": self.config.db_jobs},
-                properties=properties
-            )
-            page_id = response.get('id')
-            logger.info(f"Created Notion page: {page_id}")
-            return page_id
-        except Exception as e:
-            logger.error(f"Failed to create Notion page: {e}")
-            return None
+        # Use data_source_id parent (API 2025-09-03)
+        return self._create_page_with_data_source(self.config.db_jobs, properties)
 
     def update_job_page(self, page_id: str, updates: Dict) -> bool:
         """Update an existing job page in Notion."""
@@ -213,14 +335,18 @@ class NotionSyncService:
     # ============================================
 
     def get_jobs_needing_review(self, limit: int = 50) -> List[Dict]:
-        """Get jobs that need human review from Notion."""
+        """Get jobs that need human review from Notion.
+
+        Updated for API 2025-09-03: Uses data source query endpoint.
+        """
         if not self.config.db_jobs:
             return []
 
         try:
-            response = self.client.databases.query(
+            # Use the new query_database method which routes through data_sources
+            response = self.query_database(
                 database_id=self.config.db_jobs,
-                filter={
+                filter_obj={
                     "property": "Status",
                     "select": {"equals": "Needs Review"}
                 },
@@ -266,7 +392,10 @@ class NotionSyncService:
     # ============================================
 
     def get_dashboard_stats(self) -> Dict:
-        """Get statistics for BD dashboard."""
+        """Get statistics for BD dashboard.
+
+        Updated for API 2025-09-03: Uses data source query endpoint.
+        """
         if not self.config.db_jobs:
             return {}
 
@@ -279,11 +408,11 @@ class NotionSyncService:
         }
 
         try:
-            # Get total count by status
+            # Get total count by status using new query method
             for status in ['Raw Import', 'Enriched', 'Needs Review', 'Approved', 'Rejected']:
-                response = self.client.databases.query(
+                response = self.query_database(
                     database_id=self.config.db_jobs,
-                    filter={
+                    filter_obj={
                         "property": "Status",
                         "select": {"equals": status}
                     },
@@ -292,9 +421,9 @@ class NotionSyncService:
                 # Note: Notion API doesn't return total count, need to paginate for accurate count
 
             # Get hot leads (BD Score >= 80)
-            response = self.client.databases.query(
+            response = self.query_database(
                 database_id=self.config.db_jobs,
-                filter={
+                filter_obj={
                     "property": "BD Score",
                     "number": {"greater_than_or_equal_to": 80}
                 },
@@ -346,7 +475,10 @@ class NotionSyncService:
     # ============================================
 
     def create_opportunity(self, job: Dict) -> Optional[str]:
-        """Create a BD opportunity from a hot lead."""
+        """Create a BD opportunity from a hot lead.
+
+        Updated for API 2025-09-03: Uses data_source_id parent instead of database_id.
+        """
         if not self.config.db_opportunities:
             logger.warning("Opportunities database ID not configured")
             return None
@@ -371,17 +503,8 @@ class NotionSyncService:
             "Created Date": {"date": {"start": datetime.now().isoformat()}},
         }
 
-        try:
-            response = self.client.pages.create(
-                parent={"database_id": self.config.db_opportunities},
-                properties=properties
-            )
-            page_id = response.get('id')
-            logger.info(f"Created opportunity: {page_id}")
-            return page_id
-        except Exception as e:
-            logger.error(f"Failed to create opportunity: {e}")
-            return None
+        # Use data_source_id parent (API 2025-09-03)
+        return self._create_page_with_data_source(self.config.db_opportunities, properties)
 
     def promote_hot_leads_to_opportunities(self, jobs: List[Dict]) -> Dict:
         """Promote hot leads to BD opportunities."""

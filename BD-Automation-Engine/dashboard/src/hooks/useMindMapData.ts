@@ -49,7 +49,7 @@ function jobToNode(
     type: 'JOB' as NodeType,
     label: job.title,
     subtitle: job.company,
-    priority: normalizePriority(job.bd_priority),
+    priority: normalizePriority(job.bd_priority ?? undefined),
     bdScore: job.bd_score,
     tier,
     clearance: job.clearance,
@@ -85,7 +85,7 @@ function programToNode(
     isNative,
     isExpanded: isNative,
     isLoading: false,
-    childCount: program.job_count + program.contact_count,
+    childCount: (program.job_count ?? 0) + (program.contact_count ?? 0),
     loadedChildCount: 0,
   };
 }

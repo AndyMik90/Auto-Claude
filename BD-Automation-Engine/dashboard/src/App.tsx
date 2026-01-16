@@ -8,10 +8,11 @@ import { Contractors } from './pages/Contractors';
 import { Locations } from './pages/Locations';
 import { BDEvents } from './pages/BDEvents';
 import { Opportunities } from './pages/Opportunities';
+import { EnrichmentDashboard } from './pages/EnrichmentDashboard';
 import { DailyPlaybook } from './pages/DailyPlaybook';
 import { MindMap } from './pages/MindMap';
 import { Settings } from './pages/Settings';
-import { useData } from './hooks/useData';
+import { useNotionDashboard } from './hooks/useNotionData';
 import type { TabId } from './types';
 import type { NativeNodeType } from './configs/nativeNodeConfigs';
 import './index.css';
@@ -32,7 +33,7 @@ interface MindMapNav {
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('executive');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { data, loading, error, refresh, lastUpdated } = useData();
+  const { data, loading, error, refresh, lastUpdated, isConfigured } = useNotionDashboard();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [crossNavFilter, setCrossNavFilter] = useState<CrossNavFilter | null>(null);
   const [mindMapNav, setMindMapNav] = useState<MindMapNav | null>(null);
@@ -77,19 +78,34 @@ function App() {
 
   const renderContent = () => {
     if (error) {
+      const isNotConfiguredError = !isConfigured;
       return (
         <div className="flex flex-col items-center justify-center h-full text-slate-500">
-          <p className="text-xl font-semibold text-red-600 mb-2">Error Loading Data</p>
-          <p className="mb-4">{error}</p>
-          <p className="text-sm mb-4">
-            Make sure the correlation engine has been run and data files exist in the public/data folder.
+          <p className="text-xl font-semibold text-red-600 mb-2">
+            {isNotConfiguredError ? 'Notion Not Configured' : 'Error Loading Data'}
           </p>
-          <button
-            onClick={handleRefresh}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Retry
-          </button>
+          <p className="mb-4">{error}</p>
+          {isNotConfiguredError ? (
+            <>
+              <p className="text-sm mb-4 text-center max-w-md">
+                To use the dashboard, you need to configure your Notion API token in Settings.
+                This allows the dashboard to fetch live data from your Notion databases.
+              </p>
+              <button
+                onClick={() => handleTabChange('settings')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Go to Settings
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+          )}
         </div>
       );
     }
@@ -165,6 +181,8 @@ function App() {
             loading={loading}
           />
         );
+      case 'enrichment':
+        return <EnrichmentDashboard loading={loading} />;
       case 'playbook':
         return <DailyPlaybook loading={loading} />;
       case 'mindmap':

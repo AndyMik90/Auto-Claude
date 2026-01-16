@@ -39,7 +39,10 @@ logger = logging.getLogger('BD-CorrelationEngine')
 
 @dataclass
 class NotionConfig:
-    """Configuration for Notion API access."""
+    """Configuration for Notion API access.
+
+    Updated for Notion API 2025-09-03 with multi-source database support.
+    """
     token: str = field(default_factory=lambda: os.getenv('NOTION_TOKEN', ''))
 
     # Database IDs (discovered from schema analysis)
@@ -51,7 +54,7 @@ class NotionConfig:
     db_gdit_contacts: str = "c1b1d358-9d82-4f03-b77c-db43d9795c6f"  # GDIT Other Contacts
 
     api_base: str = "https://api.notion.com/v1"
-    api_version: str = "2022-06-28"
+    api_version: str = "2025-09-03"  # Updated for data source support
 
 
 @dataclass
@@ -246,10 +249,17 @@ class Customer:
 # =============================================================================
 
 class NotionDataLoader:
-    """Loads data from all BD-related Notion databases."""
+    """Loads data from all BD-related Notion databases.
+
+    Updated for Notion API 2025-09-03 with multi-source database support.
+    Key changes:
+    - Queries now go through /v1/data_sources/:id/query endpoint
+    - Data source IDs are discovered and cached from database info
+    """
 
     def __init__(self, config: NotionConfig = None):
         self.config = config or NotionConfig()
+        self._data_source_cache: Dict[str, str] = {}  # database_id -> data_source_id
         self._validate_config()
 
     def _validate_config(self):
@@ -271,8 +281,49 @@ class NotionDataLoader:
             "Content-Type": "application/json"
         }
 
-    def _query_database(self, database_id: str, page_size: int = 100) -> List[Dict]:
-        """Query a Notion database with pagination."""
+    # ============================================
+    # DATA SOURCE DISCOVERY (API 2025-09-03)
+    # ============================================
+
+    def _get_data_source_id(self, database_id: str) -> Optional[str]:
+        """Get the primary data_source_id for a database.
+
+        In API 2025-09-03, databases can have multiple data sources.
+        Returns the first (primary) data source ID.
+        """
+        if database_id in self._data_source_cache:
+            return self._data_source_cache[database_id]
+
+        try:
+            response = requests.get(
+                f"{self.config.api_base}/databases/{database_id}",
+                headers=self._get_headers(),
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Failed to get database info: {response.status_code}")
+                return None
+
+            db_info = response.json()
+            data_sources = db_info.get('data_sources', [])
+
+            if not data_sources:
+                logger.warning(f"No data sources found for database {database_id}")
+                return None
+
+            data_source_id = data_sources[0]['id']
+            self._data_source_cache[database_id] = data_source_id
+            logger.debug(f"Cached data_source_id {data_source_id} for database {database_id}")
+
+            return data_source_id
+
+        except Exception as e:
+            logger.error(f"Error getting data source ID: {e}")
+            return None
+
+    def _query_data_source(self, data_source_id: str, page_size: int = 100) -> List[Dict]:
+        """Query a data source directly (API 2025-09-03)."""
         all_results = []
         has_more = True
         start_cursor = None
@@ -283,7 +334,7 @@ class NotionDataLoader:
                 payload["start_cursor"] = start_cursor
 
             response = requests.post(
-                f"{self.config.api_base}/databases/{database_id}/query",
+                f"{self.config.api_base}/data_sources/{data_source_id}/query",
                 headers=self._get_headers(),
                 json=payload,
                 timeout=30
@@ -300,6 +351,20 @@ class NotionDataLoader:
             start_cursor = data.get('next_cursor')
 
         return all_results
+
+    def _query_database(self, database_id: str, page_size: int = 100) -> List[Dict]:
+        """Query a Notion database via its data source (API 2025-09-03).
+
+        This is a convenience method that:
+        1. Gets the data_source_id for the database
+        2. Queries the data source endpoint
+        """
+        data_source_id = self._get_data_source_id(database_id)
+        if not data_source_id:
+            logger.error(f"Could not get data source ID for database {database_id}")
+            return []
+
+        return self._query_data_source(data_source_id, page_size)
 
     def _extract_property(self, props: Dict, key: str, prop_type: str = 'text') -> Any:
         """Extract a property value from Notion page properties."""
