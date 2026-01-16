@@ -382,6 +382,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     })
   );
 
+  // Get task order from store for custom ordering
+  const taskOrder = useTaskStore((state) => state.taskOrder);
+
   const tasksByStatus = useMemo(() => {
     // Note: pr_created tasks are shown in the 'done' column since they're essentially complete
     const grouped: Record<typeof TASK_STATUS_COLUMNS[number], Task[]> = {
@@ -400,17 +403,53 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       }
     });
 
-    // Sort tasks within each column by createdAt (newest first)
+    // Sort tasks within each column
     Object.keys(grouped).forEach((status) => {
-      grouped[status as typeof TASK_STATUS_COLUMNS[number]].sort((a, b) => {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
-        return dateB - dateA; // Descending order (newest first)
-      });
+      const statusKey = status as typeof TASK_STATUS_COLUMNS[number];
+      const columnTasks = grouped[statusKey];
+      const columnOrder = taskOrder?.[statusKey];
+
+      if (columnOrder && columnOrder.length > 0) {
+        // Custom order exists: sort by order index
+        // 1. Create a set of current task IDs for fast lookup (filters stale IDs)
+        const currentTaskIds = new Set(columnTasks.map(t => t.id));
+
+        // 2. Create valid order by filtering out stale IDs
+        const validOrder = columnOrder.filter(id => currentTaskIds.has(id));
+        const validOrderSet = new Set(validOrder);
+
+        // 3. Find new tasks not in order (prepend at top)
+        const newTasks = columnTasks.filter(t => !validOrderSet.has(t.id));
+        // Sort new tasks by createdAt (newest first)
+        newTasks.sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA;
+        });
+
+        // 4. Sort ordered tasks by their index in validOrder
+        const orderedTasks = columnTasks
+          .filter(t => validOrderSet.has(t.id))
+          .sort((a, b) => {
+            const indexA = validOrder.indexOf(a.id);
+            const indexB = validOrder.indexOf(b.id);
+            return indexA - indexB;
+          });
+
+        // 5. Prepend new tasks at top, then ordered tasks
+        grouped[statusKey] = [...newTasks, ...orderedTasks];
+      } else {
+        // No custom order: fallback to createdAt sort (newest first)
+        grouped[statusKey].sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA;
+        });
+      }
     });
 
     return grouped;
-  }, [filteredTasks]);
+  }, [filteredTasks, taskOrder]);
 
   const handleArchiveAll = async () => {
     // Get projectId from the first task (all tasks should have the same projectId)
