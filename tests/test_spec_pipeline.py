@@ -749,6 +749,7 @@ class TestCleanupIncompletePendingFolders:
         cleaned = cleanup_incomplete_pending_folders(specs_dir, force=True)
 
         assert pending_with_req.exists()
+        assert cleaned == 0  # Should not clean up folders with requirements.json
 
     def test_keeps_pending_with_spec(self, temp_dir: Path):
         """Keeps pending folders with spec.md."""
@@ -765,6 +766,7 @@ class TestCleanupIncompletePendingFolders:
         cleaned = cleanup_incomplete_pending_folders(specs_dir, force=True)
 
         assert pending_with_spec.exists()
+        assert cleaned == 0  # Should not clean up folders with spec.md
 
     def test_returns_zero_for_nonexistent_dir(self, temp_dir: Path):
         """Returns 0 when specs directory doesn't exist."""
