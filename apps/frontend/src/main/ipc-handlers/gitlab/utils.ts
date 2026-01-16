@@ -3,7 +3,7 @@
  */
 
 import { readFile, access } from 'fs/promises';
-import { execSync, execFileSync } from 'child_process';
+import { execSync, execFileSync, spawn } from 'child_process';
 import path from 'path';
 import type { Project } from '../../../shared/types';
 import { parseEnvFile } from '../utils';
@@ -100,6 +100,63 @@ function getTokenFromGlabCli(instanceUrl?: string): string | null {
     return token || null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Authenticate glab CLI with a token (async to avoid blocking main process)
+ * This allows Auto Claude to automatically configure glab when users save their GitLab token
+ * @returns Promise<true> if authentication succeeded, Promise<false> otherwise
+ */
+export async function authenticateGlabCli(token: string, instanceUrl?: string): Promise<boolean> {
+  try {
+    const safeToken = sanitizeToken(token);
+    if (!safeToken) return false;
+
+    const normalized = parseInstanceUrl(instanceUrl || DEFAULT_GITLAB_URL);
+    if (!normalized) return false;
+
+    const hostname = new URL(normalized).hostname;
+
+    // Use --stdin to pass token securely
+    const args = ['auth', 'login', '--stdin', '--hostname', hostname];
+
+    // Use spawn to avoid blocking the main process and to write to stdin
+    // On Windows, use shell:true to ensure glab.exe is found correctly
+    return await new Promise<boolean>((resolve) => {
+      const child = spawn('glab', args, {
+        env: getAugmentedEnv(),
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: process.platform === 'win32',
+      });
+
+      let stderr = '';
+
+      child.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      child.on('error', (error) => {
+        console.error('[GitLab] Failed to spawn glab CLI:', error);
+        resolve(false);
+      });
+
+      child.on('close', (code) => {
+        if (code === 0) {
+          resolve(true);
+        } else {
+          console.error('[GitLab] glab auth failed with code', code, ':', stderr);
+          resolve(false);
+        }
+      });
+
+      // Write token to stdin and close
+      child.stdin?.write(safeToken + '\n');
+      child.stdin?.end();
+    });
+  } catch (error) {
+    console.error('[GitLab] Failed to authenticate glab CLI:', error);
+    return false;
   }
 }
 
@@ -357,7 +414,7 @@ export function detectGitLabProjectFromRemote(projectPath: string): { project: s
       cwd: projectPath,
       encoding: 'utf-8',
       stdio: 'pipe',
-      env: getAugmentedEnv()
+      env: { ...getAugmentedEnv(), GIT_TERMINAL_PROMPT: '0' }
     }).trim();
 
     if (!remoteUrl) return null;

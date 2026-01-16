@@ -96,13 +96,38 @@ export function registerCheckGlabCli(): void {
         }
         debugLog('glab CLI found at:', glabPath);
 
-        const versionOutput = execFileSync('glab', ['--version'], {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-          env: getAugmentedEnv()
-        });
-        const version = versionOutput.trim().split('\n')[0];
-        debugLog('glab version:', version);
+        // Get version using version command (more reliable than --version flag)
+        let version: string | undefined;
+        try {
+          const versionOutput = execFileSync('glab', ['version'], {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+            env: getAugmentedEnv()
+          });
+
+          // Extract version from output like "glab version 1.80.4" or "1.80.4"
+          const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/);
+          if (versionMatch) {
+            version = versionMatch[1];
+          }
+        } catch (versionError) {
+          // Fallback to --version flag
+          try {
+            const versionOutput = execFileSync('glab', ['--version'], {
+              encoding: 'utf-8',
+              stdio: 'pipe',
+              env: getAugmentedEnv()
+            });
+
+            const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/);
+            if (versionMatch) {
+              version = versionMatch[1];
+            }
+          } catch {
+            console.warn('[GitLab OAuth] Could not determine glab version');
+          }
+        }
+        console.log('[GitLab OAuth] Parsed version:', version);
 
         return {
           success: true,
@@ -136,8 +161,8 @@ export function registerInstallGlabCli(): void {
           // macOS: Use Homebrew
           command = 'brew install glab';
         } else if (platform === 'win32') {
-          // Windows: Use winget
-          command = 'winget install --id GitLab.glab';
+          // Windows: Use winget (official package ID is lowercase)
+          command = 'winget install --id glab.glab';
         } else {
           // Linux: Try snap first, then homebrew
           command = 'sudo snap install glab || brew install glab';
@@ -145,7 +170,8 @@ export function registerInstallGlabCli(): void {
 
         debugLog('Install command:', command);
         debugLog('Opening terminal...');
-        await openTerminalWithCommand(command);
+        // Use keepOpen: false so terminal closes automatically after install completes
+        await openTerminalWithCommand(command, false);
         debugLog('Terminal opened successfully');
 
         return {
@@ -187,22 +213,40 @@ export function registerCheckGlabAuth(): void {
 
         // Get username if authenticated
         try {
-          const userArgs = ['api', 'user', '--jq', '.username'];
+          const userArgs = ['api', 'user'];
           if (hostname !== 'gitlab.com') {
             userArgs.push('--hostname', hostname);
           }
-          const username = execFileSync('glab', userArgs, {
+          const userJson = execFileSync('glab', userArgs, {
             encoding: 'utf-8',
             stdio: 'pipe',
             env
           }).trim();
-          debugLog('Username:', username);
 
+          // Safely parse JSON response to extract username
+          try {
+            const user = JSON.parse(userJson);
+            const username = user?.username;
+            if (username) {
+              console.log('[GitLab OAuth] Got username from API:', username);
+              return {
+                success: true,
+                data: { authenticated: true, username }
+              };
+            } else {
+              console.warn('[GitLab OAuth] User object missing username field');
+            }
+          } catch (parseError) {
+            console.error('[GitLab OAuth] Failed to parse user JSON:', parseError instanceof Error ? parseError.message : parseError);
+          }
+
+          // If JSON parsing fails or username is missing, still return authenticated
           return {
             success: true,
-            data: { authenticated: true, username }
+            data: { authenticated: true }
           };
-        } catch {
+        } catch (error) {
+          console.error('[GitLab OAuth] Failed to get username:', error instanceof Error ? error.message : error);
           return {
             success: true,
             data: { authenticated: true }
@@ -234,8 +278,8 @@ export function registerStartGlabAuth(): void {
 
       return new Promise((resolve) => {
         try {
-          // glab auth login with web flow
-          const args = ['auth', 'login', '--web'];
+          // glab auth login in interactive mode (--web flag not supported in glab 1.80.4)
+          const args = ['auth', 'login'];
           if (hostname !== 'gitlab.com') {
             args.push('--hostname', hostname);
           }
@@ -472,7 +516,7 @@ export function registerDetectGitLabProject(): void {
           encoding: 'utf-8',
           cwd: projectPath,
           stdio: 'pipe',
-          env: getAugmentedEnv()
+          env: { ...getAugmentedEnv(), GIT_TERMINAL_PROMPT: '0' }
         }).trim();
 
         debugLog('Remote URL:', remoteUrl);
@@ -670,13 +714,15 @@ export function registerAddGitLabRemote(): void {
           execFileSync('git', ['remote', 'get-url', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env: { ...getAugmentedEnv(), GIT_TERMINAL_PROMPT: '0' }
           });
           // Remove existing origin
           execFileSync('git', ['remote', 'remove', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env: { ...getAugmentedEnv(), GIT_TERMINAL_PROMPT: '0' }
           });
         } catch {
           // No origin exists
@@ -685,7 +731,8 @@ export function registerAddGitLabRemote(): void {
         execFileSync('git', ['remote', 'add', 'origin', remoteUrl], {
           cwd: projectPath,
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
+          env: { ...getAugmentedEnv(), GIT_TERMINAL_PROMPT: '0' }
         });
 
         return {
