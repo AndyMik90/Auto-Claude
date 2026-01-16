@@ -6,8 +6,8 @@ import type * as pty from '@lydell/node-pty';
 import type { TerminalProcess } from '../types';
 import { buildCdCommand } from '../../../shared/utils/shell-escape';
 
-// Mock the platform module
-vi.mock('../platform', () => ({
+// Mock the shared platform module (used by both shell-escape and terminal code)
+vi.mock('../../shared/platform', () => ({
   isWindows: vi.fn(() => false),
   isMac: vi.fn(() => false),
   isLinux: vi.fn(() => false),
@@ -15,7 +15,7 @@ vi.mock('../platform', () => ({
   getCurrentPlatform: vi.fn(() => 'linux'),
 }));
 
-import { isWindows } from '../platform';
+import { isWindows } from '../../shared/platform';
 
 /** Escape special regex characters in a string for safe use in RegExp constructor */
 const escapeForRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
