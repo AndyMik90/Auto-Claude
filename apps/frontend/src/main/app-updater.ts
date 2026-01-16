@@ -19,6 +19,7 @@
 
 import { app, net } from 'electron';
 import type { BrowserWindow } from 'electron';
+import type { UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater';
 import { IPC_CHANNELS } from '../shared/constants';
 import type { AppUpdateInfo } from '../shared/types';
 import { compareVersions } from './updater/version-manager';
@@ -111,7 +112,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   // ============================================
 
   // Update available - new version found
-  autoUpdater.on('update-available', (info) => {
+  autoUpdater.on('update-available', (info: UpdateInfo) => {
     console.warn('[app-updater] Update available:', info.version);
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_AVAILABLE, {
@@ -123,7 +124,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   });
 
   // Update downloaded - ready to install
-  autoUpdater.on('update-downloaded', (info) => {
+  autoUpdater.on('update-downloaded', (info: UpdateDownloadedEvent) => {
     console.warn('[app-updater] Update downloaded:', info.version);
     // Store downloaded update info so it persists across Settings page navigations
     // releaseNotes can be string | ReleaseNoteInfo[] | null | undefined, only use if string
@@ -142,7 +143,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   });
 
   // Download progress
-  autoUpdater.on('download-progress', (progress) => {
+  autoUpdater.on('download-progress', (progress: ProgressInfo) => {
     console.warn(`[app-updater] Download progress: ${progress.percent.toFixed(2)}%`);
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_PROGRESS, {
@@ -155,7 +156,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   });
 
   // Error handling
-  autoUpdater.on('error', (error) => {
+  autoUpdater.on('error', (error: Error) => {
     console.error('[app-updater] Update error:', error);
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_ERROR, {
@@ -166,7 +167,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   });
 
   // No update available
-  autoUpdater.on('update-not-available', (info) => {
+  autoUpdater.on('update-not-available', (info: UpdateInfo) => {
     console.warn('[app-updater] No updates available - you are on the latest version');
     console.warn('[app-updater]   Current version:', info.version);
     if (DEBUG_UPDATER) {
@@ -189,7 +190,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
 
   setTimeout(() => {
     console.warn('[app-updater] Performing initial update check');
-    autoUpdater.checkForUpdates().catch((error) => {
+    autoUpdater.checkForUpdates().catch((error: Error) => {
       console.error('[app-updater] ❌ Initial update check failed:', error.message);
       if (DEBUG_UPDATER) {
         console.error('[app-updater:debug] Full error:', error);
@@ -203,7 +204,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
 
   periodicCheckIntervalId = setInterval(() => {
     console.warn('[app-updater] Performing periodic update check');
-    autoUpdater.checkForUpdates().catch((error) => {
+    autoUpdater.checkForUpdates().catch((error: Error) => {
       console.error('[app-updater] ❌ Periodic update check failed:', error.message);
       if (DEBUG_UPDATER) {
         console.error('[app-updater:debug] Full error:', error);
