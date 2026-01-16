@@ -15,6 +15,7 @@ import os
 import platform
 import re
 import shutil
+import subprocess
 from enum import Enum
 from pathlib import Path
 
@@ -290,6 +291,58 @@ def get_claude_detection_paths() -> list[str]:
     return paths
 
 
+def get_claude_detection_paths_structured() -> dict[str, list[str] | str]:
+    """
+    Get platform-specific paths for Claude CLI detection in structured format.
+
+    Returns a dict with categorized paths for different detection strategies:
+    - 'homebrew': Homebrew installation paths (macOS)
+    - 'platform': Platform-specific standard installation locations
+    - 'nvm_versions_dir': NVM versions directory path for scanning Node installations
+
+    This structured format allows callers to implement custom detection logic
+    for each category (e.g., iterating NVM version directories).
+
+    Returns:
+        Dict with 'homebrew', 'platform', and 'nvm_versions_dir' keys
+    """
+    home_dir = Path.home()
+
+    homebrew_paths = [
+        "/opt/homebrew/bin/claude",  # Apple Silicon
+        "/usr/local/bin/claude",  # Intel Mac
+    ]
+
+    if is_windows():
+        platform_paths = [
+            str(
+                home_dir
+                / "AppData"
+                / "Local"
+                / "Programs"
+                / "claude"
+                / "claude.exe"
+            ),
+            str(home_dir / "AppData" / "Roaming" / "npm" / "claude.cmd"),
+            str(home_dir / ".local" / "bin" / "claude.exe"),
+            r"C:\Program Files\Claude\claude.exe",
+            r"C:\Program Files (x86)\Claude\claude.exe",
+        ]
+    else:
+        platform_paths = [
+            str(home_dir / ".local" / "bin" / "claude"),
+            str(home_dir / "bin" / "claude"),
+        ]
+
+    nvm_versions_dir = str(home_dir / ".nvm" / "versions" / "node")
+
+    return {
+        "homebrew": homebrew_paths,
+        "platform": platform_paths,
+        "nvm_versions_dir": nvm_versions_dir,
+    }
+
+
 def get_python_commands() -> list[str]:
     """
     Get platform-specific Python command variations.
@@ -407,9 +460,9 @@ def build_windows_command(cli_path: str, args: list[str]) -> list[str]:
     if is_windows() and cli_path.lower().endswith((".cmd", ".bat")):
         # Use cmd.exe to execute .cmd/.bat files
         cmd_exe = get_comspec_path()
-        # Quote the CLI path and wrap in double quotes for proper argument passing
-        quoted_args = " ".join(args)
-        return [cmd_exe, "/d", "/s", "/c", f'"{cli_path}" {quoted_args}']
+        # Properly escape arguments for Windows command line
+        escaped_args = subprocess.list2cmdline(args)
+        return [cmd_exe, "/d", "/s", "/c", f'"{cli_path}" {escaped_args}']
 
     return [cli_path] + args
 

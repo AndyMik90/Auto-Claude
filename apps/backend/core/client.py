@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from core.platform import (
+    get_claude_detection_paths_structured,
     get_comspec_path,
     is_macos,
     is_windows,
@@ -139,52 +140,18 @@ _CLAUDE_CLI_CACHE: dict[str, str | None] = {}
 _CLI_CACHE_LOCK = threading.Lock()
 
 
-def _get_claude_detection_paths() -> dict[str, list[str]]:
+def _get_claude_detection_paths() -> dict[str, list[str] | str]:
     """
     Get all candidate paths for Claude CLI detection.
 
-    Returns platform-specific paths where Claude CLI might be installed.
-
-    IMPORTANT: This function mirrors the frontend's getClaudeDetectionPaths()
-    in apps/frontend/src/main/cli-tool-manager.ts. Both implementations MUST
-    be kept in sync to ensure consistent detection behavior across the
-    Python backend and Electron frontend.
-
-    When adding new detection paths, update BOTH:
-    1. This function (_get_claude_detection_paths in client.py)
-    2. getClaudeDetectionPaths() in cli-tool-manager.ts
+    This is a thin wrapper around the platform module's implementation.
+    See core/platform/__init__.py:get_claude_detection_paths_structured()
+    for the canonical implementation.
 
     Returns:
-        Dict with 'homebrew', 'platform', and 'nvm' path lists
+        Dict with 'homebrew', 'platform', and 'nvm_versions_dir' keys
     """
-    home_dir = Path.home()
-
-    homebrew_paths = [
-        "/opt/homebrew/bin/claude",  # Apple Silicon
-        "/usr/local/bin/claude",  # Intel Mac
-    ]
-
-    if is_windows():
-        platform_paths = [
-            str(home_dir / "AppData" / "Local" / "Programs" / "claude" / "claude.exe"),
-            str(home_dir / "AppData" / "Roaming" / "npm" / "claude.cmd"),
-            str(home_dir / ".local" / "bin" / "claude.exe"),
-            "C:\\Program Files\\Claude\\claude.exe",
-            "C:\\Program Files (x86)\\Claude\\claude.exe",
-        ]
-    else:
-        platform_paths = [
-            str(home_dir / ".local" / "bin" / "claude"),
-            str(home_dir / "bin" / "claude"),
-        ]
-
-    nvm_versions_dir = str(home_dir / ".nvm" / "versions" / "node")
-
-    return {
-        "homebrew": homebrew_paths,
-        "platform": platform_paths,
-        "nvm_versions_dir": nvm_versions_dir,
-    }
+    return get_claude_detection_paths_structured()
 
 
 def _validate_claude_cli(cli_path: str) -> tuple[bool, str | None]:

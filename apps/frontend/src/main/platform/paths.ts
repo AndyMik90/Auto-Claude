@@ -37,6 +37,14 @@ export function getClaudeExecutablePath(): string[] {
       joinPaths(homeDir, '.local', 'bin', 'claude'),
       joinPaths(homeDir, 'bin', 'claude')
     );
+
+    // Add Homebrew paths on macOS
+    if (isMacOS()) {
+      const brewPath = getHomebrewPath();
+      if (brewPath) {
+        paths.push(joinPaths(brewPath, 'claude'));
+      }
+    }
   }
 
   return paths;
@@ -174,20 +182,24 @@ export function expandWindowsEnvVars(pathPattern: string): string {
     return pathPattern;
   }
 
+  const homeDir = os.homedir();
   const envVars: Record<string, string | undefined> = {
     '%PROGRAMFILES%': process.env.ProgramFiles || 'C:\\Program Files',
     '%PROGRAMFILES(X86)%': process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)',
-    '%LOCALAPPDATA%': process.env.LOCALAPPDATA || '',
-    '%APPDATA%': process.env.APPDATA || '',
-    '%USERPROFILE%': process.env.USERPROFILE || os.homedir(),
+    '%LOCALAPPDATA%': process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'),
+    '%APPDATA%': process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming'),
+    '%USERPROFILE%': process.env.USERPROFILE || homeDir,
     '%SYSTEMROOT%': process.env.SystemRoot || 'C:\\Windows',
-    '%TEMP%': process.env.TEMP || process.env.TMP || '',
-    '%TMP%': process.env.TMP || process.env.TEMP || ''
+    '%TEMP%': process.env.TEMP || process.env.TMP || path.join(homeDir, 'AppData', 'Local', 'Temp'),
+    '%TMP%': process.env.TMP || process.env.TEMP || path.join(homeDir, 'AppData', 'Local', 'Temp')
   };
 
   let expanded = pathPattern;
   for (const [pattern, value] of Object.entries(envVars)) {
-    expanded = expanded.replace(new RegExp(pattern, 'gi'), value || '');
+    // Only replace if we have a valid value (skip replacement if empty)
+    if (value) {
+      expanded = expanded.replace(new RegExp(pattern, 'gi'), value);
+    }
   }
 
   return expanded;

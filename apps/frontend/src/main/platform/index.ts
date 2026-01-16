@@ -99,6 +99,9 @@ export function getExecutableExtension(): string {
  * Add executable extension to a base name if needed
  */
 export function withExecutableExtension(baseName: string): string {
+  // Handle empty string - return unchanged
+  if (!baseName) return baseName;
+
   const ext = path.extname(baseName);
   if (ext) return baseName;
 
@@ -282,6 +285,9 @@ export function getNpxCommand(): string {
  * or environment variable expansion.
  */
 export function isSecurePath(candidatePath: string): boolean {
+  // Reject empty strings to maintain cross-platform consistency
+  if (!candidatePath) return false;
+
   // Security validation: reject paths with dangerous patterns
   const dangerousPatterns = [
     /[;&|`${}[\]<>!"^]/,        // Shell metacharacters
