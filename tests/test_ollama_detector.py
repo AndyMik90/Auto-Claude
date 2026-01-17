@@ -56,8 +56,8 @@ def test_get_default_ollama_url(monkeypatch):
     assert get_default_ollama_url() == "https://ollama.my.domain"
 
 def test_cmd_check_installed(mocker):
-    # Mock shutil.which to find ollama
-    mocker.patch("shutil.which", return_value="/usr/local/bin/ollama")
+    # Mock find_executable to find ollama
+    mocker.patch("apps.backend.ollama_model_detector.find_executable", return_value="/usr/local/bin/ollama")
     
     # Capture stdout
     stdout = io.StringIO()
@@ -71,8 +71,8 @@ def test_cmd_check_installed(mocker):
     assert result["data"]["installed"] is True
     assert result["data"]["path"] == "/usr/local/bin/ollama"
     
-    # Mock shutil.which to not find ollama
-    mocker.patch("shutil.which", return_value=None)
+    # Mock find_executable to not find ollama
+    mocker.patch("apps.backend.ollama_model_detector.find_executable", return_value=None)
     
     stdout = io.StringIO()
     mocker.patch.object(sys, "stdout", stdout)

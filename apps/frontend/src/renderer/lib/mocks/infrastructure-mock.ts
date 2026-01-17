@@ -145,11 +145,15 @@ export const infrastructureMock = {
     percentage: number;
   }) => void) => {
     // Store callback for test verification
-    (window as unknown as { __downloadProgressCallback: typeof callback }).__downloadProgressCallback = callback;
+    const win = window as unknown as { __downloadProgressCallback: typeof callback };
+    win.__downloadProgressCallback = callback;
 
     // Return cleanup function
     return () => {
-      delete (window as unknown as { __downloadProgressCallback?: typeof callback }).__downloadProgressCallback;
+      // Guard: only delete if it's still our callback
+      if (win.__downloadProgressCallback === callback) {
+        delete (win as { __downloadProgressCallback?: typeof callback }).__downloadProgressCallback;
+      }
     };
   },
 

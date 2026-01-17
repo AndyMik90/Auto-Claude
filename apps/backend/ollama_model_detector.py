@@ -18,11 +18,12 @@ import argparse
 import json
 import os
 import re
-import shutil
 import sys
 import urllib.error
 import urllib.request
 from typing import Any
+
+from core.platform import find_executable, get_platform_description
 
 def get_default_ollama_url() -> str:
     """Get the default Ollama URL from environment or fallback."""
@@ -271,7 +272,7 @@ def get_model_min_version(model_name: str) -> str | None:
 
 def cmd_check_installed(args) -> None:
     """Check if Ollama executable is installed on the system."""
-    executable = shutil.which("ollama")
+    executable = find_executable("ollama")
     
     if executable:
         output_json(
@@ -279,7 +280,7 @@ def cmd_check_installed(args) -> None:
             data={
                 "installed": True,
                 "path": executable,
-                "platform": sys.platform,
+                "platform": get_platform_description(),
             }
         )
     else:
