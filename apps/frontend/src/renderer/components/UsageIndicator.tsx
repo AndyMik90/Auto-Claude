@@ -119,7 +119,7 @@ export function UsageIndicator() {
             {/* Session/5-hour usage */}
             <div>
               <div className="flex items-center justify-between gap-4 mb-1">
-                <span className="text-muted-foreground font-medium">{sessionLabel} Usage</span>
+                <span className="text-muted-foreground font-medium">{sessionLabel}</span>
                 <span className="font-semibold tabular-nums">{Math.round(usage.sessionPercent)}%</span>
               </div>
               {usage.sessionResetTime && (
@@ -146,7 +146,7 @@ export function UsageIndicator() {
             {/* Weekly/Monthly usage */}
             <div>
               <div className="flex items-center justify-between gap-4 mb-1">
-                <span className="text-muted-foreground font-medium">{weeklyLabel} Usage</span>
+                <span className="text-muted-foreground font-medium">{weeklyLabel}</span>
                 <span className="font-semibold tabular-nums">{Math.round(usage.weeklyPercent)}%</span>
               </div>
               {usage.weeklyResetTime && (

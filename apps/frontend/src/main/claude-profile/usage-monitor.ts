@@ -344,12 +344,14 @@ export class UsageMonitor extends EventEmitter {
 
     this.isChecking = true;
 
+    // Declare variables outside try block so they're accessible in catch block
+    let profileId: string | undefined;
+    let profileName: string | undefined;
+    let isAPIProfile = false;
+
     try {
       // Step 1: Determine which auth type is active (API profile vs OAuth)
       // API profiles take priority over OAuth profiles
-      let profileId: string;
-      let profileName: string;
-      let isAPIProfile = false;
 
       // First, check if an API profile is active
       try {
@@ -404,6 +406,12 @@ export class UsageMonitor extends EventEmitter {
             profileName
           });
         }
+      }
+
+      // Ensure we have a profile ID before proceeding
+      if (!profileId || !profileName) {
+        console.warn('[UsageMonitor] Profile ID or name is missing, skipping usage check');
+        return;
       }
 
       // Fetch current usage (hybrid approach)
@@ -475,7 +483,7 @@ export class UsageMonitor extends EventEmitter {
       // Only attempt proactive swap if enabled and using OAuth profile
       if ((error as any).statusCode === 401 || (error as any).statusCode === 403) {
         // Proactive swap is only supported for OAuth profiles, not API profiles
-        if (!isAPIProfile) {
+        if (!isAPIProfile && profileId) {
           const profileManager = getClaudeProfileManager();
           const settings = profileManager.getAutoSwitchSettings();
           if (settings.enabled && settings.proactiveSwapEnabled) {
