@@ -61,11 +61,11 @@ const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
   },
   {
     provider: 'zai',
-    usagePath: '/api/monitor/usage/model-usage'
+    usagePath: '/api/monitor/usage/quota/limit'
   },
   {
     provider: 'zhipu',
-    usagePath: '/api/monitor/usage/model-usage'
+    usagePath: '/api/monitor/usage/quota/limit'
   }
 ] as const;
 
@@ -81,7 +81,7 @@ const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
  * getUsageEndpoint('anthropic', 'https://api.anthropic.com')
  * // returns 'https://api.anthropic.com/api/oauth/usage'
  * getUsageEndpoint('zai', 'https://api.z.ai/api/anthropic')
- * // returns 'https://api.z.ai/api/monitor/usage/model-usage?startTime=...&endTime=...'
+ * // returns 'https://api.z.ai/api/monitor/usage/quota/limit'
  * getUsageEndpoint('unknown', 'https://example.com')
  * // returns null
  */
@@ -119,38 +119,8 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
     // Replace the path with the usage endpoint path
     url.pathname = endpointConfig.usagePath;
 
-    // Add query parameters for z.ai and ZHIPU (require time window)
-    if (provider === 'zai' || provider === 'zhipu') {
-      // Time window: from yesterday at current hour (HH:00:00) to today at current hour end (HH:59:59)
-      const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, now.getHours(), 0, 0, 0);
-      const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 59, 59, 999);
-
-      // Format dates as yyyy-MM-dd HH:mm:ss
-      const formatDateTime = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-      };
-
-      const startTime = formatDateTime(startDate);
-      const endTime = formatDateTime(endDate);
-
-      // Add query parameters (properly encoded)
-      url.searchParams.set('startTime', startTime);
-      url.searchParams.set('endTime', endTime);
-
-      if (isDebug) {
-        console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Added time window query parameters:', {
-          startTime,
-          endTime
-        });
-      }
-    }
+    // Note: quota/limit endpoint doesn't require query parameters
+    // The model-usage and tool-usage endpoints would need time windows, but we're using quota/limit
 
     const finalUrl = url.toString();
 
@@ -272,6 +242,8 @@ export class UsageMonitor extends EventEmitter {
    *
    * Note: Usage monitoring always runs to display the usage badge.
    * Proactive account swapping only occurs if enabled in settings.
+   *
+   * Update interval: 30 seconds (30000ms) to keep usage stats accurate
    */
   start(): void {
     if (this.intervalId) {
@@ -281,9 +253,9 @@ export class UsageMonitor extends EventEmitter {
 
     const profileManager = getClaudeProfileManager();
     const settings = profileManager.getAutoSwitchSettings();
-    const interval = settings.usageCheckInterval || 30000;
+    const interval = settings.usageCheckInterval || 30000; // 30 seconds for accurate usage tracking
 
-    console.warn('[UsageMonitor] Starting with interval:', interval, 'ms');
+    console.warn('[UsageMonitor] Starting with interval:', interval, 'ms (30-second updates for accurate usage stats)');
 
     // Check immediately
     this.checkUsageAndSwap();
@@ -924,72 +896,188 @@ export class UsageMonitor extends EventEmitter {
   /**
    * Normalize z.ai API response to ClaudeUsageSnapshot
    *
-   * NOTE: z.ai usage endpoint response format is undocumented.
-   * This method implements flexible parsing with comprehensive logging
-   * to handle unknown or changing response structures.
+   * Expected endpoint: https://api.z.ai/api/monitor/usage/quota/limit
    *
-   * Expected endpoint: https://api.z.ai/api/monitor/usage/model-usage
+   * Response format (from empirical testing):
+   * {
+   *   "data": {
+   *     "limits": [
+   *       {
+   *         "type": "TOKENS_LIMIT",
+   *         "percentage": 75.5
+   *       },
+   *       {
+   *         "type": "TIME_LIMIT",
+   *         "percentage": 45.2,
+   *         "currentValue": 12345,
+   *         "usage": 50000,
+   *         "usageDetails": {...}
+   *       }
+   *     ]
+   *   }
+   * }
    *
-   * The actual response format is unknown and will be discovered through
-   * empirical testing. This implementation attempts flexible field mapping
-   * and logs the raw response for debugging.
+   * Maps TOKENS_LIMIT → session usage (5-hour window)
+   * Maps TIME_LIMIT → monthly usage (displayed as weekly in UI)
    */
   private normalizeZAIResponse(
     data: any,
     profileId: string,
     profileName: string
   ): ClaudeUsageSnapshot | null {
-    return this.normalizeGenericProviderResponse(
-      data,
-      profileId,
-      profileName,
-      'zai',
-      {
-        sessionUsageFields: ['session_usage', 'five_hour_usage', 'daily_usage', 'usage', 'used_tokens', 'token_usage'],
-        sessionLimitFields: ['session_limit', 'five_hour_limit', 'daily_limit', 'limit', 'quota', 'total_tokens', 'max_tokens'],
-        weeklyUsageFields: ['weekly_usage', 'seven_day_usage', 'weekly_used', 'week_usage', 'monthly_usage', 'month_usage'],
-        weeklyLimitFields: ['weekly_limit', 'seven_day_limit', 'weekly_quota', 'week_limit', 'monthly_limit', 'month_limit'],
-        sessionResetFields: ['session_reset_at', 'session_reset_time', 'five_hour_reset_at', 'daily_reset_at', 'reset_time', 'reset_at'],
-        weeklyResetFields: ['weekly_reset_at', 'weekly_reset_time', 'seven_day_reset_at', 'week_reset_at', 'monthly_reset_at', 'month_reset_at']
-      },
-      {
-        sessionWindowLabel: '5-hour window',
-        weeklyWindowLabel: 'Calendar month'
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:ZAI_NORMALIZATION] Starting normalization:', {
+        profileId,
+        profileName,
+        responseKeys: Object.keys(data),
+        hasLimits: !!data.limits,
+        limitsCount: data.limits?.length || 0
+      });
+    }
+
+    try {
+      // Check if response has limits array
+      if (!data || !Array.isArray(data.limits)) {
+        console.warn('[UsageMonitor:ZAI] Invalid response format - missing limits array:', {
+          hasData: !!data,
+          hasLimits: !!data?.limits,
+          limitsType: typeof data?.limits
+        });
+        return null;
       }
-    );
+
+      // Find TOKENS_LIMIT (5-hour usage) and TIME_LIMIT (monthly usage)
+      const tokensLimit = data.limits.find((item: any) => item.type === 'TOKENS_LIMIT');
+      const timeLimit = data.limits.find((item: any) => item.type === 'TIME_LIMIT');
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:ZAI_NORMALIZATION] Found limit types:', {
+          hasTokensLimit: !!tokensLimit,
+          hasTimeLimit: !!timeLimit,
+          tokensPercentage: tokensLimit?.percentage,
+          timePercentage: timeLimit?.percentage
+        });
+      }
+
+      // Extract percentages
+      const sessionPercent = tokensLimit?.percentage !== undefined
+        ? Math.round(tokensLimit.percentage)
+        : 0;
+
+      const weeklyPercent = timeLimit?.percentage !== undefined
+        ? Math.round(timeLimit.percentage)
+        : 0;
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:ZAI_NORMALIZATION] Extracted usage:', {
+          sessionPercent,
+          weeklyPercent,
+          limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
+        });
+      }
+
+      return {
+        sessionPercent,
+        weeklyPercent,
+        sessionResetTime: '5-hour window',
+        weeklyResetTime: 'Calendar month',
+        profileId,
+        profileName,
+        fetchedAt: new Date(),
+        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
+        usageWindows: {
+          sessionWindowLabel: '5-hour window',
+          weeklyWindowLabel: 'Calendar month'
+        }
+      };
+    } catch (error) {
+      console.error('[UsageMonitor:ZAI] Failed to parse quota/limit response:', error, 'Raw data:', data);
+      return null;
+    }
   }
 
   /**
    * Normalize ZHIPU AI response to ClaudeUsageSnapshot
    *
-   * NOTE: ZHIPU usage endpoint response format is undocumented.
-   * Uses the same flexible parsing approach as z.ai.
+   * Expected endpoint: https://open.bigmodel.cn/api/monitor/usage/quota/limit
    *
-   * Expected endpoint: https://open.bigmodel.cn/api/monitor/usage/model-usage
+   * Uses the same response format as z.ai with limits array containing
+   * TOKENS_LIMIT and TIME_LIMIT items.
    */
   private normalizeZhipuResponse(
     data: any,
     profileId: string,
     profileName: string
   ): ClaudeUsageSnapshot | null {
-    return this.normalizeGenericProviderResponse(
-      data,
-      profileId,
-      profileName,
-      'zhipu',
-      {
-        sessionUsageFields: ['session_usage', 'five_hour_usage', 'daily_usage', 'usage', 'used_tokens', 'token_usage'],
-        sessionLimitFields: ['session_limit', 'five_hour_limit', 'daily_limit', 'limit', 'quota', 'total_tokens', 'max_tokens'],
-        weeklyUsageFields: ['weekly_usage', 'seven_day_usage', 'weekly_used', 'week_usage'],
-        weeklyLimitFields: ['weekly_limit', 'seven_day_limit', 'weekly_quota', 'week_limit'],
-        sessionResetFields: ['session_reset_at', 'session_reset_time', 'five_hour_reset_at', 'daily_reset_at', 'reset_time', 'reset_at'],
-        weeklyResetFields: ['weekly_reset_at', 'weekly_reset_time', 'seven_day_reset_at', 'week_reset_at']
-      },
-      {
-        sessionWindowLabel: '5-hour window',
-        weeklyWindowLabel: '7-day window'
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:ZHIPU_NORMALIZATION] Starting normalization:', {
+        profileId,
+        profileName,
+        responseKeys: Object.keys(data),
+        hasLimits: !!data.limits,
+        limitsCount: data.limits?.length || 0
+      });
+    }
+
+    try {
+      // Check if response has limits array
+      if (!data || !Array.isArray(data.limits)) {
+        console.warn('[UsageMonitor:ZHIPU] Invalid response format - missing limits array:', {
+          hasData: !!data,
+          hasLimits: !!data?.limits,
+          limitsType: typeof data?.limits
+        });
+        return null;
       }
-    );
+
+      // Find TOKENS_LIMIT (5-hour usage) and TIME_LIMIT (monthly usage)
+      const tokensLimit = data.limits.find((item: any) => item.type === 'TOKENS_LIMIT');
+      const timeLimit = data.limits.find((item: any) => item.type === 'TIME_LIMIT');
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:ZHIPU_NORMALIZATION] Found limit types:', {
+          hasTokensLimit: !!tokensLimit,
+          hasTimeLimit: !!timeLimit,
+          tokensPercentage: tokensLimit?.percentage,
+          timePercentage: timeLimit?.percentage
+        });
+      }
+
+      // Extract percentages
+      const sessionPercent = tokensLimit?.percentage !== undefined
+        ? Math.round(tokensLimit.percentage)
+        : 0;
+
+      const weeklyPercent = timeLimit?.percentage !== undefined
+        ? Math.round(timeLimit.percentage)
+        : 0;
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:ZHIPU_NORMALIZATION] Extracted usage:', {
+          sessionPercent,
+          weeklyPercent,
+          limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
+        });
+      }
+
+      return {
+        sessionPercent,
+        weeklyPercent,
+        sessionResetTime: '5-hour window',
+        weeklyResetTime: 'Calendar month',
+        profileId,
+        profileName,
+        fetchedAt: new Date(),
+        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
+        usageWindows: {
+          sessionWindowLabel: '5-hour window',
+          weeklyWindowLabel: 'Calendar month'
+        }
+      };
+    } catch (error) {
+      console.error('[UsageMonitor:ZHIPU] Failed to parse quota/limit response:', error, 'Raw data:', data);
+      return null;
+    }
   }
 
   /**
