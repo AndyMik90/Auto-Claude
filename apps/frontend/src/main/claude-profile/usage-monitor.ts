@@ -587,110 +587,20 @@ export class UsageMonitor extends EventEmitter {
     profileId: string,
     profileName: string
   ): ClaudeUsageSnapshot | null {
-    // Log raw response structure for empirical discovery
-    if (this.isDebug) {
-      console.warn('[UsageMonitor:ZAI] Raw response structure:', {
-        keys: Object.keys(data),
-        data: JSON.stringify(data, null, 2)
-      });
-    }
-
-    try {
-      // Attempt flexible parsing - look for common usage field patterns
-      // Possible field names (undocumented API):
-      // - usage, utilization, used, usage_count, token_usage
-      // - limit, quota, total, max_tokens
-      // - session_usage, weekly_usage, daily_usage
-      // - reset_time, reset_at, expires_at
-
-      const sessionUsage = this.extractUsageField(data, [
-        'session_usage',
-        'five_hour_usage',
-        'daily_usage',
-        'usage',
-        'used_tokens',
-        'token_usage'
-      ]);
-
-      const sessionLimit = this.extractLimitField(data, [
-        'session_limit',
-        'five_hour_limit',
-        'daily_limit',
-        'limit',
-        'quota',
-        'total_tokens',
-        'max_tokens'
-      ]);
-
-      const weeklyUsage = this.extractUsageField(data, [
-        'weekly_usage',
-        'seven_day_usage',
-        'weekly_used',
-        'week_usage'
-      ]);
-
-      const weeklyLimit = this.extractLimitField(data, [
-        'weekly_limit',
-        'seven_day_limit',
-        'weekly_quota',
-        'week_limit'
-      ]);
-
-      const sessionReset = this.extractResetField(data, [
-        'session_reset_at',
-        'session_reset_time',
-        'five_hour_reset_at',
-        'daily_reset_at',
-        'reset_time',
-        'reset_at'
-      ]);
-
-      const weeklyReset = this.extractResetField(data, [
-        'weekly_reset_at',
-        'weekly_reset_time',
-        'seven_day_reset_at',
-        'week_reset_at'
-      ]);
-
-      // Calculate percentages
-      const sessionPercent = sessionLimit > 0
-        ? Math.round((sessionUsage / sessionLimit) * 100)
-        : 0;
-
-      const weeklyPercent = weeklyLimit > 0
-        ? Math.round((weeklyUsage / weeklyLimit) * 100)
-        : 0;
-
-      // If we couldn't extract any meaningful data, log detailed response
-      if (sessionUsage === 0 && weeklyUsage === 0 && sessionLimit === 0 && weeklyLimit === 0) {
-        console.warn('[UsageMonitor:ZAI] Could not extract usage data from response. Response structure:', JSON.stringify(data, null, 2));
-        // Return 0% usage rather than null to allow graceful degradation
-        return {
-          sessionPercent: 0,
-          weeklyPercent: 0,
-          sessionResetTime: 'Unknown',
-          weeklyResetTime: 'Unknown',
-          profileId,
-          profileName,
-          fetchedAt: new Date(),
-          limitType: 'session'
-        };
+    return this.normalizeGenericProviderResponse(
+      data,
+      profileId,
+      profileName,
+      'zai',
+      {
+        sessionUsageFields: ['session_usage', 'five_hour_usage', 'daily_usage', 'usage', 'used_tokens', 'token_usage'],
+        sessionLimitFields: ['session_limit', 'five_hour_limit', 'daily_limit', 'limit', 'quota', 'total_tokens', 'max_tokens'],
+        weeklyUsageFields: ['weekly_usage', 'seven_day_usage', 'weekly_used', 'week_usage'],
+        weeklyLimitFields: ['weekly_limit', 'seven_day_limit', 'weekly_quota', 'week_limit'],
+        sessionResetFields: ['session_reset_at', 'session_reset_time', 'five_hour_reset_at', 'daily_reset_at', 'reset_time', 'reset_at'],
+        weeklyResetFields: ['weekly_reset_at', 'weekly_reset_time', 'seven_day_reset_at', 'week_reset_at']
       }
-
-      return {
-        sessionPercent,
-        weeklyPercent,
-        sessionResetTime: sessionReset || 'Unknown',
-        weeklyResetTime: weeklyReset || 'Unknown',
-        profileId,
-        profileName,
-        fetchedAt: new Date(),
-        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
-      };
-    } catch (error) {
-      console.error('[UsageMonitor:ZAI] Failed to parse response:', error, 'Raw data:', data);
-      return null;
-    }
+    );
   }
 
   /**
@@ -706,16 +616,131 @@ export class UsageMonitor extends EventEmitter {
     profileId: string,
     profileName: string
   ): ClaudeUsageSnapshot | null {
+    return this.normalizeGenericProviderResponse(
+      data,
+      profileId,
+      profileName,
+      'zhipu',
+      {
+        sessionUsageFields: ['session_usage', 'five_hour_usage', 'daily_usage', 'usage', 'used_tokens', 'token_usage'],
+        sessionLimitFields: ['session_limit', 'five_hour_limit', 'daily_limit', 'limit', 'quota', 'total_tokens', 'max_tokens'],
+        weeklyUsageFields: ['weekly_usage', 'seven_day_usage', 'weekly_used', 'week_usage'],
+        weeklyLimitFields: ['weekly_limit', 'seven_day_limit', 'weekly_quota', 'week_limit'],
+        sessionResetFields: ['session_reset_at', 'session_reset_time', 'five_hour_reset_at', 'daily_reset_at', 'reset_time', 'reset_at'],
+        weeklyResetFields: ['weekly_reset_at', 'weekly_reset_time', 'seven_day_reset_at', 'week_reset_at']
+      }
+    );
+  }
+
+  /**
+   * Generic provider response normalization helper
+   *
+   * Handles heterogeneous response formats from different providers by using
+   * configurable field name mappings. Supports flexible parsing to handle
+   * undocumented or changing API response structures.
+   *
+   * @param data - Raw response data from provider API
+   * @param profileId - Profile identifier for the usage snapshot
+   * @param profileName - Profile display name for the usage snapshot
+   * @param providerName - Provider name for logging ('zai', 'zhipu', etc.)
+   * @param fieldMapping - Configuration of field name mappings for this provider
+   * @returns Normalized usage snapshot or null on parse failure
+   *
+   * @example
+   * normalizeGenericProviderResponse(
+   *   response, 'profile-1', 'My Profile', 'zai',
+   *   {
+   *     sessionUsageFields: ['session_usage', 'usage'],
+   *     sessionLimitFields: ['session_limit', 'limit'],
+   *     // ... other mappings
+   *   }
+   * )
+   */
+  private normalizeGenericProviderResponse(
+    data: any,
+    profileId: string,
+    profileName: string,
+    providerName: string,
+    fieldMapping: {
+      sessionUsageFields: string[];
+      sessionLimitFields: string[];
+      weeklyUsageFields: string[];
+      weeklyLimitFields: string[];
+      sessionResetFields: string[];
+      weeklyResetFields: string[];
+    }
+  ): ClaudeUsageSnapshot | null {
     // Log raw response structure for empirical discovery
     if (this.isDebug) {
-      console.warn('[UsageMonitor:ZHIPU] Raw response structure:', {
+      console.warn(`[UsageMonitor:${providerName.toUpperCase()}] Raw response structure:`, {
         keys: Object.keys(data),
         data: JSON.stringify(data, null, 2)
       });
     }
 
-    // Use the same flexible parsing as z.ai (endpoints may have similar format)
-    return this.normalizeZAIResponse(data, profileId, profileName);
+    try {
+      // Extract usage data using flexible field mapping
+      const sessionUsage = this.extractUsageField(data, fieldMapping.sessionUsageFields);
+      const sessionLimit = this.extractLimitField(data, fieldMapping.sessionLimitFields);
+      const weeklyUsage = this.extractUsageField(data, fieldMapping.weeklyUsageFields);
+      const weeklyLimit = this.extractLimitField(data, fieldMapping.weeklyLimitFields);
+
+      const sessionReset = this.extractResetField(data, fieldMapping.sessionResetFields);
+      const weeklyReset = this.extractResetField(data, fieldMapping.weeklyResetFields);
+
+      // Calculate percentages (guard against division by zero)
+      const sessionPercent = sessionLimit > 0
+        ? Math.round((sessionUsage / sessionLimit) * 100)
+        : 0;
+
+      const weeklyPercent = weeklyLimit > 0
+        ? Math.round((weeklyUsage / weeklyLimit) * 100)
+        : 0;
+
+      // If we couldn't extract any meaningful data, log detailed response
+      // Return 0% usage rather than null to allow graceful degradation
+      if (sessionUsage === 0 && weeklyUsage === 0 && sessionLimit === 0 && weeklyLimit === 0) {
+        console.warn(`[UsageMonitor:${providerName.toUpperCase()}] Could not extract usage data from response. Response structure:`, JSON.stringify(data, null, 2));
+        return {
+          sessionPercent: 0,
+          weeklyPercent: 0,
+          sessionResetTime: 'Unknown',
+          weeklyResetTime: 'Unknown',
+          profileId,
+          profileName,
+          fetchedAt: new Date(),
+          limitType: 'session'
+        };
+      }
+
+      // Log normalization decisions for debugging
+      if (this.isDebug) {
+        console.warn(`[UsageMonitor:${providerName.toUpperCase()}] Normalization mapping:`, {
+          sessionUsage,
+          sessionLimit,
+          sessionPercent,
+          weeklyUsage,
+          weeklyLimit,
+          weeklyPercent,
+          sessionReset,
+          weeklyReset
+        });
+      }
+
+      return {
+        sessionPercent,
+        weeklyPercent,
+        sessionResetTime: sessionReset || 'Unknown',
+        weeklyResetTime: weeklyReset || 'Unknown',
+        profileId,
+        profileName,
+        fetchedAt: new Date(),
+        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
+      };
+    } catch (error) {
+      console.error(`[UsageMonitor:${providerName.toUpperCase()}] Failed to parse response:`, error, 'Raw data:', data);
+      return null;
+    }
   }
 
   /**
