@@ -2034,10 +2034,10 @@ export function registerWorktreeHandlers(
               }
 
               resolve({
-                success: false,
+                success: true,  // Outer success=true so renderer uses i18n handling
                 error: messageKey,  // Fallback for non-i18n consumers
                 data: {
-                  success: false,
+                  success: false,  // Inner success=false indicates actual failure
                   message: messageKey,  // Fallback message
                   messageKey,
                   messageParams
