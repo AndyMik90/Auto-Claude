@@ -372,10 +372,13 @@ export class UsageMonitor extends EventEmitter {
   /**
    * Fetch usage - HYBRID APPROACH
    * Tries API first, falls back to CLI if API fails
+   *
+   * Enhanced to support multiple providers (Anthropic, z.ai, ZHIPU)
+   * Detects provider from active profile's baseUrl and routes to appropriate endpoint
    */
   private async fetchUsage(
     profileId: string,
-    oauthToken?: string
+    credential?: string
   ): Promise<ClaudeUsageSnapshot | null> {
     const profileManager = getClaudeProfileManager();
     const profile = profileManager.getProfile(profileId);
@@ -384,8 +387,8 @@ export class UsageMonitor extends EventEmitter {
     }
 
     // Attempt 1: Direct API call (preferred)
-    if (this.useApiMethod && oauthToken) {
-      const apiUsage = await this.fetchUsageViaAPI(oauthToken, profileId, profile.name);
+    if (this.useApiMethod && credential) {
+      const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profile.name);
       if (apiUsage) {
         console.warn('[UsageMonitor] Successfully fetched via API');
         return apiUsage;
@@ -401,71 +404,383 @@ export class UsageMonitor extends EventEmitter {
   }
 
   /**
-   * Fetch usage via OAuth API endpoint
-   * Endpoint: https://api.anthropic.com/api/oauth/usage
+   * Fetch usage via provider-specific API endpoints
+   *
+   * Supports multiple providers with automatic detection:
+   * - Anthropic OAuth: https://api.anthropic.com/api/oauth/usage
+   * - z.ai: https://api.z.ai/api/monitor/usage/model-usage
+   * - ZHIPU: https://open.bigmodel.cn/api/monitor/usage/model-usage
+   *
+   * Detects provider from active profile's baseUrl and routes to appropriate endpoint.
+   * Normalizes all provider responses to common ClaudeUsageSnapshot format.
+   *
+   * @param credential - OAuth token or API key
+   * @param profileId - Profile identifier
+   * @param profileName - Profile display name
+   * @returns Normalized usage snapshot or null on failure
    */
   private async fetchUsageViaAPI(
-    oauthToken: string,
+    credential: string,
     profileId: string,
     profileName: string
   ): Promise<ClaudeUsageSnapshot | null> {
     try {
-      const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+      // Step 1: Determine if we're using an API profile or OAuth profile
+      const apiProfile = await this.getAPIProfile();
+      const isAPIProfile = !!apiProfile;
+
+      // Step 2: Detect provider from baseUrl
+      let provider: ApiProvider;
+      let baseUrl: string;
+
+      if (isAPIProfile && apiProfile) {
+        // API profile - detect from profile's baseUrl
+        baseUrl = apiProfile.baseUrl;
+        provider = detectProvider(baseUrl);
+      } else {
+        // OAuth profile - always Anthropic
+        provider = 'anthropic';
+        baseUrl = 'https://api.anthropic.com';
+      }
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:TRACE] Fetching usage', {
+          provider,
+          baseUrl,
+          isAPIProfile,
+          profileId
+        });
+      }
+
+      // Step 3: Get provider-specific usage endpoint
+      const usageEndpoint = getUsageEndpoint(provider, baseUrl);
+      if (!usageEndpoint) {
+        console.warn('[UsageMonitor] Unknown provider - no usage endpoint configured:', {
+          provider,
+          baseUrl,
+          profileId
+        });
+        return null;
+      }
+
+      // Step 4: Fetch usage from provider endpoint
+      const response = await fetch(usageEndpoint, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${oauthToken}`,
+          'Authorization': `Bearer ${credential}`,
           'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01'
+          ...(provider === 'anthropic' && { 'anthropic-version': '2023-06-01' })
         }
       });
 
       if (!response.ok) {
-        console.error('[UsageMonitor] API error:', response.status, response.statusText);
+        console.error('[UsageMonitor] API error:', response.status, response.statusText, {
+          provider,
+          endpoint: usageEndpoint
+        });
         // Throw specific error for auth failures so we can trigger a swap
         if (response.status === 401 || response.status === 403) {
-          const error = new Error(`API Auth Failure: ${response.status}`);
+          const error = new Error(`API Auth Failure: ${response.status} (${provider})`);
           (error as any).statusCode = response.status;
           throw error;
         }
         return null;
       }
 
-      const data = await response.json() as {
-        five_hour_utilization?: number;
-        seven_day_utilization?: number;
-        five_hour_reset_at?: string;
-        seven_day_reset_at?: string;
-      };
+      // Step 5: Parse and normalize response based on provider
+      const rawData = await response.json();
 
-      // Expected response format:
-      // {
-      //   "five_hour_utilization": 0.72,  // 0.0-1.0
-      //   "seven_day_utilization": 0.45,  // 0.0-1.0
-      //   "five_hour_reset_at": "2025-01-17T15:00:00Z",
-      //   "seven_day_reset_at": "2025-01-20T12:00:00Z"
-      // }
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:PROVIDER] Raw response from', provider, ':', JSON.stringify(rawData, null, 2));
+      }
 
-      return {
-        sessionPercent: Math.round((data.five_hour_utilization || 0) * 100),
-        weeklyPercent: Math.round((data.seven_day_utilization || 0) * 100),
-        sessionResetTime: this.formatResetTime(data.five_hour_reset_at),
-        weeklyResetTime: this.formatResetTime(data.seven_day_reset_at),
-        profileId,
-        profileName,
-        fetchedAt: new Date(),
-        limitType: (data.seven_day_utilization || 0) > (data.five_hour_utilization || 0)
-          ? 'weekly'
-          : 'session'
-      };
+      // Step 6: Normalize response based on provider type
+      let normalizedUsage: ClaudeUsageSnapshot | null = null;
+
+      switch (provider) {
+        case 'anthropic':
+          normalizedUsage = this.normalizeAnthropicResponse(rawData, profileId, profileName);
+          break;
+        case 'zai':
+          normalizedUsage = this.normalizeZAIResponse(rawData, profileId, profileName);
+          break;
+        case 'zhipu':
+          normalizedUsage = this.normalizeZhipuResponse(rawData, profileId, profileName);
+          break;
+        default:
+          console.warn('[UsageMonitor] Unsupported provider for usage normalization:', provider);
+          return null;
+      }
+
+      if (!normalizedUsage) {
+        console.warn('[UsageMonitor] Failed to normalize response from', provider);
+        return null;
+      }
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:PROVIDER] Normalized usage:', {
+          provider,
+          sessionPercent: normalizedUsage.sessionPercent,
+          weeklyPercent: normalizedUsage.weeklyPercent,
+          limitType: normalizedUsage.limitType
+        });
+      }
+
+      return normalizedUsage;
     } catch (error: any) {
       // Re-throw auth failures to be handled by checkUsageAndSwap
       if (error?.statusCode === 401 || error?.statusCode === 403) {
         throw error;
       }
-      
+
       console.error('[UsageMonitor] API fetch failed:', error);
       return null;
     }
+  }
+
+  /**
+   * Normalize Anthropic API response to ClaudeUsageSnapshot
+   *
+   * Expected Anthropic response format:
+   * {
+   *   "five_hour_utilization": 0.72,  // 0.0-1.0
+   *   "seven_day_utilization": 0.45,  // 0.0-1.0
+   *   "five_hour_reset_at": "2025-01-17T15:00:00Z",
+   *   "seven_day_reset_at": "2025-01-20T12:00:00Z"
+   * }
+   */
+  private normalizeAnthropicResponse(
+    data: any,
+    profileId: string,
+    profileName: string
+  ): ClaudeUsageSnapshot {
+    const fiveHourUtil = data.five_hour_utilization || 0;
+    const sevenDayUtil = data.seven_day_utilization || 0;
+
+    return {
+      sessionPercent: Math.round(fiveHourUtil * 100),
+      weeklyPercent: Math.round(sevenDayUtil * 100),
+      sessionResetTime: this.formatResetTime(data.five_hour_reset_at),
+      weeklyResetTime: this.formatResetTime(data.seven_day_reset_at),
+      profileId,
+      profileName,
+      fetchedAt: new Date(),
+      limitType: sevenDayUtil > fiveHourUtil ? 'weekly' : 'session'
+    };
+  }
+
+  /**
+   * Normalize z.ai API response to ClaudeUsageSnapshot
+   *
+   * NOTE: z.ai usage endpoint response format is undocumented.
+   * This method implements flexible parsing with comprehensive logging
+   * to handle unknown or changing response structures.
+   *
+   * Expected endpoint: https://api.z.ai/api/monitor/usage/model-usage
+   *
+   * The actual response format is unknown and will be discovered through
+   * empirical testing. This implementation attempts flexible field mapping
+   * and logs the raw response for debugging.
+   */
+  private normalizeZAIResponse(
+    data: any,
+    profileId: string,
+    profileName: string
+  ): ClaudeUsageSnapshot | null {
+    // Log raw response structure for empirical discovery
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:ZAI] Raw response structure:', {
+        keys: Object.keys(data),
+        data: JSON.stringify(data, null, 2)
+      });
+    }
+
+    try {
+      // Attempt flexible parsing - look for common usage field patterns
+      // Possible field names (undocumented API):
+      // - usage, utilization, used, usage_count, token_usage
+      // - limit, quota, total, max_tokens
+      // - session_usage, weekly_usage, daily_usage
+      // - reset_time, reset_at, expires_at
+
+      const sessionUsage = this.extractUsageField(data, [
+        'session_usage',
+        'five_hour_usage',
+        'daily_usage',
+        'usage',
+        'used_tokens',
+        'token_usage'
+      ]);
+
+      const sessionLimit = this.extractLimitField(data, [
+        'session_limit',
+        'five_hour_limit',
+        'daily_limit',
+        'limit',
+        'quota',
+        'total_tokens',
+        'max_tokens'
+      ]);
+
+      const weeklyUsage = this.extractUsageField(data, [
+        'weekly_usage',
+        'seven_day_usage',
+        'weekly_used',
+        'week_usage'
+      ]);
+
+      const weeklyLimit = this.extractLimitField(data, [
+        'weekly_limit',
+        'seven_day_limit',
+        'weekly_quota',
+        'week_limit'
+      ]);
+
+      const sessionReset = this.extractResetField(data, [
+        'session_reset_at',
+        'session_reset_time',
+        'five_hour_reset_at',
+        'daily_reset_at',
+        'reset_time',
+        'reset_at'
+      ]);
+
+      const weeklyReset = this.extractResetField(data, [
+        'weekly_reset_at',
+        'weekly_reset_time',
+        'seven_day_reset_at',
+        'week_reset_at'
+      ]);
+
+      // Calculate percentages
+      const sessionPercent = sessionLimit > 0
+        ? Math.round((sessionUsage / sessionLimit) * 100)
+        : 0;
+
+      const weeklyPercent = weeklyLimit > 0
+        ? Math.round((weeklyUsage / weeklyLimit) * 100)
+        : 0;
+
+      // If we couldn't extract any meaningful data, log detailed response
+      if (sessionUsage === 0 && weeklyUsage === 0 && sessionLimit === 0 && weeklyLimit === 0) {
+        console.warn('[UsageMonitor:ZAI] Could not extract usage data from response. Response structure:', JSON.stringify(data, null, 2));
+        // Return 0% usage rather than null to allow graceful degradation
+        return {
+          sessionPercent: 0,
+          weeklyPercent: 0,
+          sessionResetTime: 'Unknown',
+          weeklyResetTime: 'Unknown',
+          profileId,
+          profileName,
+          fetchedAt: new Date(),
+          limitType: 'session'
+        };
+      }
+
+      return {
+        sessionPercent,
+        weeklyPercent,
+        sessionResetTime: sessionReset || 'Unknown',
+        weeklyResetTime: weeklyReset || 'Unknown',
+        profileId,
+        profileName,
+        fetchedAt: new Date(),
+        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
+      };
+    } catch (error) {
+      console.error('[UsageMonitor:ZAI] Failed to parse response:', error, 'Raw data:', data);
+      return null;
+    }
+  }
+
+  /**
+   * Normalize ZHIPU AI response to ClaudeUsageSnapshot
+   *
+   * NOTE: ZHIPU usage endpoint response format is undocumented.
+   * Uses the same flexible parsing approach as z.ai.
+   *
+   * Expected endpoint: https://open.bigmodel.cn/api/monitor/usage/model-usage
+   */
+  private normalizeZhipuResponse(
+    data: any,
+    profileId: string,
+    profileName: string
+  ): ClaudeUsageSnapshot | null {
+    // Log raw response structure for empirical discovery
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:ZHIPU] Raw response structure:', {
+        keys: Object.keys(data),
+        data: JSON.stringify(data, null, 2)
+      });
+    }
+
+    // Use the same flexible parsing as z.ai (endpoints may have similar format)
+    return this.normalizeZAIResponse(data, profileId, profileName);
+  }
+
+  /**
+   * Extract usage value from response data using flexible field name matching
+   * Tries multiple possible field names and returns the first non-zero value
+   */
+  private extractUsageField(data: any, possibleFields: string[]): number {
+    for (const field of possibleFields) {
+      const value = data[field];
+      if (typeof value === 'number' && value > 0) {
+        return value;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Extract limit value from response data using flexible field name matching
+   * Tries multiple possible field names and returns the first positive value
+   */
+  private extractLimitField(data: any, possibleFields: string[]): number {
+    for (const field of possibleFields) {
+      const value = data[field];
+      if (typeof value === 'number' && value > 0) {
+        return value;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Extract reset time string from response data using flexible field name matching
+   */
+  private extractResetField(data: any, possibleFields: string[]): string | undefined {
+    for (const field of possibleFields) {
+      const value = data[field];
+      if (typeof value === 'string' && value.length > 0) {
+        return this.formatResetTime(value);
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Get active API profile (if configured)
+   * Returns API profile with baseUrl and apiKey, or undefined if using OAuth
+   */
+  private async getAPIProfile(): Promise<APIProfile | undefined> {
+    try {
+      const profilesFile = await loadProfilesFile();
+      if (profilesFile.activeProfileId) {
+        const activeProfile = profilesFile.profiles.find(
+          (p) => p.id === profilesFile.activeProfileId
+        );
+        if (activeProfile && activeProfile.apiKey) {
+          return activeProfile;
+        }
+      }
+    } catch (error) {
+      // API profile loading failed
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:TRACE] Failed to load API profile:', error);
+      }
+    }
+    return undefined;
   }
 
   /**
