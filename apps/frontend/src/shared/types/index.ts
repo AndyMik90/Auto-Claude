@@ -6,11 +6,28 @@
 export * from './common';
 
 // Domain-specific types
+// Export project types first (includes PhaseModelConfig and ThinkingLevel with provider support)
 export * from './project';
 export * from './task';
 export * from './terminal';
 export * from './agent';
-export * from './settings';
+// Export settings types - exclude PhaseModelConfig and ThinkingLevel to avoid conflicts with project.ts
+// Import them explicitly when needed: import { PhaseModelConfig as SettingsPhaseModelConfig } from './settings'
+export type {
+  ColorTheme,
+  SupportedIDE,
+  SupportedTerminal,
+  AgentProfile,
+  AppSettings,
+  SourceEnvConfig,
+  SourceEnvCheckResult,
+  FeatureModelConfig,
+  FeatureThinkingConfig,
+  PhaseModelConfig as SettingsPhaseModelConfig,
+  ThinkingLevel as SettingsThinkingLevel,
+  PhaseThinkingConfig,
+  ModelTypeShort
+} from './settings';
 export * from './changelog';
 export * from './insights';
 export * from './roadmap';

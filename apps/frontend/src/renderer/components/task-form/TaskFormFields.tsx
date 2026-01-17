@@ -9,7 +9,7 @@
  * - Image thumbnails
  * - Review requirement checkbox
  */
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Image as ImageIcon, X } from 'lucide-react';
 import { Label } from '../ui/label';
@@ -27,9 +27,13 @@ import type {
   TaskImpact,
   ImageAttachment,
   ModelType,
-  ThinkingLevel
+  ThinkingLevel,
+  IFlowConfig,
+  PhaseConfig,
+  PhaseModelConfig
 } from '../../../shared/types';
-import type { PhaseModelConfig, PhaseThinkingConfig } from '../../../shared/types/settings';
+import type { PhaseModelConfig as SettingsPhaseModelConfig, PhaseThinkingConfig } from '../../../shared/types/settings';
+import { AdvancedPhaseSelector } from './AdvancedPhaseSelector';
 
 interface TaskFormFieldsProps {
   // Description field
@@ -49,13 +53,19 @@ interface TaskFormFieldsProps {
   profileId: string;
   model: ModelType | '';
   thinkingLevel: ThinkingLevel | '';
-  phaseModels?: PhaseModelConfig;
+  phaseModels?: SettingsPhaseModelConfig;
   phaseThinking?: PhaseThinkingConfig;
   onProfileChange: (profileId: string, model: ModelType | '', thinkingLevel: ThinkingLevel | '') => void;
   onModelChange: (model: ModelType | '') => void;
   onThinkingLevelChange: (level: ThinkingLevel | '') => void;
-  onPhaseModelsChange: (config: PhaseModelConfig | undefined) => void;
+  onPhaseModelsChange: (config: SettingsPhaseModelConfig | undefined) => void;
   onPhaseThinkingChange: (config: PhaseThinkingConfig | undefined) => void;
+
+  // iFlow configuration (optional)
+  iflowConfig?: IFlowConfig;
+  // Advanced phase configuration with provider support (optional)
+  phaseConfig?: PhaseModelConfig; // From project.ts (with PhaseConfig structure)
+  onPhaseConfigChange?: (config: PhaseModelConfig | undefined) => void;
 
   // Classification
   category: TaskCategory | '';
@@ -110,6 +120,9 @@ export function TaskFormFields({
   onThinkingLevelChange,
   onPhaseModelsChange,
   onPhaseThinkingChange,
+  iflowConfig,
+  phaseConfig,
+  onPhaseConfigChange,
   category,
   priority,
   complexity,
@@ -136,6 +149,9 @@ export function TaskFormFields({
   const internalDescriptionRef = useRef<HTMLTextAreaElement>(null);
   const descriptionRef = externalDescriptionRef || internalDescriptionRef;
   const prefix = idPrefix ? `${idPrefix}-` : '';
+  
+  // Advanced phase configuration toggle
+  const [showAdvancedPhaseConfig, setShowAdvancedPhaseConfig] = useState(false);
 
   // Use the shared image upload hook with translated error messages
   const {
@@ -279,6 +295,40 @@ export function TaskFormFields({
         onPhaseThinkingChange={onPhaseThinkingChange}
         disabled={disabled}
       />
+
+      {/* Advanced Phase Configuration Toggle */}
+      {iflowConfig && onPhaseConfigChange && (
+        <button
+          type="button"
+          onClick={() => setShowAdvancedPhaseConfig(!showAdvancedPhaseConfig)}
+          className={cn(
+            'flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors',
+            'w-full justify-between py-2 px-3 rounded-md hover:bg-muted/50'
+          )}
+          disabled={disabled}
+          aria-expanded={showAdvancedPhaseConfig}
+          aria-controls={`${prefix}advanced-phase-config-section`}
+        >
+          <span>{t('tasks:provider.perPhase.title', { defaultValue: 'Advanced: Per-Phase Provider Configuration' })}</span>
+          {showAdvancedPhaseConfig ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+      )}
+
+      {/* Advanced Phase Configuration */}
+      {showAdvancedPhaseConfig && iflowConfig && onPhaseConfigChange && (
+        <div id={`${prefix}advanced-phase-config-section`}>
+          <AdvancedPhaseSelector
+            phaseConfig={phaseConfig}
+            onPhaseConfigChange={onPhaseConfigChange}
+            iflowConfig={iflowConfig}
+            disabled={disabled}
+          />
+        </div>
+      )}
 
       {/* Classification Toggle */}
       <button

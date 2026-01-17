@@ -8,7 +8,7 @@
  * - QA Review
  */
 import { useTranslation } from 'react-i18next';
-import { FileText, ListTodo, Code, CheckCircle, Sparkles } from 'lucide-react';
+import { FileText, ListTodo, Code, CheckCircle, Sparkles, ChevronDown } from 'lucide-react';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
@@ -19,12 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { useState } from 'react';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '../ui/accordion';
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../ui/collapsible';
+import { cn } from '../../lib/utils';
 import type {
   TaskProvider,
   ThinkingLevel,
@@ -99,6 +100,17 @@ export function AdvancedPhaseSelector({
   const isIFlowEnabled = iflowConfig?.enabled;
   const iflowModels = iflowConfig?.models || IFLOW_DEFAULT_MODELS;
 
+  // Track which phases are expanded (supports multiple open like Accordion type="multiple")
+  const [openPhases, setOpenPhases] = useState<Set<string>>(new Set());
+  const togglePhase = (phaseId: string) => {
+    setOpenPhases((prev) => {
+      const next = new Set(prev);
+      if (next.has(phaseId)) next.delete(phaseId);
+      else next.add(phaseId);
+      return next;
+    });
+  };
+
   // Default config for a phase
   const getDefaultConfig = (phaseId: string): PhaseConfig => ({
     provider: 'claude',
@@ -133,27 +145,40 @@ export function AdvancedPhaseSelector({
         <Badge variant="outline">Advanced</Badge>
       </div>
 
-      <Accordion type="multiple" className="w-full">
+      <div className="w-full space-y-1">
         {PHASES.map((phase) => {
           const config = getPhaseConfig(phase.id);
           const recommendation = TASK_MODEL_RECOMMENDATIONS[phase.taskType];
           const PhaseIcon = phase.icon;
+          const isOpen = openPhases.has(phase.id);
 
           return (
-            <AccordionItem key={phase.id} value={phase.id}>
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center gap-2 flex-1">
-                  <PhaseIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">
-                    {t(`tasks:provider.perPhase.${phase.id}`)}
-                  </span>
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    {config.provider === 'claude' ? 'Claude' : 'iFlow'} / {config.model}
-                  </Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-4 pt-2 pl-6">
+            <Collapsible
+              key={phase.id}
+              open={isOpen}
+              onOpenChange={() => togglePhase(phase.id)}
+            >
+              <div className="rounded-lg border border-border overflow-hidden">
+                <CollapsibleTrigger
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 px-4 py-3 text-left',
+                    'hover:bg-muted/50 transition-colors [&[data-state=open]>svg]:rotate-180'
+                  )}
+                  disabled={disabled}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <PhaseIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium">
+                      {t(`tasks:provider.perPhase.${phase.id}`)}
+                    </span>
+                    <Badge variant="secondary" className="ml-2 text-xs shrink-0">
+                      {config.provider === 'claude' ? 'Claude' : 'iFlow'} / {config.model}
+                    </Badge>
+                  </div>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-4 pt-2 pb-4 px-4 pl-6 border-t border-border">
                   {/* Phase description */}
                   <p className="text-xs text-muted-foreground">
                     {t(`tasks:provider.perPhase.${phase.id}Description`)}
@@ -285,11 +310,12 @@ export function AdvancedPhaseSelector({
                     </div>
                   )}
                 </div>
-              </AccordionContent>
-            </AccordionItem>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           );
         })}
-      </Accordion>
+      </div>
     </div>
   );
 }

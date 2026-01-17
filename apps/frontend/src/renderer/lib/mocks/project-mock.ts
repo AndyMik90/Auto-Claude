@@ -110,5 +110,33 @@ export const projectMock = {
   initializeGit: async () => ({
     success: true,
     data: { success: true }
+  }),
+
+  // iFlow integration
+  testIFlowConnection: async (_projectId: string, _config: any) => ({
+    success: true,
+    data: {
+      connected: true,
+      modelCount: 5,
+      lastChecked: new Date().toISOString()
+    }
+  }),
+
+  discoverIFlowModels: async (_projectId: string, _config: any) => ({
+    success: true,
+    data: [
+      {
+        id: 'deepseek-v3',
+        name: 'DeepSeek V3',
+        capabilities: ['general', 'code', 'reasoning'],
+        isDefault: true
+      },
+      {
+        id: 'kimi-k2',
+        name: 'Kimi K2',
+        capabilities: ['reasoning', 'planning'],
+        isDefault: false
+      }
+    ]
   })
 };

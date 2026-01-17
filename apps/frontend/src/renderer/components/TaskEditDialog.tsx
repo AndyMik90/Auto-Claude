@@ -34,14 +34,15 @@ import { TaskModalLayout } from './task-form/TaskModalLayout';
 import { TaskFormFields } from './task-form/TaskFormFields';
 import { type FileReferenceData } from './task-form/useImageUpload';
 import { persistUpdateTask } from '../stores/task-store';
-import type { Task, ImageAttachment, TaskCategory, TaskPriority, TaskComplexity, TaskImpact, ModelType, ThinkingLevel } from '../../shared/types';
+import type { Task, ImageAttachment, TaskCategory, TaskPriority, TaskComplexity, TaskImpact, ModelType, ThinkingLevel, IFlowConfig, PhaseConfig, PhaseModelConfig } from '../../shared/types';
 import {
   DEFAULT_AGENT_PROFILES,
   DEFAULT_PHASE_MODELS,
   DEFAULT_PHASE_THINKING
 } from '../../shared/constants';
-import type { PhaseModelConfig, PhaseThinkingConfig } from '../../shared/types/settings';
+import type { PhaseModelConfig as SettingsPhaseModelConfig, PhaseThinkingConfig } from '../../shared/types/settings';
 import { useSettingsStore } from '../stores/settings-store';
+import { useProjectStore } from '../stores/project-store';
 
 /**
  * Props for the TaskEditDialog component
@@ -97,12 +98,55 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel | ''>(
     task.metadata?.thinkingLevel || selectedProfile.thinkingLevel
   );
-  const [phaseModels, setPhaseModels] = useState<PhaseModelConfig | undefined>(
-    task.metadata?.phaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS
-  );
+  const [phaseModels, setPhaseModels] = useState<SettingsPhaseModelConfig | undefined>(() => {
+    // task.metadata?.phaseModels can be either SettingsPhaseModelConfig or PhaseModelConfig
+    // Only use it if it's SettingsPhaseModelConfig (legacy format)
+    const taskPhaseModels = task.metadata?.phaseModels;
+    if (taskPhaseModels && typeof taskPhaseModels === 'object') {
+      const firstPhase = (taskPhaseModels as any).spec || (taskPhaseModels as any).planning || (taskPhaseModels as any).coding || (taskPhaseModels as any).qa;
+      if (!firstPhase || typeof firstPhase === 'string' || !('provider' in firstPhase)) {
+        // Legacy format (SettingsPhaseModelConfig)
+        return taskPhaseModels as SettingsPhaseModelConfig;
+      }
+    }
+    return selectedProfile.phaseModels || DEFAULT_PHASE_MODELS;
+  });
   const [phaseThinking, setPhaseThinking] = useState<PhaseThinkingConfig | undefined>(
     task.metadata?.phaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING
   );
+
+  // iFlow configuration
+  const [iflowConfig, setIflowConfig] = useState<IFlowConfig | undefined>(undefined);
+  // Advanced phase configuration with provider support
+  // Extract from task.metadata.phaseModels if it has provider field (PhaseConfig format)
+  const [phaseConfig, setPhaseConfig] = useState<PhaseModelConfig | undefined>(() => {
+    const taskPhaseModels = task.metadata?.phaseModels;
+    if (taskPhaseModels && typeof taskPhaseModels === 'object') {
+      // Check if it's PhaseConfig format (has provider field) or legacy format (just model strings)
+      const firstPhase = (taskPhaseModels as any).spec || (taskPhaseModels as any).planning || (taskPhaseModels as any).coding || (taskPhaseModels as any).qa;
+      if (firstPhase && typeof firstPhase === 'object' && 'provider' in firstPhase) {
+        return taskPhaseModels as unknown as PhaseModelConfig;
+      }
+    }
+    return undefined;
+  });
+
+  // Load iflowConfig when dialog opens
+  useEffect(() => {
+    const loadIFlowConfig = async () => {
+      if (open && task.projectId) {
+        try {
+          const result = await window.electronAPI.getProjectEnv(task.projectId);
+          if (result.success && result.data?.iflowConfig) {
+            setIflowConfig(result.data.iflowConfig);
+          }
+        } catch (err) {
+          console.error('Failed to load iFlow config:', err);
+        }
+      }
+    };
+    loadIFlowConfig();
+  }, [open, task.projectId]);
 
   // Image attachments
   const [images, setImages] = useState<ImageAttachment[]>(task.metadata?.attachedImages || []);
@@ -131,7 +175,20 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         setProfileId('auto');
         setModel(taskModel || selectedProfile.model);
         setThinkingLevel(taskThinking || selectedProfile.thinkingLevel);
-        setPhaseModels(task.metadata?.phaseModels || DEFAULT_PHASE_MODELS);
+        // task.metadata?.phaseModels can be either SettingsPhaseModelConfig or PhaseModelConfig
+        // Only use it if it's SettingsPhaseModelConfig (legacy format)
+        const taskPhaseModels1 = task.metadata?.phaseModels;
+        if (taskPhaseModels1 && typeof taskPhaseModels1 === 'object') {
+          const firstPhase1 = (taskPhaseModels1 as any).spec || (taskPhaseModels1 as any).planning || (taskPhaseModels1 as any).coding || (taskPhaseModels1 as any).qa;
+          if (!firstPhase1 || typeof firstPhase1 === 'string' || !('provider' in firstPhase1)) {
+            // Legacy format (SettingsPhaseModelConfig)
+            setPhaseModels(taskPhaseModels1 as SettingsPhaseModelConfig);
+          } else {
+            setPhaseModels(DEFAULT_PHASE_MODELS);
+          }
+        } else {
+          setPhaseModels(DEFAULT_PHASE_MODELS);
+        }
         setPhaseThinking(task.metadata?.phaseThinking || DEFAULT_PHASE_THINKING);
       } else if (taskModel && taskThinking) {
         const matchingProfile = DEFAULT_AGENT_PROFILES.find(
@@ -140,7 +197,20 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         setProfileId(matchingProfile?.id || 'custom');
         setModel(taskModel);
         setThinkingLevel(taskThinking);
-        setPhaseModels(task.metadata?.phaseModels || DEFAULT_PHASE_MODELS);
+        // task.metadata?.phaseModels can be either SettingsPhaseModelConfig or PhaseModelConfig
+        // Only use it if it's SettingsPhaseModelConfig (legacy format)
+        const taskPhaseModels2 = task.metadata?.phaseModels;
+        if (taskPhaseModels2 && typeof taskPhaseModels2 === 'object') {
+          const firstPhase2 = (taskPhaseModels2 as any).spec || (taskPhaseModels2 as any).planning || (taskPhaseModels2 as any).coding || (taskPhaseModels2 as any).qa;
+          if (!firstPhase2 || typeof firstPhase2 === 'string' || !('provider' in firstPhase2)) {
+            // Legacy format (SettingsPhaseModelConfig)
+            setPhaseModels(taskPhaseModels2 as SettingsPhaseModelConfig);
+          } else {
+            setPhaseModels(DEFAULT_PHASE_MODELS);
+          }
+        } else {
+          setPhaseModels(DEFAULT_PHASE_MODELS);
+        }
         setPhaseThinking(task.metadata?.phaseThinking || DEFAULT_PHASE_THINKING);
       } else {
         setProfileId(settings.selectedAgentProfile || 'auto');
@@ -198,7 +268,8 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       requireReviewBeforeCoding !== (task.metadata?.requireReviewBeforeCoding ?? false) ||
       JSON.stringify(images) !== JSON.stringify(task.metadata?.attachedImages || []) ||
       JSON.stringify(phaseModels) !== JSON.stringify(task.metadata?.phaseModels || DEFAULT_PHASE_MODELS) ||
-      JSON.stringify(phaseThinking) !== JSON.stringify(task.metadata?.phaseThinking || DEFAULT_PHASE_THINKING);
+      JSON.stringify(phaseThinking) !== JSON.stringify(task.metadata?.phaseThinking || DEFAULT_PHASE_THINKING) ||
+      JSON.stringify(phaseConfig) !== JSON.stringify(task.metadata?.phaseModels);
 
     if (!hasChanges) {
       onOpenChange(false);
@@ -214,12 +285,43 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
     if (priority) metadataUpdates.priority = priority;
     if (complexity) metadataUpdates.complexity = complexity;
     if (impact) metadataUpdates.impact = impact;
-    if (model) metadataUpdates.model = model as ModelType;
-    if (thinkingLevel) metadataUpdates.thinkingLevel = thinkingLevel as ThinkingLevel;
-    if (phaseModels && phaseThinking) {
+    
+    // Use phaseConfig if provided (advanced mode with provider support)
+    // Otherwise use legacy phaseModels/phaseThinking (Claude only)
+    if (phaseConfig) {
       metadataUpdates.isAutoProfile = profileId === 'auto';
-      metadataUpdates.phaseModels = phaseModels;
+      metadataUpdates.phaseModels = phaseConfig;
+      // Extract thinking levels from phaseConfig for backward compatibility
+      const phaseThinkingFromConfig: Partial<PhaseThinkingConfig> = {};
+      if (phaseConfig.spec?.thinkingLevel) phaseThinkingFromConfig.spec = phaseConfig.spec.thinkingLevel;
+      if (phaseConfig.planning?.thinkingLevel) phaseThinkingFromConfig.planning = phaseConfig.planning.thinkingLevel;
+      if (phaseConfig.coding?.thinkingLevel) phaseThinkingFromConfig.coding = phaseConfig.coding.thinkingLevel;
+      if (phaseConfig.qa?.thinkingLevel) phaseThinkingFromConfig.qa = phaseConfig.qa.thinkingLevel;
+      if (Object.keys(phaseThinkingFromConfig).length > 0) {
+        metadataUpdates.phaseThinking = phaseThinkingFromConfig as PhaseThinkingConfig;
+      }
+    } else if (phaseModels && phaseThinking) {
+      // Legacy mode: convert SettingsPhaseModelConfig (Claude models only) to PhaseModelConfig format
+      metadataUpdates.isAutoProfile = profileId === 'auto';
+      const convertedPhaseConfig: PhaseModelConfig = {};
+      if (phaseModels.spec) {
+        convertedPhaseConfig.spec = { provider: 'claude', model: phaseModels.spec, thinkingLevel: phaseThinking.spec };
+      }
+      if (phaseModels.planning) {
+        convertedPhaseConfig.planning = { provider: 'claude', model: phaseModels.planning, thinkingLevel: phaseThinking.planning };
+      }
+      if (phaseModels.coding) {
+        convertedPhaseConfig.coding = { provider: 'claude', model: phaseModels.coding, thinkingLevel: phaseThinking.coding };
+      }
+      if (phaseModels.qa) {
+        convertedPhaseConfig.qa = { provider: 'claude', model: phaseModels.qa, thinkingLevel: phaseThinking.qa };
+      }
+      metadataUpdates.phaseModels = convertedPhaseConfig;
       metadataUpdates.phaseThinking = phaseThinking;
+    } else {
+      // Simple mode: single model/thinking level
+      if (model) metadataUpdates.model = model as ModelType;
+      if (thinkingLevel) metadataUpdates.thinkingLevel = thinkingLevel as ThinkingLevel;
     }
     // Always set attachedImages to persist removal when all images are deleted
     metadataUpdates.attachedImages = images.length > 0 ? images : [];
@@ -287,6 +389,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         onThinkingLevelChange={setThinkingLevel}
         onPhaseModelsChange={setPhaseModels}
         onPhaseThinkingChange={setPhaseThinking}
+        iflowConfig={iflowConfig}
+        phaseConfig={phaseConfig}
+        onPhaseConfigChange={setPhaseConfig}
         category={category}
         priority={priority}
         complexity={complexity}

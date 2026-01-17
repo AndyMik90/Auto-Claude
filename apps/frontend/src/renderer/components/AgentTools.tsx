@@ -33,7 +33,8 @@ import {
   Loader2,
   RefreshCw,
   AlertTriangle,
-  Lock
+  Lock,
+  Sparkles
 } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ScrollArea } from './ui/scroll-area';
@@ -330,6 +331,17 @@ const MCP_SERVERS: Record<string, { name: string; description: string; icon: Rea
       'mcp__puppeteer__puppeteer_evaluate',
     ],
   },
+  iflow: {
+    name: 'iFlow MCP',
+    description: 'iFlow AI tools for cost-effective model access. Requires IFLOW_ENABLED=true and IFLOW_API_KEY.',
+    icon: Sparkles,
+    tools: [
+      'mcp__iflow__chat',
+      'mcp__iflow__code_complete',
+      'mcp__iflow__translate',
+      'mcp__iflow__summarize',
+    ],
+  },
 };
 
 // All available MCP servers that can be added to agents
@@ -339,7 +351,8 @@ const ALL_MCP_SERVERS = [
   'linear',
   'electron',
   'puppeteer',
-  'auto-claude'
+  'auto-claude',
+  'iflow'
 ] as const;
 
 // Category metadata - neutral styling per design.json
@@ -401,6 +414,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
         case 'linear': return mcpServerStates.linearMcpEnabled !== false;
         case 'electron': return mcpServerStates.electronEnabled !== false;
         case 'puppeteer': return mcpServerStates.puppeteerEnabled !== false;
+        case 'iflow': return mcpServerStates.iflowEnabled !== false;
         default: return true;
       }
     });

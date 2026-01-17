@@ -89,10 +89,26 @@ function getPhaseConfig(
 
   // Auto profile with per-phase config
   if (metadata.isAutoProfile && metadata.phaseModels && metadata.phaseThinking) {
-    const model = metadata.phaseModels[configPhase];
+    const phaseModel = (metadata.phaseModels as any)[configPhase];
     const thinking = metadata.phaseThinking[configPhase];
+    // phaseModel can be either ModelTypeShort (legacy) or PhaseConfig (new format)
+    let modelLabel: string;
+    if (typeof phaseModel === 'string') {
+      // Legacy format (ModelTypeShort)
+      modelLabel = (phaseModel in MODEL_SHORT_LABELS ? MODEL_SHORT_LABELS[phaseModel as ModelTypeShort] : phaseModel);
+    } else if (phaseModel && typeof phaseModel === 'object' && 'model' in phaseModel) {
+      // New format (PhaseConfig)
+      const modelValue = phaseModel.model;
+      if (typeof modelValue === 'string' && modelValue in MODEL_SHORT_LABELS) {
+        modelLabel = MODEL_SHORT_LABELS[modelValue as ModelTypeShort];
+      } else {
+        modelLabel = String(modelValue);
+      }
+    } else {
+      modelLabel = 'Unknown';
+    }
     return {
-      model: MODEL_SHORT_LABELS[model] || model,
+      model: modelLabel,
       thinking: THINKING_SHORT_LABELS[thinking] || thinking
     };
   }

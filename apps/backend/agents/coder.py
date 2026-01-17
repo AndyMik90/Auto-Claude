@@ -18,7 +18,7 @@ from linear_updater import (
     linear_task_started,
     linear_task_stuck,
 )
-from phase_config import get_phase_model, get_phase_thinking_budget
+from phase_config import get_phase_model, get_phase_thinking_budget, get_phase_config
 from phase_event import ExecutionPhase, emit_phase
 from progress import (
     count_subtasks,
@@ -178,8 +178,16 @@ async def run_autonomous_agent(
 
         # Start planning phase in task logger
         if task_logger:
+            # Get phase config for planning to log provider/model info
+            planning_model, planning_thinking_level, _, planning_provider = get_phase_config(
+                spec_dir, "planning", model, None
+            )
             task_logger.start_phase(
-                LogPhase.PLANNING, "Starting implementation planning..."
+                LogPhase.PLANNING,
+                "Starting implementation planning...",
+                provider=planning_provider,
+                model=planning_model,
+                thinking_level=planning_thinking_level,
             )
 
         # Update Linear to "In Progress" when build starts
@@ -198,7 +206,17 @@ async def run_autonomous_agent(
 
         # Start/continue coding phase in task logger
         if task_logger:
-            task_logger.start_phase(LogPhase.CODING, "Continuing implementation...")
+            # Get phase config for coding to log provider/model info
+            coding_model, coding_thinking_level, _, coding_provider = get_phase_config(
+                spec_dir, "coding", model, None
+            )
+            task_logger.start_phase(
+                LogPhase.CODING,
+                "Continuing implementation...",
+                provider=coding_provider,
+                model=coding_model,
+                thinking_level=coding_thinking_level,
+            )
 
         # Emit phase event when continuing build
         emit_phase(ExecutionPhase.CODING, "Continuing implementation")
@@ -275,13 +293,14 @@ async def run_autonomous_agent(
         commit_before = get_latest_commit(project_dir)
         commit_count_before = get_commit_count(project_dir)
 
-        # Get the phase-specific model and thinking level (respects task_metadata.json configuration)
+        # Get the phase-specific model, thinking level, and provider (respects task_metadata.json configuration)
         # first_run means we're in planning phase, otherwise coding phase
         current_phase = "planning" if first_run else "coding"
-        phase_model = get_phase_model(spec_dir, current_phase, model)
-        phase_thinking_budget = get_phase_thinking_budget(spec_dir, current_phase)
+        phase_model, phase_thinking_level, phase_thinking_budget, phase_provider = get_phase_config(
+            spec_dir, current_phase, model, None
+        )
 
-        # Create client (fresh context) with phase-specific model and thinking
+        # Create client (fresh context) with phase-specific model, thinking, and provider
         # Use appropriate agent_type for correct tool permissions and thinking budget
         client = create_client(
             project_dir,
@@ -289,6 +308,7 @@ async def run_autonomous_agent(
             phase_model,
             agent_type="planner" if first_run else "coder",
             max_thinking_tokens=phase_thinking_budget,
+            provider=phase_provider,
         )
 
         # Generate appropriate prompt
@@ -329,8 +349,16 @@ async def run_autonomous_agent(
                         success=True,
                         message="Implementation plan created",
                     )
+                    # Get phase config for coding to log provider/model info
+                    coding_model, coding_thinking_level, _, coding_provider = get_phase_config(
+                        spec_dir, "coding", model, None
+                    )
                     task_logger.start_phase(
-                        LogPhase.CODING, "Starting implementation..."
+                        LogPhase.CODING,
+                        "Starting implementation...",
+                        provider=coding_provider,
+                        model=coding_model,
+                        thinking_level=coding_thinking_level,
                     )
                 # In worktree mode, the UI prefers planning logs from the main spec dir.
                 # Ensure the planning->coding transition is immediately reflected there.

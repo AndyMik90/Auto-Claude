@@ -30,8 +30,8 @@ import { FileAutocomplete } from './FileAutocomplete';
 import { createTask, saveDraft, loadDraft, clearDraft, isDraftEmpty } from '../stores/task-store';
 import { useProjectStore } from '../stores/project-store';
 import { cn } from '../lib/utils';
-import type { TaskCategory, TaskPriority, TaskComplexity, TaskImpact, TaskMetadata, ImageAttachment, TaskDraft, ModelType, ThinkingLevel, ReferencedFile } from '../../shared/types';
-import type { PhaseModelConfig, PhaseThinkingConfig } from '../../shared/types/settings';
+import type { TaskCategory, TaskPriority, TaskComplexity, TaskImpact, TaskMetadata, ImageAttachment, TaskDraft, ModelType, ThinkingLevel, ReferencedFile, IFlowConfig, PhaseConfig, PhaseModelConfig } from '../../shared/types';
+import type { PhaseModelConfig as SettingsPhaseModelConfig, PhaseThinkingConfig } from '../../shared/types/settings';
 import {
   DEFAULT_AGENT_PROFILES,
   DEFAULT_PHASE_MODELS,
@@ -93,12 +93,17 @@ export function TaskCreationWizard({
   const [profileId, setProfileId] = useState<string>(settings.selectedAgentProfile || 'auto');
   const [model, setModel] = useState<ModelType | ''>(selectedProfile.model);
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel | ''>(selectedProfile.thinkingLevel);
-  const [phaseModels, setPhaseModels] = useState<PhaseModelConfig | undefined>(
+  const [phaseModels, setPhaseModels] = useState<SettingsPhaseModelConfig | undefined>(
     settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS
   );
   const [phaseThinking, setPhaseThinking] = useState<PhaseThinkingConfig | undefined>(
     settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING
   );
+
+  // iFlow configuration
+  const [iflowConfig, setIflowConfig] = useState<IFlowConfig | undefined>(undefined);
+  // Advanced phase configuration with provider support
+  const [phaseConfig, setPhaseConfig] = useState<PhaseModelConfig | undefined>(undefined);
 
   // Images and files
   const [images, setImages] = useState<ImageAttachment[]>([]);
@@ -184,8 +189,14 @@ export function TaskCreationWizard({
       if (!projectId) return;
       try {
         const result = await window.electronAPI.getProjectEnv(projectId);
-        if (isMounted && result.success && result.data?.defaultBranch) {
-          setProjectDefaultBranch(result.data.defaultBranch);
+        if (isMounted && result.success && result.data) {
+          if (result.data.defaultBranch) {
+            setProjectDefaultBranch(result.data.defaultBranch);
+          }
+          // Load iFlow config
+          if (result.data.iflowConfig) {
+            setIflowConfig(result.data.iflowConfig);
+          }
         } else if (projectPath) {
           const detectResult = await window.electronAPI.detectMainBranch(projectPath);
           if (isMounted && detectResult.success && detectResult.data) {
@@ -386,12 +397,43 @@ export function TaskCreationWizard({
       if (priority) metadata.priority = priority;
       if (complexity) metadata.complexity = complexity;
       if (impact) metadata.impact = impact;
-      if (model) metadata.model = model;
-      if (thinkingLevel) metadata.thinkingLevel = thinkingLevel;
-      if (phaseModels && phaseThinking) {
+      
+      // Use phaseConfig if provided (advanced mode with provider support)
+      // Otherwise use legacy phaseModels/phaseThinking (Claude only)
+      if (phaseConfig) {
         metadata.isAutoProfile = profileId === 'auto';
-        metadata.phaseModels = phaseModels;
+        metadata.phaseModels = phaseConfig;
+        // Extract thinking levels from phaseConfig for backward compatibility
+        const phaseThinkingFromConfig: Partial<PhaseThinkingConfig> = {};
+        if (phaseConfig.spec?.thinkingLevel) phaseThinkingFromConfig.spec = phaseConfig.spec.thinkingLevel;
+        if (phaseConfig.planning?.thinkingLevel) phaseThinkingFromConfig.planning = phaseConfig.planning.thinkingLevel;
+        if (phaseConfig.coding?.thinkingLevel) phaseThinkingFromConfig.coding = phaseConfig.coding.thinkingLevel;
+        if (phaseConfig.qa?.thinkingLevel) phaseThinkingFromConfig.qa = phaseConfig.qa.thinkingLevel;
+        if (Object.keys(phaseThinkingFromConfig).length > 0) {
+          metadata.phaseThinking = phaseThinkingFromConfig as PhaseThinkingConfig;
+        }
+      } else if (phaseModels && phaseThinking) {
+        // Legacy mode: convert SettingsPhaseModelConfig (Claude models only) to PhaseModelConfig format
+        metadata.isAutoProfile = profileId === 'auto';
+        const convertedPhaseConfig: PhaseModelConfig = {};
+        if (phaseModels.spec) {
+          convertedPhaseConfig.spec = { provider: 'claude', model: phaseModels.spec, thinkingLevel: phaseThinking.spec };
+        }
+        if (phaseModels.planning) {
+          convertedPhaseConfig.planning = { provider: 'claude', model: phaseModels.planning, thinkingLevel: phaseThinking.planning };
+        }
+        if (phaseModels.coding) {
+          convertedPhaseConfig.coding = { provider: 'claude', model: phaseModels.coding, thinkingLevel: phaseThinking.coding };
+        }
+        if (phaseModels.qa) {
+          convertedPhaseConfig.qa = { provider: 'claude', model: phaseModels.qa, thinkingLevel: phaseThinking.qa };
+        }
+        metadata.phaseModels = convertedPhaseConfig;
         metadata.phaseThinking = phaseThinking;
+      } else {
+        // Simple mode: single model/thinking level
+        if (model) metadata.model = model;
+        if (thinkingLevel) metadata.thinkingLevel = thinkingLevel;
       }
       if (images.length > 0) metadata.attachedImages = images;
       if (allReferencedFiles.length > 0) metadata.referencedFiles = allReferencedFiles;
@@ -434,6 +476,7 @@ export function TaskCreationWizard({
     setThinkingLevel(selectedProfile.thinkingLevel);
     setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
     setPhaseThinking(settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
+    setPhaseConfig(undefined);
     setImages([]);
     setReferencedFiles([]);
     setRequireReviewBeforeCoding(false);
@@ -605,6 +648,9 @@ export function TaskCreationWizard({
           onThinkingLevelChange={setThinkingLevel}
           onPhaseModelsChange={setPhaseModels}
           onPhaseThinkingChange={setPhaseThinking}
+          iflowConfig={iflowConfig}
+          phaseConfig={phaseConfig}
+          onPhaseConfigChange={setPhaseConfig}
           category={category}
           priority={priority}
           complexity={complexity}

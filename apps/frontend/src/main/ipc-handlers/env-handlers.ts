@@ -227,6 +227,30 @@ export function registerEnvHandlers(
       }
     }
 
+    // iFlow Integration
+    if (config.iflowConfig) {
+      if (config.iflowConfig.enabled !== undefined) {
+        existingVars['IFLOW_ENABLED'] = config.iflowConfig.enabled ? 'true' : 'false';
+      }
+      if (config.iflowConfig.apiKey) {
+        existingVars['IFLOW_API_KEY'] = config.iflowConfig.apiKey;
+      }
+      if (config.iflowConfig.baseUrl) {
+        existingVars['IFLOW_BASE_URL'] = config.iflowConfig.baseUrl;
+      }
+      if (config.iflowConfig.defaultModel) {
+        existingVars['IFLOW_DEFAULT_MODEL'] = config.iflowConfig.defaultModel;
+      }
+      if (config.iflowConfig.models && config.iflowConfig.models.length > 0) {
+        existingVars['IFLOW_MODELS'] = JSON.stringify(config.iflowConfig.models);
+      }
+    }
+
+    // iFlow MCP Server
+    if (config.mcpServers?.iflowEnabled !== undefined) {
+      existingVars['IFLOW_MCP_ENABLED'] = config.mcpServers.iflowEnabled ? 'true' : 'false';
+    }
+
     // Generate content with sections
     const content = `# Auto Claude Framework Environment Variables
 # Managed by Auto Claude UI
@@ -302,6 +326,19 @@ ${Object.entries(existingVars)
 # JSON format: [{"id":"...","name":"...","type":"command|http",...}]
 # =============================================================================
 ${existingVars['CUSTOM_MCP_SERVERS'] ? `CUSTOM_MCP_SERVERS=${existingVars['CUSTOM_MCP_SERVERS']}` : '# CUSTOM_MCP_SERVERS=[]'}
+
+# =============================================================================
+# IFLOW INTEGRATION (OPTIONAL)
+# Alternative AI provider with DeepSeek, Qwen, Kimi, and other models
+# API Endpoint: https://apis.iflow.cn/v1 (OpenAI-compatible)
+# =============================================================================
+${existingVars['IFLOW_ENABLED'] !== undefined ? `IFLOW_ENABLED=${existingVars['IFLOW_ENABLED']}` : '# IFLOW_ENABLED=false'}
+${existingVars['IFLOW_API_KEY'] ? `IFLOW_API_KEY=${existingVars['IFLOW_API_KEY']}` : '# IFLOW_API_KEY='}
+${existingVars['IFLOW_BASE_URL'] ? `IFLOW_BASE_URL=${existingVars['IFLOW_BASE_URL']}` : '# IFLOW_BASE_URL=https://apis.iflow.cn/v1'}
+${existingVars['IFLOW_DEFAULT_MODEL'] ? `IFLOW_DEFAULT_MODEL=${existingVars['IFLOW_DEFAULT_MODEL']}` : '# IFLOW_DEFAULT_MODEL=deepseek-v3'}
+${existingVars['IFLOW_MODELS'] ? `IFLOW_MODELS=${existingVars['IFLOW_MODELS']}` : '# IFLOW_MODELS=[]'}
+# iFlow MCP Server - provides AI tools for agents (default: follows IFLOW_ENABLED)
+${existingVars['IFLOW_MCP_ENABLED'] !== undefined ? `IFLOW_MCP_ENABLED=${existingVars['IFLOW_MCP_ENABLED']}` : '# IFLOW_MCP_ENABLED=false'}
 
 # =============================================================================
 # MEMORY INTEGRATION
@@ -506,13 +543,14 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       }
 
       // MCP Server Configuration (per-project overrides)
-      // Default: context7=true, linear=true (if API key set), electron/puppeteer=false
+      // Default: context7=true, linear=true (if API key set), electron/puppeteer=false, iflow=false
       config.mcpServers = {
         context7Enabled: vars['CONTEXT7_ENABLED']?.toLowerCase() !== 'false', // default true
         graphitiEnabled: config.graphitiEnabled, // follows GRAPHITI_ENABLED
         linearMcpEnabled: vars['LINEAR_MCP_ENABLED']?.toLowerCase() !== 'false', // default true
         electronEnabled: vars['ELECTRON_MCP_ENABLED']?.toLowerCase() === 'true', // default false
         puppeteerEnabled: vars['PUPPETEER_MCP_ENABLED']?.toLowerCase() === 'true', // default false
+        iflowEnabled: vars['IFLOW_MCP_ENABLED']?.toLowerCase() === 'true', // default false
       };
 
       // Parse per-agent MCP overrides (AGENT_MCP_<agent>_ADD/REMOVE)
@@ -540,6 +578,32 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         } catch {
           // Invalid JSON, ignore
           config.customMcpServers = [];
+        }
+      }
+
+      // iFlow Integration
+      const iflowEnabled = vars['IFLOW_ENABLED']?.toLowerCase() === 'true';
+      if (iflowEnabled || vars['IFLOW_API_KEY']) {
+        config.iflowConfig = {
+          enabled: iflowEnabled,
+          apiKey: vars['IFLOW_API_KEY'],
+          baseUrl: vars['IFLOW_BASE_URL'],
+          defaultModel: vars['IFLOW_DEFAULT_MODEL'],
+        };
+
+        // Parse iFlow models JSON
+        if (vars['IFLOW_MODELS']) {
+          try {
+            config.iflowConfig.models = JSON.parse(vars['IFLOW_MODELS']);
+          } catch {
+            // Invalid JSON, ignore
+            config.iflowConfig.models = [];
+          }
+        }
+
+        // Update iflowEnabled in mcpServers if not explicitly set
+        if (config.mcpServers && vars['IFLOW_MCP_ENABLED'] === undefined) {
+          config.mcpServers.iflowEnabled = iflowEnabled;
         }
       }
 
