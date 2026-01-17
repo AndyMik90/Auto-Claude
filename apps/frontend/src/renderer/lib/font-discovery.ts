@@ -160,7 +160,8 @@ export function waitForFontsReady(): Promise<void> {
     return Promise.resolve();
   }
 
-  return document.fonts.ready;
+  // Cast to Promise<void> since callers typically don't need the FontFaceSet
+  return document.fonts.ready as unknown as Promise<void>;
 }
 
 /**
