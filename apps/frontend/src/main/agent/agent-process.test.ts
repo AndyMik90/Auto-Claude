@@ -111,16 +111,31 @@ vi.mock('electron', () => ({
   }
 }));
 
+// Mock cli-tool-manager to avoid blocking tool detection on Windows
+vi.mock('../cli-tool-manager', () => ({
+  getToolInfo: vi.fn(() => ({ found: false, path: null, source: 'mock' })),
+  deriveGitBashPath: vi.fn(() => null),
+  clearCache: vi.fn()
+}));
+
+// Mock env-utils to avoid blocking environment augmentation
+vi.mock('../env-utils', () => ({
+  getAugmentedEnv: vi.fn(() => ({ ...process.env }))
+}));
+
 // Mock fs.existsSync for getAutoBuildSourcePath path validation
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs')>();
   return {
     ...actual,
-    existsSync: vi.fn((path: string) => {
+    existsSync: vi.fn((inputPath: string) => {
+      // Normalize path separators for cross-platform compatibility
+      // path.join() uses backslashes on Windows, so we normalize to forward slashes
+      const normalizedPath = inputPath.replace(/\\/g, '/');
       // Return true for the fake auto-build path and its expected files
-      if (path === '/fake/auto-build' ||
-          path === '/fake/auto-build/runners' ||
-          path === '/fake/auto-build/runners/spec_runner.py') {
+      if (normalizedPath === '/fake/auto-build' ||
+          normalizedPath === '/fake/auto-build/runners' ||
+          normalizedPath === '/fake/auto-build/runners/spec_runner.py') {
         return true;
       }
       return false;
