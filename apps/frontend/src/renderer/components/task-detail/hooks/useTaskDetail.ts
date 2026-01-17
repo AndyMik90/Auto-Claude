@@ -107,10 +107,11 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | undefined;
 
-    // IMPORTANT: If execution phase is 'complete' or 'failed', the task is NOT stuck.
-    // It means the process has finished and status update is pending.
-    // This prevents false-positive "stuck" indicators when the process exits normally.
-    const isPhaseTerminal = executionPhase === 'complete' || executionPhase === 'failed';
+    // IMPORTANT: If execution phase is 'complete', 'failed', or 'planning', the task is NOT stuck.
+    // - 'complete'/'failed': The process has finished and status update is pending.
+    // - 'planning': Process tracking is async and may show false negatives during initial startup.
+    // This prevents false-positive "stuck" indicators when the process exits normally or is starting up.
+    const isPhaseTerminal = executionPhase === 'complete' || executionPhase === 'failed' || executionPhase === 'planning';
     if (isPhaseTerminal) {
       setIsStuck(false);
       setHasCheckedRunning(true);
@@ -123,7 +124,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
         checkTaskRunning(task.id).then((actuallyRunning) => {
           // Double-check the phase in case it changed while waiting
           const latestPhase = task.executionProgress?.phase;
-          if (latestPhase === 'complete' || latestPhase === 'failed') {
+          if (latestPhase === 'complete' || latestPhase === 'failed' || latestPhase === 'planning') {
             setIsStuck(false);
           } else {
             setIsStuck(!actuallyRunning);

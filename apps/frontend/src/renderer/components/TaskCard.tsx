@@ -155,14 +155,15 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
     ));
   }, [task.status, onStatusChange, t]);
 
+  // Phases where stuck detection should be skipped (terminal states + initial planning)
+  const STUCK_CHECK_SKIP_PHASES = ['complete', 'failed', 'planning'] as const;
+  const shouldSkipStuckCheck = (phase: string | undefined): boolean =>
+    STUCK_CHECK_SKIP_PHASES.includes(phase as typeof STUCK_CHECK_SKIP_PHASES[number]);
+
   // Memoized stuck check function to avoid recreating on every render
   const performStuckCheck = useCallback(() => {
-    // IMPORTANT: If the execution phase is 'complete', 'failed', or 'planning', the task is NOT stuck.
-    // - 'complete'/'failed': The process has finished and status update is pending.
-    // - 'planning': Process tracking is async and may show false negatives during initial startup.
-    // This prevents false-positive "stuck" indicators when the process exits normally or is starting up.
     const currentPhase = task.executionProgress?.phase;
-    if (currentPhase === 'complete' || currentPhase === 'failed' || currentPhase === 'planning') {
+    if (shouldSkipStuckCheck(currentPhase)) {
       if (window.DEBUG) {
         console.log(`[TaskCard] Stuck check skipped for ${task.id} - phase is '${currentPhase}' (planning/terminal phases don't need process verification)`);
       }
@@ -175,7 +176,7 @@ export const TaskCard = memo(function TaskCard({ task, onClick, onStatusChange }
       checkTaskRunning(task.id).then((actuallyRunning) => {
         // Double-check the phase again in case it changed while waiting
         const latestPhase = task.executionProgress?.phase;
-        if (latestPhase === 'complete' || latestPhase === 'failed' || latestPhase === 'planning') {
+        if (shouldSkipStuckCheck(latestPhase)) {
           setIsStuck(false);
         } else {
           setIsStuck(!actuallyRunning);
