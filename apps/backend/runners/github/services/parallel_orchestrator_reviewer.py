@@ -27,7 +27,7 @@ from claude_agent_sdk import AgentDefinition
 
 try:
     from ...core.client import create_client
-    from ...phase_config import get_thinking_budget
+    from ...phase_config import get_thinking_budget, resolve_model_id
     from ..context_gatherer import PRContext, PRContextGatherer, _validate_git_ref
     from ..gh_client import GHClient
     from ..models import (
@@ -57,7 +57,7 @@ except (ImportError, ValueError, SystemError):
         PRReviewResult,
         ReviewSeverity,
     )
-    from phase_config import get_thinking_budget
+    from phase_config import get_thinking_budget, resolve_model_id
     from services.category_utils import map_category
     from services.io_utils import safe_print
     from services.pr_worktree_manager import PRWorktreeManager
@@ -275,19 +275,35 @@ class ParallelOrchestratorReviewer:
         if len(diff_content) > MAX_DIFF_CHARS:
             diff_content = diff_content[:MAX_DIFF_CHARS] + "\n\n... (diff truncated)"
 
-        # Build AI comments context if present
+        # Build AI comments context if present (with timestamps for timeline awareness)
         ai_comments_section = ""
         if context.ai_bot_comments:
             ai_comments_list = []
             for comment in context.ai_bot_comments[:20]:
                 ai_comments_list.append(
-                    f"- **{comment.tool_name}** on {comment.file or 'general'}: "
+                    f"- **{comment.tool_name}** ({comment.created_at}) on {comment.file or 'general'}: "
                     f"{comment.body[:200]}..."
                 )
             ai_comments_section = f"""
 ### AI Review Comments (need triage)
-Found {len(context.ai_bot_comments)} comments from AI tools:
+Found {len(context.ai_bot_comments)} comments from AI tools.
+**IMPORTANT: Check timestamps! If a later commit fixed an AI-flagged issue, use ADDRESSED verdict (not FALSE_POSITIVE).**
+
 {chr(10).join(ai_comments_list)}
+"""
+
+        # Build commits timeline section (important for AI triage)
+        commits_section = ""
+        if context.commits:
+            commits_list = []
+            for commit in context.commits:
+                sha = commit.get("oid", "")[:8]
+                message = commit.get("messageHeadline", "")
+                committed_at = commit.get("committedDate", "")
+                commits_list.append(f"- `{sha}` ({committed_at}): {message}")
+            commits_section = f"""
+### Commit Timeline
+{chr(10).join(commits_list)}
 """
 
         pr_context = f"""
@@ -307,7 +323,7 @@ Found {len(context.ai_bot_comments)} comments from AI tools:
 
 ### All Changed Files
 {chr(10).join(files_list)}
-{ai_comments_section}
+{commits_section}{ai_comments_section}
 ### Code Changes
 ```diff
 {diff_content}
@@ -582,7 +598,9 @@ The SDK will run invoked agents in parallel automatically.
             prompt = self._build_orchestrator_prompt(context)
 
             # Use model and thinking level from config (user settings)
-            model = self.config.model or "claude-sonnet-4-5-20250929"
+            # Resolve model shorthand via environment variable override if configured
+            model_shorthand = self.config.model or "sonnet"
+            model = resolve_model_id(model_shorthand)
             thinking_level = self.config.thinking_level or "medium"
             thinking_budget = get_thinking_budget(thinking_level)
 
@@ -951,7 +969,16 @@ The SDK will run invoked agents in parallel automatically.
             # Branch behind is a soft blocker - NEEDS_REVISION, not BLOCKED
             elif is_branch_behind:
                 verdict = MergeVerdict.NEEDS_REVISION
-                reasoning = BRANCH_BEHIND_REASONING
+                if high or medium:
+                    # Branch behind + code issues that need addressing
+                    total = len(high) + len(medium)
+                    reasoning = (
+                        f"{BRANCH_BEHIND_REASONING} "
+                        f"{total} issue(s) must be addressed ({len(high)} required, {len(medium)} recommended)."
+                    )
+                else:
+                    # Just branch behind, no code issues
+                    reasoning = BRANCH_BEHIND_REASONING
                 if low:
                     reasoning += f" {len(low)} non-blocking suggestion(s) to consider."
             else:
