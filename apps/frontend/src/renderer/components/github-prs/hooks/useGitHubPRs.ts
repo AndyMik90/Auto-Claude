@@ -273,13 +273,6 @@ export function useGitHubPRs(
 
   const selectPR = useCallback(
     (prNumber: number | null) => {
-      // DEBUG: Log selectPR call
-      console.log("[DEBUG useGitHubPRs] selectPR called:", {
-        prNumber,
-        projectId,
-        timestamp: new Date().toISOString(),
-      });
-
       // Abort any pending checkNewCommits request from previous PR selection
       // This prevents stale data from appearing when user switches PRs rapidly
       if (checkNewCommitsAbortRef.current) {
@@ -293,7 +286,6 @@ export function useGitHubPRs(
 
       // Clear previous detailed PR data when deselecting
       if (prNumber === null) {
-        console.log("[DEBUG useGitHubPRs] selectPR: Deselecting PR (prNumber is null)");
         setSelectedPRDetails(null);
         currentFetchPRNumberRef.current = null;
         return;
@@ -326,20 +318,14 @@ export function useGitHubPRs(
         // Helper function to check for new commits with race condition protection
         // This is called after review state is available (from store or disk)
         // Uses AbortController pattern to cancel pending checks when user switches PRs rapidly
-        const checkNewCommitsForPR = (reviewedCommitSha: string | undefined, source: string) => {
+        const checkNewCommitsForPR = (reviewedCommitSha: string | undefined) => {
           // Skip if no commit SHA to compare against
           if (!reviewedCommitSha) {
-            console.log(
-              `[DEBUG useGitHubPRs] selectPR: No reviewedCommitSha (${source}), skipping checkNewCommits`
-            );
             return;
           }
 
           // Skip if user has already switched to a different PR (race condition prevention)
           if (prNumber !== currentFetchPRNumberRef.current) {
-            console.log(
-              `[DEBUG useGitHubPRs] selectPR: PR changed during ${source}, skipping checkNewCommits`
-            );
             return;
           }
 
@@ -350,40 +336,19 @@ export function useGitHubPRs(
           checkNewCommitsAbortRef.current = new AbortController();
           const currentAbortController = checkNewCommitsAbortRef.current;
 
-          console.log(
-            `[DEBUG useGitHubPRs] selectPR: Calling checkNewCommits (${source})`
-          );
-
           window.electronAPI.github
             .checkNewCommits(projectId, prNumber)
             .then((newCommitsResult) => {
               // Check if request was aborted (user switched PRs)
               if (currentAbortController.signal.aborted) {
-                console.log(
-                  `[DEBUG useGitHubPRs] checkNewCommits: Aborted, discarding result for #${prNumber}`
-                );
                 return;
               }
 
               // Final race condition check before updating store
               if (prNumber !== currentFetchPRNumberRef.current) {
-                console.log(
-                  `[DEBUG useGitHubPRs] checkNewCommits: PR changed, discarding result for #${prNumber}`
-                );
                 return;
               }
 
-              // DEBUG: Log checkNewCommits result
-              console.log("[DEBUG useGitHubPRs] checkNewCommits returned:", {
-                prNumber,
-                hasNewCommits: newCommitsResult.hasNewCommits,
-                newCommitCount: newCommitsResult.newCommitCount,
-                hasCommitsAfterPosting: newCommitsResult.hasCommitsAfterPosting,
-              });
-              console.log(
-                "[DEBUG useGitHubPRs] Calling setNewCommitsCheckAction with:",
-                newCommitsResult
-              );
               setNewCommitsCheckAction(projectId, prNumber, newCommitsResult);
             })
             .catch((err) => {
@@ -397,38 +362,15 @@ export function useGitHubPRs(
 
         // Load existing review from disk if not already in store
         const existingState = getPRReviewState(projectId, prNumber);
-        // DEBUG: Log existing state check
-        console.log("[DEBUG useGitHubPRs] selectPR: Checking existing state:", {
-          prNumber,
-          hasExistingState: !!existingState,
-          hasResult: !!existingState?.result,
-          isReviewing: existingState?.isReviewing,
-          reviewedCommitSha: existingState?.result?.reviewedCommitSha,
-        });
 
         // Only fetch from disk if we don't have a result in the store AND no review is running
         // If a review is in progress, the state is managed by IPC listeners - don't overwrite it
         if (!existingState?.result && !existingState?.isReviewing) {
-          console.log(
-            "[DEBUG useGitHubPRs] selectPR: No result in store, fetching from disk via getPRReview"
-          );
           window.electronAPI.github.getPRReview(projectId, prNumber).then((result) => {
             // Race condition check: skip if user switched PRs
             if (prNumber !== currentFetchPRNumberRef.current) {
-              console.log(
-                `[DEBUG useGitHubPRs] getPRReview: PR changed, discarding result for #${prNumber}`
-              );
               return;
             }
-
-            // DEBUG: Log getPRReview result
-            console.log("[DEBUG useGitHubPRs] getPRReview returned:", {
-              prNumber,
-              hasResult: !!result,
-              reviewedCommitSha: result?.reviewedCommitSha,
-              postedAt: result?.postedAt,
-              findingsCount: result?.findings?.length,
-            });
 
             if (result) {
               // Update store with the loaded result
@@ -440,27 +382,15 @@ export function useGitHubPRs(
               // Always check for new commits when selecting a reviewed PR
               // This ensures fresh data even if we have a cached check from earlier in the session
               // CRITICAL: This runs AFTER store is updated with review result
-              checkNewCommitsForPR(result.reviewedCommitSha, "disk load");
-            } else {
-              console.log(
-                "[DEBUG useGitHubPRs] selectPR: No review result from disk for PR #",
-                prNumber
-              );
+              checkNewCommitsForPR(result.reviewedCommitSha);
             }
           });
         } else if (existingState?.result) {
           // Review already in store - always check for new commits to get fresh status
-          console.log(
-            "[DEBUG useGitHubPRs] selectPR: Review already in store, checking for new commits"
-          );
           // CRITICAL: Review state is already available, check for new commits immediately
-          checkNewCommitsForPR(existingState.result.reviewedCommitSha, "store");
-        } else if (existingState?.isReviewing) {
-          // DEBUG: Log when skipping due to review in progress
-          console.log(
-            "[DEBUG useGitHubPRs] selectPR: Review in progress, skipping disk load and new commits check"
-          );
+          checkNewCommitsForPR(existingState.result.reviewedCommitSha);
         }
+        // If existingState?.isReviewing, state is managed by IPC listeners - do nothing
       }
     },
     [projectId, getPRReviewState, setNewCommitsCheckAction]
@@ -499,37 +429,17 @@ export function useGitHubPRs(
 
   const checkNewCommits = useCallback(
     async (prNumber: number): Promise<NewCommitsCheck> => {
-      // DEBUG: Log checkNewCommits direct call
-      console.log("[DEBUG useGitHubPRs] checkNewCommits called directly:", {
-        prNumber,
-        projectId,
-        timestamp: new Date().toISOString(),
-      });
-
       if (!projectId) {
-        console.log("[DEBUG useGitHubPRs] checkNewCommits: No projectId, returning empty result");
         return { hasNewCommits: false, newCommitCount: 0 };
       }
 
       try {
         const result = await window.electronAPI.github.checkNewCommits(projectId, prNumber);
-        // DEBUG: Log result
-        console.log("[DEBUG useGitHubPRs] checkNewCommits result:", {
-          prNumber,
-          hasNewCommits: result.hasNewCommits,
-          newCommitCount: result.newCommitCount,
-          hasCommitsAfterPosting: result.hasCommitsAfterPosting,
-        });
         // Cache the result in the store so the list view can use it
         // Use the action from the hook subscription to ensure proper React re-renders
-        console.log(
-          "[DEBUG useGitHubPRs] checkNewCommits: Calling setNewCommitsCheckAction with:",
-          result
-        );
         setNewCommitsCheckAction(projectId, prNumber, result);
         return result;
       } catch (err) {
-        console.error("[DEBUG useGitHubPRs] checkNewCommits failed:", err);
         setError(err instanceof Error ? err.message : "Failed to check for new commits");
         return { hasNewCommits: false, newCommitCount: 0 };
       }
