@@ -12,7 +12,9 @@ import type {
   ProjectEnvConfig,
   LinearSyncStatus,
   GitHubSyncStatus,
-  GitLabSyncStatus
+  GitLabSyncStatus,
+  IFlowSyncStatus,
+  IFlowModel
 } from '../../../../shared/types';
 
 export interface UseProjectSettingsReturn {
@@ -72,6 +74,12 @@ export interface UseProjectSettingsReturn {
   linearConnectionStatus: LinearSyncStatus | null;
   isCheckingLinear: boolean;
 
+  // iFlow state
+  iflowConnectionStatus: IFlowSyncStatus | null;
+  isCheckingIFlow: boolean;
+  handleTestIFlowConnection: () => Promise<void>;
+  handleDiscoverIFlowModels: () => Promise<IFlowModel[]>;
+
   // Actions
   handleInitialize: () => Promise<void>;
   handleSaveEnv: () => Promise<void>;
@@ -127,6 +135,10 @@ export function useProjectSettings(
   const [showLinearImportModal, setShowLinearImportModal] = useState(false);
   const [linearConnectionStatus, setLinearConnectionStatus] = useState<LinearSyncStatus | null>(null);
   const [isCheckingLinear, setIsCheckingLinear] = useState(false);
+
+  // iFlow state
+  const [iflowConnectionStatus, setIflowConnectionStatus] = useState<IFlowSyncStatus | null>(null);
+  const [isCheckingIFlow, setIsCheckingIFlow] = useState(false);
 
   // Reset settings when project changes
   useEffect(() => {
@@ -272,6 +284,38 @@ export function useProjectSettings(
     }
   }, [envConfig?.gitlabEnabled, envConfig?.gitlabToken, envConfig?.gitlabProject, project.id]);
 
+  // Check iFlow connection when API key changes
+  useEffect(() => {
+    const checkIFlowConnection = async () => {
+      const iflowConfig = envConfig?.iflowConfig;
+      if (!iflowConfig?.enabled || !iflowConfig.apiKey) {
+        setIflowConnectionStatus(null);
+        return;
+      }
+
+      setIsCheckingIFlow(true);
+      try {
+        const result = await window.electronAPI.testIFlowConnection(project.id, iflowConfig);
+        if (result.success && result.data) {
+          setIflowConnectionStatus(result.data);
+        } else {
+          setIflowConnectionStatus({
+            connected: false,
+            error: result.error || 'Connection failed'
+          });
+        }
+      } catch {
+        setIflowConnectionStatus({ connected: false, error: 'Failed to check connection' });
+      } finally {
+        setIsCheckingIFlow(false);
+      }
+    };
+
+    if (envConfig?.iflowConfig?.enabled && envConfig.iflowConfig.apiKey) {
+      checkIFlowConnection();
+    }
+  }, [envConfig?.iflowConfig?.enabled, envConfig?.iflowConfig?.apiKey, envConfig?.iflowConfig?.baseUrl, project.id]);
+
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -379,6 +423,43 @@ export function useProjectSettings(
     }
   };
 
+  const handleTestIFlowConnection = async () => {
+    const iflowConfig = envConfig?.iflowConfig;
+    if (!iflowConfig?.apiKey) return;
+
+    setIsCheckingIFlow(true);
+    try {
+      const result = await window.electronAPI.testIFlowConnection(project.id, iflowConfig);
+      if (result.success && result.data) {
+        setIflowConnectionStatus(result.data);
+      } else {
+        setIflowConnectionStatus({
+          connected: false,
+          error: result.error || 'Connection failed'
+        });
+      }
+    } catch {
+      setIflowConnectionStatus({ connected: false, error: 'Failed to check connection' });
+    } finally {
+      setIsCheckingIFlow(false);
+    }
+  };
+
+  const handleDiscoverIFlowModels = async (): Promise<IFlowModel[]> => {
+    const iflowConfig = envConfig?.iflowConfig;
+    if (!iflowConfig?.apiKey) return [];
+
+    try {
+      const result = await window.electronAPI.discoverIFlowModels(project.id, iflowConfig);
+      if (result.success && result.data) {
+        return result.data;
+      }
+    } catch {
+      console.error('[useProjectSettings] Failed to discover iFlow models');
+    }
+    return [];
+  };
+
   return {
     settings,
     setSettings,
@@ -418,6 +499,10 @@ export function useProjectSettings(
     setShowLinearImportModal,
     linearConnectionStatus,
     isCheckingLinear,
+    iflowConnectionStatus,
+    isCheckingIFlow,
+    handleTestIFlowConnection,
+    handleDiscoverIFlowModels,
     handleInitialize,
     handleSaveEnv,
     handleClaudeSetup,

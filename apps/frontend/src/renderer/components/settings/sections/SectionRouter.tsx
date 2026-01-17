@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next';
-import type { Project, ProjectSettings as ProjectSettingsType, AutoBuildVersionInfo, ProjectEnvConfig, LinearSyncStatus, GitHubSyncStatus, GitLabSyncStatus } from '../../../../shared/types';
+import type { Project, ProjectSettings as ProjectSettingsType, AutoBuildVersionInfo, ProjectEnvConfig, LinearSyncStatus, GitHubSyncStatus, GitLabSyncStatus, IFlowSyncStatus, IFlowModel } from '../../../../shared/types';
 import { SettingsSection } from '../SettingsSection';
 import { GeneralSettings } from '../../project-settings/GeneralSettings';
 import { SecuritySettings } from '../../project-settings/SecuritySettings';
 import { LinearIntegration } from '../integrations/LinearIntegration';
 import { GitHubIntegration } from '../integrations/GitHubIntegration';
 import { GitLabIntegration } from '../integrations/GitLabIntegration';
+import { IFlowIntegration } from '../integrations/IFlowIntegration';
 import { InitializationGuard } from '../common/InitializationGuard';
 import type { ProjectSettingsSection } from '../ProjectSettingsContent';
 
@@ -35,6 +36,10 @@ interface SectionRouterProps {
   isCheckingGitLab: boolean;
   linearConnectionStatus: LinearSyncStatus | null;
   isCheckingLinear: boolean;
+  iflowConnectionStatus: IFlowSyncStatus | null;
+  isCheckingIFlow: boolean;
+  onTestIFlowConnection: () => Promise<void>;
+  onDiscoverIFlowModels: () => Promise<IFlowModel[]>;
   handleInitialize: () => Promise<void>;
   onOpenLinearImport: () => void;
 }
@@ -69,6 +74,10 @@ export function SectionRouter({
   isCheckingGitLab,
   linearConnectionStatus,
   isCheckingLinear,
+  iflowConnectionStatus,
+  isCheckingIFlow,
+  onTestIFlowConnection,
+  onDiscoverIFlowModels,
   handleInitialize,
   onOpenLinearImport
 }: SectionRouterProps) {
@@ -189,6 +198,29 @@ export function SectionRouter({
               setShowOpenAIKey={setShowOpenAIKey}
               expanded={true}
               onToggle={() => {}}
+            />
+          </InitializationGuard>
+        </SettingsSection>
+      );
+
+    case 'iflow':
+      return (
+        <SettingsSection
+          title={t('projectSections.iflow.title')}
+          description={t('projectSections.iflow.description')}
+        >
+          <InitializationGuard
+            initialized={!!project.autoBuildPath}
+            title={t('projectSections.iflow.title')}
+            description={t('projectSections.iflow.description')}
+          >
+            <IFlowIntegration
+              envConfig={envConfig}
+              updateEnvConfig={updateEnvConfig}
+              iflowConnectionStatus={iflowConnectionStatus}
+              isCheckingIFlow={isCheckingIFlow}
+              onTestConnection={onTestIFlowConnection}
+              onDiscoverModels={onDiscoverIFlowModels}
             />
           </InitializationGuard>
         </SettingsSection>

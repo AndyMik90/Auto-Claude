@@ -803,6 +803,10 @@ export interface ElectronAPI {
   // MCP Server health check operations
   checkMcpHealth: (server: CustomMcpServer) => Promise<IPCResult<McpHealthCheckResult>>;
   testMcpConnection: (server: CustomMcpServer) => Promise<IPCResult<McpTestConnectionResult>>;
+
+  // iFlow integration operations
+  testIFlowConnection: (projectId: string, config: import('./project').IFlowConfig) => Promise<IPCResult<import('./project').IFlowSyncStatus>>;
+  discoverIFlowModels: (projectId: string, config: import('./project').IFlowConfig) => Promise<IPCResult<import('./project').IFlowModel[]>>;
 }
 
 declare global {

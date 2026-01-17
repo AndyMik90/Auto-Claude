@@ -49,13 +49,14 @@ export function registerIFlowHandlers(
    */
   ipcMain.handle(
     IPC_CHANNELS.IFLOW_TEST_CONNECTION,
-    async (_, projectId: string): Promise<IPCResult<IFlowSyncStatus>> => {
+    async (_, projectId: string, passedConfig?: IFlowConfig): Promise<IPCResult<IFlowSyncStatus>> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getIFlowConfig(project);
+      // Use passed config if provided, otherwise read from disk
+      const config = passedConfig || getIFlowConfig(project);
       if (!config || !config.apiKey) {
         return {
           success: true,
@@ -104,13 +105,14 @@ export function registerIFlowHandlers(
    */
   ipcMain.handle(
     IPC_CHANNELS.IFLOW_DISCOVER_MODELS,
-    async (_, projectId: string): Promise<IPCResult<IFlowModel[]>> => {
+    async (_, projectId: string, passedConfig?: IFlowConfig): Promise<IPCResult<IFlowModel[]>> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getIFlowConfig(project);
+      // Use passed config if provided, otherwise read from disk
+      const config = passedConfig || getIFlowConfig(project);
       if (!config || !config.apiKey) {
         return { success: false, error: 'No iFlow API key configured' };
       }
