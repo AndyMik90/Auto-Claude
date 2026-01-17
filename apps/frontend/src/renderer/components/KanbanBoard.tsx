@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewState } from '../contexts/ViewStateContext';
 import {
@@ -339,6 +339,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const { showArchived, toggleShowArchived } = useViewState();
 
+  // Selection state for bulk actions (Human Review column)
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+
   // Worktree cleanup dialog state
   const [worktreeCleanupDialog, setWorktreeCleanupDialog] = useState<{
     open: boolean;
@@ -410,6 +413,29 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
     return grouped;
   }, [filteredTasks]);
+
+  // Selection callbacks for bulk actions (Human Review column)
+  const toggleTaskSelection = useCallback((taskId: string) => {
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllTasks = useCallback(() => {
+    const humanReviewTasks = tasksByStatus.human_review;
+    const allIds = new Set(humanReviewTasks.map(t => t.id));
+    setSelectedTaskIds(allIds);
+  }, [tasksByStatus.human_review]);
+
+  const deselectAllTasks = useCallback(() => {
+    setSelectedTaskIds(new Set());
+  }, []);
 
   const handleArchiveAll = async () => {
     // Get projectId from the first task (all tasks should have the same projectId)
