@@ -24,6 +24,7 @@ import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo } from '../cli-tool-manager';
+import { isWindows } from '../platform';
 
 
 function deriveGitBashPath(gitExePath: string): string | null {
@@ -696,15 +697,39 @@ export class AgentProcessManager {
         // Mark this specific spawn as killed so its exit handler knows to ignore
         this.state.markSpawnAsKilled(agentProcess.spawnId);
 
-        // Send SIGTERM first for graceful shutdown
-        agentProcess.process.kill('SIGTERM');
-
-        // Force kill after timeout
-        setTimeout(() => {
-          if (!agentProcess.process.killed) {
-            agentProcess.process.kill('SIGKILL');
+        if (isWindows()) {
+          // Windows: .kill() then taskkill fallback
+          // SIGTERM/SIGKILL are ignored on Windows, so we use taskkill /f /t
+          try {
+            agentProcess.process.kill();
+            if (agentProcess.process.pid) {
+              const pid = agentProcess.process.pid;
+              setTimeout(() => {
+                try {
+                  // taskkill /f = force kill, /t = kill child processes tree
+                  spawn('taskkill', ['/pid', pid.toString(), '/f', '/t'], {
+                    stdio: 'ignore',
+                    detached: true
+                  }).unref();
+                } catch {
+                  // Process may already be dead
+                }
+              }, 5000);
+            }
+          } catch {
+            // Process may already be dead
           }
-        }, 5000);
+        } else {
+          // Unix: SIGTERM then SIGKILL
+          agentProcess.process.kill('SIGTERM');
+          setTimeout(() => {
+            try {
+              agentProcess.process.kill('SIGKILL');
+            } catch {
+              // Process may already be dead
+            }
+          }, 5000);
+        }
 
         this.state.deleteProcess(taskId);
         return true;
@@ -716,15 +741,39 @@ export class AgentProcessManager {
   }
 
   /**
-   * Kill all running processes
+   * Kill all running processes and wait for them to exit
    */
   async killAllProcesses(): Promise<void> {
+    const KILL_TIMEOUT_MS = 10000; // 10 seconds max wait
+
     const killPromises = this.state.getRunningTaskIds().map((taskId) => {
       return new Promise<void>((resolve) => {
+        const agentProcess = this.state.getProcess(taskId);
+
+        if (!agentProcess) {
+          resolve();
+          return;
+        }
+
+        // Set up timeout to not block forever
+        const timeoutId = setTimeout(() => {
+          resolve();
+        }, KILL_TIMEOUT_MS);
+
+        // Listen for exit event if the process supports it
+        // (process.once is available on real ChildProcess objects, but may not be in test mocks)
+        if (typeof agentProcess.process.once === 'function') {
+          agentProcess.process.once('exit', () => {
+            clearTimeout(timeoutId);
+            resolve();
+          });
+        }
+
+        // Kill the process
         this.killProcess(taskId);
-        resolve();
       });
     });
+
     await Promise.all(killPromises);
   }
 
