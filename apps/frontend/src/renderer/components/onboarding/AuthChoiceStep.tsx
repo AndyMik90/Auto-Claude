@@ -89,15 +89,21 @@ export function AuthChoiceStep({ onNext, onBack, onSkip, onAPIKeyPathComplete }:
 
   // Profile dialog close handler - detects profile creation and skips oauth step
   const handleProfileDialogClose = (open: boolean) => {
-    const wasEmpty = initialProfilesLengthRef.current === 0;
-    const hasProfilesNow = profiles.length > 0;
-
     setIsProfileDialogOpen(open);
 
-    // If dialog closed and profile was created (was empty, now has profiles), skip to graphiti step
-    if (!open && wasEmpty && hasProfilesNow && onAPIKeyPathComplete) {
-      // Call the callback to skip oauth and go directly to graphiti
-      onAPIKeyPathComplete();
+    // If dialog closed, check if profile was created after a small delay
+    // This allows the store to update from the API response
+    if (!open) {
+      setTimeout(() => {
+        const wasEmpty = initialProfilesLengthRef.current === 0;
+        const hasProfilesNow = profiles.length > 0;
+
+        // If profile was created (was empty, now has profiles), skip to next step
+        if (wasEmpty && hasProfilesNow && onAPIKeyPathComplete) {
+          // Call the callback to skip oauth and go directly to graphiti
+          onAPIKeyPathComplete();
+        }
+      }, 100); // 100ms delay to allow store update
     }
   };
 
