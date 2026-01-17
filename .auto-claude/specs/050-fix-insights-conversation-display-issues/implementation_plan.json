@@ -90,7 +90,7 @@
             "type": "manual",
             "instructions": "Verify streaming handler inserts visual separators (\\n\\n---\\n\\n) when detecting thought transitions"
           },
-          "status": "pending"
+          "status": "completed"
         }
       ]
     },
@@ -125,7 +125,7 @@
               "Send message and verify line breaks preserved"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-3-2",
@@ -522,5 +522,5 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-17T22:36:33.874Z"
+  "updated_at": "2026-01-17T22:44:18.873Z"
 }

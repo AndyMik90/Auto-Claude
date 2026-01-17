@@ -122,3 +122,57 @@ Quality Checklist:
 
 === END SESSION 3 ===
 
+=== SESSION 4 (Coder) ===
+
+[2025-01-18] Subtask 2-3: Implement thought separator logic in streaming response handler
+Status: COMPLETED
+
+Changes Made:
+- Modified onInsightsStreamChunk handler in setupInsightsListeners()
+- Added thought transition detection logic to 'text' case:
+  - Checks if lastContent ends with '\n\n' (end of thought/paragraph)
+  - Checks if new content starts with '\n' (start of new thought)
+  - Inserts '\n\n---\n\n' visual separator when both conditions are true
+  - Otherwise appends content normally
+- Visual separator appears between distinct thoughts during streaming
+- Follows pattern specified in spec.md (lines 189-203)
+- TypeScript compilation verified successfully
+
+Committed:
+- 0d22e7e6 "auto-claude: subtask-2-3 - Implement thought separator logic in streaming response handler"
+
+Quality Checklist:
+✓ Follows pattern from spec.md exactly
+✓ No console.log/print debugging statements
+✓ Logic correctly detects thought transitions
+✓ TypeScript compilation verified
+✓ Clean commit with descriptive message
+
+=== END SESSION 4 ===
+
+=== SESSION 5 (Coder) ===
+
+[2025-01-18] Subtask 3-1: Add white-space: pre-wrap CSS to user message content for newline preservation
+Status: COMPLETED
+
+Changes Made:
+- Modified MessageBubble component in Insights.tsx
+- Added conditional CSS class: whitespace-pre-wrap for user messages only
+- Used Tailwind's arbitrary variant selector: isUser && '[&_]:whitespace-pre-wrap'
+- This applies whitespace-preserving CSS to all children of the prose container
+- User messages with Shift+Enter line breaks will now display correctly
+- Assistant messages remain unchanged (no whitespace-pre-wrap)
+- Frontend build verified successfully
+
+Committed:
+- 8189e7af "auto-claude: subtask-3-1 - Add white-space: pre-wrap CSS to user message content"
+
+Quality Checklist:
+✓ Follows existing component patterns
+✓ No console.log/print debugging statements
+✓ Error handling in place
+✓ Build verification passed
+✓ Clean commit with descriptive message
+
+=== END SESSION 5 ===
+
