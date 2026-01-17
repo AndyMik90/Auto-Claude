@@ -2,7 +2,7 @@
  * Insights and ideation types
  */
 
-import type { TaskMetadata } from './task';
+import type { TaskMetadata, ImageAttachment } from './task';
 
 // ============================================
 // Ideation Types
@@ -180,6 +180,8 @@ export interface InsightsChatMessage {
   role: InsightsChatRole;
   content: string;
   timestamp: Date;
+  // Image attachments (for user messages)
+  images?: ImageAttachment[];
   // For assistant messages that suggest task creation
   suggestedTask?: {
     title: string;
