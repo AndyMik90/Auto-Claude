@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewState } from '../contexts/ViewStateContext';
 import {
@@ -591,6 +591,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       movedCount++;
     }
 
+    // Auto-promote queued tasks to fill available capacity
+    await processQueue();
+
     toast({
       title: t('queue.queueAllSuccess', { count: movedCount }),
       variant: 'default'
@@ -603,18 +606,26 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const handleSaveQueueSettings = async (maxParallel: number) => {
     if (!projectId) return;
 
-    await updateProjectSettings(projectId, { maxParallelTasks: maxParallel });
-    toast({
-      title: 'Queue settings saved',
-      variant: 'default'
-    });
+    const success = await updateProjectSettings(projectId, { maxParallelTasks: maxParallel });
+    if (success) {
+      toast({
+        title: 'Queue settings saved',
+        variant: 'default'
+      });
+    } else {
+      toast({
+        title: 'Failed to save queue settings',
+        description: 'Please try again',
+        variant: 'destructive'
+      });
+    }
   };
 
   /**
    * Automatically move tasks from Queue to In Progress to fill available capacity
    * Promotes multiple tasks if needed (e.g., after bulk queue)
    */
-  const processQueue = async () => {
+  const processQueue = useCallback(async () => {
     // Loop until capacity is full or queue is empty
     while (true) {
       // Get CURRENT state from store to ensure accuracy
@@ -641,7 +652,24 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       console.log(`[Queue] Auto-promoting task ${nextTask.id} from Queue to In Progress (${inProgressCount + 1}/${maxParallelTasks})`);
       await persistTaskStatus(nextTask.id, 'in_progress');
     }
-  };
+  }, [maxParallelTasks]);
+
+  // Register task status change listener for queue auto-promotion
+  // This ensures processQueue() is called whenever a task leaves in_progress
+  useEffect(() => {
+    const unregister = useTaskStore.getState().registerTaskStatusChangeListener(
+      (taskId, oldStatus, newStatus) => {
+        // When a task leaves in_progress (e.g., goes to human_review), process the queue
+        if (oldStatus === 'in_progress' && newStatus !== 'in_progress') {
+          console.log(`[Queue] Task ${taskId} left in_progress, processing queue to fill slot`);
+          processQueue();
+        }
+      }
+    );
+
+    // Cleanup: unregister listener when component unmounts
+    return unregister;
+  }, [processQueue]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;

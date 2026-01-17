@@ -23,6 +23,9 @@ interface TaskState {
   setError: (error: string | null) => void;
   clearTasks: () => void;
 
+  // Task status change listeners (for queue auto-promotion)
+  registerTaskStatusChangeListener: (listener: (taskId: string, oldStatus: TaskStatus | undefined, newStatus: TaskStatus) => void) => () => void;
+
   // Selectors
   getSelectedTask: () => Task | undefined;
   getTasksByStatus: (status: TaskStatus) => Task[];
@@ -34,6 +37,25 @@ interface TaskState {
  */
 function findTaskIndex(tasks: Task[], taskId: string): number {
   return tasks.findIndex((t) => t.id === taskId || t.specId === taskId);
+}
+
+/**
+ * Task status change listeners for queue auto-promotion
+ * Stored outside the store to avoid triggering re-renders
+ */
+const taskStatusChangeListeners = new Set<(taskId: string, oldStatus: TaskStatus | undefined, newStatus: TaskStatus) => void>();
+
+/**
+ * Notify all registered listeners when a task status changes
+ */
+function notifyTaskStatusChange(taskId: string, oldStatus: TaskStatus | undefined, newStatus: TaskStatus): void {
+  for (const listener of taskStatusChangeListeners) {
+    try {
+      listener(taskId, oldStatus, newStatus);
+    } catch (error) {
+      console.error('[TaskStore] Error in task status change listener:', error);
+    }
+  }
 }
 
 /**
@@ -118,11 +140,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       };
     }),
 
-  updateTaskStatus: (taskId, status) =>
-    set((state) => {
-      const index = findTaskIndex(state.tasks, taskId);
-      if (index === -1) return state;
+  updateTaskStatus: (taskId, status) => {
+    // Capture old status before update
+    const state = get();
+    const index = findTaskIndex(state.tasks, taskId);
+    if (index === -1) return;
+    const oldTask = state.tasks[index];
+    const oldStatus = oldTask.status;
 
+    // Skip if status is the same
+    if (oldStatus === status) return;
+
+    // Perform the state update
+    set((state) => {
       return {
         tasks: updateTaskAtIndex(state.tasks, index, (t) => {
           // Determine execution progress based on status transition
@@ -141,7 +171,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           return { ...t, status, executionProgress, updatedAt: new Date() };
         })
       };
-    }),
+    });
+
+    // Notify listeners after state update (schedule after current tick)
+    queueMicrotask(() => {
+      notifyTaskStatusChange(taskId, oldStatus, status);
+    });
+  },
 
   updateTaskFromPlan: (taskId, plan) =>
     set((state) => {
@@ -412,6 +448,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   getTasksByStatus: (status) => {
     const state = get();
     return state.tasks.filter((t) => t.status === status);
+  },
+
+  registerTaskStatusChangeListener: (listener) => {
+    taskStatusChangeListeners.add(listener);
+    // Return cleanup function to unregister
+    return () => {
+      taskStatusChangeListeners.delete(listener);
+    };
   }
 }));
 
