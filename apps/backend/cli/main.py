@@ -16,7 +16,6 @@ if str(_PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(_PARENT_DIR))
 
 
-
 from .build_commands import handle_build_command
 from .followup_commands import handle_followup_command
 from .qa_commands import (
@@ -252,7 +251,6 @@ Environment Variables:
         help="Base branch for creating worktrees (default: auto-detect or current branch)",
     )
 
-
     return parser.parse_args()
 
 
@@ -315,7 +313,6 @@ def _run_cli() -> None:
     if args.cleanup_worktrees:
         handle_cleanup_worktrees_command(project_dir)
         return
-
 
     # Require --spec if not listing
     if not args.spec:
