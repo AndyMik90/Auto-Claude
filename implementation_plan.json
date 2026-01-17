@@ -1,30 +1,41 @@
 {
-  "spec_id": "025-improving-task-card-title-readability",
+  "spec_id": "045-add-api-profile-providers-usage-endpoints-support-",
   "subtasks": [
     {
       "id": "1",
-      "title": "Restructure TaskCard header: Remove flex wrapper around title, make title standalone with full width",
+      "title": "Implement provider detection from baseUrl (Anthropic, z.ai, ZHIPU)",
       "status": "completed"
     },
     {
       "id": "2",
-      "title": "Relocate status badges from header to metadata section",
+      "title": "Implement usage endpoint routing based on provider type",
       "status": "completed"
     },
     {
       "id": "3",
-      "title": "Add localization for security severity badge label",
+      "title": "Implement response normalization for z.ai quota/limit endpoint",
+      "status": "completed"
+    },
+    {
+      "id": "4",
+      "title": "Implement response normalization for ZHIPU quota/limit endpoint",
+      "status": "completed"
+    },
+    {
+      "id": "5",
+      "title": "Implement authentication handling for API profiles (apiKey vs OAuth token)",
       "status": "completed"
     }
   ],
   "qa_signoff": {
     "status": "fixes_applied",
-    "timestamp": "2026-01-01T11:58:40Z",
+    "timestamp": "2026-01-17T21:45:00Z",
     "fix_session": 1,
     "issues_fixed": [
       {
-        "title": "Missing localization for hardcoded 'severity' string in TaskCard",
-        "fix_commit": "de0c8e4"
+        "title": "Usage values not displaying correctly for z.ai and ZHIPU providers",
+        "fix_commit": "df81cca8",
+        "description": "Changed from model-usage endpoint to quota/limit endpoint and updated response parsing to extract limits array"
       }
     ],
     "ready_for_qa_revalidation": true
