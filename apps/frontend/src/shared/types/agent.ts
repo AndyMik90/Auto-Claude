@@ -37,6 +37,10 @@ export interface ClaudeUsageSnapshot {
   sessionResetTime?: string;
   /** When the weekly limit resets (human-readable or ISO) */
   weeklyResetTime?: string;
+  /** ISO timestamp of when the session limit resets (for dynamic countdown calculation) */
+  sessionResetTimestamp?: string;
+  /** ISO timestamp of when the weekly limit resets (for dynamic countdown calculation) */
+  weeklyResetTimestamp?: string;
   /** Profile ID this snapshot belongs to */
   profileId: string;
   /** Profile name for display */

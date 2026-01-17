@@ -33,6 +33,29 @@ export function AuthStatusIndicator() {
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isLoadingUsage, setIsLoadingUsage] = useState(true);
 
+  // Helper function to calculate formatted reset time from timestamp
+  const formatResetTime = (timestamp?: string): string | undefined => {
+    if (!timestamp) return undefined;
+
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = date.getTime() - now.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (diffHours < 24) {
+        return `Resets in ${diffHours}h ${diffMins}m`;
+      }
+
+      const diffDays = Math.floor(diffHours / 24);
+      const remainingHours = diffHours % 24;
+      return `Resets in ${diffDays}d ${remainingHours}h`;
+    } catch (_error) {
+      return undefined;
+    }
+  };
+
   // Listen for usage updates
   useEffect(() => {
     const unsubscribe = window.electronAPI.onUsageUpdated((snapshot: ClaudeUsageSnapshot) => {
@@ -63,26 +86,10 @@ export function AuthStatusIndicator() {
     ? Math.max(usage.sessionPercent, usage.weeklyPercent)
     : 0;
 
-  // Get countdown text for reset time (use the window that's closer to limit)
-  const getResetCountdown = () => {
-    if (!usage) return null;
-
-    // Use the window that has higher usage percentage
-    const isSession = usage.sessionPercent >= usage.weeklyPercent;
-    const resetTime = isSession ? usage.sessionResetTime : usage.weeklyResetTime;
-    const label = isSession
-      ? (usage.usageWindows?.sessionWindowLabel || 'Session')
-      : (usage.usageWindows?.weeklyWindowLabel || 'Weekly');
-
-    // Extract time information from resetTime
-    // Format: "Resets in Xh Ym" or "1st of MonthName"
-    if (resetTime && resetTime !== 'Unknown') {
-      return `${label}: ${resetTime}`;
-    }
-    return null;
-  };
-
-  const resetCountdown = getResetCountdown();
+  // Get formatted reset times (calculated dynamically from timestamps)
+  const sessionResetTime = usage?.sessionResetTimestamp
+    ? formatResetTime(usage.sessionResetTimestamp)
+    : usage?.sessionResetTime;
 
   // Compute auth status and provider detection using useMemo to avoid unnecessary re-renders
   const authStatus = useMemo(() => {
@@ -187,20 +194,29 @@ export function AuthStatusIndicator() {
         </Tooltip>
       </TooltipProvider>
 
-      {/* Countdown Timer (shown when usage is available) */}
-      {resetCountdown && (
+      {/* 5 Hour Usage Badge (shown when session usage >= 90%) */}
+      {usage && !isLoadingUsage && usage.sessionPercent >= 90 && (
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-blue-500/10 text-blue-500 border-blue-500/20 text-xs font-medium">
-                {resetCountdown}
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-red-500/10 text-red-500 border-red-500/20 text-xs font-semibold">
+                {Math.round(usage.sessionPercent)}%
               </div>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs max-w-xs">
               <div className="space-y-1">
-                <div className="text-[10px] text-muted-foreground">
-                  Time until quota reset
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground font-medium">5 Hours Quota</span>
+                  <span className="font-semibold text-red-500">{Math.round(usage.sessionPercent)}%</span>
                 </div>
+                {sessionResetTime && (
+                  <>
+                    <div className="h-px bg-border" />
+                    <div className="text-[10px] text-muted-foreground">
+                      {sessionResetTime}
+                    </div>
+                  </>
+                )}
               </div>
             </TooltipContent>
           </Tooltip>

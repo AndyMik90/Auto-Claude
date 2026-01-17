@@ -20,6 +20,37 @@ export function UsageIndicator() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
 
+  // Helper function to calculate formatted reset time from timestamp
+  const formatResetTime = (timestamp?: string): string | undefined => {
+    if (!timestamp) return undefined;
+
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = date.getTime() - now.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (diffHours < 24) {
+        return `Resets in ${diffHours}h ${diffMins}m`;
+      }
+
+      const diffDays = Math.floor(diffHours / 24);
+      const remainingHours = diffHours % 24;
+      return `Resets in ${diffDays}d ${remainingHours}h`;
+    } catch (_error) {
+      return undefined;
+    }
+  };
+
+  // Get formatted reset times (calculated dynamically from timestamps)
+  const sessionResetTime = usage?.sessionResetTimestamp
+    ? formatResetTime(usage.sessionResetTimestamp)
+    : usage?.sessionResetTime;
+  const weeklyResetTime = usage?.weeklyResetTimestamp
+    ? formatResetTime(usage.weeklyResetTimestamp)
+    : usage?.weeklyResetTime;
+
   useEffect(() => {
     // Listen for usage updates from main process
     const unsubscribe = window.electronAPI.onUsageUpdated((snapshot: ClaudeUsageSnapshot) => {
@@ -122,9 +153,9 @@ export function UsageIndicator() {
                 <span className="text-muted-foreground font-medium">{sessionLabel}</span>
                 <span className="font-semibold tabular-nums">{Math.round(usage.sessionPercent)}%</span>
               </div>
-              {usage.sessionResetTime && (
+              {sessionResetTime && (
                 <div className="text-[10px] text-muted-foreground">
-                  Resets: {usage.sessionResetTime}
+                  {sessionResetTime}
                 </div>
               )}
               {/* Progress bar */}
@@ -149,9 +180,9 @@ export function UsageIndicator() {
                 <span className="text-muted-foreground font-medium">{weeklyLabel}</span>
                 <span className="font-semibold tabular-nums">{Math.round(usage.weeklyPercent)}%</span>
               </div>
-              {usage.weeklyResetTime && (
+              {weeklyResetTime && (
                 <div className="text-[10px] text-muted-foreground">
-                  Resets: {usage.weeklyResetTime}
+                  {weeklyResetTime}
                 </div>
               )}
               {/* Progress bar */}

@@ -990,15 +990,13 @@ export class UsageMonitor extends EventEmitter {
       const now = new Date();
       const nextHour = new Date(now);
       nextHour.setHours(now.getHours() + 1, 0, 0, 0);
-      const timeUntilReset = nextHour.getTime() - now.getTime();
-      const hoursUntilReset = Math.floor(timeUntilReset / (1000 * 60 * 60));
-      const minsUntilReset = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
-      const sessionResetTime = `Resets in ${hoursUntilReset}h ${minsUntilReset}m`;
+      const sessionResetTimestamp = nextHour.toISOString();
 
       // Calculate monthly reset time (1st of next month)
       const nextMonth = new Date(now);
       nextMonth.setMonth(now.getMonth() + 1, 1);
       nextMonth.setHours(0, 0, 0, 0);
+      const weeklyResetTimestamp = nextMonth.toISOString();
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                           'July', 'August', 'September', 'October', 'November', 'December'];
       const monthlyResetTime = `1st of ${monthNames[nextMonth.getMonth()]}`;
@@ -1006,8 +1004,10 @@ export class UsageMonitor extends EventEmitter {
       return {
         sessionPercent,
         weeklyPercent,
-        sessionResetTime,
+        sessionResetTime: 'Resets in ...', // Placeholder, will be calculated dynamically in UI
         weeklyResetTime: monthlyResetTime,
+        sessionResetTimestamp,
+        weeklyResetTimestamp,
         profileId,
         profileName,
         fetchedAt: new Date(),
@@ -1093,15 +1093,13 @@ export class UsageMonitor extends EventEmitter {
       const now = new Date();
       const nextHour = new Date(now);
       nextHour.setHours(now.getHours() + 1, 0, 0, 0);
-      const timeUntilReset = nextHour.getTime() - now.getTime();
-      const hoursUntilReset = Math.floor(timeUntilReset / (1000 * 60 * 60));
-      const minsUntilReset = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
-      const sessionResetTime = `Resets in ${hoursUntilReset}h ${minsUntilReset}m`;
+      const sessionResetTimestamp = nextHour.toISOString();
 
       // Calculate monthly reset time (1st of next month)
       const nextMonth = new Date(now);
       nextMonth.setMonth(now.getMonth() + 1, 1);
       nextMonth.setHours(0, 0, 0, 0);
+      const weeklyResetTimestamp = nextMonth.toISOString();
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                           'July', 'August', 'September', 'October', 'November', 'December'];
       const monthlyResetTime = `1st of ${monthNames[nextMonth.getMonth()]}`;
@@ -1109,8 +1107,10 @@ export class UsageMonitor extends EventEmitter {
       return {
         sessionPercent,
         weeklyPercent,
-        sessionResetTime,
+        sessionResetTime: 'Resets in ...', // Placeholder, will be calculated dynamically in UI
         weeklyResetTime: monthlyResetTime,
+        sessionResetTimestamp,
+        weeklyResetTimestamp,
         profileId,
         profileName,
         fetchedAt: new Date(),
