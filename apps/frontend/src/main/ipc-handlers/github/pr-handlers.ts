@@ -1786,11 +1786,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
         try {
           const reviewPath = path.join(getGitHubDir(project), "pr", `review_${prNumber}.json`);
 
-          if (!fs.existsSync(reviewPath)) {
-            debugLog("Review file not found", { prNumber, reviewPath });
-            return false;
-          }
-
+          // Read file directly without separate existence check to avoid TOCTOU race condition
+          // If file doesn't exist, readFileSync will throw ENOENT which we handle below
           const rawData = fs.readFileSync(reviewPath, "utf-8");
           // Sanitize data before parsing (review may contain data from GitHub API)
           const sanitizedData = sanitizeNetworkData(rawData);
@@ -1805,6 +1802,11 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
           return true;
         } catch (error) {
+          // Handle file not found (ENOENT) separately for clearer logging
+          if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+            debugLog("Review file not found", { prNumber });
+            return false;
+          }
           debugLog("Failed to mark review as posted", {
             prNumber,
             error: error instanceof Error ? error.message : error,
