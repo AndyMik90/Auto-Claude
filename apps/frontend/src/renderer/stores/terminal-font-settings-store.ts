@@ -154,7 +154,7 @@ interface TerminalFontSettingsStore extends TerminalFontSettings {
  */
 export const useTerminalFontSettingsStore = create<TerminalFontSettingsStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Initial state with OS-specific defaults
       ...getOSDefaults(),
 
@@ -196,8 +196,8 @@ export const useTerminalFontSettingsStore = create<TerminalFontSettingsStore>()(
         })),
 
       // Import/Export
-      exportSettings: () => {
-        const state = useTerminalFontSettingsStore.getState();
+      exportSettings: (): string => {
+        const state = get();
         return JSON.stringify({
           fontFamily: state.fontFamily,
           fontSize: state.fontSize,
