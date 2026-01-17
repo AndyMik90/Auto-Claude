@@ -17,8 +17,9 @@
 
 if [ -f ".git" ]; then
   # We're in a worktree (.git is a file pointing to the actual git dir)
-  WORKTREE_GIT_DIR=$(sed 's/^gitdir: //' .git)
-  if [ -n "$WORKTREE_GIT_DIR" ]; then
+  # Use -n with /p to only print lines that match the gitdir: prefix, head -1 for safety
+  WORKTREE_GIT_DIR=$(sed -n 's/^gitdir: //p' .git | head -1)
+  if [ -n "$WORKTREE_GIT_DIR" ] && [ -d "$WORKTREE_GIT_DIR" ]; then
     export GIT_DIR="$WORKTREE_GIT_DIR"
     export GIT_WORK_TREE="$(pwd)"
   fi
@@ -38,7 +39,9 @@ if [ ! -f ".git" ]; then
   CORE_WORKTREE=$(git config --get core.worktree 2>/dev/null || true)
   if [ -n "$CORE_WORKTREE" ]; then
     echo "Warning: Detected corrupted core.worktree setting, removing it..."
-    git config --unset core.worktree
+    if ! git config --unset core.worktree 2>/dev/null; then
+      echo "Warning: Failed to unset core.worktree. Manual intervention may be needed."
+    fi
   fi
 fi
 
