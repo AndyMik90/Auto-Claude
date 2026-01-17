@@ -1,0 +1,93 @@
+=== AUTO-BUILD PROGRESS ===
+
+Project: Fix Insights Conversation Display Issues
+Workspace: managed by orchestrator
+Started: 2025-01-18
+
+Workflow Type: feature
+Rationale: Feature enhancement that adds new functionality (image support) and fixes existing display issues (newlines, thought separators). Involves UI changes, state management updates, and type extensions in a single service (frontend).
+
+Session 1 (Planner):
+- Created implementation_plan.json
+- Phases: 4
+- Total subtasks: 15
+- Created init.sh
+
+Phase Summary:
+- Phase 1 (Type Definitions): 1 subtask, depends on []
+- Phase 2 (Store Logic): 3 subtasks, depends on [phase-1-types]
+- Phase 3 (UI Implementation): 7 subtasks, depends on [phase-1-types, phase-2-store]
+- Phase 4 (Integration & Verification): 4 subtasks, depends on [phase-2-store, phase-3-ui]
+
+Services Involved:
+- frontend: React component updates, type definitions, store modifications
+
+Parallelism Analysis:
+- Max parallel phases: 1
+- Recommended workers: 1
+- Parallel groups: None (sequential execution due to dependencies)
+
+=== INVESTIGATION FINDINGS ===
+
+Existing Patterns Found:
+- QAFeedbackSection.tsx provides complete reference implementation for image paste/drag-drop
+- ImageUpload.tsx provides utility functions: generateImageId(), blobToBase64(), createThumbnail(), isValidImageMimeType(), resolveFilename()
+- ImageAttachment type already defined in shared/types/task.ts
+- Constants already defined: MAX_IMAGES_PER_TASK (10), ALLOWED_IMAGE_TYPES
+
+Files Identified for Modification:
+- apps/frontend/src/shared/types/insights.ts - Add images field to InsightsChatMessage
+- apps/frontend/src/renderer/stores/insights-store.ts - Add image state and thought separator logic
+- apps/frontend/src/renderer/components/Insights.tsx - Add CSS, paste/drag-drop handlers, thumbnail display
+
+Reference Patterns to Follow:
+- Paste event handling from QAFeedbackSection.tsx (lines 59-144)
+- Drag-drop handlers from QAFeedbackSection.tsx (lines 149-253)
+- Thumbnail display from QAFeedbackSection.tsx (lines 320-357)
+- Error handling for image limit and invalid types
+- Visual feedback during drag-over operations
+
+=== STARTUP COMMAND ===
+
+To continue building this spec, run:
+
+  cd apps/backend
+  source .venv/bin/activate
+  python run.py --spec 050 --parallel 1
+
+Example:
+  cd apps/backend
+  source .venv/bin/activate
+  python run.py --spec 050 --parallel 1
+
+To start the development environment manually:
+  cd .auto-claude/specs/050-fix-insights-conversation-display-issues
+  ./init.sh
+
+=== SESSION 2 (Coder) ===
+
+[2025-01-18] Subtask 2-1: Add image attachment state management to insights-store.ts
+Status: COMPLETED
+
+Changes Made:
+- Added pendingImages: File[] state field to InsightsState interface
+- Added addPendingImage(image: File) action - adds image to pending list
+- Added removePendingImage(index: number) action - removes image by index
+- Added clearPendingImages() action - clears all pending images
+- Updated clearSession() to clear pendingImages
+- Updated sendMessage() to call clearPendingImages() after sending
+- TypeScript compilation verified successfully
+
+Committed:
+- a8cd5c6d "auto-claude: subtask-2-1 - Add image attachment state management to insights-store.ts"
+- 20870bee "auto-claude: Update plan - Mark subtask-2-1 as completed"
+
+Quality Checklist:
+✓ Follows existing Zustand store patterns
+✓ No console.log/print debugging statements
+✓ Error handling in place
+✓ TypeScript compilation verified
+✓ Clean commit with descriptive message
+
+=== END SESSION 2 ===
+
