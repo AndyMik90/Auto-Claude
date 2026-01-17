@@ -15,6 +15,7 @@ import type {
   InfrastructureStatus,
   GraphitiValidationResult,
   GraphitiConnectionTestResult,
+  OllamaRecommendedModel,
 } from '../../shared/types';
 import {
   getMemoryServiceStatus,
@@ -63,18 +64,6 @@ interface OllamaEmbeddingModel {
 }
 
 /**
- * Recommended Embedding Model Card
- * Pre-curated models suitable for Auto Claude memory system
- */
-interface OllamaRecommendedModel {
-  name: string;          // Model identifier
-  description: string;   // Human-readable description
-  size_estimate: string; // Estimated download size (e.g., '621 MB')
-  dim: number;           // Embedding vector dimension
-  installed: boolean;    // Whether model is currently installed
-}
-
-/**
  * Result of ollama pull command
  * Contains the final status after model download completes
  */
@@ -82,6 +71,31 @@ interface OllamaPullResult {
   model: string;                         // Model name that was pulled
   status: 'completed' | 'failed';        // Final status
   output: string[];                      // Log messages from pull operation
+}
+
+/**
+ * Resolves the path to the ollama_model_detector.py script.
+ * Checks multiple possible locations in development and production.
+ *
+ * @returns {string | null} The absolute path to the script or null if not found
+ */
+function getOllamaDetectorPath(): string | null {
+  const possiblePaths = [
+    // Development paths
+    path.resolve(__dirname, '..', '..', '..', '..', 'backend', 'ollama_model_detector.py'),
+    path.resolve(process.cwd(), 'apps', 'backend', 'ollama_model_detector.py'),
+    // Legacy paths (for backwards compatibility)
+    path.resolve(__dirname, '..', '..', '..', 'auto-claude', 'ollama_model_detector.py'),
+    path.resolve(process.cwd(), 'auto-claude', 'ollama_model_detector.py'),
+    path.resolve(process.cwd(), '..', 'auto-claude', 'ollama_model_detector.py'),
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return null;
 }
 
 /**
@@ -109,23 +123,7 @@ async function executeOllamaDetector(
     return { success: false, error: 'Python not found' };
   }
 
-  // Find the ollama_model_detector.py script
-  const possiblePaths = [
-    // Development paths
-    path.resolve(__dirname, '..', '..', '..', '..', 'backend', 'ollama_model_detector.py'),
-    path.resolve(process.cwd(), 'apps', 'backend', 'ollama_model_detector.py'),
-    // Legacy paths (for backwards compatibility)
-    path.resolve(__dirname, '..', '..', '..', 'auto-claude', 'ollama_model_detector.py'),
-    path.resolve(process.cwd(), 'auto-claude', 'ollama_model_detector.py'),
-  ];
-
-  let scriptPath: string | null = null;
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
-      scriptPath = p;
-      break;
-    }
-  }
+  const scriptPath = getOllamaDetectorPath();
 
   if (!scriptPath) {
     return { success: false, error: 'ollama_model_detector.py script not found' };
@@ -154,7 +152,7 @@ async function executeOllamaDetector(
       stderr += data.toString();
     });
 
-    // Single timeout mechanism to avoid race condition
+    // Manual timeout mechanism for executeOllamaDetector
     const timeoutId = setTimeout(() => {
       if (!resolved) {
         resolved = true;
@@ -505,14 +503,14 @@ export function registerMemoryHandlers(): void {
    *
    * @async
    * @param {string} [baseUrl] - Optional custom Ollama base URL
-   * @returns {Promise<IPCResult<{ recommended: any[], count: number }>>} Recommended models
+   * @returns {Promise<IPCResult<{ recommended: OllamaRecommendedModel[], count: number }>>} Recommended models
    */
   ipcMain.handle(
     IPC_CHANNELS.OLLAMA_LIST_RECOMMENDED_MODELS,
     async (
       _,
       baseUrl?: string
-    ): Promise<IPCResult<{ recommended: any[]; count: number }>> => {
+    ): Promise<IPCResult<{ recommended: OllamaRecommendedModel[]; count: number }>> => {
       try {
         const result = await executeOllamaDetector('get-recommended-models', baseUrl);
 
@@ -524,7 +522,7 @@ export function registerMemoryHandlers(): void {
         }
 
         const data = result.data as {
-          recommended: any[];
+          recommended: OllamaRecommendedModel[];
           count: number;
         };
         return {
@@ -594,13 +592,6 @@ export function registerMemoryHandlers(): void {
    * Spawns a Python subprocess to execute ollama pull command with real-time progress tracking.
    * Emits OLLAMA_PULL_PROGRESS events to renderer with percentage, speed, and ETA.
    *
-   * Progress events include:
-   * - modelName: The model being downloaded
-   * - status: Current status (downloading, extracting, etc.)
-   * - completed: Bytes downloaded so far
-   * - total: Total bytes to download
-   * - percentage: Completion percentage (0-100)
-   *
    * @async
    * @param {Electron.IpcMainInvokeEvent} event - IPC event object for sending progress updates
    * @param {string} modelName - Name of the model to download (e.g., 'embeddinggemma')
@@ -620,24 +611,7 @@ export function registerMemoryHandlers(): void {
           return { success: false, error: 'Python not found' };
         }
 
-        // Find the ollama_model_detector.py script
-        const possiblePaths = [
-          // New apps structure
-          path.resolve(__dirname, '..', '..', '..', '..', 'backend', 'ollama_model_detector.py'),
-          path.resolve(process.cwd(), 'apps', 'backend', 'ollama_model_detector.py'),
-          // Legacy paths for backwards compatibility
-          path.resolve(__dirname, '..', '..', '..', 'auto-claude', 'ollama_model_detector.py'),
-          path.resolve(process.cwd(), 'auto-claude', 'ollama_model_detector.py'),
-          path.resolve(process.cwd(), '..', 'auto-claude', 'ollama_model_detector.py'),
-        ];
-
-        let scriptPath: string | null = null;
-        for (const p of possiblePaths) {
-          if (fs.existsSync(p)) {
-            scriptPath = p;
-            break;
-          }
-        }
+        const scriptPath = getOllamaDetectorPath();
 
         if (!scriptPath) {
           return { success: false, error: 'ollama_model_detector.py script not found' };
@@ -645,12 +619,25 @@ export function registerMemoryHandlers(): void {
 
         const [pythonExe, baseArgs] = parsePythonCommand(pythonCmd);
         const args = [...baseArgs, scriptPath, 'pull-model', modelName];
+        if (baseUrl) {
+          args.push('--base-url', baseUrl);
+        }
 
         return new Promise((resolve) => {
+          let resolved = false;
+
           const proc = spawn(pythonExe, args, {
             stdio: ['ignore', 'pipe', 'pipe'],
-            timeout: 600000, // 10 minute timeout for large models
           });
+
+          // Manual timeout since spawn doesn't support timeout option
+          const timeoutId = setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              proc.kill();
+              resolve({ success: false, error: 'Timeout: model download took too long' });
+            }
+          }, 600000); // 10 minute timeout for large models
 
           let stdout = '';
           let stderr = '';
@@ -665,24 +652,19 @@ export function registerMemoryHandlers(): void {
             stderr += chunk;
             stderrBuffer += chunk;
 
-            // Parse NDJSON (newline-delimited JSON) from stderr
-            // Ollama sends progress data as: {"status":"downloading","completed":X,"total":Y}
+            // Parse NDJSON
             const lines = stderrBuffer.split('\n');
-            // Keep the last incomplete line in the buffer
             stderrBuffer = lines.pop() || '';
 
             lines.forEach((line) => {
               if (line.trim()) {
                 try {
                   const progressData = JSON.parse(line);
-
-                  // Extract progress information
                   if (progressData.completed !== undefined && progressData.total !== undefined) {
                     const percentage = progressData.total > 0
                       ? Math.round((progressData.completed / progressData.total) * 100)
                       : 0;
 
-                    // Emit progress event to renderer
                     event.sender.send(IPC_CHANNELS.OLLAMA_PULL_PROGRESS, {
                       modelName,
                       status: progressData.status || 'downloading',
@@ -692,13 +674,16 @@ export function registerMemoryHandlers(): void {
                     });
                   }
                 } catch {
-                  // Skip lines that aren't valid JSON
+                  // Skip invalid JSON
                 }
               }
             });
           });
 
           proc.on('close', (code) => {
+            if (resolved) return;
+            resolved = true;
+            clearTimeout(timeoutId);
             if (code === 0 && stdout) {
               try {
                 const result = JSON.parse(stdout);
@@ -722,6 +707,9 @@ export function registerMemoryHandlers(): void {
           });
 
           proc.on('error', (err) => {
+            if (resolved) return;
+            resolved = true;
+            clearTimeout(timeoutId);
             resolve({ success: false, error: err.message });
           });
         });

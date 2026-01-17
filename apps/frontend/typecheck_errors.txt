@@ -1,0 +1,525 @@
+
+> auto-claude-ui@2.7.4 typecheck
+> tsc --noEmit
+
+src/main/__tests__/app-logger.test.ts(436,40): error TS2307: Cannot find module 'electron-log/main.js' or its corresponding type declarations.
+src/main/app-logger.ts(17,17): error TS2307: Cannot find module 'electron-log/main.js' or its corresponding type declarations.
+src/main/ipc-handlers/claude-code-handlers.ts(22,20): error TS7016: Could not find a declaration file for module 'semver'. '/Users/ray/dev/Agents/Auto-Claude/apps/frontend/node_modules/semver/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`
+src/main/services/profile/profile-service.ts(14,8): error TS2307: Cannot find module '@anthropic-ai/sdk' or its corresponding type declarations.
+src/main/services/profile/profile-service.ts(572,13): error TS7006: Parameter 'model' implicitly has an 'any' type.
+src/main/services/profile/profile-service.ts(576,16): error TS7006: Parameter 'model' implicitly has an 'any' type.
+src/preload/api/modules/autobuild-api.ts(3,3): error TS2305: Module '"../../../shared/types"' has no exported member 'AutoBuildSourceUpdateCheck'.
+src/preload/api/modules/autobuild-api.ts(4,3): error TS2305: Module '"../../../shared/types"' has no exported member 'AutoBuildSourceUpdateProgress'.
+src/preload/api/modules/autobuild-api.ts(30,28): error TS2339: Property 'AUTOBUILD_SOURCE_CHECK' does not exist on type '{ readonly PROJECT_ADD: "project:add"; readonly PROJECT_REMOVE: "project:remove"; readonly PROJECT_LIST: "project:list"; readonly PROJECT_UPDATE_SETTINGS: "project:updateSettings"; ... 374 more ...; readonly GET_SENTRY_CONFIG: "sentry:get-config"; }'.
+src/preload/api/modules/autobuild-api.ts(33,26): error TS2339: Property 'AUTOBUILD_SOURCE_DOWNLOAD' does not exist on type '{ readonly PROJECT_ADD: "project:add"; readonly PROJECT_REMOVE: "project:remove"; readonly PROJECT_LIST: "project:list"; readonly PROJECT_UPDATE_SETTINGS: "project:updateSettings"; ... 374 more ...; readonly GET_SENTRY_CONFIG: "sentry:get-config"; }'.
+src/preload/api/modules/autobuild-api.ts(36,28): error TS2339: Property 'AUTOBUILD_SOURCE_VERSION' does not exist on type '{ readonly PROJECT_ADD: "project:add"; readonly PROJECT_REMOVE: "project:remove"; readonly PROJECT_LIST: "project:list"; readonly PROJECT_UPDATE_SETTINGS: "project:updateSettings"; ... 374 more ...; readonly GET_SENTRY_CONFIG: "sentry:get-config"; }'.
+src/preload/api/modules/autobuild-api.ts(42,36): error TS2339: Property 'AUTOBUILD_SOURCE_PROGRESS' does not exist on type '{ readonly PROJECT_ADD: "project:add"; readonly PROJECT_REMOVE: "project:remove"; readonly PROJECT_LIST: "project:list"; readonly PROJECT_UPDATE_SETTINGS: "project:updateSettings"; ... 374 more ...; readonly GET_SENTRY_CONFIG: "sentry:get-config"; }'.
+src/preload/api/project-api.ts(159,37): error TS2339: Property 'PROJECT_UPDATE_AUTOBUILD' does not exist on type '{ readonly PROJECT_ADD: "project:add"; readonly PROJECT_REMOVE: "project:remove"; readonly PROJECT_LIST: "project:list"; readonly PROJECT_UPDATE_SETTINGS: "project:updateSettings"; ... 374 more ...; readonly GET_SENTRY_CONFIG: "sentry:get-config"; }'.
+src/renderer/App.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/AddFeatureDialog.tsx(24,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/AddProjectModal.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/AgentProfileSelector.tsx(11,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/AgentTools.tsx(53,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/AgentTools.tsx(900,49): error TS2339: Property 'checkMcpHealth' does not exist on type 'ElectronAPI'.
+src/renderer/components/AgentTools.tsx(933,47): error TS2339: Property 'testMcpConnection' does not exist on type 'ElectronAPI'.
+src/renderer/components/AppUpdateNotification.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/AuthStatusIndicator.test.tsx(86,41): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/AuthStatusIndicator.test.tsx(87,85): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/AuthStatusIndicator.test.tsx(93,42): error TS2339: Property 'toHaveAttribute' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/AuthStatusIndicator.test.tsx(107,50): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/AuthStatusIndicator.test.tsx(108,94): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/AuthStatusIndicator.test.tsx(114,42): error TS2339: Property 'toHaveAttribute' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/AuthStatusIndicator.test.tsx(128,41): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/ChatHistorySidebar.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(79,32): error TS2339: Property 'checkClaudeCodeVersion' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(84,47): error TS2339: Property 'checkClaudeCodeVersion' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(108,30): error TS2339: Property 'getClaudeCodeVersions' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(116,47): error TS2339: Property 'getClaudeCodeVersions' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(132,30): error TS2339: Property 'getClaudeCodeInstallations' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(140,47): error TS2339: Property 'getClaudeCodeInstallations' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(186,32): error TS2339: Property 'installClaudeCode' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(191,47): error TS2339: Property 'installClaudeCode' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(218,32): error TS2339: Property 'installClaudeCodeVersion' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(223,47): error TS2339: Property 'installClaudeCodeVersion' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(251,32): error TS2339: Property 'setClaudeCodeActivePath' does not exist on type 'ElectronAPI'.
+src/renderer/components/ClaudeCodeStatusBadge.tsx(256,47): error TS2339: Property 'setClaudeCodeActivePath' does not exist on type 'ElectronAPI'.
+src/renderer/components/CompetitorAnalysisViewer.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/CustomMcpDialog.tsx(21,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/CustomModelModal.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/FileExplorerPanel.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/FileTreeItem.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-issues/components/AutoFixButton.tsx(30,48): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/components/AutoFixButton.tsx(39,48): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/components/AutoFixButton.tsx(49,45): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/components/AutoFixButton.tsx(74,24): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/components/IssueDetail.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-issues/components/IssueList.tsx(7,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-issues/components/IssueListHeader.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(42,48): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(43,8): error TS7006: Parameter 'eventProjectId' implicitly has an 'any' type.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(43,24): error TS7006: Parameter 'progress' implicitly has an 'any' type.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(50,48): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(51,8): error TS7006: Parameter 'eventProjectId' implicitly has an 'any' type.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(51,24): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(60,45): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(61,8): error TS7006: Parameter 'eventProjectId' implicitly has an 'any' type.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(61,24): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(103,24): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAnalyzePreview.ts(111,47): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(30,28): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(31,28): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(32,28): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(54,48): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(57,30): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(69,48): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(80,48): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(90,45): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(120,50): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(146,26): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(183,52): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(189,32): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(210,50): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-issues/hooks/useAutoFix.ts(216,30): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(10,33): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(144,35): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(151,56): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(155,78): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(185,46): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(194,32): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(198,35): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(205,56): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(209,78): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(241,39): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(258,35): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(308,44): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(324,35): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(331,64): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(336,49): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(340,74): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/PRDetail.integration.test.tsx(343,60): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(101,36): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<ChildNode | null>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(120,36): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<ChildNode | null>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(142,64): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(145,64): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(188,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(191,59): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(210,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(251,66): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(254,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(296,51): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(299,50): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(302,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(322,57): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(325,59): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(351,25): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLDivElement | null | undefined>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(371,65): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(374,65): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(398,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(427,49): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(452,65): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(507,73): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(508,61): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(530,73): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(561,69): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(562,67): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(585,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/__tests__/ReviewStatusTree.test.tsx(607,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/github-prs/components/FindingItem.tsx(6,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/FindingsSummary.tsx(5,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/PRDetail.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/PRDetail.tsx(287,49): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/components/PRDetail.tsx(317,49): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/components/PRDetail.tsx(342,48): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/components/PRDetail.tsx(345,49): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/components/PRDetail.tsx(360,34): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/components/PRDetail.tsx(368,45): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/components/PRFilterBar.tsx(31,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/PRHeader.tsx(3,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/PRList.tsx(8,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/PRLogs.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/ReviewFindings.tsx(20,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/ReviewStatusTree.tsx(3,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/components/SeverityGroupHeader.tsx(6,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/GitHubPRs.tsx(3,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/github-prs/GitHubPRs.tsx(171,39): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(156,59): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(163,53): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(173,49): error TS7006: Parameter 'pr' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(182,56): error TS7006: Parameter 'pr' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(188,58): error TS7006: Parameter 'pr' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(189,63): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(197,78): error TS2345: Argument of type '{}' is not assignable to parameter of type 'PRReviewResult'.
+  Type '{}' is missing the following properties from type 'PRReviewResult': prNumber, repo, success, findings, and 3 more.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(275,28): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(277,18): error TS7006: Parameter 'prDetails' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(283,19): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(298,30): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(298,76): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(310,36): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(312,26): error TS7006: Parameter 'newCommitsResult' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(315,27): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(325,32): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(327,22): error TS7006: Parameter 'newCommitsResult' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(330,23): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(378,49): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(396,50): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(421,50): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(429,51): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(451,41): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(468,50): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/github-prs/hooks/useGitHubPRs.ts(487,50): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/components/GitHubSetupModal.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/gitlab-issues/components/EmptyStates.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/gitlab-issues/components/InvestigationDialog.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/gitlab-issues/components/InvestigationDialog.tsx(45,26): error TS2339: Property 'getGitLabIssueNotes' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-issues/components/IssueDetail.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/gitlab-issues/components/IssueListHeader.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(19,48): error TS2551: Property 'onGitLabInvestigationProgress' does not exist on type 'ElectronAPI'. Did you mean 'onGitHubInvestigationProgress'?
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(20,8): error TS7006: Parameter 'eventProjectId' implicitly has an 'any' type.
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(20,24): error TS7006: Parameter 'status' implicitly has an 'any' type.
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(27,48): error TS2551: Property 'onGitLabInvestigationComplete' does not exist on type 'ElectronAPI'. Did you mean 'onGitHubInvestigationComplete'?
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(28,8): error TS7006: Parameter 'eventProjectId' implicitly has an 'any' type.
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(28,24): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(39,45): error TS2551: Property 'onGitLabInvestigationError' does not exist on type 'ElectronAPI'. Did you mean 'onGitHubInvestigationError'?
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(40,8): error TS7006: Parameter 'eventProjectId' implicitly has an 'any' type.
+src/renderer/components/gitlab-issues/hooks/useGitLabInvestigation.ts(40,24): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/renderer/components/gitlab-merge-requests/components/CreateMergeRequestDialog.tsx(50,47): error TS2339: Property 'createGitLabMergeRequest' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/components/MRDetail.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/gitlab-merge-requests/components/SeverityGroupHeader.tsx(5,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(106,57): error TS2551: Property 'checkGitLabConnection' does not exist on type 'ElectronAPI'. Did you mean 'checkGitHubConnection'?
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(113,51): error TS2339: Property 'getGitLabMergeRequests' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(118,33): error TS7006: Parameter 'mr' implicitly has an 'any' type.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(121,64): error TS2339: Property 'getGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(122,36): error TS2339: Property 'getGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(122,78): error TS7006: Parameter 'reviewResult' implicitly has an 'any' type.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(156,56): error TS2339: Property 'getGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(157,28): error TS2339: Property 'getGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(157,69): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(182,43): error TS2339: Property 'checkGitLabMRNewCommits' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(187,47): error TS2339: Property 'checkGitLabMRNewCommits' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(198,43): error TS2339: Property 'cancelGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(201,48): error TS2339: Property 'cancelGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(213,43): error TS2339: Property 'postGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(216,39): error TS2339: Property 'postGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(224,43): error TS2339: Property 'postGitLabMRNote' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(227,39): error TS2339: Property 'postGitLabMRNote' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(235,43): error TS2339: Property 'mergeGitLabMR' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(238,48): error TS2339: Property 'mergeGitLabMR' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(251,43): error TS2339: Property 'assignGitLabMR' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(254,48): error TS2339: Property 'assignGitLabMR' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(267,43): error TS2339: Property 'approveGitLabMR' does not exist on type 'ElectronAPI'.
+src/renderer/components/gitlab-merge-requests/hooks/useGitLabMRs.ts(270,39): error TS2339: Property 'approveGitLabMR' does not exist on type 'ElectronAPI'.
+src/renderer/components/GitLabIssues.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/GitSetupModal.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/GlobalDownloadIndicator.tsx(3,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/ideation/hooks/__tests__/useIdeationAuth.test.ts(41,26): error TS2339: Property 'getAPIProfiles' does not exist on type 'ElectronAPI'.
+src/renderer/components/ideation/hooks/useIdeation.ts(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/ideation/hooks/useIdeationAuth.ts(31,55): error TS2339: Property 'getAPIProfiles' does not exist on type 'ElectronAPI'.
+src/renderer/components/ideation/IdeaCard.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/ideation/IdeaDetailPanel.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/ideation/IdeationHeader.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/Insights.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/KanbanBoard.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(79,69): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(82,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(85,54): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(88,48): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(102,20): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<Element | null>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(168,57): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(191,57): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(246,29): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<Element | null>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(250,30): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<Element | null>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(254,28): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<Element | null>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(268,24): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<Element | null>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(283,78): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(286,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(298,92): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(313,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/AuthChoiceStep.test.tsx(314,54): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/ClaudeCodeStep.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/onboarding/ClaudeCodeStep.tsx(37,32): error TS2339: Property 'checkClaudeCodeVersion' does not exist on type 'ElectronAPI'.
+src/renderer/components/onboarding/ClaudeCodeStep.tsx(44,47): error TS2339: Property 'checkClaudeCodeVersion' does not exist on type 'ElectronAPI'.
+src/renderer/components/onboarding/ClaudeCodeStep.tsx(77,32): error TS2339: Property 'installClaudeCode' does not exist on type 'ElectronAPI'.
+src/renderer/components/onboarding/ClaudeCodeStep.tsx(82,47): error TS2339: Property 'installClaudeCode' does not exist on type 'ElectronAPI'.
+src/renderer/components/onboarding/CompletionStep.tsx(9,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/onboarding/DevToolsStep.tsx(105,32): error TS2339: Property 'worktreeDetectTools' does not exist on type 'ElectronAPI'.
+src/renderer/components/onboarding/DevToolsStep.tsx(111,47): error TS2339: Property 'worktreeDetectTools' does not exist on type 'ElectronAPI'.
+src/renderer/components/onboarding/MemoryStep.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/onboarding/OAuthStep.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(106,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(114,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(123,60): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(134,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(149,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(154,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(163,59): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(179,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(201,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(208,33): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(217,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(225,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(231,64): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(239,64): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(277,45): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(284,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(300,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(325,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(329,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(330,54): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(339,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(348,62): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<Element | null>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(357,71): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(365,59): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/onboarding/OnboardingWizard.test.tsx(374,64): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/onboarding/OnboardingWizard.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/onboarding/PrivacyStep.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/onboarding/WelcomeStep.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/PhaseProgressIndicator.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/ProactiveSwapListener.tsx(9,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/project-settings/GeneralSettings.tsx(8,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/project-settings/GitHubOAuthFlow.tsx(124,40): error TS2339: Property 'onGitHubAuthDeviceCode' does not exist on type 'ElectronAPI'.
+src/renderer/components/project-settings/GitHubOAuthFlow.tsx(124,64): error TS7006: Parameter 'data' implicitly has an 'any' type.
+src/renderer/components/project-settings/hooks/useProjectSettings.ts(259,49): error TS2551: Property 'checkGitLabConnection' does not exist on type 'ElectronAPI'. Did you mean 'checkGitHubConnection'?
+src/renderer/components/ProjectTabBar.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/RateLimitIndicator.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/RateLimitModal.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/roadmap/FeatureDetailPanel.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/roadmap/RoadmapHeader.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/SDKRateLimitModal.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/AdvancedSettings.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/AdvancedSettings.tsx(95,49): error TS2551: Property 'getDownloadedAppUpdate' does not exist on type 'ElectronAPI'. Did you mean 'downloadAppUpdate'?
+src/renderer/components/settings/AdvancedSettings.tsx(160,55): error TS2339: Property 'onAppUpdateStableDowngrade' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/AdvancedSettings.tsx(160,83): error TS7006: Parameter 'info' implicitly has an 'any' type.
+src/renderer/components/settings/AdvancedSettings.tsx(212,47): error TS2551: Property 'downloadStableUpdate' does not exist on type 'ElectronAPI'. Did you mean 'downloadAppUpdate'?
+src/renderer/components/settings/AgentProfileSettings.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/AppSettings.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/DebugSettings.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/DebugSettings.tsx(49,45): error TS2339: Property 'getDebugInfo' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/DebugSettings.tsx(60,47): error TS2339: Property 'openLogsFolder' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/DebugSettings.tsx(71,47): error TS2339: Property 'copyDebugInfo' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/DevToolsSettings.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/DevToolsSettings.tsx(92,32): error TS2339: Property 'worktreeDetectTools' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/DevToolsSettings.tsx(98,47): error TS2339: Property 'worktreeDetectTools' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/DisplaySettings.tsx(3,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/GeneralSettings.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/GeneralSettings.tsx(108,10): error TS2339: Property 'getCliToolsInfo' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(94,49): error TS2551: Property 'checkGitLabCli' does not exist on type 'ElectronAPI'. Did you mean 'checkGitHubCli'?
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(191,47): error TS2339: Property 'listGitLabUserProjects' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(218,52): error TS2551: Property 'getGitLabToken' does not exist on type 'ElectronAPI'. Did you mean 'getGitHubToken'?
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(223,51): error TS2551: Property 'getGitLabUser' does not exist on type 'ElectronAPI'. Did you mean 'getGitHubUser'?
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(236,45): error TS2551: Property 'startGitLabAuth' does not exist on type 'ElectronAPI'. Did you mean 'startGitHubAuth'?
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(241,53): error TS2551: Property 'checkGitLabAuth' does not exist on type 'ElectronAPI'. Did you mean 'checkGitHubAuth'?
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(272,47): error TS2339: Property 'installGitLabCli' does not exist on type 'ElectronAPI'.
+src/renderer/components/settings/integrations/GitLabIntegration.tsx(294,47): error TS2551: Property 'checkGitLabCli' does not exist on type 'ElectronAPI'. Did you mean 'checkGitHubCli'?
+src/renderer/components/settings/IntegrationSettings.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/LanguageSettings.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(43,59): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(57,19): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(108,23): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<Element | null>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(131,53): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(132,62): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(154,59): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(158,22): error TS2339: Property 'toHaveClass' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(223,53): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(232,52): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(233,59): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(234,55): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(257,65): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(278,69): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(300,53): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(308,63): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(324,19): error TS2339: Property 'toBeDisabled' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(348,28): error TS2339: Property 'toHaveClass' does not exist on type 'Assertion<HTMLButtonElement | null>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(373,53): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ModelSearchableSelect.test.tsx(380,59): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/settings/ModelSearchableSelect.tsx(20,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(76,46): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(77,50): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(105,27): error TS2339: Property 'toBeDisabled' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(130,46): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(165,48): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(212,46): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(244,49): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(256,44): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(257,48): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(270,25): error TS2339: Property 'toHaveAttribute' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(271,29): error TS2339: Property 'toBeDisabled' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(288,48): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(289,44): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(309,44): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(310,48): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(328,50): error TS2339: Property 'toHaveFocus' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(361,50): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(374,48): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(395,46): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(408,76): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(438,46): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(497,51): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(541,46): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(545,24): error TS2339: Property 'toBeDisabled' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(570,57): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(571,57): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(598,53): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(599,85): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(631,24): error TS2339: Property 'toBeDisabled' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.test.tsx(665,24): error TS2339: Property 'toBeDisabled' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileEditDialog.tsx(18,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/ProfileList.test.tsx(221,81): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileList.test.tsx(224,8): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileList.test.tsx(225,76): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileList.test.tsx(226,76): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileList.test.tsx(247,12): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/settings/ProfileList.test.tsx(249,48): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileList.test.tsx(266,81): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileList.test.tsx(267,76): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileList.test.tsx(280,82): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/settings/ProfileList.test.tsx(293,12): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/settings/ProfileList.tsx(10,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/ProjectSettingsContent.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/sections/SectionRouter.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/settings/ThemeSettings.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/Sidebar.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/SortableProjectTab.tsx(3,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(74,77): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(91,26): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(108,27): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(124,77): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(142,30): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(146,36): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(147,39): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(148,38): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(164,50): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(192,50): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(249,73): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(273,67): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(290,50): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(295,24): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(321,50): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(337,50): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(378,51): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(379,73): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(404,44): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.test.tsx(406,58): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement | null>'.
+src/renderer/components/task-detail/task-review/CreatePRDialog.tsx(3,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/task-review/MergePreviewSummary.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/task-review/QAFeedbackSection.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/task-review/TerminalDropdown.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/task-review/WorkspaceMessages.tsx(112,72): error TS2554: Expected 1 arguments, but got 2.
+src/renderer/components/task-detail/task-review/WorkspaceMessages.tsx(160,47): error TS2339: Property 'clearStagedState' does not exist on type 'ElectronAPI'.
+src/renderer/components/task-detail/task-review/WorkspaceStatus.tsx(18,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/task-review/WorkspaceStatus.tsx(112,32): error TS2339: Property 'worktreeOpenInIDE' does not exist on type 'ElectronAPI'.
+src/renderer/components/task-detail/task-review/WorkspaceStatus.tsx(125,32): error TS2339: Property 'worktreeOpenInTerminal' does not exist on type 'ElectronAPI'.
+src/renderer/components/task-detail/TaskDetailModal.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/TaskDetailModal.tsx(185,47): error TS2339: Property 'createWorktreePR' does not exist on type 'ElectronAPI'.
+src/renderer/components/task-detail/TaskFiles.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/TaskFiles.tsx(95,47): error TS2339: Property 'readFile' does not exist on type 'ElectronAPI'.
+src/renderer/components/task-detail/TaskFiles.tsx(133,32): error TS2339: Property 'worktreeOpenInIDE' does not exist on type 'ElectronAPI'.
+src/renderer/components/task-detail/TaskHeader.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/TaskMetadata.tsx(1,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-detail/TaskSubtasks.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-form/ClassificationFields.tsx(7,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-form/TaskFormFields.tsx(13,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/task-form/TaskModalLayout.tsx(11,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/TaskCard.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/TaskCreationWizard.tsx(14,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/TaskEditDialog.tsx(30,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/Terminal.tsx(184,26): error TS2339: Property 'activateDeferredClaudeResume' does not exist on type 'ElectronAPI'.
+src/renderer/components/Terminal.tsx(244,24): error TS2339: Property 'setTerminalTitle' does not exist on type 'ElectronAPI'.
+src/renderer/components/Terminal.tsx(254,24): error TS2339: Property 'setTerminalTitle' does not exist on type 'ElectronAPI'.
+src/renderer/components/Terminal.tsx(270,24): error TS2339: Property 'setTerminalTitle' does not exist on type 'ElectronAPI'.
+src/renderer/components/Terminal.tsx(290,24): error TS2339: Property 'setTerminalWorktreeConfig' does not exist on type 'ElectronAPI'.
+src/renderer/components/Terminal.tsx(295,24): error TS2339: Property 'setTerminalTitle' does not exist on type 'ElectronAPI'.
+src/renderer/components/Terminal.tsx(318,24): error TS2339: Property 'setTerminalWorktreeConfig' does not exist on type 'ElectronAPI'.
+src/renderer/components/Terminal.tsx(321,24): error TS2339: Property 'setTerminalTitle' does not exist on type 'ElectronAPI'.
+src/renderer/components/Terminal.tsx(338,32): error TS2339: Property 'worktreeOpenInIDE' does not exist on type 'ElectronAPI'.
+src/renderer/components/terminal/CreateWorktreeDialog.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/terminal/CreateWorktreeDialog.tsx(199,47): error TS2339: Property 'createTerminalWorktree' does not exist on type 'ElectronAPI'.
+src/renderer/components/terminal/TerminalHeader.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/terminal/useAutoNaming.ts(66,28): error TS2339: Property 'setTerminalTitle' does not exist on type 'ElectronAPI'.
+src/renderer/components/terminal/useTerminalEvents.ts(120,40): error TS2339: Property 'onTerminalWorktreeConfigChange' does not exist on type 'ElectronAPI'.
+src/renderer/components/terminal/useTerminalEvents.ts(120,72): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/renderer/components/terminal/useTerminalEvents.ts(120,76): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/renderer/components/terminal/useTerminalEvents.ts(148,40): error TS2339: Property 'onTerminalClaudeBusy' does not exist on type 'ElectronAPI'.
+src/renderer/components/terminal/useTerminalEvents.ts(148,62): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/renderer/components/terminal/useTerminalEvents.ts(148,66): error TS7006: Parameter 'isBusy' implicitly has an 'any' type.
+src/renderer/components/terminal/useTerminalEvents.ts(159,40): error TS2551: Property 'onTerminalClaudeExit' does not exist on type 'ElectronAPI'. Did you mean 'onTerminalExit'?
+src/renderer/components/terminal/useTerminalEvents.ts(186,40): error TS2339: Property 'onTerminalPendingResume' does not exist on type 'ElectronAPI'.
+src/renderer/components/terminal/useTerminalEvents.ts(186,65): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/renderer/components/terminal/useTerminalEvents.ts(186,69): error TS7006: Parameter '_sessionId' implicitly has an 'any' type.
+src/renderer/components/terminal/WorktreeSelector.tsx(3,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/terminal/WorktreeSelector.tsx(64,28): error TS2339: Property 'listTerminalWorktrees' does not exist on type 'ElectronAPI'.
+src/renderer/components/terminal/WorktreeSelector.tsx(66,28): error TS2551: Property 'listOtherWorktrees' does not exist on type 'ElectronAPI'. Did you mean 'listWorktrees'?
+src/renderer/components/terminal/WorktreeSelector.tsx(73,41): error TS7006: Parameter 'wt' implicitly has an 'any' type.
+src/renderer/components/terminal/WorktreeSelector.tsx(82,47): error TS7006: Parameter 'wt' implicitly has an 'any' type.
+src/renderer/components/terminal/WorktreeSelector.tsx(94,38): error TS7006: Parameter 'wt' implicitly has an 'any' type.
+src/renderer/components/terminal/WorktreeSelector.tsx(147,47): error TS2339: Property 'removeTerminalWorktree' does not exist on type 'ElectronAPI'.
+src/renderer/components/TerminalGrid.tsx(3,3): error TS2305: Module '"react-resizable-panels"' has no exported member 'Group'.
+src/renderer/components/TerminalGrid.tsx(5,3): error TS2305: Module '"react-resizable-panels"' has no exported member 'Separator'.
+src/renderer/components/ui/popover.tsx(2,35): error TS2307: Cannot find module '@radix-ui/react-popover' or its corresponding type declarations.
+src/renderer/components/UpdateBanner.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/UpdateBanner.tsx(64,34): error TS2551: Property 'getDownloadedAppUpdate' does not exist on type 'ElectronAPI'. Did you mean 'downloadAppUpdate'?
+src/renderer/components/UpdateBanner.tsx(67,49): error TS2551: Property 'getDownloadedAppUpdate' does not exist on type 'ElectronAPI'. Did you mean 'downloadAppUpdate'?
+src/renderer/components/WelcomeScreen.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/WorktreeCleanupDialog.tsx(1,39): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/Worktrees.tsx(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/components/Worktrees.tsx(94,28): error TS2339: Property 'listTerminalWorktrees' does not exist on type 'ElectronAPI'.
+src/renderer/components/Worktrees.tsx(230,47): error TS2339: Property 'createWorktreePR' does not exist on type 'ElectronAPI'.
+src/renderer/components/Worktrees.tsx(255,47): error TS2339: Property 'removeTerminalWorktree' does not exist on type 'ElectronAPI'.
+src/renderer/hooks/useClaudeLoginTerminal.ts(2,32): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/renderer/hooks/useClaudeLoginTerminal.ts(16,44): error TS2339: Property 'onTerminalAuthCreated' does not exist on type 'ElectronAPI'.
+src/renderer/hooks/useClaudeLoginTerminal.ts(16,67): error TS7006: Parameter 'info' implicitly has an 'any' type.
+src/renderer/lib/browser-mock.ts(114,3): error TS2353: Object literal may only specify known properties, and 'getAPIProfiles' does not exist in type 'ElectronAPI'.
+src/renderer/lib/browser-mock.ts(123,26): error TS7006: Parameter 'profile' implicitly has an 'any' type.
+src/renderer/lib/browser-mock.ts(133,28): error TS7006: Parameter 'profile' implicitly has an 'any' type.
+src/renderer/lib/browser-mock.ts(301,26): error TS7006: Parameter 'server' implicitly has an 'any' type.
+src/renderer/lib/browser-mock.ts(310,29): error TS7006: Parameter 'server' implicitly has an 'any' type.
+src/renderer/lib/sentry.ts(72,39): error TS2339: Property 'getSentryConfig' does not exist on type 'ElectronAPI'.
+src/renderer/lib/sentry.ts(138,25): error TS2339: Property 'notifySentryStateChanged' does not exist on type 'ElectronAPI'.
+src/renderer/stores/github/issues-store.ts(140,79): error TS2554: Expected 1-2 arguments, but got 4.
+src/renderer/stores/github/issues-store.ts(142,35): error TS2339: Property 'issues' does not exist on type 'GitHubIssue[]'.
+src/renderer/stores/github/issues-store.ts(143,36): error TS2339: Property 'hasMore' does not exist on type 'GitHubIssue[]'.
+src/renderer/stores/github/issues-store.ts(176,79): error TS2554: Expected 1-2 arguments, but got 4.
+src/renderer/stores/github/issues-store.ts(187,38): error TS2339: Property 'issues' does not exist on type 'GitHubIssue[]'.
+src/renderer/stores/github/issues-store.ts(188,36): error TS2339: Property 'hasMore' does not exist on type 'GitHubIssue[]'.
+src/renderer/stores/github/pr-review-store.ts(235,22): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/stores/github/pr-review-store.ts(242,22): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/stores/github/pr-review-store.ts(249,22): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/stores/github/pr-review-store.ts(264,22): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/stores/github/pr-review-store.ts(274,22): error TS2339: Property 'github' does not exist on type 'ElectronAPI'.
+src/renderer/stores/gitlab-store.ts(124,45): error TS2551: Property 'getGitLabIssues' does not exist on type 'ElectronAPI'. Did you mean 'getGitHubIssues'?
+src/renderer/stores/gitlab-store.ts(141,45): error TS2551: Property 'checkGitLabConnection' does not exist on type 'ElectronAPI'. Did you mean 'checkGitHubConnection'?
+src/renderer/stores/gitlab-store.ts(165,22): error TS2551: Property 'investigateGitLabIssue' does not exist on type 'ElectronAPI'. Did you mean 'investigateGitHubIssue'?
+src/renderer/stores/gitlab-store.ts(176,45): error TS2551: Property 'importGitLabIssues' does not exist on type 'ElectronAPI'. Did you mean 'importGitHubIssues'?
+src/renderer/stores/gitlab/mr-review-store.ts(189,28): error TS2339: Property 'onGitLabMRReviewProgress' does not exist on type 'ElectronAPI'.
+src/renderer/stores/gitlab/mr-review-store.ts(198,22): error TS2339: Property 'onGitLabMRReviewProgress' does not exist on type 'ElectronAPI'.
+src/renderer/stores/gitlab/mr-review-store.ts(204,22): error TS2339: Property 'onGitLabMRReviewComplete' does not exist on type 'ElectronAPI'.
+src/renderer/stores/gitlab/mr-review-store.ts(210,22): error TS2339: Property 'onGitLabMRReviewError' does not exist on type 'ElectronAPI'.
+src/renderer/stores/gitlab/mr-review-store.ts(250,22): error TS2339: Property 'runGitLabMRReview' does not exist on type 'ElectronAPI'.
+src/renderer/stores/gitlab/mr-review-store.ts(259,22): error TS2339: Property 'runGitLabMRFollowupReview' does not exist on type 'ElectronAPI'.
+src/renderer/stores/settings-store.ts(87,47): error TS2339: Property 'saveAPIProfile' does not exist on type 'ElectronAPI'.
+src/renderer/stores/settings-store.ts(92,59): error TS2339: Property 'getAPIProfiles' does not exist on type 'ElectronAPI'.
+src/renderer/stores/settings-store.ts(132,47): error TS2339: Property 'updateAPIProfile' does not exist on type 'ElectronAPI'.
+src/renderer/stores/settings-store.ts(159,47): error TS2339: Property 'deleteAPIProfile' does not exist on type 'ElectronAPI'.
+src/renderer/stores/settings-store.ts(185,47): error TS2551: Property 'setActiveAPIProfile' does not exist on type 'ElectronAPI'. Did you mean 'setActiveClaudeProfile'?
+src/renderer/stores/settings-store.ts(207,47): error TS2339: Property 'testConnection' does not exist on type 'ElectronAPI'.
+src/renderer/stores/settings-store.ts(272,47): error TS2339: Property 'discoverModels' does not exist on type 'ElectronAPI'.
+src/renderer/stores/settings-store.ts(389,45): error TS2339: Property 'getAPIProfiles' does not exist on type 'ElectronAPI'.
+src/renderer/stores/task-store.ts(492,86): error TS2554: Expected 2-3 arguments, but got 4.
+src/renderer/stores/task-store.ts(526,78): error TS2554: Expected 2 arguments, but got 3.
+src/renderer/stores/task-store.ts(530,18): error TS2339: Property 'worktreeExists' does not exist on type 'IPCResult<unknown>'.
+src/renderer/stores/task-store.ts(535,32): error TS2339: Property 'worktreePath' does not exist on type 'IPCResult<unknown>'.
+src/renderer/stores/terminal-store.ts(356,53): error TS2339: Property 'checkTerminalPtyAlive' does not exist on type 'ElectronAPI'.
+src/shared/i18n/index.ts(1,18): error TS2307: Cannot find module 'i18next' or its corresponding type declarations.
+src/shared/i18n/index.ts(2,34): error TS2307: Cannot find module 'react-i18next' or its corresponding type declarations.
+src/shared/types/ipc.ts(58,67): error TS2305: Module '"./settings"' has no exported member 'AutoBuildSourceUpdateCheck'.
+src/shared/types/ipc.ts(58,95): error TS2305: Module '"./settings"' has no exported member 'AutoBuildSourceUpdateProgress'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 2
+npm error path /Users/ray/dev/Agents/Auto-Claude/apps/frontend
+npm error workspace auto-claude-ui@2.7.4
+npm error location /Users/ray/dev/Agents/Auto-Claude/apps/frontend
+npm error command failed
+npm error command sh -c tsc --noEmit

@@ -1,5 +1,15 @@
 import pytest
-from apps.backend.ollama_model_detector import parse_version, version_gte, is_embedding_model, get_embedding_dim
+import json
+import io
+import sys
+from apps.backend.ollama_model_detector import (
+    parse_version, 
+    version_gte, 
+    is_embedding_model, 
+    get_embedding_dim,
+    get_default_ollama_url,
+    cmd_check_installed
+)
 
 def test_parse_version():
     assert parse_version("0.10.0") == (0, 10, 0)
@@ -29,8 +39,6 @@ def test_get_embedding_dim():
     assert get_embedding_dim("unknown-model") is None
 
 def test_get_default_ollama_url(monkeypatch):
-    from apps.backend.ollama_model_detector import get_default_ollama_url
-    
     # Default fallback
     monkeypatch.delenv("OLLAMA_HOST", raising=False)
     assert get_default_ollama_url() == "http://localhost:11434"
@@ -48,11 +56,6 @@ def test_get_default_ollama_url(monkeypatch):
     assert get_default_ollama_url() == "https://ollama.my.domain"
 
 def test_cmd_check_installed(mocker):
-    from apps.backend.ollama_model_detector import cmd_check_installed
-    import json
-    import io
-    import sys
-    
     # Mock shutil.which to find ollama
     mocker.patch("shutil.which", return_value="/usr/local/bin/ollama")
     

@@ -233,6 +233,11 @@
       "description": "Ollama is installed but not running. Start Ollama to use local embedding models.",
       "retry": "Retry",
       "fallbackNote": "Memory will still work with keyword search even without embeddings."
-    }
+    },
+    "download": "Download",
+    "downloading": "Downloading...",
+    "installed": "Installed",
+    "retry": "Retry",
+    "iveInstalledIt": "I've installed it"
   }
 }

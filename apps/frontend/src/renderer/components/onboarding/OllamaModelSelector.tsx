@@ -7,6 +7,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Button } from '../ui/button';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 
 interface OllamaModel {
@@ -19,10 +20,11 @@ interface OllamaModel {
 }
 
 interface OllamaModelSelectorProps {
-  selectedModel: string;
-  onModelSelect: (model: string, dim: number) => void;
+  selectedModel?: string;
+  onModelSelect: (modelName: string, dim: number) => void;
   disabled?: boolean;
   className?: string;
+  onDownloadComplete?: (modelName: string) => void;
 }
 
 // Recommended embedding models for Auto Claude Memory
@@ -87,18 +89,20 @@ interface DownloadProgress {
  * <OllamaModelSelector
  *   selectedModel="embeddinggemma"
  *   onModelSelect={(model, dim) => console.log(`Selected ${model} with ${dim} dimensions`)}
- *   disabled={false}
+ *   onDownloadComplete={(modelName) => console.log(`Finished downloading ${modelName}`)}
  * />
  * ```
  */
 export function OllamaModelSelector({
   selectedModel,
-  onModelSelect,
+  onModelSelect: onSelect,
   disabled = false,
   className,
+  onDownloadComplete,
 }: OllamaModelSelectorProps) {
+  const { t } = useTranslation();
   const [models, setModels] = useState<OllamaModel[]>(RECOMMENDED_MODELS);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ollamaAvailable, setOllamaAvailable] = useState(true);
@@ -121,7 +125,7 @@ export function OllamaModelSelector({
    * @returns {Promise<void>}
    */
   const checkInstalledModels = async (abortSignal?: AbortSignal) => {
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
 
     try {
@@ -134,7 +138,7 @@ export function OllamaModelSelector({
 
       if (!isInstalled) {
         setOllamaAvailable(false);
-        setIsLoading(false);
+        setLoading(false);
         return;
       }
 
@@ -144,7 +148,7 @@ export function OllamaModelSelector({
 
       if (!statusResult?.success || !statusResult?.data?.running) {
         setOllamaAvailable(false);
-        setIsLoading(false);
+        setLoading(false);
         return;
       }
 
@@ -171,7 +175,7 @@ export function OllamaModelSelector({
       }
     } finally {
       if (!abortSignal?.aborted) {
-        setIsLoading(false);
+        setLoading(false);
       }
     }
   };
@@ -286,6 +290,7 @@ export function OllamaModelSelector({
       if (result?.success) {
         // Refresh the model list
         await checkInstalledModels();
+        onDownloadComplete?.(modelName);
       } else {
         setError(result?.error || `Failed to download ${modelName}`);
       }
@@ -305,14 +310,14 @@ export function OllamaModelSelector({
    */
   const handleSelect = (model: OllamaModel) => {
     if (!model.installed || disabled) return;
-    onModelSelect(model.name, model.dim);
+    onSelect(model.name, model.dim);
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className={cn('flex items-center justify-center py-8', className)}>
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">Checking Ollama models...</span>
+        <span className="ml-2 text-sm text-muted-foreground">{t('onboarding.ollama.checkingModels')}</span>
       </div>
     );
   }
@@ -323,31 +328,32 @@ export function OllamaModelSelector({
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-warning">
-              {ollamaInstalled ? 'Ollama not running' : 'Ollama not installed'}
+            <p className="text-xl font-semibold mb-2">
+              {!ollamaInstalled
+                ? t('onboarding.ollama.notInstalled.title')
+                : t('onboarding.ollama.notRunning.title')}
             </p>
-            <p className="text-sm text-warning/80 mt-1">
-              {ollamaInstalled
-                ? 'Start Ollama to use local embedding models. Memory will still work with keyword search.'
-                : 'Install Ollama to use local embedding models. Memory will still work with keyword search.'}
+            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+              {!ollamaInstalled
+                ? t('onboarding.ollama.notInstalled.description')
+                : t('onboarding.ollama.notRunning.description')}
             </p>
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center justify-center gap-3">
               {!ollamaInstalled ? (
                 <Button
-                  variant="default"
-                  size="sm"
                   onClick={() => window.electronAPI.installOllama()}
+                  className="bg-primary hover:bg-primary/90"
                 >
-                  Download Ollama
+                  <Download className="h-4 w-4 mr-2" />
+                  {t('onboarding.ollama.notInstalled.installButton')}
                 </Button>
               ) : (
                 <Button
-                  variant="outline"
-                  size="sm"
                   onClick={() => checkInstalledModels()}
+                  className="bg-primary hover:bg-primary/90"
                 >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  Retry
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {t('onboarding.ollama.retry')}
                 </Button>
               )}
               {!ollamaInstalled && (
@@ -357,7 +363,7 @@ export function OllamaModelSelector({
                   onClick={() => checkInstalledModels()}
                 >
                   <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  I've installed it
+                  {t('onboarding.ollama.iveInstalledIt')}
                 </Button>
               )}
             </div>
@@ -384,8 +390,16 @@ export function OllamaModelSelector({
           return (
             <div
               key={model.name}
+              role="button"
+              tabIndex={disabled ? -1 : 0}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && model.installed && !disabled) {
+                  e.preventDefault();
+                  handleSelect(model);
+                }
+              }}
               className={cn(
-                'rounded-lg border transition-colors',
+                'rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 model.installed && !disabled
                   ? 'cursor-pointer hover:bg-accent/50'
                   : 'cursor-default',
@@ -423,7 +437,7 @@ export function OllamaModelSelector({
                       </span>
                       {model.installed && (
                         <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">
-                          Installed
+                          {t('onboarding.ollama.installed')}
                         </span>
                       )}
                     </div>
@@ -446,12 +460,12 @@ export function OllamaModelSelector({
                     {isCurrentlyDownloading ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                        Downloading...
+                        {t('onboarding.ollama.downloading')}
                       </>
                     ) : (
                       <>
                         <Download className="h-3.5 w-3.5 mr-1.5" />
-                        Download
+                        {t('onboarding.ollama.download')}
                         {model.size_estimate && (
                           <span className="ml-1 text-muted-foreground">
                             ({model.size_estimate})

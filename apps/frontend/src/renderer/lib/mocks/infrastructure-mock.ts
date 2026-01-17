@@ -72,7 +72,7 @@ export const infrastructureMock = {
     success: true,
     data: {
       installed: true,
-      path: '/usr/local/bin/ollama',
+      path: '<mock-path>/ollama',
       version: '0.1.0'
     }
   }),

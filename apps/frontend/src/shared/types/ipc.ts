@@ -140,6 +140,17 @@ export interface TabState {
   tabOrder: string[];
 }
 
+export interface OllamaRecommendedModel {
+  name: string;
+  description: string;
+  size_estimate: string;
+  dim: number;
+  installed: boolean;
+  compatible?: boolean;
+  compatibility_note?: string;
+  badge?: string;
+}
+
 export interface ElectronAPI {
   // Project operations
   addProject: (projectPath: string) => Promise<IPCResult<Project>>;
@@ -767,16 +778,7 @@ export interface ElectronAPI {
     output: string[];
   }>>;
   getRecommendedOllamaModels: (baseUrl?: string) => Promise<IPCResult<{
-    recommended: Array<{
-      name: string;
-      description: string;
-      size_estimate: string;
-      dim: number;
-      installed: boolean;
-      compatible?: boolean;
-      compatibility_note?: string;
-      badge?: string;
-    }>;
+    recommended: OllamaRecommendedModel[];
     count: number;
   }>>;
 

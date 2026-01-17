@@ -6,11 +6,11 @@
 - [ ] **NEVER CREATE PRs** - I only push to `origin` (your fork)
 - [ ] **NEVER MERGE** - Only maintainers merge to upstream
 - [ ] **NEVER PUSH TO UPSTREAM** - I have no permission anyway
-- [ ] Only push to `origin` (rayBlock/Auto-Claude-Fork.git)
+- [ ] Only push to `origin` ({your-fork-url})
 
 ### Remote Configuration (REQUIRED)
 ```bash
-origin    → https://github.com/rayBlock/Auto-Claude-Fork.git (YOUR FORK)
+origin    → https://github.com/{your-username}/Auto-Claude-Fork.git (YOUR FORK)
 upstream  → https://github.com/AndyMik90/Auto-Claude.git (MAINTAINERS)
 ```
 
@@ -32,7 +32,7 @@ upstream  → https://github.com/AndyMik90/Auto-Claude.git (MAINTAINERS)
 - No merging without explicit user confirmation
 
 ## Workflow Summary
-```
+```text
 1. User creates feature branch locally
 2. I implement changes on feature branch
 3. I push to origin/feature-branch

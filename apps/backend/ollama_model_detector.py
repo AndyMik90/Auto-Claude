@@ -16,14 +16,13 @@ Output:
 
 import argparse
 import json
+import os
 import re
+import shutil
 import sys
 import urllib.error
 import urllib.request
 from typing import Any
-
-import shutil
-import os
 
 def get_default_ollama_url() -> str:
     """Get the default Ollama URL from environment or fallback."""
