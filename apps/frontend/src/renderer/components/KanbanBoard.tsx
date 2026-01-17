@@ -587,8 +587,12 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
     let movedCount = 0;
     for (const task of backlogTasks) {
-      await persistTaskStatus(task.id, 'queue');
-      movedCount++;
+      const result = await persistTaskStatus(task.id, 'queue');
+      if (result.success) {
+        movedCount++;
+      } else {
+        console.error(`[Queue] Failed to move task ${task.id} to queue:`, result.error);
+      }
     }
 
     // Auto-promote queued tasks to fill available capacity
@@ -650,7 +654,14 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       })[0];
 
       console.log(`[Queue] Auto-promoting task ${nextTask.id} from Queue to In Progress (${inProgressCount + 1}/${maxParallelTasks})`);
-      await persistTaskStatus(nextTask.id, 'in_progress');
+      const result = await persistTaskStatus(nextTask.id, 'in_progress');
+
+      // If promotion failed, log error and skip to next task to prevent infinite loop
+      if (!result.success) {
+        console.error(`[Queue] Failed to promote task ${nextTask.id} to In Progress:`, result.error);
+        // Skip this task and continue to next one
+        continue;
+      }
     }
   }, [maxParallelTasks]);
 
