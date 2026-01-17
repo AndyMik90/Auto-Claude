@@ -8,13 +8,13 @@ Follows the same patterns as linear_config.py for consistency.
 Uses LadybugDB as the embedded graph database (no Docker required, requires Python 3.12+).
 
 Multi-Provider Support (V2):
-- LLM Providers: OpenAI, Anthropic, Azure OpenAI, Ollama, Google AI, OpenRouter
+- LLM Providers: OpenAI, Anthropic, Azure OpenAI, Ollama, Google AI, OpenRouter, iFlow
 - Embedder Providers: OpenAI, Voyage AI, Azure OpenAI, Ollama, Google AI, OpenRouter
 
 Environment Variables:
     # Core
     GRAPHITI_ENABLED: Set to "true" to enable Graphiti integration
-    GRAPHITI_LLM_PROVIDER: openai|anthropic|azure_openai|ollama|google (default: openai)
+    GRAPHITI_LLM_PROVIDER: openai|anthropic|azure_openai|ollama|google|openrouter|iflow (default: openai)
     GRAPHITI_EMBEDDER_PROVIDER: openai|voyage|azure_openai|ollama|google (default: openai)
 
     # Database
@@ -53,6 +53,15 @@ Environment Variables:
         - qwen3-embedding:0.6b (1024), :4b (2560), :8b (4096) - Qwen3 series
         - nomic-embed-text (768), mxbai-embed-large (1024), bge-large (1024)
     OLLAMA_EMBEDDING_DIM: Override dimension (optional if using known model)
+
+    # iFlow (OpenAI-compatible API - DeepSeek, Qwen3, Kimi K2, etc.)
+    IFLOW_API_KEY: Required for iFlow provider
+    IFLOW_BASE_URL: iFlow API endpoint (default: https://apis.iflow.cn/v1)
+    IFLOW_LLM_MODEL: Model for LLM (default: deepseek-v3)
+        - deepseek-v3, deepseek-v3.2: General tasks, cost-effective
+        - kimi-k2: Complex reasoning, planning (thinking model)
+        - qwen3-coder: Code generation, implementation
+        - glm-4.7: Chinese language tasks
 """
 
 import json
@@ -90,6 +99,7 @@ class LLMProvider(str, Enum):
     OLLAMA = "ollama"
     GOOGLE = "google"
     OPENROUTER = "openrouter"
+    IFLOW = "iflow"
 
 
 class EmbedderProvider(str, Enum):
@@ -154,6 +164,11 @@ class GraphitiConfig:
     ollama_llm_model: str = ""
     ollama_embedding_model: str = ""
     ollama_embedding_dim: int = 0  # Required for Ollama embeddings
+
+    # iFlow settings (OpenAI-compatible API)
+    iflow_api_key: str = ""
+    iflow_base_url: str = "https://apis.iflow.cn/v1"
+    iflow_llm_model: str = "deepseek-v3"
 
     @classmethod
     def from_env(cls) -> "GraphitiConfig":
@@ -227,6 +242,11 @@ class GraphitiConfig:
         except ValueError:
             ollama_embedding_dim = 0
 
+        # iFlow settings
+        iflow_api_key = os.environ.get("IFLOW_API_KEY", "")
+        iflow_base_url = os.environ.get("IFLOW_BASE_URL", "https://apis.iflow.cn/v1")
+        iflow_llm_model = os.environ.get("IFLOW_LLM_MODEL", "deepseek-v3")
+
         return cls(
             enabled=enabled,
             llm_provider=llm_provider,
@@ -255,6 +275,9 @@ class GraphitiConfig:
             ollama_llm_model=ollama_llm_model,
             ollama_embedding_model=ollama_embedding_model,
             ollama_embedding_dim=ollama_embedding_dim,
+            iflow_api_key=iflow_api_key,
+            iflow_base_url=iflow_base_url,
+            iflow_llm_model=iflow_llm_model,
         )
 
     def is_valid(self) -> bool:
@@ -690,6 +713,10 @@ def get_available_providers() -> dict:
         available_llm.append("ollama")
     if config.ollama_embedding_model and config.ollama_embedding_dim:
         available_embedder.append("ollama")
+
+    # Check iFlow
+    if config.iflow_api_key:
+        available_llm.append("iflow")
 
     return {
         "llm_providers": available_llm,

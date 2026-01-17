@@ -110,6 +110,16 @@ ELECTRON_TOOLS = [
     "mcp__electron__read_electron_logs",  # Read console logs from Electron app
 ]
 
+# iFlow MCP tools for alternative AI model access (when IFLOW_ENABLED is set)
+# Uses iFlow API (OpenAI-compatible) for models like DeepSeek, Qwen3, Kimi K2
+# See: https://apis.iflow.cn/v1
+IFLOW_MCP_TOOLS = [
+    "mcp__iflow__chat",  # Direct chat with iFlow models
+    "mcp__iflow__code_complete",  # Code completion using iFlow models
+    "mcp__iflow__translate",  # Translation (Chinese language support)
+    "mcp__iflow__summarize",  # Document summarization
+]
+
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -141,68 +151,94 @@ AGENT_CONFIGS = {
         "mcp_servers": [],  # No MCP needed - just reads project
         "auto_claude_tools": [],
         "thinking_default": "medium",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "qwen3-coder",  # Good for understanding requirements
     },
     "spec_researcher": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],  # Needs docs lookup
         "auto_claude_tools": [],
         "thinking_default": "medium",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",  # Cost-effective for research
     },
     "spec_writer": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS,
         "mcp_servers": [],  # Just writes spec.md
         "auto_claude_tools": [],
         "thinking_default": "high",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "kimi-k2",  # Strong reasoning for spec writing
     },
     "spec_critic": {
         "tools": BASE_READ_TOOLS,
         "mcp_servers": [],  # Self-critique, no external tools
         "auto_claude_tools": [],
         "thinking_default": "ultrathink",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "kimi-k2",  # Strong reasoning for critique
     },
     "spec_discovery": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "medium",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",
     },
     "spec_context": {
         "tools": BASE_READ_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "medium",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",
     },
     "spec_validation": {
         "tools": BASE_READ_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "high",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "kimi-k2",
     },
     "spec_compaction": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "medium",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # BUILD PHASES (Full tools + Graphiti memory)
     # Note: "linear" is conditional on project setting "update_linear_with_tasks"
+    # Note: coder and planner require Claude SDK (no alternative providers)
     # ═══════════════════════════════════════════════════════════════════════
     "planner": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude"],
-        "mcp_servers_optional": ["linear"],  # Only if project setting enabled
+        "mcp_servers_optional": ["linear", "iflow"],  # iFlow as optional MCP
         "auto_claude_tools": [
             TOOL_GET_BUILD_PROGRESS,
             TOOL_GET_SESSION_CONTEXT,
             TOOL_RECORD_DISCOVERY,
         ],
         "thinking_default": "high",
+        # No alternative_providers - planner requires Claude SDK for MCP
     },
     "coder": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude"],
-        "mcp_servers_optional": ["linear"],
+        "mcp_servers_optional": ["linear", "iflow"],  # iFlow as optional MCP
         "auto_claude_tools": [
             TOOL_UPDATE_SUBTASK_STATUS,
             TOOL_GET_BUILD_PROGRESS,
@@ -211,27 +247,30 @@ AGENT_CONFIGS = {
             TOOL_GET_SESSION_CONTEXT,
         ],
         "thinking_default": "none",  # Coding doesn't use extended thinking
+        # No alternative_providers - coder requires Claude SDK for MCP
     },
     # ═══════════════════════════════════════════════════════════════════════
     # QA PHASES (Read + test + browser + Graphiti memory)
+    # Note: QA requires Claude SDK for browser automation MCP (no alternative providers)
     # ═══════════════════════════════════════════════════════════════════════
     "qa_reviewer": {
         # Read + Write/Edit (for QA reports and plan updates) + Bash (for tests)
         # Note: Reviewer writes to spec directory only (qa_report.md, implementation_plan.json)
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude", "browser"],
-        "mcp_servers_optional": ["linear"],  # For updating issue status
+        "mcp_servers_optional": ["linear", "iflow"],  # iFlow as optional MCP
         "auto_claude_tools": [
             TOOL_GET_BUILD_PROGRESS,
             TOOL_UPDATE_QA_STATUS,
             TOOL_GET_SESSION_CONTEXT,
         ],
         "thinking_default": "high",
+        # No alternative_providers - QA requires Claude SDK for browser MCP
     },
     "qa_fixer": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude", "browser"],
-        "mcp_servers_optional": ["linear"],
+        "mcp_servers_optional": ["linear", "iflow"],  # iFlow as optional MCP
         "auto_claude_tools": [
             TOOL_UPDATE_SUBTASK_STATUS,
             TOOL_GET_BUILD_PROGRESS,
@@ -239,9 +278,10 @@ AGENT_CONFIGS = {
             TOOL_RECORD_GOTCHA,
         ],
         "thinking_default": "medium",
+        # No alternative_providers - QA requires Claude SDK for browser MCP
     },
     # ═══════════════════════════════════════════════════════════════════════
-    # UTILITY PHASES (Minimal, no MCP)
+    # UTILITY PHASES (Minimal, no MCP - good candidates for iFlow)
     # ═══════════════════════════════════════════════════════════════════════
     "insights": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
@@ -250,30 +290,45 @@ AGENT_CONFIGS = {
         # Note: Default to "none" because insight_extractor uses Haiku which doesn't support thinking
         # If using Sonnet/Opus models, override max_thinking_tokens in create_simple_client()
         "thinking_default": "none",
+        # iFlow alternative provider support - cost-effective for insights
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",  # Fast and cheap for extraction
     },
     "merge_resolver": {
         "tools": [],  # Text-only analysis
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "low",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",
     },
     "commit_message": {
         "tools": [],
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "low",
+        # iFlow alternative provider support - trivial task
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",  # Any model works for commit messages
     },
     "pr_reviewer": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,  # Read-only
         "mcp_servers": ["context7"],
         "auto_claude_tools": [],
         "thinking_default": "high",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "kimi-k2",  # Strong reasoning for PR review
     },
     "pr_orchestrator_parallel": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,  # Read-only for parallel PR orchestrator
         "mcp_servers": ["context7"],
         "auto_claude_tools": [],
         "thinking_default": "high",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "kimi-k2",
     },
     "pr_followup_parallel": {
         "tools": BASE_READ_TOOLS
@@ -281,6 +336,9 @@ AGENT_CONFIGS = {
         "mcp_servers": ["context7"],
         "auto_claude_tools": [],
         "thinking_default": "high",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "kimi-k2",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # ANALYSIS PHASES
@@ -290,18 +348,27 @@ AGENT_CONFIGS = {
         "mcp_servers": ["context7"],
         "auto_claude_tools": [],
         "thinking_default": "medium",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",
     },
     "batch_analysis": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "low",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",
     },
     "batch_validation": {
         "tools": BASE_READ_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "low",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",
     },
     # ═══════════════════════════════════════════════════════════════════════
     # ROADMAP & IDEATION
@@ -311,18 +378,27 @@ AGENT_CONFIGS = {
         "mcp_servers": ["context7"],
         "auto_claude_tools": [],
         "thinking_default": "high",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "kimi-k2",  # Strong reasoning for roadmap planning
     },
     "competitor_analysis": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],  # WebSearch for competitor research
         "auto_claude_tools": [],
         "thinking_default": "high",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "deepseek-v3",  # Good for research tasks
     },
     "ideation": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
         "auto_claude_tools": [],
         "thinking_default": "high",
+        # iFlow alternative provider support
+        "alternative_providers": ["iflow"],
+        "iflow_model": "kimi-k2",  # Creative reasoning
     },
 }
 
@@ -377,6 +453,7 @@ def _map_mcp_server_name(
         "electron": "electron",
         "puppeteer": "puppeteer",
         "auto-claude": "auto-claude",
+        "iflow": "iflow",
     }
     # Check if it's a known mapping
     mapped = mappings.get(name.lower().strip())
@@ -510,3 +587,52 @@ def get_default_thinking_level(agent_type: str) -> str:
     """
     config = get_agent_config(agent_type)
     return config.get("thinking_default", "medium")
+
+
+def get_alternative_providers(agent_type: str) -> list[str]:
+    """
+    Get list of alternative providers available for this agent type.
+
+    Alternative providers (e.g., iFlow) can be used instead of Claude SDK
+    for agents that don't require MCP tools or browser automation.
+
+    Args:
+        agent_type: The agent type identifier
+
+    Returns:
+        List of alternative provider names (e.g., ["iflow"])
+    """
+    config = get_agent_config(agent_type)
+    return config.get("alternative_providers", [])
+
+
+def get_iflow_model(agent_type: str) -> str | None:
+    """
+    Get recommended iFlow model for this agent type.
+
+    Args:
+        agent_type: The agent type identifier
+
+    Returns:
+        iFlow model ID (e.g., "deepseek-v3", "kimi-k2") or None if not specified
+    """
+    config = get_agent_config(agent_type)
+    return config.get("iflow_model")
+
+
+def supports_iflow(agent_type: str) -> bool:
+    """
+    Check if agent type supports iFlow as alternative provider.
+
+    Returns True if:
+    - Agent has "iflow" in alternative_providers list
+    - Agent has a recommended iflow_model
+
+    Args:
+        agent_type: The agent type identifier
+
+    Returns:
+        True if agent supports iFlow
+    """
+    config = get_agent_config(agent_type)
+    return "iflow" in config.get("alternative_providers", [])

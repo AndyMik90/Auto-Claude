@@ -162,3 +162,17 @@ export function parseEnvFile(content: string): Record<string, string> {
   }
   return result;
 }
+
+/**
+ * Format key-value object back into .env file content
+ */
+export function formatEnvFile(vars: Record<string, string>): string {
+  const lines: string[] = [];
+  for (const [key, value] of Object.entries(vars)) {
+    // Quote values that contain spaces, newlines, or special characters
+    const needsQuotes = /[\s='"#]/.test(value) || value.includes('\n');
+    const formattedValue = needsQuotes ? `"${value.replace(/"/g, '\\"')}"` : value;
+    lines.push(`${key}=${formattedValue}`);
+  }
+  return lines.join('\n') + '\n';
+}

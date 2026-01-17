@@ -47,6 +47,9 @@ class LogEntry:
         None  # Subphase grouping (e.g., "PROJECT DISCOVERY", "CONTEXT GATHERING")
     )
     collapsed: bool | None = None  # Whether to show collapsed by default in UI
+    # Provider/model tracking for iFlow integration
+    provider: str | None = None  # 'claude' or 'iflow'
+    model: str | None = None  # Model ID (e.g., 'claude-sonnet-4-5', 'deepseek-v3')
 
     def to_dict(self) -> dict:
         """Convert to dictionary, excluding None values."""
@@ -62,16 +65,28 @@ class PhaseLog:
     started_at: str | None = None
     completed_at: str | None = None
     entries: list = None
+    # Provider/model tracking for iFlow integration
+    provider: str | None = None  # 'claude' or 'iflow'
+    model: str | None = None  # Model ID (e.g., 'claude-sonnet-4-5', 'deepseek-v3')
+    thinking_level: str | None = None  # For Claude: 'none', 'medium', 'high', 'ultrathink'
 
     def __post_init__(self):
         if self.entries is None:
             self.entries = []
 
     def to_dict(self) -> dict:
-        return {
+        result = {
             "phase": self.phase,
             "status": self.status,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
             "entries": self.entries,
         }
+        # Include provider/model/thinking_level if set
+        if self.provider:
+            result["provider"] = self.provider
+        if self.model:
+            result["model"] = self.model
+        if self.thinking_level:
+            result["thinking_level"] = self.thinking_level
+        return result

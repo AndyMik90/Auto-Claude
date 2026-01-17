@@ -141,6 +141,30 @@ class LogStorage:
         if phase in self._data["phases"]:
             self._data["phases"][phase]["started_at"] = started_at
 
+    def set_phase_provider_info(
+        self,
+        phase: str,
+        provider: str | None = None,
+        model: str | None = None,
+        thinking_level: str | None = None,
+    ) -> None:
+        """
+        Set provider/model information for a phase.
+
+        Args:
+            phase: Phase name
+            provider: AI provider ('claude' or 'iflow')
+            model: Model ID (e.g., 'claude-sonnet-4-5', 'deepseek-v3')
+            thinking_level: Thinking level for Claude ('none', 'medium', 'high', 'ultrathink')
+        """
+        if phase in self._data["phases"]:
+            if provider:
+                self._data["phases"][phase]["provider"] = provider
+            if model:
+                self._data["phases"][phase]["model"] = model
+            if thinking_level:
+                self._data["phases"][phase]["thinking_level"] = thinking_level
+
     def get_data(self) -> dict:
         """Get all log data."""
         return self._data

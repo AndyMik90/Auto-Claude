@@ -350,6 +350,13 @@
       "integrationTitle": "Memory",
       "integrationDescription": "Configure persistent cross-session memory for agents",
       "syncDescription": "Configure persistent memory"
+    },
+    "iflow": {
+      "title": "iFlow",
+      "description": "Alternative AI models",
+      "integrationTitle": "iFlow Integration",
+      "integrationDescription": "Configure iFlow for cost-effective AI models",
+      "syncDescription": "Use iFlow models (DeepSeek, Qwen3, Kimi K2)"
     }
   },
   "agentProfile": {
@@ -479,6 +486,86 @@
       "description": "Select a project from the sidebar to configure its settings."
     }
   },
+  "iflow": {
+    "title": "iFlow Integration",
+    "description": "Configure iFlow AI provider for alternative models",
+    "enable": "Enable iFlow",
+    "enableDescription": "Use iFlow models for cost-effective tasks",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter your iFlow API key",
+    "apiKeyDescription": "Get your API key from iFlow platform",
+    "baseUrl": "Base URL",
+    "baseUrlPlaceholder": "https://apis.iflow.cn/v1",
+    "baseUrlDescription": "iFlow API endpoint (default: https://apis.iflow.cn/v1)",
+    "defaultModel": "Default Model",
+    "defaultModelDescription": "Model to use when no specific model is selected",
+    "models": {
+      "title": "Available Models",
+      "description": "Models available through iFlow API",
+      "discover": "Discover Models",
+      "discovering": "Discovering...",
+      "add": "Add Model",
+      "edit": "Edit Model",
+      "remove": "Remove",
+      "empty": "No models configured",
+      "discoveredCount": "Discovered {{count}} new models",
+      "recommendations": "Model Recommendations",
+      "addManual": "Add Custom Model",
+      "modelId": "Model ID",
+      "modelIdPlaceholder": "e.g., deepseek-v4",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "e.g., DeepSeek V4",
+      "capability": "Primary Capability",
+      "capabilities": {
+        "code": "Code Generation",
+        "reasoning": "Reasoning",
+        "general": "General",
+        "chinese": "Chinese Language",
+        "translation": "Translation",
+        "creativity": "Creativity"
+      },
+      "badges": {
+        "bestForPlanning": "Best for Planning",
+        "bestForCode": "Best for Code",
+        "costEffective": "Cost Effective",
+        "chineseExpert": "Chinese Expert",
+        "premiumQuality": "Premium Quality"
+      }
+    },
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Not connected",
+      "checking": "Checking connection...",
+      "modelCount": "{{count}} models available",
+      "lastChecked": "Last checked: {{time}}"
+    },
+    "testConnection": "Test Connection",
+    "testing": "Testing...",
+    "connectionSuccess": "Connection successful",
+    "connectionFailed": "Connection failed",
+    "toast": {
+      "connectionSuccess": {
+        "title": "iFlow Connected",
+        "description": "Successfully connected to iFlow API"
+      },
+      "connectionFailed": {
+        "title": "Connection Failed",
+        "description": "Failed to connect to iFlow: {{error}}"
+      },
+      "configSaved": {
+        "title": "Settings Saved",
+        "description": "iFlow configuration has been saved"
+      },
+      "modelAdded": {
+        "title": "Model Added",
+        "description": "{{name}} has been added to available models"
+      },
+      "modelRemoved": {
+        "title": "Model Removed",
+        "description": "{{name}} has been removed"
+      }
+    }
+  },
   "mcp": {
     "title": "MCP Server Overview",
     "titleWithProject": "MCP Server Overview for {{projectName}}",
@@ -529,6 +616,11 @@
       "autoClaude": {
         "name": "Auto-Claude Tools",
         "description": "Build progress tracking"
+      },
+      "iflow": {
+        "name": "iFlow",
+        "description": "Alternative AI models (DeepSeek, Qwen3, Kimi K2)",
+        "notConfigured": "Requires iFlow API key (see iFlow settings)"
       }
     },
     "customServers": "Custom Servers",

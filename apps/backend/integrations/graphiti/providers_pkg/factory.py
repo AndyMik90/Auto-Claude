@@ -24,6 +24,7 @@ from .llm_providers import (
     create_anthropic_llm_client,
     create_azure_openai_llm_client,
     create_google_llm_client,
+    create_iflow_llm_client,
     create_ollama_llm_client,
     create_openai_llm_client,
     create_openrouter_llm_client,
@@ -62,6 +63,8 @@ def create_llm_client(config: "GraphitiConfig") -> Any:
         return create_google_llm_client(config)
     elif provider == "openrouter":
         return create_openrouter_llm_client(config)
+    elif provider == "iflow":
+        return create_iflow_llm_client(config)
     else:
         raise ProviderError(f"Unknown LLM provider: {provider}")
 

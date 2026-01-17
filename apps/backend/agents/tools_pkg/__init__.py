@@ -39,6 +39,7 @@ from .models import (
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
+    IFLOW_MCP_TOOLS,
     LINEAR_TOOLS,
     PUPPETEER_TOOLS,
     # Auto-Claude tool names
@@ -51,9 +52,12 @@ from .models import (
     WEB_TOOLS,
     # Config functions
     get_agent_config,
+    get_alternative_providers,
     get_default_thinking_level,
+    get_iflow_model,
     get_required_mcp_servers,
     is_electron_mcp_enabled,
+    supports_iflow,
 )
 from .permissions import get_all_agent_types, get_allowed_tools
 from .registry import create_auto_claude_mcp_server, is_tools_available
@@ -69,6 +73,10 @@ __all__ = [
     "get_required_mcp_servers",
     "get_default_thinking_level",
     "get_all_agent_types",
+    # iFlow alternative provider helpers
+    "get_alternative_providers",
+    "get_iflow_model",
+    "supports_iflow",
     # Base tool lists
     "BASE_READ_TOOLS",
     "BASE_WRITE_TOOLS",
@@ -77,6 +85,7 @@ __all__ = [
     "CONTEXT7_TOOLS",
     "LINEAR_TOOLS",
     "GRAPHITI_MCP_TOOLS",
+    "IFLOW_MCP_TOOLS",
     "ELECTRON_TOOLS",
     "PUPPETEER_TOOLS",
     # Auto-Claude tool name constants

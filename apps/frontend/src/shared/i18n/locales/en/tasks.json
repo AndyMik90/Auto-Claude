@@ -240,5 +240,71 @@
   },
   "subtasks": {
     "untitled": "Untitled subtask"
+  },
+  "provider": {
+    "label": "AI Provider",
+    "description": "Choose which AI provider to use for this task",
+    "claude": "Claude",
+    "claudeDescription": "Best for code implementation & QA",
+    "iflow": "iFlow",
+    "iflowDescription": "Cost-effective for research & planning",
+    "selectModel": "Select iFlow model",
+    "recommended": "Recommended",
+    "recommendedHint": "Based on task type",
+    "advancedMode": "Advanced Mode",
+    "advancedModeDescription": "Configure provider and model per phase",
+    "perPhase": {
+      "title": "Per-Phase Configuration",
+      "description": "Customize provider and model for each task phase",
+      "spec": "Spec Creation",
+      "specDescription": "Discovery, requirements, context gathering",
+      "planning": "Planning",
+      "planningDescription": "Implementation planning and architecture",
+      "coding": "Coding",
+      "codingDescription": "Actual code implementation",
+      "qa": "QA Review",
+      "qaDescription": "Quality assurance and validation",
+      "provider": "Provider",
+      "model": "Model",
+      "thinkingLevel": "Thinking Level"
+    },
+    "presets": {
+      "title": "Provider Presets",
+      "costOptimized": "Cost Optimized",
+      "costOptimizedDescription": "Use iFlow for research/planning, Claude for implementation",
+      "iflowOnly": "iFlow Only",
+      "iflowOnlyDescription": "Use iFlow models for all phases",
+      "claudeOnly": "Claude Only",
+      "claudeOnlyDescription": "Use Claude for all phases (best quality)"
+    }
+  },
+  "logs": {
+    "title": "Task Execution Logs",
+    "export": "Export Logs",
+    "exportSuccess": "Logs exported successfully",
+    "filter": {
+      "allPhases": "All Phases",
+      "allProviders": "All Providers",
+      "allTypes": "All Types"
+    },
+    "provider": {
+      "claude": "Claude",
+      "iflow": "iFlow"
+    },
+    "phase": {
+      "planning": "Planning",
+      "coding": "Coding",
+      "validation": "Validation",
+      "spec": "Spec Creation"
+    },
+    "type": {
+      "text": "Messages",
+      "tool_start": "Tool Calls",
+      "error": "Errors"
+    },
+    "empty": "No logs available yet",
+    "streaming": "Receiving logs...",
+    "viewFull": "View Full Logs",
+    "providerBadge": "{{provider}} / {{model}}"
   }
 }

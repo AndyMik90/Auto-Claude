@@ -78,6 +78,9 @@ export interface TaskLogEntry {
   detail?: string;  // Full content that can be expanded (e.g., file contents, command output)
   subphase?: string;  // Subphase grouping (e.g., "PROJECT DISCOVERY", "CONTEXT GATHERING")
   collapsed?: boolean;  // Whether to show collapsed by default in UI
+  // Provider/model tracking for iFlow integration
+  provider?: 'claude' | 'iflow';  // AI provider used
+  model?: string;  // Model ID (e.g., 'claude-sonnet-4-5', 'deepseek-v3')
 }
 
 export interface TaskPhaseLog {
@@ -86,6 +89,10 @@ export interface TaskPhaseLog {
   started_at: string | null;
   completed_at: string | null;
   entries: TaskLogEntry[];
+  // Provider/model tracking for iFlow integration
+  provider?: 'claude' | 'iflow';  // AI provider used for this phase
+  model?: string;  // Model ID (e.g., 'claude-sonnet-4-5', 'deepseek-v3')
+  thinking_level?: string;  // For Claude: 'none', 'medium', 'high', 'ultrathink'
 }
 
 export interface TaskLogs {
@@ -111,6 +118,10 @@ export interface TaskLogStreamChunk {
     success?: boolean;
   };
   subtask_id?: string;
+  // Provider/model tracking for iFlow integration
+  provider?: 'claude' | 'iflow';
+  model?: string;
+  thinking_level?: string;
 }
 
 // Image attachment types for task creation

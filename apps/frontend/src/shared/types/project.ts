@@ -186,8 +186,98 @@ export interface GraphitiConnectionTestResult {
 export type GraphitiEmbeddingProvider = 'openai' | 'voyage' | 'azure_openai' | 'ollama' | 'google' | 'openrouter';
 
 // Legacy type aliases for backward compatibility
-export type GraphitiLLMProvider = 'openai' | 'anthropic' | 'azure_openai' | 'ollama' | 'google' | 'groq' | 'openrouter';
+export type GraphitiLLMProvider = 'openai' | 'anthropic' | 'azure_openai' | 'ollama' | 'google' | 'groq' | 'openrouter' | 'iflow';
 export type GraphitiProviderType = GraphitiLLMProvider;
+
+// ============================================
+// iFlow Integration Types
+// ============================================
+
+/**
+ * iFlow model configuration
+ */
+export interface IFlowModel {
+  /** Model ID (e.g., 'deepseek-v3', 'kimi-k2') */
+  id: string;
+  /** Display name (e.g., 'DeepSeek V3') */
+  name: string;
+  /** Model capabilities (e.g., ['code', 'reasoning', 'general']) */
+  capabilities: string[];
+  /** Whether this is the default model */
+  isDefault?: boolean;
+  /** ISO date when model was added */
+  addedAt?: string;
+  /** Description of the model */
+  description?: string;
+  /** Recommended agent types for this model */
+  recommendedFor?: string[];
+}
+
+/**
+ * iFlow integration configuration
+ */
+export interface IFlowConfig {
+  /** Whether iFlow is enabled */
+  enabled: boolean;
+  /** API key for iFlow platform */
+  apiKey?: string;
+  /** Base URL for iFlow API (default: https://apis.iflow.cn/v1) */
+  baseUrl?: string;
+  /** Available/configured models */
+  models?: IFlowModel[];
+  /** Default model for tasks */
+  defaultModel?: string;
+}
+
+/**
+ * iFlow connection status
+ */
+export interface IFlowSyncStatus {
+  /** Whether connected to iFlow API */
+  connected: boolean;
+  /** Error message if connection failed */
+  error?: string;
+  /** Number of available models */
+  modelCount?: number;
+  /** ISO date of last connection check */
+  lastChecked?: string;
+}
+
+/**
+ * Provider selection for task phases
+ */
+export type TaskProvider = 'claude' | 'iflow';
+
+/**
+ * Thinking level for Claude models
+ */
+export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
+
+/**
+ * Phase-specific configuration for provider and model
+ */
+export interface PhaseConfig {
+  /** Provider to use for this phase */
+  provider: TaskProvider;
+  /** Model to use (e.g., 'sonnet' for Claude, 'deepseek-v3' for iFlow) */
+  model: string;
+  /** Thinking level (Claude only) */
+  thinkingLevel?: ThinkingLevel;
+}
+
+/**
+ * Per-phase model configuration for advanced task creation
+ */
+export interface PhaseModelConfig {
+  /** Spec creation phase config */
+  spec?: PhaseConfig;
+  /** Planning phase config */
+  planning?: PhaseConfig;
+  /** Coding phase config */
+  coding?: PhaseConfig;
+  /** QA review phase config */
+  qa?: PhaseConfig;
+}
 
 export interface GraphitiProviderConfig {
   // Embedding Provider (LLM provider removed - Claude SDK handles RAG)
@@ -347,7 +437,15 @@ export interface ProjectEnvConfig {
     electronEnabled?: boolean;
     /** Puppeteer browser automation (QA only) - default: false */
     puppeteerEnabled?: boolean;
+    /** iFlow MCP server - default: follows iflowConfig.enabled */
+    iflowEnabled?: boolean;
   };
+
+  // iFlow Integration
+  /** iFlow configuration for alternative AI models */
+  iflowConfig?: IFlowConfig;
+  /** iFlow connection status */
+  iflowConnectionStatus?: IFlowSyncStatus;
 
   // Per-agent MCP overrides (add/remove MCPs from specific agents)
   agentMcpOverrides?: AgentMcpOverrides;
