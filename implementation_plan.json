@@ -29,13 +29,18 @@
   ],
   "qa_signoff": {
     "status": "fixes_applied",
-    "timestamp": "2026-01-17T21:45:00Z",
-    "fix_session": 1,
+    "timestamp": "2026-01-17T22:15:00Z",
+    "fix_session": 2,
     "issues_fixed": [
       {
         "title": "Usage values not displaying correctly for z.ai and ZHIPU providers",
         "fix_commit": "df81cca8",
         "description": "Changed from model-usage endpoint to quota/limit endpoint and updated response parsing to extract limits array"
+      },
+      {
+        "title": "Usage labels and reset times not user-friendly",
+        "fix_commit": "6331d11c",
+        "description": "Updated session label to '5 Hours Quota', weekly label to 'Total Monthly Tools Quota', calculated actual reset times for 5-hour window, and formatted monthly reset as '1st of <Month>'"
       }
     ],
     "ready_for_qa_revalidation": true
