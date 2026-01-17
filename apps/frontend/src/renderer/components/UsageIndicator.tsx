@@ -17,20 +17,26 @@ import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function UsageIndicator() {
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAvailable, setIsAvailable] = useState(false);
 
   useEffect(() => {
     // Listen for usage updates from main process
     const unsubscribe = window.electronAPI.onUsageUpdated((snapshot: ClaudeUsageSnapshot) => {
       setUsage(snapshot);
-      setIsVisible(true);
+      setIsAvailable(true);
+      setIsLoading(false);
     });
 
     // Request initial usage on mount
     window.electronAPI.requestUsageUpdate().then((result) => {
+      setIsLoading(false);
       if (result.success && result.data) {
         setUsage(result.data);
-        setIsVisible(true);
+        setIsAvailable(true);
+      } else {
+        // No usage data available (endpoint not supported or error)
+        setIsAvailable(false);
       }
     });
 
@@ -39,8 +45,39 @@ export function UsageIndicator() {
     };
   }, []);
 
-  if (!isVisible || !usage) {
-    return null;
+  // Always show the badge, but display different states
+  // Show loading state initially
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground">
+        <Activity className="h-3.5 w-3.5 animate-pulse" />
+        <span className="text-xs font-semibold">...</span>
+      </div>
+    );
+  }
+
+  // Show unavailable state when endpoint doesn't return data
+  if (!isAvailable || !usage) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground cursor-help">
+              <Activity className="h-3.5 w-3.5" />
+              <span className="text-xs font-semibold">N/A</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs w-64">
+            <div className="space-y-1">
+              <p className="font-medium">Usage data unavailable</p>
+              <p className="text-muted-foreground text-[10px]">
+                The usage monitoring endpoint for this provider is not available or not supported.
+              </p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
   }
 
   // Determine color based on session usage (5-hour window)
