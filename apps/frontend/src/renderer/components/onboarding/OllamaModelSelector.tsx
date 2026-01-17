@@ -38,6 +38,27 @@ const RECOMMENDED_MODELS: OllamaModel[] = [
     installed: false,
   },
   {
+    name: 'qwen3-embedding:4b',
+    description: 'ollama.modelDescriptions.qwen3-embedding:4b',
+    size_estimate: '3.1 GB',
+    dim: 2560,
+    installed: false,
+  },
+  {
+    name: 'qwen3-embedding:8b',
+    description: 'ollama.modelDescriptions.qwen3-embedding:8b',
+    size_estimate: '6.0 GB',
+    dim: 4096,
+    installed: false,
+  },
+  {
+    name: 'qwen3-embedding:0.6b',
+    description: 'ollama.modelDescriptions.qwen3-embedding:0.6b',
+    size_estimate: '494 MB',
+    dim: 1024,
+    installed: false,
+  },
+  {
     name: 'nomic-embed-text',
     description: 'ollama.modelDescriptions.nomic-embed-text',
     size_estimate: '274 MB',
@@ -161,7 +182,7 @@ export function OllamaModelSelector({
       if (result?.success && result?.data?.recommended) {
         setModels(result.data.recommended.map(m => ({
           name: m.name,
-          description: t(`ollama.modelDescriptions.${m.name as 'embeddinggemma' | 'nomic-embed-text' | 'mxbai-embed-large'}`),
+          description: t(`ollama.modelDescriptions.${m.name}` as any, { defaultValue: m.description }),
           size_estimate: m.size_estimate,
           dim: m.dim,
           installed: m.installed,
@@ -288,6 +309,13 @@ export function OllamaModelSelector({
     try {
       const result = await window.electronAPI.pullOllamaModel(modelName);
       if (result?.success) {
+        // Clear progress for this model
+        setDownloadProgress(prev => {
+          const updated = { ...prev };
+          delete updated[modelName];
+          return updated;
+        });
+
         // Refresh the model list
         await checkInstalledModels();
         onDownloadComplete?.(modelName);

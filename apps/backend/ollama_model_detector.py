@@ -29,24 +29,32 @@ from core.platform import find_executable, get_platform_description
 def get_default_ollama_url() -> str:
     """Get the default Ollama URL from environment or fallback."""
     env_host = os.environ.get("OLLAMA_HOST", "")
-    if env_host:
-        # If it's just a host, add protocol and default port if missing
-        if not env_host.startswith(("http://", "https://")):
-            # IPv6 detection: literal IPv6 address without brackets
-            if ":" in env_host and env_host.count(":") > 1 and "[" not in env_host:
-                return f"http://[{env_host}]:11434"
+    if not env_host:
+        return "http://localhost:11434"
 
-            # Case for bracketed IPv6 without port: "[::1]" -> "http://[::1]:11434"
-            if env_host.startswith("[") and "]:" not in env_host:
-                return f"http://{env_host}:11434"
-
-            # Standard host or IPv4 address without port
-            if ":" not in env_host:
-                return f"http://{env_host}:11434"
-
-            return f"http://{env_host}"
+    if env_host.startswith(("http://", "https://")):
         return env_host
-    return "http://localhost:11434"
+
+    # Handle cases like ":8080"
+    if env_host.startswith(":") and env_host[1:].isdigit():
+        return f"http://localhost{env_host}"
+
+    # Check for IPv6 literals (containing multiple colons)
+    is_ipv6 = ":" in env_host and env_host.count(":") > 1
+
+    if is_ipv6:
+        # Already bracketed? [::1] or [::1]:11434
+        if env_host.startswith("["):
+            if "]:" in env_host:
+                return f"http://{env_host}"
+            return f"http://{env_host}:11434"
+        # Bare IPv6: ::1
+        return f"http://[{env_host}]:11434"
+
+    # IPv4 or hostname
+    if ":" in env_host:
+        return f"http://{env_host}"
+    return f"http://{env_host}:11434"
 
 
 DEFAULT_OLLAMA_URL = get_default_ollama_url()

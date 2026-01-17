@@ -413,9 +413,13 @@ export function registerMemoryHandlers(): void {
           };
         }
 
+        if (!result.data) {
+          return { success: false, error: 'Ollama status data missing' };
+        }
+
         return {
           success: true,
-          data: result.data!,
+          data: result.data,
         };
       } catch (error) {
         return {
@@ -435,9 +439,12 @@ export function registerMemoryHandlers(): void {
         if (!result.success) {
           return { success: false, error: result.error || 'Failed to check if Ollama is installed' };
         }
+        if (!result.data) {
+          return { success: false, error: 'Ollama installation data missing' };
+        }
         return {
           success: true,
-          data: result.data!,
+          data: result.data,
         };
       } catch (error) {
         return {
@@ -490,7 +497,10 @@ export function registerMemoryHandlers(): void {
           };
         }
 
-        const data = result.data!;
+        const data = result.data;
+        if (!data) {
+          return { success: false, error: 'Ollama models data missing' };
+        }
         return {
           success: true,
           data: {
@@ -534,7 +544,10 @@ export function registerMemoryHandlers(): void {
           };
         }
 
-        const data = result.data!;
+        const data = result.data;
+        if (!data) {
+          return { success: false, error: 'Recommended models data missing' };
+        }
         return {
           success: true,
           data: {
@@ -580,7 +593,10 @@ export function registerMemoryHandlers(): void {
           };
         }
 
-        const data = result.data!;
+        const data = result.data;
+        if (!data) {
+          return { success: false, error: 'Embedding models data missing' };
+        }
         return {
           success: true,
           data: {
