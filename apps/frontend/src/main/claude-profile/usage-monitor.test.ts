@@ -141,12 +141,16 @@ describe('usage-monitor', () => {
 
     it('should return correct endpoint for zai', () => {
       const result = getUsageEndpoint('zai', 'https://api.z.ai/api/anthropic');
-      expect(result).toBe('https://api.z.ai/api/monitor/usage/model-usage');
+      // Should include query parameters for time window (timestamps vary, so just check for presence)
+      expect(result).toMatch(/^https:\/\/api\.z\.ai\/api\/monitor\/usage\/model-usage\?startTime=/);
+      expect(result).toContain('&endTime=');
     });
 
     it('should return correct endpoint for zhipu', () => {
       const result = getUsageEndpoint('zhipu', 'https://open.bigmodel.cn/api/paas/v4');
-      expect(result).toBe('https://open.bigmodel.cn/api/monitor/usage/model-usage');
+      // Should include query parameters for time window (timestamps vary, so just check for presence)
+      expect(result).toMatch(/^https:\/\/open\.bigmodel\.cn\/api\/monitor\/usage\/model-usage\?startTime=/);
+      expect(result).toContain('&endTime=');
     });
 
     it('should return null for unknown provider', () => {

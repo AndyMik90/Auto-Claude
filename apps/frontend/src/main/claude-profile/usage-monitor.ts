@@ -81,7 +81,7 @@ const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
  * getUsageEndpoint('anthropic', 'https://api.anthropic.com')
  * // returns 'https://api.anthropic.com/api/oauth/usage'
  * getUsageEndpoint('zai', 'https://api.z.ai/api/anthropic')
- * // returns 'https://api.z.ai/api/monitor/usage/model-usage'
+ * // returns 'https://api.z.ai/api/monitor/usage/model-usage?startTime=...&endTime=...'
  * getUsageEndpoint('unknown', 'https://example.com')
  * // returns null
  */
@@ -118,6 +118,40 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
     const originalPath = url.pathname;
     // Replace the path with the usage endpoint path
     url.pathname = endpointConfig.usagePath;
+
+    // Add query parameters for z.ai and ZHIPU (require time window)
+    if (provider === 'zai' || provider === 'zhipu') {
+      // Time window: from yesterday at current hour (HH:00:00) to today at current hour end (HH:59:59)
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, now.getHours(), 0, 0, 0);
+      const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 59, 59, 999);
+
+      // Format dates as yyyy-MM-dd HH:mm:ss
+      const formatDateTime = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      };
+
+      const startTime = formatDateTime(startDate);
+      const endTime = formatDateTime(endDate);
+
+      // Add query parameters (properly encoded)
+      url.searchParams.set('startTime', startTime);
+      url.searchParams.set('endTime', endTime);
+
+      if (isDebug) {
+        console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Added time window query parameters:', {
+          startTime,
+          endTime
+        });
+      }
+    }
+
     const finalUrl = url.toString();
 
     if (isDebug) {
@@ -587,10 +621,15 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Step 4: Fetch usage from provider endpoint
+      // Provider-specific authentication: Anthropic uses Bearer token, z.ai/ZHIPU use token directly
+      const authHeader = provider === 'anthropic'
+        ? `Bearer ${credential}`
+        : credential;
+
       const response = await fetch(usageEndpoint, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${credential}`,
+          'Authorization': authHeader,
           'Content-Type': 'application/json',
           ...(provider === 'anthropic' && { 'anthropic-version': '2023-06-01' })
         }
@@ -672,7 +711,29 @@ export class UsageMonitor extends EventEmitter {
         console.warn('[UsageMonitor:PROVIDER] Raw response from', provider, ':', JSON.stringify(rawData, null, 2));
       }
 
-      // Step 6: Normalize response based on provider type
+      // Step 6: Extract data wrapper for z.ai and ZHIPU responses
+      // These providers wrap the actual usage data in a 'data' field
+      let responseData = rawData;
+      if (provider === 'zai' || provider === 'zhipu') {
+        if (rawData.data) {
+          responseData = rawData.data;
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:PROVIDER] Extracted data field from response:', {
+              provider,
+              extractedData: JSON.stringify(responseData, null, 2)
+            });
+          }
+        } else {
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:PROVIDER] No data field found in response, using raw response:', {
+              provider,
+              responseKeys: Object.keys(rawData)
+            });
+          }
+        }
+      }
+
+      // Step 7: Normalize response based on provider type
       let normalizedUsage: ClaudeUsageSnapshot | null = null;
 
       if (this.isDebug) {
@@ -687,10 +748,10 @@ export class UsageMonitor extends EventEmitter {
           normalizedUsage = this.normalizeAnthropicResponse(rawData, profileId, profileName);
           break;
         case 'zai':
-          normalizedUsage = this.normalizeZAIResponse(rawData, profileId, profileName);
+          normalizedUsage = this.normalizeZAIResponse(responseData, profileId, profileName);
           break;
         case 'zhipu':
-          normalizedUsage = this.normalizeZhipuResponse(rawData, profileId, profileName);
+          normalizedUsage = this.normalizeZhipuResponse(responseData, profileId, profileName);
           break;
         default:
           console.warn('[UsageMonitor] Unsupported provider for usage normalization:', provider);
