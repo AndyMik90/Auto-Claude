@@ -215,15 +215,178 @@ Based on investigation so far, the recommended approach is:
 4. **Backward compatibility**: Support both encrypted and plaintext tokens
 5. **Error handling**: Provide clear error messages if decryption fails
 
+## Complete Token Flow Trace (Frontend → Backend)
+
+### 1. Token Retrieval (Frontend)
+
+**File**: `apps/frontend/src/main/services/profile-service.ts`
+
+The frontend retrieves the OAuth token from the system keychain but **does not decrypt it**. When no API profile is active (OAuth mode), the frontend returns an empty environment object, which means it relies on:
+- The token already being in the environment as `CLAUDE_CODE_OAUTH_TOKEN`
+- OR the Python backend retrieving it from the keychain
+
+**Key Code**:
+```typescript
+// Line 223: Returns empty object in OAuth mode, allowing
+// CLAUDE_CODE_OAUTH_TOKEN to be used from system keychain
+```
+
+### 2. Environment Variable Passing (Frontend → PTY)
+
+**File**: `apps/frontend/src/main/terminal/pty-manager.ts`
+
+The PTY manager spawns the terminal shell with environment variables, including `CLAUDE_CODE_OAUTH_TOKEN`:
+
+**Key Code** (Lines 149-152):
+```typescript
+// Remove ANTHROPIC_API_KEY to ensure Claude Code uses OAuth tokens
+// (CLAUDE_CODE_OAUTH_TOKEN from profileEnv) instead of API keys
+const { DEBUG: _DEBUG, ANTHROPIC_API_KEY: _ANTHROPIC_API_KEY, ...cleanEnv } = process.env;
+```
+
+**Important**: The frontend passes through whatever token value exists in the environment - it does NOT check for `enc:` prefix or decrypt it.
+
+### 3. Token Retrieval (Backend)
+
+**File**: `apps/backend/core/auth.py`
+
+#### 3.1. get_auth_token() - Lines 221-243
+
+This function retrieves the token from multiple sources:
+
+```python
+def get_auth_token() -> str | None:
+    # First check environment variables
+    for var in AUTH_TOKEN_ENV_VARS:  # CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_AUTH_TOKEN
+        token = os.environ.get(var)
+        if token:
+            return token  # ❌ Returns immediately without checking for enc: prefix
+
+    # Fallback to system credential store
+    return get_token_from_keychain()  # ❌ Also returns without decryption
+```
+
+**Issue**: Returns token as-is with `enc:` prefix intact.
+
+#### 3.2. require_auth_token() - Lines 266-306
+
+This function calls `get_auth_token()` and raises an error if no token is found:
+
+```python
+def require_auth_token() -> str:
+    token = get_auth_token()  # ❌ Gets encrypted token
+    if not token:
+        raise ValueError("No OAuth token found...")
+    return token  # ❌ Returns encrypted token
+```
+
+**Issue**: No decryption step between retrieval and return.
+
+#### 3.3. ensure_claude_code_oauth_token() - Lines 426-438
+
+This function ensures the environment variable is set:
+
+```python
+def ensure_claude_code_oauth_token() -> None:
+    if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        return
+
+    token = get_auth_token()  # ❌ Gets encrypted token
+    if token:
+        os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = token  # ❌ Sets encrypted token
+```
+
+**Issue**: Propagates encrypted token to environment variable.
+
+### 4. Token Usage in SDK Client Creation (Backend)
+
+#### 4.1. Full Client Creation
+
+**File**: `apps/backend/core/client.py` (Lines 708-710)
+
+```python
+def create_client(...):
+    oauth_token = require_auth_token()  # ❌ Gets encrypted token
+    # Ensure SDK can access it via its expected env var
+    os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token  # ❌ Sets encrypted token
+```
+
+**Issue**: Encrypted token is passed to the Claude Agent SDK, which expects a decrypted `sk-ant-oat01-` token.
+
+#### 4.2. Simple Client Creation
+
+**File**: `apps/backend/core/simple_client.py` (Lines 69-72)
+
+```python
+def create_simple_client(...):
+    # Get authentication
+    oauth_token = require_auth_token()  # ❌ Gets encrypted token
+    import os
+    os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token  # ❌ Sets encrypted token
+```
+
+**Issue**: Same problem - encrypted token passed to SDK.
+
+#### 4.3. Other Usages
+
+**Files**:
+- `apps/backend/core/workspace.py` (Line 1966) - AI merge operations
+- `apps/backend/runners/insights_runner.py` - Insights analysis
+- `apps/backend/runners/github/batch_issues.py` - GitHub batch operations
+- `apps/backend/integrations/linear/updater.py` - Linear integration
+- `apps/backend/commit_message.py` - Commit message generation
+- `apps/backend/analysis/insight_extractor.py` - Code insights
+- `apps/backend/merge/ai_resolver/claude_client.py` - Merge resolution
+
+**All follow the same pattern**: Call `ensure_claude_code_oauth_token()` → encrypted token in environment → SDK receives encrypted token → API 401 error.
+
+### 5. Where Decryption Should Be Inserted
+
+Based on the flow analysis, decryption should be added at **the earliest point of token retrieval** to avoid duplicating decryption logic:
+
+**RECOMMENDED INSERTION POINT**: `apps/backend/core/auth.py::get_auth_token()`
+
+```python
+def get_auth_token() -> str | None:
+    # First check environment variables
+    for var in AUTH_TOKEN_ENV_VARS:
+        token = os.environ.get(var)
+        if token:
+            # ✅ INSERT DECRYPTION HERE
+            if token.startswith("enc:"):
+                token = decrypt_token(token)
+            return token
+
+    # Fallback to system credential store
+    token = get_token_from_keychain()
+    # ✅ ALSO DECRYPT KEYCHAIN TOKENS
+    if token and token.startswith("enc:"):
+        token = decrypt_token(token)
+    return token
+```
+
+**Benefits of this approach**:
+1. Single location for decryption logic
+2. All downstream functions automatically get decrypted tokens
+3. Backward compatible (plaintext tokens pass through unchanged)
+4. Consistent behavior across all token sources (env vars and keychain)
+
+**Alternative insertion points** (NOT recommended):
+- `require_auth_token()` - Would need similar logic in `get_auth_token()` for non-required usage
+- `create_client()` - Would need duplication in `create_simple_client()` and all other clients
+- `ensure_claude_code_oauth_token()` - Would miss direct `get_auth_token()` calls
+
 ## Next Steps
 
-1. ✅ Document current token flow and identify issue (THIS FILE)
-2. ⏳ Verify if Claude Agent SDK handles decryption internally
-3. ⏳ Reverse engineer or document Claude Code CLI decryption mechanism
-4. ⏳ Implement `decrypt_token()` function in `apps/backend/core/auth.py`
-5. ⏳ Add encryption detection and auto-decryption to `get_auth_token()`
-6. ⏳ Test with real encrypted tokens on macOS and Linux
-7. ⏳ Add comprehensive error handling for decryption failures
+1. ✅ Document current token flow and identify issue (THIS FILE - COMPLETED)
+2. ✅ Trace token flow from frontend to backend (THIS FILE - COMPLETED)
+3. ✅ Identify where decryption should be inserted (THIS FILE - COMPLETED)
+4. ⏳ Verify if Claude Agent SDK handles decryption internally
+5. ⏳ Reverse engineer or document Claude Code CLI decryption mechanism
+6. ⏳ Implement `decrypt_token()` function in `apps/backend/core/auth.py`
+7. ⏳ Add encryption detection and auto-decryption to `get_auth_token()`
+8. ⏳ Test with real encrypted tokens on macOS and Linux
+9. ⏳ Add comprehensive error handling for decryption failures
 
 ## Open Questions
 
