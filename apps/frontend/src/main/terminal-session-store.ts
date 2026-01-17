@@ -86,6 +86,11 @@ export class TerminalSessionStore {
    */
   private pendingDelete: Set<string> = new Set();
   /**
+   * Tracks cleanup timers for pendingDelete entries to prevent timer accumulation
+   * when many sessions are deleted rapidly.
+   */
+  private pendingDeleteTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  /**
    * Write serialization state - prevents concurrent async writes from
    * interleaving and potentially losing data.
    */
@@ -231,6 +236,18 @@ export class TerminalSessionStore {
   }
 
   /**
+   * Helper to check if a file exists asynchronously
+   */
+  private async fileExists(filePath: string): Promise<boolean> {
+    try {
+      await fsPromises.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Save sessions to disk asynchronously (non-blocking) using atomic write pattern
    *
    * Safe to call from Electron main process without blocking the event loop.
@@ -252,12 +269,12 @@ export class TerminalSessionStore {
       await fsPromises.writeFile(this.tempPath, content);
 
       // Step 2: Rotate current file to backup (if it exists and is valid)
-      if (existsSync(this.storePath)) {
+      if (await this.fileExists(this.storePath)) {
         try {
           const currentContent = await fsPromises.readFile(this.storePath, 'utf-8');
           JSON.parse(currentContent); // Throws if invalid
           // Current file is valid, rotate to backup
-          if (existsSync(this.backupPath)) {
+          if (await this.fileExists(this.backupPath)) {
             await fsPromises.unlink(this.backupPath);
           }
           await fsPromises.rename(this.storePath, this.backupPath);
@@ -279,7 +296,7 @@ export class TerminalSessionStore {
 
       // Clean up temp file if it exists
       try {
-        if (existsSync(this.tempPath)) {
+        if (await this.fileExists(this.tempPath)) {
           await fsPromises.unlink(this.tempPath);
         }
       } catch {
@@ -563,11 +580,20 @@ export class TerminalSessionStore {
       this.save();
     }
 
+    // Cancel any existing cleanup timer for this session (prevents timer accumulation
+    // when the same session ID is deleted multiple times rapidly)
+    const existingTimer = this.pendingDeleteTimers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
     // Keep the ID in pendingDelete for a short time to handle any in-flight
     // async operations, then clean up to prevent memory leaks
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       this.pendingDelete.delete(sessionId);
+      this.pendingDeleteTimers.delete(sessionId);
     }, 5000);
+    this.pendingDeleteTimers.set(sessionId, timer);
   }
 
   /**
