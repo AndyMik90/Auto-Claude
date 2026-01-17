@@ -43,15 +43,21 @@ export function UsageIndicator() {
     return null;
   }
 
-  // Determine color based on highest usage percentage
-  const maxUsage = Math.max(usage.sessionPercent, usage.weeklyPercent);
-
-  const colorClasses =
-    maxUsage >= 95 ? 'text-red-500 bg-red-500/10 border-red-500/20' :
-    maxUsage >= 91 ? 'text-orange-500 bg-orange-500/10 border-orange-500/20' :
-    maxUsage >= 71 ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' :
+  // Determine color based on session usage (5-hour window)
+  // This is what should be shown on the badge per QA feedback
+  const badgeUsage = usage.sessionPercent;
+  const badgeColorClasses =
+    badgeUsage >= 95 ? 'text-red-500 bg-red-500/10 border-red-500/20' :
+    badgeUsage >= 91 ? 'text-orange-500 bg-orange-500/10 border-orange-500/20' :
+    badgeUsage >= 71 ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' :
     'text-green-500 bg-green-500/10 border-green-500/20';
 
+  // Get window labels for display
+  const sessionLabel = usage.usageWindows?.sessionWindowLabel || 'Session';
+  const weeklyLabel = usage.usageWindows?.weeklyWindowLabel || 'Weekly';
+
+  // For icon, use the highest of the two windows
+  const maxUsage = Math.max(usage.sessionPercent, usage.weeklyPercent);
   const Icon =
     maxUsage >= 91 ? AlertCircle :
     maxUsage >= 71 ? TrendingUp :
@@ -62,21 +68,21 @@ export function UsageIndicator() {
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${colorClasses}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${badgeColorClasses}`}
             aria-label="Claude usage status"
           >
             <Icon className="h-3.5 w-3.5" />
             <span className="text-xs font-semibold font-mono">
-              {Math.round(maxUsage)}%
+              {Math.round(badgeUsage)}%
             </span>
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs w-64">
           <div className="space-y-2">
-            {/* Session usage */}
+            {/* Session/5-hour usage */}
             <div>
               <div className="flex items-center justify-between gap-4 mb-1">
-                <span className="text-muted-foreground font-medium">Session Usage</span>
+                <span className="text-muted-foreground font-medium">{sessionLabel} Usage</span>
                 <span className="font-semibold tabular-nums">{Math.round(usage.sessionPercent)}%</span>
               </div>
               {usage.sessionResetTime && (
@@ -100,10 +106,10 @@ export function UsageIndicator() {
 
             <div className="h-px bg-border" />
 
-            {/* Weekly usage */}
+            {/* Weekly/Monthly usage */}
             <div>
               <div className="flex items-center justify-between gap-4 mb-1">
-                <span className="text-muted-foreground font-medium">Weekly Usage</span>
+                <span className="text-muted-foreground font-medium">{weeklyLabel} Usage</span>
                 <span className="font-semibold tabular-nums">{Math.round(usage.weeklyPercent)}%</span>
               </div>
               {usage.weeklyResetTime && (

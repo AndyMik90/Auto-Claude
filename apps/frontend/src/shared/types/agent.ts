@@ -29,9 +29,9 @@ export interface ClaudeUsageData {
  * Returned from API or CLI usage check
  */
 export interface ClaudeUsageSnapshot {
-  /** Session usage percentage (0-100) */
+  /** Session usage percentage (0-100) - represents 5-hour window for most providers */
   sessionPercent: number;
-  /** Weekly usage percentage (0-100) */
+  /** Weekly usage percentage (0-100) - represents 7-day window for Anthropic, monthly for z.ai */
   weeklyPercent: number;
   /** When the session limit resets (human-readable or ISO) */
   sessionResetTime?: string;
@@ -45,6 +45,13 @@ export interface ClaudeUsageSnapshot {
   fetchedAt: Date;
   /** Which limit is closest to threshold ('session' or 'weekly') */
   limitType?: 'session' | 'weekly';
+  /** Usage window types for this provider */
+  usageWindows?: {
+    /** Label for the session window (e.g., '5-hour', '5-hour window') */
+    sessionWindowLabel: string;
+    /** Label for the weekly window (e.g., '7-day', 'monthly', 'calendar month') */
+    weeklyWindowLabel: string;
+  };
 }
 
 /**

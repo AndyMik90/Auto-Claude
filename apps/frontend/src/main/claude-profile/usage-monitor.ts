@@ -742,7 +742,11 @@ export class UsageMonitor extends EventEmitter {
       profileId,
       profileName,
       fetchedAt: new Date(),
-      limitType: sevenDayUtil > fiveHourUtil ? 'weekly' : 'session'
+      limitType: sevenDayUtil > fiveHourUtil ? 'weekly' : 'session',
+      usageWindows: {
+        sessionWindowLabel: '5-hour window',
+        weeklyWindowLabel: '7-day window'
+      }
     };
   }
 
@@ -772,10 +776,14 @@ export class UsageMonitor extends EventEmitter {
       {
         sessionUsageFields: ['session_usage', 'five_hour_usage', 'daily_usage', 'usage', 'used_tokens', 'token_usage'],
         sessionLimitFields: ['session_limit', 'five_hour_limit', 'daily_limit', 'limit', 'quota', 'total_tokens', 'max_tokens'],
-        weeklyUsageFields: ['weekly_usage', 'seven_day_usage', 'weekly_used', 'week_usage'],
-        weeklyLimitFields: ['weekly_limit', 'seven_day_limit', 'weekly_quota', 'week_limit'],
+        weeklyUsageFields: ['weekly_usage', 'seven_day_usage', 'weekly_used', 'week_usage', 'monthly_usage', 'month_usage'],
+        weeklyLimitFields: ['weekly_limit', 'seven_day_limit', 'weekly_quota', 'week_limit', 'monthly_limit', 'month_limit'],
         sessionResetFields: ['session_reset_at', 'session_reset_time', 'five_hour_reset_at', 'daily_reset_at', 'reset_time', 'reset_at'],
-        weeklyResetFields: ['weekly_reset_at', 'weekly_reset_time', 'seven_day_reset_at', 'week_reset_at']
+        weeklyResetFields: ['weekly_reset_at', 'weekly_reset_time', 'seven_day_reset_at', 'week_reset_at', 'monthly_reset_at', 'month_reset_at']
+      },
+      {
+        sessionWindowLabel: '5-hour window',
+        weeklyWindowLabel: 'Calendar month'
       }
     );
   }
@@ -805,6 +813,10 @@ export class UsageMonitor extends EventEmitter {
         weeklyLimitFields: ['weekly_limit', 'seven_day_limit', 'weekly_quota', 'week_limit'],
         sessionResetFields: ['session_reset_at', 'session_reset_time', 'five_hour_reset_at', 'daily_reset_at', 'reset_time', 'reset_at'],
         weeklyResetFields: ['weekly_reset_at', 'weekly_reset_time', 'seven_day_reset_at', 'week_reset_at']
+      },
+      {
+        sessionWindowLabel: '5-hour window',
+        weeklyWindowLabel: '7-day window'
       }
     );
   }
@@ -845,6 +857,10 @@ export class UsageMonitor extends EventEmitter {
       weeklyLimitFields: string[];
       sessionResetFields: string[];
       weeklyResetFields: string[];
+    },
+    windowLabels?: {
+      sessionWindowLabel: string;
+      weeklyWindowLabel: string;
     }
   ): ClaudeUsageSnapshot | null {
     if (this.isDebug) {
@@ -913,7 +929,8 @@ export class UsageMonitor extends EventEmitter {
           profileId,
           profileName,
           fetchedAt: new Date(),
-          limitType: 'session'
+          limitType: 'session',
+          ...(windowLabels && { usageWindows: windowLabels })
         };
       }
 
@@ -939,7 +956,8 @@ export class UsageMonitor extends EventEmitter {
         profileId,
         profileName,
         fetchedAt: new Date(),
-        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
+        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
+        ...(windowLabels && { usageWindows: windowLabels })
       };
 
       if (this.isDebug) {
