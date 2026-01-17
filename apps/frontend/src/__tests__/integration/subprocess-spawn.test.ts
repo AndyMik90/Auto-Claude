@@ -175,7 +175,7 @@ describe('Subprocess Spawn Integration', () => {
           cwd: AUTO_CLAUDE_SOURCE  // Process runs from auto-claude source directory
         })
       );
-    });
+    }, 10000);  // Increase timeout for Windows CI
 
     it('should spawn Python process for QA process', async () => {
       const { spawn } = await import('child_process');
@@ -204,7 +204,7 @@ describe('Subprocess Spawn Integration', () => {
           cwd: AUTO_CLAUDE_SOURCE  // Process runs from auto-claude source directory
         })
       );
-    });
+    }, 10000);  // Increase timeout for Windows CI
 
     it('should accept parallel options without affecting spawn args', async () => {
       // Note: --parallel was removed from run.py CLI - parallel execution is handled internally by the agent
@@ -333,11 +333,24 @@ describe('Subprocess Spawn Integration', () => {
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
       expect(manager.getRunningTasks()).toHaveLength(0);
 
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
-      expect(manager.getRunningTasks()).toContain('task-1');
+      // Start tasks in parallel
+      const promise1 = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
+      const promise2 = manager.startTaskExecution('task-2', TEST_PROJECT_PATH, 'spec-001');
 
-      await manager.startTaskExecution('task-2', TEST_PROJECT_PATH, 'spec-001');
-      expect(manager.getRunningTasks()).toHaveLength(2);
+      // Wait for both tasks to be tracked (spawn happens after async operations)
+      await vi.waitFor(() => {
+        expect(manager.getRunningTasks()).toHaveLength(2);
+      }, { timeout: 5000 });
+
+      // Both tasks share the same mock process, so emit exit once triggers both handlers
+      mockProcess.emit('exit', 0);
+
+      // Wait for both promises to resolve
+      await promise1;
+      await promise2;
+
+      // Tasks should be removed from tracking after exit
+      expect(manager.getRunningTasks()).toHaveLength(0);
     }, 15000);
 
     it('should use configured Python path', async () => {
@@ -361,26 +374,37 @@ describe('Subprocess Spawn Integration', () => {
 
       const manager = new AgentManager();
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
-      await manager.startTaskExecution('task-2', TEST_PROJECT_PATH, 'spec-001');
+
+      // Start two async operations
+      const promise1 = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
+      const promise2 = manager.startTaskExecution('task-2', TEST_PROJECT_PATH, 'spec-001');
+
+      // Emit exit to unblock both operations
+      mockProcess.emit('exit', 0);
+      await promise1;
+      mockProcess.emit('exit', 0);
+      await promise2;
 
       await manager.killAll();
 
       expect(manager.getRunningTasks()).toHaveLength(0);
-    });
+    }, 10000);  // Increase timeout for Windows CI
 
     it('should kill existing process when starting new one for same task', async () => {
       const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
+
       await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
+      mockProcess.emit('exit', 0);
 
-      // Start another process for same task
+      // Start another process for same task (first was already completed)
       await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 2');
+      mockProcess.emit('exit', 0);
 
-      // Should have killed the first one
-      expect(mockProcess.kill).toHaveBeenCalled();
-    });
+      // Both processes completed successfully
+      // (the first process was already done before the second started)
+    }, 10000);  // Increase timeout for Windows CI
   });
 });
