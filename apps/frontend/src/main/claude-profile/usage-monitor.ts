@@ -217,11 +217,11 @@ export class UsageMonitor extends EventEmitter {
   private currentUsage: ClaudeUsageSnapshot | null = null;
   private isChecking = false;
   private useApiMethod = true; // Try API first, fall back to CLI if it fails
-  
+
   // Swap loop protection: track profiles that recently failed auth
   private authFailedProfiles: Map<string, number> = new Map(); // profileId -> timestamp
   private static AUTH_FAILURE_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
-  
+
   // Debug flag for verbose logging
   private readonly isDebug = process.env.DEBUG === 'true';
 
@@ -985,21 +985,10 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Calculate 5-hour window reset time
-      // The 5-hour window is a rolling window that resets at 5-hour intervals (0:00, 5:00, 10:00, 15:00, 20:00)
-      // Calculate the next 5-hour mark from the current time
+      // The 5-hour window is a rolling window that resets exactly 5 hours from the current time
+      // This is a sliding window, not fixed intervals
       const now = new Date();
-      const currentHour = now.getHours();
-      // Find the next hour that's a multiple of 5
-      const nextFiveHourMark = Math.ceil(currentHour / 5) * 5;
-      // Handle wraparound at midnight (if nextFiveHourMark is 24 or more, use next day)
-      const resetHour = nextFiveHourMark >= 24 ? 0 : nextFiveHourMark;
-      const nextResetDate = new Date(now);
-      if (nextFiveHourMark >= 24) {
-        // Move to next day
-        nextResetDate.setDate(nextResetDate.getDate() + 1);
-      }
-      nextResetDate.setHours(resetHour, 0, 0, 0);
-      const sessionResetTimestamp = nextResetDate.toISOString();
+      const sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
 
       // Calculate monthly reset time (1st of next month)
       const nextMonth = new Date(now);
@@ -1097,21 +1086,10 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Calculate 5-hour window reset time
-      // The 5-hour window is a rolling window that resets at 5-hour intervals (0:00, 5:00, 10:00, 15:00, 20:00)
-      // Calculate the next 5-hour mark from the current time
+      // The 5-hour window is a rolling window that resets exactly 5 hours from the current time
+      // This is a sliding window, not fixed intervals
       const now = new Date();
-      const currentHour = now.getHours();
-      // Find the next hour that's a multiple of 5
-      const nextFiveHourMark = Math.ceil(currentHour / 5) * 5;
-      // Handle wraparound at midnight (if nextFiveHourMark is 24 or more, use next day)
-      const resetHour = nextFiveHourMark >= 24 ? 0 : nextFiveHourMark;
-      const nextResetDate = new Date(now);
-      if (nextFiveHourMark >= 24) {
-        // Move to next day
-        nextResetDate.setDate(nextResetDate.getDate() + 1);
-      }
-      nextResetDate.setHours(resetHour, 0, 0, 0);
-      const sessionResetTimestamp = nextResetDate.toISOString();
+      const sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
 
       // Calculate monthly reset time (1st of next month)
       const nextMonth = new Date(now);
@@ -1470,12 +1448,12 @@ export class UsageMonitor extends EventEmitter {
     additionalExclusions: string[] = []
   ): Promise<void> {
     const profileManager = getClaudeProfileManager();
-    
+
     // Get all profiles to swap to, excluding current and any additional exclusions
     const allProfiles = profileManager.getProfilesSortedByAvailability();
     const excludeIds = new Set([currentProfileId, ...additionalExclusions]);
     const eligibleProfiles = allProfiles.filter(p => !excludeIds.has(p.id));
-    
+
     if (eligibleProfiles.length === 0) {
       console.warn('[UsageMonitor] No alternative profile for proactive swap (excluded:', Array.from(excludeIds), ')');
       this.emit('proactive-swap-failed', {
@@ -1485,7 +1463,7 @@ export class UsageMonitor extends EventEmitter {
       });
       return;
     }
-    
+
     // Use the best available from eligible profiles
     const bestProfile = eligibleProfiles[0];
 
