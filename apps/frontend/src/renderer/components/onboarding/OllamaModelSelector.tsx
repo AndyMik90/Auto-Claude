@@ -182,7 +182,7 @@ export function OllamaModelSelector({
       if (result?.success && result?.data?.recommended) {
         setModels(result.data.recommended.map(m => ({
           name: m.name,
-          description: t(`ollama.modelDescriptions.${m.name}` as any, { defaultValue: m.description }),
+          description: t(`ollama.modelDescriptions.${m.name}` as any, { defaultValue: m.description, nsSeparator: false }),
           size_estimate: m.size_estimate,
           dim: m.dim,
           installed: m.installed,
@@ -433,10 +433,10 @@ export function OllamaModelSelector({
           const isInteractive = model.installed && !disabled && !isDownloading && !loading;
 
           return (
-            <button
+            <div
               key={model.name}
-              disabled={!isInteractive}
-              type="button"
+              role="button"
+              tabIndex={isInteractive ? 0 : -1}
               className={cn(
                 'w-full rounded-lg border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 isInteractive
@@ -446,6 +446,12 @@ export function OllamaModelSelector({
                 !model.installed && 'bg-muted/30'
               )}
               onClick={() => isInteractive && handleSelect(model)}
+              onKeyDown={(e) => {
+                if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  handleSelect(model);
+                }
+              }}
             >
               <div className="flex items-center justify-between p-3">
                 <div className="flex items-center gap-3">
@@ -468,7 +474,7 @@ export function OllamaModelSelector({
                       <span className="text-sm font-medium">{model.name}</span>
                       {model.badge && (
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                          {t(`ollama.badges.${model.badge}`, { defaultValue: model.badge })}
+                          {t(`ollama.badges.${model.badge}`, { defaultValue: model.badge, nsSeparator: false })}
                         </span>
                       )}
                       <span className="text-xs text-muted-foreground">
@@ -482,7 +488,7 @@ export function OllamaModelSelector({
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {model.description.startsWith('ollama.')
-                        ? t(model.description as Parameters<typeof t>[0])
+                        ? t(model.description as Parameters<typeof t>[0], { nsSeparator: false })
                         : model.description}
                     </p>
                   </div>
@@ -543,7 +549,7 @@ export function OllamaModelSelector({
                   </div>
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
