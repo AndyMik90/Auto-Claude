@@ -20,6 +20,7 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw } from 'lucide-react';
+import { Checkbox } from './ui/checkbox';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -57,6 +58,10 @@ interface DroppableColumnProps {
   archivedCount?: number;
   showArchived?: boolean;
   onToggleArchived?: () => void;
+  // Selection props for human_review column
+  selectedTaskIds?: Set<string>;
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
 }
 
 /**
@@ -100,6 +105,19 @@ function droppableColumnPropsAreEqual(
   if (prevProps.archivedCount !== nextProps.archivedCount) return false;
   if (prevProps.showArchived !== nextProps.showArchived) return false;
   if (prevProps.onToggleArchived !== nextProps.onToggleArchived) return false;
+  if (prevProps.onSelectAll !== nextProps.onSelectAll) return false;
+  if (prevProps.onDeselectAll !== nextProps.onDeselectAll) return false;
+
+  // Compare selectedTaskIds Set
+  if (prevProps.selectedTaskIds !== nextProps.selectedTaskIds) {
+    // If one is undefined and other isn't, different
+    if (!prevProps.selectedTaskIds || !nextProps.selectedTaskIds) return false;
+    // Compare Set contents
+    if (prevProps.selectedTaskIds.size !== nextProps.selectedTaskIds.size) return false;
+    for (const id of prevProps.selectedTaskIds) {
+      if (!nextProps.selectedTaskIds.has(id)) return false;
+    }
+  }
 
   // Deep compare tasks
   const tasksEqual = tasksAreEquivalent(prevProps.tasks, nextProps.tasks);
@@ -153,11 +171,34 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, archivedCount, showArchived, onToggleArchived }: DroppableColumnProps) {
+const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll }: DroppableColumnProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { setNodeRef } = useDroppable({
     id: status
   });
+
+  // Calculate selection state for human_review column
+  const isHumanReview = status === 'human_review';
+  const selectedCount = selectedTaskIds?.size ?? 0;
+  const taskCount = tasks.length;
+  const isAllSelected = isHumanReview && taskCount > 0 && selectedCount === taskCount;
+  const isSomeSelected = isHumanReview && selectedCount > 0 && selectedCount < taskCount;
+
+  // Determine checkbox checked state: true (all), 'indeterminate' (some), false (none)
+  const selectAllCheckedState: boolean | 'indeterminate' = isAllSelected
+    ? true
+    : isSomeSelected
+      ? 'indeterminate'
+      : false;
+
+  // Handle select all checkbox change
+  const handleSelectAllChange = useCallback(() => {
+    if (isAllSelected) {
+      onDeselectAll?.();
+    } else {
+      onSelectAll?.();
+    }
+  }, [isAllSelected, onSelectAll, onDeselectAll]);
 
   // Memoize taskIds to prevent SortableContext from re-rendering unnecessarily
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
@@ -225,6 +266,25 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
       {/* Column header - enhanced styling */}
       <div className="flex items-center justify-between p-4 border-b border-white/5">
         <div className="flex items-center gap-2.5">
+          {/* Select All checkbox for human_review column */}
+          {isHumanReview && onSelectAll && onDeselectAll && (
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <div className="flex items-center">
+                  <Checkbox
+                    checked={selectAllCheckedState}
+                    onCheckedChange={handleSelectAllChange}
+                    disabled={taskCount === 0}
+                    aria-label={isAllSelected ? t('kanban.deselectAll') : t('kanban.selectAll')}
+                    className="h-4 w-4"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isAllSelected ? t('kanban.deselectAll') : t('kanban.selectAll')}
+              </TooltipContent>
+            </Tooltip>
+          )}
           <h2 className="font-semibold text-sm text-foreground">
             {t(TASK_STATUS_LABELS[status])}
           </h2>
@@ -620,6 +680,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               archivedCount={status === 'done' ? archivedCount : undefined}
               showArchived={status === 'done' ? showArchived : undefined}
               onToggleArchived={status === 'done' ? toggleShowArchived : undefined}
+              selectedTaskIds={status === 'human_review' ? selectedTaskIds : undefined}
+              onSelectAll={status === 'human_review' ? selectAllTasks : undefined}
+              onDeselectAll={status === 'human_review' ? deselectAllTasks : undefined}
             />
           ))}
         </div>
