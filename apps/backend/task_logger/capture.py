@@ -4,6 +4,7 @@ Streaming log capture for agent sessions.
 
 from .logger import TaskLogger
 from .models import LogPhase
+from .utils import strip_ansi_codes
 
 
 class StreamingLogCapture:
@@ -37,7 +38,9 @@ class StreamingLogCapture:
     def process_text(self, text: str) -> None:
         """Process text output from the agent."""
         if text.strip():
-            self.logger.log(text, phase=self.phase)
+            # Remove ANSI escape codes before logging
+            sanitized_text = strip_ansi_codes(text)
+            self.logger.log(sanitized_text, phase=self.phase)
 
     def process_tool_start(self, tool_name: str, tool_input: str | None = None) -> None:
         """Process tool start."""
