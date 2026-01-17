@@ -86,18 +86,58 @@ const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
  * // returns null
  */
 export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string | null {
+  const isDebug = process.env.DEBUG === 'true';
+
+  if (isDebug) {
+    console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Constructing usage endpoint:', {
+      provider,
+      baseUrl
+    });
+  }
+
   const endpointConfig = PROVIDER_USAGE_ENDPOINTS.find(e => e.provider === provider);
   if (!endpointConfig) {
+    if (isDebug) {
+      console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Unknown provider - no endpoint configured:', {
+        provider,
+        availableProviders: PROVIDER_USAGE_ENDPOINTS.map(e => e.provider)
+      });
+    }
     return null;
+  }
+
+  if (isDebug) {
+    console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Found endpoint config for provider:', {
+      provider,
+      usagePath: endpointConfig.usagePath
+    });
   }
 
   try {
     const url = new URL(baseUrl);
+    const originalPath = url.pathname;
     // Replace the path with the usage endpoint path
     url.pathname = endpointConfig.usagePath;
-    return url.toString();
+    const finalUrl = url.toString();
+
+    if (isDebug) {
+      console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Successfully constructed endpoint:', {
+        provider,
+        originalPath,
+        newPath: endpointConfig.usagePath,
+        finalUrl
+      });
+    }
+
+    return finalUrl;
   } catch (error) {
     console.error('[UsageMonitor] Invalid baseUrl for usage endpoint:', baseUrl);
+    if (isDebug) {
+      console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] URL construction failed:', {
+        baseUrl,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
     return null;
   }
 }
@@ -116,24 +156,53 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
  * detectProvider('https://unknown.com/api') // returns 'unknown'
  */
 export function detectProvider(baseUrl: string): ApiProvider {
+  const isDebug = process.env.DEBUG === 'true';
+
   try {
     // Extract domain from URL
     const url = new URL(baseUrl);
     const domain = url.hostname;
 
+    if (isDebug) {
+      console.warn('[UsageMonitor:PROVIDER_DETECTION] Detecting provider from baseUrl:', {
+        baseUrl,
+        domain,
+        knownDomains: PROVIDER_PATTERNS.flatMap(p => p.domainPatterns)
+      });
+    }
+
     // Match against provider patterns
     for (const pattern of PROVIDER_PATTERNS) {
       for (const patternDomain of pattern.domainPatterns) {
         if (domain === patternDomain || domain.endsWith(`.${patternDomain}`)) {
+          if (isDebug) {
+            console.warn('[UsageMonitor:PROVIDER_DETECTION] Matched provider:', {
+              provider: pattern.provider,
+              domain,
+              matchedPattern: patternDomain
+            });
+          }
           return pattern.provider;
         }
       }
     }
 
     // No match found
+    if (isDebug) {
+      console.warn('[UsageMonitor:PROVIDER_DETECTION] No provider match found:', {
+        domain,
+        baseUrl
+      });
+    }
     return 'unknown';
   } catch (error) {
     // Invalid URL format
+    if (isDebug) {
+      console.warn('[UsageMonitor:PROVIDER_DETECTION] Invalid URL during provider detection:', {
+        baseUrl,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
     return 'unknown';
   }
 }
@@ -386,20 +455,48 @@ export class UsageMonitor extends EventEmitter {
       return null;
     }
 
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:FETCH] Starting usage fetch:', {
+        profileId,
+        profileName: profile.name,
+        hasCredential: !!credential,
+        useApiMethod: this.useApiMethod
+      });
+    }
+
     // Attempt 1: Direct API call (preferred)
     if (this.useApiMethod && credential) {
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:FETCH] Attempting API fetch method');
+      }
       const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profile.name);
       if (apiUsage) {
         console.warn('[UsageMonitor] Successfully fetched via API');
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:FETCH] API fetch successful:', {
+            sessionPercent: apiUsage.sessionPercent,
+            weeklyPercent: apiUsage.weeklyPercent
+          });
+        }
         return apiUsage;
       }
 
       // API failed - switch to CLI method for future calls
       console.warn('[UsageMonitor] API method failed, falling back to CLI');
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:FETCH] API fetch failed, switching to CLI method for future calls');
+      }
       this.useApiMethod = false;
+    } else if (!credential) {
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:FETCH] No credential available, skipping API method');
+      }
     }
 
     // Attempt 2: CLI /usage command (fallback)
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:FETCH] Attempting CLI fallback method');
+    }
     return await this.fetchUsageViaCLI(profileId, profile.name);
   }
 
@@ -424,6 +521,14 @@ export class UsageMonitor extends EventEmitter {
     profileId: string,
     profileName: string
   ): Promise<ClaudeUsageSnapshot | null> {
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:API_FETCH] Starting API fetch for usage:', {
+        profileId,
+        profileName,
+        hasCredential: !!credential
+      });
+    }
+
     try {
       // Step 1: Determine if we're using an API profile or OAuth profile
       const apiProfile = await this.getAPIProfile();
@@ -463,6 +568,14 @@ export class UsageMonitor extends EventEmitter {
         return null;
       }
 
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:API_FETCH] Fetching from endpoint:', {
+          provider,
+          endpoint: usageEndpoint,
+          hasCredential: !!credential
+        });
+      }
+
       // Step 4: Fetch usage from provider endpoint
       const response = await fetch(usageEndpoint, {
         method: 'GET',
@@ -487,6 +600,14 @@ export class UsageMonitor extends EventEmitter {
         return null;
       }
 
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:API_FETCH] API response received successfully:', {
+          provider,
+          status: response.status,
+          contentType: response.headers.get('content-type')
+        });
+      }
+
       // Step 5: Parse and normalize response based on provider
       const rawData = await response.json();
 
@@ -496,6 +617,13 @@ export class UsageMonitor extends EventEmitter {
 
       // Step 6: Normalize response based on provider type
       let normalizedUsage: ClaudeUsageSnapshot | null = null;
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:NORMALIZATION] Selecting normalization method:', {
+          provider,
+          method: `normalize${provider.charAt(0).toUpperCase() + provider.slice(1)}Response`
+        });
+      }
 
       switch (provider) {
         case 'anthropic':
@@ -524,6 +652,7 @@ export class UsageMonitor extends EventEmitter {
           weeklyPercent: normalizedUsage.weeklyPercent,
           limitType: normalizedUsage.limitType
         });
+        console.warn('[UsageMonitor:API_FETCH] API fetch completed successfully');
       }
 
       return normalizedUsage;
@@ -670,6 +799,15 @@ export class UsageMonitor extends EventEmitter {
       weeklyResetFields: string[];
     }
   ): ClaudeUsageSnapshot | null {
+    if (this.isDebug) {
+      console.warn(`[UsageMonitor:${providerName.toUpperCase()}_NORMALIZATION] Starting normalization for provider:`, {
+        providerName,
+        profileId,
+        profileName,
+        responseKeys: Object.keys(data)
+      });
+    }
+
     // Log raw response structure for empirical discovery
     if (this.isDebug) {
       console.warn(`[UsageMonitor:${providerName.toUpperCase()}] Raw response structure:`, {
@@ -688,6 +826,17 @@ export class UsageMonitor extends EventEmitter {
       const sessionReset = this.extractResetField(data, fieldMapping.sessionResetFields);
       const weeklyReset = this.extractResetField(data, fieldMapping.weeklyResetFields);
 
+      if (this.isDebug) {
+        console.warn(`[UsageMonitor:${providerName.toUpperCase()}_NORMALIZATION] Field extraction complete:`, {
+          sessionUsage,
+          sessionLimit,
+          weeklyUsage,
+          weeklyLimit,
+          sessionReset,
+          weeklyReset
+        });
+      }
+
       // Calculate percentages (guard against division by zero)
       const sessionPercent = sessionLimit > 0
         ? Math.round((sessionUsage / sessionLimit) * 100)
@@ -696,6 +845,13 @@ export class UsageMonitor extends EventEmitter {
       const weeklyPercent = weeklyLimit > 0
         ? Math.round((weeklyUsage / weeklyLimit) * 100)
         : 0;
+
+      if (this.isDebug) {
+        console.warn(`[UsageMonitor:${providerName.toUpperCase()}_NORMALIZATION] Calculated percentages:`, {
+          sessionPercent: `${sessionPercent}% (${sessionUsage}/${sessionLimit})`,
+          weeklyPercent: `${weeklyPercent}% (${weeklyUsage}/${weeklyLimit})`
+        });
+      }
 
       // If we couldn't extract any meaningful data, log detailed response
       // Return 0% usage rather than null to allow graceful degradation
@@ -727,7 +883,7 @@ export class UsageMonitor extends EventEmitter {
         });
       }
 
-      return {
+      const result: ClaudeUsageSnapshot = {
         sessionPercent,
         weeklyPercent,
         sessionResetTime: sessionReset || 'Unknown',
@@ -737,6 +893,16 @@ export class UsageMonitor extends EventEmitter {
         fetchedAt: new Date(),
         limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
       };
+
+      if (this.isDebug) {
+        console.warn(`[UsageMonitor:${providerName.toUpperCase()}_NORMALIZATION] Normalization complete:`, {
+          sessionPercent: result.sessionPercent,
+          weeklyPercent: result.weeklyPercent,
+          limitType: result.limitType
+        });
+      }
+
+      return result;
     } catch (error) {
       console.error(`[UsageMonitor:${providerName.toUpperCase()}] Failed to parse response:`, error, 'Raw data:', data);
       return null;
@@ -748,11 +914,28 @@ export class UsageMonitor extends EventEmitter {
    * Tries multiple possible field names and returns the first non-zero value
    */
   private extractUsageField(data: any, possibleFields: string[]): number {
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:FIELD_EXTRACTION] Extracting usage field, trying:', {
+        possibleFields,
+        availableKeys: Object.keys(data)
+      });
+    }
+
     for (const field of possibleFields) {
       const value = data[field];
       if (typeof value === 'number' && value > 0) {
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:FIELD_EXTRACTION] Found usage value:', {
+            field,
+            value
+          });
+        }
         return value;
       }
+    }
+
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:FIELD_EXTRACTION] No usage value found in any field');
     }
     return 0;
   }
@@ -762,11 +945,28 @@ export class UsageMonitor extends EventEmitter {
    * Tries multiple possible field names and returns the first positive value
    */
   private extractLimitField(data: any, possibleFields: string[]): number {
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:FIELD_EXTRACTION] Extracting limit field, trying:', {
+        possibleFields,
+        availableKeys: Object.keys(data)
+      });
+    }
+
     for (const field of possibleFields) {
       const value = data[field];
       if (typeof value === 'number' && value > 0) {
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:FIELD_EXTRACTION] Found limit value:', {
+            field,
+            value
+          });
+        }
         return value;
       }
+    }
+
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:FIELD_EXTRACTION] No limit value found in any field');
     }
     return 0;
   }
@@ -775,11 +975,30 @@ export class UsageMonitor extends EventEmitter {
    * Extract reset time string from response data using flexible field name matching
    */
   private extractResetField(data: any, possibleFields: string[]): string | undefined {
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:FIELD_EXTRACTION] Extracting reset field, trying:', {
+        possibleFields,
+        availableKeys: Object.keys(data)
+      });
+    }
+
     for (const field of possibleFields) {
       const value = data[field];
       if (typeof value === 'string' && value.length > 0) {
-        return this.formatResetTime(value);
+        const formatted = this.formatResetTime(value);
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:FIELD_EXTRACTION] Found reset time:', {
+            field,
+            rawValue: value,
+            formatted
+          });
+        }
+        return formatted;
       }
+    }
+
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:FIELD_EXTRACTION] No reset time found in any field');
     }
     return undefined;
   }
