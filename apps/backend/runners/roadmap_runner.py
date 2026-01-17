@@ -84,6 +84,12 @@ def main():
         dest="refresh_competitor_analysis",
         help="Force refresh competitor analysis even if it exists (requires --competitor-analysis)",
     )
+    parser.add_argument(
+        "--language",
+        type=str,
+        default="en",
+        help="Output language for generated content (en, zh-CN, fr, etc.)",
+    )
 
     args = parser.parse_args()
 
@@ -119,6 +125,7 @@ def main():
         refresh=args.refresh,
         enable_competitor_analysis=args.enable_competitor_analysis,
         refresh_competitor_analysis=args.refresh_competitor_analysis,
+        language=args.language,
     )
 
     try:
