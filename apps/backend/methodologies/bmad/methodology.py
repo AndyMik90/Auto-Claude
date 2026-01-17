@@ -235,19 +235,82 @@ class BMADRunner:
         """Execute the project analysis phase.
 
         Analyzes the project structure and gathers context for subsequent phases.
-        Produces analysis.json artifact.
+        Produces analysis.json artifact in the task-scoped output directory.
 
         Returns:
             PhaseResult with success status and artifacts
 
         Story Reference: Story 6.2 - Implement BMAD Project Analysis Phase
+        Story Reference: Story 6.9 - Task-Scoped Output Directories
         """
-        # TODO: Implement in Story 6.2
-        return PhaseResult(
-            success=False,
-            phase_id="analyze",
-            error="Analyze phase not yet implemented (Story 6.2)",
+        # Import here to avoid circular imports
+        from apps.backend.methodologies.bmad.workflows.analysis import (
+            analyze_project,
+            load_analysis,
         )
+
+        project_dir = Path(self._project_dir)
+
+        # Check if output directory is configured
+        if self._output_dir is None:
+            return PhaseResult(
+                success=False,
+                phase_id="analyze",
+                error="No output directory configured. Set spec_dir in task_config.metadata.",
+            )
+
+        # Check if analysis already exists
+        self._invoke_progress_callback("Checking for existing analysis...", 5.0)
+        existing = load_analysis(self._output_dir)
+        if existing:
+            analysis_file = self._output_dir / "analysis.json"
+            self._invoke_progress_callback("Found existing analysis", 100.0)
+            return PhaseResult(
+                success=True,
+                phase_id="analyze",
+                message="Analysis already exists",
+                artifacts=[str(analysis_file)],
+                metadata={"project_name": existing.project_name},
+            )
+
+        # Run project analysis
+        self._invoke_progress_callback("Starting project analysis...", 10.0)
+        try:
+            analysis = analyze_project(
+                project_dir=project_dir,
+                output_dir=self._output_dir,
+                progress_callback=self._invoke_progress_callback,
+            )
+
+            analysis_file = self._output_dir / "analysis.json"
+            if analysis_file.exists():
+                return PhaseResult(
+                    success=True,
+                    phase_id="analyze",
+                    message=f"Project analysis complete for '{analysis.project_name}'",
+                    artifacts=[str(analysis_file)],
+                    metadata={
+                        "project_name": analysis.project_name,
+                        "languages": analysis.tech_stack.languages,
+                        "frameworks": analysis.tech_stack.frameworks,
+                        "is_monorepo": analysis.structure.is_monorepo,
+                        "bmad_config_exists": analysis.bmad_config.exists,
+                    },
+                )
+            else:
+                return PhaseResult(
+                    success=False,
+                    phase_id="analyze",
+                    error="Analysis completed but artifact file was not created",
+                )
+
+        except Exception as e:
+            logger.error(f"Project analysis failed: {e}")
+            return PhaseResult(
+                success=False,
+                phase_id="analyze",
+                error=f"Project analysis failed: {str(e)}",
+            )
 
     def _execute_prd(self) -> PhaseResult:
         """Execute the PRD creation phase.
