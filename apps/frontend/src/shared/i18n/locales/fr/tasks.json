@@ -245,5 +245,14 @@
   },
   "subtasks": {
     "untitled": "Sous-tâche sans titre"
+  },
+  "bulkPR": {
+    "selectAllInColumn": "Sélectionner toutes les tâches de la colonne",
+    "deselectAllInColumn": "Désélectionner toutes les tâches",
+    "selectionMode": "Mode sélection actif",
+    "exitSelectionMode": "Quitter le mode sélection",
+    "noTasksToSelect": "Aucune tâche disponible à sélectionner",
+    "confirmBulkAction": "Confirmer l'action groupée pour {{count}} tâches",
+    "processingTasks": "Traitement des tâches sélectionnées..."
   }
 }
