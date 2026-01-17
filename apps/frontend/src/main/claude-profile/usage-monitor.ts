@@ -591,12 +591,59 @@ export class UsageMonitor extends EventEmitter {
           provider,
           endpoint: usageEndpoint
         });
-        // Throw specific error for auth failures so we can trigger a swap
+
+        // Check for auth failures via status code (works for all providers)
         if (response.status === 401 || response.status === 403) {
           const error = new Error(`API Auth Failure: ${response.status} (${provider})`);
           (error as any).statusCode = response.status;
           throw error;
         }
+
+        // For other error statuses, try to parse response body to detect auth failures
+        // This handles cases where providers might return different status codes for auth errors
+        try {
+          const errorData = await response.json();
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:AUTH_DETECTION] Checking error response for auth failure:', {
+              provider,
+              status: response.status,
+              errorData
+            });
+          }
+
+          // Check for common auth error patterns in response body
+          const authErrorPatterns = [
+            'unauthorized',
+            'authentication',
+            'invalid token',
+            'invalid api key',
+            'expired token',
+            'forbidden',
+            'access denied',
+            'credentials',
+            'auth failed'
+          ];
+
+          const errorText = JSON.stringify(errorData).toLowerCase();
+          const hasAuthError = authErrorPatterns.some(pattern => errorText.includes(pattern));
+
+          if (hasAuthError) {
+            const error = new Error(`API Auth Failure detected in response body (${provider}): ${JSON.stringify(errorData)}`);
+            (error as any).statusCode = response.status; // Include original status code
+            (error as any).detectedInBody = true;
+            throw error;
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, just log it and continue
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:AUTH_DETECTION] Could not parse error response body:', {
+              provider,
+              status: response.status,
+              parseError
+            });
+          }
+        }
+
         return null;
       }
 
@@ -658,7 +705,8 @@ export class UsageMonitor extends EventEmitter {
       return normalizedUsage;
     } catch (error: any) {
       // Re-throw auth failures to be handled by checkUsageAndSwap
-      if (error?.statusCode === 401 || error?.statusCode === 403) {
+      // This includes both status code auth failures (401/403) and body-detected failures
+      if (error?.message?.includes('Auth Failure') || error?.statusCode === 401 || error?.statusCode === 403) {
         throw error;
       }
 
