@@ -124,7 +124,13 @@ describe('Subprocess Spawn Integration', () => {
 
       const manager = new AgentManager();
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test task description');
+
+      // Start the async operation
+      const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test task description');
+
+      // Emit exit immediately to unblock the async operation (before await)
+      mockProcess.emit('exit', 0);
+      await promise;
 
       expect(spawn).toHaveBeenCalledWith(
         EXPECTED_PYTHON_COMMAND,
@@ -149,7 +155,13 @@ describe('Subprocess Spawn Integration', () => {
 
       const manager = new AgentManager();
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
-      await manager.startTaskExecution('task-1', TEST_PROJECT_PATH, 'spec-001');
+
+      // Start the async operation
+      const promise = manager.startTaskExecution('task-1', TEST_PROJECT_PATH, 'spec-001');
+
+      // Emit exit immediately to unblock the async operation (before await)
+      mockProcess.emit('exit', 0);
+      await promise;
 
       expect(spawn).toHaveBeenCalledWith(
         EXPECTED_PYTHON_COMMAND,
@@ -171,7 +183,13 @@ describe('Subprocess Spawn Integration', () => {
 
       const manager = new AgentManager();
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
-      await manager.startQAProcess('task-1', TEST_PROJECT_PATH, 'spec-001');
+
+      // Start the async operation
+      const promise = manager.startQAProcess('task-1', TEST_PROJECT_PATH, 'spec-001');
+
+      // Emit exit immediately to unblock the async operation (before await)
+      mockProcess.emit('exit', 0);
+      await promise;
 
       expect(spawn).toHaveBeenCalledWith(
         EXPECTED_PYTHON_COMMAND,
@@ -195,11 +213,16 @@ describe('Subprocess Spawn Integration', () => {
 
       const manager = new AgentManager();
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
-      await manager.startTaskExecution('task-1', TEST_PROJECT_PATH, 'spec-001', {
+
+      // Start the async operation
+      const promise = manager.startTaskExecution('task-1', TEST_PROJECT_PATH, 'spec-001', {
         parallel: true,
         workers: 4
       });
 
+      // Emit exit immediately to unblock the async operation (before await)
+      mockProcess.emit('exit', 0);
+      await promise;
       // Should spawn normally - parallel options don't affect CLI args anymore
       expect(spawn).toHaveBeenCalledWith(
         EXPECTED_PYTHON_COMMAND,
