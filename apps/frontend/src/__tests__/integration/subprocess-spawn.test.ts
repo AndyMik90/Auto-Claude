@@ -132,7 +132,8 @@ describe('Subprocess Spawn Integration', () => {
       // Start the async operation
       const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test task description');
 
-      // Emit exit immediately to unblock the async operation (before await)
+      // Wait for spawn to complete (ensures listeners are attached), then emit exit
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('exit', 0);
       await promise;
 
@@ -163,7 +164,8 @@ describe('Subprocess Spawn Integration', () => {
       // Start the async operation
       const promise = manager.startTaskExecution('task-1', TEST_PROJECT_PATH, 'spec-001');
 
-      // Emit exit immediately to unblock the async operation (before await)
+      // Wait for spawn to complete (ensures listeners are attached), then emit exit
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('exit', 0);
       await promise;
 
@@ -191,7 +193,8 @@ describe('Subprocess Spawn Integration', () => {
       // Start the async operation
       const promise = manager.startQAProcess('task-1', TEST_PROJECT_PATH, 'spec-001');
 
-      // Emit exit immediately to unblock the async operation (before await)
+      // Wait for spawn to complete (ensures listeners are attached), then emit exit
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('exit', 0);
       await promise;
 
@@ -224,7 +227,8 @@ describe('Subprocess Spawn Integration', () => {
         workers: 4
       });
 
-      // Emit exit immediately to unblock the async operation (before await)
+      // Wait for spawn to complete (ensures listeners are attached), then emit exit
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('exit', 0);
       await promise;
       // Should spawn normally - parallel options don't affect CLI args anymore
@@ -383,7 +387,8 @@ describe('Subprocess Spawn Integration', () => {
       const promise1 = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
       const promise2 = manager.startTaskExecution('task-2', TEST_PROJECT_PATH, 'spec-001');
 
-      // Emit exit to unblock both operations
+      // Wait for spawn to complete (ensures listeners are attached), then emit exit
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('exit', 0);
       await promise1;
       mockProcess.emit('exit', 0);
@@ -400,12 +405,19 @@ describe('Subprocess Spawn Integration', () => {
       const manager = new AgentManager();
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
 
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
+      // Start first operation
+      const promise1 = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 1');
+      // Wait for spawn, then emit exit
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('exit', 0);
+      await promise1;
 
       // Start another process for same task (first was already completed)
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 2');
+      const promise2 = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test 2');
+      // Wait for spawn, then emit exit
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('exit', 0);
+      await promise2;
 
       // Both processes completed successfully
       // (the first process was already done before the second started)
