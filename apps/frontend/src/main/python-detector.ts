@@ -493,9 +493,9 @@ export function isValidActivationScript(scriptPath: string): boolean {
     // Unix conda
     /^.*\/anaconda\d*\/bin\/activate$/,
     /^.*\/miniconda\d*\/bin\/activate$/,
-    /^.*\/anaconda\d*\/envs\/[^\/]+\/bin\/activate$/,
-    /^.*\/miniconda\d*\/envs\/[^\/]+\/bin\/activate$/,
-    /^.*\/.conda\/envs\/[^\/]+\/bin\/activate$/,
+    /^.*\/anaconda\d*\/envs\/[^/]+\/bin\/activate$/,
+    /^.*\/miniconda\d*\/envs\/[^/]+\/bin\/activate$/,
+    /^.*\/.conda\/envs\/[^/]+\/bin\/activate$/,
   ];
 
   return CONDA_ACTIVATION_PATTERNS.some(pattern => pattern.test(scriptPath));

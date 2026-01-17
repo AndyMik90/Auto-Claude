@@ -125,7 +125,7 @@ describe('conda-project-structure', () => {
     directories: string[] = [],
     directoryContents: Record<string, string[]> = {}
   ): void {
-    vi.mocked(existsSync).mockImplementation((filePath: string) => {
+    (vi.mocked(existsSync) as any).mockImplementation((filePath: string) => {
       const normalized = normalizePath(filePath.toString());
       return (
         existingFiles.some((f) => normalizePath(f) === normalized) ||
@@ -133,12 +133,12 @@ describe('conda-project-structure', () => {
       );
     });
 
-    vi.mocked(readdirSync).mockImplementation((dirPath: string) => {
+    (vi.mocked(readdirSync) as any).mockImplementation((dirPath: string) => {
       const normalized = normalizePath(dirPath.toString());
       return (directoryContents[normalized] || []) as any;
     });
 
-    vi.mocked(statSync).mockImplementation((filePath: string) => {
+    (vi.mocked(statSync) as any).mockImplementation((filePath: string) => {
       const normalized = normalizePath(filePath.toString());
       return {
         isDirectory: () => directories.some((d) => normalizePath(d) === normalized),

@@ -24,9 +24,13 @@ export const findTaskAndProject = (taskId: string): { task: Task | undefined; pr
 
 /**
  * Get the spec directory path for a task
- * Uses worktree path if task is in a worktree, otherwise uses project path
+ * Uses specsPath if available, otherwise uses project path
  */
 export const getSpecDir = (task: Task, project: Project): string => {
-  const basePath = task.worktreePath || project.path;
-  return path.join(basePath, '.auto-claude', 'specs', task.specId);
+  // If task has specsPath set (full path to specs dir), use it directly
+  if (task.specsPath) {
+    return task.specsPath;
+  }
+  // Otherwise, construct from project path
+  return path.join(project.path, '.auto-claude', 'specs', task.specId);
 };

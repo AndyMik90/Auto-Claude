@@ -550,91 +550,12 @@ export class AgentProcessManager {
     // Parse Python commandto handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
 
-    // Get activation script from settings (if configured for conda environments)
-    const settings = readSettingsFile() as Partial<AppSettings> | null;
-    const activationScript = settings?.pythonActivationScript;
-
-    // Validate activation script if provided
-    if (activationScript && !isValidActivationScript(activationScript)) {
-      console.warn('[AgentProcess] Invalid activation script path, ignoring:', activationScript);
-    }
-
-    // Get validated activation script (only use if valid)
-    const validActivationScript = activationScript && isValidActivationScript(activationScript) && existsSync(activationScript)
-      ? activationScript
-      : undefined;
-
-    let finalCommand: string;
-    let finalArgs: string[];
-
-    if (validActivationScript) {
-      // Build command with conda activation
-      if (isWindows()) {
-        // Add -u flag for unbuffered output (critical for subprocess communication)
-        const pythonWithArgs = [pythonCommand, ...pythonBaseArgs, '-u', ...args]
-          .map(arg => arg.includes(' ') ? `"${arg}"` : arg)
-          .join(' ');
-
-        // Check if it's a PowerShell script (.ps1)
-        if (validActivationScript.toLowerCase().endsWith('.ps1')) {
-          // PowerShell: powershell -NoProfile -Command "& script.ps1; & python args"
-          finalCommand = 'powershell';
-          finalArgs = ['-NoProfile', '-Command', `& '${validActivationScript}'; & ${pythonWithArgs}`];
-        } else {
-          // Batch file: Extract conda activation from terminal.cmd and run command directly
-          // IMPORTANT: Don't call terminal.cmd directly as it may open interactive prompt (cmd /k)
-          // Instead, extract the conda activation command and run it inline
-          const quotedScript = validActivationScript.includes(' ') ? `"${validActivationScript}"` : validActivationScript;
-
-          // If this is terminal.cmd, extract conda activation and skip the 'cmd /k' part
-          if (validActivationScript.toLowerCase().includes('terminal.cmd')) {
-            // Parse terminal.cmd to extract conda activation
-            try {
-              const scriptContent = readFileSync(validActivationScript, 'utf-8');
-              const condaMatch = scriptContent.match(/call\s+(.+?condabin[\\/]conda\.bat)\s+activate\s+"?([^"\r\n]+)"?/i);
-
-              if (condaMatch) {
-                const condaBat = condaMatch[1].replace(/%USERPROFILE%/g, process.env.USERPROFILE || '');
-                const envPath = condaMatch[2];
-                // Run conda activation directly without the interactive cmd /k
-                // Only quote paths if they contain spaces
-                const quotedCondaBat = condaBat.includes(' ') ? `"${condaBat}"` : condaBat;
-                const quotedEnvPath = envPath.includes(' ') ? `"${envPath}"` : envPath;
-                finalCommand = sanitizeShellPath(process.env.COMSPEC, 'cmd.exe');
-                finalArgs = ['/c', `call ${quotedCondaBat} activate ${quotedEnvPath} && ${pythonWithArgs}`];
-              } else {
-                // Fallback: call the script but it might hang
-                console.warn('[AgentProcess] Could not parse conda activation from terminal.cmd, using script directly');
-                finalCommand = sanitizeShellPath(process.env.COMSPEC, 'cmd.exe');
-                finalArgs = ['/c', `call ${quotedScript} && ${pythonWithArgs}`];
-              }
-            } catch (err) {
-              console.error('[AgentProcess] Error parsing terminal.cmd:', err);
-              // Fallback to calling script directly
-              finalCommand = sanitizeShellPath(process.env.COMSPEC, 'cmd.exe');
-              finalArgs = ['/c', `call ${quotedScript} && ${pythonWithArgs}`];
-            }
-          } else {
-            // Regular batch file activation script
-            finalCommand = sanitizeShellPath(process.env.COMSPEC, 'cmd.exe');
-            finalArgs = ['/c', `call ${quotedScript} && ${pythonWithArgs}`];
-          }
-        }
-      } else {
-        // Unix: bash -c "source activate && python args"
-        finalCommand = sanitizeShellPath(process.env.SHELL, '/bin/bash');
-        // Add -u flag for unbuffered output (critical for subprocess communication)
-        const pythonWithArgs = [pythonCommand, ...pythonBaseArgs, '-u', ...args]
-          .map(arg => arg.includes(' ') ? `"${arg}"` : arg)
-          .join(' ');
-        finalArgs = ['-c', `source "${validActivationScript}" && ${pythonWithArgs}`];
-      }
-    } else {
-      // No activation - use Python directly
-      // Add -u flag for unbuffered output (critical for subprocess communication)
-      finalCommand = pythonCommand;
-      finalArgs = [...pythonBaseArgs, '-u', ...args];
-    }
+    // Note: Conda activation via pythonActivationScript is not currently in AppSettings
+    // When this feature is added, uncomment and update the activation script logic below
+    // For now, use Python directly without activation script
+    // Add -u flag for unbuffered output (critical for subprocess communication)
+    const finalCommand = pythonCommand;
+    const finalArgs = [...pythonBaseArgs, '-u', ...args];
 
     // Debug: Log the exact command being spawned
     console.warn('[AgentProcess] Spawning command:', finalCommand);
