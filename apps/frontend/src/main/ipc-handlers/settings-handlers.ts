@@ -188,7 +188,7 @@ export function registerSettingsHandlers(
         logger.error('[SETTINGS_GET] Error:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to get settings'
+          error: error instanceof Error ? error.message : 'settings:errors.getFailed'
         };
       }
     }
@@ -256,7 +256,7 @@ export function registerSettingsHandlers(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to save settings'
+          error: error instanceof Error ? error.message : 'settings:errors.saveFailed'
         };
       }
     }
@@ -283,7 +283,7 @@ export function registerSettingsHandlers(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to get CLI tools info',
+          error: error instanceof Error ? error.message : 'settings:errors.cliToolsInfoFailed',
         };
       }
     }
@@ -323,7 +323,7 @@ export function registerSettingsHandlers(
       try {
         // Validate inputs
         if (!location || !name) {
-          return { success: false, error: 'Location and name are required' };
+          return { success: false, error: 'settings:errors.locationNameRequired' };
         }
 
         // Sanitize project name (convert to kebab-case, remove invalid chars)
@@ -335,7 +335,7 @@ export function registerSettingsHandlers(
           .replace(/^-|-$/g, '');
 
         if (!sanitizedName) {
-          return { success: false, error: 'Invalid project name' };
+          return { success: false, error: 'settings:errors.invalidProjectName' };
         }
 
         const projectPath = path.join(location, sanitizedName);
@@ -371,7 +371,7 @@ export function registerSettingsHandlers(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to create project folder'
+          error: error instanceof Error ? error.message : 'settings:errors.createFolderFailed'
         };
       }
     }
@@ -449,7 +449,7 @@ export function registerSettingsHandlers(
         if (!dirPath || typeof dirPath !== 'string' || dirPath.trim() === '') {
           return {
             success: false,
-            error: 'Directory path is required and must be a non-empty string'
+            error: 'settings:errors.directoryPathRequired'
           };
         }
 
@@ -521,7 +521,7 @@ export function registerSettingsHandlers(
           if (!opened) {
             return {
               success: false,
-              error: 'No supported terminal emulator found. Please install gnome-terminal, konsole, xfce4-terminal, or xterm.'
+              error: 'settings:errors.noTerminalEmulator'
             };
           }
         }
@@ -531,7 +531,8 @@ export function registerSettingsHandlers(
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
         return {
           success: false,
-          error: `Failed to open terminal: ${errorMsg}`
+          error: 'settings:errors.openTerminalFailed',
+          errorParams: { error: errorMsg }
         };
       }
     }
@@ -642,7 +643,7 @@ export function registerSettingsHandlers(
         logger.error('[AUTOBUILD_SOURCE_ENV_GET] Error:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to get source env'
+          error: error instanceof Error ? error.message : 'settings:errors.getSourceEnvFailed'
         };
       }
     }
@@ -657,7 +658,7 @@ export function registerSettingsHandlers(
         if (!sourcePath || !envPath) {
           return {
             success: false,
-            error: 'Auto-build source path not configured. Please set it in Settings.'
+            error: 'settings:errors.sourcePathNotConfigured'
           };
         }
 
@@ -699,7 +700,7 @@ export function registerSettingsHandlers(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to update source env'
+          error: error instanceof Error ? error.message : 'settings:errors.updateSourceEnvFailed'
         };
       }
     }
@@ -765,7 +766,7 @@ export function registerSettingsHandlers(
         logger.error('[AUTOBUILD_SOURCE_ENV_CHECK_TOKEN] Error:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to check source token'
+          error: error instanceof Error ? error.message : 'settings:errors.checkSourceTokenFailed'
         };
       }
     }
@@ -796,10 +797,12 @@ export function registerSettingsHandlers(
         // The __dirname in production points inside app.asar where .env files don't exist.
         if (is.dev) {
           // In dev mode, __dirname is apps/frontend/out/main/ipc-handlers
-          // So we need to go up 3 levels to reach apps/frontend/.env
-          // (ipc-handlers -> main -> out -> frontend)
+          // So we need to go up properly to reach the .env files:
+          // - 3 levels up (ipc-handlers -> main -> out) gets to apps/frontend/
+          // - 4 levels up gets to apps/
           const possibleFrontendEnvPaths = [
-            path.resolve(__dirname, '../../../.env'),     // From out/main/ipc-handlers to frontend/.env (3 levels up)
+            path.resolve(__dirname, '../../../.env'),      // from out/main/ipc-handlers -> apps/frontend/.env
+            path.resolve(__dirname, '../../../../.env'),   // from out/main/ipc-handlers -> apps/.env
             path.resolve(process.cwd(), 'apps/frontend/.env'),  // From repo root as fallback
           ];
 
@@ -832,7 +835,7 @@ export function registerSettingsHandlers(
         }
 
         if (reloadedFiles.length === 0) {
-          return { success: false, error: 'No .env files found to reload' };
+          return { success: false, error: 'settings:errors.noEnvFilesToReload' };
         }
 
         // NOTE: This reload only affects the main Electron process and newly-spawned
@@ -844,7 +847,7 @@ export function registerSettingsHandlers(
         logger.error('[CONFIG_RELOAD] Error:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to reload configuration'
+          error: error instanceof Error ? error.message : 'settings:errors.reloadConfigFailed'
         };
       }
     }

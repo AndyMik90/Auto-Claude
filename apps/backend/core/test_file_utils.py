@@ -6,7 +6,6 @@ Tests for atomic file writes and Windows-safe path handling utilities.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 from unittest.mock import patch

@@ -17,12 +17,13 @@ Usage:
 import json
 import logging
 import os
-import sys
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import IO, Any, Literal
+
+from core.platform import is_windows
 
 # Windows invalid filename characters and their safe replacements
 _WINDOWS_INVALID_CHARS_MAP = str.maketrans(
@@ -68,11 +69,6 @@ _WINDOWS_RESERVED_NAMES = frozenset(
 )
 
 
-def is_windows() -> bool:
-    """Check if running on Windows."""
-    return sys.platform == "win32"
-
-
 def normalize_path(filepath: str | Path) -> Path:
     """
     Normalize a file path for cross-platform compatibility.
@@ -106,8 +102,12 @@ def normalize_path(filepath: str | Path) -> Path:
         # Handle long paths on Windows (>260 chars)
         # The \\?\ prefix allows paths up to ~32,767 chars
         if len(path_str) > 260 and not path_str.startswith("\\\\?\\"):
-            # Don't add prefix to UNC paths (\\server\share)
-            if not path_str.startswith("\\\\"):
+            if path_str.startswith("\\\\"):
+                # UNC paths (\\server\share) need \\?\UNC\server\share format
+                # Strip the leading \\ and prepend \\?\UNC\
+                path = Path("\\\\?\\UNC\\" + path_str[2:])
+            else:
+                # Regular paths get \\?\ prefix
                 path = Path("\\\\?\\" + path_str)
 
     return path
