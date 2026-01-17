@@ -44,6 +44,63 @@ const PROVIDER_PATTERNS: readonly ProviderPattern[] = [
 ] as const;
 
 /**
+ * Provider usage endpoint configuration
+ * Maps each provider to its usage monitoring endpoint path
+ */
+interface ProviderUsageEndpoint {
+  provider: ApiProvider;
+  usagePath: string;
+}
+
+const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
+  {
+    provider: 'anthropic',
+    usagePath: '/api/oauth/usage'
+  },
+  {
+    provider: 'zai',
+    usagePath: '/api/monitor/usage/model-usage'
+  },
+  {
+    provider: 'zhipu',
+    usagePath: '/api/monitor/usage/model-usage'
+  }
+] as const;
+
+/**
+ * Get usage endpoint URL for a provider
+ * Constructs full usage endpoint URL from provider baseUrl and usage path
+ *
+ * @param provider - The provider type
+ * @param baseUrl - The API base URL (e.g., 'https://api.z.ai/api/anthropic')
+ * @returns Full usage endpoint URL or null if provider unknown
+ *
+ * @example
+ * getUsageEndpoint('anthropic', 'https://api.anthropic.com')
+ * // returns 'https://api.anthropic.com/api/oauth/usage'
+ * getUsageEndpoint('zai', 'https://api.z.ai/api/anthropic')
+ * // returns 'https://api.z.ai/api/monitor/usage/model-usage'
+ * getUsageEndpoint('unknown', 'https://example.com')
+ * // returns null
+ */
+export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string | null {
+  const endpointConfig = PROVIDER_USAGE_ENDPOINTS.find(e => e.provider === provider);
+  if (!endpointConfig) {
+    return null;
+  }
+
+  try {
+    const url = new URL(baseUrl);
+    // Replace the path with the usage endpoint path
+    url.pathname = endpointConfig.usagePath;
+    return url.toString();
+  } catch (error) {
+    console.error('[UsageMonitor] Invalid baseUrl for usage endpoint:', baseUrl);
+    return null;
+  }
+}
+
+/**
  * Detect API provider from baseUrl
  * Extracts domain and matches against known provider patterns
  *
