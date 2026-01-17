@@ -609,13 +609,13 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     const success = await updateProjectSettings(projectId, { maxParallelTasks: maxParallel });
     if (success) {
       toast({
-        title: 'Queue settings saved',
+        title: t('queue.settings.saved'),
         variant: 'default'
       });
     } else {
       toast({
-        title: 'Failed to save queue settings',
-        description: 'Please try again',
+        title: t('queue.settings.saveFailed'),
+        description: t('queue.settings.retry'),
         variant: 'destructive'
       });
     }

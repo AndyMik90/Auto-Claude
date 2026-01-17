@@ -95,7 +95,18 @@
     "autoPromoted": "Task auto-promoted from queue to In Progress.",
     "capacityAvailable": "{{count}} slot(s) available in In Progress.",
     "queueAll": "Add All to Queue",
-    "queueAllSuccess": "Moved {{count}} tasks to queue."
+    "queueAllSuccess": "Moved {{count}} tasks to queue.",
+    "settings": {
+      "title": "Queue Settings",
+      "description": "Configure the maximum number of tasks that can run in parallel in the \"In Progress\" board",
+      "maxParallelLabel": "Max Parallel Tasks",
+      "minValueError": "Must be at least 1",
+      "maxValueError": "Cannot exceed 10",
+      "hint": "When this limit is reached, new tasks will wait in the queue before moving to \"In Progress\"",
+      "saved": "Queue settings saved",
+      "saveFailed": "Failed to save queue settings",
+      "retry": "Please try again"
+    }
   },
   "execution": {
     "phases": {

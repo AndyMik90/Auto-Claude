@@ -95,7 +95,18 @@
     "autoPromoted": "Tâche auto-promue de la file d'attente vers En cours.",
     "capacityAvailable": "{{count}} emplacement(s) disponible(s) dans En cours.",
     "queueAll": "Tout ajouter à la file d'attente",
-    "queueAllSuccess": "{{count}} tâches déplacées vers la file d'attente."
+    "queueAllSuccess": "{{count}} tâches déplacées vers la file d'attente.",
+    "settings": {
+      "title": "Paramètres de la file d'attente",
+      "description": "Configurer le nombre maximal de tâches pouvant s'exécuter en parallèle dans le tableau \"En cours\"",
+      "maxParallelLabel": "Tâches parallèles maximales",
+      "minValueError": "Doit être au moins 1",
+      "maxValueError": "Ne peut pas dépasser 10",
+      "hint": "Lorsque cette limite est atteinte, les nouvelles tâches attendront dans la file avant de passer à \"En cours\"",
+      "saved": "Paramètres de la file d'attente enregistrés",
+      "saveFailed": "Échec de l'enregistrement des paramètres",
+      "retry": "Veuillez réessayer"
+    }
   },
   "execution": {
     "phases": {
