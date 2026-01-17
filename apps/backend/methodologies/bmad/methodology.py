@@ -47,8 +47,19 @@ class BMADRunner:
     6. Dev - Development/implementation
     7. Review - Code review
 
+    Artifact Storage (Story 6.9):
+        All artifacts are stored in task-scoped directories:
+        `.auto-claude/specs/{task-id}/bmad/`
+
+        This enables parallel execution of multiple BMAD tasks without
+        artifact collisions.
+
     Story Reference: Story 6.1 - Create BMAD Methodology Plugin Structure
+    Story Reference: Story 6.9 - Task-Scoped Output Directories
     """
+
+    # BMAD output subdirectory name within spec_dir
+    BMAD_OUTPUT_SUBDIR = "bmad"
 
     def __init__(self) -> None:
         """Initialize BMADRunner instance."""
@@ -64,6 +75,8 @@ class BMADRunner:
         self._complexity: ComplexityLevel | None = None
         # Progress callback for current execution
         self._current_progress_callback: ProgressCallback | None = None
+        # Task-scoped output directory (Story 6.9)
+        self._output_dir: Path | None = None
 
     def initialize(self, context: RunContext) -> None:
         """Initialize the runner with framework context.
@@ -89,6 +102,9 @@ class BMADRunner:
         spec_dir_str = context.task_config.metadata.get("spec_dir")
         if spec_dir_str:
             self._spec_dir = Path(spec_dir_str)
+
+        # Story 6.9: Initialize task-scoped output directory
+        self._init_output_dir()
 
         self._init_phases()
         self._init_checkpoints()
@@ -382,6 +398,94 @@ class BMADRunner:
         if not self._initialized:
             raise RuntimeError("BMADRunner not initialized. Call initialize() first.")
 
+    # =========================================================================
+    # Story 6.9: Task-Scoped Output Directory Methods
+    # =========================================================================
+
+    def _init_output_dir(self) -> None:
+        """Initialize the task-scoped output directory.
+
+        Creates the BMAD output directory within the spec directory:
+        `.auto-claude/specs/{task-id}/bmad/`
+
+        This ensures artifacts from multiple parallel BMAD tasks don't conflict.
+
+        Story Reference: Story 6.9 - Task-Scoped Output Directories
+        """
+        if self._spec_dir is None:
+            logger.warning(
+                "No spec_dir configured. BMAD artifacts will not be task-scoped."
+            )
+            return
+
+        self._output_dir = self._spec_dir / self.BMAD_OUTPUT_SUBDIR
+        self._ensure_output_dir()
+
+    def _ensure_output_dir(self) -> None:
+        """Ensure the output directory exists.
+
+        Creates the output directory and any necessary parent directories
+        if they don't exist.
+
+        Story Reference: Story 6.9 - Task-Scoped Output Directories
+        """
+        if self._output_dir is not None:
+            self._output_dir.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"BMAD output directory ready: {self._output_dir}")
+
+    @property
+    def output_dir(self) -> Path | None:
+        """Get the task-scoped output directory for BMAD artifacts.
+
+        Returns:
+            Path to the output directory (`.auto-claude/specs/{task-id}/bmad/`),
+            or None if spec_dir is not configured.
+
+        Story Reference: Story 6.9 - Task-Scoped Output Directories
+        """
+        return self._output_dir
+
+    def get_artifact_path(self, artifact_name: str) -> Path | None:
+        """Get the full path for a BMAD artifact.
+
+        Constructs the path within the task-scoped output directory.
+        If output_dir is not configured, returns None.
+
+        Args:
+            artifact_name: Name of the artifact file (e.g., 'analysis.json', 'prd.md')
+
+        Returns:
+            Full path to the artifact within the output directory,
+            or None if output directory is not configured.
+
+        Example:
+            >>> runner.get_artifact_path('prd.md')
+            Path('.auto-claude/specs/139-task-name/bmad/prd.md')
+
+        Story Reference: Story 6.9 - Task-Scoped Output Directories
+        """
+        if self._output_dir is None:
+            return None
+        return self._output_dir / artifact_name
+
+    def get_stories_dir(self) -> Path | None:
+        """Get the stories subdirectory within the output directory.
+
+        Creates the stories subdirectory if it doesn't exist.
+
+        Returns:
+            Path to the stories directory (`.auto-claude/specs/{task-id}/bmad/stories/`),
+            or None if output directory is not configured.
+
+        Story Reference: Story 6.9 - Task-Scoped Output Directories
+        """
+        if self._output_dir is None:
+            return None
+
+        stories_dir = self._output_dir / "stories"
+        stories_dir.mkdir(parents=True, exist_ok=True)
+        return stories_dir
+
     def _find_phase(self, phase_id: str) -> Phase | None:
         """Find a phase by its ID.
 
@@ -520,13 +624,22 @@ class BMADRunner:
         ]
 
     def _init_artifacts(self) -> None:
-        """Initialize artifact definitions for the BMAD methodology."""
+        """Initialize artifact definitions for the BMAD methodology.
+
+        Artifact paths are relative to the spec_dir and use the bmad/
+        subdirectory for task-scoped storage.
+
+        Story Reference: Story 6.9 - Task-Scoped Output Directories
+        """
+        # Use task-scoped paths within bmad/ subdirectory
+        bmad_subdir = self.BMAD_OUTPUT_SUBDIR
+
         self._artifacts = [
             Artifact(
                 id="analysis-json",
                 artifact_type="json",
                 name="Project Analysis",
-                file_path="analysis.json",
+                file_path=f"{bmad_subdir}/analysis.json",
                 phase_id="analyze",
                 content_type="application/json",
             ),
@@ -534,7 +647,7 @@ class BMADRunner:
                 id="prd-md",
                 artifact_type="markdown",
                 name="Product Requirements Document",
-                file_path="prd.md",
+                file_path=f"{bmad_subdir}/prd.md",
                 phase_id="prd",
                 content_type="text/markdown",
             ),
@@ -542,7 +655,7 @@ class BMADRunner:
                 id="architecture-md",
                 artifact_type="markdown",
                 name="Architecture Document",
-                file_path="architecture.md",
+                file_path=f"{bmad_subdir}/architecture.md",
                 phase_id="architecture",
                 content_type="text/markdown",
             ),
@@ -550,7 +663,7 @@ class BMADRunner:
                 id="epics-md",
                 artifact_type="markdown",
                 name="Epics Document",
-                file_path="epics.md",
+                file_path=f"{bmad_subdir}/epics.md",
                 phase_id="epics",
                 content_type="text/markdown",
             ),
@@ -558,7 +671,7 @@ class BMADRunner:
                 id="stories-md",
                 artifact_type="markdown",
                 name="Story Files",
-                file_path="stories/*.md",
+                file_path=f"{bmad_subdir}/stories/*.md",
                 phase_id="stories",
                 content_type="text/markdown",
             ),
@@ -566,7 +679,7 @@ class BMADRunner:
                 id="review-report-md",
                 artifact_type="markdown",
                 name="Review Report",
-                file_path="review_report.md",
+                file_path=f"{bmad_subdir}/review_report.md",
                 phase_id="review",
                 content_type="text/markdown",
             ),
