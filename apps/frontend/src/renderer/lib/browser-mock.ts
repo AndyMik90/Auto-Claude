@@ -7,6 +7,9 @@
  */
 
 import type { ElectronAPI } from '../../shared/types';
+import { createWebAdapter } from '../platform/web-adapter';
+import { isWeb } from '../platform/web-adapter';
+
 import {
   projectMock,
   taskMock,
@@ -343,5 +346,11 @@ export function initBrowserMock(): void {
   }
 }
 
-// Auto-initialize
-initBrowserMock();
+if(isWeb()){
+  const webAdapter = createWebAdapter();
+    (window as Window & { electronAPI: ElectronAPI }).electronAPI = webAdapter;
+}else{
+  // Auto-initialize
+  initBrowserMock();
+}
+
