@@ -25,18 +25,29 @@ from typing import Any
 
 from core.platform import find_executable, get_platform_description
 
+
 def get_default_ollama_url() -> str:
     """Get the default Ollama URL from environment or fallback."""
     env_host = os.environ.get("OLLAMA_HOST", "")
     if env_host:
         # If it's just a host, add protocol and default port if missing
         if not env_host.startswith(("http://", "https://")):
-            # Common case: OLLAMA_HOST=0.0.0.0 or OLLAMA_HOST=192.168.1.5
+            # IPv6 detection: literal IPv6 address without brackets
+            if ":" in env_host and env_host.count(":") > 1 and "[" not in env_host:
+                return f"http://[{env_host}]:11434"
+
+            # Case for bracketed IPv6 without port: "[::1]" -> "http://[::1]:11434"
+            if env_host.startswith("[") and "]:" not in env_host:
+                return f"http://{env_host}:11434"
+
+            # Standard host or IPv4 address without port
             if ":" not in env_host:
                 return f"http://{env_host}:11434"
+
             return f"http://{env_host}"
         return env_host
     return "http://localhost:11434"
+
 
 DEFAULT_OLLAMA_URL = get_default_ollama_url()
 
@@ -273,7 +284,7 @@ def get_model_min_version(model_name: str) -> str | None:
 def cmd_check_installed(args) -> None:
     """Check if Ollama executable is installed on the system."""
     executable = find_executable("ollama")
-    
+
     if executable:
         output_json(
             True,
@@ -281,7 +292,7 @@ def cmd_check_installed(args) -> None:
                 "installed": True,
                 "path": executable,
                 "platform": get_platform_description(),
-            }
+            },
         )
     else:
         output_json(
@@ -289,7 +300,7 @@ def cmd_check_installed(args) -> None:
             data={
                 "installed": False,
                 "message": "Ollama executable not found in system PATH. Please install it from https://ollama.com",
-            }
+            },
         )
 
 
@@ -607,11 +618,13 @@ def main():
         "--base-url", help=f"Ollama server URL (default: {DEFAULT_OLLAMA_URL})"
     )
 
-    # pull-model command
     pull_parser = subparsers.add_parser(
         "pull-model", help="Pull (download) an Ollama model"
     )
     pull_parser.add_argument("model", help="Model name to pull (e.g., embeddinggemma)")
+    pull_parser.add_argument(
+        "--base-url", help=f"Ollama server URL (default: {DEFAULT_OLLAMA_URL})"
+    )
 
     args = parser.parse_args()
 

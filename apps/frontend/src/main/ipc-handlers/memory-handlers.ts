@@ -5,7 +5,7 @@
  * Uses LadybugDB (embedded Kuzu-based database) - no Docker required.
  */
 
-import { ipcMain } from 'electron';
+import { app, ipcMain } from 'electron';
 import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -81,8 +81,13 @@ interface OllamaPullResult {
  */
 function getOllamaDetectorPath(): string | null {
   const possiblePaths = [
+    // Production path (when packaged)
+    ...(app.isPackaged
+      ? [path.join(process.resourcesPath, 'backend', 'ollama_model_detector.py')]
+      : []),
     // Development paths
     path.resolve(__dirname, '..', '..', '..', '..', 'backend', 'ollama_model_detector.py'),
+    path.resolve(app.getAppPath(), '..', 'backend', 'ollama_model_detector.py'),
     path.resolve(process.cwd(), 'apps', 'backend', 'ollama_model_detector.py'),
     // Legacy paths (for backwards compatibility)
     path.resolve(__dirname, '..', '..', '..', 'auto-claude', 'ollama_model_detector.py'),
@@ -114,10 +119,10 @@ function getOllamaDetectorPath(): string | null {
  * @param {string} [baseUrl] - Optional Ollama API base URL (defaults to http://localhost:11434)
  * @returns {Promise<{success, data?, error?}>} Result object with success flag and data/error
  */
-async function executeOllamaDetector(
+async function executeOllamaDetector<T = unknown>(
   command: string,
   baseUrl?: string
-): Promise<{ success: boolean; data?: unknown; error?: string }> {
+): Promise<{ success: boolean; data?: T; error?: string }> {
   const pythonCmd = findPythonCommand();
   if (!pythonCmd) {
     return { success: false, error: 'Python not found' };
@@ -394,7 +399,7 @@ export function registerMemoryHandlers(): void {
     IPC_CHANNELS.OLLAMA_CHECK_STATUS,
     async (_, baseUrl?: string): Promise<IPCResult<OllamaStatus>> => {
       try {
-        const result = await executeOllamaDetector('check-status', baseUrl);
+        const result = await executeOllamaDetector<OllamaStatus>('check-status', baseUrl);
 
         if (!result.success) {
           return {
@@ -405,7 +410,7 @@ export function registerMemoryHandlers(): void {
 
         return {
           success: true,
-          data: result.data as OllamaStatus,
+          data: result.data!,
         };
       } catch (error) {
         return {
@@ -421,13 +426,13 @@ export function registerMemoryHandlers(): void {
     IPC_CHANNELS.OLLAMA_CHECK_INSTALLED,
     async (): Promise<IPCResult<{ installed: boolean; path?: string }>> => {
       try {
-        const result = await executeOllamaDetector('check-installed');
+        const result = await executeOllamaDetector<{ installed: boolean; path?: string }>('check-installed');
         if (!result.success) {
           return { success: false, error: result.error || 'Failed to check if Ollama is installed' };
         }
         return {
           success: true,
-          data: result.data as { installed: boolean; path?: string },
+          data: result.data!,
         };
       } catch (error) {
         return {
@@ -471,7 +476,7 @@ export function registerMemoryHandlers(): void {
     IPC_CHANNELS.OLLAMA_LIST_MODELS,
     async (_, baseUrl?: string): Promise<IPCResult<{ models: OllamaModel[]; count: number }>> => {
       try {
-        const result = await executeOllamaDetector('list-models', baseUrl);
+        const result = await executeOllamaDetector<{ models: OllamaModel[]; count: number; url: string }>('list-models', baseUrl);
 
         if (!result.success) {
           return {
@@ -480,7 +485,7 @@ export function registerMemoryHandlers(): void {
           };
         }
 
-        const data = result.data as { models: OllamaModel[]; count: number; url: string };
+        const data = result.data!;
         return {
           success: true,
           data: {
@@ -512,7 +517,10 @@ export function registerMemoryHandlers(): void {
       baseUrl?: string
     ): Promise<IPCResult<{ recommended: OllamaRecommendedModel[]; count: number }>> => {
       try {
-        const result = await executeOllamaDetector('get-recommended-models', baseUrl);
+        const result = await executeOllamaDetector<{
+          recommended: OllamaRecommendedModel[];
+          count: number;
+        }>('get-recommended-models', baseUrl);
 
         if (!result.success) {
           return {
@@ -521,10 +529,7 @@ export function registerMemoryHandlers(): void {
           };
         }
 
-        const data = result.data as {
-          recommended: OllamaRecommendedModel[];
-          count: number;
-        };
+        const data = result.data!;
         return {
           success: true,
           data: {
@@ -557,7 +562,11 @@ export function registerMemoryHandlers(): void {
       baseUrl?: string
     ): Promise<IPCResult<{ embedding_models: OllamaEmbeddingModel[]; count: number }>> => {
       try {
-        const result = await executeOllamaDetector('list-embedding-models', baseUrl);
+        const result = await executeOllamaDetector<{
+          embedding_models: OllamaEmbeddingModel[];
+          count: number;
+          url: string;
+        }>('list-embedding-models', baseUrl);
 
         if (!result.success) {
           return {
@@ -566,11 +575,7 @@ export function registerMemoryHandlers(): void {
           };
         }
 
-        const data = result.data as {
-          embedding_models: OllamaEmbeddingModel[];
-          count: number;
-          url: string;
-        };
+        const data = result.data!;
         return {
           success: true,
           data: {
@@ -686,23 +691,24 @@ export function registerMemoryHandlers(): void {
             clearTimeout(timeoutId);
             if (code === 0 && stdout) {
               try {
-                const result = JSON.parse(stdout);
-                if (result.success) {
+                const resultData = JSON.parse(stdout);
+                if (resultData.success) {
                   resolve({
                     success: true,
-                    data: result.data as OllamaPullResult,
+                    data: resultData.data as OllamaPullResult,
                   });
                 } else {
                   resolve({
                     success: false,
-                    error: result.error || 'Failed to pull model',
+                    error: resultData.error || 'Failed to pull model',
                   });
                 }
               } catch {
                 resolve({ success: false, error: `Invalid JSON: ${stdout}` });
               }
             } else {
-              resolve({ success: false, error: stderr || `Exit code ${code}` });
+              const errorMessage = code === null ? 'Timeout: model download timed out after 10 minutes' : (stderr || `Exit code ${code}`);
+              resolve({ success: false, error: errorMessage });
             }
           });
 

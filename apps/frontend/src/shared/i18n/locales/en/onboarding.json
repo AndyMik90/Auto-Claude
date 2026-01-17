@@ -238,6 +238,25 @@
     "downloading": "Downloading...",
     "installed": "Installed",
     "retry": "Retry",
-    "iveInstalledIt": "I've installed it"
+    "iveInstalledIt": "I've installed it",
+    "title": "Ollama Models",
+    "checkingModels": "Checking Ollama models...",
+    "refresh": "Refresh",
+    "footer": "Select an installed model for semantic search. Memory works with keyword search even without embeddings.",
+    "timeRemaining": {
+      "hours": "{{count}}h remaining",
+      "minutes": "{{count}}m remaining",
+      "seconds": "{{count}}s remaining"
+    },
+    "modelDescriptions": {
+      "embeddinggemma": "Google's lightweight embedding model (Recommended)",
+      "nomic-embed-text": "Popular general-purpose embeddings",
+      "mxbai-embed-large": "MixedBread AI large embeddings"
+    },
+    "errors": {
+      "checkFailed": "Failed to check Ollama models",
+      "downloadFailed": "Failed to download {{modelName}}",
+      "genericDownloadFailed": "Download failed"
+    }
   }
 }
