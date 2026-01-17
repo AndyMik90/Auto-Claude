@@ -34,6 +34,8 @@ _WINDOWS_INVALID_CHARS_MAP = str.maketrans(
         "|": "_",
         "?": "_",
         "*": "_",
+        "/": "_",  # Path separator - prevent directory traversal
+        "\\": "_",  # Windows path separator - prevent directory traversal
     }
 )
 
@@ -127,8 +129,11 @@ def sanitize_filename(filename: str) -> str:
     if not filename or not filename.strip():
         return "_"
 
+    # Remove null bytes and control characters (ASCII 0-31 and DEL 127)
+    sanitized = "".join(c for c in filename if ord(c) >= 32 and c != "\x7f")
+
     # Replace invalid characters
-    sanitized = filename.translate(_WINDOWS_INVALID_CHARS_MAP)
+    sanitized = sanitized.translate(_WINDOWS_INVALID_CHARS_MAP)
 
     # Remove trailing dots and spaces (Windows doesn't allow them)
     sanitized = sanitized.rstrip(". ")
@@ -184,6 +189,9 @@ def safe_open(
     Drop-in replacement for built-in open() that handles Windows path
     normalization and long path support.
 
+    Note: For write modes ('w', 'x', 'a'), this function automatically creates
+    parent directories if they don't exist.
+
     Args:
         filepath: Path to the file
         mode: File open mode (default: "r")
@@ -193,7 +201,14 @@ def safe_open(
     Returns:
         File handle
     """
+    original_path = Path(filepath)
     safe = safe_path(filepath)
+
+    # Log warning if path was modified during sanitization
+    if safe != normalize_path(original_path):
+        logging.warning(
+            f"Filename was sanitized: '{original_path.name}' -> '{safe.name}'"
+        )
 
     # Ensure parent directory exists for write modes
     if any(c in mode for c in "wxa"):
