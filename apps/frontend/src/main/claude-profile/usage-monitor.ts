@@ -985,12 +985,21 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Calculate 5-hour window reset time
-      // The 5-hour window is a rolling window. Current time is the end of the window,
-      // so the window resets at the current hour every hour.
+      // The 5-hour window is a rolling window that resets at 5-hour intervals (0:00, 5:00, 10:00, 15:00, 20:00)
+      // Calculate the next 5-hour mark from the current time
       const now = new Date();
-      const nextHour = new Date(now);
-      nextHour.setHours(now.getHours() + 1, 0, 0, 0);
-      const sessionResetTimestamp = nextHour.toISOString();
+      const currentHour = now.getHours();
+      // Find the next hour that's a multiple of 5
+      const nextFiveHourMark = Math.ceil(currentHour / 5) * 5;
+      // Handle wraparound at midnight (if nextFiveHourMark is 24 or more, use next day)
+      const resetHour = nextFiveHourMark >= 24 ? 0 : nextFiveHourMark;
+      const nextResetDate = new Date(now);
+      if (nextFiveHourMark >= 24) {
+        // Move to next day
+        nextResetDate.setDate(nextResetDate.getDate() + 1);
+      }
+      nextResetDate.setHours(resetHour, 0, 0, 0);
+      const sessionResetTimestamp = nextResetDate.toISOString();
 
       // Calculate monthly reset time (1st of next month)
       const nextMonth = new Date(now);
@@ -1088,12 +1097,21 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Calculate 5-hour window reset time
-      // The 5-hour window is a rolling window. Current time is the end of the window,
-      // so the window resets at the current hour every hour.
+      // The 5-hour window is a rolling window that resets at 5-hour intervals (0:00, 5:00, 10:00, 15:00, 20:00)
+      // Calculate the next 5-hour mark from the current time
       const now = new Date();
-      const nextHour = new Date(now);
-      nextHour.setHours(now.getHours() + 1, 0, 0, 0);
-      const sessionResetTimestamp = nextHour.toISOString();
+      const currentHour = now.getHours();
+      // Find the next hour that's a multiple of 5
+      const nextFiveHourMark = Math.ceil(currentHour / 5) * 5;
+      // Handle wraparound at midnight (if nextFiveHourMark is 24 or more, use next day)
+      const resetHour = nextFiveHourMark >= 24 ? 0 : nextFiveHourMark;
+      const nextResetDate = new Date(now);
+      if (nextFiveHourMark >= 24) {
+        // Move to next day
+        nextResetDate.setDate(nextResetDate.getDate() + 1);
+      }
+      nextResetDate.setHours(resetHour, 0, 0, 0);
+      const sessionResetTimestamp = nextResetDate.toISOString();
 
       // Calculate monthly reset time (1st of next month)
       const nextMonth = new Date(now);
