@@ -280,6 +280,33 @@ class GitHubOrchestrator:
                 )
 
     # =========================================================================
+    # Helper Methods
+    # =========================================================================
+
+    async def _create_skip_result(
+        self, pr_number: int, skip_reason: str
+    ) -> PRReviewResult:
+        """Create and save a skip result for a PR that should not be reviewed.
+
+        Args:
+            pr_number: The PR number
+            skip_reason: Reason why the review was skipped
+
+        Returns:
+            PRReviewResult with success=True and skip reason in summary
+        """
+        result = PRReviewResult(
+            pr_number=pr_number,
+            repo=self.config.repo,
+            success=True,
+            findings=[],
+            summary=f"Skipped review: {skip_reason}",
+            overall_status="comment",
+        )
+        await result.save(self.github_dir)
+        return result
+
+    # =========================================================================
     # PR REVIEW WORKFLOW
     # =========================================================================
 
@@ -367,28 +394,10 @@ class GitHubOrchestrator:
                         # Fall through to perform a new review (don't return here)
                     else:
                         # No existing review found, create skip result
-                        result = PRReviewResult(
-                            pr_number=pr_number,
-                            repo=self.config.repo,
-                            success=True,
-                            findings=[],
-                            summary=f"Skipped review: {skip_reason}",
-                            overall_status="comment",
-                        )
-                        await result.save(self.github_dir)
-                        return result
+                        return await self._create_skip_result(pr_number, skip_reason)
                 else:
                     # For other skip reasons (bot-authored, cooling off), create a skip result
-                    result = PRReviewResult(
-                        pr_number=pr_number,
-                        repo=self.config.repo,
-                        success=True,
-                        findings=[],
-                        summary=f"Skipped review: {skip_reason}",
-                        overall_status="comment",
-                    )
-                    await result.save(self.github_dir)
-                    return result
+                    return await self._create_skip_result(pr_number, skip_reason)
 
             self._report_progress(
                 "analyzing", 30, "Running multi-pass review...", pr_number=pr_number

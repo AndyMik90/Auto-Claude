@@ -388,8 +388,13 @@ class TestOrchestratorSkipLogic:
             assert "bot user" in result.summary
 
     @pytest.mark.asyncio
-    async def test_failed_review_allows_re_review(self, temp_github_dir):
-        """Test that a failed existing review does NOT block re-review attempts."""
+    async def test_failed_review_model_persistence(self, temp_github_dir):
+        """Test that a failed PRReviewResult can be saved and loaded with success=False.
+
+        This verifies that the model correctly persists failure state, which is
+        a prerequisite for the orchestrator's re-review logic (tested separately
+        in TestOrchestratorReReviewLogic).
+        """
         failed_review = PRReviewResult(
             pr_number=789,
             repo="test/repo",
@@ -402,13 +407,12 @@ class TestOrchestratorSkipLogic:
         )
         await failed_review.save(temp_github_dir)
 
-        skip_reason = "Already reviewed commit abc123de"
-
-        if "Already reviewed" in skip_reason:
-            existing_review = PRReviewResult.load(temp_github_dir, 789)
-            assert existing_review is not None
-            assert existing_review.success is False
-            # Failed review should NOT block - orchestrator should allow re-review
+        # Verify the failed review can be loaded and maintains its failure state
+        loaded_review = PRReviewResult.load(temp_github_dir, 789)
+        assert loaded_review is not None
+        assert loaded_review.success is False
+        assert loaded_review.error == "SDK stream processing failed"
+        assert loaded_review.reviewed_commit_sha == "abc123def456"
 
 
 # ============================================================================
