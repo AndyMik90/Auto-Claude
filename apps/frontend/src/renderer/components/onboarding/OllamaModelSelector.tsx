@@ -226,11 +226,11 @@ export function OllamaModelSelector({
 
         // Format speed (MB/s or KB/s)
         if (speed > 1024 * 1024) {
-          speedStr = `${(speed / (1024 * 1024)).toFixed(1)} MB/s`;
+          speedStr = t('ollama.speed.mbPerSec', { value: (speed / (1024 * 1024)).toFixed(1) });
         } else if (speed > 1024) {
-          speedStr = `${(speed / 1024).toFixed(1)} KB/s`;
+          speedStr = t('ollama.speed.kbPerSec', { value: (speed / 1024).toFixed(1) });
         } else if (speed > 0) {
-          speedStr = `${Math.round(speed)} B/s`;
+          speedStr = t('ollama.speed.bPerSec', { value: Math.round(speed) });
         }
 
         // Format time remaining
@@ -392,7 +392,7 @@ export function OllamaModelSelector({
           disabled={loading || !!isDownloading || disabled}
           className="h-8 px-2 text-xs"
         >
-          <RefreshCw className={cn('mr-2 h-3.3 w-3.3', loading && 'animate-spin')} />
+          <RefreshCw className={cn('mr-2 h-3.5 w-3.5', loading && 'animate-spin')} />
           {loading ? t('ollama.checkingModels') : t('ollama.refresh')}
         </Button>
       </div>
@@ -444,7 +444,7 @@ export function OllamaModelSelector({
                         </span>
                       )}
                       <span className="text-xs text-muted-foreground">
-                        ({model.dim} dim)
+                        {t('ollama.dimLabel', { dim: model.dim })}
                       </span>
                       {model.installed && (
                         <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">

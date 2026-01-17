@@ -248,6 +248,12 @@
       "minutes": "{{count}}m remaining",
       "seconds": "{{count}}s remaining"
     },
+    "speed": {
+      "mbPerSec": "{{value}} MB/s",
+      "kbPerSec": "{{value}} KB/s",
+      "bPerSec": "{{value}} B/s"
+    },
+    "dimLabel": "({{dim}} dim)",
     "modelDescriptions": {
       "embeddinggemma": "Google's lightweight embedding model (Recommended)",
       "nomic-embed-text": "Popular general-purpose embeddings",

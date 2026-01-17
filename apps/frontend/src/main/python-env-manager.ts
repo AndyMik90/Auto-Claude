@@ -710,7 +710,7 @@ if sys.version_info >= (3, 12):
     // Windows-specific pywin32 DLL loading fix
     // On Windows with bundled packages, we need to ensure pywin32 DLLs can be found.
     // The DLL copying in fixPywin32() is the primary fix - this PATH addition is a fallback.
-    let windowsEnv: Record<string, string> = {};
+    const windowsEnv: Record<string, string> = {};
     if (this.sitePackagesPath && isWindows()) {
       const pywin32System32 = path.join(this.sitePackagesPath, 'pywin32_system32');
 

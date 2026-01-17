@@ -97,7 +97,12 @@ function getOllamaDetectorPath(): string | null {
 
   for (const p of possiblePaths) {
     if (fs.existsSync(p)) {
-      return p;
+      // Validate backend structure by checking for spec_runner.py marker (consistent with memory-service)
+      const backendPath = path.dirname(p);
+      const specRunnerPath = path.join(backendPath, 'runners', 'spec_runner.py');
+      if (fs.existsSync(specRunnerPath) || p.includes('backend')) {
+        return p;
+      }
     }
   }
   return null;
