@@ -23,6 +23,7 @@ import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
 import { parseEnvFile } from './utils';
 import { logger } from '../app-logger';
+import { getCurrentOS, isWindows, isMacOS, isLinux } from '../platform';
 
 const settingsPath = getSettingsPath();
 
@@ -63,7 +64,7 @@ const detectAutoBuildSourcePath = (): string | null => {
   const debug = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
 
   if (debug) {
-    logger.warn('[detectAutoBuildSourcePath] Platform:', process.platform);
+    logger.warn('[detectAutoBuildSourcePath] Platform:', getCurrentOS());
     logger.warn('[detectAutoBuildSourcePath] Is dev:', is.dev);
     logger.warn('[detectAutoBuildSourcePath] __dirname:', __dirname);
     logger.warn('[detectAutoBuildSourcePath] app.getAppPath():', app.getAppPath());
@@ -479,12 +480,10 @@ export function registerSettingsHandlers(
           };
         }
 
-        const platform = process.platform;
-
-        if (platform === 'darwin') {
+        if (isMacOS()) {
           // macOS: Use execFileSync with argument array to prevent injection
           execFileSync('open', ['-a', 'Terminal', resolvedPath], { stdio: 'ignore' });
-        } else if (platform === 'win32') {
+        } else if (isWindows()) {
           // Windows: Use cmd.exe directly with argument array
           // /C tells cmd to execute the command and terminate
           // /K keeps the window open after executing cd
