@@ -841,17 +841,6 @@ ${t('prReview.blockedStatusMessageFooter')}`;
                       </Button>
                     </div>
                   )}
-                  {branchUpdateSuccess && (
-                    <div className="flex items-center gap-2 mt-2 text-xs text-success animate-in fade-in duration-200">
-                      <CheckCircle className="h-3 w-3" />
-                      {t('prReview.branchUpdated')}
-                    </div>
-                  )}
-                  {branchUpdateError && (
-                    <div className="text-xs text-destructive mt-2 animate-in fade-in duration-200">
-                      {branchUpdateError}
-                    </div>
-                  )}
                   <p className="text-xs text-warning/70 mt-2">
                     {t('prReview.rerunReviewSuggestion', 'Consider re-running the review after resolving these issues.')}
                   </p>
@@ -859,6 +848,18 @@ ${t('prReview.blockedStatusMessageFooter')}`;
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {branchUpdateSuccess && (
+          <div className="flex items-center gap-2 text-xs text-success animate-in fade-in duration-200">
+            <CheckCircle className="h-3 w-3" />
+            {t('prReview.branchUpdated')}
+          </div>
+        )}
+        {branchUpdateError && (
+          <div className="text-xs text-destructive animate-in fade-in duration-200">
+            {branchUpdateError}
+          </div>
         )}
 
         {/* Review Status & Actions */}

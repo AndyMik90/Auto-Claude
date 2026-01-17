@@ -2376,7 +2376,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             friendlyError = "Branch protection rules prevent this update.";
           } else if (errorMessage.includes("ENOTFOUND") || errorMessage.includes("ECONNREFUSED") || errorMessage.includes("ETIMEDOUT")) {
             friendlyError = "Network error. Check your internet connection and try again.";
-          } else if (errorMessage.includes("already up to date")) {
+          } else if (errorMessage.toLowerCase().includes("already up to date")) {
             return { success: true }; // Not an error
           }
 
