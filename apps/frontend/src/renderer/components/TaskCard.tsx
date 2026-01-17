@@ -361,8 +361,7 @@ export const TaskCard = memo(function TaskCard({
         isRunning && !isStuck && 'ring-2 ring-primary border-primary task-running-pulse',
         isStuck && 'ring-2 ring-warning border-warning task-stuck-pulse',
         isArchived && 'opacity-60 hover:opacity-80',
-        // Selected state: accent border with subtle background tint (dark-first design)
-        isSelectable && isSelected && 'ring-2 ring-[var(--color-accent-primary)] border-[var(--color-accent-primary)] bg-[var(--color-accent-primary-light)]'
+        isSelectable && isSelected && 'ring-2 ring-ring border-ring bg-accent/10'
       )}
       onClick={onClick}
     >

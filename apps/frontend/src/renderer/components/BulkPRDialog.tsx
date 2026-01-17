@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   GitPullRequest,
   Loader2,
@@ -24,6 +24,20 @@ import { Checkbox } from './ui/checkbox';
 import { Progress } from './ui/progress';
 import { ScrollArea } from './ui/scroll-area';
 import type { Task, WorktreeCreatePRResult } from '../../shared/types';
+
+/**
+ * Check if an error message indicates a worktree-related issue (missing worktree, no branch, etc.)
+ * This is used to show 'skipped' status instead of 'error' for tasks without worktrees.
+ *
+ * TODO: This string-based error detection is brittle. The API should ideally return typed error codes
+ * instead of relying on message parsing which may break with i18n or message changes.
+ */
+function isWorktreeRelatedError(errorMsg: string): boolean {
+  const lowerMsg = errorMsg.toLowerCase();
+  return lowerMsg.includes('worktree') ||
+         lowerMsg.includes('no branch') ||
+         lowerMsg.includes('not found');
+}
 
 /**
  * Result for a single task in the bulk PR creation
@@ -64,15 +78,21 @@ export function BulkPRDialog({
   const [step, setStep] = useState<'options' | 'creating' | 'results'>('options');
   const [taskResults, setTaskResults] = useState<TaskPRResult[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const isCancelledRef = useRef(false);
 
-  // Reset state when dialog opens
+  const prevOpenRef = useRef(open);
+
+  // Only reset when transitioning closed→open (not on tasks array changes during async operation)
   useEffect(() => {
-    if (open) {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+
+    if (open && !wasOpen) {
       setTargetBranch('');
       setIsDraft(false);
       setStep('options');
       setCurrentIndex(0);
-      // Initialize task results
+      isCancelledRef.current = false;
       setTaskResults(tasks.map(task => ({
         taskId: task.id,
         taskTitle: task.title,
@@ -90,7 +110,6 @@ export function BulkPRDialog({
     return null;
   }, [t]);
 
-  // Create PRs for all tasks sequentially
   const handleCreatePRs = useCallback(async () => {
     const branchError = validateBranchName(targetBranch);
     if (branchError) {
@@ -98,6 +117,7 @@ export function BulkPRDialog({
     }
 
     setStep('creating');
+    isCancelledRef.current = false;
 
     const results: TaskPRResult[] = tasks.map(task => ({
       taskId: task.id,
@@ -107,9 +127,10 @@ export function BulkPRDialog({
     setTaskResults(results);
 
     for (let i = 0; i < tasks.length; i++) {
+      if (isCancelledRef.current) break;
+
       setCurrentIndex(i);
 
-      // Update status to creating
       setTaskResults(prev => prev.map((r, idx) =>
         idx === i ? { ...r, status: 'creating' as const } : r
       ));
@@ -119,6 +140,8 @@ export function BulkPRDialog({
           targetBranch: targetBranch || undefined,
           draft: isDraft
         });
+
+        if (isCancelledRef.current) break;
 
         if (prResult?.success && prResult.data) {
           const data = prResult.data;
@@ -132,31 +155,26 @@ export function BulkPRDialog({
             } : r
           ));
         } else {
-          // Check if error is related to missing worktree
           const errorMsg = prResult?.error || '';
-          const isWorktreeError = errorMsg.toLowerCase().includes('worktree') ||
-                                   errorMsg.toLowerCase().includes('no branch') ||
-                                   errorMsg.toLowerCase().includes('not found');
           setTaskResults(prev => prev.map((r, idx) =>
             idx === i ? {
               ...r,
-              status: isWorktreeError ? 'skipped' as const : 'error' as const,
-              error: isWorktreeError
+              status: isWorktreeRelatedError(errorMsg) ? 'skipped' as const : 'error' as const,
+              error: isWorktreeRelatedError(errorMsg)
                 ? t('taskReview:bulkPR.noWorktree')
                 : (prResult?.error || t('taskReview:pr.errors.unknown'))
             } : r
           ));
         }
       } catch (err) {
+        if (isCancelledRef.current) break;
+
         const errorMsg = err instanceof Error ? err.message : '';
-        const isWorktreeError = errorMsg.toLowerCase().includes('worktree') ||
-                                 errorMsg.toLowerCase().includes('no branch') ||
-                                 errorMsg.toLowerCase().includes('not found');
         setTaskResults(prev => prev.map((r, idx) =>
           idx === i ? {
             ...r,
-            status: isWorktreeError ? 'skipped' as const : 'error' as const,
-            error: isWorktreeError
+            status: isWorktreeRelatedError(errorMsg) ? 'skipped' as const : 'error' as const,
+            error: isWorktreeRelatedError(errorMsg)
               ? t('taskReview:bulkPR.noWorktree')
               : (err instanceof Error ? err.message : t('taskReview:pr.errors.unknown'))
           } : r
@@ -164,10 +182,13 @@ export function BulkPRDialog({
       }
     }
 
-    setStep('results');
+    if (!isCancelledRef.current) {
+      setStep('results');
+    }
   }, [tasks, targetBranch, isDraft, t, validateBranchName]);
 
   const handleClose = () => {
+    isCancelledRef.current = true;
     if (step === 'results' && onComplete) {
       onComplete();
     }
@@ -257,7 +278,7 @@ export function BulkPRDialog({
               <Button variant="outline" onClick={handleClose}>
                 {t('common:buttons.cancel')}
               </Button>
-              <Button onClick={handleCreatePRs} disabled={tasks.length === 0}>
+              <Button onClick={handleCreatePRs} disabled={tasks.length === 0 || step !== 'options'}>
                 <GitPullRequest className="mr-2 h-4 w-4" />
                 {t('taskReview:bulkPR.createAll', { count: tasks.length })}
               </Button>
@@ -399,7 +420,10 @@ function TaskResultRow({ result, index, showDetails, onOpenPR }: TaskResultRowPr
         {showDetails && result.status === 'success' && result.result?.prUrl && (
           <button
             type="button"
-            onClick={() => onOpenPR?.(result.result!.prUrl!)}
+            onClick={() => {
+              const prUrl = result.result?.prUrl;
+              if (prUrl) onOpenPR?.(prUrl);
+            }}
             className="text-xs text-primary hover:underline flex items-center gap-1 mt-1 bg-transparent border-none cursor-pointer p-0"
           >
             {result.alreadyExists

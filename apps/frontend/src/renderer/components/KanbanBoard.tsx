@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useCallback } from 'react';
+import { useState, useMemo, memo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewState } from '../contexts/ViewStateContext';
 import {
@@ -494,6 +494,15 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     return grouped;
   }, [filteredTasks]);
 
+  // Prune stale IDs when tasks move out of human_review column
+  useEffect(() => {
+    const validIds = new Set(tasksByStatus.human_review.map(t => t.id));
+    setSelectedTaskIds(prev => {
+      const filtered = new Set([...prev].filter(id => validIds.has(id)));
+      return filtered.size === prev.size ? prev : filtered;
+    });
+  }, [tasksByStatus.human_review]);
+
   // Selection callbacks for bulk actions (Human Review column)
   const toggleTaskSelection = useCallback((taskId: string) => {
     setSelectedTaskIds(prev => {
@@ -735,14 +744,13 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         </DragOverlay>
       </DndContext>
 
-      {/* Floating action bar for bulk selection - card styling from design.json */}
       {selectedTaskIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-surface-card)] shadow-[var(--shadow-lg)] backdrop-blur-sm">
-            <span className="text-sm font-medium text-[var(--color-text-primary)]">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-border bg-card shadow-lg backdrop-blur-sm">
+            <span className="text-sm font-medium text-foreground">
               {t('kanban.selectedCountOther', { count: selectedTaskIds.size })}
             </span>
-            <div className="w-px h-5 bg-[var(--color-border-default)]" />
+            <div className="w-px h-5 bg-border" />
             <Button
               variant="default"
               size="sm"
