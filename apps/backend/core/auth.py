@@ -52,6 +52,19 @@ SDK_ENV_VARS = [
 ]
 
 
+def is_encrypted_token(token: str) -> bool:
+    """
+    Check if a token is encrypted (has "enc:" prefix).
+
+    Args:
+        token: Token string to check
+
+    Returns:
+        True if token starts with "enc:", False otherwise
+    """
+    return token.startswith("enc:")
+
+
 def get_token_from_keychain() -> str | None:
     """
     Get authentication token from system credential store.
