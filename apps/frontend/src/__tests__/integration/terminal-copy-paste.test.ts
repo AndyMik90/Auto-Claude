@@ -66,7 +66,6 @@ describe('Terminal copy/paste integration', () => {
   };
 
   beforeEach(() => {
-    vi.useFakeTimers();
     vi.clearAllMocks();
 
     // Mock ResizeObserver
@@ -105,8 +104,6 @@ describe('Terminal copy/paste integration', () => {
   });
 
   afterEach(() => {
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -173,7 +170,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(event);
           // Wait for clipboard write
-          await vi.runAllTimersAsync();
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       });
 
@@ -345,7 +342,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(event);
           // Wait for clipboard read and paste
-          await vi.runAllTimersAsync();
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       });
 
@@ -425,7 +422,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(event);
           // Wait for clipboard read
-          await vi.runAllTimersAsync();
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       });
 
@@ -517,7 +514,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(copyEvent);
           // Wait for clipboard write
-          await vi.runAllTimersAsync();
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
 
         // Copy should not send input to terminal
@@ -532,7 +529,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(pasteEvent);
           // Wait for clipboard read
-          await vi.runAllTimersAsync();
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
 
         // Paste should use xterm.paste(), not xterm.input()
@@ -717,7 +714,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(pasteEvent);
           // Wait for clipboard error
-          await vi.runAllTimersAsync();
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       });
 
