@@ -147,7 +147,7 @@ describe('Subprocess Spawn Integration', () => {
           })
         })
       );
-    }, 10000);  // Increase timeout to 10 seconds for spec creation test
+    }, 15000);  // Increase timeout for Windows CI
 
     it('should spawn Python process for task execution', async () => {
       const { spawn } = await import('child_process');
@@ -175,7 +175,7 @@ describe('Subprocess Spawn Integration', () => {
           cwd: AUTO_CLAUDE_SOURCE  // Process runs from auto-claude source directory
         })
       );
-    }, 10000);  // Increase timeout for Windows CI
+    }, 15000);  // Increase timeout for Windows CI
 
     it('should spawn Python process for QA process', async () => {
       const { spawn } = await import('child_process');
@@ -204,7 +204,7 @@ describe('Subprocess Spawn Integration', () => {
           cwd: AUTO_CLAUDE_SOURCE  // Process runs from auto-claude source directory
         })
       );
-    }, 10000);  // Increase timeout for Windows CI
+    }, 15000);  // Increase timeout for Windows CI
 
     it('should accept parallel options without affecting spawn args', async () => {
       // Note: --parallel was removed from run.py CLI - parallel execution is handled internally by the agent

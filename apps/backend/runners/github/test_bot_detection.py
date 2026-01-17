@@ -417,6 +417,9 @@ class TestEdgeCases:
 class TestGhExecutableDetection:
     """Test gh executable detection in bot_detector._get_bot_username."""
 
+    # Mock gh path constant (platform-agnostic for testing, never used for actual filesystem operations)
+    MOCK_GH_PATH = "/mock/path/to/gh"
+
     def test_get_bot_username_with_gh_not_found(self, temp_state_dir):
         """Test _get_bot_username when gh CLI is not found."""
         with patch("bot_detection.get_gh_executable", return_value=None):
@@ -431,9 +434,7 @@ class TestGhExecutableDetection:
 
     def test_get_bot_username_with_detected_gh(self, temp_state_dir):
         """Test _get_bot_username when gh CLI is found."""
-        mock_gh_path = "/usr/bin/gh"
-
-        with patch("bot_detection.get_gh_executable", return_value=mock_gh_path):
+        with patch("bot_detection.get_gh_executable", return_value=self.MOCK_GH_PATH):
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(
                     returncode=0,
@@ -452,19 +453,18 @@ class TestGhExecutableDetection:
                 # Verify subprocess was called with the correct gh path
                 mock_run.assert_called_once()
                 called_cmd_list = mock_run.call_args[0][0]
-                assert called_cmd_list[0] == mock_gh_path
+                assert called_cmd_list[0] == self.MOCK_GH_PATH
                 assert called_cmd_list[1:] == ["api", "user"]
 
     def test_get_bot_username_uses_get_gh_executable_return_value(
         self, temp_state_dir, monkeypatch
     ):
         """Test that _get_bot_username uses the path returned by get_gh_executable."""
-        env_path = "/custom/path/to/gh"
         # Note: GITHUB_CLI_PATH env var is tested by get_gh_executable's own tests
         # This test verifies _get_bot_username uses whatever get_gh_executable returns
-        monkeypatch.setenv("GITHUB_CLI_PATH", env_path)
+        monkeypatch.setenv("GITHUB_CLI_PATH", self.MOCK_GH_PATH)
 
-        with patch("bot_detection.get_gh_executable", return_value=env_path):
+        with patch("bot_detection.get_gh_executable", return_value=self.MOCK_GH_PATH):
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(
                     returncode=0,
@@ -483,12 +483,12 @@ class TestGhExecutableDetection:
                 # Verify subprocess was called with the correct path
                 mock_run.assert_called_once()
                 called_cmd_list = mock_run.call_args[0][0]
-                assert called_cmd_list[0] == env_path
+                assert called_cmd_list[0] == self.MOCK_GH_PATH
                 assert called_cmd_list[1:] == ["api", "user"]
 
     def test_get_bot_username_with_api_error(self, temp_state_dir):
         """Test _get_bot_username when gh api command fails."""
-        with patch("bot_detection.get_gh_executable", return_value="/usr/bin/gh"):
+        with patch("bot_detection.get_gh_executable", return_value=self.MOCK_GH_PATH):
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(
                     returncode=1,
@@ -506,7 +506,7 @@ class TestGhExecutableDetection:
 
     def test_get_bot_username_with_subprocess_timeout(self, temp_state_dir):
         """Test _get_bot_username when subprocess times out."""
-        with patch("bot_detection.get_gh_executable", return_value="/usr/bin/gh"):
+        with patch("bot_detection.get_gh_executable", return_value=self.MOCK_GH_PATH):
             with patch(
                 "subprocess.run", side_effect=subprocess.TimeoutExpired("gh", 5)
             ):

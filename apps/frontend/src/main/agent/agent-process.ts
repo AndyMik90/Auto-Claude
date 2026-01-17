@@ -136,7 +136,7 @@ export class AgentProcessManager {
           console.log(`[AgentProcess] Setting ${envVarName}:`, toolInfo.path, `(source: ${toolInfo.source})`);
         }
       } catch (error) {
-        console.warn(`[AgentProcess] Failed to detect ${toolName} CLI path:`, error);
+        console.warn(`[AgentProcess] Failed to detect ${toolName} CLI path:`, error instanceof Error ? error.message : String(error));
       }
     }
     return env;
