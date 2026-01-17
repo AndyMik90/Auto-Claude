@@ -62,6 +62,7 @@ interface DroppableColumnProps {
   selectedTaskIds?: Set<string>;
   onSelectAll?: () => void;
   onDeselectAll?: () => void;
+  onToggleSelect?: (taskId: string) => void;
 }
 
 /**
@@ -107,6 +108,7 @@ function droppableColumnPropsAreEqual(
   if (prevProps.onToggleArchived !== nextProps.onToggleArchived) return false;
   if (prevProps.onSelectAll !== nextProps.onSelectAll) return false;
   if (prevProps.onDeselectAll !== nextProps.onDeselectAll) return false;
+  if (prevProps.onToggleSelect !== nextProps.onToggleSelect) return false;
 
   // Compare selectedTaskIds Set
   if (prevProps.selectedTaskIds !== nextProps.selectedTaskIds) {
@@ -171,7 +173,7 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll }: DroppableColumnProps) {
+const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll, onToggleSelect }: DroppableColumnProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { setNodeRef } = useDroppable({
     id: status
@@ -221,18 +223,32 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
     return handlers;
   }, [tasks, onStatusChange]);
 
+  // Create stable onToggleSelect handlers for each task (only for human_review column)
+  const onToggleSelectHandlers = useMemo(() => {
+    if (!onToggleSelect) return null;
+    const handlers = new Map<string, () => void>();
+    tasks.forEach((task) => {
+      handlers.set(task.id, () => onToggleSelect(task.id));
+    });
+    return handlers;
+  }, [tasks, onToggleSelect]);
+
   // Memoize task card elements to prevent recreation on every render
   const taskCards = useMemo(() => {
     if (tasks.length === 0) return null;
+    const isSelectable = !!onToggleSelectHandlers;
     return tasks.map((task) => (
       <SortableTaskCard
         key={task.id}
         task={task}
         onClick={onClickHandlers.get(task.id)!}
         onStatusChange={onStatusChangeHandlers.get(task.id)}
+        isSelectable={isSelectable}
+        isSelected={isSelectable ? selectedTaskIds?.has(task.id) : undefined}
+        onToggleSelect={onToggleSelectHandlers?.get(task.id)}
       />
     ));
-  }, [tasks, onClickHandlers, onStatusChangeHandlers]);
+  }, [tasks, onClickHandlers, onStatusChangeHandlers, onToggleSelectHandlers, selectedTaskIds]);
 
   const getColumnBorderColor = (): string => {
     switch (status) {
@@ -683,6 +699,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               selectedTaskIds={status === 'human_review' ? selectedTaskIds : undefined}
               onSelectAll={status === 'human_review' ? selectAllTasks : undefined}
               onDeselectAll={status === 'human_review' ? deselectAllTasks : undefined}
+              onToggleSelect={status === 'human_review' ? toggleTaskSelection : undefined}
             />
           ))}
         </div>
