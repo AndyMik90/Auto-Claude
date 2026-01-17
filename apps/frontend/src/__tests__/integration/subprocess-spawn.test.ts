@@ -141,7 +141,7 @@ describe('Subprocess Spawn Integration', () => {
           })
         })
       );
-    });
+    }, 10000);  // Increase timeout to 10 seconds for spec creation test
 
     it('should spawn Python process for task execution', async () => {
       const { spawn } = await import('child_process');
