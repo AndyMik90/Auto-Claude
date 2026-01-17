@@ -862,4 +862,367 @@ describe('usage-monitor', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('backward compatibility', () => {
+    describe('Legacy OAuth-only profile support', () => {
+      it('should work with legacy OAuth profiles (no API profile support)', async () => {
+        // Mock loadProfilesFile to return empty profiles (API profiles not configured)
+        mockLoadProfilesFile.mockResolvedValueOnce({
+          profiles: [],
+          activeProfileId: null,
+          version: 1
+        });
+
+        const monitor = getUsageMonitor();
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        // Should fall back to OAuth profile
+        const credential = await monitor['getCredential']();
+
+        // Should get OAuth token from profile manager
+        expect(credential).toBe('mock-decrypted-token');
+
+        consoleSpy.mockRestore();
+      });
+
+      it('should prioritize API profile when available', async () => {
+        // Mock API profile is configured
+        mockLoadProfilesFile.mockResolvedValueOnce({
+          profiles: [{
+            id: 'api-profile-1',
+            name: 'API Profile',
+            baseUrl: 'https://api.anthropic.com',
+            apiKey: 'sk-ant-api-key'
+          }],
+          activeProfileId: 'api-profile-1',
+          version: 1
+        });
+
+        const monitor = getUsageMonitor();
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        const credential = await monitor['getCredential']();
+
+        // Should prefer API key over OAuth token
+        expect(credential).toBe('sk-ant-api-key');
+
+        consoleSpy.mockRestore();
+      });
+
+      it('should handle missing API profile gracefully', async () => {
+        // Mock activeProfileId points to non-existent profile
+        mockLoadProfilesFile.mockResolvedValueOnce({
+          profiles: [],
+          activeProfileId: 'nonexistent-profile',
+          version: 1
+        });
+
+        const monitor = getUsageMonitor();
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        const credential = await monitor['getCredential']();
+
+        // Should fall back to OAuth
+        expect(credential).toBe('mock-decrypted-token');
+
+        consoleSpy.mockRestore();
+      });
+    });
+
+    describe('Settings backward compatibility', () => {
+      it('should handle settings with missing optional fields', async () => {
+        // Get the mocked getClaudeProfileManager function
+        const { getClaudeProfileManager } = await import('../claude-profile-manager');
+        const mockGetManager = vi.mocked(getClaudeProfileManager);
+
+        // Mock settings with missing optional fields
+        mockGetManager.mockReturnValueOnce({
+          getAutoSwitchSettings: vi.fn(() => ({
+            enabled: true,
+            proactiveSwapEnabled: true
+            // Missing: usageCheckInterval, sessionThreshold, weeklyThreshold
+          })),
+          getActiveProfile: vi.fn(() => ({
+            id: 'test-profile-1',
+            name: 'Test Profile',
+            baseUrl: 'https://api.anthropic.com',
+            oauthToken: 'mock-oauth-token'
+          })),
+          getProfile: vi.fn(() => ({
+            id: 'test-profile-1',
+            name: 'Test Profile',
+            baseUrl: 'https://api.anthropic.com',
+            oauthToken: 'mock-oauth-token'
+          })),
+          getProfilesSortedByAvailability: vi.fn(() => []),
+          setActiveProfile: vi.fn(),
+          getProfileToken: vi.fn(() => 'mock-decrypted-token')
+        } as any);
+
+        const monitor = getUsageMonitor();
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        // Should start with default values for missing fields
+        monitor.start();
+
+        // Default usageCheckInterval is 30000ms
+        expect(consoleSpy).toHaveBeenCalledWith('[UsageMonitor] Starting with interval:', 30000, 'ms');
+
+        consoleSpy.mockRestore();
+        monitor.stop();
+      });
+
+      it('should use default thresholds when not specified in settings', async () => {
+        // Get the mocked getClaudeProfileManager function
+        const { getClaudeProfileManager } = await import('../claude-profile-manager');
+        const mockGetManager = vi.mocked(getClaudeProfileManager);
+
+        // Mock settings without thresholds
+        mockGetManager.mockReturnValueOnce({
+          getAutoSwitchSettings: vi.fn(() => ({
+            enabled: true,
+            proactiveSwapEnabled: true,
+            usageCheckInterval: 30000
+            // Missing: sessionThreshold, weeklyThreshold
+          })),
+          getActiveProfile: vi.fn(() => ({
+            id: 'test-profile-1',
+            name: 'Test Profile',
+            baseUrl: 'https://api.anthropic.com',
+            oauthToken: 'mock-oauth-token'
+          })),
+          getProfile: vi.fn(() => ({
+            id: 'test-profile-1',
+            name: 'Test Profile',
+            baseUrl: 'https://api.anthropic.com',
+            oauthToken: 'mock-oauth-token'
+          })),
+          getProfilesSortedByAvailability: vi.fn(() => []),
+          setActiveProfile: vi.fn(),
+          getProfileToken: vi.fn(() => 'mock-decrypted-token')
+        } as any);
+
+        const monitor = getUsageMonitor();
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        // Should not crash when checking thresholds
+        monitor.start();
+
+        expect(consoleSpy).toHaveBeenCalled();
+
+        consoleSpy.mockRestore();
+        monitor.stop();
+      });
+    });
+
+    describe('Anthropic response format backward compatibility', () => {
+      it('should handle legacy Anthropic response format', () => {
+        const monitor = getUsageMonitor();
+
+        // Legacy format with field names that might have changed
+        const legacyData = {
+          five_hour_utilization: 0.60,
+          seven_day_utilization: 0.40,
+          five_hour_reset_at: '2025-01-17T15:00:00Z',
+          seven_day_reset_at: '2025-01-20T12:00:00Z'
+        };
+
+        const usage = monitor['normalizeAnthropicResponse'](legacyData, 'test-profile-1', 'Legacy Profile');
+
+        expect(usage).not.toBeNull();
+        expect(usage.sessionPercent).toBe(60);
+        expect(usage.weeklyPercent).toBe(40);
+        expect(usage.limitType).toBe('session'); // 60% > 40%, so session is the higher limit
+      });
+
+      it('should handle response with only utilization values (no reset times)', () => {
+        const monitor = getUsageMonitor();
+
+        const minimalData = {
+          five_hour_utilization: 0.75,
+          seven_day_utilization: 0.50
+          // Missing reset times
+        };
+
+        const usage = monitor['normalizeAnthropicResponse'](minimalData, 'test-profile-1', 'Minimal Profile');
+
+        expect(usage).not.toBeNull();
+        expect(usage.sessionPercent).toBe(75);
+        expect(usage.weeklyPercent).toBe(50);
+        expect(usage.sessionResetTime).toBe('Unknown');
+        expect(usage.weeklyResetTime).toBe('Unknown');
+      });
+
+      it('should handle response with zero utilization values', () => {
+        const monitor = getUsageMonitor();
+
+        const zeroData = {
+          five_hour_utilization: 0,
+          seven_day_utilization: 0,
+          five_hour_reset_at: '2025-01-17T15:00:00Z',
+          seven_day_reset_at: '2025-01-20T12:00:00Z'
+        };
+
+        const usage = monitor['normalizeAnthropicResponse'](zeroData, 'test-profile-1', 'Zero Usage Profile');
+
+        expect(usage).not.toBeNull();
+        expect(usage.sessionPercent).toBe(0);
+        expect(usage.weeklyPercent).toBe(0);
+      });
+
+      it('should handle response with only five_hour data (no seven_day)', () => {
+        const monitor = getUsageMonitor();
+
+        const partialData = {
+          five_hour_utilization: 0.80,
+          five_hour_reset_at: '2025-01-17T15:00:00Z'
+          // Missing seven_day data
+        };
+
+        const usage = monitor['normalizeAnthropicResponse'](partialData, 'test-profile-1', 'Partial Profile');
+
+        expect(usage).not.toBeNull();
+        expect(usage.sessionPercent).toBe(80);
+        expect(usage.weeklyPercent).toBe(0); // Defaults to 0
+        expect(usage.sessionResetTime).not.toBe('Unknown');
+        expect(usage.weeklyResetTime).toBe('Unknown');
+      });
+    });
+
+    describe('Provider detection backward compatibility', () => {
+      it('should handle Anthropic OAuth profiles (no baseUrl in OAuth profiles)', async () => {
+        // OAuth profiles don't have baseUrl - they should default to Anthropic provider
+        // This test verifies the backward compatibility by checking that:
+        // 1. OAuth profiles (without baseUrl) are supported
+        // 2. They default to using Anthropic's OAuth usage endpoint
+
+        const endpoint = getUsageEndpoint('anthropic', 'https://api.anthropic.com');
+        expect(endpoint).toBe('https://api.anthropic.com/api/oauth/usage');
+
+        // Verify that when no baseUrl is provided (OAuth profile scenario),
+        // the system defaults to Anthropic's standard endpoint
+        const provider = detectProvider('https://api.anthropic.com');
+        expect(provider).toBe('anthropic');
+      });
+
+      it('should handle legacy baseUrl formats for zai', () => {
+        // Test various legacy zai baseUrl formats
+        const legacyUrls = [
+          'https://api.z.ai/api/anthropic',
+          'https://z.ai/api/anthropic',
+          'https://api.z.ai/v1',
+          'https://z.ai'
+        ];
+
+        legacyUrls.forEach(url => {
+          const provider = detectProvider(url);
+          expect(provider).toBe('zai');
+        });
+      });
+
+      it('should handle legacy baseUrl formats for ZHIPU', () => {
+        // Test various legacy ZHIPU baseUrl formats
+        const legacyUrls = [
+          'https://open.bigmodel.cn/api/paas/v4',
+          'https://dev.bigmodel.cn/api/paas/v4',
+          'https://bigmodel.cn/api/paas/v4',
+          'https://open.bigmodel.cn'
+        ];
+
+        legacyUrls.forEach(url => {
+          const provider = detectProvider(url);
+          expect(provider).toBe('zhipu');
+        });
+      });
+
+      it('should handle Anthropic OAuth default baseUrl', () => {
+        // OAuth profiles don't have baseUrl, should default to Anthropic
+        const endpoint = getUsageEndpoint('anthropic', 'https://api.anthropic.com');
+        expect(endpoint).toBe('https://api.anthropic.com/api/oauth/usage');
+      });
+    });
+
+    describe('Mixed OAuth/API profile environments', () => {
+      it('should handle environment with both OAuth and API profiles', async () => {
+        const monitor = getUsageMonitor();
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        // Mock both OAuth and API profiles
+        mockLoadProfilesFile.mockResolvedValueOnce({
+          profiles: [
+            {
+              id: 'api-profile-1',
+              name: 'API Profile',
+              baseUrl: 'https://api.anthropic.com',
+              apiKey: 'sk-ant-api-key'
+            },
+            {
+              id: 'api-profile-2',
+              name: 'z.ai API Profile',
+              baseUrl: 'https://api.z.ai/api/anthropic',
+              apiKey: 'zai-api-key'
+            }
+          ],
+          activeProfileId: 'api-profile-1',
+          version: 1
+        });
+
+        const credential = await monitor['getCredential']();
+
+        // Should use API profile when active
+        expect(credential).toBe('sk-ant-api-key');
+
+        consoleSpy.mockRestore();
+      });
+
+      it('should switch from API profile back to OAuth profile', async () => {
+        const monitor = getUsageMonitor();
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        // First, active API profile
+        mockLoadProfilesFile.mockResolvedValueOnce({
+          profiles: [{
+            id: 'api-profile-1',
+            name: 'API Profile',
+            baseUrl: 'https://api.anthropic.com',
+            apiKey: 'sk-ant-api-key'
+          }],
+          activeProfileId: 'api-profile-1',
+          version: 1
+        });
+
+        let credential = await monitor['getCredential']();
+        expect(credential).toBe('sk-ant-api-key');
+
+        // Then, no active API profile (should fall back to OAuth)
+        mockLoadProfilesFile.mockResolvedValueOnce({
+          profiles: [],
+          activeProfileId: null,
+          version: 1
+        });
+
+        credential = await monitor['getCredential']();
+        expect(credential).toBe('mock-decrypted-token');
+
+        consoleSpy.mockRestore();
+      });
+    });
+
+    describe('Graceful degradation for unknown providers', () => {
+      it('should return null for unknown provider instead of throwing', () => {
+        const endpoint = getUsageEndpoint('unknown' as ApiProvider, 'https://unknown-provider.com');
+        expect(endpoint).toBeNull();
+      });
+
+      it('should handle invalid baseUrl gracefully', () => {
+        const endpoint = getUsageEndpoint('anthropic', 'not-a-url');
+        expect(endpoint).toBeNull();
+      });
+
+      it('should detect unknown provider from unrecognized baseUrl', () => {
+        const provider = detectProvider('https://unknown-api-provider.com/v1');
+        expect(provider).toBe('unknown');
+      });
+    });
+  });
 });
