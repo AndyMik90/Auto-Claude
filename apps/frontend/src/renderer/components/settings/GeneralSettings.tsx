@@ -1,11 +1,16 @@
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { CheckCircle2, AlertTriangle, Settings2, FolderOpen } from 'lucide-react';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
+import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { SettingsSection } from './SettingsSection';
 import { AgentProfileSettings } from './AgentProfileSettings';
+import { CondaDetectionDisplay } from './CondaDetectionDisplay';
+import { CondaSetupWizard } from './CondaSetupWizard';
+import { PythonPackageValidator } from './PythonPackageValidator';
 import {
   AVAILABLE_MODELS,
   THINKING_LEVELS,
@@ -16,10 +21,11 @@ import {
 import type {
   AppSettings,
   FeatureModelConfig,
-  FeatureThinkingConfig,
   ModelTypeShort,
   ThinkingLevel,
-  ToolDetectionResult
+  ToolDetectionResult,
+  CondaDetectionResult,
+  CondaEnvValidation
 } from '../../../shared/types';
 
 interface GeneralSettingsProps {
@@ -41,7 +47,7 @@ function ToolDetectionDisplay({ info, isLoading, t }: ToolDetectionDisplayProps)
   if (isLoading) {
     return (
       <div className="text-xs text-muted-foreground mt-1">
-        Detecting...
+        {t('python.detecting')}
       </div>
     );
   }
@@ -100,6 +106,13 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
   } | null>(null);
   const [isLoadingTools, setIsLoadingTools] = useState(false);
 
+  // Conda/Python environment state
+  const [condaDetection, setCondaDetection] = useState<CondaDetectionResult | null>(null);
+  const [isLoadingConda, setIsLoadingConda] = useState(false);
+  const [autoClaudeEnvStatus, setAutoClaudeEnvStatus] = useState<CondaEnvValidation | null>(null);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [isPythonValidating, setIsPythonValidating] = useState(false);
+
   // Fetch CLI tools detection info when component mounts (paths section only)
   useEffect(() => {
     if (section === 'paths') {
@@ -119,6 +132,59 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
         });
     }
   }, [section]);
+
+  // Check Auto Claude environment status
+  const checkAutoClaudeEnv = useCallback(async () => {
+    try {
+      const result = await window.electronAPI.conda.checkAutoClaudeEnv();
+      if (result.success && result.data) {
+        setAutoClaudeEnvStatus(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to check Auto Claude env:', error);
+    }
+  }, []);
+
+  // Load Conda detection and Auto Claude env status
+  const loadCondaDetection = useCallback(async () => {
+    setIsLoadingConda(true);
+    try {
+      const result = await window.electronAPI.conda.detectConda();
+      if (result.success && result.data) {
+        setCondaDetection(result.data);
+        // If conda is detected, also check the Auto Claude environment status
+        if (result.data.found) {
+          checkAutoClaudeEnv();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to detect Conda:', error);
+    } finally {
+      setIsLoadingConda(false);
+    }
+  }, [checkAutoClaudeEnv]);
+
+  // Load Conda detection when paths section is active
+  useEffect(() => {
+    if (section === 'paths') {
+      loadCondaDetection();
+    }
+  }, [section, loadCondaDetection]);
+
+  const handleRefreshConda = useCallback(() => {
+    loadCondaDetection();
+  }, [loadCondaDetection]);
+
+  async function handleBrowseConda() {
+    try {
+      const path = await window.electronAPI.selectDirectory();
+      if (path) {
+        onSettingsChange({ ...settings, condaPath: path });
+      }
+    } catch (error) {
+      console.error('Failed to open directory picker:', error);
+    }
+  }
 
   if (section === 'agent') {
     return (
@@ -250,17 +316,41 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
       title={t('general.paths')}
       description={t('general.pathsDescription')}
     >
+      {/* Loading Overlay - Show during Python validation */}
+      {isPythonValidating && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-lg font-medium text-foreground">{t('python.validatingEnvironment')}</p>
+          <p className="text-sm text-muted-foreground mt-2">{t('python.validatingHint')}</p>
+        </div>
+      )}
       <div className="space-y-6">
         <div className="space-y-3">
           <Label htmlFor="pythonPath" className="text-sm font-medium text-foreground">{t('general.pythonPath')}</Label>
           <p className="text-sm text-muted-foreground">{t('general.pythonPathDescription')}</p>
-          <Input
-            id="pythonPath"
-            placeholder={t('general.pythonPathPlaceholder')}
-            className="w-full max-w-lg"
-            value={settings.pythonPath || ''}
-            onChange={(e) => onSettingsChange({ ...settings, pythonPath: e.target.value })}
-          />
+          <div className="flex gap-2 w-full max-w-lg">
+            <Input
+              id="pythonPath"
+              placeholder={t('general.pythonPathPlaceholder')}
+              className="flex-1"
+              value={settings.pythonPath || ''}
+              onChange={(e) => onSettingsChange({ ...settings, pythonPath: e.target.value })}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              onClick={async () => {
+                const path = await window.electronAPI.selectDirectory();
+                if (path) {
+                  onSettingsChange({ ...settings, pythonPath: path });
+                }
+              }}
+            >
+              <FolderOpen className="h-4 w-4 mr-2" />
+              {t('general.browse')}
+            </Button>
+          </div>
           {!settings.pythonPath && (
             <ToolDetectionDisplay
               info={toolsInfo?.python || null}
@@ -269,6 +359,60 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
             />
           )}
         </div>
+
+        {/* Python Activation Script */}
+        <div className="space-y-3">
+          <Label htmlFor="pythonActivationScript" className="text-sm font-medium text-foreground">
+            {t('general.pythonActivationScript')}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t('general.pythonActivationScriptDescription')}
+          </p>
+          <div className="flex gap-2 w-full max-w-lg">
+            <Input
+              id="pythonActivationScript"
+              placeholder={t('general.pythonActivationScriptPlaceholder')}
+              className="flex-1"
+              value={settings.pythonActivationScript || ''}
+              onChange={(e) => onSettingsChange({ ...settings, pythonActivationScript: e.target.value })}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              onClick={async () => {
+                const path = await window.electronAPI.selectDirectory();
+                if (path) {
+                  onSettingsChange({ ...settings, pythonActivationScript: path });
+                }
+              }}
+            >
+              <FolderOpen className="h-4 w-4 mr-2" />
+              {t('general.browse')}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t('general.pythonActivationScriptHint')}
+          </p>
+        </div>
+
+        {/* Package Validation (only show if pythonPath is set) */}
+        {settings.pythonPath && (
+          <div className="space-y-3 p-4 border border-border rounded-md bg-muted/50">
+            <Label className="text-sm font-medium text-foreground">
+              {t('general.pythonPackageValidation')}
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              {t('general.pythonPackageValidationDescription')}
+            </p>
+            <PythonPackageValidator
+              pythonPath={settings.pythonPath}
+              activationScript={settings.pythonActivationScript}
+              onValidationStateChange={setIsPythonValidating}
+            />
+          </div>
+        )}
+
         <div className="space-y-3">
           <Label htmlFor="gitPath" className="text-sm font-medium text-foreground">{t('general.gitPath')}</Label>
           <p className="text-sm text-muted-foreground">{t('general.gitPathDescription')}</p>
@@ -334,7 +478,110 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
             onChange={(e) => onSettingsChange({ ...settings, autoBuildPath: e.target.value })}
           />
         </div>
+
+        {/* Conda / Python Environment Section */}
+        <div className="pt-6 border-t border-border space-y-6">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-foreground">{t('python.title')}</h3>
+            <p className="text-sm text-muted-foreground">{t('sections.pythonEnv.description')}</p>
+          </div>
+
+          {/* Conda Installation Detection */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium text-foreground">
+              {t('python.condaInstallation')}
+            </Label>
+            <CondaDetectionDisplay
+              detection={condaDetection}
+              isLoading={isLoadingConda}
+              onRefresh={handleRefreshConda}
+              onBrowse={handleBrowseConda}
+              manualPath={settings.condaPath}
+              onManualPathChange={(path) => onSettingsChange({ ...settings, condaPath: path })}
+            />
+          </div>
+
+          {/* Auto Claude Environment Status (only shown if conda is detected) */}
+          {condaDetection?.found && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-foreground">
+                {t('python.autoClaudeEnv')}
+              </Label>
+              <div className="rounded-lg border border-border bg-muted/50 p-4">
+                {/* Status display */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {autoClaudeEnvStatus?.valid ? (
+                      <>
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <div>
+                          <div className="text-sm font-medium text-foreground">
+                            {t('python.statusReady')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Python {autoClaudeEnvStatus.pythonVersion}
+                            {autoClaudeEnvStatus.packageCount !== undefined && (
+                              <span className="ml-2">
+                                {t('python.packagesInstalled', { count: autoClaudeEnvStatus.packageCount })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    ) : autoClaudeEnvStatus?.error ? (
+                      <>
+                        <AlertTriangle className="h-5 w-5 text-amber-500" />
+                        <div>
+                          <div className="text-sm font-medium text-foreground">
+                            {t('python.statusBroken')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {autoClaudeEnvStatus.message || autoClaudeEnvStatus.error}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Settings2 className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <div className="text-sm font-medium text-foreground">
+                            {t('python.statusNotConfigured')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {t('sections.pythonEnv.description')}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Setup / Reinstall button */}
+                  <Button
+                    variant={autoClaudeEnvStatus?.valid ? 'outline' : 'default'}
+                    size="sm"
+                    onClick={() => setShowSetupWizard(true)}
+                  >
+                    {autoClaudeEnvStatus?.valid
+                      ? t('python.reinstallEnv')
+                      : t('python.setupEnv')}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Conda Setup Wizard Dialog */}
+      <CondaSetupWizard
+        open={showSetupWizard}
+        onOpenChange={setShowSetupWizard}
+        type="app"
+        onComplete={() => {
+          loadCondaDetection();
+          checkAutoClaudeEnv();
+        }}
+      />
     </SettingsSection>
   );
 }

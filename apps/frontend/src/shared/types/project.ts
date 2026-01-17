@@ -26,6 +26,21 @@ export interface ProjectSettings {
   mainBranch?: string;
   /** Include CLAUDE.md instructions in agent system prompt (default: true) */
   useClaudeMd?: boolean;
+  /** Git provider for PR/MR creation: 'auto' (detect from remote), 'github', or 'gitlab' (default: 'auto') */
+  gitProvider?: 'auto' | 'github' | 'gitlab';
+
+  // ============================================
+  // Python Environment (Project-level)
+  // ============================================
+
+  /** Toggle for using a self-contained Conda environment for this project */
+  useCondaEnv?: boolean;
+  /** Path to the project-specific Conda environment (e.g., .envs/<project-name>) */
+  condaEnvPath?: string;
+  /** Status of the project's Conda environment */
+  condaEnvStatus?: 'none' | 'creating' | 'ready' | 'error' | 'broken';
+  /** Auto-activate Conda environment in terminals (default: true) */
+  condaAutoActivate?: boolean;
 }
 
 export interface NotificationSettings {

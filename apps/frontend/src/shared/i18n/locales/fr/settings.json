@@ -48,6 +48,10 @@
     "debug": {
       "title": "Debug & Logs",
       "description": "Outils de dépannage"
+    },
+    "pythonEnv": {
+      "title": "Environnement Python",
+      "description": "Configurer un environnement conda Python isolé"
     }
   },
   "apiProfiles": {
@@ -202,6 +206,10 @@
     "pythonPath": "Chemin Python",
     "pythonPathDescription": "Chemin vers l'exécutable Python (laisser vide pour détection automatique)",
     "pythonPathPlaceholder": "python3 (par défaut)",
+    "pythonActivationScript": "Script d'activation Python",
+    "pythonActivationScriptDescription": "Chemin vers le script d'activation conda (ex: activate.bat pour Windows, activate pour Unix). Laisser vide pour utiliser Python directement.",
+    "pythonActivationScriptPlaceholder": "ex: C:\\Users\\User\\.conda\\envs\\myenv\\Scripts\\activate.bat",
+    "pythonActivationScriptHint": "Si défini, ce script sera exécuté avant les commandes Python pour activer un environnement virtuel ou conda.",
     "gitPath": "Chemin Git",
     "gitPathDescription": "Chemin vers l'exécutable Git (laisser vide pour détection automatique)",
     "gitPathPlaceholder": "git (par défaut)",
@@ -226,7 +234,17 @@
     "autoClaudePathDescription": "Chemin relatif vers le répertoire auto-claude dans les projets",
     "autoClaudePathPlaceholder": "auto-claude (par défaut)",
     "autoNameTerminals": "Nommer automatiquement les terminaux",
-    "autoNameTerminalsDescription": "Utiliser l'IA pour générer des noms descriptifs pour les onglets de terminal en fonction de leur activité"
+    "autoNameTerminalsDescription": "Utiliser l'IA pour générer des noms descriptifs pour les onglets de terminal en fonction de leur activité",
+    "browse": "Parcourir",
+    "selectPythonExecutable": "Sélectionner l'exécutable Python",
+    "selectActivationScript": "Sélectionner le script d'activation",
+    "fileFilter": {
+      "pythonExecutable": "Exécutable Python",
+      "activationScripts": "Scripts d'activation",
+      "allFiles": "Tous les fichiers"
+    },
+    "pythonPackageValidation": "Validation des packages",
+    "pythonPackageValidationDescription": "Vérifier que les packages requis sont installés dans l'environnement Python configuré."
   },
   "theme": {
     "title": "Apparence",
@@ -316,8 +334,21 @@
     "general": {
       "title": "Général",
       "description": "Auto-Build et configuration de l'agent",
+      "descriptionWithProject": "Configurer Auto-Build, le modèle de l'agent et les notifications pour {{projectName}}",
       "useClaudeMd": "Utiliser CLAUDE.md",
       "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
+    },
+    "autoBuild": {
+      "title": "Intégration Auto-Build",
+      "notInitialized": "Non initialisé",
+      "notInitializedDescription": "Initialisez Auto-Build pour activer la création de tâches et les workflows d'agents.",
+      "initializing": "Initialisation...",
+      "initialize": "Initialiser Auto-Build",
+      "initialized": "Initialisé",
+      "checkingStatus": "Vérification du statut..."
+    },
+    "agentConfig": {
+      "title": "Configuration de l'agent"
     },
     "claude": {
       "title": "Auth Claude",
@@ -350,7 +381,115 @@
       "integrationTitle": "Mémoire",
       "integrationDescription": "Configurer la mémoire persistante inter-sessions pour les agents",
       "syncDescription": "Configurer la mémoire persistante"
+    },
+    "pythonEnv": {
+      "title": "Env Python",
+      "description": "Environnement Python isolé"
+    },
+    "python-env": {
+      "title": "Env Python",
+      "description": "Environnement Python isolé"
     }
+  },
+  "python": {
+    "title": "Python",
+    "condaInstallation": "Installation Conda",
+    "condaTypes": {
+      "miniconda": "Miniconda",
+      "anaconda": "Anaconda",
+      "mambaforge": "Mambaforge",
+      "miniforge": "Miniforge",
+      "unknown": "Conda"
+    },
+    "detected": "Détecté",
+    "detecting": "Détection...",
+    "notDetected": "Aucune installation conda trouvée",
+    "installMiniconda": "Installer Miniconda",
+    "refresh": "Actualiser",
+    "specifyPath": "Ou spécifier le chemin",
+    "browse": "Parcourir",
+    "autoClaudeEnv": "Environnement Auto Claude",
+    "projectEnv": "Environnement du projet",
+    "envLocation": "Emplacement de l'environnement",
+    "envLocationHint": "Autonome dans le projet (aucun chemin externe autorisé)",
+    "detectedPython": "Python détecté",
+    "pythonVersion": "Version Python",
+    "selectVersion": "Sélectionner la version",
+    "selectVersionPlaceholder": "Sélectionner la version Python",
+    "detectedFromProject": "Détecté depuis le projet",
+    "versionLockedHint": "La version ne peut pas être modifiée après la création de l'environnement. Supprimez et recréez pour utiliser une autre version.",
+    "versionChangeHint": "Sélectionnez une version différente et cliquez sur Réinstaller pour changer.",
+    "installedVersion": "Installé",
+    "status": "Statut",
+    "statusReady": "Prêt",
+    "statusNotConfigured": "Non configuré",
+    "statusCreating": "Configuration en cours...",
+    "statusBroken": "Cassé / Manquant",
+    "packagesInstalled": "{{count}} packages installés",
+    "setupEnv": "Configurer l'environnement",
+    "reinstallEnv": "Réinstaller l'environnement",
+    "vscodeIntegration": "Intégration VS Code",
+    "workspaceFile": "Fichier workspace",
+    "workspaceHint": "S'ouvre avec PowerShell + environnement conda auto-activé",
+    "openInVscode": "Ouvrir dans VS Code",
+    "showInFolder": "Afficher dans le dossier",
+    "activationScripts": "Scripts d'activation",
+    "initScript": "Script init VS Code",
+    "standaloneScripts": "Scripts autonomes",
+    "regenerateAll": "Tout régénérer",
+    "openScriptsFolder": "Ouvrir le dossier des scripts",
+    "terminalIntegration": "Intégration terminal",
+    "autoActivate": "Auto-activation dans les terminaux",
+    "autoActivateHint": "Activer automatiquement lors de l'ouverture des terminaux pour ce projet",
+    "useCondaEnv": "Utiliser un environnement Conda autonome",
+    "useCondaEnvHint": "Activer un environnement Python isolé pour ce projet",
+    "deleteEnvTitle": "Supprimer l'environnement ?",
+    "deleteEnvMessage": "Un environnement existe à :",
+    "deleteEnvPrompt": "Voulez-vous le supprimer ?",
+    "keepFiles": "Conserver les fichiers",
+    "deleteEnv": "Supprimer l'environnement",
+    "deleteActivationScripts": "Supprimer également les scripts d'activation",
+    "pathPlaceholder": "C:\\chemin\\vers\\conda",
+    "validatingEnvironment": "Validation de l'environnement Python",
+    "validatingHint": "Cela peut prendre un moment...",
+    "checkingEnvironment": "Vérification de l'environnement Python...",
+    "environmentValid": "Environnement valide",
+    "environmentMissing": "Environnement Python non trouvé",
+    "wrongVersion": "Python version {{version}} trouvé, nécessite 3.12+",
+    "reinstalling": "Réinstallation...",
+    "reinstallEnvironment": "Réinstaller l'environnement",
+    "reinstallTitle": "Réinstaller l'environnement Python ?",
+    "reinstallWarning": "Ceci supprimera l'environnement existant et en créera un nouveau avec Python 3.12. Tous les packages installés seront perdus.",
+    "reinstallConfirm": "Oui, réinstaller",
+    "checking": "Vérification",
+    "validatingPackages": "Validation des packages...",
+    "allPackagesInstalled": "Tous les packages requis sont installés",
+    "packagesMissing": "Packages requis manquants",
+    "missingPackages": "{{count}} package(s) manquant(s)",
+    "installing": "Installation...",
+    "installMissing": "Installer les packages manquants",
+    "installLocation": "Emplacement d'installation"
+  },
+  "condaSetup": {
+    "title": "Configurer l'environnement Conda",
+    "steps": {
+      "detecting": "Détection de l'installation conda",
+      "analyzing": "Analyse des exigences du projet",
+      "creating": "Création de l'environnement",
+      "installingPython": "Installation de Python {{version}}",
+      "verifyingPython": "Vérification de l'installation Python",
+      "installingDeps": "Installation des dépendances",
+      "generatingScripts": "Génération des scripts d'activation",
+      "finalizing": "Finalisation de l'environnement",
+      "complete": "Configuration terminée",
+      "error": "La configuration a échoué"
+    },
+    "finalizingNote": "Cela peut prendre jusqu'à une minute pendant que Windows indexe les nouveaux fichiers",
+    "showLogs": "Afficher les logs",
+    "hideLogs": "Masquer les logs",
+    "continueInBackground": "Continuer en arrière-plan",
+    "cancel": "Annuler",
+    "retry": "Réessayer"
   },
   "agentProfile": {
     "label": "Profil d'agent",
@@ -478,6 +617,50 @@
       "title": "Aucun projet sélectionné",
       "description": "Sélectionnez un projet dans la barre latérale pour configurer ses paramètres."
     }
+  },
+  "gitProvider": {
+    "title": "Paramètres du fournisseur Git",
+    "providerLabel": "Fournisseur de Pull Request / Merge Request",
+    "providerDescription": "Choisissez quelle plateforme git utiliser pour la création de PR/MR",
+    "autoDetectPlaceholder": "Détection automatique depuis le remote",
+    "autoDetectHint": "Le fournisseur sera détecté automatiquement depuis l'URL de votre remote git lors de la création de PR/MR",
+    "options": {
+      "auto": "Détection automatique depuis le remote git"
+    }
+  },
+  "providerIntegration": {
+    "loadingConfiguration": "Chargement de la configuration...",
+    "enableIssues": "Activer les issues {{provider}}",
+    "syncIssuesDescription": "Synchroniser les issues depuis {{provider}} et créer des tâches automatiquement",
+    "instanceLabel": "Instance {{provider}}",
+    "instanceDescription": "Utilisez {{defaultUrl}} ou l'URL de votre instance auto-hébergée",
+    "connectedViaCli": "Connecté via {{provider}} CLI",
+    "authenticatedAs": "Authentifié en tant que {{username}}",
+    "useManualToken": "Utiliser un token manuel",
+    "selectRepo": "Sélectionner {{repoType}}",
+    "loadingRepos": "Chargement des {{repoType}}s...",
+    "selectRepoPlaceholder": "Sélectionner {{repoType}}",
+    "authentication": "Authentification {{provider}}",
+    "completeAuthInBrowser": "Complétez l'authentification dans votre navigateur",
+    "cliRequired": "{{provider}} CLI requis",
+    "cliRequiredDescription": "Le CLI {{provider}} ({{cliName}}) est requis pour l'authentification OAuth.",
+    "installationCommandExecuted": "Commande d'installation exécutée",
+    "installing": "Installation...",
+    "installCli": "Installer {{cliName}}",
+    "learnMore": "En savoir plus",
+    "cliInstalled": "{{cliName}} CLI installé",
+    "authenticated": "Authentifié",
+    "notAuthenticatedHint": "Non authentifié - l'authentification se fera lors de l'enregistrement de votre token",
+    "personalAccessToken": "Token d'accès personnel",
+    "useOAuth": "Utiliser OAuth",
+    "createTokenHint": "Créez un token avec le scope <code>api</code> depuis",
+    "providerSettings": "Paramètres {{provider}}",
+    "repoFormatHint": "Format : {{format}} (ex. {{example}})",
+    "defaultBranch": "Branche par défaut",
+    "refresh": "Actualiser",
+    "baseBranchDescription": "Branche de base pour créer les worktrees de tâches",
+    "loadingBranches": "Chargement des branches...",
+    "noBranchesFound": "Aucune branche trouvée"
   },
   "mcp": {
     "title": "Aperçu des serveurs MCP",

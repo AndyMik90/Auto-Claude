@@ -143,9 +143,11 @@ export class ChangelogGenerator extends EventEmitter {
 
     // Parse Python command to handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.pythonPath);
+    const isWindows = process.platform === 'win32';
     const childProcess = spawn(pythonCommand, [...pythonBaseArgs, '-c', script], {
       cwd: this.autoBuildSourcePath,
-      env: spawnEnv
+      env: spawnEnv,
+      ...(isWindows && { windowsHide: true })
     });
 
     this.generationProcesses.set(projectId, childProcess);

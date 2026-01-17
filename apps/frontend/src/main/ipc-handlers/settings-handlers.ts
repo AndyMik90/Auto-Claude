@@ -21,6 +21,13 @@ import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-upd
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
 import { parseEnvFile } from './utils';
+import {
+  validatePythonPackages,
+  installPythonRequirements,
+  validatePythonEnvironment,
+  reinstallPythonEnvironment,
+  getEnvironmentPathFromScript,
+} from '../python-env-manager';
 
 const settingsPath = getSettingsPath();
 
@@ -414,9 +421,11 @@ export function registerSettingsHandlers(
     IPC_CHANNELS.SHELL_OPEN_EXTERNAL,
     async (_, url: string): Promise<void> => {
       // Validate URL scheme to prevent opening dangerous protocols
+      // Allow: http/https (web links), vscode (VS Code workspace opener)
       try {
         const parsedUrl = new URL(url);
-        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        const allowedProtocols = ['http:', 'https:', 'vscode:'];
+        if (!allowedProtocols.includes(parsedUrl.protocol)) {
           console.warn(`[SHELL_OPEN_EXTERNAL] Blocked URL with unsafe protocol: ${parsedUrl.protocol}`);
           throw new Error(`Unsafe URL protocol: ${parsedUrl.protocol}`);
         }
@@ -429,6 +438,21 @@ export function registerSettingsHandlers(
         }
         throw error;
       }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SHELL_SHOW_ITEM_IN_FOLDER,
+    async (_, filePath: string): Promise<void> => {
+      // Validate path exists and show it in the native file explorer
+      if (!filePath || typeof filePath !== 'string') {
+        throw new Error('File path is required');
+      }
+      const resolvedPath = path.resolve(filePath);
+      if (!existsSync(resolvedPath)) {
+        throw new Error(`Path does not exist: ${resolvedPath}`);
+      }
+      shell.showItemInFolder(resolvedPath);
     }
   );
 
@@ -758,6 +782,88 @@ export function registerSettingsHandlers(
           success: false,
           error: error instanceof Error ? error.message : 'Failed to check source token'
         };
+      }
+    }
+  );
+
+  // ============================================
+  // Python Package Validation
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.PYTHON_VALIDATE_PACKAGES,
+    async (event, { pythonPath, activationScript }: { pythonPath: string; activationScript?: string }) => {
+      try {
+        console.log('[PYTHON_VALIDATE_PACKAGES] Starting validation...');
+        const validation = await validatePythonPackages(
+          pythonPath,
+          activationScript,
+          (current: number, total: number, packageName: string) => {
+            event.sender.send(IPC_CHANNELS.PYTHON_VALIDATION_PROGRESS, { current, total, packageName });
+          }
+        );
+        console.log('[PYTHON_VALIDATE_PACKAGES] Validation complete:', validation);
+        return { success: true, data: validation };
+      } catch (error) {
+        console.error('[PYTHON_VALIDATE_PACKAGES] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to validate packages' };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PYTHON_INSTALL_REQUIREMENTS,
+    async (event, { pythonPath, activationScript }: { pythonPath: string; activationScript?: string }) => {
+      try {
+        await installPythonRequirements(pythonPath, activationScript, (progress: string) => {
+          event.sender.send(IPC_CHANNELS.PYTHON_INSTALL_PROGRESS, progress);
+        });
+        return { success: true };
+      } catch (error) {
+        console.error('[PYTHON_INSTALL_REQUIREMENTS] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to install requirements' };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PYTHON_VALIDATE_ENVIRONMENT,
+    async (_event, { activationScript }: { activationScript: string }) => {
+      try {
+        const validation = await validatePythonEnvironment(activationScript);
+        console.log('[PYTHON_VALIDATE_ENVIRONMENT] Validation result:', validation);
+        return { success: true, data: validation };
+      } catch (error) {
+        console.error('[PYTHON_VALIDATE_ENVIRONMENT] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to validate environment' };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PYTHON_REINSTALL_ENVIRONMENT,
+    async (event, { activationScript, pythonVersion }: { activationScript: string; pythonVersion?: string }) => {
+      try {
+        const envPath = getEnvironmentPathFromScript(activationScript);
+        if (!envPath) {
+          return { success: false, error: 'Could not extract environment path from activation script' };
+        }
+
+        event.sender.send(IPC_CHANNELS.PYTHON_REINSTALL_PROGRESS, { step: 'Starting environment reinstall', completed: 0, total: 3 });
+
+        const result = await reinstallPythonEnvironment(
+          envPath,
+          pythonVersion || '3.12',
+          (step: string, completed: number, total: number) => {
+            event.sender.send(IPC_CHANNELS.PYTHON_REINSTALL_PROGRESS, { step, completed, total });
+          }
+        );
+
+        console.log('[PYTHON_REINSTALL_ENVIRONMENT] Result:', result);
+        return { success: true, data: result };
+      } catch (error) {
+        console.error('[PYTHON_REINSTALL_ENVIRONMENT] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to reinstall environment' };
       }
     }
   );

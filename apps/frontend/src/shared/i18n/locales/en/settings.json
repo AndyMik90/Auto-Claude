@@ -48,6 +48,10 @@
     "debug": {
       "title": "Debug & Logs",
       "description": "Troubleshooting tools"
+    },
+    "pythonEnv": {
+      "title": "Python Environment",
+      "description": "Configure isolated Python conda environment"
     }
   },
   "apiProfiles": {
@@ -202,6 +206,10 @@
     "pythonPath": "Python Path",
     "pythonPathDescription": "Path to Python executable (leave empty for auto-detection)",
     "pythonPathPlaceholder": "python3 (default)",
+    "pythonActivationScript": "Python Activation Script",
+    "pythonActivationScriptDescription": "Path to conda activation script (e.g., activate.bat for Windows, activate for Unix). Leave empty to use Python directly.",
+    "pythonActivationScriptPlaceholder": "e.g., C:\\Users\\User\\.conda\\envs\\myenv\\Scripts\\activate.bat",
+    "pythonActivationScriptHint": "If set, this script will be sourced/executed before running Python commands to activate a virtual or conda environment.",
     "gitPath": "Git Path",
     "gitPathDescription": "Path to Git executable (leave empty for auto-detection)",
     "gitPathPlaceholder": "git (default)",
@@ -226,7 +234,17 @@
     "autoClaudePathDescription": "Relative path to auto-claude directory in projects",
     "autoClaudePathPlaceholder": "auto-claude (default)",
     "autoNameTerminals": "Automatically name terminals",
-    "autoNameTerminalsDescription": "Use AI to generate descriptive names for terminal tabs based on their activity"
+    "autoNameTerminalsDescription": "Use AI to generate descriptive names for terminal tabs based on their activity",
+    "browse": "Browse",
+    "selectPythonExecutable": "Select Python Executable",
+    "selectActivationScript": "Select Activation Script",
+    "fileFilter": {
+      "pythonExecutable": "Python Executable",
+      "activationScripts": "Activation Scripts",
+      "allFiles": "All Files"
+    },
+    "pythonPackageValidation": "Package Validation",
+    "pythonPackageValidationDescription": "Verify required packages are installed in the configured Python environment."
   },
   "theme": {
     "title": "Appearance",
@@ -316,8 +334,21 @@
     "general": {
       "title": "General",
       "description": "Auto-Build and agent config",
+      "descriptionWithProject": "Configure Auto-Build, agent model, and notifications for {{projectName}}",
       "useClaudeMd": "Use CLAUDE.md",
       "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context"
+    },
+    "autoBuild": {
+      "title": "Auto-Build Integration",
+      "notInitialized": "Not Initialized",
+      "notInitializedDescription": "Initialize Auto-Build to enable task creation and agent workflows.",
+      "initializing": "Initializing...",
+      "initialize": "Initialize Auto-Build",
+      "initialized": "Initialized",
+      "checkingStatus": "Checking status..."
+    },
+    "agentConfig": {
+      "title": "Agent Configuration"
     },
     "claude": {
       "title": "Claude Auth",
@@ -350,7 +381,116 @@
       "integrationTitle": "Memory",
       "integrationDescription": "Configure persistent cross-session memory for agents",
       "syncDescription": "Configure persistent memory"
+    },
+    "pythonEnv": {
+      "title": "Python Env",
+      "description": "Isolated Python environment"
+    },
+    "python-env": {
+      "title": "Python Env",
+      "description": "Isolated Python environment"
     }
+  },
+  "python": {
+    "title": "Python",
+    "pathPlaceholder": "C:\\path\\to\\conda",
+    "condaInstallation": "Conda Installation",
+    "condaTypes": {
+      "miniconda": "Miniconda",
+      "anaconda": "Anaconda",
+      "mambaforge": "Mambaforge",
+      "miniforge": "Miniforge",
+      "unknown": "Conda"
+    },
+    "detected": "Detected",
+    "detecting": "Detecting...",
+    "notDetected": "No conda installation found",
+    "installMiniconda": "Install Miniconda",
+    "refresh": "Refresh",
+    "specifyPath": "Or specify path",
+    "browse": "Browse",
+    "autoClaudeEnv": "Auto Claude Environment",
+    "projectEnv": "Project Environment",
+    "envLocation": "Environment Location",
+    "envLocationHint": "Self-contained within project (no external paths allowed)",
+    "detectedPython": "Detected Python",
+    "pythonVersion": "Python Version",
+    "selectVersion": "Select version",
+    "selectVersionPlaceholder": "Select Python version",
+    "detectedFromProject": "Detected from project",
+    "versionLockedHint": "Version cannot be changed after environment is created. Delete and recreate to use a different version.",
+    "versionChangeHint": "Select a different version and click Reinstall to change.",
+    "installedVersion": "Installed",
+    "status": "Status",
+    "statusReady": "Ready",
+    "statusNotConfigured": "Not configured",
+    "statusCreating": "Setting up...",
+    "statusBroken": "Broken / Missing",
+    "packagesInstalled": "{{count}} packages installed",
+    "setupEnv": "Setup Environment",
+    "reinstallEnv": "Reinstall Environment",
+    "vscodeIntegration": "VS Code Integration",
+    "workspaceFile": "Workspace file",
+    "workspaceHint": "Opens with PowerShell + auto-activated conda env",
+    "openInVscode": "Open in VS Code",
+    "showInFolder": "Show in Folder",
+    "activationScripts": "Activation Scripts",
+    "initScript": "VS Code init script",
+    "standaloneScripts": "Standalone scripts",
+    "regenerateAll": "Regenerate All",
+    "openScriptsFolder": "Open Scripts Folder",
+    "terminalIntegration": "Terminal Integration",
+    "autoActivate": "Auto-activate in terminals",
+    "autoActivateHint": "Automatically activate when opening terminals for this project",
+    "useCondaEnv": "Use Self-Contained Conda Environment",
+    "useCondaEnvHint": "Enable isolated Python environment for this project",
+    "deleteEnvTitle": "Delete Environment?",
+    "deleteEnvMessage": "An environment exists at:",
+    "deleteEnvPrompt": "Do you want to delete it?",
+    "keepFiles": "Keep Files",
+    "deleteEnv": "Delete Environment",
+    "deleteActivationScripts": "Also remove activation scripts",
+    "pathPlaceholder": "C:\\path\\to\\conda",
+    "validatingEnvironment": "Validating Python Environment",
+    "validatingHint": "This may take a moment...",
+    "checkingEnvironment": "Checking Python environment...",
+    "environmentValid": "Environment valid",
+    "environmentMissing": "Python environment not found",
+    "wrongVersion": "Python version {{version}} found, requires 3.12+",
+    "reinstalling": "Reinstalling...",
+    "reinstallEnvironment": "Reinstall Environment",
+    "reinstallTitle": "Reinstall Python Environment?",
+    "reinstallWarning": "This will remove the existing environment and create a new one with Python 3.12. All installed packages will be lost.",
+    "reinstallConfirm": "Yes, Reinstall",
+    "checking": "Checking",
+    "validatingPackages": "Validating packages...",
+    "allPackagesInstalled": "All required packages installed",
+    "packagesMissing": "Required packages missing",
+    "missingPackages": "{{count}} missing package(s)",
+    "installing": "Installing...",
+    "installMissing": "Install Missing Packages",
+    "installLocation": "Install location"
+  },
+  "condaSetup": {
+    "title": "Setup Conda Environment",
+    "steps": {
+      "detecting": "Detecting conda installation",
+      "analyzing": "Analyzing project requirements",
+      "creating": "Creating environment",
+      "installingPython": "Installing Python {{version}}",
+      "verifyingPython": "Verifying Python installation",
+      "installingDeps": "Installing dependencies",
+      "generatingScripts": "Generating activation scripts",
+      "finalizing": "Finalizing environment",
+      "complete": "Setup complete",
+      "error": "Setup failed"
+    },
+    "finalizingNote": "This may take up to a minute while Windows indexes the new files",
+    "showLogs": "Show logs",
+    "hideLogs": "Hide logs",
+    "continueInBackground": "Continue in Background",
+    "cancel": "Cancel",
+    "retry": "Retry"
   },
   "agentProfile": {
     "label": "Agent Profile",
@@ -478,6 +618,50 @@
       "title": "No Project Selected",
       "description": "Select a project from the sidebar to configure its settings."
     }
+  },
+  "gitProvider": {
+    "title": "Git Provider Settings",
+    "providerLabel": "Pull Request / Merge Request Provider",
+    "providerDescription": "Choose which git platform to use for PR/MR creation",
+    "autoDetectPlaceholder": "Auto-detect from remote",
+    "autoDetectHint": "Provider will be auto-detected from your git remote URL when creating PRs/MRs",
+    "options": {
+      "auto": "Auto-detect from git remote"
+    }
+  },
+  "providerIntegration": {
+    "loadingConfiguration": "Loading configuration...",
+    "enableIssues": "Enable {{provider}} Issues",
+    "syncIssuesDescription": "Sync issues from {{provider}} and create tasks automatically",
+    "instanceLabel": "{{provider}} Instance",
+    "instanceDescription": "Use {{defaultUrl}} or your self-hosted instance URL",
+    "connectedViaCli": "Connected via {{provider}} CLI",
+    "authenticatedAs": "Authenticated as {{username}}",
+    "useManualToken": "Use Manual Token",
+    "selectRepo": "Select {{repoType}}",
+    "loadingRepos": "Loading {{repoType}}s...",
+    "selectRepoPlaceholder": "Select {{repoType}}",
+    "authentication": "{{provider}} Authentication",
+    "completeAuthInBrowser": "Complete the authentication in your browser",
+    "cliRequired": "{{provider}} CLI Required",
+    "cliRequiredDescription": "The {{provider}} CLI ({{cliName}}) is required for OAuth authentication.",
+    "installationCommandExecuted": "Installation command executed",
+    "installing": "Installing...",
+    "installCli": "Install {{cliName}}",
+    "learnMore": "Learn more",
+    "cliInstalled": "{{cliName}} CLI installed",
+    "authenticated": "Authenticated",
+    "notAuthenticatedHint": "Not authenticated - will authenticate when you save your token",
+    "personalAccessToken": "Personal Access Token",
+    "useOAuth": "Use OAuth",
+    "createTokenHint": "Create a token with <code>api</code> scope from",
+    "providerSettings": "{{provider}} Settings",
+    "repoFormatHint": "Format: {{format}} (e.g. {{example}})",
+    "defaultBranch": "Default Branch",
+    "refresh": "Refresh",
+    "baseBranchDescription": "Base branch for creating task worktrees",
+    "loadingBranches": "Loading branches...",
+    "noBranchesFound": "No branches found"
   },
   "mcp": {
     "title": "MCP Server Overview",

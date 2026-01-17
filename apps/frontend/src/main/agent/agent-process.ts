@@ -16,8 +16,9 @@ import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv, detectAuthFailu
 import { getAPIProfileEnv } from '../services/profile';
 import { projectStore } from '../project-store';
 import { getClaudeProfileManager } from '../claude-profile-manager';
-import { parsePythonCommand, validatePythonPath } from '../python-detector';
+import { parsePythonCommand, validatePythonPath, isValidActivationScript } from '../python-detector';
 import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager';
+import { isWindows } from '../python-path-utils';
 import { buildMemoryEnvVars } from '../memory-env-builder';
 import { readSettingsFile } from '../settings-utils';
 import type { AppSettings } from '../../shared/types/settings';
@@ -26,8 +27,72 @@ import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo } from '../cli-tool-manager';
 
 
+/**
+ * Sanitize and validate shell/command interpreter paths from environment variables.
+ * Prevents command injection through malicious COMSPEC or SHELL values.
+ */
+function sanitizeShellPath(envValue: string | undefined, defaultValue: string): string {
+  if (!envValue) {
+    return defaultValue;
+  }
+
+  // Normalize path separators for comparison
+  const normalized = envValue.trim();
+
+  // Reject empty or whitespace-only values
+  if (!normalized) {
+    return defaultValue;
+  }
+
+  // Reject paths containing command injection characters
+  // These characters could be used to chain commands or inject arguments
+  const dangerousChars = /[;&|`$<>(){}[\]!*?~#]/;
+  if (dangerousChars.test(normalized)) {
+    console.warn('[AgentProcess] Rejected shell path with dangerous characters:', normalized);
+    return defaultValue;
+  }
+
+  // Reject paths with newlines or carriage returns (command injection)
+  if (/[\r\n]/.test(normalized)) {
+    console.warn('[AgentProcess] Rejected shell path with newline characters');
+    return defaultValue;
+  }
+
+  // For Windows COMSPEC, validate it looks like a valid Windows executable path
+  if (isWindows()) {
+    // Must end with .exe, .cmd, or .bat (case-insensitive)
+    if (!/\.(exe|cmd|bat)$/i.test(normalized)) {
+      console.warn('[AgentProcess] Rejected COMSPEC - does not end with valid extension:', normalized);
+      return defaultValue;
+    }
+
+    // Should look like a Windows path (drive letter or UNC path)
+    // Allow: C:\Windows\system32\cmd.exe, \\server\share\cmd.exe
+    if (!/^([a-zA-Z]:\\|\\\\)/.test(normalized)) {
+      console.warn('[AgentProcess] Rejected COMSPEC - invalid Windows path format:', normalized);
+      return defaultValue;
+    }
+  } else {
+    // For Unix SHELL, validate it looks like a valid Unix path
+    // Must start with / (absolute path)
+    if (!normalized.startsWith('/')) {
+      console.warn('[AgentProcess] Rejected SHELL - not an absolute path:', normalized);
+      return defaultValue;
+    }
+
+    // Should not contain double slashes (except at start for some edge cases)
+    // and should look like a reasonable shell path
+    if (/\/\//.test(normalized.substring(1))) {
+      console.warn('[AgentProcess] Rejected SHELL - contains double slashes:', normalized);
+      return defaultValue;
+    }
+  }
+
+  return normalized;
+}
+
 function deriveGitBashPath(gitExePath: string): string | null {
-  if (process.platform !== 'win32') {
+  if (!isWindows()) {
     return null;
   }
 
@@ -125,7 +190,7 @@ export class AgentProcessManager {
     // On Windows, detect and pass git-bash path for Claude Code CLI
     // Electron can detect git via where.exe, but Python subprocess may not have the same PATH
     const gitBashEnv: Record<string, string> = {};
-    if (process.platform === 'win32' && !process.env.CLAUDE_CODE_GIT_BASH_PATH) {
+    if (isWindows() && !process.env.CLAUDE_CODE_GIT_BASH_PATH) {
       try {
         const gitInfo = getToolInfo('git');
         if (gitInfo.found && gitInfo.path) {
@@ -484,14 +549,28 @@ export class AgentProcessManager {
 
     // Parse Python commandto handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
-    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
+
+    // Note: Conda activation via pythonActivationScript is not currently in AppSettings
+    // When this feature is added, uncomment and update the activation script logic below
+    // For now, use Python directly without activation script
+    // Add -u flag for unbuffered output (critical for subprocess communication)
+    const finalCommand = pythonCommand;
+    const finalArgs = [...pythonBaseArgs, '-u', ...args];
+
+    // Debug: Log the exact command being spawned
+    console.warn('[AgentProcess] Spawning command:', finalCommand);
+    console.warn('[AgentProcess] With args:', JSON.stringify(finalArgs));
+    console.warn('[AgentProcess] CWD:', cwd);
+
+    const childProcess = spawn(finalCommand, finalArgs, {
       cwd,
       env: {
         ...env, // Already includes process.env, extraEnv, profileEnv, PYTHONUNBUFFERED, PYTHONUTF8
         ...pythonEnv, // Include Python environment (PYTHONPATH for bundled packages)
         ...oauthModeClearVars, // Clear stale ANTHROPIC_* vars when in OAuth mode
         ...apiProfileEnv // Include active API profile config (highest priority for ANTHROPIC_* vars)
-      }
+      },
+      ...(isWindows() && { windowsHide: true })
     });
 
     this.state.addProcess(taskId, {

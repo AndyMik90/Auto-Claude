@@ -1,23 +1,31 @@
 import path from 'path';
 import { getAugmentedEnv, getAugmentedEnvAsync } from './env-utils';
 import { getToolPath, getToolPathAsync } from './cli-tool-manager';
+import { isWindows, getPathDelimiter } from './python-path-utils';
 
 export type ClaudeCliInvocation = {
   command: string;
   env: Record<string, string>;
+  /** True if PATH was modified to include the CLI directory (wasn't already in PATH) */
+  pathWasModified: boolean;
 };
 
-function ensureCommandDirInPath(command: string, env: Record<string, string>): Record<string, string> {
+type PathCheckResult = {
+  env: Record<string, string>;
+  wasModified: boolean;
+};
+
+function ensureCommandDirInPath(command: string, env: Record<string, string>): PathCheckResult {
   if (!path.isAbsolute(command)) {
-    return env;
+    return { env, wasModified: false };
   }
 
-  const pathSeparator = process.platform === 'win32' ? ';' : ':';
+  const pathSeparator = getPathDelimiter();
   const commandDir = path.dirname(command);
   const currentPath = env.PATH || '';
   const pathEntries = currentPath.split(pathSeparator);
   const normalizedCommandDir = path.normalize(commandDir);
-  const hasCommandDir = process.platform === 'win32'
+  const hasCommandDir = isWindows()
     ? pathEntries
       .map((entry) => path.normalize(entry).toLowerCase())
       .includes(normalizedCommandDir.toLowerCase())
@@ -26,12 +34,17 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
       .includes(normalizedCommandDir);
 
   if (hasCommandDir) {
-    return env;
+    // Command dir already in PATH - no modification needed
+    return { env, wasModified: false };
   }
 
+  // Need to add command dir to PATH
   return {
-    ...env,
-    PATH: [commandDir, currentPath].filter(Boolean).join(pathSeparator),
+    env: {
+      ...env,
+      PATH: [commandDir, currentPath].filter(Boolean).join(pathSeparator),
+    },
+    wasModified: true,
   };
 }
 
@@ -44,10 +57,12 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
 export function getClaudeCliInvocation(): ClaudeCliInvocation {
   const command = getToolPath('claude');
   const env = getAugmentedEnv();
+  const { env: updatedEnv, wasModified } = ensureCommandDirInPath(command, env);
 
   return {
     command,
-    env: ensureCommandDirInPath(command, env),
+    env: updatedEnv,
+    pathWasModified: wasModified,
   };
 }
 
@@ -69,9 +84,11 @@ export async function getClaudeCliInvocationAsync(): Promise<ClaudeCliInvocation
     getToolPathAsync('claude'),
     getAugmentedEnvAsync(),
   ]);
+  const { env: updatedEnv, wasModified } = ensureCommandDirInPath(command, env);
 
   return {
     command,
-    env: ensureCommandDirInPath(command, env),
+    env: updatedEnv,
+    pathWasModified: wasModified,
   };
 }

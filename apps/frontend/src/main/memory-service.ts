@@ -213,6 +213,7 @@ async function executeQuery(
       timeout,
       // Use pythonEnv which combines sanitized env + site-packages for real_ladybug
       env: pythonEnv,
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     let stdout = '';
@@ -355,6 +356,7 @@ async function executeSemanticQuery(
       stdio: ['ignore', 'pipe', 'pipe'],
       env,
       timeout,
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     let stdout = '';

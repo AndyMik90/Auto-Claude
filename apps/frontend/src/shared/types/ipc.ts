@@ -131,6 +131,13 @@ import type {
   GitLabNewCommitsCheck
 } from './integrations';
 import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
+import type {
+  CondaDetectionResult,
+  CondaEnvValidation,
+  PythonVersionResult,
+  SetupProgress,
+  CondaProjectPaths,
+} from './conda';
 
 // Electron API exposed via contextBridge
 // Tab state interface (persisted in main process)
@@ -289,6 +296,31 @@ export interface ElectronAPI {
   // App settings
   getSettings: () => Promise<IPCResult<AppSettings>>;
   saveSettings: (settings: Partial<AppSettings>) => Promise<IPCResult>;
+
+  // Python package validation
+  validatePythonPackages: (params: { pythonPath: string; activationScript?: string }) => Promise<IPCResult<{
+    allInstalled: boolean;
+    missingPackages: string[];
+    installLocation: string;
+  }>>;
+  onPythonValidationProgress: (callback: (progress: { current: number; total: number; packageName: string }) => void) => () => void;
+  installPythonRequirements: (params: { pythonPath: string; activationScript?: string }) => Promise<IPCResult>;
+  onPythonInstallProgress: (callback: (progress: string) => void) => () => void;
+  validatePythonEnvironment: (params: { activationScript: string }) => Promise<IPCResult<{
+    valid: boolean;
+    pythonPath: string | null;
+    version: string | null;
+    error: string | null;
+    status: 'valid' | 'missing' | 'wrong_version' | 'error';
+  }>>;
+  reinstallPythonEnvironment: (params: { activationScript: string; pythonVersion?: string }) => Promise<IPCResult<{
+    success: boolean;
+    environmentPath: string | null;
+    pythonVersion: string | null;
+    error: string | null;
+    stepsCompleted: string[];
+  }>>;
+  onPythonReinstallProgress: (callback: (progress: { step: string; completed: number; total: number }) => void) => () => void;
 
   // Sentry error reporting
   notifySentryStateChanged: (enabled: boolean) => void;
@@ -620,6 +652,7 @@ export interface ElectronAPI {
   // Shell operations
   openExternal: (url: string) => Promise<void>;
   openTerminal: (dirPath: string) => Promise<IPCResult<void>>;
+  showItemInFolder: (filePath: string) => Promise<void>;
 
   // Auto Claude source environment operations
   getSourceEnv: () => Promise<IPCResult<SourceEnvConfig>>;
@@ -776,6 +809,24 @@ export interface ElectronAPI {
 
   // GitHub API (nested for organized access)
   github: import('../../preload/api/modules/github-api').GitHubAPI;
+
+  // Conda API (nested for organized access)
+  conda: {
+    detectConda: () => Promise<IPCResult<CondaDetectionResult>>;
+    refreshConda: () => Promise<IPCResult<CondaDetectionResult>>;
+    setupAutoClaudeEnv: () => Promise<IPCResult<void>>;
+    checkAutoClaudeEnv: () => Promise<IPCResult<CondaEnvValidation>>;
+    setupProjectEnv: (projectPath: string, projectName: string, pythonVersion?: string) => Promise<IPCResult<void>>;
+    checkProjectEnv: (envPath: string) => Promise<IPCResult<CondaEnvValidation>>;
+    deleteProjectEnv: (envPath: string) => Promise<IPCResult<void>>;
+    deleteActivationScripts: (projectPath: string) => Promise<IPCResult<void>>;
+    regenerateScripts: (envPath: string, projectPath: string) => Promise<IPCResult<{ workspacePath: string; initScriptPath: string }>>;
+    getPythonVersion: (projectPath: string) => Promise<IPCResult<PythonVersionResult>>;
+    installDeps: (envPath: string, requirementsPath: string) => Promise<IPCResult<void>>;
+    getProjectPaths: (projectPath: string, projectName: string) => Promise<IPCResult<CondaProjectPaths>>;
+    listPythonVersions: (projectPath?: string) => Promise<IPCResult<{ versions: string[]; recommended: string; detectedVersion?: string }>>;
+    onSetupProgress: (callback: (progress: SetupProgress) => void) => () => void;
+  };
 
   // Claude Code CLI operations
   checkClaudeCodeVersion: () => Promise<IPCResult<import('./cli').ClaudeCodeVersionInfo>>;

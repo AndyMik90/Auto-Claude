@@ -283,6 +283,20 @@ export interface AppSettings {
   dangerouslySkipPermissions?: boolean;
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
   sentryEnabled?: boolean;
+
+  /** Optional Python activation script (e.g., conda activate script or venv activate) */
+  pythonActivationScript?: string;
+
+  // ============================================
+  // Conda Configuration (App-level)
+  // ============================================
+
+  /** Detected/configured Conda installation path (e.g., ~/miniconda3) */
+  condaPath?: string;
+  /** Path to the shared auto-claude Conda environment (e.g., ~/miniconda3/envs/auto-claude) */
+  autoClaudeEnvPath?: string;
+  /** Status of the shared auto-claude Conda environment */
+  autoClaudeEnvStatus?: 'none' | 'creating' | 'ready' | 'error';
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

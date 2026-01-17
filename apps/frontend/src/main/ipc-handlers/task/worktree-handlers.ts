@@ -1994,7 +1994,8 @@ export function registerWorktreeHandlers(
               UTILITY_MODEL_ID: utilitySettings.modelId,
               UTILITY_THINKING_BUDGET: utilitySettings.thinkingBudget === null ? '' : (utilitySettings.thinkingBudget?.toString() || '')
             },
-            stdio: ['ignore', 'pipe', 'pipe'] // Don't connect stdin to avoid blocking
+            stdio: ['ignore', 'pipe', 'pipe'], // Don't connect stdin to avoid blocking
+            ...(process.platform === 'win32' && { windowsHide: true })
           });
 
           let stdout = '';
@@ -2482,7 +2483,8 @@ export function registerWorktreeHandlers(
           const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
           const previewProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
             cwd: sourcePath,
-            env: { ...process.env, ...previewPythonEnv, ...previewProfileEnv, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1', DEBUG: 'true' }
+            env: { ...process.env, ...previewPythonEnv, ...previewProfileEnv, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1', DEBUG: 'true' },
+            ...(process.platform === 'win32' && { windowsHide: true })
           });
 
           let stdout = '';
@@ -3017,7 +3019,8 @@ export function registerWorktreeHandlers(
               PYTHONUNBUFFERED: '1',
               PYTHONUTF8: '1'
             },
-            stdio: ['ignore', 'pipe', 'pipe']
+            stdio: ['ignore', 'pipe', 'pipe'],
+            ...(process.platform === 'win32' && { windowsHide: true })
           });
 
           let stdout = '';

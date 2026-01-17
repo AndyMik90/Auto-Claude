@@ -178,7 +178,8 @@ export class TerminalNameGenerator extends EventEmitter {
           PYTHONUNBUFFERED: '1',
           PYTHONIOENCODING: 'utf-8',
           PYTHONUTF8: '1'
-        }
+        },
+        ...(process.platform === 'win32' && { windowsHide: true })
       });
 
       let output = '';

@@ -196,6 +196,7 @@ async function checkCommandHealth(server: CustomMcpServer, startTime: number): P
     const command = process.platform === 'win32' ? 'where' : 'which';
     const proc = spawn(command, [server.command!], {
       timeout: 5000,
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     let found = false;
@@ -422,6 +423,7 @@ async function testCommandConnection(server: CustomMcpServer, startTime: number)
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 15000, // OS-level timeout for reliable process termination
       shell: process.platform === 'win32', // Required for Windows to run npx.cmd
+      ...(process.platform === 'win32' && { windowsHide: true })
     });
 
     let stdout = '';

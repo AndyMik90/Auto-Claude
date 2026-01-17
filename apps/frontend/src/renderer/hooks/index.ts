@@ -8,3 +8,5 @@ export {
   type AgentSettingsSource,
 } from './useResolvedAgentSettings';
 export { useVirtualizedTree } from './useVirtualizedTree';
+export { useCondaSetup } from './useCondaSetup';
+export type { UseCondaSetupOptions, UseCondaSetupReturn, CondaSetupLogEntry } from './useCondaSetup';

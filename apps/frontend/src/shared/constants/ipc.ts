@@ -149,6 +149,7 @@ export const IPC_CHANNELS = {
   // Shell operations
   SHELL_OPEN_EXTERNAL: 'shell:openExternal',
   SHELL_OPEN_TERMINAL: 'shell:openTerminal',
+  SHELL_SHOW_ITEM_IN_FOLDER: 'shell:showItemInFolder',
 
   // Roadmap operations
   ROADMAP_GET: 'roadmap:get',
@@ -426,6 +427,24 @@ export const IPC_CHANNELS = {
   AUTOBUILD_SOURCE_ENV_UPDATE: 'autobuild:source:env:update',
   AUTOBUILD_SOURCE_ENV_CHECK_TOKEN: 'autobuild:source:env:checkToken',
 
+  // Conda environment management
+  CONDA_DETECT: 'conda:detect',
+  CONDA_REFRESH: 'conda:refresh',
+  CONDA_SETUP_AUTO_CLAUDE: 'conda:setupAutoClaude',
+  CONDA_CHECK_AUTO_CLAUDE: 'conda:checkAutoClaude',
+  CONDA_SETUP_PROJECT_ENV: 'conda:setupProjectEnv',
+  CONDA_CHECK_PROJECT_ENV: 'conda:checkProjectEnv',
+  CONDA_DELETE_PROJECT_ENV: 'conda:deleteProjectEnv',
+  CONDA_DELETE_ACTIVATION_SCRIPTS: 'conda:deleteActivationScripts',
+  CONDA_REGENERATE_SCRIPTS: 'conda:regenerateScripts',
+  CONDA_GET_PYTHON_VERSION: 'conda:getPythonVersion',
+  CONDA_INSTALL_DEPS: 'conda:installDeps',
+  CONDA_GET_PROJECT_PATHS: 'conda:getProjectPaths',
+  CONDA_LIST_PYTHON_VERSIONS: 'conda:listPythonVersions',
+
+  // Conda events (main -> renderer)
+  CONDA_SETUP_PROGRESS: 'conda:setupProgress',
+
   // Changelog operations
   CHANGELOG_GET_DONE_TASKS: 'changelog:getDoneTasks',
   CHANGELOG_LOAD_TASK_SPECS: 'changelog:loadTaskSpecs',
@@ -521,5 +540,14 @@ export const IPC_CHANNELS = {
   // Sentry error reporting
   SENTRY_STATE_CHANGED: 'sentry:state-changed',  // Notify main process when setting changes
   GET_SENTRY_DSN: 'sentry:get-dsn',              // Get DSN from main process (env var)
-  GET_SENTRY_CONFIG: 'sentry:get-config'         // Get full Sentry config (DSN + sample rates)
+  GET_SENTRY_CONFIG: 'sentry:get-config',        // Get full Sentry config (DSN + sample rates)
+
+  // Python validation
+  PYTHON_VALIDATE_PACKAGES: 'python:validatePackages',
+  PYTHON_VALIDATION_PROGRESS: 'python:validationProgress',
+  PYTHON_INSTALL_REQUIREMENTS: 'python:installRequirements',
+  PYTHON_INSTALL_PROGRESS: 'python:installProgress',
+  PYTHON_VALIDATE_ENVIRONMENT: 'python:validateEnvironment',
+  PYTHON_REINSTALL_ENVIRONMENT: 'python:reinstallEnvironment',
+  PYTHON_REINSTALL_PROGRESS: 'python:reinstallProgress'
 } as const;

@@ -113,6 +113,7 @@ export function runPythonSubprocess<T = unknown>(
   const child = spawn(pythonCommand, [...pythonBaseArgs, ...options.args], {
     cwd: options.cwd,
     env: subprocessEnv,
+    ...(process.platform === 'win32' && { windowsHide: true })
   });
 
   const promise = new Promise<SubprocessResult<T>>((resolve) => {

@@ -16,6 +16,8 @@ export interface TerminalCreateOptions {
   cols?: number;
   rows?: number;
   projectPath?: string;
+  /** If set, activate this conda environment after shell initializes */
+  condaEnvPath?: string;
 }
 
 export interface TerminalResizeOptions {

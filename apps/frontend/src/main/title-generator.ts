@@ -11,6 +11,7 @@ import { EventEmitter } from 'events';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from './rate-limit-detector';
 import { parsePythonCommand, getValidatedPythonPath } from './python-detector';
 import { getConfiguredPythonPath } from './python-env-manager';
+import { isWindows } from './python-path-utils';
 
 /**
  * Debug logging - only logs when DEBUG=true or in development mode
@@ -157,7 +158,8 @@ export class TitleGenerator extends EventEmitter {
           PYTHONUNBUFFERED: '1',
           PYTHONIOENCODING: 'utf-8',
           PYTHONUTF8: '1'
-        }
+        },
+        ...(isWindows() && { windowsHide: true })
       });
 
       let output = '';

@@ -242,9 +242,11 @@ export function registerStartGhAuth(): void {
           const args = ['auth', 'login', '--web', '--scopes', 'repo'];
           debugLog('Spawning: gh', args);
 
+          const isWindows = process.platform === 'win32';
           const ghProcess = spawn('gh', args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            env: getAugmentedEnv()
+            env: getAugmentedEnv(),
+            ...(isWindows && { windowsHide: true })
           });
 
           let output = '';
