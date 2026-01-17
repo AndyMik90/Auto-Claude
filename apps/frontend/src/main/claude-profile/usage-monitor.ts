@@ -12,6 +12,8 @@
 import { EventEmitter } from 'events';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { ClaudeUsageSnapshot } from '../../shared/types/agent';
+import { loadProfilesFile } from '../services/profile/profile-manager';
+import type { APIProfile } from '../../shared/types/profile';
 
 /**
  * API Provider type for usage monitoring
@@ -210,6 +212,56 @@ export class UsageMonitor extends EventEmitter {
   }
 
   /**
+   * Get credential for usage monitoring (OAuth token or API key)
+   * Detects profile type and returns appropriate credential
+   *
+   * Priority:
+   * 1. API Profile (if active) - returns apiKey directly
+   * 2. OAuth Profile - returns decrypted oauthToken
+   *
+   * @returns The credential string or undefined if none available
+   */
+  private async getCredential(): Promise<string | undefined> {
+    // Try API profile first (highest priority)
+    try {
+      const profilesFile = await loadProfilesFile();
+      if (profilesFile.activeProfileId) {
+        const activeProfile = profilesFile.profiles.find(
+          (p) => p.id === profilesFile.activeProfileId
+        );
+        if (activeProfile && activeProfile.apiKey) {
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Using API profile credential:', activeProfile.name);
+          }
+          return activeProfile.apiKey;
+        }
+      }
+    } catch (error) {
+      // API profile loading failed, fall through to OAuth
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:TRACE] Failed to load API profiles, falling back to OAuth:', error);
+      }
+    }
+
+    // Fall back to OAuth profile
+    const profileManager = getClaudeProfileManager();
+    const activeProfile = profileManager.getActiveProfile();
+    if (activeProfile?.oauthToken) {
+      const decryptedToken = profileManager.getProfileToken(activeProfile.id);
+      if (this.isDebug && decryptedToken) {
+        console.warn('[UsageMonitor:TRACE] Using OAuth profile credential:', activeProfile.name);
+      }
+      return decryptedToken;
+    }
+
+    // No credential available
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:TRACE] No credential available (no API or OAuth profile active)');
+    }
+    return undefined;
+  }
+
+  /**
    * Check usage and trigger swap if thresholds exceeded
    */
   private async checkUsageAndSwap(): Promise<void> {
@@ -229,9 +281,9 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Fetch current usage (hybrid approach)
-      // Get decrypted token from ProfileManager (activeProfile.oauthToken is encrypted)
-      const decryptedToken = profileManager.getProfileToken(activeProfile.id);
-      const usage = await this.fetchUsage(activeProfile.id, decryptedToken ?? undefined);
+      // Get appropriate credential (OAuth token or API key)
+      const credential = await this.getCredential();
+      const usage = await this.fetchUsage(activeProfile.id, credential);
       if (!usage) {
         console.warn('[UsageMonitor] Failed to fetch usage');
         return;
@@ -253,7 +305,7 @@ export class UsageMonitor extends EventEmitter {
             sessionPercent: usage.sessionPercent,
             weekPercent: usage.weeklyPercent,
             activeProfile: activeProfile.id,
-            hasToken: !!decryptedToken
+            hasCredential: !!credential
           });
         }
 
