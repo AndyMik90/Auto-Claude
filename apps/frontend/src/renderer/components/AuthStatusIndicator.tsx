@@ -125,15 +125,12 @@ export function AuthStatusIndicator() {
   return (
     <div className="flex items-center gap-2">
       {/* Usage Warning Badge (shown when usage >= 90%) */}
-      {shouldShowUsageWarning && resetCountdown && (
+      {shouldShowUsageWarning && (
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-red-500/10 text-red-500 border-red-500/20">
                 <AlertTriangle className="h-3.5 w-3.5 animate-pulse" />
-                <span className="text-xs font-semibold font-mono">
-                  {Math.round(warningBadgePercent)}%
-                </span>
               </div>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs max-w-xs">
@@ -141,9 +138,6 @@ export function AuthStatusIndicator() {
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground font-medium">Usage Alert</span>
                   <span className="font-semibold text-red-500">{Math.round(warningBadgePercent)}%</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  {resetCountdown}
                 </div>
                 <div className="h-px bg-border" />
                 <div className="text-[10px] text-muted-foreground">
@@ -192,6 +186,26 @@ export function AuthStatusIndicator() {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {/* Countdown Timer (shown when usage is available) */}
+      {resetCountdown && (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-blue-500/10 text-blue-500 border-blue-500/20 text-xs font-medium">
+                {resetCountdown}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs max-w-xs">
+              <div className="space-y-1">
+                <div className="text-[10px] text-muted-foreground">
+                  Time until quota reset
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
     </div>
   );
 }
