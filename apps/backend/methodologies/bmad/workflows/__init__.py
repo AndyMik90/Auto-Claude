@@ -20,6 +20,11 @@ from apps.backend.methodologies.bmad.workflows.analysis import (
     analyze_project,
     load_analysis,
 )
+from apps.backend.methodologies.bmad.workflows.architecture import (
+    ArchitectureDocument,
+    create_architecture,
+    load_architecture,
+)
 from apps.backend.methodologies.bmad.workflows.prd import (
     PRDDocument,
     Requirement,
@@ -37,4 +42,8 @@ __all__ = [
     "load_prd",
     "PRDDocument",
     "Requirement",
+    # Architecture
+    "create_architecture",
+    "load_architecture",
+    "ArchitectureDocument",
 ]

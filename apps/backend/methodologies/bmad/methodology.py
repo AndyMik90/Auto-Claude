@@ -410,12 +410,73 @@ class BMADRunner:
 
         Story Reference: Story 6.4 - Implement BMAD Architecture Workflow Integration
         """
-        # TODO: Implement in Story 6.4
-        return PhaseResult(
-            success=False,
-            phase_id="architecture",
-            error="Architecture phase not yet implemented (Story 6.4)",
+        # Import here to avoid circular imports
+        from apps.backend.methodologies.bmad.workflows.architecture import (
+            create_architecture,
+            load_architecture,
         )
+
+        # Check if output directory is configured
+        if self._output_dir is None:
+            return PhaseResult(
+                success=False,
+                phase_id="architecture",
+                error="No output directory configured. Set spec_dir in task_config.metadata.",
+            )
+
+        # Check if architecture already exists
+        self._invoke_progress_callback("Checking for existing architecture...", 5.0)
+        existing = load_architecture(self._output_dir)
+        if existing:
+            arch_file = self._output_dir / "architecture.md"
+            self._invoke_progress_callback("Found existing architecture", 100.0)
+            return PhaseResult(
+                success=True,
+                phase_id="architecture",
+                message="Architecture already exists",
+                artifacts=[str(arch_file)],
+                metadata={"project_name": existing.project_name},
+            )
+
+        # Create Architecture
+        self._invoke_progress_callback("Creating architecture document...", 10.0)
+        try:
+            arch = create_architecture(
+                output_dir=self._output_dir,
+                progress_callback=self._invoke_progress_callback,
+            )
+
+            arch_file = self._output_dir / "architecture.md"
+            arch_json_file = self._output_dir / "architecture.json"
+
+            if arch_file.exists():
+                return PhaseResult(
+                    success=True,
+                    phase_id="architecture",
+                    message=f"Architecture created for '{arch.project_name}'",
+                    artifacts=[str(arch_file), str(arch_json_file)],
+                    metadata={
+                        "project_name": arch.project_name,
+                        "num_components": len(arch.components),
+                        "num_layers": len(arch.layers),
+                        "num_decisions": len(arch.decisions),
+                        "architecture_status": arch.metadata.status,
+                    },
+                )
+            else:
+                return PhaseResult(
+                    success=False,
+                    phase_id="architecture",
+                    error="Architecture creation completed but artifact file was not created",
+                )
+
+        except Exception as e:
+            logger.error(f"Architecture creation failed: {e}")
+            return PhaseResult(
+                success=False,
+                phase_id="architecture",
+                error=f"Architecture creation failed: {str(e)}",
+            )
 
     def _execute_epics(self) -> PhaseResult:
         """Execute the epic and story creation phase.
