@@ -976,18 +976,37 @@ export class UsageMonitor extends EventEmitter {
         });
       }
 
+      // Calculate 5-hour window reset time
+      // The 5-hour window is a rolling window. Current time is the end of the window,
+      // so the window resets at the current hour every hour.
+      const now = new Date();
+      const nextHour = new Date(now);
+      nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+      const timeUntilReset = nextHour.getTime() - now.getTime();
+      const hoursUntilReset = Math.floor(timeUntilReset / (1000 * 60 * 60));
+      const minsUntilReset = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
+      const sessionResetTime = `Resets in ${hoursUntilReset}h ${minsUntilReset}m`;
+
+      // Calculate monthly reset time (1st of next month)
+      const nextMonth = new Date(now);
+      nextMonth.setMonth(now.getMonth() + 1, 1);
+      nextMonth.setHours(0, 0, 0, 0);
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthlyResetTime = `1st of ${monthNames[nextMonth.getMonth()]}`;
+
       return {
         sessionPercent,
         weeklyPercent,
-        sessionResetTime: '5-hour window',
-        weeklyResetTime: 'Calendar month',
+        sessionResetTime,
+        weeklyResetTime: monthlyResetTime,
         profileId,
         profileName,
         fetchedAt: new Date(),
         limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
         usageWindows: {
-          sessionWindowLabel: '5-hour window',
-          weeklyWindowLabel: 'Calendar month'
+          sessionWindowLabel: '5 Hours Quota',
+          weeklyWindowLabel: 'Total Monthly Tools Quota'
         }
       };
     } catch (error) {
@@ -1060,18 +1079,37 @@ export class UsageMonitor extends EventEmitter {
         });
       }
 
+      // Calculate 5-hour window reset time
+      // The 5-hour window is a rolling window. Current time is the end of the window,
+      // so the window resets at the current hour every hour.
+      const now = new Date();
+      const nextHour = new Date(now);
+      nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+      const timeUntilReset = nextHour.getTime() - now.getTime();
+      const hoursUntilReset = Math.floor(timeUntilReset / (1000 * 60 * 60));
+      const minsUntilReset = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
+      const sessionResetTime = `Resets in ${hoursUntilReset}h ${minsUntilReset}m`;
+
+      // Calculate monthly reset time (1st of next month)
+      const nextMonth = new Date(now);
+      nextMonth.setMonth(now.getMonth() + 1, 1);
+      nextMonth.setHours(0, 0, 0, 0);
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthlyResetTime = `1st of ${monthNames[nextMonth.getMonth()]}`;
+
       return {
         sessionPercent,
         weeklyPercent,
-        sessionResetTime: '5-hour window',
-        weeklyResetTime: 'Calendar month',
+        sessionResetTime,
+        weeklyResetTime: monthlyResetTime,
         profileId,
         profileName,
         fetchedAt: new Date(),
         limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
         usageWindows: {
-          sessionWindowLabel: '5-hour window',
-          weeklyWindowLabel: 'Calendar month'
+          sessionWindowLabel: '5 Hours Quota',
+          weeklyWindowLabel: 'Total Monthly Tools Quota'
         }
       };
     } catch (error) {
