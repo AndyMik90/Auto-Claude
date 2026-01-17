@@ -1,13 +1,18 @@
 /**
  * AuthStatusIndicator - Display current authentication method in header
  *
- * Shows the active authentication method:
- * - API Profile name with Key icon when a profile is active
- * - "OAuth" with Lock icon when using OAuth authentication
+ * Shows the active authentication method and provider:
+ * - OAuth: Shows "OAuth Anthropic" with Lock icon
+ * - API Profile: Shows provider name (z.ai, ZHIPU AI) with Key icon and provider-specific colors
+ *
+ * Provider detection is based on the profile's baseUrl:
+ * - api.anthropic.com → Anthropic
+ * - api.z.ai → z.ai
+ * - open.bigmodel.cn, dev.bigmodel.cn → ZHIPU AI
  */
 
 import { useMemo } from 'react';
-import { Key, Lock } from 'lucide-react';
+import { Key, Lock, Cloud } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -15,22 +20,45 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { useSettingsStore } from '../stores/settings-store';
+import { detectProvider, getProviderLabel, getProviderBadgeColor } from '../../shared/utils/provider-detection';
 
 export function AuthStatusIndicator() {
   // Subscribe to profile state from settings store
   const { profiles, activeProfileId } = useSettingsStore();
 
-  // Compute auth status directly using useMemo to avoid unnecessary re-renders
+  // Compute auth status and provider detection using useMemo to avoid unnecessary re-renders
   const authStatus = useMemo(() => {
     if (activeProfileId) {
       const activeProfile = profiles.find(p => p.id === activeProfileId);
       if (activeProfile) {
-        return { type: 'profile' as const, name: activeProfile.name };
+        // Detect provider from profile's baseUrl
+        const provider = detectProvider(activeProfile.baseUrl);
+        const providerLabel = getProviderLabel(provider);
+        return {
+          type: 'profile' as const,
+          name: activeProfile.name,
+          provider,
+          providerLabel,
+          badgeColor: getProviderBadgeColor(provider)
+        };
       }
       // Profile ID set but profile not found - fallback to OAuth
-      return { type: 'oauth' as const, name: 'OAuth' };
+      return {
+        type: 'oauth' as const,
+        name: 'OAuth',
+        provider: 'anthropic' as const,
+        providerLabel: 'Anthropic',
+        badgeColor: 'bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/15'
+      };
     }
-    return { type: 'oauth' as const, name: 'OAuth' };
+    // No active profile - using OAuth
+    return {
+      type: 'oauth' as const,
+      name: 'OAuth',
+      provider: 'anthropic' as const,
+      providerLabel: 'Anthropic',
+      badgeColor: 'bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/15'
+    };
   }, [activeProfileId, profiles]);
 
   const isOAuth = authStatus.type === 'oauth';
@@ -42,12 +70,12 @@ export function AuthStatusIndicator() {
         <TooltipTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-primary/10 text-primary border-primary/20 transition-all hover:opacity-80 hover:bg-primary/15"
-            aria-label={`Authentication method: ${authStatus.name}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${authStatus.badgeColor}`}
+            aria-label={`Authentication: ${authStatus.providerLabel}`}
           >
             <Icon className="h-3.5 w-3.5" />
             <span className="text-xs font-semibold">
-              {authStatus.name}
+              {authStatus.providerLabel}
             </span>
           </button>
         </TooltipTrigger>
@@ -56,6 +84,10 @@ export function AuthStatusIndicator() {
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground font-medium">Authentication</span>
               <span className="font-semibold">{isOAuth ? 'OAuth' : 'API Profile'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground font-medium">Provider</span>
+              <span className="font-semibold">{authStatus.providerLabel}</span>
             </div>
             {!isOAuth && authStatus.name && (
               <>
