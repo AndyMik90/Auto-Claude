@@ -29,8 +29,8 @@
   ],
   "qa_signoff": {
     "status": "fixes_applied",
-    "timestamp": "2026-01-18T01:10:00Z",
-    "fix_session": 4,
+    "timestamp": "2026-01-18T01:30:00Z",
+    "fix_session": 5,
     "issues_fixed": [
       {
         "title": "Usage values not displaying correctly for z.ai and ZHIPU providers",
@@ -71,6 +71,11 @@
         "title": "Time synchronization issue with reset countdown",
         "fix_commit": "037fa6a1",
         "description": "Store ISO timestamps and calculate relative time dynamically in UI instead of at fetch time, ensuring countdown stays accurate"
+      },
+      {
+        "title": "5-hour window reset time showing duration from start instead of time remaining",
+        "fix_commit": "52b53f83",
+        "description": "Fixed sessionResetTimestamp calculation to align with 5-hour interval boundaries (0:00, 5:00, 10:00, 15:00, 20:00) instead of just next hour. The tooltip now correctly shows time remaining until the window resets. Verified >=90% badge is based on actual usage percentage from API, not time-based calculation."
       }
     ],
     "ready_for_qa_revalidation": true
