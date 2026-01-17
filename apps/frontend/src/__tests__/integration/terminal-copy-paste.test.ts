@@ -80,7 +80,7 @@ describe('Terminal copy/paste integration', () => {
     // Mock requestAnimationFrame for xterm.js integration tests
     global.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
       // Synchronously execute the callback to avoid timing issues in tests
-      // Use globalThis instead of window for Node.js compatibility
+      // Just pass timestamp directly - this context isn't used by RAF callbacks
       callback(0);
       return 0;
     }) as unknown as Mock;
