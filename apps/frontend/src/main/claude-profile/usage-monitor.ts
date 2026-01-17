@@ -373,18 +373,71 @@ export class UsageMonitor extends EventEmitter {
     this.isChecking = true;
 
     try {
-      const profileManager = getClaudeProfileManager();
-      const activeProfile = profileManager.getActiveProfile();
+      // Step 1: Determine which auth type is active (API profile vs OAuth)
+      // API profiles take priority over OAuth profiles
+      let profileId: string;
+      let profileName: string;
+      let isAPIProfile = false;
 
-      if (!activeProfile) {
-        console.warn('[UsageMonitor] No active profile');
-        return;
+      // First, check if an API profile is active
+      try {
+        const profilesFile = await loadProfilesFile();
+        if (profilesFile.activeProfileId) {
+          const activeAPIProfile = profilesFile.profiles.find(
+            (p) => p.id === profilesFile.activeProfileId
+          );
+          if (activeAPIProfile) {
+            // API profile is active
+            profileId = activeAPIProfile.id;
+            profileName = activeAPIProfile.name;
+            isAPIProfile = true;
+
+            if (this.isDebug) {
+              console.warn('[UsageMonitor:TRACE] Active auth type: API Profile', {
+                profileId,
+                profileName,
+                baseUrl: activeAPIProfile.baseUrl
+              });
+            }
+          } else {
+            // activeProfileId is set but profile not found - fall through to OAuth
+            if (this.isDebug) {
+              console.warn('[UsageMonitor:TRACE] Active API profile ID set but profile not found, falling back to OAuth');
+            }
+          }
+        }
+      } catch (error) {
+        // Failed to load API profiles - fall through to OAuth
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:TRACE] Failed to load API profiles, falling back to OAuth:', error);
+        }
+      }
+
+      // If no API profile is active, check OAuth profiles
+      if (!isAPIProfile) {
+        const profileManager = getClaudeProfileManager();
+        const activeOAuthProfile = profileManager.getActiveProfile();
+
+        if (!activeOAuthProfile) {
+          console.warn('[UsageMonitor] No active profile (neither API nor OAuth)');
+          return;
+        }
+
+        profileId = activeOAuthProfile.id;
+        profileName = activeOAuthProfile.name;
+
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:TRACE] Active auth type: OAuth Profile', {
+            profileId,
+            profileName
+          });
+        }
       }
 
       // Fetch current usage (hybrid approach)
       // Get appropriate credential (OAuth token or API key)
       const credential = await this.getCredential();
-      const usage = await this.fetchUsage(activeProfile.id, credential);
+      const usage = await this.fetchUsage(profileId, credential);
       if (!usage) {
         console.warn('[UsageMonitor] Failed to fetch usage');
         return;
@@ -396,59 +449,67 @@ export class UsageMonitor extends EventEmitter {
       this.emit('usage-updated', usage);
 
       // Check if proactive swap is enabled before checking thresholds
-      const settings = profileManager.getAutoSwitchSettings();
-      if (!settings.enabled || !settings.proactiveSwapEnabled) {
-        if (this.isDebug) {
-          console.warn('[UsageMonitor:TRACE] Proactive swap disabled, skipping threshold check');
+      // Note: Proactive swap only works with OAuth profiles, not API profiles
+      if (!isAPIProfile) {
+        const profileManager = getClaudeProfileManager();
+        const settings = profileManager.getAutoSwitchSettings();
+        if (!settings.enabled || !settings.proactiveSwapEnabled) {
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Proactive swap disabled, skipping threshold check');
+          }
+          return;
         }
-        return;
-      }
 
-      const sessionExceeded = usage.sessionPercent >= settings.sessionThreshold;
-      const weeklyExceeded = usage.weeklyPercent >= settings.weeklyThreshold;
+        const sessionExceeded = usage.sessionPercent >= settings.sessionThreshold;
+        const weeklyExceeded = usage.weeklyPercent >= settings.weeklyThreshold;
 
-      if (sessionExceeded || weeklyExceeded) {
-        if (this.isDebug) {
-          console.warn('[UsageMonitor:TRACE] Threshold exceeded', {
+        if (sessionExceeded || weeklyExceeded) {
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Threshold exceeded', {
+              sessionPercent: usage.sessionPercent,
+              weekPercent: usage.weeklyPercent,
+              activeProfile: profileId,
+              hasCredential: !!credential
+            });
+          }
+
+          console.warn('[UsageMonitor] Threshold exceeded:', {
             sessionPercent: usage.sessionPercent,
-            weekPercent: usage.weeklyPercent,
-            activeProfile: activeProfile.id,
-            hasCredential: !!credential
+            sessionThreshold: settings.sessionThreshold,
+            weeklyPercent: usage.weeklyPercent,
+            weeklyThreshold: settings.weeklyThreshold
           });
+
+          // Attempt proactive swap
+          await this.performProactiveSwap(
+            profileId,
+            sessionExceeded ? 'session' : 'weekly'
+          );
+        } else {
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Usage OK', {
+              sessionPercent: usage.sessionPercent,
+              weekPercent: usage.weeklyPercent
+            });
+          }
         }
-
-        console.warn('[UsageMonitor] Threshold exceeded:', {
-          sessionPercent: usage.sessionPercent,
-          sessionThreshold: settings.sessionThreshold,
-          weeklyPercent: usage.weeklyPercent,
-          weeklyThreshold: settings.weeklyThreshold
-        });
-
-        // Attempt proactive swap
-        await this.performProactiveSwap(
-          activeProfile.id,
-          sessionExceeded ? 'session' : 'weekly'
-        );
       } else {
         if (this.isDebug) {
-          console.warn('[UsageMonitor:TRACE] Usage OK', {
-            sessionPercent: usage.sessionPercent,
-            weekPercent: usage.weeklyPercent
-          });
+          console.warn('[UsageMonitor:TRACE] Skipping proactive swap for API profile (only supported for OAuth profiles)');
         }
       }
     } catch (error) {
       // Check for auth failure (401/403) from fetchUsageViaAPI
-      // Only attempt proactive swap if enabled
-      const settings = profileManager.getAutoSwitchSettings();
+      // Only attempt proactive swap if enabled and using OAuth profile
       if ((error as any).statusCode === 401 || (error as any).statusCode === 403) {
-        if (settings.enabled && settings.proactiveSwapEnabled) {
-          const activeProfile = profileManager.getActiveProfile();
-
-          if (activeProfile) {
+        // Proactive swap is only supported for OAuth profiles, not API profiles
+        if (!isAPIProfile) {
+          const profileManager = getClaudeProfileManager();
+          const settings = profileManager.getAutoSwitchSettings();
+          if (settings.enabled && settings.proactiveSwapEnabled) {
             // Mark this profile as auth-failed to prevent swap loops
-            this.authFailedProfiles.set(activeProfile.id, Date.now());
-            console.warn('[UsageMonitor] Auth failure detected, marked profile as failed:', activeProfile.id);
+            this.authFailedProfiles.set(profileId, Date.now());
+            console.warn('[UsageMonitor] Auth failure detected, marked profile as failed:', profileId);
 
             // Clean up expired entries from the failed profiles map
             const now = Date.now();
@@ -462,7 +523,7 @@ export class UsageMonitor extends EventEmitter {
               const excludeProfiles = Array.from(this.authFailedProfiles.keys());
               console.warn('[UsageMonitor] Attempting proactive swap (excluding failed profiles):', excludeProfiles);
               await this.performProactiveSwap(
-                activeProfile.id,
+                profileId,
                 'session', // Treat auth failure as session limit for immediate swap
                 excludeProfiles
               );
@@ -472,7 +533,7 @@ export class UsageMonitor extends EventEmitter {
             }
           }
         } else {
-          console.warn('[UsageMonitor] Auth failure detected but proactive swap is disabled, skipping swap');
+          console.warn('[UsageMonitor] Auth failure detected but proactive swap is disabled or using API profile, skipping swap');
         }
       }
 
@@ -493,16 +554,55 @@ export class UsageMonitor extends EventEmitter {
     profileId: string,
     credential?: string
   ): Promise<ClaudeUsageSnapshot | null> {
-    const profileManager = getClaudeProfileManager();
-    const profile = profileManager.getProfile(profileId);
-    if (!profile) {
+    // Get profile name - check both API profiles and OAuth profiles
+    let profileName: string | undefined;
+
+    // First, check if it's an API profile
+    try {
+      const profilesFile = await loadProfilesFile();
+      const apiProfile = profilesFile.profiles.find(p => p.id === profileId);
+      if (apiProfile) {
+        profileName = apiProfile.name;
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:FETCH] Found API profile:', {
+            profileId,
+            profileName,
+            baseUrl: apiProfile.baseUrl
+          });
+        }
+      }
+    } catch (error) {
+      // Failed to load API profiles, continue to OAuth check
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:FETCH] Failed to load API profiles:', error);
+      }
+    }
+
+    // If not found in API profiles, check OAuth profiles
+    if (!profileName) {
+      const profileManager = getClaudeProfileManager();
+      const oauthProfile = profileManager.getProfile(profileId);
+      if (oauthProfile) {
+        profileName = oauthProfile.name;
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:FETCH] Found OAuth profile:', {
+            profileId,
+            profileName
+          });
+        }
+      }
+    }
+
+    // If still not found, return null
+    if (!profileName) {
+      console.warn('[UsageMonitor:FETCH] Profile not found in either API or OAuth profiles:', profileId);
       return null;
     }
 
     if (this.isDebug) {
       console.warn('[UsageMonitor:FETCH] Starting usage fetch:', {
         profileId,
-        profileName: profile.name,
+        profileName,
         hasCredential: !!credential,
         useApiMethod: this.useApiMethod
       });
@@ -513,7 +613,7 @@ export class UsageMonitor extends EventEmitter {
       if (this.isDebug) {
         console.warn('[UsageMonitor:FETCH] Attempting API fetch method');
       }
-      const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profile.name);
+      const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profileName);
       if (apiUsage) {
         console.warn('[UsageMonitor] Successfully fetched via API');
         if (this.isDebug) {
@@ -541,7 +641,7 @@ export class UsageMonitor extends EventEmitter {
     if (this.isDebug) {
       console.warn('[UsageMonitor:FETCH] Attempting CLI fallback method');
     }
-    return await this.fetchUsageViaCLI(profileId, profile.name);
+    return await this.fetchUsageViaCLI(profileId, profileName);
   }
 
   /**
