@@ -31,6 +31,7 @@ import { cn } from '../lib/utils';
 import { persistTaskStatus, forceCompleteTask, archiveTasks } from '../stores/task-store';
 import { useToast } from '../hooks/use-toast';
 import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
+import { BulkPRDialog } from './BulkPRDialog';
 import type { Task, TaskStatus } from '../../shared/types';
 
 // Type guard for valid drop column targets - preserves literal type from TASK_STATUS_COLUMNS
@@ -418,6 +419,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   // Selection state for bulk actions (Human Review column)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
 
+  // Bulk PR dialog state
+  const [bulkPRDialogOpen, setBulkPRDialogOpen] = useState(false);
+
   // Worktree cleanup dialog state
   const [worktreeCleanupDialog, setWorktreeCleanupDialog] = useState<{
     open: boolean;
@@ -512,6 +516,23 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const deselectAllTasks = useCallback(() => {
     setSelectedTaskIds(new Set());
   }, []);
+
+  // Get selected task objects for the BulkPRDialog
+  const selectedTasks = useMemo(() => {
+    return tasksByStatus.human_review.filter(task => selectedTaskIds.has(task.id));
+  }, [tasksByStatus.human_review, selectedTaskIds]);
+
+  // Handle opening the bulk PR dialog
+  const handleOpenBulkPRDialog = useCallback(() => {
+    if (selectedTaskIds.size > 0) {
+      setBulkPRDialogOpen(true);
+    }
+  }, [selectedTaskIds.size]);
+
+  // Handle bulk PR dialog completion - clear selection
+  const handleBulkPRComplete = useCallback(() => {
+    deselectAllTasks();
+  }, [deselectAllTasks]);
 
   const handleArchiveAll = async () => {
     // Get projectId from the first task (all tasks should have the same projectId)
@@ -726,9 +747,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               variant="default"
               size="sm"
               className="gap-2"
-              onClick={() => {
-                // TODO: Open BulkPRDialog (will be implemented in subtask 3-2)
-              }}
+              onClick={handleOpenBulkPRDialog}
             >
               <GitPullRequest className="h-4 w-4" />
               {t('kanban.createPRs')}
@@ -759,6 +778,14 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
           }
         }}
         onConfirm={handleWorktreeCleanupConfirm}
+      />
+
+      {/* Bulk PR creation dialog */}
+      <BulkPRDialog
+        open={bulkPRDialogOpen}
+        tasks={selectedTasks}
+        onOpenChange={setBulkPRDialogOpen}
+        onComplete={handleBulkPRComplete}
       />
     </div>
   );
