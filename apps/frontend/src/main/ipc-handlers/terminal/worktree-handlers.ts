@@ -600,7 +600,7 @@ async function listOtherWorktrees(projectPath: string): Promise<OtherWorktreeInf
   ];
 
   try {
-    const { stdout: output } = await execFileAsync('git', ['worktree', 'list', '--porcelain'], {
+    const { stdout: output } = await execFileAsync(getToolPath('git'), ['worktree', 'list', '--porcelain'], {
       cwd: projectPath,
       encoding: 'utf-8',
       timeout: 30000,
