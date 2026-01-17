@@ -235,22 +235,20 @@ export class UsageMonitor extends EventEmitter {
 
   /**
    * Start monitoring usage at configured interval
+   *
+   * Note: Usage monitoring always runs to display the usage badge.
+   * Proactive account swapping only occurs if enabled in settings.
    */
   start(): void {
-    const profileManager = getClaudeProfileManager();
-    const settings = profileManager.getAutoSwitchSettings();
-
-    if (!settings.enabled || !settings.proactiveSwapEnabled) {
-      console.warn('[UsageMonitor] Proactive monitoring disabled. Settings:', JSON.stringify(settings, null, 2));
-      return;
-    }
-
     if (this.intervalId) {
       console.warn('[UsageMonitor] Already running');
       return;
     }
 
+    const profileManager = getClaudeProfileManager();
+    const settings = profileManager.getAutoSwitchSettings();
     const interval = settings.usageCheckInterval || 30000;
+
     console.warn('[UsageMonitor] Starting with interval:', interval, 'ms');
 
     // Check immediately
@@ -360,11 +358,18 @@ export class UsageMonitor extends EventEmitter {
 
       this.currentUsage = usage;
 
-      // Emit usage update for UI
+      // Emit usage update for UI (always emit, regardless of proactive swap settings)
       this.emit('usage-updated', usage);
 
-      // Check thresholds
+      // Check if proactive swap is enabled before checking thresholds
       const settings = profileManager.getAutoSwitchSettings();
+      if (!settings.enabled || !settings.proactiveSwapEnabled) {
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:TRACE] Proactive swap disabled, skipping threshold check');
+        }
+        return;
+      }
+
       const sessionExceeded = usage.sessionPercent >= settings.sessionThreshold;
       const weeklyExceeded = usage.weeklyPercent >= settings.weeklyThreshold;
 
@@ -400,35 +405,40 @@ export class UsageMonitor extends EventEmitter {
       }
     } catch (error) {
       // Check for auth failure (401/403) from fetchUsageViaAPI
+      // Only attempt proactive swap if enabled
+      const settings = profileManager.getAutoSwitchSettings();
       if ((error as any).statusCode === 401 || (error as any).statusCode === 403) {
-        const profileManager = getClaudeProfileManager();
-        const activeProfile = profileManager.getActiveProfile();
-        
-        if (activeProfile) {
-          // Mark this profile as auth-failed to prevent swap loops
-          this.authFailedProfiles.set(activeProfile.id, Date.now());
-          console.warn('[UsageMonitor] Auth failure detected, marked profile as failed:', activeProfile.id);
-          
-          // Clean up expired entries from the failed profiles map
-          const now = Date.now();
-          this.authFailedProfiles.forEach((timestamp, profileId) => {
-            if (now - timestamp > UsageMonitor.AUTH_FAILURE_COOLDOWN_MS) {
-              this.authFailedProfiles.delete(profileId);
+        if (settings.enabled && settings.proactiveSwapEnabled) {
+          const activeProfile = profileManager.getActiveProfile();
+
+          if (activeProfile) {
+            // Mark this profile as auth-failed to prevent swap loops
+            this.authFailedProfiles.set(activeProfile.id, Date.now());
+            console.warn('[UsageMonitor] Auth failure detected, marked profile as failed:', activeProfile.id);
+
+            // Clean up expired entries from the failed profiles map
+            const now = Date.now();
+            this.authFailedProfiles.forEach((timestamp, profileId) => {
+              if (now - timestamp > UsageMonitor.AUTH_FAILURE_COOLDOWN_MS) {
+                this.authFailedProfiles.delete(profileId);
+              }
+            });
+
+            try {
+              const excludeProfiles = Array.from(this.authFailedProfiles.keys());
+              console.warn('[UsageMonitor] Attempting proactive swap (excluding failed profiles):', excludeProfiles);
+              await this.performProactiveSwap(
+                activeProfile.id,
+                'session', // Treat auth failure as session limit for immediate swap
+                excludeProfiles
+              );
+              return;
+            } catch (swapError) {
+              console.error('[UsageMonitor] Failed to perform auth-failure swap:', swapError);
             }
-          });
-          
-          try {
-            const excludeProfiles = Array.from(this.authFailedProfiles.keys());
-            console.warn('[UsageMonitor] Attempting proactive swap (excluding failed profiles):', excludeProfiles);
-            await this.performProactiveSwap(
-              activeProfile.id,
-              'session', // Treat auth failure as session limit for immediate swap
-              excludeProfiles
-            );
-            return;
-          } catch (swapError) {
-            console.error('[UsageMonitor] Failed to perform auth-failure swap:', swapError);
           }
+        } else {
+          console.warn('[UsageMonitor] Auth failure detected but proactive swap is disabled, skipping swap');
         }
       }
 
