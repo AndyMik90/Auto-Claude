@@ -520,10 +520,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const key = getTaskOrderKey(projectId);
       const stored = localStorage.getItem(key);
       if (stored) {
-        const order = JSON.parse(stored) as TaskOrderState;
-        set({ taskOrder: order });
+        const parsed = JSON.parse(stored);
+        // Validate structure before assigning - type assertion is compile-time only
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !('backlog' in parsed)) {
+          console.warn('Invalid task order data in localStorage, resetting to empty');
+          set({ taskOrder: createEmptyTaskOrder() });
+          return;
+        }
+        set({ taskOrder: parsed as TaskOrderState });
       } else {
-        // Initialize with empty order state
         set({ taskOrder: createEmptyTaskOrder() });
       }
     } catch (error) {

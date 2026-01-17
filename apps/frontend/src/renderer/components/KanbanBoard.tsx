@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useEffect } from 'react';
+import { useState, useMemo, memo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewState } from '../contexts/ViewStateContext';
 import {
@@ -574,7 +574,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   // Get projectId from tasks (all tasks in KanbanBoard share the same project)
   const projectId = useMemo(() => tasks[0]?.projectId ?? null, [tasks]);
 
-  const saveTaskOrder = (projectIdToSave: string) => {
+  const saveTaskOrder = useCallback((projectIdToSave: string) => {
     const success = saveTaskOrderToStorage(projectIdToSave);
     if (!success) {
       toast({
@@ -584,7 +584,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       });
     }
     return success;
-  };
+  }, [saveTaskOrderToStorage, toast, t]);
 
   // Load task order on mount and when project changes
   useEffect(() => {
@@ -678,8 +678,6 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         // Reorder tasks within the same column using the visual column key
         reorderTasksInColumn(taskVisualColumn, activeTaskId, overId);
 
-        // Get projectId for persistence
-        const projectId = task.projectId;
         if (projectId) {
           saveTaskOrder(projectId);
         }
