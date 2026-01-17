@@ -671,17 +671,14 @@ if sys.version_info >= (3, 12):
    *
    * For Windows with pywin32, this method handles several critical issues:
    * 1. PYTHONPATH must include win32 and win32/lib for module imports
-   * 2. pywin32_system32 must be in PATH for DLL loading (pre-Python 3.8 fallback)
-   * 3. os.add_dll_directory() must be called for Python 3.8+ DLL loading
+   * 2. pywin32_system32 must be in PATH for DLL loading
    *
-   * The pywin32 initialization chain is:
-   * - pywin32.pth → import pywin32_bootstrap → os.add_dll_directory(pywin32_system32)
-   * - But .pth files are NOT processed when PYTHONPATH is set!
-   * - So we use PYTHONSTARTUP to run bootstrap code that processes .pth files
+   * Note: The DLL copying performed by fixPywin32() in download-python.cjs is what
+   * actually makes pywin32 work - it copies DLLs to locations where Python's default
+   * DLL search finds them. Adding pywin32_system32 to PATH is an additional fallback.
    *
    * @see https://github.com/AndyMik90/Auto-Claude/issues/176
    * @see https://github.com/AndyMik90/Auto-Claude/issues/810
-   * @see https://github.com/AndyMik90/Auto-Claude/issues/861
    * @see https://github.com/mhammond/pywin32/blob/main/win32/Lib/pywin32_bootstrap.py
    */
   getPythonEnv(): Record<string, string> {
@@ -692,11 +689,10 @@ if sys.version_info >= (3, 12):
 
     for (const [key, value] of Object.entries(process.env)) {
       // Skip PYTHONHOME - it causes the "platform independent libraries" error
-      // Skip PYTHONSTARTUP - we set our own bootstrap script on Windows
       // Use case-insensitive check for Windows compatibility (env vars are case-insensitive on Windows)
       // Skip undefined values (TypeScript type guard)
       const upperKey = key.toUpperCase();
-      if (upperKey !== 'PYTHONHOME' && upperKey !== 'PYTHONSTARTUP' && value !== undefined) {
+      if (upperKey !== 'PYTHONHOME' && value !== undefined) {
         baseEnv[key] = value;
       }
     }
@@ -713,43 +709,31 @@ if sys.version_info >= (3, 12):
 
     // Windows-specific pywin32 DLL loading fix
     // On Windows with bundled packages, we need to ensure pywin32 DLLs can be found.
-    // Python 3.8+ requires os.add_dll_directory() for DLL search paths.
-    // We achieve this by:
-    // 1. Adding pywin32_system32 to PATH (fallback for some edge cases)
-    // 2. Setting PYTHONSTARTUP to bootstrap script that calls os.add_dll_directory()
-    //    and uses site.addsitedir() to process .pth files (which imports pywin32_bootstrap)
+    // The DLL copying in fixPywin32() is the primary fix - this PATH addition is a fallback.
     let windowsEnv: Record<string, string> = {};
     if (this.sitePackagesPath && isWindows()) {
       const pywin32System32 = path.join(this.sitePackagesPath, 'pywin32_system32');
 
       // Add pywin32_system32 to PATH for DLL loading
-      // This is a fallback - main fix is via PYTHONSTARTUP bootstrap
-      const currentPath = baseEnv['PATH'] || baseEnv['Path'] || '';
+      // Fix PATH case sensitivity: On Windows, env vars are case-insensitive but Node.js
+      // preserves case. If we have both 'PATH' and 'Path', Node.js lexicographically sorts
+      // and uses the first match, causing issues. Normalize to single 'PATH' key.
+      // See: https://github.com/nodejs/node/issues/9157
+      const pathKey = Object.keys(baseEnv).find(k => k.toUpperCase() === 'PATH');
+      const currentPath = pathKey ? baseEnv[pathKey] : '';
+
+      // Remove any existing PATH variants to avoid duplicates
+      if (pathKey && pathKey !== 'PATH') {
+        delete baseEnv[pathKey];
+      }
+
       if (currentPath && !currentPath.includes(pywin32System32)) {
         windowsEnv['PATH'] = `${pywin32System32};${currentPath}`;
       } else if (!currentPath) {
         windowsEnv['PATH'] = pywin32System32;
-      }
-
-      // Set PYTHONSTARTUP to our bootstrap script
-      // This script will:
-      // 1. Use site.addsitedir() to process .pth files (triggers pywin32_bootstrap)
-      // 2. Explicitly call os.add_dll_directory() for pywin32_system32 (belt-and-suspenders)
-      const startupScript = path.join(this.sitePackagesPath, '_auto_claude_startup.py');
-      if (existsSync(startupScript)) {
-        windowsEnv['PYTHONSTARTUP'] = startupScript;
       } else {
-        // If startup script doesn't exist, create it dynamically
-        // This ensures the fix works even without rebuilding the packages
-        this.ensurePywin32StartupScript(this.sitePackagesPath);
-        if (existsSync(startupScript)) {
-          windowsEnv['PYTHONSTARTUP'] = startupScript;
-        } else {
-          // Script creation failed and file still doesn't exist
-          // Log warning so users know the pywin32 fix may not work
-          console.warn('[PythonEnvManager] Could not set PYTHONSTARTUP - pywin32 DLL loading may fail. ' +
-            'The PATH fallback will be used, but this may not work on Python 3.8+.');
-        }
+        // pywin32System32 already in path, but still normalize to 'PATH'
+        windowsEnv['PATH'] = currentPath;
       }
     }
 
@@ -765,88 +749,6 @@ if sys.version_info >= (3, 12):
       // Override PYTHONPATH if we have bundled packages
       ...(pythonPath ? { PYTHONPATH: pythonPath } : {}),
     };
-  }
-
-  /**
-   * Create the pywin32 bootstrap startup script if it doesn't exist.
-   * This script is run via PYTHONSTARTUP before the main script and ensures
-   * pywin32 DLLs can be found on Python 3.8+.
-   *
-   * The script:
-   * 1. Uses site.addsitedir() to process .pth files (including pywin32.pth)
-   * 2. Explicitly calls os.add_dll_directory() for pywin32_system32 as backup
-   *
-   * IMPORTANT: This script content must stay synchronized with fixPywin32()
-   * in apps/frontend/scripts/download-python.cjs (which creates the script at build time).
-   *
-   * @see https://github.com/mhammond/pywin32/blob/main/win32/Lib/pywin32_bootstrap.py
-   */
-  private ensurePywin32StartupScript(sitePackagesPath: string): void {
-    const startupScript = path.join(sitePackagesPath, '_auto_claude_startup.py');
-
-    // The startup script content
-    // This mimics what pywin32_bootstrap.py does, but runs before any imports
-    const scriptContent = `# Auto-Claude pywin32 bootstrap script
-# This script runs via PYTHONSTARTUP before the main script.
-# It ensures pywin32 DLLs can be found on Python 3.8+ where
-# os.add_dll_directory() is required for DLL search paths.
-#
-# See: https://github.com/AndyMik90/Auto-Claude/issues/810
-# See: https://github.com/mhammond/pywin32/blob/main/win32/Lib/pywin32_bootstrap.py
-
-import os
-import sys
-
-def _bootstrap_pywin32():
-    """Bootstrap pywin32 DLL loading for Python 3.8+"""
-    # Get the site-packages directory (where this script is located)
-    site_packages = os.path.dirname(os.path.abspath(__file__))
-
-    # 1. Add pywin32_system32 to DLL search path (Python 3.8+ requirement)
-    # This is the critical fix - without this, pywintypes DLL cannot be loaded
-    pywin32_system32 = os.path.join(site_packages, 'pywin32_system32')
-    if os.path.isdir(pywin32_system32):
-        if hasattr(os, 'add_dll_directory'):
-            try:
-                os.add_dll_directory(pywin32_system32)
-            except OSError:
-                pass  # Directory already added or doesn't exist
-
-        # Also add to PATH as fallback for edge cases
-        current_path = os.environ.get('PATH', '')
-        if pywin32_system32 not in current_path:
-            os.environ['PATH'] = pywin32_system32 + os.pathsep + current_path
-
-    # 2. Use site.addsitedir() to process .pth files
-    # This triggers pywin32.pth which imports pywin32_bootstrap
-    # The bootstrap adds win32, win32/lib to sys.path and calls add_dll_directory
-    try:
-        import site
-        if site_packages not in sys.path:
-            site.addsitedir(site_packages)
-    except Exception:
-        pass  # site module issues shouldn't break the app
-
-# Run bootstrap immediately when this script is loaded
-_bootstrap_pywin32()
-`;
-
-    try {
-      // Use 'wx' flag for atomic exclusive write - fails if file exists (EEXIST)
-      // This avoids TOCTOU race condition where existsSync + writeFileSync could
-      // allow another process to create/modify the file between check and write.
-      // See: https://nodejs.org/api/fs.html#file-system-flags
-      writeFileSync(startupScript, scriptContent, { encoding: 'utf-8', flag: 'wx' });
-      console.log(`[PythonEnvManager] Created pywin32 bootstrap script: ${startupScript}`);
-    } catch (error: unknown) {
-      // EEXIST means file already exists - that's fine, we wanted to avoid overwriting
-      const isEexist = error instanceof Error && 'code' in error && error.code === 'EEXIST';
-      if (!isEexist) {
-        // Other errors (e.g., read-only filesystem) - log but don't fail
-        // The PATH-based fallback may still work for some cases
-        console.warn(`[PythonEnvManager] Could not create pywin32 bootstrap script: ${error}`);
-      }
-    }
   }
 
   /**

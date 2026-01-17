@@ -648,6 +648,10 @@ function fixPywin32(sitePackagesDir) {
   // 2. Copy _win32sysloader.pyd from win32/ to root
   // This is required by pywintypes.py to locate and load the DLLs
   // Filter for .pyd extension to avoid matching unrelated files
+  if (!fs.existsSync(win32Dir)) {
+    console.warn(`[download-python] win32 directory not found: ${win32Dir}`);
+    return;
+  }
   const sysloaderFiles = fs.readdirSync(win32Dir).filter(f => f.startsWith('_win32sysloader') && f.endsWith('.pyd'));
   for (const sysloader of sysloaderFiles) {
     const srcPath = path.join(win32Dir, sysloader);
@@ -722,78 +726,16 @@ __path__ = [os.path.dirname(__file__)]
     }
   }
 
-  // 6. Create PYTHONSTARTUP bootstrap script for Python 3.8+ DLL loading
-  // This script runs before any imports and ensures os.add_dll_directory() is called
-  // for pywin32_system32. This is necessary because:
-  // - PYTHONPATH doesn't process .pth files, so pywin32_bootstrap.py never runs
-  // - Python 3.8+ requires os.add_dll_directory() for DLL search paths
-  // - PATH environment variable no longer works for DLL loading in Python 3.8+
+  // Note: We intentionally do NOT create a PYTHONSTARTUP bootstrap script.
+  // PYTHONSTARTUP only runs in interactive Python mode (python REPL), NOT when
+  // running scripts (python script.py). Since all our Python invocations pass
+  // scripts as arguments, PYTHONSTARTUP would never execute.
   //
-  // IMPORTANT: This script content must stay synchronized with ensurePywin32StartupScript()
-  // in apps/frontend/src/main/python-env-manager.ts (which creates the script at runtime
-  // if it doesn't exist in bundled packages).
+  // The DLL copying above (steps 4 and 5) is what actually makes pywin32 work -
+  // it places DLLs in locations where Python's default DLL search finds them.
+  // The PATH modification in python-env-manager.ts provides an additional fallback.
   //
-  // See: https://github.com/AndyMik90/Auto-Claude/issues/810
-  // See: https://github.com/AndyMik90/Auto-Claude/issues/861
-  // See: https://github.com/mhammond/pywin32/blob/main/win32/Lib/pywin32_bootstrap.py
-  const startupScriptPath = path.join(sitePackagesDir, '_auto_claude_startup.py');
-  const startupScriptContent = `# Auto-Claude pywin32 bootstrap script
-# This script runs via PYTHONSTARTUP before the main script.
-# It ensures pywin32 DLLs can be found on Python 3.8+ where
-# os.add_dll_directory() is required for DLL search paths.
-#
-# See: https://github.com/AndyMik90/Auto-Claude/issues/810
-# See: https://github.com/mhammond/pywin32/blob/main/win32/Lib/pywin32_bootstrap.py
-
-import os
-import sys
-
-def _bootstrap_pywin32():
-    """Bootstrap pywin32 DLL loading for Python 3.8+"""
-    # Get the site-packages directory (where this script is located)
-    site_packages = os.path.dirname(os.path.abspath(__file__))
-
-    # 1. Add pywin32_system32 to DLL search path (Python 3.8+ requirement)
-    # This is the critical fix - without this, pywintypes DLL cannot be loaded
-    pywin32_system32 = os.path.join(site_packages, 'pywin32_system32')
-    if os.path.isdir(pywin32_system32):
-        if hasattr(os, 'add_dll_directory'):
-            try:
-                os.add_dll_directory(pywin32_system32)
-            except OSError:
-                pass  # Directory already added or doesn't exist
-
-        # Also add to PATH as fallback for edge cases
-        current_path = os.environ.get('PATH', '')
-        if pywin32_system32 not in current_path:
-            os.environ['PATH'] = pywin32_system32 + os.pathsep + current_path
-
-    # 2. Use site.addsitedir() to process .pth files
-    # This triggers pywin32.pth which imports pywin32_bootstrap
-    # The bootstrap adds win32, win32/lib to sys.path and calls add_dll_directory
-    try:
-        import site
-        if site_packages not in sys.path:
-            site.addsitedir(site_packages)
-    except Exception:
-        pass  # site module issues shouldn't break the app
-
-# Run bootstrap immediately when this script is loaded
-_bootstrap_pywin32()
-`;
-
-  try {
-    // Use 'wx' flag for atomic write - fails if file already exists (prevents TOCTOU race)
-    fs.writeFileSync(startupScriptPath, startupScriptContent, { flag: 'wx' });
-    console.log(`[download-python] Created pywin32 bootstrap script: _auto_claude_startup.py`);
-  } catch (err) {
-    if (err.code === 'EEXIST') {
-      // File already exists, which is fine - another process may have created it
-      console.log(`[download-python] Bootstrap script already exists: _auto_claude_startup.py`);
-    } else {
-      console.warn(`[download-python] Failed to create bootstrap script: ${err.message}`);
-    }
-  }
+  // See: https://docs.python.org/3/using/cmdline.html (PYTHONSTARTUP documentation)
 
   console.log(`[download-python] pywin32 fix complete`);
 }
