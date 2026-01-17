@@ -29,8 +29,8 @@
   ],
   "qa_signoff": {
     "status": "fixes_applied",
-    "timestamp": "2026-01-17T22:15:00Z",
-    "fix_session": 2,
+    "timestamp": "2026-01-17T23:00:00Z",
+    "fix_session": 3,
     "issues_fixed": [
       {
         "title": "Usage values not displaying correctly for z.ai and ZHIPU providers",
@@ -41,6 +41,16 @@
         "title": "Usage labels and reset times not user-friendly",
         "fix_commit": "6331d11c",
         "description": "Updated session label to '5 Hours Quota', weekly label to 'Total Monthly Tools Quota', calculated actual reset times for 5-hour window, and formatted monthly reset as '1st of <Month>'"
+      },
+      {
+        "title": "Additional percentage display needs to be removed",
+        "fix_commit": "94afd21e",
+        "description": "Removed percentage text from usage warning badge; now only shows AlertTriangle icon with percentage in tooltip"
+      },
+      {
+        "title": "Countdown timer needs to move to right of usage badge",
+        "fix_commit": "94afd21e",
+        "description": "Moved countdown timer from tooltip to visible blue badge positioned to the right of provider badge"
       }
     ],
     "ready_for_qa_revalidation": true
